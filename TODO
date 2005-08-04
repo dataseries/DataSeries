@@ -1,0 +1,63 @@
+sanitize regression data
+
+- implement ExtentSeries::typeFieldMatch; this is defined as the field
+  having the xml definition, but ignoring the pack_* attributes, any
+  {note,comment} attributes, and possibly defining a prefix nt_*
+  (non-type) that is always ignored
+
+- implement a GroupBy module that takes a list of fields for use as the
+  key, and a factory class that can define new modules which can handle
+  each of the individual groups.
+
+- implement DSv2 file format -- switch from using an adler32 digest to an
+  SHA-1 digest on the compressed data, switch to having the partially 
+  unpacked bjhash include the hashing of things which are reversably packed,
+  e.g. bool, char, int{32,64}, variable32 to make sure that the unpack 
+  worked correctly.
+
+- allow ignoring of either of the hash checks as an option during reading
+
+- implement an option for checking the uncompression time during compressing
+  and selecting the compression algorithm that gives the lowest
+  decompression-time * compressed_size, or perhaps (F1 * decompression-time) +
+  (F2 * compressed-size)
+
+- think about how to add in a recursive structured variable type,
+  e.g. a keyed union in the way they are done in pascal.  This would
+  be useful for providing an alternate way for handling network traces
+  which tend to have a recursive structure of (type-key, value-options).
+  The other way to implement this is the multiple table approach used by
+  the nfs analysis -- it is unclear which of these is the "best" way to
+  do this.
+
+- consider adding in the unsigned types, and some sort of
+  (size,alignment,byteswap-rules) type
+
+- extend the generic indexing to have more modes, for example a multi-range
+  min-max index to handle the case where there are multiple dense ranges of
+  some values, for example a key that could be derived from either a
+  host-id+process-id, a global counter, or a time value.  Another example of
+  a useful index is a unique value index, useful if there are a small set of
+  expected values such as user-ids or user-names.
+
+- extend dsselect so that it can support computations in the selection
+  criteria, the "as" construct to rename columns and extent-types, and 
+  support for where clauses
+
+- implement dscat that can both concatenate multiple dataseries files, and
+  can re-compress the files.  The best implementation would operate directly
+  on the dataseries file avoiding most of the unpack effort by just
+  decompressing and recompressing the raw extents and updating the various
+  pointers.
+
+- implement support for altname in the type specification to allow for gradual 
+  renaming of columns
+
+- work out a way to avoid reading all of the extent types across all of the
+  files before we get started with doing a read of a collection of files.
+  I believe the original reason that we read all the types was consistency
+  checking across the types and to simplify the logic.  I think we can work
+  around this now since we shouldn't require that all the extent type
+  definitions be identical, just that we are using the correct one for 
+  each file.  Not sure about that claim though.
+

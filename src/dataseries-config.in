@@ -1,0 +1,55 @@
+#!/bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+includedir=@includedir@
+libdir=@libdir@
+
+usage()
+{
+    cat <<EOF
+Usage: dataseries-config <OPTION>
+
+Valid options:
+  --cflags	       show needed compiler flags
+  --libtool-libs       show link options for libtool
+  --libs	       show library link options
+  --help               show these options
+  --version            show lintel version
+EOF
+exit 1
+}
+
+if test $# -ne 1; then
+   usage
+fi
+
+case "$1" in
+    --cflags)
+    	echo "-I${includedir}/DataSeries @LINTEL_CFLAGS@ @XML2_CFLAGS@"
+	exit 0
+    	;;
+    --libtool-libs)
+	echo ${libdir}/libDataSeries.la
+	exit 0
+	;;
+    --libs)
+        if test $libdir = '/usr/lib'; then
+	    echo "-lDataSeries @LINTEL_LIBS@"
+        else
+	    echo "-L$libdir -lDataSeries @LINTEL_LIBS@ @XML2_LIBS@ @LZF_LIBS@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@"
+	fi
+	exit 0
+	;;
+    --help)
+        usage
+	;;
+    --version)
+    	echo @VERSION@;
+    	exit 0
+    	;;
+    *)
+        echo "unknown option $1"
+	usage
+	;;
+esac

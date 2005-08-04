@@ -1,0 +1,95 @@
+The idea behind this is to make for very fast data series processing;
+the model is exactly the same as was used for rivers, with extensions
+to handle variable sized records.  In particular this means that we
+batch a bunch of records together into an extent, we iterate across
+the records in a batch, and we access each of the fields in a record
+through an "accessor."  Byte swapping will be done on read-in of the
+batch.  Each extent may have a separate type; the data dictionary for
+all of the types must be stored before an extent with a particular
+type.  The data representation in a record is a series of fixed sized
+fields with a particular alignment, and then a series of variable
+sized fields with a particular alignment.  The variable sized fields
+have a set of offsets stored in the fixed sized fields section.
+Updates to a record is done using a set operation on the accessor --
+fixed size things can be directly updated; variable sized things need
+to be updated using a set operation to handle the size overflow
+problem.
+
+// TODO: consider switching from compressed adler32 digest to compress SHA-1
+// digest; also consider moving the partially unpacked bjhash check to 
+// include hashing of things which are reverably packed, e.g. int{32,64}
+// to make sure unpack worked correctly in those cases; note both of these
+// would be a file format change
+
+License information:
+   LZF compression is under BSD (w/attribution) license or GPL
+   LZO compression is under GPL 
+   BZ2 compression is under BSD (with optional attribution)
+   ZLIB compression is under BSD (with optional attribution)
+   
+File format:
+
+4 bytes file type 'DSv1'
+4 bytes int check 0x12345678
+8 bytes int64 check 0x123456789ABCDEF0
+8 bytes double check 3.1415926535897932384
+8 bytes double check Double::Inf
+8 bytes double check Double::NaN
+repeat:
+  4 bytes compressed fixed-data size (int32)
+  4 bytes compressed variable-data size (int32)
+  4 bytes nrecords (int32)
+  4 bytes variable_size (int32)
+  4 bytes compressed adler32 digest 
+  4 bytes partly-unpacked bjhash digest -- see code for how this is calculated
+  1 byte fixed-records compression type (0=none, 1=lzo, 2=gzip, 3=bz2, 4=lzf) // first three in speed order, 
+  1 byte variable-records compression type (same as fixed)
+  1 byte extent type name length
+  1 byte zero fill
+  <type name length> bytes extent type name
+  zero pad to 4 byte alignment
+  <nrecords * fixed-record-size> bytes
+  zero pad to 4 byte alignment
+  <variable_size> bytes
+  zero pad to 4 byte alignment
+tail:
+  <Data series extent index (if any), same format as previous extents>
+  // tail is this long because we want it to have the same size as an extent
+  // header so that the readExtent() routine doesn't have to read extent
+  // headers in two pieces.
+  4 bytes 0xFF 0xFF 0xFF 0xFF // make it easier to identify the tail if we can't seek and we just run into it, also limits the number of invalid sizes if we ever relax the 2GB compressed fixed size limitation currently in place
+  4 bytes index-extent-size (compressed)
+  4 bytes ~index-extent-size (compressed)
+  4 bytes random
+  8 bytes index-extent-offset
+  4 bytes bjhash(prev 4*4+8 bytes)
+
+Fixed-Record format:
+  bool fields
+  byte fields
+  zero pad to 4 byte alignment
+  int32, variable-offset fields
+  zero pad to 8 byte alignment
+  int64, double fields
+
+Variable-field format:
+  4 bytes size
+  size bytes data (variable data)
+  zero pad by (12 - (datasize % 8)) % 8 // sets up variable data to be 8 byte aligned
+
+XML extent type specification
+<ExtentType name="...1-19 bytes...">
+  <column type="bool|byte|int32|int64|double|variable32" name="..." pack_scale="double"/>
+  <column type="..." name="..."/>
+</ExtentType>
+
+The first extent in a file defines all of the types used in the
+remainder of the file, it's specification is:
+  <ExtentType name=" DataSeries: XmlType">
+    <field type="variable32" name="xmltype" />
+  </ExtentType>
+
+It is invalid to have another extent of this type later in the file, it is
+also invalid to have an extent with an unspecified type later in the file.
+
+

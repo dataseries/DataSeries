@@ -1,0 +1,13 @@
+- Verify that the relativeto: offset calculation done in ds2txt works correctly for two 
+  double fields with different bases.
+- Implement something that can merge two offset double series
+- Generic module support
+- Generic sort
+- Natassa Ailamaki (traces in databases and asking questions)
+
+---
++ What is the appropriate absolute value of a null field? decided it's the default
++ Use offset doubles
++ Support null entries
++ Index table in file format
+

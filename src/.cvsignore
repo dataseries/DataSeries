@@ -1,0 +1,8 @@
+*.Do
+*.Po
+*.Oo
+*-optimize
+*-profile
+*-debug
+.make.depend
+ran.regression-*
