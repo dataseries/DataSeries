@@ -5,7 +5,7 @@
 # Description:  automake input file
 # Author:       Eric Anderson
 # Created:      Tue Jan  4 12:35:53 2005
-# Modified:     Tue Feb  1 22:09:19 2005 (Eric Anderson) anderse@hpl.hp.com
+# Modified:     Mon Jan 23 15:40:54 2006 (Eric Anderson) anderse@hpl.hp.com
 # Language:     Makefile
 # Package:      N/A
 # Status:       Experimental (Do Not Distribute)
@@ -67,13 +67,14 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage
+bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex
 
 LDADD = $(top_builddir)/src/libDataSeries.la @LINTEL_NOGCLIBS@
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 dsextentindex_SOURCES = process/dsextentindex.C
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
+textindex_SOURCES = process/textindex.C
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test
 

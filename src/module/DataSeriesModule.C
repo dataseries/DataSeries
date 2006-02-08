@@ -2,11 +2,11 @@
 *******************************************************************************
 *
 * File:         DataSeriesModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/DataSeriesModule.C,v 1.6 2004/09/28 05:08:32 anderse Exp $
+* RCS:          $Header: /mount/cello/cvs/DataSeries/cpp/module/DataSeriesModule.C,v 1.6 2004/09/28 05:08:32 anderse Exp $
 * Description:  implementation
 * Author:       Eric Anderson
 * Created:      Mon Aug  4 23:00:20 2003
-* Modified:     Sun Sep 26 21:41:52 2004 (Eric Anderson) anderse@hpl.hp.com
+* Modified:     Tue Jan 24 13:40:03 2006 (Eric Anderson) anderse@hpl.hp.com
 * Language:     C++
 * Package:      N/A
 * Status:       Experimental (Do Not Distribute)
@@ -230,6 +230,12 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
     cur_extent = new Extent(outputtype);
     series.setExtent(cur_extent);
 }
+
+OutputModule::~OutputModule()
+{
+    flushExtent();
+}
+
 
 void
 OutputModule::newRecord()

@@ -149,6 +149,12 @@ public:
     };
 
     iterator pos;
+
+    bool morerecords() {
+	return pos.morerecords();
+    }
+    iterator &operator++() { ++pos; }
+
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     const Extent *curExtent() { return my_extent; }
 private:

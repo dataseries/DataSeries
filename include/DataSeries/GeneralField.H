@@ -6,7 +6,7 @@
 * Description:  Generic field operations, slower than normal ones, so not the default
 * Author:       Eric Anderson
 * Created:      Fri Jul 18 14:45:12 2003
-* Modified:     Thu Oct 28 23:53:58 2004 (Eric Anderson) anderse@hpl.hp.com
+* Modified:     Tue Jan 24 13:53:51 2006 (Eric Anderson) anderse@hpl.hp.com
 * Language:     C++
 * Package:      N/A
 * Status:       Experimental (Do Not Distribute)
@@ -260,7 +260,7 @@ public:
 
 class GF_Variable32 : public GeneralField {
 public:
-    enum printstyle_t {printnostyle, printhex, printmaybehex, printcsv};
+    enum printstyle_t { printnostyle, printhex, printmaybehex, printcsv, printtext };
     GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Variable32();
     virtual void write(FILE *to);
