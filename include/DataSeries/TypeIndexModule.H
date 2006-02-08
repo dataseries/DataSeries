@@ -1,20 +1,13 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         TypeIndexModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/TypeIndexModule.H,v 1.2 2004/09/07 21:29:30 anderse Exp $
-* Description:  A module which uses the type index in each file to select 
-                the extents to return.
-* Author:       Eric Anderson
-* Created:      Thu May 27 22:57:23 2004
-* Modified:     Thu Jul  8 15:30:59 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    A module which uses the type index in each file to select 
+    the extents to return.
 */
 
 #ifndef __DATASERIES_TYPEINDEXMODULE_H

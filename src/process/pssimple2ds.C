@@ -1,3 +1,9 @@
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
 #include <errno.h>
 #include <stdio.h>
 

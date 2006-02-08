@@ -1,3 +1,9 @@
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 The idea behind this is to make for very fast data series processing;
 the model is exactly the same as was used for rivers, with extensions
 to handle variable sized records.  In particular this means that we

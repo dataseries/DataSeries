@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         DataSeriesModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/DataSeriesModule.C,v 1.6 2004/09/28 05:08:32 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Mon Aug  4 23:00:20 2003
-* Modified:     Sun Sep 26 21:41:52 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <sys/time.h>

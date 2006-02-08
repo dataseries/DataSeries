@@ -1,3 +1,9 @@
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 package BatchParallel::ds2txt;
 
 @ISA = qw/BatchParallel::common/;

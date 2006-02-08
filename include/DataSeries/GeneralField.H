@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         GeneralField.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/GeneralField.H,v 1.10 2005/02/15 01:18:34 anderse Exp $
-* Description:  Generic field operations, slower than normal ones, so not the default
-* Author:       Eric Anderson
-* Created:      Fri Jul 18 14:45:12 2003
-* Modified:     Thu Oct 28 23:53:58 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Generic field operations, slower than normal ones, so not the default
 */
 
 #ifndef __DATASERIES_GENERALFIELD_H

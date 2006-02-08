@@ -1,19 +1,8 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         TypeIndexModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/TypeIndexModule.C,v 1.3 2005/02/15 01:18:36 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Sat May 29 18:17:15 2004
-* Modified:     Wed Jan 19 19:03:45 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
 
 #include <TypeIndexModule.H>

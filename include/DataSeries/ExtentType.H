@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         ExtentType.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/ExtentType.H,v 1.8 2004/09/28 05:08:31 anderse Exp $
-* Description:  Type information for an extent
-* Author:       Eric Anderson
-* Created:      Thu May  8 04:43:23 2003
-* Modified:     Mon Sep 27 22:00:53 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Type information for an extent
 */
 
 #ifndef __DATASERIES_EXTENTTYPE_H

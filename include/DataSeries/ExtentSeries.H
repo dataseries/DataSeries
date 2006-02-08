@@ -1,3 +1,10 @@
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+
 #ifndef __EXTENT_SERIES_H
 #define __EXTENT_SERIES_H
 // This class allows us to have all the fields share a single

@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         ExtentField.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/ExtentField.H,v 1.7 2004/09/07 21:29:28 anderse Exp $
-* Description:  accessor classes for fields in an extent
-* Author:       Eric Anderson
-* Created:      Sun Jul 13 21:38:47 2003
-* Modified:     Fri Jul  2 17:58:56 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    accessor classes for fields in an extent
 */
 
 #ifndef __EXTENT_FIELD_H

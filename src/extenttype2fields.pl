@@ -1,4 +1,10 @@
 #!/usr/bin/perl
+#
+#  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 die "Usage: $0 <series-variable>\n"
     unless @ARGV == 1 && $ARGV[0] =~ /^\w+$/o;
 

@@ -1,20 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         DataSeriesModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/DataSeriesModule.H,v 1.8 2004/09/28 05:08:32 anderse Exp $
-* Description:  first attempt at trying to build a modular structure for
-                the data series work
-* Author:       Eric Anderson
-* Created:      Mon Aug  4 22:56:42 2003
-* Modified:     Sun Sep 26 21:39:25 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+     first attempt at trying to build a modular structure for data series
 */
 
 // ***** WARNING WARNING WARNING *****

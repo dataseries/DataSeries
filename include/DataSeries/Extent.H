@@ -1,21 +1,14 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         Extent.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/Extent.H,v 1.6 2005/02/15 01:18:34 anderse Exp $
-* Description:  Variable sized chunks of data; containers for the individual
-                records that are stored within, typed, and aligned to 8 byte
-		boundaries
-* Author:       Eric Anderson
-* Created:      Wed May  7 09:18:04 2003
-* Modified:     Sun Jan  9 13:32:49 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Variable sized chunks of data; containers for the individual
+    records that are stored within, typed, and aligned to 8 byte
+    boundaries
 */
 
 #ifndef __DATASERIES_EXTENT_H
@@ -30,8 +23,8 @@ extern "C" {
 #if defined(__linux__) && defined(__GNUC__) && __GNUC__ >= 2 
 #define USE_X86_GCC_BYTESWAP 1
 #include <byteswap.h>
-#if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__
-#error "You ought to have one of __i486__, __pentium__, or __pentiumpro__ defined; otherwise you don't get the good swap routine"
+#if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__ && !defined __pentium4__
+#error "You ought to have one of __i486__, __pentium__, __pentiumpro__ or __pentium4__ defined; otherwise you don't get the good swap routine"
 #endif
 #endif
 

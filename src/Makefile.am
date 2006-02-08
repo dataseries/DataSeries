@@ -1,18 +1,9 @@
-###############################################################################
 #
-# File:         Makefile.am
-# RCS:          $Header: /mount/cello/cvs/DataSeries/src/Makefile.am,v 1.1 2005/02/15 01:18:35 anderse Exp $
-# Description:  automake input file
-# Author:       Eric Anderson
-# Created:      Tue Jan  4 12:35:53 2005
-# Modified:     Tue Feb  1 22:09:19 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Makefile
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
+# automake input file
 
 if WITH_LZF
 DATASERIES_ENABLE_LZF=1

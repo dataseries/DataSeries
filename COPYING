@@ -1,0 +1,7 @@
+Unless explicitly mentioned otherwise, the following licences cover all 
+files in this package:
+
+Header files (*.h, *.H): BSD license
+All other files: LGPL
+
+These licenses are in COPYING.BSD and COPYING.LGPL respectively.

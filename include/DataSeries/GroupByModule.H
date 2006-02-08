@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         GroupByModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/GroupByModule.H,v 1.1 2005/02/15 01:18:34 anderse Exp $
-* Description:  Dataseries module for handling group-by type rollups
-* Author:       Eric Anderson
-* Created:      Thu Sep  9 09:34:10 2004
-* Modified:     Thu Sep  9 10:16:18 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Dataseries module for handling group-by type rollups
 */
 
 #ifndef __GROUP_BY_MODULE_H

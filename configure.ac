@@ -1,26 +1,16 @@
 #                                               -*- Autoconf -*-
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
 # Process this file with autoconf to produce a configure script.
-###############################################################################
-#
-# File:         configure.ac
-# RCS:          $Header: /mount/cello/cvs/DataSeries/configure.ac,v 1.1 2005/02/15 01:18:29 anderse Exp $
-# Description:  input file for producing configure 
-# Author:       Eric Anderson
-# Created:      Tue Jan  4 10:03:01 2005
-# Modified:     
-# Language:     Parindent
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
-#
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
-#
-###############################################################################
 
 AC_INIT(DataSeries, 1.0, [dataseries-bugs@cello.hpl.hp.com])
 
 AC_PREREQ(2.57)
 
-AC_REVISION($Revision: 1.1 $)
+AC_REVISION($Revision: 1.2 $)
 AC_CANONICAL_SYSTEM
 AM_SANITY_CHECK
 AM_INIT_AUTOMAKE

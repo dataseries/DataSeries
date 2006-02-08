@@ -1,19 +1,13 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         PrefetchBufferModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/PrefetchBufferModule.H,v 1.1 2003/10/27 03:46:32 anderse Exp $
-* Description:  A module that creates it's own thread and prefetches extents from an upstream source
-* Author:       Eric Anderson
-* Created:      Mon Sep 29 20:15:51 2003
-* Modified:     Sun Oct 12 16:33:09 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    A module that creates it's own thread and prefetches extents from an 
+    upstream source
 */
 
 #ifndef __PREFETCH_BUFFER_MODULE_H

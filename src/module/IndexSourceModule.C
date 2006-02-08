@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         IndexSourceModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/IndexSourceModule.C,v 1.7 2005/02/15 01:18:36 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Sun Aug 17 16:23:07 2003
-* Modified:     Wed Jan 19 18:51:41 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <sys/time.h>

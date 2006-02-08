@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         RowAnalysisModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/RowAnalysisModule.H,v 1.2 2005/02/15 01:18:34 anderse Exp $
-* Description:  Data Series Modules for analyzing one row at a time
-* Author:       Eric Anderson
-* Created:      Mon Apr 26 16:22:42 2004
-* Modified:     Sat Oct  2 18:47:47 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Data Series Modules for analyzing one row at a time
 */
 
 #ifndef __ROW_ANALYSIS_MODULE_H

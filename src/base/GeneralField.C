@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         GeneralField.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/base/GeneralField.C,v 1.10 2005/02/15 01:18:35 anderse Exp $
-* Description:  General field implementation
-* Author:       Eric Anderson
-* Created:      Fri Jul 18 14:45:57 2003
-* Modified:     Wed Jan 19 18:47:10 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    General field implementation
 */
 
 #include <algorithm>

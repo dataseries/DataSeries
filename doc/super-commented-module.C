@@ -1,3 +1,10 @@
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+
 // This example is from the nfsdsanalysis code, and is
 // hyper-documented.  A few unneeded bits were removed for simplicity.
 

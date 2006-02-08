@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         Extent.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/base/Extent.C,v 1.8 2005/02/15 01:18:35 anderse Exp $
-* Description:  Extent implementation
-* Author:       Eric Anderson
-* Created:      Fri May  9 00:03:00 2003
-* Modified:     Wed Jan 19 18:25:24 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Extent implementation
 */
 
 #include <math.h>
@@ -384,10 +377,10 @@ Extent::packData(Extent::ByteArray &into,
 		 ("Internal Error\n"));
 
     // adler32 everything but the compressed digest
-    lzo_uint32 adler32 = lzo_adler32(0L, Z_NULL, 0);
-    adler32 = lzo_adler32(adler32, into.begin(), 4*4);
-    adler32 = lzo_adler32(adler32, into.begin() + 5*4, into.size()-5*4);
-    *(int32 *)(into.begin() + 4*4) = adler32;
+    ulong adler32sum = adler32(0L, Z_NULL, 0);
+    adler32sum = adler32(adler32sum, into.begin(), 4*4);
+    adler32sum = adler32(adler32sum, into.begin() + 5*4, into.size()-5*4);
+    *(int32 *)(into.begin() + 4*4) = adler32sum;
     if (false) printf("final coded size %d bytes\n",into.size());
     if (header_packed != NULL) *header_packed = headersize;
     if (fixed_packed != NULL) *fixed_packed = fixed_coded.size();

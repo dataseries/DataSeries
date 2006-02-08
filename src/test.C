@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         test.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/test.C,v 1.4 2004/09/28 05:08:30 anderse Exp $
-* Description:  test program for DataSeries
-* Author:       Eric Anderson
-* Created:      Wed Aug 13 10:09:21 2003
-* Modified:     Mon Sep 27 18:20:37 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    test program for DataSeries
 */
 
 #include <stdio.h>

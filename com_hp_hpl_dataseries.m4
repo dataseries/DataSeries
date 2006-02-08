@@ -1,19 +1,10 @@
-###############################################################################
 #
-# File:         com_hp_hpl_dataseries.m4
-# RCS:          $Header: /mount/cello/cvs/DataSeries/com_hp_hpl_dataseries.m4,v 1.1 2005/02/15 01:18:28 anderse Exp $
-# Description:  autoconf macros used for dataseries
-# Author:       Eric Anderson
-# Created:      Sat Jan  8 19:42:56 2005
-# Modified:     Tue Feb  1 14:39:48 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     m4
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
 
+# autoconf macros used for dataseries
 
 AC_DEFUN([HPL_REQUIRELIB_DATASERIES],
 [

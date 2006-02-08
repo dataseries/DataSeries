@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         ExtentType.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/base/ExtentType.C,v 1.7 2004/09/07 21:29:28 anderse Exp $
-* Description:  ExtentType class implementation
-* Author:       Eric Anderson
-* Created:      Thu May  8 22:22:40 2003
-* Modified:     Sun Jul 11 01:24:31 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    ExtentType class implementation
 */
 
 #include <libxml/parser.h>

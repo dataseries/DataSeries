@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         ds2txt.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/process/ds2txt.C,v 1.8 2005/02/15 01:18:36 anderse Exp $
-* Description:  Convert DataSeries files to text
-* Author:       Eric Anderson
-* Created:      Thu Jul  8 14:55:06 2004
-* Modified:     Wed Jan 19 19:13:44 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Convert DataSeries files to text
 */
 
 #include <StringUtil.H>

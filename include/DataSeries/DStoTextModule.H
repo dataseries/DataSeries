@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         DStoTextModule.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/DStoTextModule.H,v 1.4 2004/09/07 21:29:29 anderse Exp $
-* Description:  Module that converts a data series to text
-* Author:       Eric Anderson
-* Created:      Fri Aug  8 20:36:11 2003
-* Modified:     Sun Jul 11 01:22:47 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Module that converts a data series to text
 */
 
 #ifndef __DSTOTEXTMODULE_H

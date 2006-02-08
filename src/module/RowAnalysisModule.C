@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         RowAnalysisModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/RowAnalysisModule.C,v 1.2 2005/02/15 01:18:36 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Mon Apr 26 22:49:05 2004
-* Modified:     Sat Oct  2 19:04:13 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include "RowAnalysisModule.H"

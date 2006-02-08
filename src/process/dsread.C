@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         dsread.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/process/dsread.C,v 1.1 2004/09/28 05:08:32 anderse Exp $
-* Description:  A program with no purpose other than to do profiling and benchmarking.
-* Author:       Eric Anderson
-* Created:      Sun Sep 26 21:32:26 2004
-* Modified:     Mon Sep 27 21:21:24 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    A program with no purpose other than to do profiling and benchmarking.
 */
 
 #include <DataSeriesModule.H>

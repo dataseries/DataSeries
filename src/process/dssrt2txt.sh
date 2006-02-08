@@ -1,3 +1,8 @@
 #!/bin/sh
+#
+#  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
 ./ds2txt-optimize --fields='<fields type="I/O trace: SRT-V7"><field name="enter_driver"/><field name="leave_driver"/><field name="return_to_driver"/><field name="bytes"/><field name="is_read"/><field name="disk_offset"/><field name="device_number"/><field name="logical_volume_number"/><field name="thread_id"/><field name="pid"/></fields>' --printSpec='<printSpec type="I/O trace: SRT-V7" name="enter_driver" print_format="%9.6f" print_offset="first" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="leave_driver" print_format="%6.0f" print_offset="relativeto:enter_driver" print_multiplier="1e6" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="return_to_driver" print_format="%6.0f" print_offset="relativeto:enter_driver" print_multiplier="1e6" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="bytes" print_format="%6d" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="device_number" print_format="%x" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="logical_volume_number" print_format="%x" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="disk_offset" print_divisor="1024" print_format="%10lld"/>' --printSpec='<printSpec type="I/O trace: SRT-V7" name="pid" print_format="%5d" />' --printSpec='<printSpec type="I/O trace: SRT-V7" name="is_read" print_true="R" print_false="W" />' --header='<header type="I/O trace: SRT-V7"># created  start   stop  bytes disk_offset(k) device#   lv#  thrid pid</header>' $1
 

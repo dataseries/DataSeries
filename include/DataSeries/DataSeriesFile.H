@@ -1,20 +1,14 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         DataSeriesFile.H
-* RCS:          $Header: /mount/cello/cvs/DataSeries/include/DataSeries/DataSeriesFile.H,v 1.4 2004/09/07 21:29:28 anderse Exp $
-* Description:  a dataseries file
-* Author:       Eric Anderson
-* Created:      Tue May 20 11:11:51 2003
-* Modified:     Tue Jul  6 16:10:36 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    a dataseries file
+*/
+
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 

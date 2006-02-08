@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         commonargs.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/process/commonargs.C,v 1.4 2004/09/07 21:29:29 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Tue May 27 13:41:16 2003
-* Modified:     Thu Jul  8 23:47:31 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <commonargs.H>

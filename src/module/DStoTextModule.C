@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         DStoTextModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/DStoTextModule.C,v 1.5 2004/09/07 21:29:29 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Fri Aug  8 20:40:55 2003
-* Modified:     Sun Jul 11 01:22:20 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <DStoTextModule.H>

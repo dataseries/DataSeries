@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         MinMaxIndexModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/MinMaxIndexModule.C,v 1.2 2005/02/15 01:18:36 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Mon Jun  7 08:37:15 2004
-* Modified:     Wed Jan 19 19:01:06 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <algorithm>

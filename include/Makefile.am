@@ -1,18 +1,9 @@
-###############################################################################
 #
-# File:         Makefile.am
-# RCS:          $Header: /mount/cello/cvs/DataSeries/include/Makefile.am,v 1.1 2005/02/15 01:18:33 anderse Exp $
-# Description:  automake input file
-# Author:       Eric Anderson
-# Created:      Tue Jan  4 10:45:07 2005
-# Modified:     Wed Jan  5 11:43:45 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Makefile
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
+# automake input file
 
 nobase_include_HEADERS = \
 	DataSeries/DataSeriesFile.H \

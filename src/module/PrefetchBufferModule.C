@@ -1,19 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         PrefetchBufferModule.C
-* RCS:          $Header: /mount/cello/cvs/DataSeries/src/module/PrefetchBufferModule.C,v 1.3 2004/09/28 05:08:32 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Mon Sep 29 20:24:07 2003
-* Modified:     Wed Sep 15 15:58:19 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+// -*-C++-*-
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    implementation
 */
 
 #include <PrefetchBufferModule.H>
