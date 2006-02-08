@@ -224,6 +224,12 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
     series.setExtent(cur_extent);
 }
 
+OutputModule::~OutputModule()
+{
+    flushExtent();
+}
+
+
 void
 OutputModule::newRecord()
 {

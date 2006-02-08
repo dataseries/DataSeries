@@ -714,11 +714,13 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 	// for now: hex, maybehex, csv
 	if (xmlStrcmp(xmlprintstyle,(xmlChar *)"hex")==0) {
 	    printstyle = printhex;
-	} else if (xmlStrcmp(xmlprintstyle,(xmlChar *)"maybehex")==0) {
+	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"maybehex")==0) {
 	    printstyle = printmaybehex;
-	} else if (xmlStrcmp(xmlprintstyle,(xmlChar *)"csv")==0) {
+	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"csv")==0) {
 	    printstyle = printcsv;
 	    csvEnabled = true;
+	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"text")==0) { 
+	    printstyle = printtext;
 	} else {
 	    AssertFatal(("print_style should be hex, maybehex or csv not '%s'\n",
 			 (char *)xmlprintstyle));
@@ -727,6 +729,9 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
     
     // in case print_hex and print_maybehex are used print an obsolete abort message 
     // with the explanation to switch to printstyle
+    // Stopped asserting because old DS files have the old style, so difficult to make
+    // the changeover -- stupid need to support backwards compatibility.
+
     xmlChar *xml_printhex = myXmlGetProp(fieldxml, (const xmlChar *)"print_hex");
     if (xml_printhex != NULL) {
         // AssertFatal(("print_hex is obsolete, it was replaced by print_style=\"hex\"\n"));
@@ -760,6 +765,8 @@ GF_Variable32::write(FILE *to)
 	fprintf(to,printspec,maybehexstring(myfield.stringval()).c_str());
     } else if ((printstyle == printcsv) || csvEnabled) {
         fprintf(to,printspec,(toCSVform(maybehexstring(myfield.stringval()))).c_str());
+    } else if (printstyle == printtext) {
+	fprintf(to,printspec,myfield.stringval().c_str());
     } else {	      
 	fprintf(to,printspec,myfield.stringval().c_str());
     }

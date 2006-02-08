@@ -125,6 +125,7 @@ public:
     // target extent size.
     OutputModule(DataSeriesSink &sink, ExtentSeries &series,
 		 const ExtentType *outputtype, int target_extent_size);
+    ~OutputModule();
 
     // you should call writeExtentLibrary before calling this too
     // many times or it will try to write an extent.

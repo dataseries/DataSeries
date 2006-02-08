@@ -6,6 +6,11 @@
 
 sanitize regression data
 
+- decide whether the implementation of preadExtent which auto-updates the
+  offset is good; seeming to have to copy the offset too many times in
+  use. Perhaps an alternate implementation where &offset is passed,
+  and in that case the value is updated.
+
 - implement ExtentSeries::typeFieldMatch; this is defined as the field
   having the xml definition, but ignoring the pack_* attributes, any
   {note,comment} attributes, and possibly defining a prefix nt_*
@@ -67,3 +72,7 @@ sanitize regression data
   definitions be identical, just that we are using the correct one for 
   each file.  Not sure about that claim though.
 
+- think about whether you should be forced to set the field value for
+  fields which are not nullable.  Right now (via testing with
+  textindex) it seems that the code will just set the value to the
+  default.  Not clear this is what we would want.

@@ -253,7 +253,7 @@ public:
 
 class GF_Variable32 : public GeneralField {
 public:
-    enum printstyle_t {printnostyle, printhex, printmaybehex, printcsv};
+    enum printstyle_t { printnostyle, printhex, printmaybehex, printcsv, printtext };
     GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Variable32();
     virtual void write(FILE *to);
