@@ -23,8 +23,13 @@ extern "C" {
 #if defined(__linux__) && defined(__GNUC__) && __GNUC__ >= 2 
 #define USE_X86_GCC_BYTESWAP 1
 #include <byteswap.h>
-#if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__ && !defined __pentium4__
-#error "You ought to have one of __i486__, __pentium__, __pentiumpro__ or __pentium4__ defined; otherwise you don't get the good swap routine"
+#if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__ && !defined __pentium4__ && !defined __x86_64__
+// Note that in particular __i386__ is not enough to have defined here
+// the swap routine is significantly worse than the i486 version; see
+// /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
+// for the performance test, you want Extent::flip4bytes to have the
+// best performance of the options.
+#error "You ought to have one of __i486__, __pentium__, __pentiumpro__, __pentium4__, or __x86_64__ defined; otherwise you don't get the good swap routine"
 #endif
 #endif
 

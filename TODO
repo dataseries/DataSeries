@@ -6,6 +6,11 @@
 
 sanitize regression data
 
+- think about whether we should change to preadExtent taking an 
+  ExtentType::int64 type argument than an off64_t.  The values come out of
+  DS as int64, but get used as off64_t; while these are in theory the same,
+  x86_64 seems to generate warnings/errors on this.
+
 - decide whether the implementation of preadExtent which auto-updates the
   offset is good; seeming to have to copy the offset too many times in
   use. Perhaps an alternate implementation where &offset is passed,

@@ -88,7 +88,7 @@ indexExtent(DataSeriesSource &source, const string &filename,
     if (verbose_index) 
 	printf("index extent %s:%lld\n",filename.c_str(),offset);
     // copy offset as preadExtent updates offset to offset of next extent
-    ExtentType::int64 tmp_offset = offset; 
+    off64_t tmp_offset = offset; 
     Extent *e = source.preadExtent(tmp_offset);
     inseries.setExtent(e);
     AssertAlways(inseries.pos.morerecords(),("internal"));

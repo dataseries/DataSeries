@@ -648,7 +648,7 @@ public:
 class rollupptr_hash {
 public:
     int operator()(const rollupptr &a) {
-	return a.id ^ (int)a.strval;
+	return a.id ^ (long)a.strval;
     }
 };
 

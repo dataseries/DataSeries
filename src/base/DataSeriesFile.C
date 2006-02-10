@@ -110,9 +110,10 @@ DataSeriesSource::DataSeriesSource(const std::string &_filename)
 	Extent::flip8bytes(tail+16);
     }
     int32 packedsize = *(int32 *)(tail + 4);
-    int64 indexoffset = *(int64 *)(tail + 16);
+    off64_t indexoffset = *(int64 *)(tail + 16);
     AssertAlways(tailoffset - packedsize == indexoffset,
-		 ("mismatch on index offset %lld - %d != %lld!\n",tailoffset,packedsize,indexoffset));
+		 ("mismatch on index offset %lld - %d != %lld!\n",
+		  tailoffset,packedsize,indexoffset));
     indexExtent = preadExtent(indexoffset);
     AssertAlways(indexExtent != NULL,("index extent read failed\n"));
 }
