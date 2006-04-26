@@ -15,7 +15,9 @@
 #include <openssl/opensslv.h>
 #include <openssl/evp.h>
 #include <zlib.h>
+#if DATASERIES_ENABLE_LZO
 #include <lzoconf.h>
+#endif
 #include <HashTable.H>
 #include <MersenneTwisterRandom.H>
 #include <Clock.H>
@@ -197,11 +199,13 @@ test_varcompress()
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
     printf("  zlib compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+#if DATASERIES_ENABLE_LZO
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
     printf("  lzo compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+#endif
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
@@ -241,11 +245,13 @@ test_varcompress()
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
     printf("  zlib compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+#if DATASERIES_ENABLE_LZO
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
     printf("  lzo compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+#endif
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
@@ -321,6 +327,7 @@ test_primitives()
 	printf("CRC32(%ld) of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       adler, reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
+#if DATASERIES_ENABLE_LZO
     {
 	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
 	uLong adler = lzo_adler32(0L, Z_NULL, 0);
@@ -343,6 +350,7 @@ test_primitives()
 	printf("lzo_crc(%ld) of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       adler, reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
+#endif
     {
 	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
 	unsigned int hash = 1972;

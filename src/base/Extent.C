@@ -634,10 +634,10 @@ Extent::unpackData(ExtentTypeLibrary &library,
     AssertAlways(from.size() > (4*6+2),
 		 ("Invalid extent data, too small.\n"));
 
-    lzo_uint32 adler32 = lzo_adler32(0L, Z_NULL, 0);
+    ulong adler32sum = adler32(0L, Z_NULL, 0);
     if (dataseries_enable_preuncompress_check) {
-	adler32 = lzo_adler32(adler32, from.begin(), 4*4);
-	adler32 = lzo_adler32(adler32, from.begin() + 5*4, from.size()-5*4);
+	adler32sum = adler32(adler32sum, from.begin(), 4*4);
+	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
     }
     if (fix_endianness) {
 	for(int i=0;i<6*4;i+=4) {
@@ -645,8 +645,8 @@ Extent::unpackData(ExtentTypeLibrary &library,
 	}
     }
     if (dataseries_enable_preuncompress_check) {
-	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32,
-		     ("Invalid extent data, adler32 digest mismatch on compressed data\n"));
+	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
+		     ("Invalid extent data, adler32 digest mismatch on compressed data %x != %x\n",*(int32 *)(from.begin() + 4*4),(int32)adler32sum));
     }
     TIME_UNPACKING(Clock::Tdbl time_upc = Clock::tod());
     int32 compressed_fixed_size = *(int32 *)from.begin();

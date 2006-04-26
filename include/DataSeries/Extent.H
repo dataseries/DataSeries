@@ -29,7 +29,7 @@ extern "C" {
 // /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
 // for the performance test, you want Extent::flip4bytes to have the
 // best performance of the options.
-#error "You ought to have one of __i486__, __pentium__, __pentiumpro__, __pentium4__, or __x86_64__ defined; otherwise you don't get the good swap routine"
+#error "You ought to have one of __i486__, __pentium__, __pentiumpro__, __pentium4__, or __x86_64__ defined; otherwise you don't get the good swap routine; you can get this by using .../configure --enable-optmode=optimize"
 #endif
 #endif
 
