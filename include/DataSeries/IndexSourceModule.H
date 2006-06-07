@@ -34,37 +34,40 @@
 // TODO: pass back the filename that was being read when doing getExtentPrefetch
 // so that we can give a better error message than just "index error?! %s != %s"
 
+// TODO: have some sort of way of sharing the various possible input
+// files, see dsextentindex.C for a case where this matters, as well
+// as nfsdsanalysis.
+
 class IndexSourceModule : public SourceModule {
 public:
-    IndexSourceModule(SourceList *sources = NULL);
+    IndexSourceModule();
     virtual ~IndexSourceModule();
 
     virtual Extent *getExtent();
 
     /** call this to start prefetching; if you don't call it, it will be
 	automatically called when you call getExtent */
-    void startPrefetching(unsigned prefetch_max_memory = 8 * 1024 * 1024);
+    virtual void startPrefetching(unsigned prefetch_max_memory = 8 * 1024 * 1024);
     /** call this to start the index source module over again from the 
 	beginning */
-    void resetPos();
+    virtual void resetPos();
 
     /** what fraction of the extents did we wait for? */
     double waitFraction();
 
     /** public interface to start the prefetch thread, public only to allow
 	it to be called from a C function */
-    void prefetchThread();
+    virtual void prefetchThread();
 
     /** use getCompressed() to create this structure, it will unlock
 	the mutex while doing the work to get the compressed data */
     struct compressedPrefetch {
 	Extent::ByteArray bytes;
-	ExtentTypeLibrary *library;
+	ExtentType *type;
 	bool need_bitflip;
-	const ExtentType *dataseries_type;
 	std::string uncompressed_type;
-	compressedPrefetch() : library(NULL), 
-	    need_bitflip(false), dataseries_type(NULL) { }
+	compressedPrefetch() : type(NULL), 
+	    need_bitflip(false) { }
     };
 
 protected:

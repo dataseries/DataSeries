@@ -184,6 +184,11 @@ public:
     ExtentTypeLibrary() {};
 
     ExtentType *registerType(const std::string &xmldesc);
+
+    // ExtentType * values returned by these functions survive the
+    // deletion of the library -- they are shared across all of the
+    // ExtentTypeLibraries based on the actual XML type information
+
     ExtentType *getTypeByName(const std::string &name, bool null_ok = false);
     ExtentType *getTypeByPrefix(const std::string &prefix, bool null_ok = false);
 

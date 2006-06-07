@@ -60,6 +60,22 @@ public:
 	    minf(NULL), maxf(NULL) { }
     };
 
+    struct kept_extent {
+	std::string filename;
+	ExtentType::int64 extent_offset;
+	GeneralValue sortvalue;
+	kept_extent(const std::string &a,ExtentType::int64 b,GeneralValue &c)
+	    : filename(a), extent_offset(b), sortvalue(c) { }
+    };
+
+    class kept_extent_bysortvalue {
+    public:
+	bool operator() (const kept_extent &a, const kept_extent &b) {
+	    return a.sortvalue < b.sortvalue;
+	}
+    };
+
+
     /** selects extents where all selectors overlap (intersection)
 	rules for the values as per the other constructor */
     MinMaxIndexModule(const std::string &index_filename,
@@ -77,15 +93,11 @@ private:
 	      std::vector<selector> &intersection_list,
 	      const std::string &sort_fieldname);
 
-    struct extentorder {
-	int sourcenum;
-	ExtentType::int64 offset;
-	extentorder(int a, ExtentType::int64 b)
-	    : sourcenum(a), offset(b) { }
-    };
-    std::vector<extentorder> extentList;
+    std::vector<kept_extent> kept_extents;
     const std::string index_type;
-    unsigned curextent;
+    unsigned cur_extent;
+    DataSeriesSource *cur_source;
+    std::string cur_source_filename;
 };
 
 #endif

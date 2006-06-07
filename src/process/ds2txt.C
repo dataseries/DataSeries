@@ -90,10 +90,12 @@ main(int argc, char *argv[])
 	source.addSource(argv[i]);
     }
 
+    DataSeriesSource *first_source = new DataSeriesSource(argv[1]);
+
     if (select_extent_type != "") {
 	string match_extent_type;
-	for(std::map<const std::string, ExtentType *>::iterator i = source.curSource()->mylibrary.name_to_type.begin();
-	    i != source.curSource()->mylibrary.name_to_type.end(); ++i) {
+	for(std::map<const std::string, ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
+	    i != first_source->mylibrary.name_to_type.end(); ++i) {
 	    if ((select_extent_type == "*" && // ignore DS types when selecting "*"
 		 !ExtentType::prefixmatch(i->first,str_DataSeries)) ||
 		ExtentType::prefixmatch(i->first,select_extent_type)) {
@@ -127,15 +129,23 @@ main(int argc, char *argv[])
 	toText.setFields(xmlspec.c_str());
     }
 
+    // Note that this doesn't completely do the right thing with
+    // multiple files as we won't print out the extent types that only
+    // occur in later files, of course, without a type of *, it's not
+    // going to see those anyway.
+
     if (skip_types == false) {
 	std::cout << "# Extent Types ...\n";
-	for(std::map<const std::string, ExtentType *>::iterator i = source.curSource()->mylibrary.name_to_type.begin();
-	    i != source.curSource()->mylibrary.name_to_type.end(); ++i) {
+	for(std::map<const std::string, ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
+	    i != first_source->mylibrary.name_to_type.end(); ++i) {
 	    std::cout << i->second->xmldesc << "\n";
 	}
     }
-    if (toText.printIndex() && source.curSource()->indexExtent != NULL) {
-	ExtentSeries es(source.curSource()->indexExtent);
+
+    // Same issue as above w.r.t. multiple files.
+
+    if (toText.printIndex() && first_source->indexExtent != NULL) {
+	ExtentSeries es(first_source->indexExtent);
 	Int64Field offset(es,"offset");
 	Variable32Field extenttype(es,"extenttype");
 	std::cout << "extent offset  ExtentType" << std::endl;

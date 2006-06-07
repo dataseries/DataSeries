@@ -97,6 +97,15 @@ Extent::Extent(ExtentTypeLibrary &library,
     unpackData(library,packeddata,need_bitflip);
 }
 
+Extent::Extent(const ExtentType *_type,
+	       Extent::ByteArray &packeddata,
+	       const bool need_bitflip)
+    : type(_type)
+{
+    init();
+    unpackData(type,packeddata,need_bitflip);
+}
+
 Extent::Extent(const ExtentType *_type)
     : type(_type)
 {
@@ -625,13 +634,39 @@ Extent::unpackAny(byte *into, byte *from,
 
 #define TIME_UNPACKING(x)
 
+const std::string
+Extent::getPackedExtentType(Extent::ByteArray &from)
+{
+    AssertAlways(from.size() > (6*4+2),
+		 ("Invalid extent data, too small.\n"));
+
+    byte type_name_len = from[6*4+2];
+
+    int header_len = 6*4+4+type_name_len;
+    header_len += (4 - (header_len % 4))%4;
+    AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
+
+    std::string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
+    return type_name;
+}
+
 void
 Extent::unpackData(ExtentTypeLibrary &library,
 		   Extent::ByteArray &from,
 		   bool fix_endianness)
 {
+    return unpackData(library.getTypeByName(getPackedExtentType(from)),
+		      from,fix_endianness);
+}
+
+
+void
+Extent::unpackData(const ExtentType *_type,
+		   Extent::ByteArray &from,
+		   bool fix_endianness)
+{
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
-    AssertAlways(from.size() > (4*6+2),
+    AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
 
     ulong adler32sum = adler32(0L, Z_NULL, 0);
@@ -657,10 +692,11 @@ Extent::unpackData(ExtentTypeLibrary &library,
     byte compressed_variable_mode = from[6*4+1];
     byte type_name_len = from[6*4+2];
     
-    std::string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
-    type = library.getTypeByName(type_name);
     int header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
+    AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
+
+    type = _type;
     byte *compressed_fixed_begin = from.begin() + header_len;
     int32 rounded_fixed = compressed_fixed_size;
     rounded_fixed += (4- (rounded_fixed %4))%4;

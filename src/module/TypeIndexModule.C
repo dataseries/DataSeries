@@ -11,13 +11,14 @@
 using namespace std;
 #endif
 
-TypeIndexModule::TypeIndexModule(const string &_type_prefix, 
-				 SourceList *sources)
-    : IndexSourceModule(sources), 
+TypeIndexModule::TypeIndexModule(const string &_type_prefix)
+    : IndexSourceModule(), 
       type_prefix(_type_prefix), 
       indexSeries(ExtentSeries::typeXMLIdentical),
       extentOffset(indexSeries,"offset"), 
-      extentType(indexSeries,"extenttype")
+      extentType(indexSeries,"extenttype"),
+      cur_file(0),
+      cur_source(NULL)
 {
 }
 
@@ -26,10 +27,27 @@ TypeIndexModule::~TypeIndexModule()
 }
 
 void
+TypeIndexModule::setPrefix(const string &_type_prefix)
+{
+    AssertAlways(startedPrefetching() == false,
+		 ("invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out"));
+    type_prefix = _type_prefix;
+}
+
+
+void
+TypeIndexModule::addSource(const std::string &filename) 
+{
+    AssertAlways(startedPrefetching() == false, 
+		 ("can't add sources safely after starting prefetching -- could get confused about the end of the entries.\n"));
+    inputFiles.push_back(filename);
+}
+
+void
 TypeIndexModule::lockedResetModule()
 {
     indexSeries.clearExtent();
-    cur_source = 0;
+    cur_file = 0;
 }
 
 TypeIndexModule::compressedPrefetch *
@@ -37,37 +55,29 @@ TypeIndexModule::lockedGetCompressedExtent()
 {
     while(true) {
 	if (indexSeries.curExtent() == NULL) {
-	    if (cur_source == (int)sourcelist->sources.size()) {
+	    if (cur_file == inputFiles.size()) {
 		return NULL;
 	    }
-	    AssertAlways(sourcelist->sources[cur_source].dss->indexExtent != NULL,
+	    cur_source = new DataSeriesSource(inputFiles[cur_file]);
+	    AssertAlways(cur_source->indexExtent != NULL,
 			 ("can't handle source with null index extent\n"));
-	    indexSeries.setExtent(sourcelist->sources[cur_source].dss->indexExtent);
+	    indexSeries.setExtent(cur_source->indexExtent);
 	}
 	for(;indexSeries.pos.morerecords();++indexSeries.pos) {
 	    if (ExtentType::prefixmatch(extentType.stringval(),type_prefix)) {
-		sourcelist->useSource(cur_source);
 		off64_t v = extentOffset.val();
-		compressedPrefetch *ret = getCompressed(sourcelist->sources[cur_source].dss,
+		compressedPrefetch *ret = getCompressed(cur_source,
 							v, extentType.stringval());
-		sourcelist->unuseSource(cur_source);
 		++indexSeries.pos;
 		return ret;
 	    }
 	}
 	if (indexSeries.pos.morerecords() == false) {
-	    ++cur_source;
 	    indexSeries.clearExtent();
+	    delete cur_source;
+	    cur_source = NULL;
+	    ++cur_file;
 	}
     }
 }
-
-void
-TypeIndexModule::setPrefix(const string &_type_prefix)
-{
-    AssertAlways(startedPrefetching() == false,
-		 ("invalid to set prefix after we start prefetching"));
-    type_prefix = _type_prefix;
-}
-
 

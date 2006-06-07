@@ -27,10 +27,8 @@ pthreadfn(void *arg)
     return NULL;
 }
 
-IndexSourceModule::IndexSourceModule(SourceList *sources)
-    : SourceModule(sources), 
-      getting_extent(false),
-      prefetch(NULL)
+IndexSourceModule::IndexSourceModule()
+    : getting_extent(false), prefetch(NULL)
 {
 }
 
@@ -108,7 +106,7 @@ IndexSourceModule::getExtentPrefetch()
     struct rusage rusage_start;
     AssertAlways(getrusage(RUSAGE_SELF,&rusage_start)==0,
 		 ("getrusage failed: %s\n",strerror(errno)));
-    Extent *ret = new Extent(*buf->library,buf->bytes,buf->need_bitflip);
+    Extent *ret = new Extent(buf->type,buf->bytes,buf->need_bitflip);
     struct rusage rusage_end;
     AssertAlways(getrusage(RUSAGE_SELF,&rusage_end)==0,
 		 ("getrusage failed: %s\n",strerror(errno)));
@@ -163,10 +161,7 @@ IndexSourceModule::prefetchThread()
     AssertAlways(getrusage(RUSAGE_SELF,&rusage_start)==0,
 		 ("getrusage failed: %s\n",strerror(errno)));
     prefetch->mutex.lock();
-    unsigned start_sourcelist_size = sourcelist->sources.size();
     while(prefetch->abort_prefetching == false) {
-	AssertAlways(start_sourcelist_size == sourcelist->sources.size(),
-		     ("invalid change to sourcelist size after start of prefetching\n"));
 	if (prefetch->cur_memory >= prefetch->max_memory ||
 	    prefetch->source_done) {
 	    prefetch->cond.wait(prefetch->mutex);
@@ -216,9 +211,8 @@ IndexSourceModule::getCompressed(DataSeriesSource *dss,
     compressedPrefetch *p = new compressedPrefetch;
     bool ok = dss->preadCompressed(offset,p->bytes);
     AssertAlways(ok,("whoa, shouldn't have hit eof!\n"));
-    p->library = &dss->mylibrary;
+    p->type = dss->mylibrary.getTypeByName(Extent::getPackedExtentType(p->bytes));
     p->need_bitflip = dss->needBitflip();
-    p->dataseries_type = dss->dataseriesType();
     p->uncompressed_type = uncompressed_type;
     prefetch->mutex.lock();
     return p;

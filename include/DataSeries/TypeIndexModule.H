@@ -25,12 +25,13 @@
 
 class TypeIndexModule : public IndexSourceModule {
 public:
-    TypeIndexModule(const std::string &type_prefix = "",
-		    SourceList *sources = NULL);
+    TypeIndexModule(const std::string &type_prefix = "");
 
     virtual ~TypeIndexModule();
     void setPrefix(const std::string &type_prefix);
 
+    void addSource(const std::string &filename);
+    bool haveSources() { return !inputFiles.empty(); }
 protected:
     std::string type_prefix;
     ExtentSeries indexSeries;
@@ -39,6 +40,11 @@ protected:
 
     virtual void lockedResetModule();
     virtual compressedPrefetch *lockedGetCompressedExtent();
+
+private:
+    unsigned int cur_file;
+    DataSeriesSource *cur_source;
+    std::vector<std::string> inputFiles;
 };
 
 #endif

@@ -92,6 +92,9 @@ public:
     Extent(ExtentTypeLibrary &library, 
 	   Extent::ByteArray &packeddata, 
 	   const bool need_bitflip);
+    Extent(const ExtentType *type,
+	   Extent::ByteArray &packeddata, 
+	   const bool need_bitflip);
     Extent(const ExtentType *type);
     Extent(const std::string &xmltype); 
     // the above constructor will leak the extenttype it creates if
@@ -127,8 +130,14 @@ public:
 		  int *fixed_packed = NULL, 
 		  int *variable_packed = NULL); 
 
+    // Note you can't unpack the same data twice, it may modify the
+    // input data
     void unpackData(ExtentTypeLibrary &library,
 		    Extent::ByteArray &from, bool need_bitflip);
+    void unpackData(const ExtentType *_type,
+		    Extent::ByteArray &from, bool need_bitflip);
+
+    static const std::string getPackedExtentType(Extent::ByteArray &from);
 
     // the various pack routines return false if packing the data with a 
     // particular compression algorithm wouldn't gain anything over leaving

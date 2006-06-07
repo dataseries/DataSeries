@@ -220,8 +220,9 @@ void
 readExistingIndex(const char *index_filename, string &fieldlist)
 {
     TypeIndexModule info_mod("DSIndex::Extent::Info");
-    TypeIndexModule modifytimes_mod("DSIndex::Extent::ModifyTimes",info_mod.getSourceList());
+    TypeIndexModule modifytimes_mod("DSIndex::Extent::ModifyTimes");
     info_mod.addSource(index_filename);
+    modifytimes_mod.addSource(index_filename);
 
     Extent *e = info_mod.getExtent();
     AssertAlways(e != NULL,("must have an DSIndex::Extent::Info extent in index %s!",
@@ -242,7 +243,8 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 
     string minmax_typename("DSIndex::Extent::MinMax::");
     minmax_typename.append(type_prefix);
-    TypeIndexModule minmax_mod(minmax_typename,info_mod.getSourceList());
+    TypeIndexModule minmax_mod(minmax_typename);
+    minmax_mod.addSource(index_filename);
 
     int modifytimes_count = 0;
     while(true) {

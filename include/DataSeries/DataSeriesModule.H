@@ -31,75 +31,28 @@ public:
     virtual ~DataSeriesModule();
 };
 
-// Module for returning all the extents from a series of files
+// Module for keeping statistics about reading from files, otherwise
+// just empty now.
 class SourceModule : public DataSeriesModule {
 public:
-    // BUG: This is now somewhat multi-threaded safe, but two
-    // SourceModules using the same SourceList will each see a subset
-    // of the extents.  IndexSourceModules will do the right thing.
+    // Eventually, we should add some sort of shared DataSource buffer
+    // cache, in the current design if we have multiple modules
+    // accessing the same file, they will end up separately reading in
+    // the same indexing information.  It might also be nice to keep
+    // the index extent at the end of each file cached.  Need to make
+    // sure that you don't accidentally re-add the need to open all of
+    // the files at startup, that is very slow if there are thousands
+    // of files.
 
-    // Eventually, we should replace most of this with some sort of
-    // shared DataSource buffer cache, as that's really what we end up
-    // doing, the sourcelist worked fine for this module, became more
-    // iffy with the TypeIndexModule, and was completely ignored by
-    // the MinMaxIndexModule because it wanted to generate orders
-    // differently
-
-    struct SourceList {
-	struct sourceinfo {
-	    DataSeriesSource *dss;
-	    int use_count; // actively using the dss file descriptor
-	    sourceinfo(DataSeriesSource *b) : dss(b), use_count(0) {}
-	};
-	// sources are deleted when refcount falls to zero, and a
-	// SourceModule is deleted
-	std::vector<sourceinfo> sources;
-	int refcount; // to the sourcelist overall
-	int nactive, target_active; // number of sources with an
-        // active data series source
-	PThreadMutex mutex; // protects above + dss; you don't have to
-        // hold the lock while using a source if you have marked the in_use
-        // for it.
-
-	// The following 4 do the locking for you.
-	void addReference();
-	void removeReference(); // will delete itself if refcount goes to 0
-	void addSource(DataSeriesSource *source);
-	void addSource(const std::string &filename);
-	void useSource(unsigned sourcenum);
-	void unuseSource(unsigned sourcenum);
-	SourceList() : refcount(0), nactive(0), target_active(32) {};
-	~SourceList(); // only should be called when refcount == 0
-    private:
-	void lockedCloseInactive();
-    };
-    // by default, no shared sources, if you pass one in, it should
-    // have been dynamically allocated, and one of the SourceModules
-    // will delete it when there are no more references
-    SourceModule(SourceList *sources = NULL); 
+    SourceModule(); 
 
     virtual ~SourceModule();
-    void addSource(const std::string &filename) {
-	sourcelist->addSource(filename); 
-    }
-    void addSource(DataSeriesSource *source) {
-	sourcelist->addSource(source); 
-    }
-    void addSource(DataSeriesSource &source) {
-	sourcelist->addSource(&source);
-    }
-    DataSeriesSource *curSource();
-    virtual Extent *getExtent();
-    bool haveSources();
-    SourceList *getSourceList() { return sourcelist; }
 
     /** statistics on the source module; some of these may remain 0 if
-        the module doesn't, or is unable to calculate the statistic */
+        the actual module doesn't, or is unable to calculate the
+        statistic */
     long long total_uncompressed_bytes, total_compressed_bytes;
     double decode_time;
-protected:
-    SourceList *sourcelist;
-    int cur_source;
 };
 
 // Module for filtering out any extents not matching type_prefix

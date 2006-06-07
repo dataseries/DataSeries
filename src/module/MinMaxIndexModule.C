@@ -35,27 +35,11 @@ static bool intervalOverlap(const GeneralValue &a_min, const GeneralValue &a_max
 	inrange(b_max, a_min, a_max);
 }
 
-struct xinfo {
-    string filename;
-    ExtentType::int64 extent_offset;
-    GeneralValue sortvalue;
-    xinfo(const string &a,ExtentType::int64 b,GeneralValue &c)
-	: filename(a), extent_offset(b), sortvalue(c) { }
-};
-
-class xinfo_bysortvalue {
-public:
-    bool operator() (const xinfo &a, const xinfo &b) {
-	return a.sortvalue < b.sortvalue;
-    }
-};
-
 void
 MinMaxIndexModule::init(const std::string &index_filename,
 			std::vector<selector> &intersection_list,
 			const std::string &sort_fieldname)
 {
-    vector<xinfo> kept_extents;
     TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
     tim.addSource(index_filename);
 
@@ -97,9 +81,9 @@ MinMaxIndexModule::init(const std::string &index_filename,
 		if (false)
 		    printf("keep %s @ %lld\n",filename.stringval().c_str(),
 			   extent_offset.val());
-		kept_extents.push_back(xinfo(filename.stringval(),
-					     extent_offset.val(),
-					     extent_sort));
+		kept_extents.push_back(kept_extent(filename.stringval(),
+						   extent_offset.val(),
+						   extent_sort));
 	    } else {
 		if (false)
 		    printf("skip %s @ %lld\n",filename.stringval().c_str(),
@@ -115,25 +99,7 @@ MinMaxIndexModule::init(const std::string &index_filename,
     }
     delete sort_val;
     unsigned sourcecount = 0;
-    HashMap<string,int> fn2sourcenum;
-    sort(kept_extents.begin(),kept_extents.end(),xinfo_bysortvalue());
-    for(vector<xinfo>::iterator i=kept_extents.begin();
-	i != kept_extents.end(); ++i) {
-	int *sourcenum = fn2sourcenum.lookup(i->filename);
-	if (sourcenum == NULL) {
-	    fn2sourcenum[i->filename] = sourcecount;
-	    AssertAlways(sourcelist->sources.size() == sourcecount,
-			 ("internal"));
-	    sourcenum = fn2sourcenum.lookup(i->filename);
-	    ++sourcecount;
-	    addSource(i->filename);
-	}
-	AssertAlways(sourcenum != NULL,("internal"));
-	extentList.push_back(extentorder(*sourcenum,i->extent_offset));
-	if (false)
-	    printf("add %s -- %d @ %lld\n",
-		   i->filename.c_str(),*sourcenum,i->extent_offset);
-    }
+    sort(kept_extents.begin(),kept_extents.end(),kept_extent_bysortvalue());
 }
 
 
@@ -144,7 +110,8 @@ MinMaxIndexModule::MinMaxIndexModule(const string &index_filename,
 				     const string &min_fieldname,
 				     const string &max_fieldname,
 				     const string &sort_fieldname)
-    : IndexSourceModule(NULL), index_type(_index_type), curextent(0)
+    : IndexSourceModule(), index_type(_index_type), 
+      cur_extent(0), cur_source(NULL)
 {
     vector<selector> tmp;
     selector foo(minv,maxv,min_fieldname,max_fieldname);
@@ -156,7 +123,8 @@ MinMaxIndexModule::MinMaxIndexModule(const std::string &index_filename,
 				     const std::string &_index_type,
 				     std::vector<selector> intersection_list,
 				     const std::string &sort_fieldname)
-    : IndexSourceModule(NULL), index_type(_index_type), curextent(0)
+    : IndexSourceModule(), index_type(_index_type), 
+      cur_extent(0), cur_source(NULL)
 {
     init(index_filename,intersection_list,sort_fieldname);
 }
@@ -171,15 +139,21 @@ MinMaxIndexModule::lockedResetModule()
 IndexSourceModule::compressedPrefetch *
 MinMaxIndexModule::lockedGetCompressedExtent()
 {
-    if (curextent >= extentList.size())
+    if (cur_extent >= kept_extents.size()) {
+	delete cur_source;
+	cur_source = NULL;
+	cur_source_filename.clear();
 	return NULL;
-    int sourcenum = extentList[curextent].sourcenum;
-    sourcelist->useSource(sourcenum);
-    compressedPrefetch *ret = getCompressed(sourcelist->sources[sourcenum].dss,
-					    extentList[curextent].offset,
-					    index_type);
-    sourcelist->unuseSource(sourcenum);
-    ++curextent;
+    }
+    if (cur_source_filename != kept_extents[cur_extent].filename) {
+	delete cur_source;
+	cur_source = new DataSeriesSource(kept_extents[cur_extent].filename);
+    }
+    compressedPrefetch *ret = 
+	getCompressed(cur_source,
+		      kept_extents[cur_extent].extent_offset,
+		      index_type);
+    ++cur_extent;
     return ret;
 }
 

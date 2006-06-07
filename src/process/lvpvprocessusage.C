@@ -11,6 +11,7 @@
 #include <DataSeriesFile.H>
 #include <DataSeriesModule.H>
 #include <DStoTextModule.H>
+#include <TypeIndexModule.H>
 
 #ifndef __HP_aCC
 using namespace std;
@@ -316,6 +317,8 @@ public:
 	}
 	Extent *io_extent = io_input.getExtent();
 	if (io_extent == NULL) {
+	    AssertAlways(ioextents > 0 && psextents > 0,
+			 ("didn't get both I/O and PS data??"));
 	    delete ps_series.extent();
 	    ps_series.clearExtent();
 	    all_done = true;
@@ -868,24 +871,14 @@ main(int argc, char *argv[])
 {
     AssertAlways(argc >= 3,("Usage: %s <io-trace.ds> ... <ps-sample.ds> ...\n",argv[0]));
     
-    SourceModule iotrace_source, pstrace_source;
+    TypeIndexModule iotrace_source("I/O trace");
+    TypeIndexModule pstrace_source("Process sample");
     for(int i=1;i<argc;i++) {
-	DataSeriesSource *tracein = new DataSeriesSource(argv[i]);
-	if (tracein->mylibrary.getTypeByPrefix("I/O trace",true) != NULL) {
-	    iotrace_source.addSource(tracein);
-	} else if (tracein->mylibrary.getTypeByPrefix("Process sample",true) != NULL) {
-	    pstrace_source.addSource(tracein);
-	} else {
-	    AssertFatal(("Unrecognized trace data %s\n",argv[i]));
-	}
+	iotrace_source.addSource(argv[i]);
+	pstrace_source.addSource(argv[i]);
     }
-    AssertAlways(iotrace_source.haveSources() && pstrace_source.haveSources(),
-		 ("must have both iotrace and ps-sample\n"));
     
-    FilterModule iotrace_filter(iotrace_source,"I/O trace");
-    FilterModule pstrace_filter(pstrace_source,"Process sample");
-
-    PSIOSlopMergeJoin psiosmj(pstrace_filter, iotrace_filter,
+    PSIOSlopMergeJoin psiosmj(pstrace_source, iotrace_source,
 			      5.0, 0.5, 300.0);
     RollupByIdString rollupbypv_cmd(psiosmj,"device_number","command");
     RollupByIdString rollupbylv_cmd(rollupbypv_cmd,"logical_volume_number","command");
@@ -941,8 +934,8 @@ main(int argc, char *argv[])
     Int32Field iobytes(iotrace,"bytes");
     Variable32Field command(pstrace,"command");
 
-    Extent *ioextent = iotrace_filter.getExtent();
-    Extent *psextent = pstrace_filter.getExtent();
+    Extent *ioextent = iotrace_source.getExtent();
+    Extent *psextent = pstrace_source.getExtent();
     iotrace.setExtent(ioextent);
     pstrace.setExtent(psextent);
     double time_base = iotime.val(); 
@@ -963,7 +956,7 @@ main(int argc, char *argv[])
     while(true) {
 	if (iotrace.pos.morerecords() == false) {
 	    delete ioextent;
-	    ioextent = iotrace_filter.getExtent();
+	    ioextent = iotrace_source.getExtent();
 	    if (ioextent == NULL) {
 		break;
 	    }
@@ -972,7 +965,7 @@ main(int argc, char *argv[])
 	}
 	if (pstrace.pos.morerecords() == false) {
 	    delete psextent;
-	    psextent = pstrace_filter.getExtent();
+	    psextent = pstrace_source.getExtent();
 	    if (psextent == NULL) 
 		break;
 	    ++psextents;
