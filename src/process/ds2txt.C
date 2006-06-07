@@ -52,7 +52,7 @@ main(int argc, char *argv[])
 	} else if (strcmp(argv[1],"--skip-extent-type")==0) {
 	    toText.skipExtentType(); 
 	} else if (strcmp(argv[1],"--skip-extent-fieldnames")==0) {
-	    toText.skipExtentType(); 
+	    toText.skipExtentFieldnames(); 
 	} else if (strcmp(argv[1],"--skip-all")==0) {
 	    toText.skipIndex();
 	    toText.skipExtentType();

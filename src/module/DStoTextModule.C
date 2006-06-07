@@ -14,13 +14,13 @@
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       std::ostream &text_dest)
-  : source(_source), stream_text_dest(&text_dest), text_dest(NULL), print_index(true), print_extent_type(true), csvEnabled(false), separator(" ")
+  : source(_source), stream_text_dest(&text_dest), text_dest(NULL), print_index(true), print_extent_type(true), print_extent_fieldnames(true), csvEnabled(false), separator(" ")
 {
 }
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       FILE *_text_dest)
-  : source(_source), stream_text_dest(NULL), text_dest(_text_dest), print_index(true), print_extent_type(true), csvEnabled(false), separator(" ")
+  : source(_source), stream_text_dest(NULL), text_dest(_text_dest), print_index(true), print_extent_type(true), print_extent_fieldnames(true), csvEnabled(false), separator(" ")
 {
 }
 
