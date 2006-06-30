@@ -58,14 +58,16 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex
+bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon
 
-LDADD = $(top_builddir)/src/libDataSeries.la @LINTEL_NOGCLIBS@
+LDADD = libDataSeries.la @LINTEL_NOGCLIBS@
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 dsextentindex_SOURCES = process/dsextentindex.C
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 textindex_SOURCES = process/textindex.C
+ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/nfsdsanalysis-common.C 
+indexnfscommon_SOURCES = process/indexnfscommon.C
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test
 
@@ -73,16 +75,16 @@ if WITH_SRT
 bin_PROGRAMS += srt2dataseries cmpsrtds
 
 srt2dataseries_SOURCES = process/srt2dataseries.C
-srt2dataseries_LDADD = @SRT_LIBS@ $(top_builddir)/src/libDataSeries.la 
+srt2dataseries_LDADD = @SRT_LIBS@ libDataSeries.la 
 
 cmpsrtds_SOURCES = process/cmpsrtds.C
-cmpsrtds_LDADD = @SRT_LIBS@ $(top_builddir)/src/libDataSeries.la 
+cmpsrtds_LDADD = @SRT_LIBS@ libDataSeries.la 
 
 CHECK_TARGETS += ran.check-srt2dataseries
 endif
 
 check_PROGRAMS = test
-test_LDADD =  $(top_builddir)/src/libDataSeries.la @LINTEL_NOGCLIBS@ -lssl -lcrypto
+test_LDADD =  libDataSeries.la @LINTEL_NOGCLIBS@ -lssl -lcrypto
 
 check-local: $(CHECK_TARGETS)
 
