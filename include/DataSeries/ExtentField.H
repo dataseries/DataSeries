@@ -205,7 +205,11 @@ public:
   
     const double absval() { 
 	if (isNull()) {
-	    return default_value;
+	    // 2006-06-30 EricAnderson, used to return just
+	    // default_value, but that seems inconsistent with what is
+	    // being done below, and different than how val() would
+	    // work.  Correct behavior seems to be unclear
+	    return default_value + base_val; 
 	} else {
 	    return val() + base_val;
 	}

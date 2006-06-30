@@ -852,6 +852,54 @@ test_makecomplexfile()
     printf("test_makecomplexfile - Done\n");
 }
 
+void
+test_doublebase_nullable()
+{
+    printf("test_doublebase_nullable...\n");
+    string dbntype_xml(
+"<ExtentType name=\"doublebase nullable test type\">\n"
+"  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" opt_doublebase=\"1000000\" pack_scale=\"1000\" />\n"
+"</ExtentType>");
+
+    ExtentTypeLibrary library;
+    ExtentType *dbntype = library.registerType(dbntype_xml);
+    ExtentSeries dbnseries(*dbntype);
+    DoubleField f_double(dbnseries,"double",Field::flag_nullable | DoubleField::flag_allownonzerobase);
+    
+    Extent *cur_extent = new Extent(dbntype);
+    dbnseries.setExtent(cur_extent);
+    
+    dbnseries.newRecord();
+    f_double.setNull();
+    AssertAlways(f_double.isNull(), ("bad"));
+    dbnseries.newRecord();
+    f_double.set(1000000);
+    AssertAlways(!f_double.isNull(), ("bad"));
+    dbnseries.newRecord();
+    f_double.setabs(1000000);
+    AssertAlways(!f_double.isNull(), ("bad"));
+
+    dbnseries.pos.reset(cur_extent);
+    AssertAlways(dbnseries.morerecords(), ("bad"));
+
+    AssertAlways(f_double.isNull(), ("bad"));
+    AssertAlways(0 == f_double.val(), ("bad"));
+    AssertAlways(1000000 == f_double.absval(), ("bad")); // changed semantics to have offset in absval always
+    
+    ++dbnseries;
+    AssertAlways(dbnseries.morerecords(), ("bad"));
+    AssertAlways(false == f_double.isNull(), ("bad"));
+    AssertAlways(1000000 == f_double.val(), ("bad"));
+    AssertAlways(2000000 == f_double.absval(), ("bad"));
+    
+    ++dbnseries;
+    AssertAlways(dbnseries.morerecords(), ("bad"));
+    AssertAlways(false == f_double.isNull(), ("bad"));
+    AssertAlways(0 == f_double.val(), ("bad"));
+    AssertAlways(1000000 == f_double.absval(), ("bad"));
+    delete cur_extent;
+}    
+
 int
 main(int argc, char *argv[])
 {
@@ -861,4 +909,5 @@ main(int argc, char *argv[])
     test_byteflip();
     test_varcompress();
     test_primitives();
+    test_doublebase_nullable();
 }

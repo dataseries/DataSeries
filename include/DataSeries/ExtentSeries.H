@@ -83,6 +83,10 @@ public:
 	my_extent->createRecords(nrecords);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
+    // TODO: make this class go away, it doesn't actually make sense since
+    // each of the fields are tied to the ExtentSeries, not to the iterator
+    // within it.  Only use seems to be within Extent.C which is using the
+    // raw access that the library has anyway.
     class iterator {
     public:
 	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(-1) { }
