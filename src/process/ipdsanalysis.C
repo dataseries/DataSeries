@@ -24,7 +24,6 @@
 #include <DStoTextModule.H>
 
 #include "sourcebyrange.H"
-#include "nfsdsanalysis-common.H"
 
 using namespace std;
 

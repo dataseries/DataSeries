@@ -39,7 +39,7 @@ lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @XML2_LIBTOOL@ @LZF_LIBS@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZF_LIBS@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
@@ -60,7 +60,7 @@ libDataSeries_la_SOURCES = \
 
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon
 
-LDADD = libDataSeries.la @LINTEL_NOGCLIBS@
+LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 dsextentindex_SOURCES = process/dsextentindex.C
@@ -84,7 +84,7 @@ CHECK_TARGETS += ran.check-srt2dataseries
 endif
 
 check_PROGRAMS = test
-test_LDADD =  libDataSeries.la @LINTEL_NOGCLIBS@ -lssl -lcrypto
+test_LDADD =  libDataSeries.la -lssl -lcrypto
 
 check-local: $(CHECK_TARGETS)
 
