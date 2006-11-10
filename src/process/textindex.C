@@ -112,8 +112,8 @@ public:
     }
 
     void indexExtent(DataSeriesSource &source, const string &filename,
-		     ExtentType::int64 offset) {
-	ExtentType::int64 tmp_offset = offset; 
+		     off64_t offset) {
+	off64_t tmp_offset = offset; 
 	Extent *e = source.preadExtent(tmp_offset); // tmp_offset will be auto-updated to next extent
 	for(text_entries_series.setExtent(e);
 	    text_entries_series.morerecords();
@@ -539,7 +539,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	    DataSeriesSource source(i->first);
 	    for(vector<ExtentType::int64>::iterator j = extent_offset_list.begin();
 		j != extent_offset_list.end(); ++j) {
-		ExtentType::int64 offset = *j;
+		off64_t offset = *j;
 		Extent *e = source.preadExtent(offset);
 		ExtentSeries s;
 		Int32Field id(s,"id");
