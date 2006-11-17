@@ -628,7 +628,18 @@ Extent::unpackAny(byte *into, byte *from,
 		     ("Error decompressing extent!\n"));
 #endif
     } else {
-	AssertFatal(("Unknown/disabled compression method #%d\n",(int)compression_mode));
+	char *mode_name = "unknown";
+	if (compression_mode == compress_mode_lzo) {
+	    mode_name = "lzo";
+	} else if (compression_mode == compress_mode_zlib) {
+	    mode_name = "zlib";
+	} else if (compression_mode == compress_mode_bz2) {
+	    mode_name = "bz2";
+	} else if (compression_mode == compress_mode_lzf) {
+	    mode_name = "lzf";
+	} 
+	AssertFatal(("Unknown/disabled compression method %s (#%d)\n",
+		     mode_name, (int)compression_mode));
     }
 }
 

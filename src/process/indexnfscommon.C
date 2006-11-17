@@ -106,7 +106,7 @@ backward_timeness ok_backwards[] = {
 int nok_backwards = sizeof(ok_backwards) / sizeof(backward_timeness);
 
 void
-updateFileInfo(DataSeriesSource &source, ExtentType::int64 offset, fileinfo &f)
+updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 {
     ExtentSeries s;
     Int64Field recordid(s,"record-id");
