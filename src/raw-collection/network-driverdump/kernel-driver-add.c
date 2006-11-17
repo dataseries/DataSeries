@@ -6,7 +6,7 @@
       to kernel/kmod.c near the bottom above EXPORT_SYMBOL(exec_usermodehelper);
       this is needed to undo the locking in net/core/dev.c below SIOCDEVPRIVATE
       which otherwise serializes all of the device-private ioctls
-   1) add #include ".../driverdump/kern-drvdump.h" to includes
+   1) add #include ".../network-driverdump/kernel-driver-add.h" to includes
    2) add struct driver_dump_privdata driverdump to the driver private data
    3) add #include ".../driverdump/kernel-driver-add.c" to file after structure
       definition/include of header file with structure def, but near top
