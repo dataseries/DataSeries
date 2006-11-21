@@ -85,6 +85,7 @@ public:
     /** add this value into the hash */
     unsigned incrementalHash(unsigned hash) {
 	AssertFatal(("unimplemented"));
+	return 0;
     }
 
 protected:
