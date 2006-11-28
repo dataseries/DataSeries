@@ -24,7 +24,7 @@ extern "C" {
 #define USE_X86_GCC_BYTESWAP 1
 #include <byteswap.h>
 #if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__ && !defined __pentium4__
-#error "You ought to have one of __i486__, __pentium__, __pentiumpro__ or __pentium4__ defined; otherwise you don't get the good swap routine"
+#warning "You ought to have one of __i486__, __pentium__, __pentiumpro__ or __pentium4__ defined; otherwise you don't get the good swap routine"
 #endif
 #endif
 
