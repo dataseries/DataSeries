@@ -164,7 +164,7 @@ public:
     bool morerecords() {
 	return pos.morerecords();
     }
-    iterator &operator++() { ++pos; }
+    iterator &operator++() { ++pos; return pos; }
 
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     const Extent *curExtent() { return my_extent; }
