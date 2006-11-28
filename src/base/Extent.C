@@ -680,24 +680,20 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
 
-#if DATASERIES_ENABLE_LZO
     ulong adler32sum = adler32(0L, Z_NULL, 0);
     if (dataseries_enable_preuncompress_check) {
 	adler32sum = adler32(adler32sum, from.begin(), 4*4);
 	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
     }
-#endif
     if (fix_endianness) {
 	for(int i=0;i<6*4;i+=4) {
 	    Extent::flip4bytes(from.begin() + i);
 	}
     }
-#if DATASERIES_ENABLE_LZO
     if (dataseries_enable_preuncompress_check) {
 	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
 		     ("Invalid extent data, adler32 digest mismatch on compressed data %x != %x\n",*(int32 *)(from.begin() + 4*4),(int32)adler32sum));
     }
-#endif
     TIME_UNPACKING(Clock::Tdbl time_upc = Clock::tod());
     int32 compressed_fixed_size = *(int32 *)from.begin();
     int32 compressed_variable_size = *(int32 *)(from.begin() + 4);
