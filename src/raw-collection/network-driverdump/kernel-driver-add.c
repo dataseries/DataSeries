@@ -61,6 +61,8 @@ static const int dpd_debug_kmap = 0;
 static const int dpd_debug_rx_skb = 0;
 static const int dpd_debug_sleep_call = 0;
 static const int dpd_debug_cleanup = 0;
+static const int dpd_debug_memcpy = 0;
+static const int dpd_debug_packetcapture = 0;
 
 static const int dpd_debug_test_alloc_free = 0; // turning this on will make dumping impossible.
 static const int dpd_debug_test_only_test_mode_rx = 0; // turning this on will make dumping impossible; it will skip all the steps for doing the rx, including any statistics
@@ -188,16 +190,19 @@ void driver_packet_dump_kunmap_atomic(struct page *page)
   }
 }
 
+static unsigned char *page_watch = 0;
+
 void
 do_driver_packet_dump_memcpy(struct driver_dump_privdata *dd_priv,
 			     void *src, int len)
 {
+    struct driver_dump_data *filling = dd_priv->filling;
+
     if (dpd_debug_test_only_skip_memcpy)
         return;
 
-    struct driver_dump_data *filling = dd_priv->filling;
-
     while(1) {
+	uint32_t csum = 0;
 	int page = filling->cur_write_offset >> PAGE_SHIFT;
 	int offset = filling->cur_write_offset & (PAGE_SIZE - 1);
 	int copy_amt = offset + len  <= PAGE_SIZE ? len : PAGE_SIZE - offset;
@@ -206,10 +211,43 @@ do_driver_packet_dump_memcpy(struct driver_dump_privdata *dd_priv,
 	    BUG();
 
 	pageaddr = driver_packet_dump_kmap_atomic(filling->pages[page]);
+	page_watch = (unsigned char *)pageaddr;
+
+	if ((dpd_debug_memcpy && (copy_amt != len || offset == 0)) ||
+	    dpd_debug_memcpy > 1) {
+	    unsigned char *buf = (unsigned char *)src;
+	    unsigned i;
+	    csum = 0;
+	    for(i=0;i<copy_amt; ++i) {
+		csum += buf[i];
+	    }
+	    printk("at %d (%d,%d), copy %d csum %u; src[0] = %d %p\n",
+		   filling->cur_write_offset, page, offset, copy_amt, csum, buf[0], pageaddr);
+	}
 	if (unlikely(pageaddr == NULL))
 	    BUG();
 	memcpy(pageaddr + offset, src, copy_amt);
-	driver_packet_dump_kunmap_atomic(pageaddr);
+	if ((dpd_debug_memcpy && (copy_amt != len || offset == 0)) ||
+	    dpd_debug_memcpy > 1) {
+	    unsigned char *buf = (unsigned char *)pageaddr;
+	    uint32_t xsum = 0;
+	    unsigned i;
+	    for(i=0;i<copy_amt; ++i) {
+		xsum += buf[i+offset];
+	    }
+	    if (xsum != csum) {
+		printk("COPYBAD %d != %d\n",
+		       xsum,csum);
+	    }
+	    if ((offset + copy_amt) == PAGE_SIZE) {
+		xsum = 0;
+		for(i=0; i<PAGE_SIZE; ++i) {
+		    xsum += buf[i];
+		}
+		printk("page %d checksum %d; page[0] = %d\n", page, xsum, buf[0]);
+	    }
+	}
+	driver_packet_dump_kunmap_atomic(filling->pages[page]);
 	len -= copy_amt;
 	filling->cur_write_offset += copy_amt;
 
@@ -289,11 +327,17 @@ do_driver_packet_dump_rx_skb(struct driver_dump_privdata *dd_priv,
 	struct drvdump_pcap_pkthdr pkthdr;
 
 	if (!dpd_debug_test_only_skip_gettimeofday) {
-	  do_gettimeofday(&pkthdr.ts);
+	    struct timeval tv;
+	    do_gettimeofday(&tv);
+	    pkthdr.tv_sec = tv.tv_sec;
+	    pkthdr.tv_fractional = tv.tv_usec;
 	}
 	pkthdr.caplen = skb->len;
 	pkthdr.len = skb->len;
-	
+	if (dpd_debug_packetcapture) {
+	    printk("%d.%d: %d bytes @%d\n", pkthdr.tv_sec, pkthdr.tv_fractional, 
+		   pkthdr.caplen, dd_priv->filling->cur_write_offset);
+	}
 	// old special case code to handle firmware bug in the ixgb pre-beta gen 1 cards
 //	if (unlikely(special_case_maclen)) {
 //	    if (special_case_maclen != 14) {
@@ -317,55 +361,55 @@ do_driver_packet_dump_rx_skb(struct driver_dump_privdata *dd_priv,
 static struct page *
 do_driver_packet_dump_getpage(struct file *fp, unsigned long index)
 {
-  struct address_space *mapping = fp->f_mapping;
-  struct page *ret;
-  int err;
+    struct address_space *mapping = fp->f_mapping;
+    struct page *ret;
+    int err;
 
-  mutex_lock(&mapping->host->i_mutex);
+    mutex_lock(&mapping->host->i_mutex);
 
-  BUG_ON(mapping->a_ops->prepare_write == NULL);
+    BUG_ON(mapping->a_ops->prepare_write == NULL);
 
-  ret = grab_cache_page(mapping, index);
-  if (unlikely(!ret)) {
-    goto error_unwind;
-  }
-  BUG_ON(!PageLocked(ret));
-  BUG_ON(ret->index != index);
-  err = mapping->a_ops->prepare_write(fp, ret, 0, PAGE_CACHE_SIZE);
-  if (unlikely(err)) {
-    goto error_unwind;
-  }
-  BUG_ON(!PageUptodate(ret) || PageError(ret));
+    ret = grab_cache_page(mapping, index);
+    if (unlikely(!ret)) {
+	goto error_unwind;
+    }
+    BUG_ON(!PageLocked(ret));
+    BUG_ON(ret->index != index);
+    err = mapping->a_ops->prepare_write(fp, ret, 0, PAGE_CACHE_SIZE);
+    if (unlikely(err)) {
+	goto error_unwind;
+    }
+    BUG_ON(!PageUptodate(ret) || PageError(ret));
 
-  mutex_unlock(&mapping->host->i_mutex);
-  return ret;
+    mutex_unlock(&mapping->host->i_mutex);
+    return ret;
 
  error_unwind:
-  if (ret) {
-    unlock_page(ret);
-    page_cache_release(ret);
-  }
-  mutex_unlock(&mapping->host->i_mutex);
-  return NULL;
+    if (ret) {
+	unlock_page(ret);
+	page_cache_release(ret);
+    }
+    mutex_unlock(&mapping->host->i_mutex);
+    return NULL;
 }
 
 static void
 do_driver_packet_dump_releasepage(struct file *fp, struct page *page)
 {
-  struct address_space *mapping = fp->f_mapping;
-  int err;
+    struct address_space *mapping = fp->f_mapping;
+    int err;
 
-  BUG_ON(mapping->a_ops->commit_write == NULL);
-  mutex_lock(&mapping->host->i_mutex);
-  BUG_ON(!PageLocked(page));
-  flush_dcache_page(page);
-  err = mapping->a_ops->commit_write(fp, page, 0, PAGE_CACHE_SIZE);
-  if (unlikely(err)) {
-    printk("WHOA, Error on commit write: %d\n",err);
-  }
-  unlock_page(page);
-  page_cache_release(page);
-  mutex_unlock(&mapping->host->i_mutex);
+    BUG_ON(mapping->a_ops->commit_write == NULL);
+    mutex_lock(&mapping->host->i_mutex);
+    BUG_ON(!PageLocked(page));
+    flush_dcache_page(page);
+    err = mapping->a_ops->commit_write(fp, page, 0, PAGE_CACHE_SIZE);
+    if (unlikely(err)) {
+	printk("WHOA, Error on commit write: %d\n",err);
+    }
+    unlock_page(page);
+    page_cache_release(page);
+    mutex_unlock(&mapping->host->i_mutex);
 }
 
 static int 
@@ -374,6 +418,7 @@ do_driver_packet_dump_test(struct driver_packet_dump_ioctl *dpd_ioctl,
 {
 	struct file *fp;
 	struct page *filepage;
+	void *addr;
 	int ret;
 	int err = 0;
 
@@ -407,15 +452,14 @@ do_driver_packet_dump_test(struct driver_packet_dump_ioctl *dpd_ioctl,
 	    goto out;
 	}
 	printk("pc uptodate %d %d\n",page_count(filepage),PageUptodate(filepage));
-	void *addr;
 	kmap(filepage);
 	addr = page_address(filepage);
 	if (addr == NULL) {
-	  printk("kmap failed?!\n");
+	    printk("kmap failed?!\n");
 	} else {
-	  printk("kmap %p\n",addr);
-	  memcpy(addr,"hello world\nasdflakjsdflajsdflkjdsfl\n",32);
-	  kunmap(filepage);
+	    printk("kmap %p\n",addr);
+	    memcpy(addr,"hello world\nasdflakjsdflajsdflkjdsfl\n",32);
+	    kunmap(filepage);
 	}
 	do_driver_packet_dump_releasepage(fp,filepage);
 	err = 0;
@@ -562,22 +606,22 @@ static int do_driver_packet_dump_finish(struct driver_dump_privdata *dd_privdata
     do_driver_packet_dump_sleep(2*HZ); 
 
     if (dd_privdata->empty) {
-        if (dpd_debug_cleanup) printk("cleanup empty...\n");
 	struct driver_dump_data *tmp = dd_privdata->empty;
+        if (dpd_debug_cleanup) printk("cleanup empty...\n");
 	dd_privdata->empty = NULL;
 	do_driver_dump_data_cleanup(tmp);
     }
 
     if (dd_privdata->filling) {
-        if (dpd_debug_cleanup) printk("cleanup filling...\n");
 	struct driver_dump_data *tmp = dd_privdata->filling;
+        if (dpd_debug_cleanup) printk("cleanup filling...\n");
 	dd_privdata->filling = NULL;
 	do_driver_dump_data_cleanup(tmp);
     }
 
     if (dd_privdata->filled) {
-        if (dpd_debug_cleanup) printk("cleanup filled...\n");
 	struct driver_dump_data *tmp = dd_privdata->filled;
+        if (dpd_debug_cleanup) printk("cleanup filled...\n");
 	dd_privdata->filled = NULL;
 	do_driver_dump_data_cleanup(tmp);
     }
@@ -612,7 +656,7 @@ do_driver_packet_dump_locked_init_empty(struct driver_packet_dump_ioctl *dpd_ioc
     struct driver_dump_data *new_ddd = NULL;
     int i, ret;
 
-    if (dpd_ioctl->npages < 65536/PAGE_SIZE || 
+    if (dpd_ioctl->npages < 1 || 
 	dpd_ioctl->npages > 256*1024*1024/PAGE_SIZE) {
 	printk("DPD: allocation failure: npages out of bounds\n");
 	goto alloc_failure;
@@ -628,7 +672,7 @@ do_driver_packet_dump_locked_init_empty(struct driver_packet_dump_ioctl *dpd_ioc
     dpd_ioctl->filename[DRIVER_PACKET_DUMP_FILENAMELEN-1] = '\0';
     new_ddd->pages = vmalloc(new_ddd->npages * sizeof(struct page *));
     if (new_ddd->pages == NULL) {
-	printk("DPD: allocation failure: on vectors %d, %d bytes %p\n",
+	printk("DPD: allocation failure: on vectors %lu, %ld bytes %p\n",
 	       new_ddd->npages * sizeof(struct page *),
 	       new_ddd->npages * sizeof(void *),
 	       new_ddd->pages);
@@ -784,6 +828,12 @@ static int do_driver_packet_dump(struct driver_dump_privdata *dd_privdata, struc
     if (!capable(CAP_NET_RAW)) {
 	printk("DPD: no net raw\n");
 	return -EPERM;
+    }
+
+    if (sizeof(struct drvdump_pcap_pkthdr) != 16) {
+	printk("DPD: wrong pkthdr size?? %ld != 16; struct timeval = %ld\n", 
+	       sizeof(struct drvdump_pcap_pkthdr), sizeof(struct timeval));
+	return -EINVAL;
     }
 
     if (copy_from_user(&dpd, rq->ifr_data, sizeof(dpd))) {
