@@ -10,7 +10,7 @@ AC_INIT(DataSeries, 1.0, [dataseries-bugs@cello.hpl.hp.com])
 
 AC_PREREQ(2.57)
 
-AC_REVISION($Revision: 1.2 $)
+AC_REVISION($Revision: 6369 $)
 AC_CANONICAL_SYSTEM
 AM_SANITY_CHECK
 AM_INIT_AUTOMAKE
