@@ -14,7 +14,8 @@
 #include <StringUtil.H>
 
 #include <GeneralField.H>
-#ifndef __HP_aCC
+#if defined(__HP_aCC) && __HP_aCC < 35000
+#else
 using namespace std;
 #endif
 

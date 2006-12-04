@@ -469,19 +469,11 @@ test_extentpackunpack()
     ((Int32ValuE >> 24) & 0xff) | ((Int32ValuE >> 8) & 0xff00) \
   | ((Int32ValuE << 8) & 0xff0000) | ((Int32ValuE << 24) & 0xff000000)
 
-void
-test_byteflip()
+void doit_charflip(uint32_t *buf, int buflen)
 {
-    unsigned char b[4];
+    for(unsigned i=0;i<buflen;++i) {
+	unsigned char *b = (unsigned char *)(buf+i);
 
-    *(unsigned int *)b = 0x12345678;
-
-    struct rusage test_start, test_end;
-    double elapsed;
-    unsigned int sum = 0;
-    getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
 	unsigned char f = b[0];
 	b[0] = b[3];
 	b[3] = f;
@@ -489,72 +481,138 @@ test_byteflip()
 	b[1] = b[2];
 	b[2] = g;
     }
-    getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via character flip: sum %d in %.6g seconds\n",sum,elapsed);
+}
 
-    sum = 0;
-    *(unsigned int *)b = 0x12345678;
-    getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
-	unsigned int v = *(unsigned int *)b;
-	*(unsigned int *)b = REVERSE_INT32(v);
+void doit_intshift1(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	buf[i] = REVERSE_INT32(buf[i]);
     }
-    getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via int shift: sum %d in %.6g seconds\n",sum,elapsed);
+}
 
-    sum = 0;
-    *(unsigned int *)b = 0x12345678;
-    getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
-	unsigned int v = *(unsigned int *)b;
-	*(unsigned int *)b = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
+void doit_intshift2(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	uint32_t v = buf[i];
+	buf[i] = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
 	    ((v & 0xFF00) << 8) | ((v & 0xFF) << 24);
     }
-    getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via int shift2: sum %d in %.6g seconds\n",sum,elapsed);
+}
 
-    sum = 0;
-    *(unsigned int *)b = 0x12345678;
-    getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
-	unsigned int v = *(unsigned int *)b;
-	*(unsigned int *)b = ((v >> 24) & 0xFF) + ((v>>8) & 0xFF00) +
+void doit_intshift3(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	uint32_t v = buf[i];
+	buf[i] = ((v >> 24) & 0xFF) + ((v>>8) & 0xFF00) +
 	    ((v & 0xFF00) << 8) + ((v & 0xFF) << 24);
     }
-    getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via int shift3: sum %d in %.6g seconds\n",sum,elapsed);
+}
 
-    sum = 0;
-    *(unsigned int *)b = 0x12345678;
-    getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
-	unsigned int v = *(unsigned int *)b;
-	*(unsigned int *)b = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
+void doit_intshift4(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	uint32_t v = buf[i];
+	buf[i] = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
 	    ((v << 8) & 0xFF0000) | ((v << 24) & 0xFF000000);
     }
-    getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via int shift4: sum %d in %.6g seconds\n",sum,elapsed);
+}
 
-    sum = 0;
-    *(unsigned int *)b = 0x12345678;
+#if __GNUC__ >= 2 && (defined(__i386__) || defined(__x86_64__))
+void doit_bswap_i486(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	register uint32_t tmp = buf[i];
+	asm("bswap %0" : "=r" (tmp) : "0" (tmp));
+	buf[i] = tmp;
+    }
+}
+#endif
+
+#ifdef bswap_32
+void doit_bswap_32(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	buf[i] = bswap_32(buf[i]);
+    }
+}
+#endif
+
+void
+onebytefliptest(uint32_t *buf, int buflen, int reps,
+		void (*fn)(uint32_t *, int), const string &fnname,
+		uint32_t &expected_sum, double &best_time, bool first_run = false)
+{
+    uint32_t sum = 0;
+    struct rusage test_start, test_end;
     getrusage(RUSAGE_SELF,&test_start);
-    for(int i=0;i<200000000;i++) {
-	sum += *(unsigned int *)b;
-	Extent::flip4bytes((Extent::byte *)b);
+    for(int i=0;i<reps;i++) {
+	fn(buf,buflen);
+	for(int j=0;j<buflen;++j) {
+	    sum += buf[j];
+	}
     }
     getrusage(RUSAGE_SELF,&test_end);
-    elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
-    printf("via Extent::flip4bytes: sum %d in %.6g seconds\n",sum,elapsed);
-    
+
+    double elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
+    if (first_run) {
+	expected_sum = sum;
+	best_time = elapsed;
+    } 
+    AssertAlways(sum == expected_sum, ("bad %s byteswap? %d != %d", fnname.c_str(), sum, expected_sum));
+    best_time = min(elapsed, best_time);
+    printf("   via %s: sum %d in %.6g seconds\n",fnname.c_str(), sum, elapsed);
+}
+
+
+void
+test_byteflip()
+{
+    static const int rounds = 3;
+    static const int reps = 5 * 1000;
+    static const int bufsize = 100000;
+
+    uint32_t buf[bufsize];
+
+    for(unsigned i=0; i < bufsize; ++i) {
+	buf[i] = MTRandom.randInt();
+    }
+
+    double flip4_time;
+    uint32_t flip4_sum;
+    printf("Initial execution:\n");
+    onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, true);
+
+    double best_time = flip4_time * 10;
+    uint32_t expected_sum = flip4_sum;
+
+    for(unsigned i = 0; i < rounds; ++i) {
+	printf("\nRound %d:\n", i);
+	onebytefliptest(buf, bufsize, reps, doit_charflip, "character flip", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift1, "integer shift 1", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift2, "integer shift 2", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift3, "integer shift 3", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift4, "integer shift 4", expected_sum, best_time);
+
+#if __GNUC__ >= 2 && (defined(__i386__) || defined(__x86_64__))
+	onebytefliptest(buf, bufsize, reps, doit_bswap_i486, "bswap_i486", expected_sum, best_time);
+#endif
+#ifdef bswap_32
+	onebytefliptest(buf, bufsize, reps, doit_bswap_32, "bswap_32", expected_sum, best_time);
+#endif
+	
+	onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time);
+    }
+
+#ifndef COMPILE_DEBUG
+    // With debugging turned on, even with the functions marked
+    // inline, it seems gcc still generates a function call, which
+    // makes elapsed_flip4 much slower
+
+    double ratio = flip4_time / best_time;
+    AssertAlways(ratio >= 0.99 && ratio <= 1.01, 
+		 ("Error, flip4_time/best_time = %.6g not in (0.99,1.01); something is weird",
+		  ratio));
+#endif
 }
  
 double elapsed(struct rusage &start, struct rusage &end)
@@ -903,11 +961,11 @@ test_doublebase_nullable()
 int
 main(int argc, char *argv[])
 {
+    test_byteflip();
+    test_primitives();
     test_extentpackunpack();
     test_makecomplexfile();
     test_nullsupport();
-    test_byteflip();
     test_varcompress();
-    test_primitives();
     test_doublebase_nullable();
 }

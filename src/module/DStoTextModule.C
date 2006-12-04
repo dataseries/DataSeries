@@ -12,8 +12,13 @@
 #include <DStoTextModule.H>
 #include <GeneralField.H>
 
+#if defined(__HP_aCC) && __HP_aCC < 35000
+#else
+using namespace std;
+#endif
+
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
-			       std::ostream &text_dest)
+			       ostream &text_dest)
   : source(_source), stream_text_dest(&text_dest), text_dest(NULL), print_index(true), print_extent_type(true), print_extent_fieldnames(true), csvEnabled(false), separator(" ")
 {
 }
