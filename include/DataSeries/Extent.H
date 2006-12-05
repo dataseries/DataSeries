@@ -21,16 +21,24 @@ extern "C" {
 #include <unistd.h>
 #include <inttypes.h>
 #if defined(__linux__) && defined(__GNUC__) && __GNUC__ >= 2 
-#define USE_X86_GCC_BYTESWAP 1
-#include <byteswap.h>
-#if !defined __i486__ && !defined __pentium__ && !defined __pentiumpro__ && !defined __pentium4__ && !defined __x86_64__
-// Note that in particular __i386__ is not enough to have defined here
-// the swap routine is significantly worse than the i486 version; see
-// /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
-// for the performance test, you want Extent::flip4bytes to have the
-// best performance of the options.
-#error "You ought to have one of __i486__, __pentium__, __pentiumpro__, __pentium4__, or __x86_64__ defined; otherwise you don't get the good swap routine; you can get this by using .../configure --enable-optmode=optimize"
-#endif
+#  ifdef __i386__
+#    if defined __i486__ || defined __pentium__ || defined __pentiumpro__ || defined __pentium4__ || defined __k6__ || defined __k8__ || defined __athlon__ 
+       // ok, will get the good byteswap
+#    else
+       // Note that in particular __i386__ is not enough to have defined here
+       // the swap routine is significantly worse than the i486 version; see
+       // /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
+       // for the performance test, it will fail unless you've selected the
+       // best of the routines
+#      warning "Automatically defining __i486__ on the assumption you have at least that type of CPU"
+#      warning "Not doing this gets a much slower byte swap routine"
+#      define __i486__ 1
+#      ifdef COMPILE_OPTIMIZE
+#        error ".../configure --enable-optmode=optimize should have set this up"
+#      endif
+#    endif
+#  endif
+#  include <byteswap.h>
 #endif
 
 #include <LintelAssert.H>
@@ -153,18 +161,20 @@ public:
 			Extent::ByteArray &into, int compression_level);
 
     static uint32_t flip4bytes(uint32 v) {
-#ifdef USE_X86_GCC_BYTESWAP
+#if defined(bswap_32)
 	return bswap_32(v);
 #else
 	// fastest method on PIII & PA2.0-- see test.C for a bunch of variants
+	// that we chose the best will be verified by test.C
 	return ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
 	    ((v & 0xFF00) << 8) | ((v & 0xFF) << 24);
 #endif
     }
-    static void flip4bytes(byte *data) {
+    static inline void flip4bytes(byte *data) {
 	*(uint32_t *)data = flip4bytes(*(uint32_t *)data);
     }
-    static void flip8bytes(byte *data) {
+    // 
+    static inline void flip8bytes(byte *data) {
 #ifdef USE_X86_GCC_BYTESWAP
 	*(uint64_t *)data = bswap_64(*(uint64_t *)data);
 #else
@@ -200,6 +210,11 @@ public:
     // didn't work.
     Extent::ByteArray fixeddata;
     Extent::ByteArray variabledata;
+
+    // This function is here to verify that we got the right
+    // flip4bytes when we compiled DataSeries, it's used by
+    // DataSeries/src/test.C
+    static void run_flip4bytes(uint32_t *buf, int buflen);
 private:
     friend class ExtentSeries;
     void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record

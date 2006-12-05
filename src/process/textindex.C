@@ -451,8 +451,8 @@ public:
 template <>
 struct HashMap_hash<const ExtentType::int64> {
     unsigned operator()(const ExtentType::int64 _a) const {
-	unsigned a = _a & 0xFFFFFFFF;
-	unsigned b = (unsigned long long)_a >> 32 & 0xFFFFFFFF;
+	unsigned a = (unsigned)(_a & 0xFFFFFFFF);
+	unsigned b = (unsigned)((unsigned long long)_a >> 32 & 0xFFFFFFFF);
 	unsigned ret = 1972;
 	BobJenkinsHashMix(a,b,ret);
 	return ret;

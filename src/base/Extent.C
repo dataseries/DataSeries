@@ -57,7 +57,7 @@ extern "C" {
 
 extern "C" {
     char *dataseriesVersion() {
-	return VERSION;
+	return (char *)VERSION;
     }
 }
 
@@ -386,7 +386,7 @@ Extent::packData(Extent::ByteArray &into,
 		 ("Internal Error\n"));
 
     // adler32 everything but the compressed digest
-    ulong adler32sum = adler32(0L, Z_NULL, 0);
+    uLong adler32sum = adler32(0L, Z_NULL, 0);
     adler32sum = adler32(adler32sum, into.begin(), 4*4);
     adler32sum = adler32(adler32sum, into.begin() + 5*4, into.size()-5*4);
     *(int32 *)(into.begin() + 4*4) = adler32sum;
@@ -628,15 +628,15 @@ Extent::unpackAny(byte *into, byte *from,
 		     ("Error decompressing extent!\n"));
 #endif
     } else {
-	char *mode_name = "unknown";
+	char *mode_name = (char *)"unknown";
 	if (compression_mode == compress_mode_lzo) {
-	    mode_name = "lzo";
+	    mode_name = (char *)"lzo";
 	} else if (compression_mode == compress_mode_zlib) {
-	    mode_name = "zlib";
+	    mode_name = (char *)"zlib";
 	} else if (compression_mode == compress_mode_bz2) {
-	    mode_name = "bz2";
+	    mode_name = (char *)"bz2";
 	} else if (compression_mode == compress_mode_lzf) {
-	    mode_name = "lzf";
+	    mode_name = (char *)"lzf";
 	} 
 	AssertFatal(("Unknown/disabled compression method %s (#%d)\n",
 		     mode_name, (int)compression_mode));
@@ -680,7 +680,7 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
 
-    ulong adler32sum = adler32(0L, Z_NULL, 0);
+    uLong adler32sum = adler32(0L, Z_NULL, 0);
     if (dataseries_enable_preuncompress_check) {
 	adler32sum = adler32(adler32sum, from.begin(), 4*4);
 	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
@@ -946,3 +946,10 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     return true;
 }
 
+void
+Extent::run_flip4bytes(uint32_t *buf, int buflen)
+{
+    for(unsigned i=0;i<buflen;++i) {
+	Extent::flip4bytes((ExtentType::byte *)(buf+i));
+    }
+}
