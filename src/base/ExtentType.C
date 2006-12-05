@@ -466,6 +466,9 @@ ExtentTypeLibrary::registerType(const std::string &xmldesc)
 {
     ExtentType *type = sharedExtentType(xmldesc);
     
+    AssertAlways(name_to_type.find(type->name) == name_to_type.end(),
+                 ("Type %s already registered\n", type->name.c_str()));
+
     name_to_type[type->name] = type;
     return type;
 }    
