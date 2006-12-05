@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <linux/sockios.h>
 #include <linux/if.h>
 #include <pcap.h>
@@ -11,20 +12,18 @@
 #include <netpacket/packet.h>
 #include <net/ethernet.h>     /* the L2 protocols */
 
-// TODO: on shutdown with 3 threads in the kernel, sending a signal to the parent
-// thread isn't enough to get all of them to exit.  Need to think about the right
-// way to handle this problem, trivial fix right now is to make stop-tracing send
-// a signal to all of the threads.
+// TODO: on shutdown with 3 threads in the kernel, sending a signal to
+// the parent thread isn't enough to get all of them to exit.  Need to
+// think about the right way to handle this problem, trivial fix right
+// now is to make stop-tracing send a signal to all of the threads.
 
 #include <string>
 using namespace std;
 
-typedef unsigned long long uint64_t;
-
 #include <LintelAssert.H>
 #include <PThread.H>
 #include <linux/wait.h>
-#include "kern-drvdump.h"
+#include "kernel-driver-add.h"
 
 PThreadMutex mutex;
 PThreadCond cond;
@@ -35,6 +34,7 @@ int threads_running = 0;
 int unique_id_count = 0;
 int page_size;
 int socket_fd;
+int global_max_file_count = 2000000000;
 
 char *output_basename;
 char *interface_name;
@@ -50,7 +50,8 @@ int sigcount = 0;
 static void 
 signal_handler(int sig) {
     ++sigcount;
-    fprintf(stderr,"signal %d recieved %d count, abort after 20\n",sig,sigcount);
+    fprintf(stderr,"signal %d recieved %d count, abort after 20\n",
+	    sig,sigcount);
     fflush(stderr);
     everyone_ok = false;
     if (sigcount > 20)
@@ -147,6 +148,10 @@ dpd_dofile(struct ifreq *ifreq,
 	       foo,(double)tmp_bytes/(1024.0*1024.0*1024.0));
 	fflush(stdout);
 	delete foo;
+	if ((dpd->file_index+1) >= global_max_file_count) {
+	    printf("Finished with all files\n");
+	    return false;
+	}
 	return true;
     } else {
 	printf("failure on processing file: %s (%d)\n", strerror(errno),err);
@@ -335,15 +340,15 @@ void
 get_driverdump_options(int argc, char *argv[])
 {
     while(1) {
-	int opt = getopt(argc, argv, "b:hi:o:q:st:z");
+	int opt = getopt(argc, argv, "b:hi:n:o:q:st:z");
 	if (opt == -1) break;
 	switch(opt) 
 	    {
 	    case 'b': 
 		buffer_size = atoi(optarg) * 1024 * 1024;
 		if (buffer_size == 0) {
-		    printf("using special case buffer size of 64k\n");
-		    buffer_size = 65536;
+		    buffer_size = 262144;
+		    printf("using special case buffer size of %d bytes\n", buffer_size);
 		}
 		AssertAlways(buffer_size > 0,("invalid buffer size\n"));
 		break;
@@ -354,6 +359,10 @@ get_driverdump_options(int argc, char *argv[])
 	    case 'i': 
 		interface_name = new char[strlen(optarg)+1];
 		strcpy(interface_name,optarg);
+		break;
+	    case 'n':
+		global_max_file_count = atoi(optarg);
+		AssertAlways(global_max_file_count > 0, ("no"));
 		break;
 	    case 'o':
 		strcpy(output_basename,optarg);

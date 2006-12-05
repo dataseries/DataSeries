@@ -1,7 +1,7 @@
 #define SIOCDRIVERPACKETDUMP (0x89F0 + 13)
 typedef enum { driver_packet_dump_test = 0, driver_packet_dump_setup,
 	       driver_packet_dump_finish, driver_packet_dump_file,
-               driver_packet_dump_getstats } 
+               driver_packet_dump_getstats, driver_packet_dump_abort } 
     dpd_command;
 
 #define DRIVER_PACKET_DUMP_FILENAMELEN 64
@@ -22,7 +22,8 @@ struct driver_packet_dump_ioctl {
 
 // same as in pcap.h, but with kernel-style typedefs
 struct drvdump_pcap_pkthdr {
-    struct timeval ts;
+    uint32_t tv_sec;
+    uint32_t tv_fractional; // pcap.h thinks this should be usec, we may want to make it nsec or 1/2^32 sec
     uint32_t caplen;
     uint32_t len;
 };
@@ -30,9 +31,8 @@ struct drvdump_pcap_pkthdr {
 #define DRIVERDUMP_MAGIC 0x1972FEED
 
 struct driver_dump_data {
-    int magic, npages, nkmapped, outputidxnum, cur_write_offset, max_write_offset, done_fill;
+    int magic, npages, outputidxnum, cur_write_offset, max_write_offset, done_fill;
     struct file *fp;
-    struct address_space *mapping;
     struct page **pages;
     wait_queue_head_t thread_waiting;
 };

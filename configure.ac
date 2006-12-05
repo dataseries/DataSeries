@@ -46,6 +46,7 @@ HPL_WITHLIB_LZF
 HPL_WITHLIB_LZO
 HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
+HPL_WITHLIB_PCAP
 
 ## flags
 AC_SYS_LARGEFILE
@@ -84,7 +85,13 @@ COM_HP_HPL_LINTEL_OPTMODE_MESSAGES()
 if test "$with_srt" = 'yes'; then
     :
 else
-    AC_MSG_WARN(skipping building of SRT related programs)
+    AC_MSG_WARN([skipping building of SRT related programs, e.g. srt2dataseries and cmpsrtds])
+fi
+
+if test "$with_pcap" = 'yes'; then
+    :
+else
+    AC_MSG_WARN([skipping building of libpcap related programs, e.g. driverdump])
 fi
 
 if test "$with_lzf" = 'yes'; then

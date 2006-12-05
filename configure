@@ -806,6 +806,7 @@ target_os
 INSTALL_PROGRAM
 INSTALL_SCRIPT
 INSTALL_DATA
+am__isrc
 CYGPATH_W
 PACKAGE
 VERSION
@@ -890,6 +891,9 @@ WITH_ZLIB_FALSE
 BZ2_LIBS
 WITH_BZ2_TRUE
 WITH_BZ2_FALSE
+PCAP_LIBS
+WITH_PCAP_TRUE
+WITH_PCAP_FALSE
 LIBDATASERIES_VERSION
 LIBOBJS
 LTLIBOBJS'
@@ -1512,6 +1516,7 @@ Optional Packages:
   --without-lzo           disable LZO compression support
   --without-zlib           disable ZLIB compression support
   --without-bz2           disable BZ2 compression support
+  --without-pcap           disable libpcap support
 
 Some influential environment variables:
   CC          C compiler command
@@ -2164,7 +2169,8 @@ Check your system clock" >&2;}
 fi
 { echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6; }
-am__api_version="1.9"
+am__api_version='1.10'
+
 # Find a good install program.  We prefer a C program (faster),
 # so one script is as good as another.  But avoid the broken or
 # incompatible versions:
@@ -2271,38 +2277,53 @@ else
 echo "$as_me: WARNING: \`missing' script is too old or missing" >&2;}
 fi
 
-if mkdir -p --version . >/dev/null 2>&1 && test ! -d ./--version; then
-  # We used to keeping the `.' as first argument, in order to
-  # allow $(mkdir_p) to be used without argument.  As in
-  #   $(mkdir_p) $(somedir)
-  # where $(somedir) is conditionally defined.  However this is wrong
-  # for two reasons:
-  #  1. if the package is installed by a user who cannot write `.'
-  #     make install will fail,
-  #  2. the above comment should most certainly read
-  #     $(mkdir_p) $(DESTDIR)$(somedir)
-  #     so it does not work when $(somedir) is undefined and
-  #     $(DESTDIR) is not.
-  #  To support the latter case, we have to write
-  #     test -z "$(somedir)" || $(mkdir_p) $(DESTDIR)$(somedir),
-  #  so the `.' trick is pointless.
-  mkdir_p='mkdir -p --'
+{ echo "$as_me:$LINENO: checking for a thread-safe mkdir -p" >&5
+echo $ECHO_N "checking for a thread-safe mkdir -p... $ECHO_C" >&6; }
+if test -z "$MKDIR_P"; then
+  if test "${ac_cv_path_mkdir+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  # On NextStep and OpenStep, the `mkdir' command does not
-  # recognize any option.  It will interpret all options as
-  # directories to create, and then abort because `.' already
-  # exists.
-  for d in ./-p ./--version;
-  do
-    test -d $d && rmdir $d
-  done
-  # $(mkinstalldirs) is defined by Automake if mkinstalldirs exists.
-  if test -f "$ac_aux_dir/mkinstalldirs"; then
-    mkdir_p='$(mkinstalldirs)'
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/opt/sfw/bin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+  for ac_prog in mkdir gmkdir; do
+	 for ac_exec_ext in '' $ac_executable_extensions; do
+	   { test -f "$as_dir/$ac_prog$ac_exec_ext" && $as_executable_p "$as_dir/$ac_prog$ac_exec_ext"; } || continue
+	   case `"$as_dir/$ac_prog$ac_exec_ext" --version 2>&1` in #(
+	     'mkdir (GNU coreutils) '* | \
+	     'mkdir (coreutils) '* | \
+	     'mkdir (fileutils) '4.1*)
+	       ac_cv_path_mkdir=$as_dir/$ac_prog$ac_exec_ext
+	       break 3;;
+	   esac
+	 done
+       done
+done
+IFS=$as_save_IFS
+
+fi
+
+  if test "${ac_cv_path_mkdir+set}" = set; then
+    MKDIR_P="$ac_cv_path_mkdir -p"
   else
-    mkdir_p='$(install_sh) -d'
+    # As a last resort, use the slow shell script.  Don't cache a
+    # value for MKDIR_P within a source directory, because that will
+    # break other packages using the cache if that directory is
+    # removed, or if the value is a relative name.
+    test -d ./--version && rmdir ./--version
+    MKDIR_P="$ac_install_sh -d"
   fi
 fi
+{ echo "$as_me:$LINENO: result: $MKDIR_P" >&5
+echo "${ECHO_T}$MKDIR_P" >&6; }
+
+mkdir_p="$MKDIR_P"
+case $mkdir_p in
+  [\\/$]* | ?:[\\/]*) ;;
+  */*) mkdir_p="\$(top_builddir)/$mkdir_p" ;;
+esac
 
 for ac_prog in gawk mawk nawk awk
 do
@@ -2385,12 +2406,16 @@ else
 fi
 rmdir .tst 2>/dev/null
 
-# test to see if srcdir already configured
-if test "`cd $srcdir && pwd`" != "`pwd`" &&
-   test -f $srcdir/config.status; then
-  { { echo "$as_me:$LINENO: error: source directory already configured; run \"make distclean\" there first" >&5
+if test "`cd $srcdir && pwd`" != "`pwd`"; then
+  # Use -I$(srcdir) only when $(srcdir) != ., so that make's output
+  # is not polluted with repeated "-I."
+  am__isrc=' -I$(srcdir)'
+  # test to see if srcdir already configured
+  if test -f $srcdir/config.status; then
+    { { echo "$as_me:$LINENO: error: source directory already configured; run \"make distclean\" there first" >&5
 echo "$as_me: error: source directory already configured; run \"make distclean\" there first" >&2;}
    { (exit 1); exit 1; }; }
+  fi
 fi
 
 # test whether we have cygpath
@@ -2433,7 +2458,7 @@ AUTOHEADER=${AUTOHEADER-"${am_missing_run}autoheader"}
 
 MAKEINFO=${MAKEINFO-"${am_missing_run}makeinfo"}
 
-install_sh=${install_sh-"$am_aux_dir/install-sh"}
+install_sh=${install_sh-"\$(SHELL) $am_aux_dir/install-sh"}
 
 # Installed binaries are usually stripped using `strip' when the user
 # run `make install-strip'.  However `strip' might not be the right
@@ -2537,7 +2562,7 @@ else
 fi
 
 fi
-INSTALL_STRIP_PROGRAM="\${SHELL} \$(install_sh) -c -s"
+INSTALL_STRIP_PROGRAM="\$(install_sh) -c -s"
 
 # We need awk for the "check" target.  The system "awk" is bad on
 # some platforms.
@@ -2605,16 +2630,13 @@ if test "x$enable_dependency_tracking" != xno; then
   am_depcomp="$ac_aux_dir/depcomp"
   AMDEPBACKSLASH='\'
 fi
-
-
-if test "x$enable_dependency_tracking" != xno; then
+ if test "x$enable_dependency_tracking" != xno; then
   AMDEP_TRUE=
   AMDEP_FALSE='#'
 else
   AMDEP_TRUE='#'
   AMDEP_FALSE=
 fi
-
 
 
 
@@ -3762,6 +3784,7 @@ else
        depfile=sub/conftest.Po tmpdepfile=sub/conftest.TPo \
        $SHELL ./depcomp $depcc -c -o sub/conftest.${OBJEXT-o} sub/conftest.c \
          >/dev/null 2>conftest.err &&
+       grep sub/conftst1.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftst6.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftest.${OBJEXT-o} sub/conftest.Po > /dev/null 2>&1 &&
        ${MAKE-make} -s -f confmf > /dev/null 2>&1; then
@@ -3791,9 +3814,7 @@ fi
 echo "${ECHO_T}$am_cv_CC_dependencies_compiler_type" >&6; }
 CCDEPMODE=depmode=$am_cv_CC_dependencies_compiler_type
 
-
-
-if
+ if
   test "x$enable_dependency_tracking" != xno \
   && test "$am_cv_CC_dependencies_compiler_type" = gcc3; then
   am__fastdepCC_TRUE=
@@ -4303,6 +4324,7 @@ else
        depfile=sub/conftest.Po tmpdepfile=sub/conftest.TPo \
        $SHELL ./depcomp $depcc -c -o sub/conftest.${OBJEXT-o} sub/conftest.c \
          >/dev/null 2>conftest.err &&
+       grep sub/conftst1.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftst6.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftest.${OBJEXT-o} sub/conftest.Po > /dev/null 2>&1 &&
        ${MAKE-make} -s -f confmf > /dev/null 2>&1; then
@@ -4332,9 +4354,7 @@ fi
 echo "${ECHO_T}$am_cv_CXX_dependencies_compiler_type" >&6; }
 CXXDEPMODE=depmode=$am_cv_CXX_dependencies_compiler_type
 
-
-
-if
+ if
   test "x$enable_dependency_tracking" != xno \
   && test "$am_cv_CXX_dependencies_compiler_type" = gcc3; then
   am__fastdepCXX_TRUE=
@@ -4408,12 +4428,13 @@ See \`config.log' for more details." >&2;}
     # three parts to the selection of optimization options
     # (gnu-host-type)::(processor-subtype)::(compiler+version)
     case $host in
-	i*86-pc-linux-gnu)
+	*-linux-gnu)
 	  PROCMOD=`grep 'model name' /proc/cpuinfo | head -1 | sed 's/model name.: //' | sed 's/(R)//g' | sed 's/ //g'`
 	  ;;
 	hppa2.0w-hp-hpux11*)
 	  PROCMOD=PA2.0W
 	  ;;
+
 	*)
 	  PROCMOD=unknown
 	  ;;
@@ -4458,6 +4479,9 @@ See \`config.log' for more details." >&2;}
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
+	x86_64-*::*AMDOpteron*::gcc-4.*)
+	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
+	   ;;
 	*) { echo "$as_me:$LINENO: **************************************************" >&5
 echo "$as_me: **************************************************" >&6;}
 	   { echo "$as_me:$LINENO: Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination" >&5
@@ -4517,9 +4541,7 @@ fi
 
   { echo "$as_me:$LINENO: result: $USE_MAINTAINER_MODE" >&5
 echo "${ECHO_T}$USE_MAINTAINER_MODE" >&6; }
-
-
-if test $USE_MAINTAINER_MODE = yes; then
+   if test $USE_MAINTAINER_MODE = yes; then
   MAINTAINER_MODE_TRUE=
   MAINTAINER_MODE_FALSE='#'
 else
@@ -5099,6 +5121,7 @@ else
        depfile=sub/conftest.Po tmpdepfile=sub/conftest.TPo \
        $SHELL ./depcomp $depcc -c -o sub/conftest.${OBJEXT-o} sub/conftest.c \
          >/dev/null 2>conftest.err &&
+       grep sub/conftst1.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftst6.h sub/conftest.Po > /dev/null 2>&1 &&
        grep sub/conftest.${OBJEXT-o} sub/conftest.Po > /dev/null 2>&1 &&
        ${MAKE-make} -s -f confmf > /dev/null 2>&1; then
@@ -5128,9 +5151,7 @@ fi
 echo "${ECHO_T}$am_cv_CXX_dependencies_compiler_type" >&6; }
 CXXDEPMODE=depmode=$am_cv_CXX_dependencies_compiler_type
 
-
-
-if
+ if
   test "x$enable_dependency_tracking" != xno \
   && test "$am_cv_CXX_dependencies_compiler_type" = gcc3; then
   am__fastdepCXX_TRUE=
@@ -5937,7 +5958,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5940 "configure"' > conftest.$ac_ext
+  echo '#line 5961 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8360,11 +8381,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8363: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8384: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8367: \$? = $ac_status" >&5
+   echo "$as_me:8388: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8628,11 +8649,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8631: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8652: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8635: \$? = $ac_status" >&5
+   echo "$as_me:8656: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8732,11 +8753,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8735: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8756: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8739: \$? = $ac_status" >&5
+   echo "$as_me:8760: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11173,7 +11194,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11176 "configure"
+#line 11197 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11273,7 +11294,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11276 "configure"
+#line 11297 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13641,11 +13662,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13644: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13665: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13648: \$? = $ac_status" >&5
+   echo "$as_me:13669: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13745,11 +13766,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13748: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13769: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13752: \$? = $ac_status" >&5
+   echo "$as_me:13773: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15306,11 +15327,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15309: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15330: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15313: \$? = $ac_status" >&5
+   echo "$as_me:15334: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15410,11 +15431,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15413: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15434: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15417: \$? = $ac_status" >&5
+   echo "$as_me:15438: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17629,11 +17650,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17632: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17653: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17636: \$? = $ac_status" >&5
+   echo "$as_me:17657: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17897,11 +17918,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17900: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17921: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17904: \$? = $ac_status" >&5
+   echo "$as_me:17925: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -18001,11 +18022,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:18004: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:18025: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:18008: \$? = $ac_status" >&5
+   echo "$as_me:18029: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -21840,9 +21861,7 @@ fi
 
 
 
-
-
-if test $with_srt = yes; then
+ if test $with_srt = yes; then
   WITH_SRT_TRUE=
   WITH_SRT_FALSE='#'
 else
@@ -22123,9 +22142,7 @@ fi
     fi
 fi
 
-
-
-if test $with_lzf = yes; then
+ if test $with_lzf = yes; then
   WITH_LZF_TRUE=
   WITH_LZF_FALSE='#'
 else
@@ -22398,9 +22415,7 @@ fi
     fi
 fi
 
-
-
-if test $with_lzo = yes; then
+ if test $with_lzo = yes; then
   WITH_LZO_TRUE=
   WITH_LZO_FALSE='#'
 else
@@ -22674,9 +22689,7 @@ fi
 fi
 
 
-
-
-if test $with_zlib = yes; then
+ if test $with_zlib = yes; then
   WITH_ZLIB_TRUE=
   WITH_ZLIB_FALSE='#'
 else
@@ -22950,14 +22963,288 @@ fi
 fi
 
 
-
-
-if test $with_bz2 = yes; then
+ if test $with_bz2 = yes; then
   WITH_BZ2_TRUE=
   WITH_BZ2_FALSE='#'
 else
   WITH_BZ2_TRUE='#'
   WITH_BZ2_FALSE=
+fi
+
+
+
+
+# Check whether --with-pcap was given.
+if test "${with_pcap+set}" = set; then
+  withval=$with_pcap; with_pcap=$withval
+else
+  with_pcap='yes'
+fi
+
+
+PCAP_LIBS=''
+if test "$with_pcap" = yes; then
+   have_pcap_hdr=no
+   have_pcap_lib=no
+
+   if test "${ac_cv_header_pcap_h+set}" = set; then
+  { echo "$as_me:$LINENO: checking for pcap.h" >&5
+echo $ECHO_N "checking for pcap.h... $ECHO_C" >&6; }
+if test "${ac_cv_header_pcap_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_header_pcap_h" >&5
+echo "${ECHO_T}$ac_cv_header_pcap_h" >&6; }
+else
+  # Is the header compilable?
+{ echo "$as_me:$LINENO: checking pcap.h usability" >&5
+echo $ECHO_N "checking pcap.h usability... $ECHO_C" >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+#include <pcap.h>
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_header_compiler=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_header_compiler=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_compiler" >&5
+echo "${ECHO_T}$ac_header_compiler" >&6; }
+
+# Is the header present?
+{ echo "$as_me:$LINENO: checking pcap.h presence" >&5
+echo $ECHO_N "checking pcap.h presence... $ECHO_C" >&6; }
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <pcap.h>
+_ACEOF
+if { (ac_try="$ac_cpp conftest.$ac_ext"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null; then
+  if test -s conftest.err; then
+    ac_cpp_err=$ac_c_preproc_warn_flag
+    ac_cpp_err=$ac_cpp_err$ac_c_werror_flag
+  else
+    ac_cpp_err=
+  fi
+else
+  ac_cpp_err=yes
+fi
+if test -z "$ac_cpp_err"; then
+  ac_header_preproc=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_header_preproc=no
+fi
+
+rm -f conftest.err conftest.$ac_ext
+{ echo "$as_me:$LINENO: result: $ac_header_preproc" >&5
+echo "${ECHO_T}$ac_header_preproc" >&6; }
+
+# So?  What about this header?
+case $ac_header_compiler:$ac_header_preproc:$ac_c_preproc_warn_flag in
+  yes:no: )
+    { echo "$as_me:$LINENO: WARNING: pcap.h: accepted by the compiler, rejected by the preprocessor!" >&5
+echo "$as_me: WARNING: pcap.h: accepted by the compiler, rejected by the preprocessor!" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h: proceeding with the compiler's result" >&5
+echo "$as_me: WARNING: pcap.h: proceeding with the compiler's result" >&2;}
+    ac_header_preproc=yes
+    ;;
+  no:yes:* )
+    { echo "$as_me:$LINENO: WARNING: pcap.h: present but cannot be compiled" >&5
+echo "$as_me: WARNING: pcap.h: present but cannot be compiled" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h:     check for missing prerequisite headers?" >&5
+echo "$as_me: WARNING: pcap.h:     check for missing prerequisite headers?" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h: see the Autoconf documentation" >&5
+echo "$as_me: WARNING: pcap.h: see the Autoconf documentation" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h:     section \"Present But Cannot Be Compiled\"" >&5
+echo "$as_me: WARNING: pcap.h:     section \"Present But Cannot Be Compiled\"" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h: proceeding with the preprocessor's result" >&5
+echo "$as_me: WARNING: pcap.h: proceeding with the preprocessor's result" >&2;}
+    { echo "$as_me:$LINENO: WARNING: pcap.h: in the future, the compiler will take precedence" >&5
+echo "$as_me: WARNING: pcap.h: in the future, the compiler will take precedence" >&2;}
+    ( cat <<\_ASBOX
+## ----------------------------------------------- ##
+## Report this to dataseries-bugs@cello.hpl.hp.com ##
+## ----------------------------------------------- ##
+_ASBOX
+     ) | sed "s/^/$as_me: WARNING:     /" >&2
+    ;;
+esac
+{ echo "$as_me:$LINENO: checking for pcap.h" >&5
+echo $ECHO_N "checking for pcap.h... $ECHO_C" >&6; }
+if test "${ac_cv_header_pcap_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_cv_header_pcap_h=$ac_header_preproc
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_header_pcap_h" >&5
+echo "${ECHO_T}$ac_cv_header_pcap_h" >&6; }
+
+fi
+if test $ac_cv_header_pcap_h = yes; then
+  have_pcap_hdr=yes
+fi
+
+
+   { echo "$as_me:$LINENO: checking for pcap_loop in -lpcap" >&5
+echo $ECHO_N "checking for pcap_loop in -lpcap... $ECHO_C" >&6; }
+if test "${ac_cv_lib_pcap_pcap_loop+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lpcap  $LIBS"
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char pcap_loop ();
+int
+main ()
+{
+return pcap_loop ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag" || test ! -s conftest.err'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_lib_pcap_pcap_loop=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_lib_pcap_pcap_loop=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_lib_pcap_pcap_loop" >&5
+echo "${ECHO_T}$ac_cv_lib_pcap_pcap_loop" >&6; }
+if test $ac_cv_lib_pcap_pcap_loop = yes; then
+  have_pcap_lib=yes;PCAP_LIBS=-lpcap
+fi
+
+
+   if test $have_pcap_hdr = yes -a $have_pcap_lib = yes; then
+      with_pcap=yes
+   else
+      with_pcap=no
+      PCAP_LIBS=''
+   fi
+else
+   with_pcap=no
+fi
+
+
+ if test $with_pcap = yes; then
+  WITH_PCAP_TRUE=
+  WITH_PCAP_FALSE='#'
+else
+  WITH_PCAP_TRUE='#'
+  WITH_PCAP_FALSE=
 fi
 
 
@@ -23636,6 +23923,13 @@ echo "$as_me: error: conditional \"WITH_BZ2\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
+if test -z "${WITH_PCAP_TRUE}" && test -z "${WITH_PCAP_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"WITH_PCAP\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"WITH_PCAP\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
 
 : ${CONFIG_STATUS=./config.status}
 ac_clean_files_save=$ac_clean_files
@@ -23981,6 +24275,7 @@ gives unlimited permission to copy, distribute and modify it."
 ac_pwd='$ac_pwd'
 srcdir='$srcdir'
 INSTALL='$INSTALL'
+MKDIR_P='$MKDIR_P'
 _ACEOF
 
 cat >>$CONFIG_STATUS <<\_ACEOF
@@ -24192,6 +24487,7 @@ target_os!$target_os$ac_delim
 INSTALL_PROGRAM!$INSTALL_PROGRAM$ac_delim
 INSTALL_SCRIPT!$INSTALL_SCRIPT$ac_delim
 INSTALL_DATA!$INSTALL_DATA$ac_delim
+am__isrc!$am__isrc$ac_delim
 CYGPATH_W!$CYGPATH_W$ac_delim
 PACKAGE!$PACKAGE$ac_delim
 VERSION!$VERSION$ac_delim
@@ -24236,7 +24532,6 @@ OPTMODE_LDFLAGS!$OPTMODE_LDFLAGS$ac_delim
 MAINTAINER_MODE_TRUE!$MAINTAINER_MODE_TRUE$ac_delim
 MAINTAINER_MODE_FALSE!$MAINTAINER_MODE_FALSE$ac_delim
 MAINT!$MAINT$ac_delim
-CONFIG_STATUS_DEPENDENCIES!$CONFIG_STATUS_DEPENDENCIES$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -24278,6 +24573,7 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+CONFIG_STATUS_DEPENDENCIES!$CONFIG_STATUS_DEPENDENCIES$ac_delim
 GREP!$GREP$ac_delim
 EGREP!$EGREP$ac_delim
 LD!$LD$ac_delim
@@ -24317,12 +24613,15 @@ WITH_ZLIB_FALSE!$WITH_ZLIB_FALSE$ac_delim
 BZ2_LIBS!$BZ2_LIBS$ac_delim
 WITH_BZ2_TRUE!$WITH_BZ2_TRUE$ac_delim
 WITH_BZ2_FALSE!$WITH_BZ2_FALSE$ac_delim
+PCAP_LIBS!$PCAP_LIBS$ac_delim
+WITH_PCAP_TRUE!$WITH_PCAP_TRUE$ac_delim
+WITH_PCAP_FALSE!$WITH_PCAP_FALSE$ac_delim
 LIBDATASERIES_VERSION!$LIBDATASERIES_VERSION$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 42; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 46; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
@@ -24549,6 +24848,11 @@ ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
   [\\/$]* | ?:[\\/]* ) ac_INSTALL=$INSTALL ;;
   *) ac_INSTALL=$ac_top_build_prefix$INSTALL ;;
   esac
+  ac_MKDIR_P=$MKDIR_P
+  case $MKDIR_P in
+  [\\/$]* | ?:[\\/]* ) ;;
+  */*) ac_MKDIR_P=$ac_top_build_prefix$MKDIR_P ;;
+  esac
 _ACEOF
 
 cat >>$CONFIG_STATUS <<\_ACEOF
@@ -24602,6 +24906,7 @@ s&@builddir@&$ac_builddir&;t t
 s&@abs_builddir@&$ac_abs_builddir&;t t
 s&@abs_top_builddir@&$ac_abs_top_builddir&;t t
 s&@INSTALL@&$ac_INSTALL&;t t
+s&@MKDIR_P@&$ac_MKDIR_P&;t t
 $ac_datarootdir_hack
 " $ac_file_inputs | sed -f "$tmp/subs-1.sed" | sed -f "$tmp/subs-2.sed" >$tmp/out
 
@@ -24636,8 +24941,9 @@ echo "$as_me: executing $ac_file commands" >&6;}
   # some people rename them; so instead we look at the file content.
   # Grep'ing the first line is not enough: some people post-process
   # each Makefile.in and add a new line on top of each file to say so.
-  # So let's grep whole file.
-  if grep '^#.*generated by automake' $mf > /dev/null 2>&1; then
+  # Grep'ing the whole file is not good either: AIX grep has a line
+  # limit of 2048, but all sed's we know have understand at least 4000.
+  if sed 10q "$mf" | grep '^#.*generated by automake' > /dev/null 2>&1; then
     dirpart=`$as_dirname -- "$mf" ||
 $as_expr X"$mf" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
 	 X"$mf" : 'X\(//\)[^/]' \| \
@@ -24814,8 +25120,15 @@ echo "$as_me: --enable-optmode set prefix to '$OPTMODE_PREFIX'" >&6;}
 if test "$with_srt" = 'yes'; then
     :
 else
-    { echo "$as_me:$LINENO: WARNING: skipping building of SRT related programs" >&5
-echo "$as_me: WARNING: skipping building of SRT related programs" >&2;}
+    { echo "$as_me:$LINENO: WARNING: skipping building of SRT related programs, e.g. srt2dataseries and cmpsrtds" >&5
+echo "$as_me: WARNING: skipping building of SRT related programs, e.g. srt2dataseries and cmpsrtds" >&2;}
+fi
+
+if test "$with_pcap" = 'yes'; then
+    :
+else
+    { echo "$as_me:$LINENO: WARNING: skipping building of libpcap related programs, e.g. driverdump" >&5
+echo "$as_me: WARNING: skipping building of libpcap related programs, e.g. driverdump" >&2;}
 fi
 
 if test "$with_lzf" = 'yes'; then
