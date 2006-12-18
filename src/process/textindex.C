@@ -448,17 +448,6 @@ public:
     HashMap<string, HashMap<int, ExtentType::int64> > filename_id_extentoffset;
 };
 
-template <>
-struct HashMap_hash<const ExtentType::int64> {
-    unsigned operator()(const ExtentType::int64 _a) const {
-	unsigned a = (unsigned)(_a & 0xFFFFFFFF);
-	unsigned b = (unsigned)((unsigned long long)_a >> 32 & 0xFFFFFFFF);
-	unsigned ret = 1972;
-	BobJenkinsHashMix(a,b,ret);
-	return ret;
-    }
-};
-
 void
 search_and(vector<string> &args, bool case_insensitive)
 {
