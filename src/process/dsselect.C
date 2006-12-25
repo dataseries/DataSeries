@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2006, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -9,12 +9,18 @@
     Select subset of fields from a collection of traces, generate a new trace
 */
 
-#include <StringUtil.H>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include <Lintel/AssertBoost.H>
+#include <Lintel/StringUtil.H>
 
 #include <commonargs.H>
 #include <DataSeriesFile.H>
 #include <GeneralField.H>
 #include <DataSeriesModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 #ifndef HPUX_ACC
 using namespace std;
@@ -35,17 +41,38 @@ main(int argc, char *argv[])
 
     split(fieldlist,",",fields);
 
+    {
+	struct stat buf;
+	AssertAlways(stat(argv[argc-1],&buf) != 0, 
+		     ("Refusing to overwrite existing file %s.\n", argv[argc-1]));
+    }
     DataSeriesSink output(argv[argc-1],packing_args.compress_modes,packing_args.compress_level);
-    SourceModule source;
+
+    // to get the complete typename and type information...
+    DataSeriesSource first_file(argv[3]);
+    ExtentType *intype = first_file.mylibrary.getTypeByPrefix(type_prefix);
+    first_file.closefile();
+    INVARIANT(intype != NULL,
+	      boost::format("can not find a type matching prefix %s")
+	      % type_prefix);
+
+    TypeIndexModule source(intype->name);
     for(int i=3;i<(argc-1);++i) {
 	source.addSource(argv[i]);
     }
-    ExtentType *intype = source.curSource()->mylibrary.getTypeByPrefix(type_prefix);
-    AssertAlways(intype != NULL,
-		 ("can't find a type matching prefix %s",type_prefix.c_str()));
+    source.startPrefetching();
+
     ExtentSeries inputseries(ExtentSeries::typeLoose);
     ExtentSeries outputseries(ExtentSeries::typeLoose);
     vector<GeneralField *> infields, outfields;
+
+    // TODO: figure out how to handle pack_relative options that are
+    // specified relative to a field that was not selected.  Right
+    // now, there is no way to do this selection; try replacing
+    // enter_driver with leave_driver in
+    // src/Makefile.am:ran.check-dsselect. Also, give an option for the
+    // xml description to be specified on the command line.
+
     string xmloutdesc("<ExtentType name=\"");
     xmloutdesc.append(type_prefix);
     xmloutdesc.append("\">\n");
@@ -69,11 +96,11 @@ main(int argc, char *argv[])
 	i != fields.end();++i) {
 	outfields.push_back(GeneralField::create(NULL,outputseries,*i));
     }
-    FilterModule filtermodule(source,type_prefix);
+
     OutputModule outmodule(output,outputseries,outputtype,
 			   packing_args.extent_size);
     while(true) {
-	Extent *inextent = filtermodule.getExtent();
+	Extent *inextent = source.getExtent();
 	if (inextent == NULL)
 	    break;
 	for(inputseries.setExtent(inextent);inputseries.pos.morerecords();

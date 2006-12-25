@@ -66,8 +66,8 @@ TypeIndexModule::lockedGetCompressedExtent()
 	for(;indexSeries.pos.morerecords();++indexSeries.pos) {
 	    if (ExtentType::prefixmatch(extentType.stringval(),type_prefix)) {
 		off64_t v = extentOffset.val();
-		compressedPrefetch *ret = getCompressed(cur_source,
-							v, extentType.stringval());
+		compressedPrefetch *ret 
+		    = getCompressed(cur_source, v, extentType.stringval());
 		++indexSeries.pos;
 		return ret;
 	    }

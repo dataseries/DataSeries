@@ -58,7 +58,7 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon 
+bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon dsselect 
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -68,13 +68,14 @@ lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 textindex_SOURCES = process/textindex.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/nfsdsanalysis-common.C 
 indexnfscommon_SOURCES = process/indexnfscommon.C
+dsselect_SOURCES = process/dsselect.C
 
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump
 network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
 
 if WITH_SRT
 bin_PROGRAMS += srt2dataseries cmpsrtds
@@ -126,3 +127,10 @@ ran.check-test: test ds2txt
 	cmp $(top_srcdir)/check-data/complex.txt complex-big.txt
 	rm test.ds test.txt complex-little.txt complex-big.txt
 	touch $@
+
+ran.check-dsselect: dsselect ds2txt
+	@-rm dsselect.test.1
+	./dsselect --compress-gz I/O enter_driver,bytes,machine_id,driver_type,disk_offset ~/projects/DataSeries/check-data/h03126.ds-littleend dsselect.test.1 >/dev/null
+	gunzip < $(top_srcdir)/check-data/dsselect.test.1.gz >dsselect.test.1.ref
+	./ds2txt --skip-index dsselect.test.1 >dsselect.test.1.txt
+	cmp dsselect.test.1.ref dsselect.test.1.txt
