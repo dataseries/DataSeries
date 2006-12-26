@@ -50,8 +50,8 @@ target_triplet = @target@
 bin_PROGRAMS = ds2txt$(EXEEXT) pssimple2ds$(EXEEXT) \
 	dsextentindex$(EXEEXT) lvpvprocessusage$(EXEEXT) \
 	textindex$(EXEEXT) ipdsanalysis$(EXEEXT) \
-	indexnfscommon$(EXEEXT) dsselect$(EXEEXT) $(am__EXEEXT_1) \
-	$(am__EXEEXT_2)
+	indexnfscommon$(EXEEXT) dsselect$(EXEEXT) dsrepack$(EXEEXT) \
+	$(am__EXEEXT_1) $(am__EXEEXT_2)
 @WITH_PCAP_TRUE@am__append_1 = network-driverdump
 @WITH_SRT_TRUE@am__append_2 = srt2dataseries cmpsrtds
 @WITH_SRT_TRUE@am__append_3 = ran.check-srt2dataseries
@@ -101,6 +101,10 @@ am_dsextentindex_OBJECTS = dsextentindex.$(OBJEXT)
 dsextentindex_OBJECTS = $(am_dsextentindex_OBJECTS)
 dsextentindex_LDADD = $(LDADD)
 dsextentindex_DEPENDENCIES = libDataSeries.la
+am_dsrepack_OBJECTS = dsrepack.$(OBJEXT)
+dsrepack_OBJECTS = $(am_dsrepack_OBJECTS)
+dsrepack_LDADD = $(LDADD)
+dsrepack_DEPENDENCIES = libDataSeries.la
 am_dsselect_OBJECTS = dsselect.$(OBJEXT)
 dsselect_OBJECTS = $(am_dsselect_OBJECTS)
 dsselect_LDADD = $(LDADD)
@@ -161,16 +165,16 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libDataSeries_la_SOURCES) $(cmpsrtds_SOURCES) \
-	$(ds2txt_SOURCES) $(dsextentindex_SOURCES) $(dsselect_SOURCES) \
-	$(indexnfscommon_SOURCES) $(ipdsanalysis_SOURCES) \
-	$(lvpvprocessusage_SOURCES) $(network_driverdump_SOURCES) \
-	$(pssimple2ds_SOURCES) $(srt2dataseries_SOURCES) test.c \
-	$(textindex_SOURCES)
+	$(ds2txt_SOURCES) $(dsextentindex_SOURCES) $(dsrepack_SOURCES) \
+	$(dsselect_SOURCES) $(indexnfscommon_SOURCES) \
+	$(ipdsanalysis_SOURCES) $(lvpvprocessusage_SOURCES) \
+	$(network_driverdump_SOURCES) $(pssimple2ds_SOURCES) \
+	$(srt2dataseries_SOURCES) test.c $(textindex_SOURCES)
 DIST_SOURCES = $(libDataSeries_la_SOURCES) \
 	$(am__cmpsrtds_SOURCES_DIST) $(ds2txt_SOURCES) \
-	$(dsextentindex_SOURCES) $(dsselect_SOURCES) \
-	$(indexnfscommon_SOURCES) $(ipdsanalysis_SOURCES) \
-	$(lvpvprocessusage_SOURCES) \
+	$(dsextentindex_SOURCES) $(dsrepack_SOURCES) \
+	$(dsselect_SOURCES) $(indexnfscommon_SOURCES) \
+	$(ipdsanalysis_SOURCES) $(lvpvprocessusage_SOURCES) \
 	$(am__network_driverdump_SOURCES_DIST) $(pssimple2ds_SOURCES) \
 	$(am__srt2dataseries_SOURCES_DIST) test.c $(textindex_SOURCES)
 nobase_bpmodulesDATA_INSTALL = $(install_sh_DATA)
@@ -361,6 +365,7 @@ textindex_SOURCES = process/textindex.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/nfsdsanalysis-common.C 
 indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
+dsrepack_SOURCES = process/dsrepack.C
 @WITH_PCAP_TRUE@network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	$(am__append_3)
@@ -477,6 +482,9 @@ ds2txt$(EXEEXT): $(ds2txt_OBJECTS) $(ds2txt_DEPENDENCIES)
 dsextentindex$(EXEEXT): $(dsextentindex_OBJECTS) $(dsextentindex_DEPENDENCIES) 
 	@rm -f dsextentindex$(EXEEXT)
 	$(CXXLINK) $(dsextentindex_LDFLAGS) $(dsextentindex_OBJECTS) $(dsextentindex_LDADD) $(LIBS)
+dsrepack$(EXEEXT): $(dsrepack_OBJECTS) $(dsrepack_DEPENDENCIES) 
+	@rm -f dsrepack$(EXEEXT)
+	$(CXXLINK) $(dsrepack_LDFLAGS) $(dsrepack_OBJECTS) $(dsrepack_LDADD) $(LIBS)
 dsselect$(EXEEXT): $(dsselect_OBJECTS) $(dsselect_DEPENDENCIES) 
 	@rm -f dsselect$(EXEEXT)
 	$(CXXLINK) $(dsselect_LDFLAGS) $(dsselect_OBJECTS) $(dsselect_LDADD) $(LIBS)
@@ -549,6 +557,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/driverdump.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ds2txt.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dsextentindex.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dsrepack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/dsselect.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/indexnfscommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipdsanalysis.Po@am__quote@
@@ -726,6 +735,20 @@ dsextentindex.obj: process/dsextentindex.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='process/dsextentindex.C' object='dsextentindex.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o dsextentindex.obj `if test -f 'process/dsextentindex.C'; then $(CYGPATH_W) 'process/dsextentindex.C'; else $(CYGPATH_W) '$(srcdir)/process/dsextentindex.C'; fi`
+
+dsrepack.o: process/dsrepack.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT dsrepack.o -MD -MP -MF "$(DEPDIR)/dsrepack.Tpo" -c -o dsrepack.o `test -f 'process/dsrepack.C' || echo '$(srcdir)/'`process/dsrepack.C; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/dsrepack.Tpo" "$(DEPDIR)/dsrepack.Po"; else rm -f "$(DEPDIR)/dsrepack.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='process/dsrepack.C' object='dsrepack.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o dsrepack.o `test -f 'process/dsrepack.C' || echo '$(srcdir)/'`process/dsrepack.C
+
+dsrepack.obj: process/dsrepack.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT dsrepack.obj -MD -MP -MF "$(DEPDIR)/dsrepack.Tpo" -c -o dsrepack.obj `if test -f 'process/dsrepack.C'; then $(CYGPATH_W) 'process/dsrepack.C'; else $(CYGPATH_W) '$(srcdir)/process/dsrepack.C'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/dsrepack.Tpo" "$(DEPDIR)/dsrepack.Po"; else rm -f "$(DEPDIR)/dsrepack.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='process/dsrepack.C' object='dsrepack.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o dsrepack.obj `if test -f 'process/dsrepack.C'; then $(CYGPATH_W) 'process/dsrepack.C'; else $(CYGPATH_W) '$(srcdir)/process/dsrepack.C'; fi`
 
 dsselect.o: process/dsselect.C
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT dsselect.o -MD -MP -MF "$(DEPDIR)/dsselect.Tpo" -c -o dsselect.o `test -f 'process/dsselect.C' || echo '$(srcdir)/'`process/dsselect.C; \

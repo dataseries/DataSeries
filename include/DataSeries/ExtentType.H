@@ -192,7 +192,7 @@ public:
     ExtentType *getTypeByName(const std::string &name, bool null_ok = false);
     ExtentType *getTypeByPrefix(const std::string &prefix, bool null_ok = false);
 
-    std::map<const std::string,ExtentType *> name_to_type;
+    std::map<const std::string, ExtentType *> name_to_type;
     static ExtentType *sharedExtentType(const std::string &xmldesc);
     static xmlDocPtr sharedDocPtr(const std::string &xmldesc);
 };

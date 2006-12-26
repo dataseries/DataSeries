@@ -58,7 +58,7 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon dsselect 
+bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon dsselect dsrepack
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -69,6 +69,7 @@ textindex_SOURCES = process/textindex.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/nfsdsanalysis-common.C 
 indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
+dsrepack_SOURCES = process/dsrepack.C
 
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump

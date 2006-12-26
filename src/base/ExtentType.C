@@ -476,8 +476,13 @@ ExtentTypeLibrary::registerType(const std::string &xmldesc)
 ExtentType *
 ExtentTypeLibrary::getTypeByName(const std::string &name, bool null_ok)
 {
+    if (null_ok) {
+	if (name_to_type.find(name) == name_to_type.end()) {
+	    return NULL;
+	}
+    }
     ExtentType *f = name_to_type[name];
-    AssertAlways(null_ok || f!=NULL,("No type named %s registered\n",name.c_str()));
+    AssertAlways(f != NULL, ("No type named %s registered\n", name.c_str()));
     return f;
 }
 

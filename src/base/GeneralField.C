@@ -370,7 +370,31 @@ GF_Byte::set(GeneralField *from)
 	myfield.setNull();
 	return;
     }
-    AssertFatal(("unimplemented\n"));
+    ByteField::byte val = 0;
+    switch(from->getType()) 
+	{
+	case ExtentType::ft_bool: 
+	    val = ((GF_Bool *)from)->val() ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    val = ((GF_Byte *)from)->val();
+	    break;
+	case ExtentType::ft_int32:
+	    val = static_cast<ByteField::byte>(((GF_Int32 *)from)->val() & 0xFF);
+	    break;
+	case ExtentType::ft_int64: 
+	    val = static_cast<ByteField::byte>(((GF_Int64 *)from)->val());
+	    break;
+	case ExtentType::ft_double:
+	    val = static_cast<ByteField::byte>(round(((GF_Double *)from)->val()));
+	    break;
+	case ExtentType::ft_variable32:
+	    AssertFatal(("unimplemented conversion from variable32 -> byte"));
+	    break;
+	default:
+	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+    }
+    myfield.set(val);
 }
 
 void
