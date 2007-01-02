@@ -90,8 +90,23 @@ public:
 	byte *end() { return endV; };
 	byte &operator[] (size_t offset) { return *(begin(offset)); }
 	
+	void swap(ByteArray &with) {
+	    byte *tmp_beginV, *tmp_endV, *tmp_maxV;
+	    
+	    tmp_beginV = beginV;
+	    tmp_endV = endV;
+	    tmp_maxV = maxV;
+	    beginV = with.beginV;
+	    endV = with.endV;
+	    maxV = with.maxV;
+	    with.beginV = tmp_beginV;
+	    with.endV = tmp_endV;
+	    with.maxV = tmp_maxV;
+	}
+
 	typedef byte * iterator;
     private:
+	ByteArray & operator=(const ByteArray &); 
 	byte *beginV, *endV, *maxV;
     };
 
@@ -129,6 +144,10 @@ public:
     static const int compress_bz2 = 4;
     static const int compress_lzf = 8;
     static const int compress_all = compress_bz2 | compress_zlib | compress_lzo | compress_lzf;
+
+    /// Run duplicate elimination on the variable fields that are packed
+    // as unique.
+    void compactVariableData(); 
 
     void packData(Extent::ByteArray &into, 
 		  int compression_modes = compress_all,

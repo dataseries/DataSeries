@@ -159,6 +159,66 @@ public:
     }
 };
 
+void 
+compactVariableData()
+{
+    Extent::ByteArray variable_compacted;
+    variable_compacted.resize(variabledata.size());
+    AssertAlways(variabledata.size() >= 4,("internal error\n"));
+
+    HashTable<variableDuplicateEliminate, 
+	variableDuplicateEliminate_Hash, 
+	variableDuplicateEliminate_Equal> vardupelim;
+
+    byte *variable_data_pos = variable_coded.begin();
+    *(int32 *)variable_data_pos = 0;
+    variable_data_pos += 4;
+
+    for(Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
+	fixed_record != fixed_coded.end(); 
+	fixed_record += type->fixed_record_size) {
+	AssertAlways(fixed_record < fixed_coded.end(),("internal error\n"));
+	++nrecords;
+	
+	// pack variable sized fields ...
+	for(unsigned int j=0;j<type->variable32_field_columns.size();j++) {
+	    int field = type->variable32_field_columns[j];
+	    int offset = type->field_info[field].offset;
+	    int varoffset = Variable32Field::getVarOffset(&(*fixed_record),
+							  offset);
+	    Variable32Field::selfcheck(variabledata,varoffset);
+	    int32 size = Variable32Field::size(variabledata,varoffset);
+	    int32 roundup = Variable32Field::roundupSize(size);
+	    if (size == 0) {
+		AssertAlways(varoffset == 0,("internal error\n"));
+	    } else {
+		memcpy(variable_data_pos, variabledata.begin() + varoffset,
+		       4 + roundup);
+		int32 packed_varoffset = variable_data_pos - variable_compacted.begin();
+		if (type->field_info[field].unique) {
+		    variableDuplicateEliminate v(variable_data_pos);
+		    variableDuplicateEliminate *dup = vardupelim.lookup(v);
+		    if (dup == NULL) {
+			// not present; add and use space
+			vardupelim.add(v);
+			variable_data_pos += 4 + roundup;
+		    } else {
+			// already present, eliminate duplicate
+			packed_varoffset = dup->varbits - variable_compacted.begin();
+		    }
+		} else {
+		    variable_data_pos += 4 + roundup;
+		}
+		AssertAlways((packed_varoffset + 4) % 8 == 0,
+			     ("bad packing offset %d\n",packed_varoffset));
+		*(int32 *)(fixed_record + offset) = packed_varoffset;
+	    } 
+	}
+    }
+    
+    variabledata.swap(variable_compacted);
+}
+
 static const int variable_sizes_batch_size = 1024;
 
 void
@@ -169,13 +229,6 @@ Extent::packData(Extent::ByteArray &into,
 {
     Extent::ByteArray fixed_coded;
     fixed_coded.resize(fixeddata.size());
-    Extent::ByteArray variable_coded;
-    variable_coded.resize(variabledata.size());
-    AssertAlways(variabledata.size() >= 4,("internal error\n"));
-
-    HashTable<variableDuplicateEliminate, 
-	variableDuplicateEliminate_Hash, 
-	variableDuplicateEliminate_Equal> vardupelim;
 
     memcpy(fixed_coded.begin(), fixeddata.begin(), fixeddata.size());
     std::vector<bool> warnings;
@@ -188,9 +241,7 @@ Extent::packData(Extent::ByteArray &into,
 	psr_copy[j].int64_prev_v = 0;
     }
     int32 nrecords = 0;
-    byte *variable_data_pos = variable_coded.begin();
-    *(int32 *)variable_data_pos = 0;
-    variable_data_pos += 4;
+
     for(Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
 	fixed_record != fixed_coded.end(); 
 	fixed_record += type->fixed_record_size) {
