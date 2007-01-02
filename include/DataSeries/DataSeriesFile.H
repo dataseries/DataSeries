@@ -12,8 +12,8 @@
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 
-#include <Extent.H>
-#include <ExtentField.H>
+#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentField.H>
 // ExtentField isn't used in this header, but makes using the library
 // simpler as just including this file gets everything you need.
 

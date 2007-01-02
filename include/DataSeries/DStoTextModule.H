@@ -12,7 +12,7 @@
 #ifndef __DSTOTEXTMODULE_H
 #define __DSTOTEXTMODULE_H
 
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.H>
 class GeneralField;
 
 class DStoTextModule : public DataSeriesModule {

@@ -9,8 +9,8 @@
     implementation
 */
 
-#include "RowAnalysisModule.H"
-#include "SequenceModule.H"
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/SequenceModule.H>
 
 RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
 				     ExtentSeries::typeCompatibilityT _tc)

@@ -11,10 +11,10 @@
 
 #include <algorithm>
 
-#include <MinMaxIndexModule.H>
+#include <Lintel/HashMap.H>
 
-#include <TypeIndexModule.H>
-#include <HashMap.H>
+#include <DataSeries/MinMaxIndexModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 #ifndef __HP_aCC
 using namespace std;

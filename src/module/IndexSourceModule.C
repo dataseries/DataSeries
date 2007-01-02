@@ -13,7 +13,7 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#include <IndexSourceModule.H>
+#include <DataSeries/IndexSourceModule.H>
 
 #ifndef __HP_aCC
 using namespace std;

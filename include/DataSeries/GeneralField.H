@@ -16,8 +16,8 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h> 
 
-#include <ExtentSeries.H>
-#include <ExtentField.H>
+#include <DataSeries/ExtentSeries.H>
+#include <DataSeries/ExtentField.H>
 
 class GeneralField;
 

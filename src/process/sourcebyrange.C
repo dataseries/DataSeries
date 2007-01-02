@@ -10,8 +10,8 @@
 */
 
 
-#include <IndexSourceModule.H>
-#include <TypeIndexModule.H>
+#include <DataSeries/IndexSourceModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 bool
 isnumber(char *v)

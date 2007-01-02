@@ -11,9 +11,9 @@
 
 #include <algorithm>
 
-#include <StringUtil.H>
+#include <Lintel/StringUtil.H>
 
-#include <GeneralField.H>
+#include <DataSeries/GeneralField.H>
 #if defined(__HP_aCC) && __HP_aCC < 35000
 #else
 using namespace std;

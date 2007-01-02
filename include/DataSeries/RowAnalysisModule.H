@@ -12,7 +12,7 @@
 #ifndef __ROW_ANALYSIS_MODULE_H
 #define __ROW_ANALYSIS_MODULE_H
 
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.H>
 
 class SequenceModule;
 

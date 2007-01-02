@@ -12,14 +12,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <StringUtil.H>
-#include <HashMap.H>
+#include <Lintel/StringUtil.H>
+#include <Lintel/HashMap.H>
 
-#include <commonargs.H>
-#include <DataSeriesFile.H>
-#include <GeneralField.H>
-#include <DataSeriesModule.H>
-#include <TypeIndexModule.H>
+#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/GeneralField.H>
+#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 #ifndef __HP_aCC
 using namespace std;

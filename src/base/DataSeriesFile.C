@@ -13,11 +13,11 @@
 #include <errno.h>
 #include <sys/resource.h>
 
-#include <Double.H>
-#include <HashTable.H>
+#include <Lintel/Double.H>
+#include <Lintel/HashTable.H>
 
-#include <DataSeriesFile.H>
-#include <ExtentField.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/ExtentField.H>
 
 #if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
 #define _LARGEFILE64_SOURCE

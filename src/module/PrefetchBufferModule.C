@@ -9,7 +9,7 @@
     implementation
 */
 
-#include <PrefetchBufferModule.H>
+#include <DataSeries/PrefetchBufferModule.H>
 
 /** Note: we special case the code when we are compiling in profile mode because
     profiling doesn't tend to work very well when we have multiple threads */

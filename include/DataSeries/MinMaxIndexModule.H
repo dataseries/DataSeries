@@ -13,8 +13,8 @@
 #ifndef __DATASERIES_MINMAXINDEXMODULE_H
 #define __DATASERIES_MINMAXINDEXMODULE_H
 
-#include <IndexSourceModule.H>
-#include <GeneralField.H>
+#include <DataSeries/IndexSourceModule.H>
+#include <DataSeries/GeneralField.H>
 
 /** \brief Source module that uses a min/max index to pick the extents
 

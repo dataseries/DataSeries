@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.H>
 
 class SequenceModule : public DataSeriesModule {
 public:

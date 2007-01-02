@@ -41,9 +41,10 @@ extern "C" {
 #  include <byteswap.h>
 #endif
 
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 
-#include <ExtentType.H>
+#include <DataSeries/ExtentType.H>
+
 class ExtentSeries;
 class Extent {
 public:

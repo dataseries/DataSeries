@@ -11,17 +11,17 @@
 
 #include <iostream>
 
-#include <HashTable.H>
-#include <StatsQuantile.H>
-#include <PriorityQueue.H>
-#include <Deque.H>
-#include <StringUtil.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/StatsQuantile.H>
+#include <Lintel/PriorityQueue.H>
+#include <Lintel/Deque.H>
+#include <Lintel/StringUtil.H>
 
-#include <TypeIndexModule.H>
-#include <SequenceModule.H>
-#include <PrefetchBufferModule.H>
-#include <RowAnalysisModule.H>
-#include <DStoTextModule.H>
+#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/SequenceModule.H>
+#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/DStoTextModule.H>
 
 #include "sourcebyrange.H"
 

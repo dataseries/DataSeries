@@ -5,9 +5,9 @@
 */
 
 
-#include <ExtentSeries.H>
-#include <Extent.H>
-#include <ExtentField.H>
+#include <DataSeries/ExtentSeries.H>
+#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentField.H>
 
 ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
     : typeCompatibility(_tc)

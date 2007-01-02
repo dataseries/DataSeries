@@ -16,10 +16,10 @@
 #include <Lintel/AssertBoost.H>
 #include <Lintel/StringUtil.H>
 
-#include <commonargs.H>
-#include <DataSeriesFile.H>
-#include <GeneralField.H>
-#include <DataSeriesModule.H>
+#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/GeneralField.H>
+#include <DataSeries/DataSeriesModule.H>
 #include <DataSeries/TypeIndexModule.H>
 
 #ifndef HPUX_ACC

@@ -12,10 +12,10 @@
 #ifndef __DATASERIES_INDEXSOURCEMODULE_H
 #define __DATASERIES_INDEXSOURCEMODULE_H
 
-#include <PThread.H>
-#include <Deque.H>
+#include <Lintel/PThread.H>
+#include <Lintel/Deque.H>
 
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.H>
 
 /** \brief Base class for source modules that use indicies
 

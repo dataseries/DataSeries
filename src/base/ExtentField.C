@@ -4,8 +4,8 @@
    See the file named COPYING for license details
 */
 
-#include <Double.H>
-#include <ExtentField.H>
+#include <Lintel/Double.H>
+#include <DataSeries/ExtentField.H>
 
 Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, int _flags)
     : nullable(0),null_offset(0), null_bit_mask(0), 

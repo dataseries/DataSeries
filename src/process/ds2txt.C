@@ -9,10 +9,10 @@
     Convert DataSeries files to text
 */
 
-#include <StringUtil.H>
+#include <Lintel/StringUtil.H>
 
-#include <DStoTextModule.H>
-#include <TypeIndexModule.H>
+#include <DataSeries/DStoTextModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 #ifndef __HP_aCC
 using namespace std;

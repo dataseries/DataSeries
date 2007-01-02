@@ -13,14 +13,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <StringUtil.H>
-#include <AssertBoost.H>
+#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.H>
 
-#include <commonargs.H>
-#include <DataSeriesFile.H>
-#include <GeneralField.H>
-#include <DataSeriesModule.H>
-#include <TypeIndexModule.H>
+#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/GeneralField.H>
+#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 static const bool debug = true;
 

@@ -7,8 +7,8 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include <DataSeriesFile.H>
-#include <commonargs.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/commonargs.H>
 
 const std::string pstrace_xml
 (

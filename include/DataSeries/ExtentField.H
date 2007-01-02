@@ -12,9 +12,10 @@
 #ifndef __EXTENT_FIELD_H
 #define __EXTENT_FIELD_H
 
-#include <ExtentSeries.H>
-#include <Extent.H>
-#include <MersenneTwisterRandom.H>
+#include <Lintel/MersenneTwisterRandom.H>
+
+#include <DataSeries/ExtentSeries.H>
+#include <DataSeries/Extent.H>
 
 // Note that if a sufficient case is made that the accessors which
 // handle the null case inline are too slow, then special case

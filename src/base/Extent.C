@@ -48,12 +48,12 @@ extern "C" {
 }
 #endif
 
-#include <HashTable.H>
-#include <Clock.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/Clock.H>
 
-#include <Extent.H>
-#include <ExtentField.H>
-#include <DataSeriesFile.H>
+#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentField.H>
+#include <DataSeries/DataSeriesFile.H>
 
 extern "C" {
     char *dataseriesVersion() {

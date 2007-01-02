@@ -11,11 +11,11 @@
 
 #include <libxml/parser.h>
 
-#include <LintelAssert.H>
-#include <PThread.H>
-#include <HashTable.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/PThread.H>
+#include <Lintel/HashTable.H>
 
-#include <ExtentType.H>
+#include <DataSeries/ExtentType.H>
 
 struct xmlDecodeInfo {
     std::string xmldesc;

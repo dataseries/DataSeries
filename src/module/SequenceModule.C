@@ -5,7 +5,7 @@
    See the file named COPYING for license details
 */
 
-#include <SequenceModule.H>
+#include <DataSeries/SequenceModule.H>
 
 SequenceModule::SequenceModule(DataSeriesModule &head)
 {
