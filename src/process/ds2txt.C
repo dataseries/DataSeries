@@ -81,7 +81,7 @@ main(int argc, char *argv[])
     }
 	    
     AssertAlways(argc >= 2 && strcmp(argv[1],"-h") != 0,
-		 ("Usage: %s [--printSpec=...] [--header=...]\n"
+		 ("Usage: %s [--csv] [--separator=...] [--printSpec=...] [--header=...]\n"
 		  "  [--select '*'|'extent-type' 'field,field,field']\n"
 		  "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 		  "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
