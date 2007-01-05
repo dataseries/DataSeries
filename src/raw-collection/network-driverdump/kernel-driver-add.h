@@ -13,7 +13,7 @@ struct driver_packet_dump_ioctl {
     int npages;
     int bytes_written;
     int file_index;
-    uint64_t copy_packets, copy_bytes, drop_packets, drop_bytes;
+    u_int64_t copy_packets, copy_bytes, drop_packets, drop_bytes;
 };
 
 #ifdef __KERNEL__
