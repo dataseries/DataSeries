@@ -48,6 +48,13 @@ HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
 HPL_WITHLIB_PCAP
 
+AC_ARG_ENABLE(paper,
+  [  --enable-paper    build binaries for the paper -- default NO],
+  [enable_paper=$enableval],
+  [enable_paper=no])
+
+AM_CONDITIONAL(ENABLE_PAPER, test "$enable_paper" = yes)
+
 ## flags
 AC_SYS_LARGEFILE
 
