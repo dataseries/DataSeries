@@ -90,6 +90,8 @@ cmpsrtds_SOURCES = process/cmpsrtds.C
 cmpsrtds_LDADD = @SRT_LIBS@ libDataSeries.la 
 
 CHECK_TARGETS += ran.check-srt2ds
+
+nobase_bpmodules_DATA += BatchParallel/srt2ds.pm
 endif
 
 check_PROGRAMS = test
