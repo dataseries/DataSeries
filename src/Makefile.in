@@ -82,7 +82,7 @@ am_libDataSeries_la_OBJECTS = DataSeriesFile.lo Extent.lo \
 	commonargs.lo DStoTextModule.lo DataSeriesModule.lo \
 	IndexSourceModule.lo MinMaxIndexModule.lo \
 	PrefetchBufferModule.lo RowAnalysisModule.lo SequenceModule.lo \
-	TypeIndexModule.lo
+	TypeIndexModule.lo lzf_c.lo lzf_d.lo
 libDataSeries_la_OBJECTS = $(am_libDataSeries_la_OBJECTS)
 @WITH_PCAP_TRUE@am__EXEEXT_1 = network-driverdump$(EXEEXT)
 @WITH_SRT_TRUE@am__EXEEXT_2 = srt2ds$(EXEEXT) cmpsrtds$(EXEEXT)
@@ -232,7 +232,6 @@ LINTEL_MUSTGCLIBS = @LINTEL_MUSTGCLIBS@
 LINTEL_NOGCLIBS = @LINTEL_NOGCLIBS@
 LN_S = @LN_S@
 LTLIBOBJS = @LTLIBOBJS@
-LZF_LIBS = @LZF_LIBS@
 LZO_LIBS = @LZO_LIBS@
 MAINT = @MAINT@
 MAINTAINER_MODE_FALSE = @MAINTAINER_MODE_FALSE@
@@ -332,7 +331,7 @@ target_vendor = @target_vendor@
 @WITH_BZ2_TRUE@DATASERIES_ENABLE_BZ2 = 1
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm
-AM_CPPFLAGS = -I$(top_srcdir)/include @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config
@@ -353,7 +352,9 @@ libDataSeries_la_SOURCES = \
 	module/PrefetchBufferModule.C \
 	module/RowAnalysisModule.C \
 	module/SequenceModule.C \
-	module/TypeIndexModule.C
+	module/TypeIndexModule.C \
+	liblzf-1.6/lzf_c.c \
+	liblzf-1.6/lzf_d.c 
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -561,6 +562,8 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/indexnfscommon.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ipdsanalysis.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lvpvprocessusage.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lzf_c.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/lzf_d.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pssimple2ds.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sourcebyrange.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srt2ds.Po@am__quote@
@@ -895,6 +898,20 @@ textindex.obj: process/textindex.C
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(LTCOMPILE) -c -o $@ $<
+
+lzf_c.lo: liblzf-1.6/lzf_c.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lzf_c.lo -MD -MP -MF "$(DEPDIR)/lzf_c.Tpo" -c -o lzf_c.lo `test -f 'liblzf-1.6/lzf_c.c' || echo '$(srcdir)/'`liblzf-1.6/lzf_c.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/lzf_c.Tpo" "$(DEPDIR)/lzf_c.Plo"; else rm -f "$(DEPDIR)/lzf_c.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='liblzf-1.6/lzf_c.c' object='lzf_c.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lzf_c.lo `test -f 'liblzf-1.6/lzf_c.c' || echo '$(srcdir)/'`liblzf-1.6/lzf_c.c
+
+lzf_d.lo: liblzf-1.6/lzf_d.c
+@am__fastdepCC_TRUE@	if $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT lzf_d.lo -MD -MP -MF "$(DEPDIR)/lzf_d.Tpo" -c -o lzf_d.lo `test -f 'liblzf-1.6/lzf_d.c' || echo '$(srcdir)/'`liblzf-1.6/lzf_d.c; \
+@am__fastdepCC_TRUE@	then mv -f "$(DEPDIR)/lzf_d.Tpo" "$(DEPDIR)/lzf_d.Plo"; else rm -f "$(DEPDIR)/lzf_d.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	source='liblzf-1.6/lzf_d.c' object='lzf_d.lo' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o lzf_d.lo `test -f 'liblzf-1.6/lzf_d.c' || echo '$(srcdir)/'`liblzf-1.6/lzf_d.c
 
 mostlyclean-libtool:
 	-rm -f *.lo

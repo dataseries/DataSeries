@@ -5,3 +5,6 @@ Header files (*.h, *.H): BSD license
 All other files: LGPL
 
 These licenses are in COPYING.BSD and COPYING.LGPL respectively.
+
+Copyright for src/liblzf-1.6 is found in src/liblzf-1.6/LICENSE, and is 
+  three clause BSD license.

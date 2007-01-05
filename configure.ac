@@ -42,7 +42,7 @@ HPL_WITHLIB_SRT
 
 AC_LANG(C)
 
-HPL_WITHLIB_LZF
+AM_CONDITIONAL(WITH_LZF, true)
 HPL_WITHLIB_LZO
 HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
@@ -92,12 +92,6 @@ if test "$with_pcap" = 'yes'; then
     :
 else
     AC_MSG_WARN([skipping building of libpcap related programs, e.g. driverdump])
-fi
-
-if test "$with_lzf" = 'yes'; then
-    :
-else
-    AC_MSG_WARN(building DataSeries without LZF compression support)
 fi
 
 if test "$with_lzo" = 'yes'; then
