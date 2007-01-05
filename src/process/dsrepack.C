@@ -21,6 +21,7 @@
 #include <DataSeries/GeneralField.H>
 #include <DataSeries/DataSeriesModule.H>
 #include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/PrefetchBufferModule.H>
 
 static const bool debug = true;
 
@@ -97,10 +98,14 @@ main(int argc, char *argv[])
 	}
     }
 
+    DataSeriesModule *from = &source;
+    if (getenv("DISABLE_PREFETCHING") == NULL) {
+	from = new PrefetchBufferModule(source, 64*1024*1024);
+    }
     output.writeExtentLibrary(library);
 
     while(true) {
-	Extent *inextent = source.getExtent();
+	Extent *inextent = from->getExtent();
 	if (inextent == NULL)
 	    break;
 	
