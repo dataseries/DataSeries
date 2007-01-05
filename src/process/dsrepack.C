@@ -13,6 +13,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <boost/format.hpp>
+
 #include <Lintel/StringUtil.H>
 #include <Lintel/AssertBoost.H>
 
@@ -64,6 +66,7 @@ main(int argc, char *argv[])
     DataSeriesSink output(argv[argc-1], packing_args.compress_modes,
 			  packing_args.compress_level);
 
+    uint32_t extent_count = 0;
     for(int i=1;i<(argc-1);++i) {
 	source.addSource(argv[i]);
 
@@ -82,6 +85,7 @@ main(int argc, char *argv[])
 		j->first == "DataSeries: XmlType") {
 		continue;
 	    }
+	    ++extent_count;
 	    ExtentType *tmp = library.getTypeByName(j->first, true);
 	    INVARIANT(tmp == NULL || tmp == j->second,
 		      boost::format("XML types for type '%s' differ between file %s and an earlier file")
@@ -104,6 +108,7 @@ main(int argc, char *argv[])
     }
     output.writeExtentLibrary(library);
 
+    uint32_t extent_num = 0;
     while(true) {
 	Extent *inextent = from->getExtent();
 	if (inextent == NULL)
@@ -113,8 +118,10 @@ main(int argc, char *argv[])
 	    inextent->type->name == "DataSeries: XmlType") {
 	    continue;
 	}
+	++extent_num;
 	if (debug) {
-	    cout << "Processing extent of type " << inextent->type->name
+	    cout << boost::format("Processing extent #%d/%d of type %s")
+		 % extent_num % extent_count % inextent->type->name
 		 << endl;
 	}
 	PerTypeWork *ptw = per_type_work[inextent->type->name];
