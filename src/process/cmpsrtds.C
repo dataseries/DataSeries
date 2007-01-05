@@ -14,8 +14,9 @@
 #include <SRTTraceRaw.H>
 #include <SRTTrace_Filter.H>
 
-#include <DataSeriesFile.H>
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/TypeIndexModule.H>
 
 int
 main(int argc, char *argv[])
@@ -24,19 +25,13 @@ main(int argc, char *argv[])
 
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
-    AssertAlways(argc == 3,
-		 ("Usage: %s in-srt in-ds '- allowed for stdin'\n",
-		  argv[0]));
-    if (strcmp(argv[1],"-")==0) {
-	tracestream = new SRTTraceRaw(fileno(stdin));
-    } else {
-	tracestream = new SRTTraceRaw(argv+1,1);
-    }
+    AssertAlways(argc == 3,("Usage: %s in-srt in-ds\n",argv[0]));
+		  
+    tracestream = new SRTTraceRaw(argv+1,1);
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
 
-    SourceModule srtdsin_source; 
-    srtdsin_source.addSource(argv[2]);
-    FilterModule srtdsin(srtdsin_source,"I/O trace: SRT-V");
+    TypeIndexModule srtdsin("Trace::BlockIO::SRT"); 
+    srtdsin.addSource(argv[2]);
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();

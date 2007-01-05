@@ -5,18 +5,22 @@
 */
 
 
+#define _XOPEN_SOURCE
+#include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <math.h>
+
+#include <Lintel/StringUtil.H>
+
+#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesModule.H>
 
 #include <SRTTrace.H>
 #include <SRTrecord.H>
 #include <SRTTraceRaw.H>
 #include <SRTTrace_Filter.H>
-
-#include <DataSeriesFile.H>
-#include <commonargs.H>
-#include <DataSeriesModule.H>
 
 static const bool delta_enter_kernel = false;
 static const bool scale_offset = false;
@@ -129,8 +133,9 @@ main(int argc, char *argv[])
     AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
 		 tracestream->fail() == false,
 		 ("error, no first record in the srt trace!\n"));
-    double base_time;
+    double base_time, time_offset;
     {
+	time_offset = 0;
 	SRTrecord *_tr = new SRTrecord(raw_tr, 
 				      SRTrawTraceVersion(trace_major, trace_minor));
 	AssertAlways(_tr->type() == SRTrecord::IO,
@@ -139,17 +144,37 @@ main(int argc, char *argv[])
 	base_time = tr->created();
 	if (base_time < 86400) {
 	    base_time = 0;
+#if 0
+	    // At some point want to have auto-inferring of time in this case
+	    const char *header = tracestream->header();
+	    printf("HI %s\n", header);
+
+	    vector<string> lines;
+	    split(header, "\n", lines);
+	    for(vector<string>::iterator i = lines.begin(); 
+		i != lines.end(); ++i) {
+		if (!prefixequal(*i, "tracedate = "))
+		    continue;
+		struct tm tm;
+		tm.tm_yday = -1;
+		printf("Warning, Inferring start time from ");
+		strptime((*i).c_str() + 12, "%a %b %d %H:%M:%S %Y", &tm);
+		AssertAlways(tm.tm_yday != -1, ("bad"));
+		
+	    }
+	    exit(0); // strptime()
+#endif
 	} else {
-	    // set the base time to the start of the day 
+	    // set the base time to the start of the year
 	    time_t curtime = (time_t)round(base_time);
 	    AssertAlways((double)curtime == round(base_time),
 			 ("internal self check failed\n"));
 	    struct tm *gmt = gmtime(&curtime);
-	    curtime -= (60 * gmt->tm_hour + gmt->tm_min) * 60 + gmt->tm_sec;
+	    curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
 	    base_time = curtime;
 	}
     }
-    std::string srttype_xml = "<ExtentType name=\"I/O trace: SRT-V";;
+    std::string srttype_xml = "<ExtentType name=\"Trace::BlockIO::SRT::V";;
     char foo[2];
     foo[0] = (char)('0' + trace_minor);
     foo[1] = '\0';

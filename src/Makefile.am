@@ -79,15 +79,15 @@ endif
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
 
 if WITH_SRT
-bin_PROGRAMS += srt2dataseries cmpsrtds
+bin_PROGRAMS += srt2ds cmpsrtds
 
-srt2dataseries_SOURCES = process/srt2dataseries.C
-srt2dataseries_LDADD = @SRT_LIBS@ libDataSeries.la 
+srt2ds_SOURCES = process/srt2ds.C
+srt2ds_LDADD = @SRT_LIBS@ libDataSeries.la  
 
 cmpsrtds_SOURCES = process/cmpsrtds.C
 cmpsrtds_LDADD = @SRT_LIBS@ libDataSeries.la 
 
-CHECK_TARGETS += ran.check-srt2dataseries
+CHECK_TARGETS += ran.check-srt2ds
 endif
 
 check_PROGRAMS = test
@@ -98,8 +98,8 @@ check-local: $(CHECK_TARGETS)
 # can't do a simple dataseries file compare because we put random data 
 # into the extentseries at the end.
 
-ran.check-srt2dataseries: srt2dataseries cmpsrtds
-	./srt2dataseries $(top_srcdir)/check-data/hourly.03126.srt.bz2 h03126.ds 
+ran.check-srt2ds: srt2ds cmpsrtds
+	./srt2ds $(top_srcdir)/check-data/hourly.03126.srt.bz2 h03126.ds 
 	./cmpsrtds $(top_srcdir)/check-data/hourly.03126.srt.bz2 h03126.ds 
 	./cmpsrtds $(top_srcdir)/check-data/hourly.03126.srt.bz2 $(top_srcdir)/check-data/h03126.ds-littleend 
 	./cmpsrtds $(top_srcdir)/check-data/hourly.03126.srt.bz2 $(top_srcdir)/check-data/h03126.ds-bigend 
