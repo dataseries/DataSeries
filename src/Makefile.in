@@ -58,7 +58,7 @@ bin_PROGRAMS = ds2txt$(EXEEXT) pssimple2ds$(EXEEXT) \
 @WITH_SRT_TRUE@am__append_3 = ran.check-srt2ds
 @WITH_SRT_TRUE@am__append_4 = BatchParallel/srt2ds.pm
 check_PROGRAMS = test$(EXEEXT)
-@ENABLE_PAPER_TRUE@am__append_5 = srtstat
+@ENABLE_PAPER_TRUE@am__append_5 = srtstat srtcsvstat
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/dataseries-config.in
@@ -89,7 +89,7 @@ am_libDataSeries_la_OBJECTS = DataSeriesFile.lo Extent.lo \
 libDataSeries_la_OBJECTS = $(am_libDataSeries_la_OBJECTS)
 @WITH_PCAP_TRUE@am__EXEEXT_1 = network-driverdump$(EXEEXT)
 @WITH_SRT_TRUE@am__EXEEXT_2 = srt2ds$(EXEEXT) cmpsrtds$(EXEEXT)
-@ENABLE_PAPER_TRUE@am__EXEEXT_3 = srtstat$(EXEEXT)
+@ENABLE_PAPER_TRUE@am__EXEEXT_3 = srtstat$(EXEEXT) srtcsvstat$(EXEEXT)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
 am__cmpsrtds_SOURCES_DIST = process/cmpsrtds.C
@@ -143,6 +143,10 @@ am__srt2ds_SOURCES_DIST = process/srt2ds.C
 @WITH_SRT_TRUE@am_srt2ds_OBJECTS = srt2ds.$(OBJEXT)
 srt2ds_OBJECTS = $(am_srt2ds_OBJECTS)
 @WITH_SRT_TRUE@srt2ds_DEPENDENCIES = libDataSeries.la
+am__srtcsvstat_SOURCES_DIST = paper/srtcsvstat.C
+@ENABLE_PAPER_TRUE@am_srtcsvstat_OBJECTS = srtcsvstat.$(OBJEXT)
+srtcsvstat_OBJECTS = $(am_srtcsvstat_OBJECTS)
+srtcsvstat_DEPENDENCIES =
 am__srtstat_SOURCES_DIST = paper/srtstat.C
 @ENABLE_PAPER_TRUE@am_srtstat_OBJECTS = srtstat.$(OBJEXT)
 srtstat_OBJECTS = $(am_srtstat_OBJECTS)
@@ -180,8 +184,8 @@ SOURCES = $(libDataSeries_la_SOURCES) $(cmpsrtds_SOURCES) \
 	$(dsselect_SOURCES) $(dsstatgroupby_SOURCES) \
 	$(indexnfscommon_SOURCES) $(ipdsanalysis_SOURCES) \
 	$(lvpvprocessusage_SOURCES) $(network_driverdump_SOURCES) \
-	$(pssimple2ds_SOURCES) $(srt2ds_SOURCES) $(srtstat_SOURCES) \
-	test.c $(textindex_SOURCES)
+	$(pssimple2ds_SOURCES) $(srt2ds_SOURCES) $(srtcsvstat_SOURCES) \
+	$(srtstat_SOURCES) test.c $(textindex_SOURCES)
 DIST_SOURCES = $(libDataSeries_la_SOURCES) \
 	$(am__cmpsrtds_SOURCES_DIST) $(ds2txt_SOURCES) \
 	$(dsextentindex_SOURCES) $(dsrepack_SOURCES) \
@@ -189,8 +193,8 @@ DIST_SOURCES = $(libDataSeries_la_SOURCES) \
 	$(indexnfscommon_SOURCES) $(ipdsanalysis_SOURCES) \
 	$(lvpvprocessusage_SOURCES) \
 	$(am__network_driverdump_SOURCES_DIST) $(pssimple2ds_SOURCES) \
-	$(am__srt2ds_SOURCES_DIST) $(am__srtstat_SOURCES_DIST) test.c \
-	$(textindex_SOURCES)
+	$(am__srt2ds_SOURCES_DIST) $(am__srtcsvstat_SOURCES_DIST) \
+	$(am__srtstat_SOURCES_DIST) test.c $(textindex_SOURCES)
 nobase_bpmodulesDATA_INSTALL = $(install_sh_DATA)
 DATA = $(nobase_bpmodules_DATA)
 ETAGS = etags
@@ -397,6 +401,8 @@ CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 test_LDADD = libDataSeries.la -lssl -lcrypto
 @ENABLE_PAPER_TRUE@srtstat_SOURCES = paper/srtstat.C
 @ENABLE_PAPER_TRUE@srtstat_LDADD = libDataSeries.la
+@ENABLE_PAPER_TRUE@srtcsvstat_SOURCES = paper/srtcsvstat.C
+@ENABLE_PAPER_TRUE@srtcsvstat_LDADD = @LINTEL_LIBTOOL@
 all: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) all-am
 
@@ -533,6 +539,9 @@ pssimple2ds$(EXEEXT): $(pssimple2ds_OBJECTS) $(pssimple2ds_DEPENDENCIES)
 srt2ds$(EXEEXT): $(srt2ds_OBJECTS) $(srt2ds_DEPENDENCIES) 
 	@rm -f srt2ds$(EXEEXT)
 	$(CXXLINK) $(srt2ds_LDFLAGS) $(srt2ds_OBJECTS) $(srt2ds_LDADD) $(LIBS)
+srtcsvstat$(EXEEXT): $(srtcsvstat_OBJECTS) $(srtcsvstat_DEPENDENCIES) 
+	@rm -f srtcsvstat$(EXEEXT)
+	$(CXXLINK) $(srtcsvstat_LDFLAGS) $(srtcsvstat_OBJECTS) $(srtcsvstat_LDADD) $(LIBS)
 srtstat$(EXEEXT): $(srtstat_OBJECTS) $(srtstat_DEPENDENCIES) 
 	@rm -f srtstat$(EXEEXT)
 	$(CXXLINK) $(srtstat_LDFLAGS) $(srtstat_OBJECTS) $(srtstat_LDADD) $(LIBS)
@@ -600,6 +609,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pssimple2ds.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sourcebyrange.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srt2ds.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srtcsvstat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srtstat.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/textindex.Po@am__quote@
@@ -918,6 +928,20 @@ srt2ds.obj: process/srt2ds.C
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='process/srt2ds.C' object='srt2ds.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o srt2ds.obj `if test -f 'process/srt2ds.C'; then $(CYGPATH_W) 'process/srt2ds.C'; else $(CYGPATH_W) '$(srcdir)/process/srt2ds.C'; fi`
+
+srtcsvstat.o: paper/srtcsvstat.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT srtcsvstat.o -MD -MP -MF "$(DEPDIR)/srtcsvstat.Tpo" -c -o srtcsvstat.o `test -f 'paper/srtcsvstat.C' || echo '$(srcdir)/'`paper/srtcsvstat.C; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/srtcsvstat.Tpo" "$(DEPDIR)/srtcsvstat.Po"; else rm -f "$(DEPDIR)/srtcsvstat.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='paper/srtcsvstat.C' object='srtcsvstat.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o srtcsvstat.o `test -f 'paper/srtcsvstat.C' || echo '$(srcdir)/'`paper/srtcsvstat.C
+
+srtcsvstat.obj: paper/srtcsvstat.C
+@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT srtcsvstat.obj -MD -MP -MF "$(DEPDIR)/srtcsvstat.Tpo" -c -o srtcsvstat.obj `if test -f 'paper/srtcsvstat.C'; then $(CYGPATH_W) 'paper/srtcsvstat.C'; else $(CYGPATH_W) '$(srcdir)/paper/srtcsvstat.C'; fi`; \
+@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/srtcsvstat.Tpo" "$(DEPDIR)/srtcsvstat.Po"; else rm -f "$(DEPDIR)/srtcsvstat.Tpo"; exit 1; fi
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='paper/srtcsvstat.C' object='srtcsvstat.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o srtcsvstat.obj `if test -f 'paper/srtcsvstat.C'; then $(CYGPATH_W) 'paper/srtcsvstat.C'; else $(CYGPATH_W) '$(srcdir)/paper/srtcsvstat.C'; fi`
 
 srtstat.o: paper/srtstat.C
 @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT srtstat.o -MD -MP -MF "$(DEPDIR)/srtstat.Tpo" -c -o srtstat.o `test -f 'paper/srtstat.C' || echo '$(srcdir)/'`paper/srtstat.C; \

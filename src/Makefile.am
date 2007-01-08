@@ -150,8 +150,11 @@ ran.check-dsselect: dsselect ds2txt
 	cmp dsselect.test.1.ref dsselect.test.1.txt
 
 if ENABLE_PAPER
-bin_PROGRAMS += srtstat
+bin_PROGRAMS += srtstat srtcsvstat
 
 srtstat_SOURCES = paper/srtstat.C
 srtstat_LDADD = libDataSeries.la
+
+srtcsvstat_SOURCES = paper/srtcsvstat.C
+srtcsvstat_LDADD = @LINTEL_LIBTOOL@
 endif
