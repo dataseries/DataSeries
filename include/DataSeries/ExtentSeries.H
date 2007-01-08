@@ -117,11 +117,7 @@ public:
 
 	int currecnum() {
 	    int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
-	    AssertAlways(cur_extent != NULL && 
-			 cur_pos >= cur_extent->fixeddata.begin() &&
-			 cur_pos <= cur_extent->fixeddata.end() &&
-			 recnum * recordsize == (cur_pos - cur_extent->fixeddata.begin()),
-			 ("bad new position\n"));
+	    checkOffset(cur_pos - cur_extent->fixeddata.begin());
 	    return recnum;
 	}
 	// You need to call update on any of your iterators after you
@@ -145,13 +141,12 @@ public:
 	bool morerecords() {
 	    return cur_pos < cur_extent->fixeddata.end();
 	}
-	void checkOffset(int offset) {
-	    AssertAlways(cur_pos + offset >= cur_extent->fixeddata.begin() &&
-			 cur_pos + offset < cur_extent->fixeddata.end(),
-			 ("internal error, %p + %d = %p not in [%p..%p]\n",
-			  cur_pos,offset,cur_pos+offset,cur_extent->fixeddata.begin(),
-			  cur_extent->fixeddata.end()));
+	void checkOffset(long offset) {
+#ifdef COMPILE_DEBUG
+	    forceCheckOffset(offset);
+#endif
 	}
+	void forceCheckOffset(long offset);
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;

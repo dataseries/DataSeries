@@ -86,3 +86,15 @@ ExtentSeries::addField(Field &field)
     }
     my_fields.push_back(&field);
 }
+
+void
+ExtentSeries::iterator::forceCheckOffset(long offset)
+{
+    AssertAlways(cur_extent != NULL, 
+		 ("internal error, current extent is NULL"));
+    AssertAlways(cur_pos + offset >= cur_extent->fixeddata.begin() &&
+		 cur_pos + offset < cur_extent->fixeddata.end(),
+		 ("internal error, %p + %d = %p not in [%p..%p]\n",
+		  cur_pos,offset,cur_pos+offset,cur_extent->fixeddata.begin(),
+		  cur_extent->fixeddata.end()));
+}

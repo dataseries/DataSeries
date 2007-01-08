@@ -516,7 +516,7 @@ main(int argc, char *argv[])
     PrefetchBufferModule *ipprefetch = 
 	new PrefetchBufferModule(*ipsource,32*1024*1024);
     
-    SequenceModule ipSequence(*ipprefetch);
+    SequenceModule ipSequence(ipprefetch);
     if (options[optIPUsage]) {
 	ipSequence.addModule(new IPUsage(ipSequence.tail(),
 					 ippair_interval));

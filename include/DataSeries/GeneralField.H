@@ -16,6 +16,8 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h> 
 
+#include <Lintel/HashMap.H>
+
 #include <DataSeries/ExtentSeries.H>
 #include <DataSeries/ExtentField.H>
 
@@ -37,15 +39,26 @@ class GeneralField;
 
 class GeneralValue {
 public:
-    GeneralValue();
+    GeneralValue()
+	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    { }
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
 	if (gvtype == ExtentType::ft_variable32) {
-	    v_variable32 = v.v_variable32;
+	    v_variable32 = new std::string(*v.v_variable32);
+	} else {
+	    v_variable32 = NULL;
 	}
     }
-    GeneralValue(const GeneralField &from);
-    GeneralValue(const GeneralField *from);
+    GeneralValue(const GeneralField &from)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    { set(from); }
+
+    GeneralValue(const GeneralField *from)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    { set(from); }
+
+    ~GeneralValue() { delete v_variable32; }
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) { set(*from); }
@@ -70,8 +83,12 @@ public:
     bool strictlylessthan(const GeneralValue &gv) const; 
     /** return this == gv */
     bool equal(const GeneralValue &gv) const;
-    /** using FILE * rather than std::ostream as std::ostream is much slower */
+
+    /** allowing FILE * rather than std::ostream as std::ostream is
+	much slower */
     void write(FILE *to);
+
+    std::ostream &write(std::ostream &to) const;
 
     GeneralValue &operator =(const GeneralValue &from) {
 	set(from);
@@ -83,11 +100,29 @@ public:
     }
     ExtentType::fieldType getType() { return gvtype; }
     /** add this value into the hash */
-    unsigned incrementalHash(unsigned hash) {
-	AssertFatal(("unimplemented"));
-	return 0;
+    u_int32_t hash() const {
+	switch(gvtype) 
+	    {
+	    case ExtentType::ft_unknown: return 0;
+	    case ExtentType::ft_bool: 
+		return gvval.v_bool;
+	    case ExtentType::ft_byte: 
+		return gvval.v_byte;
+	    case ExtentType::ft_int32: 
+		return static_cast<u_int32_t>(gvval.v_int32);
+	    case ExtentType::ft_int64: 
+		return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	    case ExtentType::ft_double: 
+		return BobJenkinsHashMixULL(*reinterpret_cast<const u_int64_t *>(&gvval.v_double));
+	    case ExtentType::ft_variable32: 
+		return HashTable_hashbytes(v_variable32->data(),
+					   v_variable32->size());
+		break;
+	    default: AssertFatal(("internal")); break;
+	    }
     }
 
+    double asDouble();
 protected:
     // let all of the general field classes get at our value/type
     friend class GF_Bool;
@@ -104,7 +139,7 @@ protected:
 	ExtentType::int64 v_int64;
 	double v_double;
     } gvval;
-    std::string v_variable32; // only valid if gvtype = ft_variable32
+    std::string *v_variable32; // only valid if gvtype = ft_variable32
 };
 
 inline bool operator < (const GeneralValue &a, const GeneralValue &b) {
@@ -131,6 +166,17 @@ inline bool operator >= (const GeneralValue &a, const GeneralValue &b) {
     return a > b || a == b;
 }
 
+inline std::ostream & operator << (std::ostream &to, const GeneralValue &a) {
+    return a.write(to);
+}
+
+template <>
+struct HashMap_hash<const GeneralValue> {
+    unsigned operator()(const GeneralValue &a) const {
+	return a.hash();
+    }
+};
+
 class GeneralField {
 public:
     // see comment in DStoTextModule.H for why we have both
@@ -156,8 +202,11 @@ public:
 	set(&from);
     }
     const ExtentType::fieldType getType() { return gftype; }
+
     void enableCSV();
 
+    GeneralValue val() { return GeneralValue(this); }
+    virtual double valDouble() = 0;
 protected:
 
     ExtentType::fieldType gftype;
@@ -179,6 +228,7 @@ public:
     virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+    virtual double valDouble();
     bool val() { return myfield.val(); }
     BoolField myfield;
     std::string s_true, s_false;  
@@ -197,6 +247,7 @@ public:
     virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+    virtual double valDouble();
     ExtentType::byte val() { return myfield.val(); }
     char *printspec;
     ByteField myfield;
@@ -211,6 +262,7 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     virtual bool isNull();
+    virtual double valDouble();
     ExtentType::int32 val() { return myfield.val(); }
     char *printspec;
     ExtentType::int32 divisor;
@@ -226,6 +278,7 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     virtual bool isNull();
+    virtual double valDouble();
     ExtentType::int64 val() { return myfield.val(); }
     char *printspec;
     ExtentType::int64 divisor;
@@ -241,6 +294,7 @@ public:
     virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+    virtual double valDouble();
     double val() { return myfield.val(); }
 
     DoubleField myfield;
@@ -265,6 +319,7 @@ public:
     void clear() {
 	myfield.clear();
     }
+    virtual double valDouble();
     char *printspec;
     printstyle_t printstyle;
     Variable32Field myfield;

@@ -14,11 +14,16 @@
 
 RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
 				     ExtentSeries::typeCompatibilityT _tc)
-    : series(_tc), source(_source)
+    : series(_tc), source(_source), prepared(false)
 {
 }
 
 RowAnalysisModule::~RowAnalysisModule()
+{
+}
+
+void
+RowAnalysisModule::prepareForProcessing()
 {
 }
 
@@ -30,7 +35,12 @@ RowAnalysisModule::getExtent()
 	completeProcessing();
 	return NULL;
     }
-    for(series.setExtent(e);series.pos.morerecords();++series.pos) {
+    series.setExtent(e);
+    if (!prepared) {
+	prepareForProcessing();
+	prepared = true;
+    }
+    for(;series.pos.morerecords();++series.pos) {
 	processRow();
     }
     return e;

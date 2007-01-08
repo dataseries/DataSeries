@@ -11,6 +11,8 @@
 
 #include <algorithm>
 
+#include <boost/format.hpp>
+
 #include <Lintel/StringUtil.H>
 
 #include <DataSeries/GeneralField.H>
@@ -18,23 +20,6 @@
 #else
 using namespace std;
 #endif
-
-GeneralValue::GeneralValue()
-    : gvtype(ExtentType::ft_unknown)
-{
-}
-
-GeneralValue::GeneralValue(const GeneralField &from)
-    : gvtype(ExtentType::ft_unknown)
-{
-    set(from);
-}
-
-GeneralValue::GeneralValue(const GeneralField *from)
-    : gvtype(ExtentType::ft_unknown)
-{
-    set(*from);
-}
 
 void
 GeneralValue::set(const GeneralField &from)
@@ -56,9 +41,12 @@ GeneralValue::set(const GeneralField &from)
 	    gvval.v_int64 = ((GF_Int64 *)&from)->val(); break;
 	case ExtentType::ft_double: 
 	    gvval.v_double = ((GF_Double *)&from)->val(); break;
-	case ExtentType::ft_variable32: 
-	    v_variable32 = ((GF_Variable32 *)&from)->myfield.stringval(); 
+	case ExtentType::ft_variable32: {
+	    if (NULL == v_variable32) v_variable32 = new string;
+	    const GF_Variable32 *tmp = reinterpret_cast<const GF_Variable32 *>(&from);
+	    *v_variable32 = tmp->myfield.stringval(); 
 	    break;
+	}
 	default: AssertFatal(("internal error")); break;
 	}
 }
@@ -84,7 +72,8 @@ GeneralValue::set(const GeneralValue &from)
 	case ExtentType::ft_double: 
 	    gvval.v_double = from.gvval.v_double;
 	case ExtentType::ft_variable32: 
-	    v_variable32 = from.v_variable32;
+	    if (NULL == v_variable32) v_variable32 = new string;
+	    *v_variable32 = *from.v_variable32;
 	    break;
 	default: AssertFatal(("internal error")); break;
 	}
@@ -107,7 +96,8 @@ GeneralValue::setVariable32(const string &from)
 		 gvtype == ExtentType::ft_variable32,
 		 ("invalid to change type of generalvalue\n"));
     gvtype = ExtentType::ft_variable32;
-    v_variable32 = from;
+    if (NULL == v_variable32) v_variable32 = new string;
+    *v_variable32 = from;
 }
 
 bool 
@@ -129,12 +119,12 @@ GeneralValue::strictlylessthan(const GeneralValue &gv) const
 	case ExtentType::ft_double:
 	    return gvval.v_double < gv.gvval.v_double;
 	case ExtentType::ft_variable32: {
-	    int diff = memcmp(v_variable32.data(),gv.v_variable32.data(),
-			      min(v_variable32.size(),gv.v_variable32.size()));
+	    int diff = memcmp(v_variable32->data(),gv.v_variable32->data(),
+			      min(v_variable32->size(),gv.v_variable32->size()));
 	    if (diff != 0) {
 		return diff < 0;
 	    } else {
-		return v_variable32.size() < gv.v_variable32.size();
+		return v_variable32->size() < gv.v_variable32->size();
 	    }
 	}
 	default:
@@ -163,9 +153,9 @@ GeneralValue::equal(const GeneralValue &gv) const
 	case ExtentType::ft_double:
 	    return gvval.v_double == gv.gvval.v_double;
 	case ExtentType::ft_variable32: {
-	    if (v_variable32.size() == gv.v_variable32.size()) {
-		return memcmp(v_variable32.data(),gv.v_variable32.data(),
-			      v_variable32.size()) == 0;
+	    if (v_variable32->size() == gv.v_variable32->size()) {
+		return memcmp(v_variable32->data(),gv.v_variable32->data(),
+			      v_variable32->size()) == 0;
 	    } else {
 		return false;
 	    }
@@ -201,13 +191,78 @@ GeneralValue::write(FILE *to)
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_variable32: {
-	    fprintf(to,"%s",maybehexstring(v_variable32).c_str());
+	    fprintf(to,"%s",maybehexstring(*v_variable32).c_str());
 	    break;
 	}
 	default:
 	    AssertFatal(("internal error"));
 	}
     
+}
+
+ostream &
+GeneralValue::write(ostream &to) const
+{
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    to << "*unknown-type*";
+	    break;
+	case ExtentType::ft_bool:
+	    to << (gvval.v_bool ? "true" : "false");
+	    break;
+	case ExtentType::ft_byte:
+	    to << boost::format("%d") % (unsigned char)gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    to << boost::format("%d") % gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    to << boost::format("%lld") % gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    to << boost::format("%.12g") % gvval.v_double;
+	    break;
+	case ExtentType::ft_variable32: {
+	    to << maybehexstring(*v_variable32);
+	    break;
+	}
+	default:
+	    AssertFatal(("internal error"));
+	}
+    return to;
+}
+
+double
+GeneralValue::asDouble()
+{
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    AssertFatal(("value undefined, can't run toDouble()"));
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return gvval.v_double;
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToDouble(*v_variable32);
+	    break;
+	}
+	default:
+	    AssertFatal(("internal error"));
+	}
 }
 
 
@@ -321,6 +376,13 @@ GF_Bool::set(const GeneralValue *from)
     myfield.set(from->gvval.v_bool);
 }
 
+double
+GF_Bool::valDouble()
+{
+    return myfield.val() ? 1 : 0;
+}
+
+
 GF_Byte::GF_Byte(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
     : GeneralField(ExtentType::ft_byte), myfield(series,column,Field::flag_nullable)
 {
@@ -405,6 +467,11 @@ GF_Byte::set(const GeneralValue *from)
     myfield.set(from->gvval.v_byte);
 }
 
+double
+GF_Byte::valDouble()
+{
+    return static_cast<double>(myfield.val());
+}
 
 GF_Int32::GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
     : GeneralField(ExtentType::ft_int32), myfield(series,column,Field::flag_nullable)
@@ -495,6 +562,12 @@ GF_Int32::set(const GeneralValue *from)
     myfield.set(from->gvval.v_int32);
 }
 
+
+double
+GF_Int32::valDouble()
+{
+    return static_cast<double>(myfield.val());
+}
 
 #ifdef __hpux
 #include <inttypes.h>
@@ -596,6 +669,11 @@ GF_Int64::set(const GeneralValue *from)
     myfield.set(from->gvval.v_int64);
 }
 
+double
+GF_Int64::valDouble()
+{
+    return static_cast<double>(myfield.val());
+}
 
 GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
     : GeneralField(ExtentType::ft_double), myfield(series,column,DoubleField::flag_nullable | DoubleField::flag_allownonzerobase)
@@ -716,6 +794,12 @@ GF_Double::set(const GeneralValue *from)
     AssertAlways(from->gvtype == ExtentType::ft_double,
 		 ("can't set GF_Double from non-double general value"));
     myfield.set(from->gvval.v_double);
+}
+
+double
+GF_Double::valDouble()
+{
+    return myfield.val();
 }
 
 GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
@@ -878,7 +962,13 @@ GF_Variable32::set(const GeneralValue *from)
 {
     AssertAlways(from->gvtype == ExtentType::ft_variable32,
 		 ("can't set GF_Variable32 from non-variable32 general value"));
-    myfield.set(from->v_variable32);
+    myfield.set(*from->v_variable32);
+}
+
+double
+GF_Variable32::valDouble()
+{
+    return stringToDouble(myfield.stringval());
 }
 
 GeneralField::~GeneralField() 

@@ -35,6 +35,11 @@ public:
     
     virtual Extent *getExtent();
 
+    /** this function will be called once after the first extent has been
+	retrieved, but before processRow() has been called; it will not 
+	be called if there were no extents to process */
+    virtual void prepareForProcessing();
+
     /** this function will get called to process each row. */
     virtual void processRow() = 0;
 
@@ -56,6 +61,7 @@ public:
 protected:
     ExtentSeries series;
     DataSeriesModule &source;
+    bool prepared;
 };
 
 #endif

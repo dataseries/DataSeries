@@ -19,7 +19,6 @@
 class SequenceModule : public DataSeriesModule {
 public:
     // head should be dynaically allocated
-    SequenceModule(DataSeriesModule &head);
     SequenceModule(DataSeriesModule *head);
     virtual ~SequenceModule();
 

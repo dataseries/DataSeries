@@ -49,6 +49,7 @@ libDataSeries_la_SOURCES = \
 	base/ExtentType.C \
 	base/GeneralField.C \
 	process/commonargs.C \
+	module/DSStatGroupBy.C \
 	module/DStoTextModule.C \
 	module/DataSeriesModule.C \
 	module/IndexSourceModule.C \
@@ -57,10 +58,14 @@ libDataSeries_la_SOURCES = \
 	module/RowAnalysisModule.C \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C \
+	lex.DSStatGroupBy_yy.c \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex ipdsanalysis indexnfscommon dsselect dsrepack
+BUILT_SOURCES = lex.DSStatGroupBy_yy.c
+
+bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
+	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -72,6 +77,7 @@ ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/
 indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
+dsstatgroupby_SOURCES = process/dsstatgroupby.C
 
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump
@@ -93,6 +99,9 @@ CHECK_TARGETS += ran.check-srt2ds
 
 nobase_bpmodules_DATA += BatchParallel/srt2ds.pm
 endif
+
+lex.DSStatGroupBy_yy.c: module/DSStatGroupByLex.l
+	flex $(top_srcdir)/src/module/DSStatGroupByLex.l
 
 check_PROGRAMS = test
 test_LDADD =  libDataSeries.la -lssl -lcrypto

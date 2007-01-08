@@ -13,6 +13,7 @@
 #define __EXTENT_FIELD_H
 
 #include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/AssertBoost.H>
 
 #include <DataSeries/ExtentSeries.H>
 #include <DataSeries/Extent.H>
@@ -33,8 +34,9 @@ public:
     // need to have these defined in here because we can't use a
     // boolField as the field may come and go as the extent changes,
     // but this should be supported as a legal change to the type.
-    bool isNull() {
-	AssertAlways(dataseries.extent() != NULL,("internal error; extent not set\n"));
+    bool isNull() const {
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	if (nullable) {
 	    dataseries.pos.checkOffset(null_offset);
 	    return (*(dataseries.pos.record_start() + null_offset) & null_bit_mask) ? true : false;
@@ -43,7 +45,8 @@ public:
 	}
     }
     void setNull(bool val = true) {
-	AssertAlways(dataseries.extent() != NULL,("internal error; extent not set\n"));
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	if (nullable) {
 	    dataseries.pos.checkOffset(null_offset);
 	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
@@ -53,13 +56,15 @@ public:
 		*v = (ExtentType::byte)(*v & ~null_bit_mask);
 	    }
 	} else {
-	    AssertAlways(val == false,("tried to set a non-nullable field to null?!\n"));
+	    INVARIANT(val == false,
+		      "tried to set a non-nullable field to null?!\n");
 	}
     }
 	    
 protected:
     bool nullable;
-    int null_offset, null_bit_mask;
+    long null_offset;
+    int null_bit_mask;
     virtual void newExtentType();
     friend class ExtentSeries;
     ExtentSeries &dataseries;
@@ -76,7 +81,8 @@ protected:
 	       ExtentType::fieldType ft, int flags);
 
     byte *rawval() {
-	AssertAlways(dataseries.extent() != NULL,("internal error; extent not set\n"));
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	dataseries.pos.checkOffset(offset);
 	return dataseries.pos.record_start() + offset;
     }
@@ -240,14 +246,14 @@ public:
     Variable32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
 		    const std::string &default_value = empty_string);
 
-    const byte *val() {
+    const byte *val() const {
 	if (isNull()) {
 	    return (const byte *)default_value.c_str();
 	} else {
 	    return val(dataseries.extent()->variabledata,getVarOffset());
 	}
     }
-    const int32 size() {
+    const int32 size() const {
 	if (isNull()) {
 	    return default_value.size();
 	} else {
@@ -255,7 +261,7 @@ public:
 	    return size(dataseries.extent()->variabledata,getVarOffset());
 	}
     }
-    std::string stringval() {
+    std::string stringval() const {
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -277,8 +283,8 @@ public:
 	set(from.val(),from.size());
     }
     void clear() {
-	AssertAlways(dataseries.extent() != NULL,
-		     ("internal error; extent not set\n"));
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	dataseries.pos.checkOffset(offset_pos);
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = 0;
     }
@@ -303,9 +309,9 @@ protected:
     static int32 getVarOffset(byte *record, int offset) {
 	return *(int32 *)(record + offset);
     }
-    int32 getVarOffset() {
-	AssertAlways(dataseries.extent() != NULL,
-		     ("internal error; extent not set\n"));
+    int32 getVarOffset() const {
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	dataseries.pos.checkOffset(offset_pos);
 	int32 varoffset = getVarOffset(dataseries.pos.record_start(),
 				       offset_pos);
@@ -314,15 +320,15 @@ protected:
 #endif
 	return varoffset;
     }
-    void selfcheck() {
-	AssertAlways(dataseries.extent() != NULL,
-		     ("internal error; extent not set\n"));
+    void selfcheck() const {
+	DEBUG_INVARIANT(dataseries.extent() != NULL,
+			"internal error; extent not set\n");
 	dataseries.pos.checkOffset(offset_pos);
 	int32 varoffset = getVarOffset(dataseries.pos.record_start(),
 				       offset_pos);
 	selfcheck(varoffset);
     }
-    void selfcheck(int32 varoffset) {
+    void selfcheck(int32 varoffset) const {
 	selfcheck(dataseries.extent()->variabledata,varoffset);
     }
     static void selfcheck(Extent::ByteArray &varbytes, int32 varoffset);

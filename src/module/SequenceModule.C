@@ -7,11 +7,6 @@
 
 #include <DataSeries/SequenceModule.H>
 
-SequenceModule::SequenceModule(DataSeriesModule &head)
-{
-    modules.push_back(&head);
-}
-
 SequenceModule::SequenceModule(DataSeriesModule *head)
 {
     AssertAlways(head != NULL,("invalid argument"));

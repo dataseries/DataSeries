@@ -149,4 +149,5 @@ main(int argc, char *argv[])
     printf("wait fraction :  %8.2f\n",
 	   source.waitFraction());
     
+    return 0;
 }
