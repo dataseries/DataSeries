@@ -161,7 +161,7 @@ public:
     static bool packLZF(byte *input, int32 inputsize,
 			Extent::ByteArray &into, int compression_level);
 
-    static uint32_t flip4bytes(uint32 v) {
+    static inline uint32_t flip4bytes(uint32 v) {
 #if defined(bswap_32)
 	return bswap_32(v);
 #else
