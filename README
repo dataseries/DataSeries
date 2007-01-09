@@ -7,3 +7,15 @@ AGREEMENTS DETAILED IN THE COPYING FILE.  If you do not agree to any of
 these terms, you must delete this software, and any copies you may have 
 made of it.
 
+COMPILATION:
+
+1) You need to build and install Lintel.
+
+2) If you have a checked out a copy of DataSeries, then you need to run
+lintel-acinclude && autoreconf --install; this will require that you have
+install autoconf and libtool.
+
+3) configure the package, e.g. in ~/build/optimize:
+   ../DataSeries/configure --enable-optmode=optimize
+
+4) make && make check && make install

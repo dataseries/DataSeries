@@ -950,6 +950,6 @@ void
 Extent::run_flip4bytes(uint32_t *buf, int buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
-	Extent::flip4bytes((ExtentType::byte *)(buf+i));
+	buf[i] = Extent::flip4bytes(buf[i]);
     }
 }
