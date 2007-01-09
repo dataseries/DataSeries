@@ -635,8 +635,19 @@ test_byteflip()
     }
     double bestmean = runtimes[bestidx].mean();
     double bestconf95 = runtimes[bestidx].conf95();
+    // 0.005 means that if bestmean and flip4mean are within 1% of
+    // each other, that will be considered acceptable.  Got a run
+    // where the times differered by 6ms (~.1%), but had been stable
+    // enough that the confidence intervals were too small to generate
+    // an overlap.
+    if (bestconf95 < bestmean * 0.005) {
+	bestconf95 = bestmean * 0.005;
+    }
     double flip4mean = flip4_time.mean();
     double flip4conf95 = flip4_time.conf95();
+    if (flip4conf95 < flip4mean * 0.005) {
+	flip4conf95 = flip4mean * 0.005;
+    }
     AssertAlways(range_overlap(flip4mean - flip4conf95, flip4mean + flip4conf95,
 			       bestmean - bestconf95, bestmean + bestconf95),
 		 ("Error, flip4_time (%.6g +- %.6g) does not overlap with best time (%.6g +- %.6g); something is weird",
