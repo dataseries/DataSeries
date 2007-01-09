@@ -22,7 +22,7 @@
 #include <DataSeriesModule.H>
 #include <TypeIndexModule.H>
 
-static const bool debug = true;
+static const bool debug = false;
 
 using namespace std;
 
@@ -130,6 +130,20 @@ main(int argc, char *argv[])
 	i->second->output_module->flushExtent();
     }
 
+    printf("decode_time:%.6g expanded:%lld\n", source.decode_time, source.total_uncompressed_bytes);
+    printf("records:0 extents:%d bytes:%lld compressed:%lld seconds:%.6g\n",
+	   output.extents, output.unpacked_size, output.packed_size,output.pack_time);
+    printf("  compression_ratio:%.4gx fixed_data:%lld variable_data:%lld\n",
+	   (double)output.unpacked_size / (double)output.packed_size,
+	   output.unpacked_fixed, output.unpacked_variable);
+    printf("  extents-part-compression: ");
+    /*
+    if (output.compress_none > 0) printf("%d none, ",output.compress_none);
+    if (output.compress_lzo > 0) printf("%d lzo, ",output.compress_lzo);
+    if (output.compress_gzip > 0) printf("%d gzip, ",output.compress_gzip);
+    if (output.compress_bz2 > 0) printf("%d bz2, ",output.compress_bz2);
+    printf("\n  packed in %.6gs\n",output.pack_time);
+    */
     return 0;
 }
 
