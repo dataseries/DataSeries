@@ -148,6 +148,8 @@ ran.check-dsselect: dsselect ds2txt
 	gunzip < $(top_srcdir)/check-data/dsselect.test.1.gz >dsselect.test.1.ref
 	./ds2txt --skip-index dsselect.test.1 >dsselect.test.1.txt
 	cmp dsselect.test.1.ref dsselect.test.1.txt
+	touch $@
+
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtcsvstat

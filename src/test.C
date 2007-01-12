@@ -18,13 +18,14 @@
 #if DATASERIES_ENABLE_LZO
 #include <lzoconf.h>
 #endif
-#include <HashTable.H>
-#include <MersenneTwisterRandom.H>
-#include <Clock.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/Clock.H>
+#include <Lintel/Stats.H>
 
-#include <Extent.H>
-#include <ExtentField.H>
-#include <DataSeriesModule.H>
+#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentField.H>
+#include <DataSeries/DataSeriesModule.H>
 
 #ifndef HPUX_ACC
 using namespace std;
@@ -540,8 +541,13 @@ void doit_bswap_32(uint32_t *buf, int buflen)
 void
 onebytefliptest(uint32_t *buf, int buflen, int reps,
 		void (*fn)(uint32_t *, int), const string &fnname,
-		uint32_t &expected_sum, double &best_time, bool first_run = false)
+		uint32_t &expected_sum, Stats &timing, Stats &flip4_time, bool first_run = false)
 {
+    if (timing.count() > 1 && timing.mean() > (flip4_time.mean() + flip4_time.conf95())) {
+	printf("   skipping %s, mean time %.6g > flip4+conf95 %.6g + %.6g\n",
+	       fnname.c_str(), timing.mean(), flip4_time.mean(), flip4_time.conf95());
+	return;
+    }
     uint32_t sum = 0;
     struct rusage test_start, test_end;
     getrusage(RUSAGE_SELF,&test_start);
@@ -556,20 +562,31 @@ onebytefliptest(uint32_t *buf, int buflen, int reps,
     double elapsed = (test_end.ru_utime.tv_sec - test_start.ru_utime.tv_sec) + (test_end.ru_utime.tv_usec - test_start.ru_utime.tv_usec)/1.0e6;
     if (first_run) {
 	expected_sum = sum;
-	best_time = elapsed;
     } 
     AssertAlways(sum == expected_sum, ("bad %s byteswap? %d != %d", fnname.c_str(), sum, expected_sum));
-    best_time = min(elapsed, best_time);
-    printf("   via %s: sum %d in %.6g seconds\n",fnname.c_str(), sum, elapsed);
+    timing.add(elapsed);
+    printf("   via %s: sum %d in %.6g seconds; mean %.6gs +- %.6gs\n",fnname.c_str(), sum, elapsed, timing.mean(), timing.stddev());
+}
+
+bool in_range(double point, double min, double max)
+{
+    return point >= min && point <= max;
+}
+
+bool range_overlap(double a_min, double a_max, double b_min, double b_max)
+{
+    return in_range(a_min, b_min, b_max) || in_range(a_max, b_min, b_max) ||
+	in_range(b_min, a_min, a_max) || in_range(b_max, a_min, a_max);
 }
 
 
 void
 test_byteflip()
 {
-    static const int rounds = 3;
-    static const int reps = 5 * 1000;
-    static const int bufsize = 100000;
+    static const int rounds = 5;
+    // reps + bufsize takes ~1 second for each test on a 2.8GhZ p4 Xeon
+    static const int reps = 2 * 100;
+    static const int bufsize = 1000000;
 
     uint32_t buf[bufsize];
 
@@ -577,30 +594,31 @@ test_byteflip()
 	buf[i] = MTRandom.randInt();
     }
 
-    double flip4_time;
+    Stats flip4_time;
     uint32_t flip4_sum;
     printf("Initial execution:\n");
-    onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, true);
+    onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, flip4_time, true);
 
-    double best_time = flip4_time * 10;
+    const int max_runtimes = 10;
+    Stats runtimes[max_runtimes];
     uint32_t expected_sum = flip4_sum;
 
     for(unsigned i = 0; i < rounds; ++i) {
 	printf("\nRound %d:\n", i);
-	onebytefliptest(buf, bufsize, reps, doit_charflip, "character flip", expected_sum, best_time);
-	onebytefliptest(buf, bufsize, reps, doit_intshift1, "integer shift 1", expected_sum, best_time);
-	onebytefliptest(buf, bufsize, reps, doit_intshift2, "integer shift 2", expected_sum, best_time);
-	onebytefliptest(buf, bufsize, reps, doit_intshift3, "integer shift 3", expected_sum, best_time);
-	onebytefliptest(buf, bufsize, reps, doit_intshift4, "integer shift 4", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_charflip, "character flip", expected_sum, runtimes[0], flip4_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift1, "integer shift 1", expected_sum, runtimes[1], flip4_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift2, "integer shift 2", expected_sum, runtimes[2], flip4_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift3, "integer shift 3", expected_sum, runtimes[3], flip4_time);
+	onebytefliptest(buf, bufsize, reps, doit_intshift4, "integer shift 4", expected_sum, runtimes[4], flip4_time);
 
 #if __GNUC__ >= 2 && (defined(__i386__) || defined(__x86_64__))
-	onebytefliptest(buf, bufsize, reps, doit_bswap_i486, "bswap_i486", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_bswap_i486, "bswap_i486", expected_sum, runtimes[5], flip4_time);
 #endif
 #ifdef bswap_32
-	onebytefliptest(buf, bufsize, reps, doit_bswap_32, "bswap_32", expected_sum, best_time);
+	onebytefliptest(buf, bufsize, reps, doit_bswap_32, "bswap_32", expected_sum, runtimes[6], flip4_time);
 #endif
 	
-	onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time);
+	onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, flip4_time);
     }
 
 #ifndef COMPILE_DEBUG
@@ -608,10 +626,34 @@ test_byteflip()
     // inline, it seems gcc still generates a function call, which
     // makes elapsed_flip4 much slower
 
-    double ratio = flip4_time / best_time;
-    AssertAlways(ratio >= 0.99 && ratio <= 1.01, 
-		 ("Error, flip4_time/best_time = %.6g not in (0.99,1.01); something is weird",
-		  ratio));
+    unsigned bestidx = 0;
+    for(unsigned i = 1; i < max_runtimes; ++i) {
+	if (runtimes[i].count() == 0)
+	    continue;
+	if (runtimes[i].mean() < runtimes[bestidx].mean()) 
+	    bestidx = i;
+    }
+    double bestmean = runtimes[bestidx].mean();
+    double bestconf95 = runtimes[bestidx].conf95();
+    // 0.005 means that if bestmean and flip4mean are within 1% of
+    // each other, that will be considered acceptable.  Got a run
+    // where the times differered by 6ms (~.1%), but had been stable
+    // enough that the confidence intervals were too small to generate
+    // an overlap.
+    if (bestconf95 < bestmean * 0.005) {
+	bestconf95 = bestmean * 0.005;
+    }
+    double flip4mean = flip4_time.mean();
+    double flip4conf95 = flip4_time.conf95();
+    if (flip4conf95 < flip4mean * 0.005) {
+	flip4conf95 = flip4mean * 0.005;
+    }
+    AssertAlways(range_overlap(flip4mean - flip4conf95, flip4mean + flip4conf95,
+			       bestmean - bestconf95, bestmean + bestconf95),
+		 ("Error, flip4_time (%.6g +- %.6g) does not overlap with best time (%.6g +- %.6g); something is weird",
+		  flip4mean, flip4conf95, bestmean, bestconf95));
+    printf("flip4 performance of (%.6g +- %.6g) verified to overlap with best time (%.6g +- %.6g)\n",
+	   flip4mean, flip4conf95, bestmean, bestconf95);
 #endif
 }
  
