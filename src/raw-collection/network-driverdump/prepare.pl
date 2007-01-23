@@ -18,10 +18,19 @@ if ($ARGV[0] eq 'partition') {
     mount_drives();
 } elsif ($ARGV[0] eq 'umount') {
     umount_drives();
+} elsif ($ARGV[0] eq 'list') {
+    list();
 } else {
     usage("Unknown command '$ARGV[0]'");
 }
 
+sub usage {
+    my($msg) = @_;
+
+    print STDERR "Error: @_" if @_;
+    die "Usage: $0 (list)|(add_serial)|(partition)|(format)|(mount)|(umount)";
+}
+	
 sub bydriveorder {
     return -1 if length $a < length $b; 
     return 1 if length $a > length $b; 
@@ -72,6 +81,8 @@ sub find_drives {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
 	    print "$drive";
+	} else {
+	    push(@Global::not_used_drives, $drive);
 	}
     }
     print "\n";
@@ -81,6 +92,14 @@ sub find_drives {
 	print "Unable to get sginfo -s on: ", join(", ", @nosginfo), "\n";
     }
     return @Global::drives;
+}
+
+sub list {
+    my @drives = find_drives();
+    if (@Global::not_used_drives) {
+	print "Unused drives: ", join(", ", @Global::not_used_drives), "\n";
+    }
+    exit(0);
 }
 
 sub add_serial {
@@ -317,13 +336,18 @@ sub get_ok_partitions {
 sub serial_number {
     my($drive) = @_;
 
+    $drive =~ s!^/dev/!!o;
     my $ret;
     open(SGINFO, "sginfo -s /dev/$drive |")
 	or die "bad";
     $_ = <SGINFO>;
+    die "No sginfo" unless defined $_;
     if (/^Serial Number '(.+)'$/) {
 	$ret = $1;
-    } 
+    } else {
+	chomp;
+	die "First line from sginfo not 'Serial Number ...', but '$_'";
+    }
     close(SGINFO);
     return $ret;
     
@@ -332,16 +356,13 @@ sub serial_number {
 sub is_drive { # not partition
     my ($drive) = @_;
 
+    $drive =~ s!^/dev/!!o;
     my @stat = stat("/dev/$drive");
+    die "Stat of /dev/$drive failed: $!"
+	unless @stat;
+
     die "/etc/driverdump.config pattern matched $drive, which is a partition, not a drive"
 	unless 0 == ($stat[6] & 0xF);
     
 }
 
-sub usage {
-    my($msg) = @_;
-
-    print STDERR "Error: @_" if @_;
-    die "Usage: $0 (partition)";
-}
-	
