@@ -32,7 +32,7 @@ endif
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
@@ -78,10 +78,13 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
+nettrace2ds_SOURCES = process/nettrace2ds.C process/cryptutil.C process/aes-i586.S
 
 if WITH_PCAP
-bin_PROGRAMS += network-driverdump
+bin_PROGRAMS += network-driverdump nettrace2ds
 network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
+
+nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
 endif
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
