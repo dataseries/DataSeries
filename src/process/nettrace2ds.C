@@ -29,15 +29,6 @@
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
 
-using namespace std;
-
-const bool warn_duplicate_reqs = false;
-const bool warn_parse_failures = false;
-const bool warn_unmatched_rpc_reply = false; // not watching output
-const int max_mismatch_duplicate_requests = 15;
-int max_missing_request_count = 20000;
-int missing_request_count = 0;
-
 #define enable_encrypt_filenames 1
 
 // Do this first to get byteswap things...
@@ -73,6 +64,7 @@ int missing_request_count = 0;
 #include <Lintel/PriorityQueue.H>
 #include <Lintel/StatsQuantile.H>
 #include <Lintel/Deque.H>
+#include <Lintel/Clock.H>
 
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesModule.H>
@@ -82,7 +74,31 @@ int missing_request_count = 0;
 extern "C" {
 #include <liblzf-1.6/lzf.h>
 }
-// #include "known-bad.H"
+
+using namespace std;
+
+enum ModeT { Info, Convert };
+
+ModeT mode = Info;
+
+const bool warn_duplicate_reqs = false;
+const bool warn_parse_failures = false;
+const bool warn_unmatched_rpc_reply = false; // not watching output
+const int max_mismatch_duplicate_requests = 15;
+
+int max_missing_request_count = 20000;
+int missing_request_count = 0;
+unsigned int ignored_nonip_count = 0, arp_type_count = 0, weird_ethernet_type_count = 0;
+unsigned int ip_packet_count = 0, ip_fragment_count = 0, packet_count = 0;
+
+static int exitvalue = 0;
+static string tracename;
+
+ExtentType::int64 cur_record_id = -1000000000;
+ExtentType::int64 first_record_id = -1000000000;
+int cur_mismatch_duplicate_requests = 0;
+int tcp_rpc_message_count = 0;
+int tcp_short_data_in_rpc_count = 0;
 
 #if defined(bswap_64)
 inline u_int64_t ntohll(u_int64_t in)
@@ -92,6 +108,106 @@ inline u_int64_t ntohll(u_int64_t in)
 #else
 #error "don't know how to do ntohll"
 #endif
+
+class NettraceReader {
+public:
+    /// Return false on EOF; all pointers must be valid
+    virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
+			    uint32_t *wire_length, Clock::Tfrac *time) = 0;
+};
+
+class ERFReader : public NettraceReader {
+public:
+    ERFReader(const string &filename)
+    {
+	openUncompress(filename, &buffer, &bufsize);
+	buffer_cur = buffer;
+	buffer_end = buffer + bufsize;
+	cout << boost::format("%s size is %d") % filename % bufsize << endl;
+    }
+
+    virtual ~ERFReader() { 
+	delete buffer;
+    }
+
+    static void openUncompress(const string &filename, unsigned char **buffer, uint32_t *bufsize) {
+	struct stat statbuf;
+	int ret = stat(filename.c_str(), &statbuf);
+    
+	INVARIANT(ret == 0, boost::format("could not stat source file %s: %s")
+		  % filename % strerror(errno));
+
+	int fd = open(filename.c_str(), O_RDONLY);
+	INVARIANT(fd > 0, boost::format("could not open source file %s: %s")
+		  % filename % strerror(errno));
+    
+	unsigned char *buf = static_cast<unsigned char *>(mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0));
+	INVARIANT(buf != MAP_FAILED, boost::format("could not mmap source file %s: %s")
+		  % filename % strerror(errno));
+	
+	madvise(buf, statbuf.st_size, MADV_WILLNEED);
+
+	*buffer = NULL;
+	*bufsize = 0;
+
+	if (suffixequal(filename,".128MiB.lzf")) {
+	    *buffer = new unsigned char[128*1024*1024];
+	    *bufsize = lzf_decompress(buf, statbuf.st_size, *buffer, 128*1024*1024);
+	    INVARIANT(*bufsize > 0 && *bufsize <= 128*1024*1024, "bad");
+	} else if (suffixequal(filename,".128MiB.zlib1") 
+		   || suffixequal(filename, ".128MiB.zlib6") 
+		   || suffixequal(filename, ".128MiB.zlib9")) {
+	    *buffer = new unsigned char[128*1024*1024];
+	    uLongf destlen = 128*1024*1024;
+	    int ret = uncompress(static_cast<Bytef *>(*buffer),
+				 &destlen,static_cast<const Bytef *>(buf),
+				 statbuf.st_size);
+	    INVARIANT(ret == Z_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
+	    *bufsize = destlen;
+	} else {
+	    FATAL_ERROR(boost::format("Don't know how to unpack %s") % filename);
+	}
+
+	madvise(buf, statbuf.st_size, MADV_DONTNEED);
+	INVARIANT(munmap(buf, statbuf.st_size) == 0, "bad");
+	INVARIANT(close(fd) == 0, "bad");
+    }
+
+    virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
+			    uint32_t *wire_length, Clock::Tfrac *time) 
+    {
+	if (buffer_cur == buffer_end)
+	    return false;
+
+	INVARIANT(buffer_cur + 16 < buffer_end, "bad");
+	
+	// Next line is so little-endian specific
+	*time = *reinterpret_cast<uint64_t *>(buffer_cur);
+	INVARIANT(buffer_cur[8] == 2, "unimplemented"); // type
+	INVARIANT(buffer_cur[9] == 4, // varying record lengths
+		  boost::format("unimplemented flags %d") % static_cast<int>(buffer_cur[9])); // flags
+	INVARIANT(buffer_cur[12] == 0 && buffer_cur[13] == 0, "unimplemented"); // loss counter
+
+	*capture_size = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 10)) - 18;
+	*wire_length = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 14));
+
+	*packet_ptr = buffer_cur + 18;
+	buffer_cur += *capture_size + 18;
+	INVARIANT(buffer_cur <= buffer_end, "bad");
+
+	// subtracting 4 strips off the CRC that the endace card appears to be capturing.
+	// failing to do this causes some of the checks that we have reached the end
+	// of the packet to incorrectly fail.
+	*wire_length -= 4;
+	if (*capture_size > *wire_length) {
+	    *capture_size = *wire_length;
+	}
+	return true;
+    }
+private:
+    unsigned char *buffer, *buffer_cur, *buffer_end;
+    uint32_t bufsize;
+};
 
 struct network_error_listT {
   ExtentType::int64 h_rid, v_rid;
@@ -103,15 +219,6 @@ struct network_error_listT {
 // source, dest, xid but with different content.
 
 vector<network_error_listT> known_bad_list; 
-
-int exitvalue = 0;
-char *tracename;
-
-ExtentType::int64 cur_record_id = -1000000000;
-ExtentType::int64 first_record_id = -1000000000;
-int cur_mismatch_duplicate_requests = 0;
-int tcp_rpc_message_count = 0;
-int tcp_short_data_in_rpc_count = 0;
 
 #define CONSTANTHOSTNETSWAP(v) ((((uint32_t)(v) >> 24) & 0xFF) | \
                                (((uint32_t)(v)>>8) & 0xFF00) | \
@@ -161,13 +268,13 @@ public:
     }
 
     // bytes are not copied, nor freed your problem to manage consistently
-    RPC(void *bytes, unsigned _len)
-	: rpchdr((uint32_t *)bytes), len(_len)
+    RPC(const void *bytes, unsigned _len)
+	: rpchdr(static_cast<const uint32_t *>(bytes)), len(_len)
     {
 	RPCParseAssert(_len >= 8);
 	RPCParseAssert(rpchdr[1] == 0 || rpchdr[1] == net_reply);
     }
-    uint32_t &xid() { return rpchdr[0]; }
+    uint32_t xid() { return rpchdr[0]; }
     bool is_request() { return rpchdr[1] == 0; }
     void *duppacket() { 
 	u_char *ret = new u_char[len];
@@ -177,11 +284,11 @@ public:
     unsigned getlen() { 
 	return len;
     }
-    uint32_t *getxdr() {
+    const uint32_t *getxdr() {
 	return rpchdr;
     }
 protected:
-    uint32_t *rpchdr;
+    const uint32_t *rpchdr;
     unsigned len;
 
     virtual void enable_dynamic_cast() { };
@@ -202,7 +309,7 @@ public:
     static const uint32_t net_rpc_version = CONSTANTHOSTNETSWAP(host_rpc_version);
     static const uint32_t host_auth_sys = 1;
     static const uint32_t net_auth_sys = CONSTANTHOSTNETSWAP(host_auth_sys);
-    RPCRequest(void *bytes, int _len) : RPC(bytes,_len), orig_xid(xid()) {
+    RPCRequest(const void *bytes, int _len) : RPC(bytes,_len), orig_xid(xid()) {
 	RPCParseAssert(len >= 10*4);
 	RPCParseAssert(rpchdr[1] == 0);
 	RPCParseAssert(rpchdr[2] == net_rpc_version);
@@ -213,7 +320,7 @@ public:
 	    auth_sys_uid = NULL;
 	    auth_sys_len = 0;
 	} else if (rpchdr[6] == net_auth_sys) {
-	    uint32_t *cur_pos = rpchdr + 7;
+	    const uint32_t *cur_pos = rpchdr + 7;
 	    unsigned auth_credlen = ntohl(*cur_pos);
 	    ++cur_pos; 
 	    RPCParseAssert(auth_credlen >= 5*4 && len >= 10*4 + auth_credlen);
@@ -258,10 +365,10 @@ public:
     uint32_t net_procnum() { return rpchdr[5]; }
     uint32_t host_procnum() { return ntohl(net_procnum()); }
     bool isauth_none() { return auth_sys_uid == NULL; }
-    uint32_t *getrpcparam() { return rpcparam; }
+    const uint32_t *getrpcparam() { return rpcparam; }
     unsigned getrpcparamlen() { return rpcparamlen; }
 protected:
-    uint32_t *auth_sys_uid, *rpcparam;
+    const uint32_t *auth_sys_uid, *rpcparam;
     const uint32_t orig_xid;
     unsigned auth_sys_len, rpcparamlen; // both count in bytes!
 };
@@ -271,7 +378,7 @@ public:
     static const uint32_t net_msg_denied = CONSTANTHOSTNETSWAP(1);
     static const uint32_t net_auth_error = CONSTANTHOSTNETSWAP(1);
     
-    RPCReply(void *bytes, int _len) : RPC(bytes,len) {
+    RPCReply(const void *bytes, int _len) : RPC(bytes, _len) {
 	RPCParseAssert(len >= 5*4);
 	RPCParseAssert(rpchdr[1] == RPC::net_reply);
 	if (rpchdr[2] == net_msg_denied) {
@@ -297,10 +404,10 @@ public:
 	    return rpc_results[-1];
 	}
     }
-    u_int32_t *getrpcresults() { return rpc_results; }
+    const u_int32_t *getrpcresults() { return rpc_results; }
     int getrpcresultslen() { return results_len; }
 protected:
-    u_int32_t *rpc_results;
+    const uint32_t *rpc_results;
     int results_len; // in bytes
 };
 
@@ -403,8 +510,8 @@ public:
   ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
 
 const string nfs_common_xml(
-  "<ExtentType name=\"NFS trace: common\">\n"
-  "  <field type=\"int64\" name=\"packet-at\" comment=\"time in nanoseconds since UNIX epoch; time is of the first fragment of this packet\" pack_relative=\"packet-at\" print_divisor=\"1000\" />\n"
+  "<ExtentType name=\"Trace::NFS::common\">\n"
+  "  <field type=\"int64\" name=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"packet-at\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"source-port\" />\n"
   "  <field type=\"int32\" name=\"dest\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
@@ -413,8 +520,6 @@ const string nfs_common_xml(
   "  <field type=\"bool\" name=\"is-request\" print_true=\"request\" print_false=\"response\" />\n"
   "  <field type=\"byte\" name=\"nfs-version\" print_format=\"V%d\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"transaction-id\" print_format=\"%08x\" />\n"
-  //  "  <field type=\"int32\" name=\"euid\" opt_nullable=\"yes\" />\n"
-  //  "  <field type=\"int32\" name=\"egid\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"op-id\" opt_nullable=\"yes\" note=\"op-id is nfs-version dependent\" />\n"
   "  <field type=\"variable32\" name=\"operation\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"rpc-status\" opt_nullable=\"yes\" />\n"
@@ -523,50 +628,7 @@ Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
 Int64Field attrops_filesize(nfs_attrops_series,"file-size");
 Int64Field attrops_used_bytes(nfs_attrops_series,"used-bytes");
-Int64Field attrops_modify_time(nfs_attrops_series,"modify-time",
-				DoubleField::flag_allownonzerobase);
-
-// struct attropData {
-//     ExtentType::int32 server_id, client_id, xid;
-//     ExtentType::int64 request_at;
-//     string filehandle, lookup_directory_filehandle;
-//     ExtentType::int64 request_id;
-//     string filename;
-//     unsigned int rpcreqhashval; // for sanity checking of duplicate requests
-//     unsigned int ipchecksum, l4checksum;
-//     void set(ExtentType::int32 a, ExtentType::int32 b, ExtentType::int32 c)
-//     { server_id = a; client_id = b; xid = c; 
-//       rpcreqhashval = (unsigned int)this;}
-//     void set(ExtentType::int32 a, ExtentType::int32 b, ExtentType::int32 c,
-// 	     ExtentType::int64 d, u_int32_t *e, int elen, ExtentType::int64 f,
-// 	     const string &g)
-//     { server_id = a; client_id = b; xid = c; request_at = d; 
-//       filehandle.assign((char *)e,elen); request_id = f; filename = g;
-//       rpcreqhashval = (unsigned int)this;}
-//       
-// };
-
-// class attropDataHash {
-// public:
-//     unsigned int operator()(const attropData &k) {
-// 	    unsigned ret,a,b;
-// 	    ret = k.xid;
-// 	    a = k.server_id;
-// 	    b = k.client_id;
-// 	    BobJenkinsHashMix(a,b,ret);
-// 	    return ret;
-//     }
-// };
-// 
-// class attropDataEqual {
-// public:
-//     bool operator()(const attropData &a, const attropData &b) {
-// 	return a.server_id == b.server_id && a.client_id == b.client_id &&
-// 	    a.xid == b.xid;
-//     }
-// };
-// 
-// HashTable<attropData,attropDataHash,attropDataEqual> attropHashTable;
+Int64Field attrops_modify_time(nfs_attrops_series,"modify-time");
 
 const string nfs_readwrite_xml(
   "<ExtentType name=\"NFS trace: read-write\">\n"
@@ -589,7 +651,7 @@ Int32Field readwrite_bytes(nfs_readwrite_series,"bytes");
 
 const string ippacket_xml(
   "<ExtentType name=\"Network trace: IP packets\">\n"
-  "  <field type=\"int64\" name=\"packet-at\" pack_relative=\"packet-at\" comment=\"in nanoseconds since unix epoch\" print_divisor=\"1000\" />\n"
+  "  <field type=\"int64\" name=\"packet-at\" pack_relative=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"destination\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"wire-length\" />\n"
@@ -614,8 +676,8 @@ Int32Field ippacket_tcp_seqnum(ippacket_series,"tcp-seqnum",Field::flag_nullable
 
 const string nfs_mount_xml(
   "<ExtentType name=\"NFS trace: mount\">\n"
-  "  <field type=\"int64\" name=\"request-at\" pack_relative=\"request-at\" comment=\"in nanoseconds since unix epoch\" print_divisor=\"1000\" />\n"
-  "  <field type=\"int64\" name=\"reply-at\" pack_relative=\"request-at\" comment=\"in nanoseconds since unix epoch\" print_divisor=\"1000\" />\n"
+  "  <field type=\"int64\" name=\"request-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
+  "  <field type=\"int64\" name=\"reply-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"server\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"client\" print_format=\"%08x\" />\n"
   "  <field type=\"variable32\" name=\"pathname\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -719,34 +781,20 @@ summarizeBandwidthInformation()
     }
 }
 
-void testBWRolling()
+inline ExtentType::int64 xdr_ll(const u_int32_t *xdr,int offset)
 {
-    if (true)
-	return;
-    for(unsigned i = 0;i<10000000;i+= 333) {
-	packet_bw_rolling_info.push(packetTimeSize(i,1000));
-    }
-    for(unsigned i = 500000;i<600000;i+= 333) {
-	packet_bw_rolling_info.push(packetTimeSize(i,1000));
-    }
-    summarizeBandwidthInformation();
-    exit(0);
-}
-
-inline ExtentType::int64 xdr_ll(u_int32_t *xdr,int offset)
-{
-    return ntohll(*(u_int64_t *)(xdr + offset));
+    return ntohll(*reinterpret_cast<const u_int64_t *>(xdr + offset));
 }
 
 string 
-getLookupFilename(u_int32_t *xdr, int remain_len)
+getLookupFilename(const u_int32_t *xdr, int remain_len)
 {
     AssertAlways(remain_len >= 4,("bad1 %d\n",remain_len));
     u_int32_t strlen = ntohl(xdr[0]);
     // Changed to an assertion to handle set-6/cqracks.19352
     RPCParseAssertMsg(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
 		      ("bad2 %d != roundup4(%d) @ record %lld\n",
-		       remain_len,strlen,common_record_id.val()));
+		       remain_len,strlen,cur_record_id));
     string ret((char *)(xdr + 1),strlen);
     if (enable_encrypt_filenames) {
 	string enc_ret = encryptString(ret);
@@ -767,7 +815,7 @@ getNFS2Time(u_int32_t *xdr_time)
 }
 
 ExtentType::int64
-getNFS3Time(u_int32_t *xdr_time)
+getNFS3Time(const u_int32_t *xdr_time)
 {
     ExtentType::int64 seconds = ntohl(xdr_time[0]);
     ExtentType::int64 nseconds = ntohl(xdr_time[1]);
@@ -777,14 +825,14 @@ getNFS3Time(u_int32_t *xdr_time)
 class RPCReplyHandler;
 
 struct RPCRequestData {
-    u_int32_t client, server, xid;
-    ExtentType::int64 request_id;
-    u_int32_t program, version, procnum;
-    ExtentType::int64 request_at;
-    unsigned int rpcreqhashval; // for sanity checking of duplicate requests
-    unsigned int ipchecksum, l4checksum;
     RPCRequest *reqdata;
     RPCReplyHandler *replyhandler;
+    ExtentType::int64 request_id; // Unique DataSeries assigned ID to all NFS ops
+    ExtentType::int64 request_at;
+    u_int32_t client, server, xid;
+    u_int32_t program, version, procnum;
+    unsigned int rpcreqhashval; // for sanity checking of duplicate requests
+    unsigned int ipchecksum, l4checksum;
     RPCRequestData(u_int32_t a, u_int32_t b, u_int32_t c) 
       : client(a), server(b), xid(c) {}
 };
@@ -817,9 +865,97 @@ public:
     virtual ~RPCReplyHandler() {
     }
     virtual void handleReply(RPCRequestData *reqdata, 
-			     const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
 			     int source_port, int dest_port, int l4checksum, 
 			     int payload_len, RPCReply &reply) = 0;
+};
+
+class NFSV2AttrOpReplyHandler : public RPCReplyHandler {
+public:
+    // zero length lookup_directory_filehandle and/or filename sets values to null
+    NFSV2AttrOpReplyHandler(const string &_filehandle, 
+			    const string &_lookup_directory_filehandle,
+			    const string &_filename)
+	: filehandle(_filehandle), 
+	lookup_directory_filehandle(_lookup_directory_filehandle),
+	filename(_filename)
+    { }
+    virtual ~NFSV2AttrOpReplyHandler() { }
+    // return < 0 if no file attributes in reply, otherwise should be attributes for
+    // the filehandle set in the request; offset is in 4 byte chunks, not in bytes.
+    virtual int getfattroffset(RPCRequestData *reqdata, 
+			       RPCReply &reply) = 0;
+
+    static const int fattr3_len = 5*4 + 8*8;
+    virtual void handleReply(RPCRequestData *reqdata, 
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
+			     int source_port, int dest_port, int l4checksum, int payload_len,
+			     RPCReply &reply) 
+    {
+	FATAL_ERROR("unimplemented");
+	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	int v3fattroffset = getfattroffset(reqdata,reply);
+	if (v3fattroffset >= 0) {
+	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
+			       "NFSv3 attribute op",
+			       ("%d * 4 + %d <= %d",v3fattroffset,fattr3_len,reply.getrpcresultslen()));
+	    const u_int32_t *xdr = reply.getrpcresults();
+	    xdr += v3fattroffset;
+	    int type = ntohl(xdr[0]);
+	    AssertAlways(type >= 1 && type < 8,("bad"));
+
+	    if (mode == Convert) {
+		nfs_attrops_outmodule->newRecord();
+		attrops_request_id.set(reqdata->request_id);
+		attrops_reply_id.set(cur_record_id);
+		attrops_filehandle.set(filehandle);
+		if (lookup_directory_filehandle.empty()) {
+		    attrops_lookupdirfilehandle.setNull();
+		} else {
+		    attrops_lookupdirfilehandle.set(lookup_directory_filehandle);
+		}
+		if (filename.empty()) {
+		    attrops_filename.setNull();
+		} else {
+		    attrops_filename.set(filename);
+		}
+		attrops_typeid.set(type);
+		attrops_type.set(NFSV2_typelist[type]);
+		attrops_mode.set(ntohl(xdr[1] & 0xFFF));
+		attrops_uid.set(ntohl(xdr[3]));
+		attrops_gid.set(ntohl(xdr[4]));
+		attrops_filesize.set(xdr_ll(xdr,5));
+		attrops_used_bytes.set(xdr_ll(xdr,7));
+		attrops_modify_time.set(getNFS3Time(xdr+17));
+	    }
+	}
+    }
+
+    string filehandle;
+    const string lookup_directory_filehandle, filename;
+};
+
+class NFSV2GetAttrReplyHandler : public NFSV2AttrOpReplyHandler {
+public:
+    NFSV2GetAttrReplyHandler(const string &_filehandle)
+	: NFSV2AttrOpReplyHandler(_filehandle,empty_string,empty_string)
+    { }
+    virtual ~NFSV2GetAttrReplyHandler() { }
+    virtual int getfattroffset(RPCRequestData *reqdata,
+			       RPCReply &reply) 
+    {
+	FATAL_ERROR("unimplemented");
+//	const u_int32_t *xdr = reply.getrpcresults();
+//	int actual_len = reply.getrpcresultslen();
+//	ShortDataAssertMsg(actual_len >= 4,"NFSv3 getattr reply",
+//			   ("bad %d", actual_len));
+//	u_int32_t op_status = ntohl(*xdr);
+//	if (op_status != 0) {
+//	    AssertAlways(op_status == 70,("bad %d\n",op_status));
+//	    return -1;
+//	}
+//	return 1;
+    }
 };
 
 class NFSV2ReadWriteReplyHandler : public RPCReplyHandler {
@@ -833,11 +969,11 @@ public:
   }
   
   virtual void handleReply(RPCRequestData *reqdata, 
-			   const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+			   Clock::Tfrac time, const struct iphdr *ip_hdr,
 			   int source_port, int dest_port, int l4checksum, int payload_len,
 			   RPCReply &reply)
   {
-    u_int32_t *xdr = reply.getrpcresults();
+    const u_int32_t *xdr = reply.getrpcresults();
     int actual_len = reply.getrpcresultslen();
     AssertAlways(reply.status() == 0,("request not accepted?!\n"));
     u_int32_t op_status = ntohl(*xdr);
@@ -858,7 +994,7 @@ public:
     } else {
       nfs_readwrite_outmodule->newRecord();
       readwrite_request_id.set(reqid);
-      readwrite_reply_id.set(common_record_id.val());
+      readwrite_reply_id.set(cur_record_id);
       readwrite_filehandle.set(filehandle);
       readwrite_is_read.set(is_read);
       readwrite_offset.set(offset);
@@ -900,42 +1036,45 @@ public:
 
     static const int fattr3_len = 5*4 + 8*8;
     virtual void handleReply(RPCRequestData *reqdata, 
-			     const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
 			     int source_port, int dest_port, int l4checksum, int payload_len,
 			     RPCReply &reply) 
     {
 	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
 	int v3fattroffset = getfattroffset(reqdata,reply);
 	if (v3fattroffset >= 0) {
-	    nfs_attrops_outmodule->newRecord();
-	    attrops_request_id.set(reqdata->request_id);
-	    attrops_reply_id.set(common_record_id.val());
-	    attrops_filehandle.set(filehandle);
-	    if (lookup_directory_filehandle.empty()) {
-		attrops_lookupdirfilehandle.setNull();
-	    } else {
-		attrops_lookupdirfilehandle.set(lookup_directory_filehandle);
-	    }
-	    if (filename.empty()) {
-		attrops_filename.setNull();
-	    } else {
-		attrops_filename.set(filename);
-	    }
 	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
 			       "NFSv3 attribute op",
 			       ("%d * 4 + %d <= %d",v3fattroffset,fattr3_len,reply.getrpcresultslen()));
-	    u_int32_t *xdr = reply.getrpcresults();
+	    const u_int32_t *xdr = reply.getrpcresults();
 	    xdr += v3fattroffset;
 	    int type = ntohl(xdr[0]);
 	    AssertAlways(type >= 1 && type < 8,("bad"));
-	    attrops_typeid.set(type);
-	    attrops_type.set(NFSV3_typelist[type]);
-	    attrops_mode.set(ntohl(xdr[1] & 0xFFF));
-	    attrops_uid.set(ntohl(xdr[3]));
-	    attrops_gid.set(ntohl(xdr[4]));
-	    attrops_filesize.set(xdr_ll(xdr,5));
-	    attrops_used_bytes.set(xdr_ll(xdr,7));
-	    attrops_modify_time.set(getNFS3Time(xdr+17));
+
+	    if (mode == Convert) {
+		nfs_attrops_outmodule->newRecord();
+		attrops_request_id.set(reqdata->request_id);
+		attrops_reply_id.set(cur_record_id);
+		attrops_filehandle.set(filehandle);
+		if (lookup_directory_filehandle.empty()) {
+		    attrops_lookupdirfilehandle.setNull();
+		} else {
+		    attrops_lookupdirfilehandle.set(lookup_directory_filehandle);
+		}
+		if (filename.empty()) {
+		    attrops_filename.setNull();
+		} else {
+		    attrops_filename.set(filename);
+		}
+		attrops_typeid.set(type);
+		attrops_type.set(NFSV3_typelist[type]);
+		attrops_mode.set(ntohl(xdr[1] & 0xFFF));
+		attrops_uid.set(ntohl(xdr[3]));
+		attrops_gid.set(ntohl(xdr[4]));
+		attrops_filesize.set(xdr_ll(xdr,5));
+		attrops_used_bytes.set(xdr_ll(xdr,7));
+		attrops_modify_time.set(getNFS3Time(xdr+17));
+	    }
 	}
     }
 
@@ -952,7 +1091,7 @@ public:
     virtual int getfattroffset(RPCRequestData *reqdata,
 			       RPCReply &reply) 
     {
-	u_int32_t *xdr = reply.getrpcresults();
+	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 	ShortDataAssertMsg(actual_len >= 4,"NFSv3 getattr reply",
 			   ("bad %d", actual_len));
@@ -983,13 +1122,13 @@ public:
     }
 
     virtual void handleReply(RPCRequestData *reqdata, 
-			     const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
 			     int source_port, int dest_port, int l4checksum, int payload_len,
 			     RPCReply &reply) 
     {
-	u_int32_t *xdr = reply.getrpcresults();
+	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(actual_len >= 4,("bad"));
+	ShortDataAssertMsg(actual_len >= 4,"NFSV3LookupReply",("really got nothing"));
 	u_int32_t op_status = ntohl(*xdr);
 	if (op_status != 0) {
 	    checkOpStatus(op_status);
@@ -999,14 +1138,14 @@ public:
 	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
 	ShortDataAssertMsg(actual_len >= 4 + 4 + fhlen,"NFSv3 lookup reply",("bad"));
 	filehandle.assign((char *)xdr + 8,fhlen);
-	NFSV3AttrOpReplyHandler::handleReply(reqdata,h,ip_hdr,source_port,dest_port,
+	NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
 					     l4checksum,payload_len,reply);
     }
 
     virtual int getfattroffset(RPCRequestData *reqdata,
 			       RPCReply &reply) 
     {
-	u_int32_t *xdr = reply.getrpcresults();
+	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(actual_len >= 4,("bad"));
 	u_int32_t op_status = ntohl(*xdr);
@@ -1033,7 +1172,7 @@ public:
     virtual int getfattroffset(RPCRequestData *reqdata,
 			       RPCReply &reply) 
     {
-	u_int32_t *xdr = reply.getrpcresults();
+	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 
 	ShortDataAssertMsg(actual_len >= 4,"NFSv3 R/W reply",
@@ -1058,7 +1197,10 @@ public:
 	if (is_read) {
 	    ShortDataAssertMsg(actual_len >= 4,is_read ? "NFSv3 read reply" : "NFSv3 write reply",
 			       ("actual len %d",actual_len));
-	    AssertAlways(ntohl(*xdr) == 1,("bad"));
+	    if (ntohl(*xdr) == 0) {
+		return -1;
+	    }
+	    AssertAlways(ntohl(*xdr) == 1,("bad; should be either 0 or 1 to mark whether attrs are there??"));
 	    ShortDataAssertMsg(actual_len >= 4 + fattr3_len,is_read ? "NFSv3 read reply" : "NFSv3 write reply",
 			       ("actual len %d",actual_len));
 	    return 2;
@@ -1070,14 +1212,14 @@ public:
     }
 
     virtual void handleReply(RPCRequestData *reqdata, 
-			     const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
 			     int source_port, int dest_port, int l4checksum, int payload_len,
 			     RPCReply &reply) 
     {
-	NFSV3AttrOpReplyHandler::handleReply(reqdata,h,ip_hdr,
-					     source_port,dest_port,l4checksum,
+	NFSV3AttrOpReplyHandler::handleReply(reqdata, time, ip_hdr,
+					     source_port, dest_port, l4checksum,
 					     payload_len, reply);
-	u_int32_t *xdr = reply.getrpcresults();
+	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
 	u_int32_t op_status = ntohl(*xdr);
@@ -1095,27 +1237,40 @@ public:
 			     ("bad12 op_status = %d",op_status)); 
 	    }
 	} else {
-	    nfs_readwrite_outmodule->newRecord();
-	    readwrite_request_id.set(reqdata->request_id);
-	    readwrite_reply_id.set(common_record_id.val());
-	    readwrite_filehandle.set(filehandle);
-	    readwrite_is_read.set(is_read);
-	    readwrite_offset.set(offset);
-	    readwrite_bytes.set(reqbytes);
+	    if (mode == Convert) {
+		nfs_readwrite_outmodule->newRecord();
+		readwrite_request_id.set(reqdata->request_id);
+		readwrite_reply_id.set(cur_record_id);
+		readwrite_filehandle.set(filehandle);
+		readwrite_is_read.set(is_read);
+		readwrite_offset.set(offset);
+		readwrite_bytes.set(reqbytes);
+	    }
 	 
 	    if (is_read) {
 		ShortDataAssertMsg(actual_len >= 4 + fattr3_len + 4 + 4 + 4,
 				   "NFSv3 Read Reply",("bad %d",actual_len));
-		u_int32_t actual_bytes = ntohl(xdr[1+fattr3_len/4]);
+		u_int32_t actual_bytes = reqbytes+1;
+		if (ntohl(*xdr) == 1) {
+		    actual_bytes = ntohl(xdr[1+fattr3_len/4]);
+		} else if (ntohl(*xdr) == 0) {
+		    actual_bytes = ntohl(xdr[1]);
+		} else {
+		    FATAL_ERROR("should have been caught in getfattroffset!");
+		}
 		AssertAlways(reqbytes >= (ExtentType::int32)actual_bytes,
 			     ("wrong %d %d\n",reqbytes,actual_bytes));
-		readwrite_bytes.set(actual_bytes);
+		if (mode == Convert) {
+		    readwrite_bytes.set(actual_bytes);
+		}
 	    } else {
 		AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
 			     ("bad"));
 		u_int32_t actual_bytes = ntohl(xdr[1+3*2+1+fattr3_len/4]);
 		AssertAlways((int)actual_bytes == reqbytes,("bad\n"));
-		readwrite_bytes.set(reqbytes);
+		if (mode == Convert) {
+		    readwrite_bytes.set(reqbytes);
+		}
 	    }
 	} 
     }
@@ -1129,12 +1284,12 @@ const int hex_dump_id_1 = -1;
 const int hex_dump_id_2 = -1; 
 
 void
-maybeDumpRecord(uint32_t *xdr, int actual_len)
+maybeDumpRecord(const uint32_t *xdr, int actual_len)
 {
-    if (common_record_id.val() == hex_dump_id_1 ||
-	common_record_id.val() == hex_dump_id_2) {
+    if (cur_record_id == hex_dump_id_1 ||
+	cur_record_id == hex_dump_id_2) {
       printf("hex dump request op = %d; %lld %d:\n",
-	     opid.val(),common_record_id.val(),actual_len);
+	     opid.val(),cur_record_id,actual_len);
       unsigned char *f = (unsigned char *)xdr;
       for(int i=0;i<actual_len;++i) {
 	printf("%02x ",f[i]);
@@ -1147,161 +1302,125 @@ maybeDumpRecord(uint32_t *xdr, int actual_len)
 }
 
 void
-handleNFSV2Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleNFSV2Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		   int ipchecksum, int l4checksum, RPCRequest &req, RPCRequestData &d)
 {
-    FATAL_ERROR("unimplemented"); // needs to be re-done with the correct new style...
-
-//    uint32_t *xdr = req.getrpcparam();
-//    int actual_len = req.getrpcparamlen();
-//
-//    attropData val;
-//    val.server_id = -1;
-//    maybeDumpRecord(xdr,actual_len);
-//    switch(opid.val()) 
-//	{
-//	case NFSPROC_GETATTR: 
-//	    {
-//		if (false) printf("v2GetAttr %lld %8x -> %8x; %d\n",
-//				  packet_at.val(),source.val(),dest.val(),actual_len);
-//		// Changed to assertion to handle set-6/cqracks.23919
-//		RPCParseAssertMsg(actual_len == 32,
-//				  ("bad getattr request @%ld.%06ld rec#%lld: %d",
-//				   h->ts.tv_sec,h->ts.tv_usec,
-//				   common_record_id.val(),actual_len));
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr,32,common_record_id.val(),
-//			empty_string);
-//	    }
-//	    break;
-//	case NFSPROC_LOOKUP: 
-//	    {
-//		ShortDataAssertMsg(actual_len >= 32,
-//				   "NFSv2 Lookup Request",
-//				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-//				    h->ts.tv_sec,h->ts.tv_usec,h->len,
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		string filename = getLookupFilename(xdr+8,actual_len - 32);
-//		if (false) printf("v2Lookup %lld %8x -> %8x; %d; %s\n",
-//				  packet_at.val(),source.val(),dest.val(),
-//				  actual_len,filename.c_str());
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr,0,common_record_id.val(),
-//			filename);
-//		val.lookup_directory_filehandle.assign((char *)xdr,32);
-//	    }
-//	    break;
-//	case NFSPROC_READ:
-//	    { 
-//		ShortDataAssertMsg(actual_len >= (32+4+4+4),
-//				   "NFSv2 Read Request",
-//				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-//				    h->ts.tv_sec,h->ts.tv_usec,h->len,
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr,32,common_record_id.val(),
-//			empty_string);
-//		string foo;
-//		foo.assign((char *)xdr,32);
-//		d.replyhandler = new NFSV2ReadWriteReplyHandler(common_record_id.val(),
-//								foo, true,
-//								ntohl(xdr[8]), ntohl(xdr[9]));
-//	    }
-//	    break;
-//	case NFSPROC_WRITE:
-//	    {
-//		ShortDataAssertMsg(actual_len >= 32+4+4+4+4,
-//				   "NFSv2 Write Request",
-//				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-//				    h->ts.tv_sec,h->ts.tv_usec,h->len,
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr,32,common_record_id.val(),
-//			empty_string);
-//		if (false) printf("v2Write %lld %8x -> %8x; %d\n",
-//				 packet_at.val(),source.val(),dest.val(),
-//				 actual_len);
-//		string foo;
-//		foo.assign((char *)xdr,32);
-//		d.replyhandler = new NFSV2ReadWriteReplyHandler(common_record_id.val(),
-//								foo, false,
-//								ntohl(xdr[9]), ntohl(xdr[11]));
-//	    }
-//	    break;
-//	default:
-//	    return;
-//	}
-//    val.rpcreqhashval = BobJenkinsHash(1972, xdr, actual_len);
-//    val.ipchecksum = ipchecksum;
-//    val.l4checksum = l4checksum;
-//
-//    AssertAlways(val.server_id != -1,("bad6"));
-//    attropData *hval = attropHashTable.lookup(val);
-//    if (hval != NULL) {
-//	AssertAlways(hval->server_id == val.server_id &&
-//		     hval->client_id == val.client_id &&
-//		     hval->xid == val.xid,("internal error\n"));
-//	if (warn_duplicate_reqs) { // disabled because of tons of them showing up in set-8
-//	  printf("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%lld duped by #%lld\n",
-//		 hval->server_id, hval->client_id, hval->xid, 
-//		 hval->request_id,val.request_id);
-//	  printf("  Checksums are %d/%d vs %d/%d\n",
-//		 hval->ipchecksum,hval->l4checksum,val.ipchecksum,val.l4checksum);
-//	}
-//	if (hval->rpcreqhashval != val.rpcreqhashval) {
-//	  for(vector<network_error_listT>::iterator i = known_bad_list.begin();
-//	      i != known_bad_list.end(); ++i) {
-//	    if ((hval->request_id - first_record_id) == i->h_rid &&
-//		(val.request_id - first_record_id) == i->v_rid &&
-//		hval->rpcreqhashval == i->h_hash &&
-//		val.rpcreqhashval == i->v_hash &&
-//		(unsigned)hval->server_id == i->server &&
-//		(unsigned)hval->client_id == i->client) {
-//	      fprintf(stderr,"speculate bad network transmission/lack of locking in linux write??\n");
-//	      hval->rpcreqhashval = val.rpcreqhashval;
-//	    }
-//	  }
-//	}
-//	if (hval->rpcreqhashval != val.rpcreqhashval) {
-//	  fprintf(stderr, "bad7.1 { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
-//		 hval->request_id - first_record_id,
-//		 val.request_id - first_record_id,
-//		 hval->rpcreqhashval, val.rpcreqhashval,
-//		 hval->server_id, hval->client_id,
-//		 tracename);
-//	  exitvalue = 1;
-//	}
-//	// can't remove the original request in case we get a pair of retransmissions; 
-//	// matching is a litle bit odd in this case, since a response will match to the nearest request.
-//	//	attropHashTable.remove(val); 
-//    }
-//		     
-//    attropHashTable.add(val);
-}
-
-void
-handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
-		   int ipchecksum, int l4checksum, RPCRequest &req, RPCRequestData &d)
-{
-    uint32_t *xdr = req.getrpcparam();
+    const uint32_t *xdr = req.getrpcparam();
     int actual_len = req.getrpcparamlen();
 
     maybeDumpRecord(xdr,actual_len);
-    switch(opid.val()) 
+    switch(d.procnum)
+	{
+	case NFSPROC_GETATTR: 
+	    {
+		if (false) printf("v2GetAttr %lld %8x -> %8x; %d\n",
+				  time,d.client,d.server,actual_len);
+		RPCParseAssertMsg(actual_len == 32,
+				  ("bad getattr request @%d.%09d rec#%lld: %d",
+				   Clock::TfracToSec(time), Clock::TfracToNanoSec(time),
+				   cur_record_id,actual_len));
+		string filehandle((char *)(xdr), 32);
+		d.replyhandler =
+		    new NFSV2GetAttrReplyHandler(filehandle);
+	    }
+	    break;
+	case NFSPROC_LOOKUP: 
+	    {
+		FATAL_ERROR("unimplemented");
+//		ShortDataAssertMsg(actual_len >= 12,
+//				   "NFSv3 lookup request",
+//				   ("bad read len %d @%d.%09d; %d %d",actual_len,
+//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
+//				    ip_hdr->protocol,IPPROTO_UDP));
+//		int fhlen = ntohl(xdr[0]);
+//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
+//			     ("bad"));
+//		ShortDataAssertMsg(actual_len >= 4+fhlen+4,"NFSv3 lookup request",("bad"));
+//		string filename = getLookupFilename(xdr+1+fhlen/4,actual_len - (4+fhlen));
+//		if (false) printf("v3Lookup %lld %8x -> %8x; %d; %s\n",
+//				  time,d.client,d.server,
+//				  actual_len,filename.c_str());
+//		string lookup_directory_filehandle((char *)(xdr+1),fhlen);
+//		d.replyhandler =
+//		    new NFSV3LookupReplyHandler(lookup_directory_filehandle,filename);
+//						
+	    }
+	    break;
+	case NFSPROC_READ:
+	    { 
+		FATAL_ERROR("unimplemented");
+//		ShortDataAssertMsg(actual_len >= (8+8+4),
+//				   "NFSv3 read request",
+//				   ("bad read len %d @%ld.%09d; %d %d",actual_len,
+//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
+//				    ip_hdr->protocol,IPPROTO_UDP));
+//		int fhlen = ntohl(xdr[0]);
+//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
+//			     ("bad fhlen1"));
+//		RPCParseAssertMsg(actual_len == 4 + fhlen + 8 + 4,("bad actual_len %d fhlen %d +=16",actual_len,fhlen));
+//		string filehandle((char *)(xdr+1), fhlen);
+//		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
+//		AssertAlways(len < 65536,("bad"));
+//		d.replyhandler = 
+//		    new NFSV3ReadWriteReplyHandler(filehandle, 
+//						   xdr_ll(xdr,1+fhlen/4),
+//						   len,true);
+	    }
+	    break;
+	case NFSPROC_WRITE:
+	    {
+		FATAL_ERROR("unimplemented");
+//		ShortDataAssertMsg(actual_len >= (8+8+4),
+//				   "NFSv3 Write Request",
+//				   ("bad read len %d @%ld.%09ld; %d %d",actual_len,
+//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
+//				    ip_hdr->protocol,IPPROTO_UDP));
+//		int fhlen = ntohl(xdr[0]);
+//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
+//			     ("bad"));
+//		ShortDataAssertMsg(actual_len >= (4+ fhlen + 8 + 4),
+//				   "NFSv3 Write Request",
+//				   ("bad read len %d @%ld.%09d/%d; %d %d",actual_len,
+//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
+//				    ip_hdr->protocol,IPPROTO_UDP));   
+//
+//		string filehandle((char *)(xdr+1), fhlen);
+//		if (false) printf("v2Write %lld %8x -> %8x; %d\n",
+//				 time, d.client, d.server,
+//				 actual_len);
+//		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
+//		AssertAlways(len < 65536,("bad"));
+//		d.replyhandler = 
+//		    new NFSV3ReadWriteReplyHandler(filehandle, 
+//						   xdr_ll(xdr,1+fhlen/4),
+//						   len,false);
+	    }
+	    break;
+	default:
+	    return;
+	}
+}
+
+void
+handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
+		   int ipchecksum, int l4checksum, RPCRequest &req, RPCRequestData &d)
+{
+    const uint32_t *xdr = req.getrpcparam();
+    int actual_len = req.getrpcparamlen();
+
+    maybeDumpRecord(xdr,actual_len);
+    switch(d.procnum)
 	{
 	case NFSPROC3_GETATTR: 
 	    {
 		if (false) printf("v3GetAttr %lld %8x -> %8x; %d\n",
-				  packet_at.val(),source.val(),dest.val(),actual_len);
+				  time,d.client,d.server,actual_len);
 		AssertAlways(actual_len >= 8,
-			     ("bad getattr request @%lld: %d",common_record_id.val(),actual_len));
+			     ("bad getattr request @%lld: %d",cur_record_id,actual_len));
 		int fhlen = ntohl(xdr[0]);
 		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
 			     ("bad"));
 		ShortDataAssertMsg(actual_len == 4+fhlen,"NFSv3 getattr request",("bad"));
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr+1,fhlen,common_record_id.val(),
-//			empty_string);
 		string filehandle((char *)(xdr+1), fhlen);
 		d.replyhandler =
 		    new NFSV3GetAttrReplyHandler(filehandle);
@@ -1311,8 +1430,8 @@ handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	    {
 		ShortDataAssertMsg(actual_len >= 12,
 				   "NFSv3 lookup request",
-				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-				    h->ts.tv_sec,h->ts.tv_usec,h->len,
+				   ("bad read len %d @%d.%09d; %d %d",actual_len,
+				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
 		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
@@ -1320,11 +1439,8 @@ handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 		ShortDataAssertMsg(actual_len >= 4+fhlen+4,"NFSv3 lookup request",("bad"));
 		string filename = getLookupFilename(xdr+1+fhlen/4,actual_len - (4+fhlen));
 		if (false) printf("v3Lookup %lld %8x -> %8x; %d; %s\n",
-				  packet_at.val(),source.val(),dest.val(),
+				  time,d.client,d.server,
 				  actual_len,filename.c_str());
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr,0,common_record_id.val(),
-//			filename);
 		string lookup_directory_filehandle((char *)(xdr+1),fhlen);
 		d.replyhandler =
 		    new NFSV3LookupReplyHandler(lookup_directory_filehandle,filename);
@@ -1335,16 +1451,13 @@ handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	    { 
 		ShortDataAssertMsg(actual_len >= (8+8+4),
 				   "NFSv3 read request",
-				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-				    h->ts.tv_sec,h->ts.tv_usec,h->len,
+				   ("bad read len %d @%ld.%09d; %d %d",actual_len,
+				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
 		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
 			     ("bad fhlen1"));
 		RPCParseAssertMsg(actual_len == 4 + fhlen + 8 + 4,("bad actual_len %d fhlen %d +=16",actual_len,fhlen));
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr+1,fhlen,common_record_id.val(),
-//			empty_string);
 		string filehandle((char *)(xdr+1), fhlen);
 		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
 		AssertAlways(len < 65536,("bad"));
@@ -1358,24 +1471,21 @@ handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	    {
 		ShortDataAssertMsg(actual_len >= (8+8+4),
 				   "NFSv3 Write Request",
-				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-				    h->ts.tv_sec,h->ts.tv_usec,h->len,
+				   ("bad read len %d @%ld.%09ld; %d %d",actual_len,
+				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
 		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
 			     ("bad"));
 		ShortDataAssertMsg(actual_len >= (4+ fhlen + 8 + 4),
 				   "NFSv3 Write Request",
-				   ("bad read len %d @%ld.%06ld/%d; %d %d",actual_len,
-				    h->ts.tv_sec,h->ts.tv_usec,h->len,
+				   ("bad read len %d @%ld.%09d/%d; %d %d",actual_len,
+				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));   
 
-//		val.set(dest.val(),source.val(),xid.val(),
-//			packet_at.val(),xdr+1,fhlen,common_record_id.val(),
-//			empty_string);
 		string filehandle((char *)(xdr+1), fhlen);
 		if (false) printf("v2Write %lld %8x -> %8x; %d\n",
-				 packet_at.val(),source.val(),dest.val(),
+				 time, d.client, d.server,
 				 actual_len);
 		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
 		AssertAlways(len < 65536,("bad"));
@@ -1388,246 +1498,21 @@ handleNFSV3Request(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	default:
 	    return;
 	}
-//    val.rpcreqhashval = BobJenkinsHash(1972, xdr, actual_len);
-//    val.ipchecksum = ipchecksum;
-//    val.l4checksum = l4checksum;
-//
-//    AssertAlways(val.server_id != -1,("bad6"));
-//    attropData *hval = attropHashTable.lookup(val);
-//    if (hval != NULL) {
-//	AssertAlways(hval->server_id == val.server_id &&
-//		     hval->client_id == val.client_id &&
-//		     hval->xid == val.xid,("internal error\n"));
-//	if (warn_duplicate_reqs) { // disabled because of tons of them showing up in set-8
-//	  printf("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%lld duped by #%lld\n",
-//		 hval->server_id, hval->client_id, hval->xid, 
-//		 hval->request_id,val.request_id);
-//	  printf("  Checksums are %d/%d vs %d/%d\n",
-//		 hval->ipchecksum,hval->l4checksum,val.ipchecksum,val.l4checksum);
-//	}
-//	if (hval->rpcreqhashval != val.rpcreqhashval) {
-//	  for(vector<network_error_listT>::iterator i = known_bad_list.begin(); 
-//	      i != known_bad_list.end(); ++i) {
-//	    if ((hval->request_id - first_record_id) == i->h_rid &&
-//		(val.request_id - first_record_id) == i->v_rid &&
-//		hval->rpcreqhashval == i->h_hash &&
-//		val.rpcreqhashval == i->v_hash &&
-//		(unsigned)hval->server_id == i->server &&
-//		(unsigned)hval->client_id == i->client) {
-//	      fprintf(stderr,"speculate bad network transmission/lack of locking in linux write??\n");
-//	      hval->rpcreqhashval = val.rpcreqhashval;
-//	    }
-//	  }
-//	}
-//	if (hval->rpcreqhashval != val.rpcreqhashval) {
-//	  fprintf(stderr, "bad7.2 { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
-//		 hval->request_id - first_record_id,
-//		 val.request_id - first_record_id,
-//		 hval->rpcreqhashval, val.rpcreqhashval,
-//		 hval->server_id, hval->client_id,
-//		 tracename);
-//	  exitvalue = 1;
-//	}
-//	// can't remove the original request in case we get a pair of retransmissions; 
-//	// matching is a litle bit odd in this case, since a response will match to the nearest request.
-//	//	attropHashTable.remove(val); 
-//    }
-//		     
-//    attropHashTable.add(val);
 }
 
 void
-setNFS2attrops(u_int32_t *xdr)
+updateIPPacketSeries(Clock::Tfrac time, u_int32_t srcHost, u_int32_t destHost, 
+		     u_int32_t wire_len, struct udphdr *udp_hdr, struct tcphdr *tcp_hdr,
+		     bool is_fragment)
 {
-    int type = ntohl(xdr[0]);
-    AssertAlways(type >= 1 && type < 9 && type != 7,("bad8\n"));
-    attrops_typeid.set(type);
-    attrops_type.set(NFSV2_typelist[type]);
-    attrops_mode.set(ntohl(xdr[1]) & 0xFFF);
-    attrops_uid.set(ntohl(xdr[3]));
-    attrops_gid.set(ntohl(xdr[4]));
-    unsigned int filesize = ntohl(xdr[5]);
-    attrops_filesize.set((ExtentType::int64)filesize);
-    ExtentType::int32 blksize = ntohl(xdr[6]);
-    ExtentType::int32 blocks = ntohl(xdr[8]);
-    ExtentType::int64 est_used = (ExtentType::int64)blksize * (ExtentType::int64)blocks;
-    // The results from looking at the traces seems to indicate that
-    // the filers are setting the NFS block size to 8192, but on disk
-    // they actually use only 512 byte blocks; as it's really unlikely
-    // that the 1 GB file is using up 16GB, and it's really consistent
-    // across all of the attribute entries, the ratio slightly
-    // increases as the file size decreases, which is to be expected.
-    if (((double)est_used / (double)filesize) > 16.0) {
-	est_used = (ExtentType::int64)blocks * 512;
+    ++ip_packet_count;
+
+    if (mode == Info) {
+	// no actual work to do...
+	return;
     }
-    attrops_used_bytes.set(est_used);
-    attrops_modify_time.set(getNFS2Time(xdr+13));
-}
-
-// attropData *
-// getAttrOpDataEnt()
-// {
-//     attropData key,*val;
-//     key.set(source.val(),dest.val(),xid.val());
-//     val = attropHashTable.lookup(key);
-//     AssertAlways(val != NULL,
-// 		 ("bad9 src=%08x dest=%08x xid=%08x\n",
-// 		  source.val(),dest.val(),xid.val()));
-//     AssertAlways(packet_at.val() - val->request_at < (ExtentType::int64)300*1000*1000*1000,("slow\n"));
-//     return val;
-// }
-
-void
-handleNFSV2Reply(int ipchecksum, int l4checksum, RPCRequestData *d, RPCReply &reply,
-		 bool is_tcp)
-{
-    FATAL_ERROR("unimplemented"); // needs to be re-done with the correct new style
-//    u_int32_t *xdr = reply.getrpcresults();
-//    int actual_len = reply.getrpcresultslen();
-//    AssertAlways(reply.status() == 0,("request not accepted?!\n"));
-//    AssertAlways(opid.isNull() == false,("bad"));
-//    int op = opid.val();
-//    if (op == 0) {
-//	rpc_status.set(0);
-//	return;
-//    }
-//    ShortDataAssertMsg(actual_len >= 4,
-//		       "NFSv2 *unknown* reply",
-//		       ("actual len %d",actual_len));
-//    u_int32_t op_status = ntohl(*xdr);
-//    xdr += 1;
-//    actual_len -= 4;
-//    rpc_status.set(op_status);
-//    if (common_record_id.val() == hex_dump_id_1 ||
-//	common_record_id.val() == hex_dump_id_2) {
-//      printf("hex dump reply op = %d, status %d; %lld %d:\n",
-//	     op,op_status,common_record_id.val(),actual_len);
-//      unsigned char *f = (unsigned char *)xdr;
-//      for(int i=0;i<actual_len;++i) {
-//	printf("%02x ",f[i]);
-//	if ((i % 26) == 25) {
-//	  printf("\n");
-//	}
-//      }
-//      printf("\n");
-//    }
-//    switch(op) 
-//	{
-//	case NFSPROC_GETATTR: 
-//	    {
-//		if (false) printf("v2GetAttrReply %lld %8x -> %8x; %d\n",
-//				  packet_at.val(),source.val(),dest.val(),actual_len);
-//		attropData *val = getAttrOpDataEnt();
-//		if (actual_len == 0) {
-//		  // for now, we don't put anything in the attrops series 
-//		  // because there is no useful content in here.
-//		  AssertAlways(op_status == 70,
-//			       ("bad 11 %d\n",op_status));
-//		} else {
-//		  AssertAlways(actual_len == 68,("bad10 %d",actual_len));
-//		  nfs_attrops_outmodule->newRecord();
-//		  attrops_request_id.set(val->request_id);
-//		  attrops_reply_id.set(common_record_id.val());
-//		  attrops_filename.setNull(true);
-//		  attrops_filehandle.set(val->filehandle);
-//		  attrops_lookupdirfilehandle.setNull();
-//		  setNFS2attrops(xdr);
-//		}
-//		attropHashTable.remove(*val);
-//	    }
-//	break;
-//	case NFSPROC_LOOKUP: 
-//	    {	    
-//		attropData *val = getAttrOpDataEnt();
-//		if (false) printf("v2LookupReply(%s) %lld %8x -> %8x; %d // %d\n",
-//				 val->filename.c_str(),
-//				 packet_at.val(),source.val(),dest.val(),
-//				 op_status,actual_len);
-//		
-//		if (actual_len == 0) {
-//		    AssertAlways(op_status == 2 || // enoent
-//				 op_status == 13 || // eaccess
-//				 op_status == 70, // estale
-//				 ("bad117 %d",op_status)); 
-//		    // don't generate a record here, later make an entry
-//		    // in an extentseries of failed lookups
-//		} else {
-//		    AssertAlways(actual_len == 100,("bad\n"));
-//		    nfs_attrops_outmodule->newRecord();
-//		    attrops_request_id.set(val->request_id);
-//		    attrops_reply_id.set(common_record_id.val());
-//		    attrops_filename.set(val->filename);
-//		    attrops_filehandle.set(xdr,4*8);
-//		    AssertAlways(val->lookup_directory_filehandle.size() == 32,("bad"));
-//		    attrops_lookupdirfilehandle.set(val->lookup_directory_filehandle.data(),32);
-//		    setNFS2attrops(xdr + 8);
-//		}
-//		attropHashTable.remove(*val);
-//	    }
-//	    break;
-//	case NFSPROC_READ:
-//	    {
-//		attropData *val = getAttrOpDataEnt();
-//		if (false) printf("v2ReadReply %lld %8x -> %8x; %d // %d\n",
-//				 packet_at.val(),source.val(),dest.val(),
-//				 op_status,actual_len);
-//		if (actual_len == 0) {
-//		    AssertAlways(op_status == 70 || // stale file handle
-//				 op_status == 13, // permission denied
-//				 ("bad12 %d", op_status)); 
-//		    // don't generate a record here; should update extents 
-//		    // to store the return value for rpc replys
-//		} else {
-//		    ShortDataAssertMsg(actual_len >= 68,"NFSv2 Read Reply",
-//				       ("actual len %d",actual_len));
-//		    
-//		    nfs_attrops_outmodule->newRecord();
-//		    attrops_request_id.set(val->request_id);
-//		    attrops_reply_id.set(common_record_id.val());
-//		    attrops_filename.setNull();
-//		    attrops_filehandle.set(val->filehandle);
-//		    attrops_lookupdirfilehandle.setNull();
-//		    setNFS2attrops(xdr);
-//		}
-//	    }
-//	    break;
-//	case NFSPROC_WRITE:
-//	    {
-//		attropData *val = getAttrOpDataEnt();
-//		if (false) printf("v2WriteReply %lld %8x -> %8x; %d // %d\n",
-//				 packet_at.val(),source.val(),dest.val(),
-//				 op_status,actual_len);
-//		if (actual_len == 0) {
-//		    AssertAlways(op_status == 13 || // permission denied
-//			       op_status == 28 || // out of space
-//			       op_status == 69 || // disk quota exceeded
-//			       op_status == 70, // stale file handle
-//			       ("bad12 op_status = %d",op_status)); 
-//		  // don't generate a record here; should update extents 
-//		  // to store the return value for rpc replys
-//		} else {
-//		  AssertAlways(actual_len == 68,("bad %d ;; %d",actual_len,op_status));
-//		  nfs_attrops_outmodule->newRecord();
-//		  attrops_request_id.set(val->request_id);
-//		  attrops_reply_id.set(common_record_id.val());
-//		  attrops_filename.setNull();
-//		  attrops_filehandle.set(val->filehandle);
-//		  attrops_lookupdirfilehandle.setNull();
-//		  setNFS2attrops(xdr);
-//		}
-//		attropHashTable.remove(*val);
-//	    }
-//	    break;
-//	}
-}
-
-void
-doIPPacket(const struct timeval &ts, u_int32_t srcHost, u_int32_t destHost, 
-	   u_int32_t wire_len, struct udphdr *udp_hdr, struct tcphdr *tcp_hdr,
-	   bool is_fragment)
-{
     ippacket_outmodule->newRecord();
-    ippacket_packet_at.set((ExtentType::int64)ts.tv_sec * 1000 * 1000 * 1000 + ts.tv_usec * 1000);
+    ippacket_packet_at.set(time);
     ippacket_source.set(srcHost);
     ippacket_destination.set(destHost);
     ippacket_wire_length.set(wire_len);
@@ -1659,71 +1544,75 @@ timeval2ns(const struct timeval &v)
 
 // sets all but is_request, rpc_status
 void
-fillcommonNFSRecord(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		    int v_source_port, int v_dest_port, int payload_len,
 		    int procnum, int v_nfsversion, u_int32_t v_xid)
 {
-    nfs_common_outmodule->newRecord();
-    packet_at.set(timeval2ns(h->ts));
-    source.set(ntohl(ip_hdr->saddr));
-    source_port.set(v_source_port);
-    dest.set(ntohl(ip_hdr->daddr));
-    dest_port.set(v_dest_port);
-    is_udp.set(ip_hdr->protocol == IPPROTO_UDP);
-    nfs_version.set(v_nfsversion);
-    xid.set(htonl(v_xid));
-    opid.set(procnum);
-    if (v_nfsversion == 2) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv2ops,("bad"));
-	operation.set(nfsv2ops[procnum]);
-    } else if (v_nfsversion == 3) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv3ops,("bad"));
-	operation.set(nfsv3ops[procnum]);
-    } else if (v_nfsversion == 1) {
-        // caches seem to use NFS version 1 null op occasionally
-        AssertAlways(procnum == 0,("bad"));
-    } else {
-	AssertFatal(("bad; nfs version %d",v_nfsversion));
-    }
-    payload_length.set(payload_len);
-    common_record_id.set(cur_record_id);
     ++cur_record_id;
+    INVARIANT(cur_record_id >= 0 && cur_record_id >= first_record_id, "bad");
+    if (mode == Convert) {
+	nfs_common_outmodule->newRecord();
+	packet_at.set(time);
+	source.set(ntohl(ip_hdr->saddr));
+	source_port.set(v_source_port);
+	dest.set(ntohl(ip_hdr->daddr));
+	dest_port.set(v_dest_port);
+	is_udp.set(ip_hdr->protocol == IPPROTO_UDP);
+	nfs_version.set(v_nfsversion);
+	xid.set(htonl(v_xid));
+	opid.set(procnum);
+	if (v_nfsversion == 2) {
+	    AssertAlways(procnum >= 0 && procnum < n_nfsv2ops,("bad"));
+	    operation.set(nfsv2ops[procnum]);
+	} else if (v_nfsversion == 3) {
+	    AssertAlways(procnum >= 0 && procnum < n_nfsv3ops,("bad"));
+	    operation.set(nfsv3ops[procnum]);
+	} else if (v_nfsversion == 1) {
+	    // caches seem to use NFS version 1 null op occasionally
+	    AssertAlways(procnum == 0,("bad"));
+	} else {
+	    AssertFatal(("bad; nfs version %d",v_nfsversion));
+	}
+	payload_length.set(payload_len);
+	common_record_id.set(cur_record_id);
+    }
 }
 
 void
-handleNFSRequest(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleNFSRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int l4checksum, int payload_len,
 		 RPCRequest &req, RPCRequestData &d)
 {
-    fillcommonNFSRecord(h,ip_hdr,source_port,dest_port,payload_len,
+    fillcommonNFSRecord(time,ip_hdr,source_port,dest_port,payload_len,
 			d.procnum,d.version,req.xid());
-    d.request_id = common_record_id.val();
-    is_request.set(true);
-    rpc_status.setNull();
+    INVARIANT(cur_record_id >= 0, "bad");
+    d.request_id = cur_record_id;
+    if (mode == Convert) {
+	is_request.set(true);
+	rpc_status.setNull();
+    }
     if (d.version == 2) {
-	handleNFSV2Request(h,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
+	handleNFSV2Request(time,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
     } else if (d.version == 3) {
-	handleNFSV3Request(h,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
+	handleNFSV3Request(time,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
     }
 }
 
 void
-handleNFSReply(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleNFSReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	       int source_port, int dest_port, int l4checksum, int payload_len,
 	       RPCRequestData *req, RPCReply &reply)
 {
-    fillcommonNFSRecord(h,ip_hdr,source_port,dest_port,payload_len,
+    fillcommonNFSRecord(time,ip_hdr,source_port,dest_port,payload_len,
 			req->procnum,req->version,reply.xid());
-    is_request.set(false);
-    rpc_status.setNull(); // don't know yet
-    if (req->version == 2) {
-	handleNFSV2Reply(htons(ip_hdr->check), l4checksum, req, reply,
-			 ip_hdr->protocol == IPPROTO_TCP);
+    if (mode == Convert) {
+	is_request.set(false);
+	rpc_status.setNull(); // don't know yet
     }
 }
 
 void
-handleMountRequest(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleMountRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		   int source_port, int dest_port, int payload_len,
 		   RPCRequest &req, RPCRequestData &d)
 {
@@ -1744,7 +1633,7 @@ handleMountRequest(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 }
 
 void
-handleMountReply(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleMountReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int payload_len,
 		 RPCRequestData *req, RPCReply &reply)
 {
@@ -1762,13 +1651,15 @@ handleMountReply(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 		    AssertAlways(dec_path == pathname,("bad"));
 		    pathname = enc_path;
 		}
-		nfs_mount_outmodule->newRecord();
-		nfs_mount_request_at.set(req->request_at);
-		nfs_mount_reply_at.set(timeval2ns(h->ts));
-		nfs_mount_server.set(ntohl(ip_hdr->saddr));
-		nfs_mount_client.set(ntohl(ip_hdr->daddr));
-		nfs_mount_pathname.set(pathname);
-		nfs_mount_filehandle.set(m_rep.rawfilehandle(),m_rep.rawfilehandlelen());
+		if (mode == Convert) {
+		    nfs_mount_outmodule->newRecord();
+		    nfs_mount_request_at.set(req->request_at);
+		    nfs_mount_reply_at.set(time);
+		    nfs_mount_server.set(ntohl(ip_hdr->saddr));
+		    nfs_mount_client.set(ntohl(ip_hdr->daddr));
+		    nfs_mount_pathname.set(pathname);
+		    nfs_mount_filehandle.set(m_rep.rawfilehandle(),m_rep.rawfilehandlelen());
+		}
 		//		printf("mount reply for %s -> %s\n",m_req->pathname().c_str(),hexstring(m_rep.filehandle()).c_str());
 	    } else {
 		if (false) printf("mount failed for %s: %d\n",m_req->pathname().c_str(),m_rep.mounterror());
@@ -1799,6 +1690,11 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 	       hval->ipchecksum,hval->l4checksum,d.ipchecksum,d.l4checksum);
 	fflush(stdout);
     }
+    INVARIANT(hval->request_id >= first_record_id &&
+	      hval->request_id <= cur_record_id &&
+	      d.request_id >= first_record_id,
+	      boost::format("whoa %d not in [%d .. %d] or %d < %d")
+	      % hval->request_id % first_record_id % cur_record_id % d.request_id % first_record_id);
     if (hval->rpcreqhashval != d.rpcreqhashval) {
 	for(vector<network_error_listT>::iterator i = known_bad_list.begin();
 	    i != known_bad_list.end(); ++i) {
@@ -1815,15 +1711,13 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 	}
     }
     if (hval->rpcreqhashval != d.rpcreqhashval) {
-	AssertAlways(hval->request_id >= first_record_id &&
-		     d.request_id >= first_record_id,
-		     ("whoa %lld %lld >= %lld\n",hval->request_id, d.request_id, first_record_id));
+	cout << boost::format("HIYA %d %d\n") % hval->request_id % first_record_id;
 	fprintf(stderr, "bad7.3 { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
 		hval->request_id - first_record_id,
 		d.request_id - first_record_id,
 		hval->rpcreqhashval, d.rpcreqhashval,
 		hval->server, hval->client,
-		tracename);
+		tracename.c_str());
 	fprintf(stderr, " // bad7 prog=%d/%d, ver=%d/%d, proc=%d/%d\n",d.program,hval->program,
 		d.version,hval->version,d.procnum,hval->procnum);
 	if (++cur_mismatch_duplicate_requests < max_mismatch_duplicate_requests) {
@@ -1842,9 +1736,9 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 }
 
 void
-handleRPCRequest(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int l4checksum, int payload_len,
-		 u_char *p, u_char *pend)
+		 const unsigned char *p, const unsigned char *pend)
 {
     RPCRequest req(p,pend-p);
 	
@@ -1857,58 +1751,52 @@ handleRPCRequest(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
     d.program = req.host_prognum();
     d.version = req.host_version();
     d.procnum = req.host_procnum();
-    d.request_at = timeval2ns(h->ts);
+    d.request_at = time;
     d.rpcreqhashval = BobJenkinsHash(1972,p,pend-p);
     d.ipchecksum = ntohs(ip_hdr->check);
     d.l4checksum = l4checksum;
     d.reqdata = NULL;
     d.replyhandler = NULL;
     if (d.program == RPCRequest::host_prog_nfs) {
-	handleNFSRequest(h,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,d);
+	handleNFSRequest(time,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,d);
 	RPCRequestData *hval = rpcHashTable.lookup(d);
-	duplicateRequestCheck(d,hval);
+	duplicateRequestCheck(d, hval);
     } else if (d.program == RPCRequest::host_prog_mount) {
-	handleMountRequest(h,ip_hdr,source_port,dest_port,payload_len,req,d);
+	d.request_id = 0; // fake
+	handleMountRequest(time,ip_hdr,source_port,dest_port,payload_len,req,d);
     } else if (d.program == RPCRequest::host_prog_yp) {
-	// ignore
+	d.request_id = 0; // fake
     } else if (d.program == RPCRequest::host_prog_portmap) {
-	// ignore
+	d.request_id = 0; // fake
     } else {
 	// unknown program, just retain request...
 	printf("unrecognized rpc request program %d, version %d, procedure %d\n",
 	       d.program,d.version,d.procnum);
     }
+    INVARIANT(d.request_id != -1, "bad");
     rpcHashTable.add(d); // only add if successful parse...
 }
 
 void
-handleRPCReply(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
+handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	       int source_port, int dest_port, int l4checksum, int payload_len,
-	       u_char *p, u_char *pend)
+	       const unsigned char *p, const unsigned char *pend)
 {
     RPCReply reply(p,pend-p);
     // RPC reply parsing should handle all underflows    
-//    if (payload_len < 1000) {
-//	  if (payload_len != pend - p) {
-//	      AssertAlways(ip_hdr->protocol == IPPROTO_TCP,
-//			   ("bad %d %d",payload_len,pend - p));
-//	      fprintf(stderr,"Warning: skipping short TCP reply at end of packet (?)\n");
-//	      RPCParseAssertMsg(false,("skip"));
-//	  }
-//    }
     payload_len -= 4*(reply.getrpcresults() - reply.getxdr());
     RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid()));
 	
     if (req != NULL) {
 	if (req->program == RPCRequest::host_prog_nfs) {
-	    handleNFSReply(h,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,reply);
+	    handleNFSReply(time,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,reply);
 	} else if (req->program == RPCRequest::host_prog_mount) {
-	    handleMountReply(h,ip_hdr,source_port,dest_port,payload_len,req,reply);
+	    handleMountReply(time,ip_hdr,source_port,dest_port,payload_len,req,reply);
 	} else {
 	    // unknown program; ignore
 	}
 	if (req->replyhandler != NULL) {
-	    req->replyhandler->handleReply(req,h,ip_hdr,source_port, dest_port, l4checksum, payload_len,reply);
+	    req->replyhandler->handleReply(req,time,ip_hdr,source_port, dest_port, l4checksum, payload_len,reply);
 	}
 	if (false) 
 	    printf("rpc reply for prog %d, version %d, proc %d?\n",
@@ -1920,36 +1808,38 @@ handleRPCReply(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	// really ought to do this as a fraction of total requests
 	AssertAlways(missing_request_count < max_missing_request_count,
 		     ("whoa, more than %d possible reply packets without the request %lld packets so far; you need to tcpdump -s 256+; on %s\n",
-		      max_missing_request_count, cur_record_id - first_record_id,tracename));
-	if (warn_unmatched_rpc_reply) // many of these appear to be spurious, e.g. not really an rpc reply
-	    printf("%ld.%06ld: unmatched rpc reply xid %08x client %08x\n",h->ts.tv_sec,h->ts.tv_usec,
-		   ntohl(reply.xid()),ntohl(ip_hdr->daddr)); 
+		      max_missing_request_count, cur_record_id - first_record_id,tracename.c_str()));
+	if (warn_unmatched_rpc_reply) {
+	    // many of these appear to be spurious, e.g. not really an rpc reply
+	    cout << boost::format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
+		% Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
+		% ntohl(reply.xid()) % ntohl(ip_hdr->daddr)
+		 << endl;
+	}
     }
 }
 
 
 void
-handleUDPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
-	        u_char *p, u_char *pend)
+handleUDPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
+	        const unsigned char *p, const unsigned char *pend)
 {
     struct udphdr *udp_hdr = (struct udphdr *)p;
     p += 8;
 
     AssertAlways(p < pend,("short capture?"));
-    doIPPacket(h->ts, ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), h->len,
-	       udp_hdr, NULL, false);
     u_int32_t *rpcmsg = (u_int32_t *)p;
     if ((p+2*4+2*4) > pend) {
 	printf("short packet?!\n");
 	return; // can't be RPC, short (error) reply is at least this long
     }
     if (rpcmsg[1] == 0) {
-	handleRPCRequest(h,ip_hdr,ntohs(udp_hdr->source),
+	handleRPCRequest(time,ip_hdr,ntohs(udp_hdr->source),
 			 ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 			 ntohs(udp_hdr->len) - 8,
 			 p,pend);
     } else if (rpcmsg[1] == RPC::net_reply) {
-	handleRPCReply(h,ip_hdr,ntohs(udp_hdr->source),
+	handleRPCReply(time,ip_hdr,ntohs(udp_hdr->source),
 		       ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 		       ntohs(udp_hdr->len) - 8,
 		       p,pend);
@@ -1960,19 +1850,17 @@ handleUDPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 }
 
 void 
-handleTCPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
-		u_char *p, u_char *pend)
+handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
+		const unsigned char *p, const unsigned char *pend,
+		uint32_t capture_size, uint32_t wire_length)
 {
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
-    if (false) printf("tcp packet at %ld.%06ld\n",h->ts.tv_sec,h->ts.tv_usec);
     AssertAlways((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
 		 ("bad doff %d %d\n",
 		  tcp_hdr->doff * 4, sizeof(struct tcphdr)));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
-    doIPPacket(h->ts, ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), h->len,
-	       NULL, tcp_hdr, false);
     while((pend-p) >= 4) { // handle multiple RPCs in single TCP message; hope they are aligned to start
 	++tcp_rpc_message_count;
 	u_int32_t rpclen = ntohl(*(u_int32_t *)p);
@@ -1984,7 +1872,7 @@ handleTCPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	if (false) printf("  rpclen %d\n",rpclen);
 	p += 4;
 	u_int32_t *rpcmsg = (u_int32_t *)p;
-	u_char *thismsgend;
+	const unsigned char *thismsgend;
 	if ((p + rpclen) > pend) { 
 	    thismsgend = pend;
 	} else {
@@ -1993,12 +1881,12 @@ handleTCPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	try {
 	    if (rpcmsg[1] == 0) {
 		if (false) printf("tcprpcreq\n");
-		handleRPCRequest(h,ip_hdr,ntohs(tcp_hdr->source),
+		handleRPCRequest(time,ip_hdr,ntohs(tcp_hdr->source),
 				 ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
 				 rpclen,p,thismsgend);
 	    } else if (rpcmsg[1] == RPC::net_reply) {
 		if (false) printf("tcprpcrep\n");
-		handleRPCReply(h,ip_hdr,ntohs(tcp_hdr->source),
+		handleRPCReply(time,ip_hdr,ntohs(tcp_hdr->source),
 			       ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
 			       rpclen,p,thismsgend);
 	    } else {
@@ -2007,7 +1895,11 @@ handleTCPPacket(const struct pcap_pkthdr *h, struct iphdr *ip_hdr,
 	} catch (ShortDataInRPCException &err) {
 	    // TODO: count all the occurences of this based on the file,line,message in err and print out
 	    // a summary at the end of processing
-	    AssertAlways(thismsgend == pend,("Error, got short data error, but not at end of TCP segment"));
+	    INVARIANT(thismsgend == pend,
+		      boost::format("Error, got short data error, but not at end of TCP segment (%p != %p; wire=%d cap=%d)\n message was %s at %s:%d")
+		      % reinterpret_cast<const void *>(thismsgend) % reinterpret_cast<const void *>(pend) 
+		      % wire_length % capture_size 
+		      % err.message % err.filename % err.lineno);
 	    ++tcp_short_data_in_rpc_count;
 	}
 	p = thismsgend;
@@ -2018,74 +1910,92 @@ const int min_ethernet_header_length = 14;
 const int min_ip_header_length = 20;
 
 void 
-packetHandler (u_char *user, const struct pcap_pkthdr *h, const u_char *packetdata)
+packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t wire_length, 
+	      Clock::Tfrac time)
 {
-    ExtentType::int64 timestamp_us = (ExtentType::int64)h->ts.tv_sec * 1000000 + h->ts.tv_usec;
+    ++packet_count;
+    packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
+    const u_int32_t capture_remain = capture_size;
+    INVARIANT(capture_remain >= min_ethernet_header_length + min_ip_header_length,
+	      boost::format("whoa tiny packet %d") % capture_remain);
+    const unsigned char *p = packetdata; 
+    const unsigned char *pend = p + capture_size;
 
-    AssertAlways(h->len >= h->caplen,("bad lengths\n"));
-    packet_bw_rolling_info.push(packetTimeSize(timestamp_us, h->len));
-    const u_int32_t capture_remain = h->caplen;
-    AssertAlways(capture_remain >= min_ethernet_header_length + min_ip_header_length,
-		 ("whoa tiny packet %d\n",capture_remain));
-    u_char *p = (u_char *)packetdata; // yea, this isn't quite right... 
-    u_char *pend = p + h->caplen;
+    if (false) {
+	cout << boost::format("%d.%d: %d/%d bytes: %s") 
+	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
+	    % capture_size % wire_length
+	    % hexstring(string((const char *)p,32))
+	     << endl;
+	return;
+    }
 
-    int wire_length = h->len;
     int ethtype = (p[12] << 8) | p[13];
-    AssertAlways(wire_length <= 1514,("whoa, long packet %d\n",wire_length));
+    // 1522 is the size that the endace card captures at, 1514+4(vlan tag)+4(crc32?)
+    INVARIANT(wire_length <= 1522, boost::format("whoa, long packet %d") % wire_length);
+
     if (ethtype < 1500) {
         int protonum = (p[20] << 8) | p[21];
-	bool print_warning = true;
-	if (protonum == 0 && ethtype == 38)
-	  print_warning = false;
-	if (print_warning) {
-	    printf("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo? \n",
-		   h->ts.tv_sec,h->ts.tv_usec,ethtype,wire_length,
-		   protonum);
-	}
+
+	++weird_ethernet_type_count;
+	cout << boost::format("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo?")
+	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
+	    % ethtype % wire_length % protonum
+	     << endl;
+
 	return;
     }
 
     int ethernet_header_len = 14;
     p += ethernet_header_len;
-    if (ethtype != 0x800) { // IP type, the only one we care about
+    if (ethtype == 0x8100) { // vlan
+	ethtype = p[2] << 8 | p[3];
+	p += 4;
+    }
+
+    if (ethtype == 0x0806) {
+	++arp_type_count;
 	return;
     }
 
-    struct iphdr *ip_hdr = (struct iphdr *)p;
-    AssertAlways(ip_hdr->version == 4,("Whoa, not IPV4 (V%d)\n",ip_hdr->version));
+    if (ethtype != 0x800) { // IP type, the only one we care about
+	cout << boost::format("Ignoring packet %d.%d, ethtype %d")
+	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) % ethtype
+	     << endl;
+	++ignored_nonip_count;
+	return;
+    }
+
+    const struct iphdr *ip_hdr = reinterpret_cast<const struct iphdr *>(p);
+    INVARIANT(ip_hdr->version == 4,
+	      boost::format("Non IPV4 (was V%d) unimplemented\n") % ip_hdr->version);
     int ip_hdrlen = ip_hdr->ihl * 4;
     p += ip_hdrlen;
-    AssertAlways(p < pend,("short capture?!\n"));
+    INVARIANT(p < pend, "short capture?!\n");
+    bool is_fragment = (ntohs(ip_hdr->frag_off) & 0x1FFF) != 0;
+
+    struct udphdr *udp_hdr = NULL;
+    struct tcphdr *tcp_hdr = NULL;
+    if (ip_hdr->protocol == IPPROTO_UDP && ((p+8) <= pend)) {
+	udp_hdr = (struct udphdr *)p;
+    } else if (ip_hdr->protocol == IPPROTO_TCP && ((p+sizeof(struct tcphdr)) <= pend)) {
+	tcp_hdr = (struct tcphdr *)p;
+    } 
+    updateIPPacketSeries(time, ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), 
+			 wire_length, udp_hdr, tcp_hdr, is_fragment);
     
-    if (false) printf("%ld.%06ld: ",h->ts.tv_sec,h->ts.tv_usec);
-    if ((ntohs(ip_hdr->frag_off) & 0x1FFF) != 0) { // mask off flags
+    if (is_fragment) {
+	++ip_fragment_count;
 	if (false) printf("fragment %d?\n",ntohs(ip_hdr->frag_off));
-	if (ip_hdr->protocol == IPPROTO_UDP && ((p+8) <= pend)) {
-	  struct udphdr *udp_hdr = (struct udphdr *)p;
-	  doIPPacket(h->ts,ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), 
-		     wire_length,udp_hdr,NULL,true);
-	} else if (ip_hdr->protocol == IPPROTO_TCP && ((p+sizeof(struct tcphdr)) <= pend)) {
-	  struct tcphdr *tcp_hdr = (struct tcphdr *)p;
-	  doIPPacket(h->ts,ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), 
-		     wire_length,NULL,tcp_hdr,true);
-	} else {
-	  doIPPacket(h->ts,ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), 
-		     wire_length,NULL,NULL,true);
-	}
-	  
 	return; // fragment; no reassembly for now
     }
+
     try {
-	if (ip_hdr->protocol == IPPROTO_TCP) {
-	    handleTCPPacket(h,ip_hdr, p,pend); 
+	if (tcp_hdr != NULL) {
+	    handleTCPPacket(time, ip_hdr, p, pend, capture_size, wire_length); 
 	} else if (ip_hdr->protocol == IPPROTO_UDP) {
-	    handleUDPPacket(h,ip_hdr, p,pend);
-	} else {
-	    doIPPacket(h->ts, ntohl(ip_hdr->saddr), ntohl(ip_hdr->daddr), 
-		       wire_length, NULL, NULL, false);
-	    if (false) printf("unknown packet\n");
-	}
+	    handleUDPPacket(time, ip_hdr, p, pend);
+	} 
     } catch (ShortDataInRPCException &err) {
 	printf("parse failed on request at %s:%d (%s) was false: %s\n",
 	       err.filename,err.lineno,err.condition.c_str(),
@@ -2104,33 +2014,32 @@ packetHandler (u_char *user, const struct pcap_pkthdr *h, const u_char *packetda
     }	
 }
 
-void
-throwassertcheck()
+int
+get_max_missing_request_count(const char *tracename)
 {
-    AssertException(true && false && 1 == 0);
+    return 1000;
 }
 
 void
-doassertcheck()
+doInfo(NettraceReader *from, const string &outname)
 {
-    bool got_assertion = false;
-    try {
-	throwassertcheck();
-    } catch (AssertExceptionT &err) {
-	got_assertion = true;
+    unsigned char *packet;
+    uint32_t capture_size, wire_length;
+    Clock::Tfrac time;
+
+    mode = Info;
+    while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
+	INVARIANT(wire_length <= capture_size, "bad");
+	INVARIANT(wire_length >= 64, "bad");
+	packetHandler(packet, capture_size, wire_length, time);
     }
-    AssertAlways(got_assertion,("whoa, didn't get assertion?!\n"));
-}
-
-void
-doSampleEncrypt()
-{
-    string encrypted = encryptString("aaaaaa");
-    printf("aaaaaa -> %s\n",hexstring(encrypted).c_str());
-    encrypted = encryptString("aaaaaaaaaaaaaaaa");
-    printf("a x 16 -> %s\n",hexstring(encrypted).c_str());
-    encrypted = encryptString("abcdefghijklmnopqrstuvwxyz");
-    printf("a-z -> %s\n",hexstring(encrypted).c_str());
+    delete from;
+    cout << "Ignored Non-IP packet count: " << ignored_nonip_count << endl
+	 << "Weird ethernet type count: " << weird_ethernet_type_count << endl
+	 << "ARP packet count: " << arp_type_count << endl 
+	 << "IP packet count: " << ip_packet_count << endl
+	 << "IP fragment count: " << ip_fragment_count << endl
+	;
 }
 
 void
@@ -2148,49 +2057,17 @@ uncompressFile(const string &src, const string &dest)
 {
     check_file_missing(dest);
 
-    struct stat statbuf;
-    int ret = stat(src.c_str(), &statbuf);
-    
-    INVARIANT(ret == 0, boost::format("could not stat source file %s: %s")
-	      % src % strerror(errno));
-
-    int fd = open(src.c_str(), O_RDONLY);
-    INVARIANT(fd > 0, boost::format("could not open source file %s: %s")
-	      % src % strerror(errno));
-    
-    unsigned char *buf = static_cast<unsigned char *>(mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0));
-    INVARIANT(buf != MAP_FAILED, boost::format("could not mmap source file %s: %s")
-	      % src % strerror(errno));
-
     unsigned char *outbuf = NULL;
     unsigned int outsize = 0;
-    if (suffixequal(src,".128MiB.lzf")) {
-	outbuf = new unsigned char[128*1024*1024];
-	outsize = lzf_decompress(buf, statbuf.st_size, outbuf, 128*1024*1024);
-	INVARIANT(outsize > 0 && outsize <= 128*1024*1024, "bad");
-    } else if (suffixequal(src,".128MiB.zlib1") || suffixequal(src, ".128MiB.zlib6") || suffixequal(src, ".128MiB.zlib9")) {
-	outbuf = new unsigned char[128*1024*1024];
-	uLongf destlen = 128*1024*1024;
-	int ret = uncompress((Bytef *)outbuf,
-			     &destlen,(const Bytef *)buf,
-			     statbuf.st_size);
-	INVARIANT(ret == Z_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
-	outsize = destlen;
-    } else {
-	FATAL_ERROR(boost::format("Don't know how to unpack %s") % src);
-    }
+
+    ERFReader::openUncompress(src, &outbuf, &outsize);
+
     int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
     INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
-    ret = close(outfd);
+    int ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
-}
-
-int
-get_max_missing_request_count(const char *tracename)
-{
-    return 1000;
 }
 
 int
@@ -2201,15 +2078,23 @@ main(int argc, char **argv)
 	exit(0);
     }
 
-    doassertcheck();
-
-    testBWRolling();
-    char errbuf[PCAP_ERRBUF_SIZE];
-    
     if (enable_encrypt_filenames) {
 	prepareEncryptEnvOrRandom();
     }
 
+    if (argc == 4 && strcmp(argv[1],"--info-erf") == 0) {
+	cur_record_id = -1;
+	first_record_id = 0;
+	tracename = argv[2];
+	doInfo(new ERFReader(argv[2]), argv[3]);
+	exit(0);
+    }
+    
+    FATAL_ERROR("usage: ...");
+
+#if 0
+ char errbuf[PCAP_ERRBUF_SIZE];
+    
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
     
@@ -2240,7 +2125,6 @@ main(int argc, char **argv)
 	exit(1);
     }
 
-#if 0
     DataSeriesSink nfsdsout(argv[4],packing_args.compress_modes,packing_args.compress_level);
     ExtentTypeLibrary library;
     ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
@@ -2272,17 +2156,15 @@ main(int argc, char **argv)
     
     AssertAlways(pcap_datalink(pd) == DLT_EN10MB,("unsupported\n"));
     if (pcap_loop(pd, -1, packetHandler, NULL) < 0) {
+	exitvalue = 1;
 	if (strcmp(pcap_geterr(pd),"truncated dump file") == 0) {
-	  if (truncated_trace(tracename) ||
-	      getenv("IGNORE_TRUNCATED_DUMPS") != NULL) {
-	    // ignore
+	    if (getenv("IGNORE_TRUNCATED_DUMPS") != NULL) {
+		exitvalue = 0;
 	  } else {
-	    fprintf(stderr,"set the env variable IGNORE_TRUNCATED_DUMPS to tolerate silently on %s\n",tracename);
-	    exitvalue = 1;  
+	      fprintf(stderr,"set the env variable IGNORE_TRUNCATED_DUMPS to tolerate silently on %s\n",tracename);
+	      exitvalue = 1;  
 	  }
-	} else {
-	    exitvalue = 1;  
-	}	  
+	} 
 	if (exitvalue != 0) {
 	  fprintf(stderr, "%s: pcap_loop: %s\n",
 		  argv[0], pcap_geterr(pd));
