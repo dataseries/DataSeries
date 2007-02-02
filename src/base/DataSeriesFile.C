@@ -147,7 +147,7 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
 {
     Extent::ByteArray extentdata;
     
-    if (Extent::preadExtent(fd,offset, extentdata, need_bitflip) == false) {
+    if (Extent::preadExtent(fd, offset, extentdata, need_bitflip) == false) {
 	return NULL;
     }
     if (compressedSize) *compressedSize = extentdata.size();

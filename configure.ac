@@ -24,6 +24,7 @@ COM_HP_HPL_ACINCLUDE(lintel dataseries)
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LD
+AM_PROG_AS
 AC_SUBST(LD)
 
 ## library bits...
