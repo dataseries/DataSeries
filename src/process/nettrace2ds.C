@@ -21,10 +21,10 @@
 // general one for the rest.  the specific method for handling the v2
 // attr ops should eventually go away.
 
-// TODO: decide whether we should put the output from the 
-// summarizeBandwidthInformation() run in the dataseries output -- it is
-// completely re-calculable from the wire-length analysis, so I think
-// the answer is no.
+// TODO: Modify the short data assert code to make sure that we are at
+// wire size for the packet so that if there is something missing in
+// an RPC request/reply we don't incorrectly claim it is short and
+// incorrectly pass the "at end of packet" check.
 
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
@@ -65,6 +65,7 @@
 #include <Lintel/StatsQuantile.H>
 #include <Lintel/Deque.H>
 #include <Lintel/Clock.H>
+#include <Lintel/PThread.H>
 
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesModule.H>
@@ -85,7 +86,6 @@ const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
 const bool warn_unmatched_rpc_reply = false; // not watching output
 
-unsigned max_missing_request_count = 20000;
 enum CountTypes {
     ignored_nonip = 0,
     arp_type,
@@ -112,6 +112,7 @@ enum CountTypes {
     link_layer_error,
     duplicate_request,
     bad_retransmit,
+    packet_loss,
     last_count
 };
 
@@ -141,6 +142,7 @@ string count_names[] = {
     "link_layer_error",
     "duplicate_request",
     "bad_retransmit",
+    "packet_loss",
 };
 
 vector<unsigned int> counts;
@@ -224,12 +226,75 @@ inline u_int64_t ntohll(u_int64_t in)
 #error "don't know how to do ntohll"
 #endif
 
+// Linux as of 2.6.18.2 if you call madvise(fd, WILLNEED) will block
+// until the WILLNEED is done Grrrrr;
+
+class Prefetcher: public PThread {
+public:
+    Prefetcher(string _filename)
+	: fd(-1), data(NULL), datasize(0), filename(_filename) { 
+    }
+
+    virtual void *run() {
+	struct stat statbuf;
+
+	int ret = stat(filename.c_str(), &statbuf);
+    
+	INVARIANT(ret == 0, boost::format("could not stat source file %s: %s")
+		  % filename % strerror(errno));
+	datasize = statbuf.st_size;
+
+	fd = open(filename.c_str(), O_RDONLY);
+	INVARIANT(fd > 0, boost::format("could not open source file %s: %s")
+		  % filename % strerror(errno));
+    
+	data = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	INVARIANT(data != MAP_FAILED, boost::format("could not mmap source file %s: %s")
+		  % filename % strerror(errno));
+	
+	// I don't know what madvise willneed does, but the net effect
+	// of calling this is to not have the desired effect of
+	// running at high cpu utilization in the main thread.
+
+//	printf("madv (%s)...\n", filename.c_str());
+//	madvise(data, datasize, MADV_WILLNEED);
+	if (false) printf("touch (%s)...\n", filename.c_str());
+
+	unsigned int defeat_opt = 0;
+	for(unsigned i = 0; i < datasize; i += 2048) {
+	    defeat_opt += *(reinterpret_cast<unsigned char *>(data)+i);
+	}
+	if (false) printf("done (%s)\n", filename.c_str());
+	return reinterpret_cast<void *>(defeat_opt);
+    }
+
+    void finish() {
+	madvise(data, datasize, MADV_DONTNEED);
+	INVARIANT(munmap(data, datasize) == 0, "bad");
+	data = reinterpret_cast<unsigned char *>(-1);
+	INVARIANT(close(fd) == 0, "bad");
+	fd = -1;
+    }
+
+    static Prefetcher *doit(const string &filename) {
+	Prefetcher *fetcher = new Prefetcher(filename);
+	fetcher->start();
+	return fetcher;
+    }
+
+    int fd;
+    void *data;
+    unsigned datasize;
+    string filename;
+};
+
 class NettraceReader {
 public:
     NettraceReader(const string &_filename) : filename(_filename) { }
 
     virtual ~NettraceReader() { }
     /// Return false on EOF; all pointers must be valid
+    virtual void prefetch() = 0;
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
 			    uint32_t *wire_length, Clock::Tfrac *time) = 0;
     string filename;
@@ -238,36 +303,34 @@ public:
 class ERFReader : public NettraceReader {
 public:
     ERFReader(const string &filename)
-	: NettraceReader(filename), buffer(NULL), buffer_cur(NULL), buffer_end(NULL), bufsize(0), eof(false)
+	: NettraceReader(filename), myprefetcher(NULL), fd(-1), buffer(NULL), 
+	  buffer_cur(NULL), buffer_end(NULL), bufsize(0), eof(false)
     {
     }
 
     virtual ~ERFReader() { 
+	delete myprefetcher;
     }
 
-    static void openUncompress(const string &filename, unsigned char **buffer, uint32_t *bufsize) {
-	struct stat statbuf;
-	int ret = stat(filename.c_str(), &statbuf);
-    
-	INVARIANT(ret == 0, boost::format("could not stat source file %s: %s")
-		  % filename % strerror(errno));
+    virtual void prefetch() {
+	if (myprefetcher != NULL) {
+	    return; // already started...
+	}
+	myprefetcher = Prefetcher::doit(filename);
+    }
 
-	int fd = open(filename.c_str(), O_RDONLY);
-	INVARIANT(fd > 0, boost::format("could not open source file %s: %s")
-		  % filename % strerror(errno));
-    
-	unsigned char *buf = static_cast<unsigned char *>(mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0));
-	INVARIANT(buf != MAP_FAILED, boost::format("could not mmap source file %s: %s")
-		  % filename % strerror(errno));
+    void openUncompress(const string &filename, unsigned char **buffer, uint32_t *bufsize) {
+	if (myprefetcher == NULL) {
+	    prefetch();
+	}
+	myprefetcher->join();
 	
-	madvise(buf, statbuf.st_size, MADV_WILLNEED);
-
 	*buffer = NULL;
 	*bufsize = 0;
 
 	if (suffixequal(filename,".128MiB.lzf")) {
 	    *buffer = new unsigned char[128*1024*1024];
-	    *bufsize = lzf_decompress(buf, statbuf.st_size, *buffer, 128*1024*1024);
+	    *bufsize = lzf_decompress(myprefetcher->data, myprefetcher->datasize, *buffer, 128*1024*1024);
 	    INVARIANT(*bufsize > 0 && *bufsize <= 128*1024*1024, "bad");
 	} else if (suffixequal(filename,".128MiB.zlib1") 
 		   || suffixequal(filename, ".128MiB.zlib6") 
@@ -275,17 +338,14 @@ public:
 	    *buffer = new unsigned char[128*1024*1024];
 	    uLongf destlen = 128*1024*1024;
 	    int ret = uncompress(static_cast<Bytef *>(*buffer),
-				 &destlen,static_cast<const Bytef *>(buf),
-				 statbuf.st_size);
+				 &destlen,static_cast<const Bytef *>(myprefetcher->data),
+				 myprefetcher->datasize);
 	    INVARIANT(ret == Z_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
 	    *bufsize = destlen;
 	} else {
 	    FATAL_ERROR(boost::format("Don't know how to unpack %s") % filename);
 	}
-
-	madvise(buf, statbuf.st_size, MADV_DONTNEED);
-	INVARIANT(munmap(buf, statbuf.st_size) == 0, "bad");
-	INVARIANT(close(fd) == 0, "bad");
+	myprefetcher->finish();
     }
 
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
@@ -312,28 +372,32 @@ public:
 	++cur_file_packet_num;
 	INVARIANT(buffer_cur + 16 < buffer_end, "bad");
 	
-	// Next line is so little-endian specific
-	unsigned record_size = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 10));
+	unsigned record_size = ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 10));
 
 	if ((buffer_cur[9] & 0x10) == 0x10) { // link layer error, skip this packet.
 	    ++counts[link_layer_error];
 	    buffer_cur += record_size;
 	    goto retry;
 	}
-	    
-	    
-	*time = *reinterpret_cast<uint64_t *>(buffer_cur);
+	
+	*time = *reinterpret_cast<uint64_t *>(buffer_cur); // This line is so little-endian specific
 	INVARIANT(buffer_cur[8] == 2, "unimplemented"); // type
 	INVARIANT(buffer_cur[9] == 4, // varying record lengths
 		  boost::format("unimplemented flags 0x%x") % static_cast<int>(buffer_cur[9])); // flags
-	INVARIANT(buffer_cur[12] == 0 && buffer_cur[13] == 0, "unimplemented"); // loss counter
+	if (buffer_cur[12] != 0 || buffer_cur[13] != 0) {
+	    counts[packet_loss] += ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 12));
+	    cerr << boost::format("packet loss, %d packets in %s") 
+		% ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 12))
+		% tracename
+		 << endl;
+	}
 
 	*capture_size = record_size - 18;
 	// subtracting 4 strips off the CRC that the endace card
 	// appears to be capturing.  failing to do this causes some of
 	// the checks that we have reached the end of the packet to
 	// incorrectly fail.
-	*wire_length = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 14)) - 4;
+	*wire_length = ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 14)) - 4;
 	if (*capture_size > *wire_length) { 
 	    // can happen because card rounds up in size
 	    *capture_size = *wire_length;
@@ -346,6 +410,8 @@ public:
 	return true;
     }
 private:
+    Prefetcher *myprefetcher;
+    int fd;
     unsigned char *buffer, *buffer_cur, *buffer_end;
     uint32_t bufsize;
     bool eof;
@@ -361,6 +427,12 @@ public:
 	}
     }
 
+    virtual void prefetch() {
+	FATAL_ERROR("no");
+    }
+
+    static const unsigned prefetch_ahead_amount = 3;
+
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
 			    uint32_t *wire_length, Clock::Tfrac *time) {
 	if (!started) {
@@ -368,6 +440,10 @@ public:
 	    cur_reader = readers.begin();
 	    INVARIANT(!readers.empty(), "bad");
 	    tracename = (**cur_reader).filename.c_str();
+	    for(unsigned i = 1;i<=prefetch_ahead_amount && i < readers.size(); ++i) {
+		printf("prefetching %d\n", i);
+		readers[i]->prefetch();
+	    }
 	}
 
 	while(cur_reader != readers.end()) {
@@ -378,6 +454,9 @@ public:
 	    ++cur_reader;
 	    if (cur_reader != readers.end()) {
 		tracename = (**cur_reader).filename.c_str();
+		if (cur_reader + prefetch_ahead_amount < readers.end()) {
+		    (**(cur_reader + prefetch_ahead_amount)).prefetch();
+		}
 	    }
 	}
 	return false;
@@ -386,6 +465,9 @@ public:
     void addReader(NettraceReader *reader) {
 	INVARIANT(!started, "bad");
 	readers.push_back(reader);
+	if (readers.size() == 1) {
+	    reader->prefetch();
+	}
     }
 private:
     vector<NettraceReader *> readers;
@@ -1444,9 +1526,24 @@ public:
 			       ("actual len %d",actual_len));
 	    return 2;
 	} else {
-	    AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
-			 ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
-	    return 1 + 1 + 3*2 + 1;
+	    if (xdr[0]) { // have pre-op attr
+		INVARIANT(xdr[1+3*2],
+			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
+	    //                       flag pre_op flag post_op  count committed writeverf
+		ShortDataAssertMsg(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
+				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		return 1 + 1 + 3*2 + 1;
+	    } else if (xdr[1]) { // missing pre-op attr, have post-op
+		INVARIANT(xdr[1], 
+			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
+		ShortDataAssertMsg(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
+				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		return 1 + 1 + 1;
+	    } else {
+		INVARIANT(actual_len == 4 + 4 + 4 + 4 + 8, 
+			  boost::format("bad in %s size is %d") % tracename % actual_len);
+		return -1;
+	    }
 	}
     }
 
@@ -1503,10 +1600,28 @@ public:
 		    readwrite_bytes.set(actual_bytes);
 		}
 	    } else {
-		AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
-			     ("bad"));
-		u_int32_t actual_bytes = ntohl(xdr[1+3*2+1+fattr3_len/4]);
+		uint32_t actual_bytes;
+		if (xdr[0]) { // have pre-op attr
+		    INVARIANT(xdr[1+3*2],
+			      boost::format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
+		    //                       flag pre_op flag post_op  count committed writeverf
+		    AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
+				 ("bad"));
+		    actual_bytes = ntohl(xdr[1+3*2+1+fattr3_len/4]);
+		} else if (xdr[1]) { // missing pre-op attr, have post-op
+		    INVARIANT(xdr[1], 
+			      boost::format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
+		    AssertAlways(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, 
+				 ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		    actual_bytes = ntohl(xdr[1+1+fattr3_len/4]);
+		} else {
+		    INVARIANT(actual_len == 4 + 4 + 4 + 4 + 8, 
+			      boost::format("bad in %s size is %d") % tracename % actual_len);
+		    actual_bytes = ntohl(xdr[1+1]);
+		}
+
 		AssertAlways((int)actual_bytes == reqbytes,("bad\n"));
+
 		if (mode == Convert) {
 		    readwrite_bytes.set(reqbytes);
 		}
@@ -1967,8 +2082,10 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	// unknown program, just retain request...
 	printf("unrecognized rpc request program %d, version %d, procedure %d\n",
 	       d.program,d.version,d.procnum);
+	d.request_id = -4; // fake
     }
-    INVARIANT(d.request_id >= first_record_id || (d.request_id >= -3 && d.request_id <= -1), "bad");
+    INVARIANT(d.request_id >= first_record_id || (d.request_id >= -4 && d.request_id <= -1), 
+	      boost::format("bad %d / %d %d on %s") % d.program % d.request_id % first_record_id % tracename);
     rpcHashTable.add(d); // only add if successful parse...
 }
 
@@ -2000,11 +2117,12 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	delete req->replyhandler;
 	rpcHashTable.remove(*req);
     } else {
+	// False positives do occur here as we can think something is a reply based solely on
+	// a few bytes in the packet.
 	++counts[possible_missing_request];
-	// really ought to do this as a fraction of total requests
-	AssertAlways(counts[possible_missing_request] < max_missing_request_count,
-		     ("whoa, more than %d possible reply packets without the request %lld packets so far; you need to tcpdump -s 256+; on %s\n",
-		      max_missing_request_count, cur_record_id - first_record_id,tracename.c_str()));
+	AssertAlways(counts[possible_missing_request] < 1000 || counts[possible_missing_request] < counts[ip_packet] * 0.01, 
+		     ("whoa, %d possible reply packets without the request %d packets so far; you need to tcpdump -s 256+; on %s\n",
+		      counts[possible_missing_request], counts[ip_packet], tracename.c_str()));
 	if (warn_unmatched_rpc_reply) {
 	    // many of these appear to be spurious, e.g. not really an rpc reply
 	    cout << boost::format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
@@ -2338,21 +2456,22 @@ check_file_missing(const string &filename)
 void
 uncompressFile(const string &src, const string &dest)
 {
-    check_file_missing(dest);
-
-    unsigned char *outbuf = NULL;
-    unsigned int outsize = 0;
-
-    ERFReader::openUncompress(src, &outbuf, &outsize);
-
-    int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
-    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
-	      % dest % strerror(errno));
-    INVARIANT(outbuf != NULL && outsize > 0, "internal");
-    ssize_t write_amt = write(outfd, outbuf, outsize);
-    INVARIANT(write_amt == outsize, "bad");
-    int ret = close(outfd);
-    INVARIANT(ret == 0, "bad close");
+    FATAL_ERROR("broke it by doing prefetching");
+//    check_file_missing(dest);
+//
+//    unsigned char *outbuf = NULL;
+//    unsigned int outsize = 0;
+//
+//    ERFReader::openUncompress(src, &outbuf, &outsize);
+//
+//    int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
+//    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
+//	      % dest % strerror(errno));
+//    INVARIANT(outbuf != NULL && outsize > 0, "internal");
+//    ssize_t write_amt = write(outfd, outbuf, outsize);
+//    INVARIANT(write_amt == outsize, "bad");
+//    int ret = close(outfd);
+//    INVARIANT(ret == 0, "bad close");
 }
 
 void testBWRolling()
