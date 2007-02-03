@@ -85,7 +85,7 @@ const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
 const bool warn_unmatched_rpc_reply = false; // not watching output
 
-int max_missing_request_count = 20000;
+unsigned max_missing_request_count = 20000;
 enum CountTypes {
     ignored_nonip = 0,
     arp_type,
@@ -213,7 +213,7 @@ struct bandwidth_rolling {
 
 vector<bandwidth_rolling *> bw_info;
 Clock::Tll max_incremental_processed = 0;
-unsigned incremental_process_at_packet_count = 500000; // 6-8MB of buffering
+int incremental_process_at_packet_count = 500000; // 6-8MB of buffering
 
 #if defined(bswap_64)
 inline u_int64_t ntohll(u_int64_t in)
@@ -228,6 +228,7 @@ class NettraceReader {
 public:
     NettraceReader(const string &_filename) : filename(_filename) { }
 
+    virtual ~NettraceReader() { }
     /// Return false on EOF; all pointers must be valid
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
 			    uint32_t *wire_length, Clock::Tfrac *time) = 0;
@@ -457,6 +458,7 @@ public:
 	RPCParseAssert(_len >= 8);
 	RPCParseAssert(rpchdr[1] == 0 || rpchdr[1] == net_reply);
     }
+    virtual ~RPC() { }
     uint32_t xid() { return rpchdr[0]; }
     bool is_request() { return rpchdr[1] == 0; }
     void *duppacket() { 
@@ -533,7 +535,7 @@ public:
 	RPCParseAssert(rpcparamlen >= 0);
 	if (false) {
 	    unsigned char *f = (unsigned char *)rpcparam;
-	    printf("bytes starting @%d: ",f-(unsigned char *)rpchdr);
+	    cout << boost::format("bytes starting @%d: ") % (f-(unsigned char *)rpchdr);
 	    for(unsigned i=0;i<rpcparamlen;++i) {
 		printf("%02x ",f[i]);
 	    }
@@ -541,6 +543,7 @@ public:
 	}
     }
 	
+    virtual ~RPCRequest() { }
     uint32_t net_prognum() { return rpchdr[3]; }
     uint32_t host_prognum() { return ntohl(rpchdr[3]); }
     uint32_t net_version() { return rpchdr[4]; }
@@ -576,6 +579,8 @@ public:
 	//    printf("rpcreply len = %d, results_len = %d\n",len,results_len);
 	RPCParseAssert(results_len >= 0);
     }
+
+    virtual ~RPCReply() { }
 
     bool isaccepted() {
 	return rpc_results != NULL && rpc_results[-1] == 0;
@@ -618,7 +623,8 @@ public:
 	parseCheck();
     }
 
-    
+    virtual ~MountRequest_MNT() { }
+
     char *rawpathname() { // not null terminated
 	return (char *)(rpcparam + 1);
     }
@@ -650,6 +656,8 @@ public:
 	    }
 	}
     }
+
+    virtual ~MountReply_MNT() { }
 
     bool mountok() { 
 	return rpc_results[0] == 0;
@@ -1379,7 +1387,6 @@ public:
 	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(actual_len >= 8,("bad"));
-	u_int32_t op_status = ntohl(*xdr);
 
 	int has_post_op_attr = ntohl(xdr[1]);
 	if (0 == has_post_op_attr) {
@@ -1438,7 +1445,7 @@ public:
 	    return 2;
 	} else {
 	    AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
-			 ("bad"));
+			 ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
 	    return 1 + 1 + 3*2 + 1;
 	}
     }
@@ -1629,7 +1636,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    { 
 		ShortDataAssertMsg(actual_len >= (8+8+4),
 				   "NFSv3 read request",
-				   ("bad read len %d @%ld.%09d; %d %d",actual_len,
+				   ("bad read len %d @%d.%09d; %d %d",actual_len,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
@@ -1649,7 +1656,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		ShortDataAssertMsg(actual_len >= (8+8+4),
 				   "NFSv3 Write Request",
-				   ("bad read len %d @%ld.%09ld; %d %d",actual_len,
+				   ("bad read len %d @%d.%09d; %d %d",actual_len,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
@@ -1657,7 +1664,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 			     ("bad"));
 		ShortDataAssertMsg(actual_len >= (4+ fhlen + 8 + 4),
 				   "NFSv3 Write Request",
-				   ("bad read len %d @%ld.%09d/%d; %d %d",actual_len,
+				   ("bad read len %d @%d.%09d; %d %d",actual_len,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));   
 
@@ -2048,7 +2055,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
     AssertAlways((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
-		 ("bad doff %d %d\n",
+		 ("bad doff %d %ld\n",
 		  tcp_hdr->doff * 4, sizeof(struct tcphdr)));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
@@ -2343,6 +2350,7 @@ uncompressFile(const string &src, const string &dest)
 	      % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
+    INVARIANT(write_amt == outsize, "bad");
     int ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
 }
@@ -2385,11 +2393,9 @@ main(int argc, char **argv)
 
     counts.resize(static_cast<unsigned>(last_count));
     INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
-    if (enable_encrypt_filenames) {
-	prepareEncryptEnvOrRandom();
-    }
 
     if (argc >= 3 && strcmp(argv[1],"--info-erf") == 0) {
+	prepareEncrypt("abcdef0123456789","abcdef0123456789");
 	cur_record_id = -1;
 	first_record_id = 0;
 	MultiFileReader *mfr = new MultiFileReader();
@@ -2400,6 +2406,10 @@ main(int argc, char **argv)
     }
     
     if (argc >= 6 && strcmp(argv[1],"--convert-erf") == 0) {
+	if (enable_encrypt_filenames) {
+	    prepareEncryptEnvOrRandom();
+	}
+
 	commonPackingArgs packing_args;
 	getPackingArgs(&argc,argv,&packing_args);
     

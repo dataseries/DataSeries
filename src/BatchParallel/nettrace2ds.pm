@@ -90,8 +90,8 @@ sub determine_things_to_build {
 sub rebuild_thing_do {
     my($this, $thing_info) = @_;
 
-    my $cmd = "nettrace2ds --info-erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new";
-    print "$cmd\n";
+    my $cmd = "nettrace2ds --info-erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+    print "Creating $thing_info->{infoname}...\n";
     my $ret = system($cmd);
     exit(1) unless $ret == 0;
     exit(0);
@@ -103,10 +103,11 @@ sub rebuild_thing_success {
     die "huh" unless -f "$thing_info->{infoname}-new";
     rename("$thing_info->{infoname}-new",$thing_info->{infoname})
 	or die "rename failed: $!";
+    print "Successfully created $thing_info->{infoname}\n";
 }
 
 sub rebuild_thing_fail {
-    die "unimplemented";
+    print "Failed to create $thing_info->{infoname}\n";
 }
 
 sub rebuild_thing_message {
