@@ -93,6 +93,7 @@ network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 if WITH_CRYPTO
 bin_PROGRAMS += nettrace2ds
 nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
+nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm
 endif
 endif
 
