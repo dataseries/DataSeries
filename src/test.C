@@ -546,9 +546,9 @@ onebytefliptest(uint32_t *buf, int buflen, int reps,
 		void (*fn)(uint32_t *, int), const string &fnname,
 		uint32_t &expected_sum, Stats &timing, Stats &flip4_time, bool first_run = false)
 {
-    if (timing.count() > 1 && timing.mean() > (flip4_time.mean() + flip4_time.conf95())) {
-	printf("   skipping %s, mean time %.6g > flip4+conf95 %.6g + %.6g\n",
-	       fnname.c_str(), timing.mean(), flip4_time.mean(), flip4_time.conf95());
+    if (timing.count() > 2 && timing.mean()-timing.conf95() > (flip4_time.mean() + flip4_time.conf95())) {
+	printf("   skipping %s, mean time %.6g-%.6g > flip4+conf95 %.6g + %.6g\n",
+	       fnname.c_str(), timing.mean(), timing.conf95(), flip4_time.mean(), flip4_time.conf95());
 	return;
     }
     uint32_t sum = 0;
