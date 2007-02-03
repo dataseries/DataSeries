@@ -29,10 +29,16 @@ else
 DATASERIES_ENABLE_BZ2=0
 endif
 
+if WITH_CRYPTO
+WITH_CRYPTO=1
+else
+WITH_CRYPTO=0
+endif
+
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
@@ -78,13 +84,16 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
-nettrace2ds_SOURCES = process/nettrace2ds.C process/cryptutil.C process/aes-i586.S
+nettrace2ds_SOURCES = process/nettrace2ds.C process/cryptutil.C 
 
 if WITH_PCAP
-bin_PROGRAMS += network-driverdump nettrace2ds
+bin_PROGRAMS += network-driverdump 
 network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 
+if WITH_CRYPTO
+bin_PROGRAMS += nettrace2ds
 nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
+endif
 endif
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
@@ -107,7 +116,12 @@ lex.DSStatGroupBy_yy.c: module/DSStatGroupByLex.l
 	flex $(top_srcdir)/src/module/DSStatGroupByLex.l
 
 check_PROGRAMS = test
-test_LDADD =  libDataSeries.la -lssl -lcrypto
+test_SOURCES = test.C 
+test_LDADD =  libDataSeries.la 
+if WITH_CRYPTO
+test_SOURCES += process/cryptutil.C
+test_LDADD += -lcrypto
+endif
 
 check-local: $(CHECK_TARGETS)
 

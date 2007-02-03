@@ -29,11 +29,13 @@ public:
 
     virtual ~TypeIndexModule();
     void setPrefix(const std::string &type_prefix);
+    /// Ugly temporary hack until the larger rewrite to handle name rewriting
+    void setSecondPrefix(const std::string &type_prefix);
 
     void addSource(const std::string &filename);
     bool haveSources() { return !inputFiles.empty(); }
 protected:
-    std::string type_prefix;
+    std::string type_prefix, second_type_prefix;
     ExtentSeries indexSeries;
     Int64Field extentOffset;
     Variable32Field extentType;

@@ -17,19 +17,19 @@
 */
 
 #include <inttypes.h>
+#include <boost/format.hpp>
 
 #include <openssl/sha.h>
+#include <openssl/aes.h>
 
-#include <LintelAssert.H>
-#include <HashMap.H>
-#include <Clock.H>
-#include <StringUtil.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
+#include <Lintel/HashMap.H>
+#include <Lintel/Clock.H>
+#include <Lintel/StringUtil.H>
 
 #include <cryptutil.H>
 
-extern "C" {
-#include <aes.h>
-}
 using namespace std;
 
 HashMap<string,string> encrypted_to_okstring; 
@@ -43,7 +43,7 @@ shastring(const string &in)
 }
 
 static string hmac_key_1, hmac_key_2;
-static aes_context aes_key;
+static AES_KEY encrypt_key, decrypt_key;
 
 void
 prepareEncrypt(const std::string &key_a, const std::string &key_b)
@@ -52,16 +52,8 @@ prepareEncrypt(const std::string &key_a, const std::string &key_b)
     hmac_key_2 = key_b;
     AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
 		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
-    aes_set_key(&aes_key,(unsigned char *)&*hmac_key_1.begin(),16,0);
-    if (false) {
-	string in;
-	for(int i = 0;i<255;++i) {
-	    string enc = encryptString(in);
-	    string dec = decryptString(enc);
-	    AssertAlways(enc != dec && dec == in,("bad"));
-	    in.append(" ");
-	}
-    }
+    AES_set_encrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&encrypt_key);
+    AES_set_decrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&decrypt_key);
 }
 
 struct eokent {
@@ -69,7 +61,7 @@ struct eokent {
     string ok;
 };
 
-eokent eoklist[] = {
+static eokent eoklist[] = {
     // productions
     { "10ba0c97d572b18dcee3d6ba940f0dce", "honey" },
     { "35cdb4301171ed10b699f3a6fac30aaf", "training" },
@@ -135,9 +127,61 @@ eokent eoklist[] = {
     { "87b2aec5841c83e96797f98c890a0106dbdf9cedf7a55cb20be6704458d68c07", "ers-trace-data" },
 };
 
+struct testlist {
+    string in, out;
+};
+
+static testlist tests[] = {
+    { "eric", "ed76debf248fbfc322ae42328a555125" },
+    { "the quick brown fox jumps over the lazy dog", "0b4590d4d762ad91cce4144a30c1fbf6b26801121cebbd81484300367db6aebffdfb2442477cb230f4168035cc68e09e6168d660a82ccc75c35778584b4fee40" },
+    { "1" , "61933f64b9227ca12c6d4d217c2545d3" },
+    { "12" , "6990a16d2324cd8c85af99f1111fbb65" },
+    { "123" , "b5ad14513da62197e33c263b70b4605e" },
+    { "1234" , "c5fcd3b60049df3275ef4b78215e5e24" },
+    { "12345" , "83fe893ea01c6ef28d0c833342a6b573" },
+    { "123456" , "e399f7482967b2843225a22051bcb529" },
+    { "1234567" , "f4ba85e28e9fcd9f3fa552100e25ac01" },
+    { "12345678" , "8f4483c3b55eada20ec50d5ec2295857" },
+    { "123456789" , "49a1656523fd8c62842d7c74057267c95d5f5f8cc969f372cfcccda8bec0cfeb" },
+    { "123456789a" , "0de6a973de914369453a2079ed7e88995b5e90a989138a9074c9373c7e0b7490" },
+    { "123456789ab" , "d0b19e6b94a7ad745654c246d37cfbe14444a148caacd1128162dc0c449cb29a" },
+    { "123456789abc" , "cfd3d8a04a83b04d50d3bd1412b14a6c61ef046387a24aca30d799c9b13df1d3" },
+    { "123456789abcd" , "f22f98d6b9b3c94091468f364aab025d5cb61a8e9a575e3434a48cf58295ab32" },
+    { "123456789abcde" , "d510d62192bc0a1712d6d4623ddbfb8e9d4e1b00ada993a39f89826853cdfda6" },
+    { "123456789abcdef" , "1f37c76f92c54d68a617f7e8c3380dff5bda5e4cf4f84a528d0c7c8ea3a01bab" },
+    { "0123456789abcdef" , "7d58830ebf0c8a07a7033e03ea06e795023ffa5c3bd8fcdf19a7b73561324e3e" },
+    { "", "" } // end of list
+};
+
+void
+runCryptUtilChecks()
+{
+    prepareEncrypt("abcdefghijklmnop","0123456789qrstuv");
+
+    for(unsigned i = 0;!tests[i].in.empty(); ++i) {
+	string t_out = encryptString(tests[i].in);
+	string t_in = decryptString(t_out);
+	INVARIANT(hexstring(t_out) == tests[i].out, 
+		  boost::format("mismatch %s -> %s != %s") % tests[i].in % hexstring(t_out) % tests[i].out);
+	INVARIANT(t_in == tests[i].in, 
+		  boost::format("mismatch %s did not decrypt back to original") % tests[i].in);
+    }
+
+    string in;
+    for(int i = 0;i<4096;++i) {
+	string enc = encryptString(in);
+	string dec = decryptString(enc);
+	AssertAlways(enc != dec && dec == in,("bad"));
+	in.append(" ");
+    }
+    cout << "CryptUtilChecks passed." << endl;
+}
+
 void
 prepareEncryptEnvOrRandom()
 {
+    runCryptUtilChecks();
+
     if (getenv("NAME_KEY_1") != NULL && getenv("NAME_KEY_2") != NULL) {
 	prepareEncrypt(hex2raw(getenv("NAME_KEY_1")),
 		       hex2raw(getenv("NAME_KEY_2")));
@@ -166,36 +210,40 @@ prepareEncryptEnvOrRandom()
     }
 }
 
+// This is just cipher block chaining implemented inplace without the
+// need to pass the all zero's IV and getting to assume multiple of 16
+// byte (AES block size) size.
+
 void
-aesEncryptFast(aes_context *ctxt,unsigned char *buf, int bufsize)
+aesEncryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 {
     AssertAlways((bufsize % 16) == 0,("bad %d",bufsize));
     uint32_t *v = (uint32_t *)buf;
     uint32_t *vend = v + bufsize/4;
-    aes_encrypt(ctxt,(const unsigned char *)v,(unsigned char *)v);
+    AES_encrypt((const unsigned char *)v,(unsigned char *)v, key);
     for(v += 4;v < vend;v += 4) {
         v[0] ^= v[-4];
         v[1] ^= v[-3];
         v[2] ^= v[-2];
         v[3] ^= v[-1];
-	aes_encrypt(ctxt,(const unsigned char *)v,(unsigned char *)v);
+	AES_encrypt((const unsigned char *)v, (unsigned char *)v, key);
     }
 }
 
 void
-aesDecryptFast(aes_context *ctxt,unsigned char *buf, int bufsize)
+aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 {
     AssertAlways((bufsize % 16) == 0,("bad"));
     uint32_t *vbegin = (uint32_t *)buf;
     uint32_t *v = vbegin + bufsize/4;
     for(v -= 4; v > vbegin; v -= 4) {
-	aes_decrypt(ctxt,(const unsigned char *)v,(unsigned char *)v);
+	AES_decrypt((const unsigned char *)v, (unsigned char *)v, key);
 	v[0] ^= v[-4];
 	v[1] ^= v[-3];
 	v[2] ^= v[-2];
 	v[3] ^= v[-1];
     }
-    aes_decrypt(ctxt,(const unsigned char *)v,(unsigned char *)v);
+    AES_decrypt((const unsigned char *)v,(unsigned char *)v, key);
 }
 
 static HashMap<string,string> raw2encrypted;
@@ -221,17 +269,22 @@ encryptString(string in)
     unsigned char sha_out[SHA_DIGEST_LENGTH];
     SHA1((const unsigned char *)tmp.data(),tmp.size(),sha_out);
     tmp = " ";
-    int minlen = in.size() + 8; // at least 8 bytes of hmac
+    int minlen = in.size() + 8; // at least 7 bytes of hmac (1 byte of hmac size)
     int totallen = minlen + (16 - (minlen % 16)) % 16;
     int hmaclen = totallen - (in.size() + 1);
-    AssertAlways(hmaclen >= 7,("should have at least 8 bytes of hmac!\n"));
+
+    // Worst case is 8 bytes required + 15 bytes roundup -> 23 bytes -
+    // 1 of hmacsize = 22 hmac
+
+    AssertAlways(hmaclen >= 7 && hmaclen <= 22,
+		 ("should have at least 7-22 bytes of hmac!\n"));
     tmp[0] = hmaclen;
     for(;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
 	tmp.append(" ");
     }
     tmp.append((char *)sha_out,hmaclen);
     tmp.append(in);
-    aesEncryptFast(&aes_key,(unsigned char *)&*tmp.begin(),tmp.size());
+    aesEncryptFast(&encrypt_key,(unsigned char *)&*tmp.begin(),tmp.size());
     if (enable_encrypt_memoize) {
 	raw2encrypted[in] = tmp;
     }
@@ -243,7 +296,7 @@ decryptString(string in)
 {
     AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
 		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
-    aesDecryptFast(&aes_key,(unsigned char *)&*in.begin(),in.size());
+    aesDecryptFast(&decrypt_key,(unsigned char *)&*in.begin(),in.size());
     int hmaclen = in[0];
     AssertAlways(hmaclen >= 7 && hmaclen <= 22,("bad decrypt"));
     AssertAlways((int)in.size() >= (hmaclen + 1),("bad decrypt"));

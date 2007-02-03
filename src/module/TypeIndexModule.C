@@ -14,6 +14,7 @@ using namespace std;
 TypeIndexModule::TypeIndexModule(const string &_type_prefix)
     : IndexSourceModule(), 
       type_prefix(_type_prefix), 
+      second_type_prefix(""),
       indexSeries(ExtentSeries::typeXMLIdentical),
       extentOffset(indexSeries,"offset"), 
       extentType(indexSeries,"extenttype"),
@@ -32,6 +33,14 @@ TypeIndexModule::setPrefix(const string &_type_prefix)
     AssertAlways(startedPrefetching() == false,
 		 ("invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out"));
     type_prefix = _type_prefix;
+}
+
+void
+TypeIndexModule::setSecondPrefix(const std::string &_type_prefix)
+{
+    AssertAlways(startedPrefetching() == false,
+		 ("invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out"));
+    second_type_prefix = _type_prefix;
 }
 
 
@@ -64,7 +73,9 @@ TypeIndexModule::lockedGetCompressedExtent()
 	    indexSeries.setExtent(cur_source->indexExtent);
 	}
 	for(;indexSeries.pos.morerecords();++indexSeries.pos) {
-	    if (ExtentType::prefixmatch(extentType.stringval(),type_prefix)) {
+	    if (ExtentType::prefixmatch(extentType.stringval(),type_prefix) ||
+		(!second_type_prefix.empty()
+		 && ExtentType::prefixmatch(extentType.stringval(),second_type_prefix))) {
 		off64_t v = extentOffset.val();
 		compressedPrefetch *ret 
 		    = getCompressed(cur_source, v, extentType.stringval());

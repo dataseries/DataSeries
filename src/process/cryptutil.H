@@ -25,6 +25,7 @@ extern bool enable_encrypt_memoize;
 std::string shastring(const std::string &in);
 void prepareEncrypt(const std::string &key_a, const std::string &key_b);
 void prepareEncryptEnvOrRandom();
+void runCryptUtilChecks();
 std::string encryptString(std::string in);
 std::string decryptString(std::string in);
 

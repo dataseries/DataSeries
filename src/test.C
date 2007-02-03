@@ -12,8 +12,11 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#if WITH_CRYPTO
 #include <openssl/opensslv.h>
 #include <openssl/evp.h>
+#include <process/cryptutil.H>
+#endif
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
 #include <lzoconf.h>
@@ -1003,6 +1006,9 @@ test_doublebase_nullable()
 int
 main(int argc, char *argv[])
 {
+#if WITH_CRYPTO
+    runCryptUtilChecks();
+#endif
     test_byteflip();
     test_primitives();
     test_extentpackunpack();

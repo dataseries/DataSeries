@@ -9,6 +9,8 @@
 #include <sys/resource.h>
 #include <math.h>
 
+#include <Lintel/AssertBoost.H>
+
 #include <SRTTrace.H>
 #include <SRTrecord.H>
 #include <SRTTraceRaw.H>
@@ -31,6 +33,7 @@ main(int argc, char *argv[])
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
 
     TypeIndexModule srtdsin("Trace::BlockIO::SRT"); 
+    srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
     srtdsin.addSource(argv[2]);
 
     int trace_major = tracestream->version().major_num();
@@ -103,6 +106,8 @@ main(int argc, char *argv[])
 	lv_offset = new Int64Field(srtseries,"lv_offset", Field::flag_nullable);
     }
     Extent *srtextent = srtdsin.getExtent();
+    INVARIANT(srtextent != NULL, "can't find srt extents in input file");
+	      
     srtseries.setExtent(srtextent);
 
     int nrecords = 0;
