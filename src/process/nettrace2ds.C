@@ -84,21 +84,136 @@ ModeT mode = Info;
 const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
 const bool warn_unmatched_rpc_reply = false; // not watching output
-const int max_mismatch_duplicate_requests = 15;
 
 int max_missing_request_count = 20000;
-int missing_request_count = 0;
-unsigned int ignored_nonip_count = 0, arp_type_count = 0, weird_ethernet_type_count = 0;
-unsigned int ip_packet_count = 0, ip_fragment_count = 0, packet_count = 0;
+enum CountTypes {
+    ignored_nonip = 0,
+    arp_type,
+    weird_ethernet_type,
+    ip_packet,
+    ip_fragment,
+    packet,
+    rpc_request,
+    rpc_reply,
+    nfs_request,
+    nfs_reply,
+    tcp_rpc_message,
+    udp_rpc_message,
+    tcp_short_data_in_rpc,
+    possible_missing_request,
+    tcp_multiple_rpcs,
+    nfsv2_request,
+    nfsv3_request,
+    nfsv2_reply,
+    nfsv3_reply,
+    unhandled_nfsv2_requests,
+    unhandled_nfsv3_requests,
+    outstanding_rpcs,
+    link_layer_error,
+    duplicate_request,
+    bad_retransmit,
+    last_count
+};
+
+string count_names[] = {
+    "ignored_nonip",
+    "arp_type",
+    "weird_ethernet_type",
+    "ip_packet",
+    "ip_fragment",
+    "packet",
+    "rpc_request",
+    "rpc_reply",
+    "nfs_request",
+    "nfs_reply",
+    "tcp_rpc_message",
+    "udp_rpc_message",
+    "tcp_short_data_in_rpc",
+    "possible_missing_request",
+    "tcp_multiple_rpcs",
+    "nfsv2_request",
+    "nfsv3_request",
+    "nfsv2_reply",
+    "nfsv3_reply",
+    "unhandled_nfsv2_requests",
+    "unhandled_nfsv3_requests",
+    "outstanding_rpcs",
+    "link_layer_error",
+    "duplicate_request",
+    "bad_retransmit",
+};
+
+vector<unsigned int> counts;
 
 static int exitvalue = 0;
 static string tracename;
+int cur_file_packet_num = 0;
 
 ExtentType::int64 cur_record_id = -1000000000;
 ExtentType::int64 first_record_id = -1000000000;
 int cur_mismatch_duplicate_requests = 0;
-int tcp_rpc_message_count = 0;
-int tcp_short_data_in_rpc_count = 0;
+
+struct packetTimeSize {
+    ExtentType::int64 timestamp_us;
+    int packetsize;
+    packetTimeSize(ExtentType::int64 a, int b)
+	: timestamp_us(a), packetsize(b) { }
+    packetTimeSize()
+	: timestamp_us(0), packetsize(0) { }
+};
+
+struct packetTimeSizeGeq {
+    bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
+	return a.timestamp_us >= b.timestamp_us;
+    }
+};
+
+PriorityQueue<packetTimeSize, packetTimeSizeGeq> packet_bw_rolling_info;
+
+struct bandwidth_rolling {
+    ExtentType::int64 interval_microseconds, update_step, cur_time;
+    double cur_bytes_to_mbits_multiplier, cur_bytes_in_queue;
+    Deque<packetTimeSize> packets_in_flight;
+    StatsQuantile mbps;
+    void update(ExtentType::int64 packet_us, int packet_size) {
+	INVARIANT(cur_time > 0, "bad, didn't call setStartTime()");
+	AssertAlways(packets_in_flight.empty() || 
+		     packet_us >= packets_in_flight.back().timestamp_us,("internal"));
+	while ((packet_us - cur_time) > interval_microseconds) {
+	    // update statistics for the interval from cur_time to cur_time + interval_width
+	    // all packets in p_i_f must have been recieved in that interval
+	    mbps.add(cur_bytes_in_queue * cur_bytes_to_mbits_multiplier);
+	    cur_time += update_step;
+	    while(packets_in_flight.empty() == false &&
+		  packets_in_flight.front().timestamp_us < cur_time) {
+		cur_bytes_in_queue -= packets_in_flight.front().packetsize;
+		packets_in_flight.pop_front();
+	    }
+	}
+	packets_in_flight.push_back(packetTimeSize(packet_us, packet_size));
+	cur_bytes_in_queue += packet_size;
+    }
+
+    void setStartTime(ExtentType::int64 start_time) {
+	INVARIANT(cur_time == 0 && start_time > 0, boost::format("bad %d %d") % cur_time % start_time);
+	cur_time = start_time;
+    }
+
+    bandwidth_rolling(ExtentType::int64 _interval_microseconds, 
+		      ExtentType::int64 start_time, 
+		      int substep_count = 20) 
+	       : interval_microseconds(_interval_microseconds), 
+		 update_step(interval_microseconds/substep_count), 
+		 cur_time(start_time), 
+		 cur_bytes_to_mbits_multiplier(8.0/static_cast<double>(interval_microseconds)),
+		 cur_bytes_in_queue(0) { 
+	AssertAlways(substep_count > 0,("internal"));
+    }
+};
+
+vector<bandwidth_rolling *> bw_info;
+Clock::Tll max_incremental_processed = 0;
+unsigned incremental_process_at_packet_count = 500000; // 6-8MB of buffering
 
 #if defined(bswap_64)
 inline u_int64_t ntohll(u_int64_t in)
@@ -111,23 +226,22 @@ inline u_int64_t ntohll(u_int64_t in)
 
 class NettraceReader {
 public:
+    NettraceReader(const string &_filename) : filename(_filename) { }
+
     /// Return false on EOF; all pointers must be valid
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
 			    uint32_t *wire_length, Clock::Tfrac *time) = 0;
+    string filename;
 };
 
 class ERFReader : public NettraceReader {
 public:
     ERFReader(const string &filename)
+	: NettraceReader(filename), buffer(NULL), buffer_cur(NULL), buffer_end(NULL), bufsize(0), eof(false)
     {
-	openUncompress(filename, &buffer, &bufsize);
-	buffer_cur = buffer;
-	buffer_end = buffer + bufsize;
-	cout << boost::format("%s size is %d") % filename % bufsize << endl;
     }
 
     virtual ~ERFReader() { 
-	delete buffer;
     }
 
     static void openUncompress(const string &filename, unsigned char **buffer, uint32_t *bufsize) {
@@ -176,39 +290,108 @@ public:
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
 			    uint32_t *wire_length, Clock::Tfrac *time) 
     {
-	if (buffer_cur == buffer_end)
+	if (eof) 
 	    return false;
+	if (NULL == buffer) {
+	    cur_file_packet_num = 0;
+	    openUncompress(filename, &buffer, &bufsize);
+	    buffer_cur = buffer;
+	    buffer_end = buffer + bufsize;
+	    cout << boost::format("%s size is %d") % filename % bufsize << endl;
+	}
+	
+    retry:
+	if (buffer_cur == buffer_end) {
+	    eof = true;
+	    delete buffer;
+	    buffer = buffer_cur = buffer_end = NULL;
+	    return false;
+	}
 
+	++cur_file_packet_num;
 	INVARIANT(buffer_cur + 16 < buffer_end, "bad");
 	
 	// Next line is so little-endian specific
+	unsigned record_size = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 10));
+
+	if ((buffer_cur[9] & 0x10) == 0x10) { // link layer error, skip this packet.
+	    ++counts[link_layer_error];
+	    buffer_cur += record_size;
+	    goto retry;
+	}
+	    
+	    
 	*time = *reinterpret_cast<uint64_t *>(buffer_cur);
 	INVARIANT(buffer_cur[8] == 2, "unimplemented"); // type
 	INVARIANT(buffer_cur[9] == 4, // varying record lengths
-		  boost::format("unimplemented flags %d") % static_cast<int>(buffer_cur[9])); // flags
+		  boost::format("unimplemented flags 0x%x") % static_cast<int>(buffer_cur[9])); // flags
 	INVARIANT(buffer_cur[12] == 0 && buffer_cur[13] == 0, "unimplemented"); // loss counter
 
-	*capture_size = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 10)) - 18;
-	*wire_length = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 14));
-
-	*packet_ptr = buffer_cur + 18;
-	buffer_cur += *capture_size + 18;
-	INVARIANT(buffer_cur <= buffer_end, "bad");
-
-	// subtracting 4 strips off the CRC that the endace card appears to be capturing.
-	// failing to do this causes some of the checks that we have reached the end
-	// of the packet to incorrectly fail.
-	*wire_length -= 4;
-	if (*capture_size > *wire_length) {
+	*capture_size = record_size - 18;
+	// subtracting 4 strips off the CRC that the endace card
+	// appears to be capturing.  failing to do this causes some of
+	// the checks that we have reached the end of the packet to
+	// incorrectly fail.
+	*wire_length = htons(*reinterpret_cast<uint16_t *>(buffer_cur + 14)) - 4;
+	if (*capture_size > *wire_length) { 
+	    // can happen because card rounds up in size
 	    *capture_size = *wire_length;
 	}
+
+	*packet_ptr = buffer_cur + 18;
+	buffer_cur += record_size;
+	INVARIANT(buffer_cur <= buffer_end, "bad");
+
 	return true;
     }
 private:
     unsigned char *buffer, *buffer_cur, *buffer_end;
     uint32_t bufsize;
+    bool eof;
 };
 
+class MultiFileReader : public NettraceReader {
+public:
+    MultiFileReader() : NettraceReader(""), started(false) { }
+    virtual ~MultiFileReader() {
+	for(vector<NettraceReader *>::iterator i = readers.begin();
+	    i != readers.end(); ++i) {
+	    delete *i;
+	}
+    }
+
+    virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
+			    uint32_t *wire_length, Clock::Tfrac *time) {
+	if (!started) {
+	    started = true;
+	    cur_reader = readers.begin();
+	    INVARIANT(!readers.empty(), "bad");
+	    tracename = (**cur_reader).filename.c_str();
+	}
+
+	while(cur_reader != readers.end()) {
+	    bool ret = (**cur_reader).nextPacket(packet_ptr, capture_size, wire_length, time);
+	    if (ret == true) {
+		return true;
+	    }
+	    ++cur_reader;
+	    if (cur_reader != readers.end()) {
+		tracename = (**cur_reader).filename.c_str();
+	    }
+	}
+	return false;
+    }
+
+    void addReader(NettraceReader *reader) {
+	INVARIANT(!started, "bad");
+	readers.push_back(reader);
+    }
+private:
+    vector<NettraceReader *> readers;
+    vector<NettraceReader *>::iterator cur_reader;
+    bool started;
+};
+    
 struct network_error_listT {
   ExtentType::int64 h_rid, v_rid;
   unsigned int h_hash, v_hash;
@@ -705,77 +888,68 @@ const string NFSV3_typelist[] =
 
 const string empty_string("");
 
-struct packetTimeSize {
-    ExtentType::int64 timestamp_us;
-    int packetsize;
-    packetTimeSize(ExtentType::int64 a, int b)
-	: timestamp_us(a), packetsize(b) { }
-    packetTimeSize()
-	: timestamp_us(0), packetsize(0) { }
-};
+void
+prepareBandwidthInformation()
+{
+    bw_info.push_back(new bandwidth_rolling(1000,0));
+    bw_info.push_back(new bandwidth_rolling(10000,0));
+    bw_info.push_back(new bandwidth_rolling(100000,0));
+    bw_info.push_back(new bandwidth_rolling(1000000,0));
+    bw_info.push_back(new bandwidth_rolling(5000000,0));
+    bw_info.push_back(new bandwidth_rolling(15000000,0));
+    bw_info.push_back(new bandwidth_rolling(60000000,0));
+}
 
-struct packetTimeSizeGeq {
-    bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
-	return a.timestamp_us >= b.timestamp_us;
+void
+doBandwidthProcessPacket()
+{
+    for(unsigned i = 0;i<bw_info.size();++i) {
+	bw_info[i]->update(packet_bw_rolling_info.top().timestamp_us,
+			   packet_bw_rolling_info.top().packetsize);
     }
-};
+    packet_bw_rolling_info.pop();
+}
 
-PriorityQueue<packetTimeSize, packetTimeSizeGeq> packet_bw_rolling_info;
-
-struct bandwidth_rolling {
-    ExtentType::int64 interval_width, update_step, cur_time;
-    double dbl_interval_width, cur_bytes_in_queue;
-    Deque<packetTimeSize> packets_in_flight;
-    StatsQuantile bytes_per_second;
-    void update(ExtentType::int64 packet_us, int packet_size) {
-	AssertAlways(packets_in_flight.empty() || 
-		     packet_us >= packets_in_flight.back().timestamp_us,("internal"));
-	while ((packet_us - cur_time) > interval_width) {
-	    // update statistics for the interval from cur_time to cur_time + interval_width
-	    // all packets in p_i_f must have been recieved in that interval
-	    bytes_per_second.add(cur_bytes_in_queue/dbl_interval_width);
-	    cur_time += update_step;
-	    while(packets_in_flight.empty() == false &&
-		  packets_in_flight.front().timestamp_us < cur_time) {
-		cur_bytes_in_queue -= packets_in_flight.front().packetsize;
-		packets_in_flight.pop_front();
-	    }
+void
+incrementalBandwidthInformation()
+{
+    INVARIANT(!bw_info.empty(), "didn't call prepareBandwidthInformation()");
+    if (0 == bw_info[0]->cur_time && packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
+	for(unsigned i = 0;i<bw_info.size();++i) {
+	    bw_info[i]->setStartTime(packet_bw_rolling_info.top().timestamp_us);
 	}
-	packets_in_flight.push_back(packetTimeSize(packet_us, packet_size));
-	cur_bytes_in_queue += packet_size;
     }
-    bandwidth_rolling(ExtentType::int64 a, ExtentType::int64 start_time, 
-		      int substep_count = 20) 
-	       : interval_width(a), update_step(a/substep_count), cur_time(start_time), 
-	dbl_interval_width(1024.0*1024.0*(double)a/1.0e6), cur_bytes_in_queue(0) { 
-	AssertAlways(substep_count > 0,("internal"));
+	
+    while(packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
+	INVARIANT(max_incremental_processed <= packet_bw_rolling_info.top().timestamp_us, 
+		  "too much out of orderness");
+	max_incremental_processed = packet_bw_rolling_info.top().timestamp_us;
+	doBandwidthProcessPacket();
+	packet_bw_rolling_info.pop();
     }
-};
+}
 
 void
 summarizeBandwidthInformation()
 {
-    vector<bandwidth_rolling *> bw_info;
-    bw_info.push_back(new bandwidth_rolling(1000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(10000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(100000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(1000000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(5000000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(15000000,packet_bw_rolling_info.top().timestamp_us));
-    bw_info.push_back(new bandwidth_rolling(60000000,packet_bw_rolling_info.top().timestamp_us));
+    cout << "packet_bw_rolling_info.size() = " << packet_bw_rolling_info.size() << endl;
+    INVARIANT(bw_info.size() > 0, "didn't call prepareBandwidthInformation()");
+    if (0 == bw_info[0]->cur_time) {
+	for(unsigned i = 0;i<bw_info.size();++i) {
+	    bw_info[i]->setStartTime(packet_bw_rolling_info.top().timestamp_us);
+	}
+    }
 
     while(packet_bw_rolling_info.empty() == false) {
-	for(unsigned i = 0;i<bw_info.size();++i) {
-	    bw_info[i]->update(packet_bw_rolling_info.top().timestamp_us,packet_bw_rolling_info.top().packetsize);
-	}
-	packet_bw_rolling_info.pop();
+	doBandwidthProcessPacket();
     }
+
     for(unsigned i = 0;i<bw_info.size();++i) {
-	if (bw_info[i]->bytes_per_second.count() > 0) {
-	    printf("MB/s for interval len of %lldus with samples every %lldus\n",
-		   bw_info[i]->interval_width, bw_info[i]->update_step);
-	    bw_info[i]->bytes_per_second.printFile(stdout);
-	    bw_info[i]->bytes_per_second.printTail(stdout);
+	if (bw_info[i]->mbps.count() > 0) {
+	    printf("mbits for interval len of %lldus with samples every %lldus\n",
+		   bw_info[i]->interval_microseconds, bw_info[i]->update_step);
+	    bw_info[i]->mbps.printFile(stdout);
+	    bw_info[i]->mbps.printTail(stdout);
 	    printf("\n");
 	}
     }
@@ -830,11 +1004,12 @@ struct RPCRequestData {
     ExtentType::int64 request_id; // Unique DataSeries assigned ID to all NFS ops
     ExtentType::int64 request_at;
     u_int32_t client, server, xid;
+    u_int16_t server_port;
     u_int32_t program, version, procnum;
     unsigned int rpcreqhashval; // for sanity checking of duplicate requests
     unsigned int ipchecksum, l4checksum;
-    RPCRequestData(u_int32_t a, u_int32_t b, u_int32_t c) 
-      : client(a), server(b), xid(c) {}
+    RPCRequestData(u_int32_t a, u_int32_t b, u_int32_t c, uint16_t d) 
+      : client(a), server(b), xid(c), server_port(d) {}
 };
 
 class RPCRequestDataHash {
@@ -845,18 +1020,22 @@ public:
       a = k.server;
       b = k.client;
       BobJenkinsHashMix(a,b,ret);
+      a = k.server_port;
+      BobJenkinsHashMix(a,b,ret);
       return ret;
     }
 };
 
 class RPCRequestDataEqual {
 public:
+    // valid to reuse same xid between same client and server if program is different
     bool operator()(const RPCRequestData &a, const RPCRequestData &b) {
-	return a.client == b.client && a.server == b.server && a.xid == b.xid;
+	return a.client == b.client && a.server == b.server && a.xid == b.xid && a.server_port == b.server_port;
     }
 };
 
-HashTable<RPCRequestData, RPCRequestDataHash, RPCRequestDataEqual> rpcHashTable;
+typedef HashTable<RPCRequestData, RPCRequestDataHash, RPCRequestDataEqual> rpcHashTableT;
+rpcHashTableT rpcHashTable;
 
 class RPCReplyHandler {
 public:
@@ -1161,6 +1340,59 @@ public:
     }
 };
 
+class NFSV3AccessReplyHandler : public NFSV3AttrOpReplyHandler {
+public:
+    NFSV3AccessReplyHandler(const string &filehandle)
+	: NFSV3AttrOpReplyHandler(filehandle, empty_string, empty_string)
+    { }
+    virtual ~NFSV3AccessReplyHandler() { }
+
+    void checkOpStatus(u_int32_t op_status) {
+	AssertAlways(op_status == 2 || // enoent
+		     op_status == 13 || // eaccess
+		     op_status == 70, // estale
+		     ("bad11 %d",op_status)); 
+	// might at some point want to record failed accesses, as per the NFSV2 
+	// decode also
+    }
+
+    virtual void handleReply(RPCRequestData *reqdata, 
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
+			     int source_port, int dest_port, int l4checksum, int payload_len,
+			     RPCReply &reply) 
+    {
+	const u_int32_t *xdr = reply.getrpcresults();
+	int actual_len = reply.getrpcresultslen();
+	ShortDataAssertMsg(actual_len >= 4,"NFSV3LookupReply",("really got nothing"));
+	u_int32_t op_status = ntohl(*xdr);
+	if (op_status != 0) {
+	    checkOpStatus(op_status);
+	}
+	// may always get post_op_attr's, only get access status if result was ok.
+	NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
+					     l4checksum,payload_len,reply);
+    }
+
+    virtual int getfattroffset(RPCRequestData *reqdata,
+			       RPCReply &reply) 
+    {
+	const u_int32_t *xdr = reply.getrpcresults();
+	int actual_len = reply.getrpcresultslen();
+	AssertAlways(actual_len >= 8,("bad"));
+	u_int32_t op_status = ntohl(*xdr);
+
+	int has_post_op_attr = ntohl(xdr[1]);
+	if (0 == has_post_op_attr) {
+	    return -1;
+	}
+
+	ShortDataAssertMsg(actual_len >= 8 + fattr3_len,
+			   "NFSv3 access reply",("bad %d",actual_len));
+	INVARIANT(has_post_op_attr == 1, "bad");
+	return 2;
+    }
+};
+
 class NFSV3ReadWriteReplyHandler : public NFSV3AttrOpReplyHandler {
 public:
     NFSV3ReadWriteReplyHandler(const string &filehandle, ExtentType::int64 _offset,
@@ -1313,6 +1545,7 @@ handleNFSV2Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	{
 	case NFSPROC_GETATTR: 
 	    {
+		FATAL_ERROR("untested -- didn't get exercised, so don't trust until checked");
 		if (false) printf("v2GetAttr %lld %8x -> %8x; %d\n",
 				  time,d.client,d.server,actual_len);
 		RPCParseAssertMsg(actual_len == 32,
@@ -1324,79 +1557,8 @@ handleNFSV2Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		    new NFSV2GetAttrReplyHandler(filehandle);
 	    }
 	    break;
-	case NFSPROC_LOOKUP: 
-	    {
-		FATAL_ERROR("unimplemented");
-//		ShortDataAssertMsg(actual_len >= 12,
-//				   "NFSv3 lookup request",
-//				   ("bad read len %d @%d.%09d; %d %d",actual_len,
-//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		int fhlen = ntohl(xdr[0]);
-//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-//			     ("bad"));
-//		ShortDataAssertMsg(actual_len >= 4+fhlen+4,"NFSv3 lookup request",("bad"));
-//		string filename = getLookupFilename(xdr+1+fhlen/4,actual_len - (4+fhlen));
-//		if (false) printf("v3Lookup %lld %8x -> %8x; %d; %s\n",
-//				  time,d.client,d.server,
-//				  actual_len,filename.c_str());
-//		string lookup_directory_filehandle((char *)(xdr+1),fhlen);
-//		d.replyhandler =
-//		    new NFSV3LookupReplyHandler(lookup_directory_filehandle,filename);
-//						
-	    }
-	    break;
-	case NFSPROC_READ:
-	    { 
-		FATAL_ERROR("unimplemented");
-//		ShortDataAssertMsg(actual_len >= (8+8+4),
-//				   "NFSv3 read request",
-//				   ("bad read len %d @%ld.%09d; %d %d",actual_len,
-//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		int fhlen = ntohl(xdr[0]);
-//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-//			     ("bad fhlen1"));
-//		RPCParseAssertMsg(actual_len == 4 + fhlen + 8 + 4,("bad actual_len %d fhlen %d +=16",actual_len,fhlen));
-//		string filehandle((char *)(xdr+1), fhlen);
-//		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
-//		AssertAlways(len < 65536,("bad"));
-//		d.replyhandler = 
-//		    new NFSV3ReadWriteReplyHandler(filehandle, 
-//						   xdr_ll(xdr,1+fhlen/4),
-//						   len,true);
-	    }
-	    break;
-	case NFSPROC_WRITE:
-	    {
-		FATAL_ERROR("unimplemented");
-//		ShortDataAssertMsg(actual_len >= (8+8+4),
-//				   "NFSv3 Write Request",
-//				   ("bad read len %d @%ld.%09ld; %d %d",actual_len,
-//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
-//				    ip_hdr->protocol,IPPROTO_UDP));
-//		int fhlen = ntohl(xdr[0]);
-//		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-//			     ("bad"));
-//		ShortDataAssertMsg(actual_len >= (4+ fhlen + 8 + 4),
-//				   "NFSv3 Write Request",
-//				   ("bad read len %d @%ld.%09d/%d; %d %d",actual_len,
-//				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
-//				    ip_hdr->protocol,IPPROTO_UDP));   
-//
-//		string filehandle((char *)(xdr+1), fhlen);
-//		if (false) printf("v2Write %lld %8x -> %8x; %d\n",
-//				 time, d.client, d.server,
-//				 actual_len);
-//		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
-//		AssertAlways(len < 65536,("bad"));
-//		d.replyhandler = 
-//		    new NFSV3ReadWriteReplyHandler(filehandle, 
-//						   xdr_ll(xdr,1+fhlen/4),
-//						   len,false);
-	    }
-	    break;
 	default:
+	    ++counts[unhandled_nfsv2_requests];
 	    return;
 	}
 }
@@ -1430,12 +1592,11 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		ShortDataAssertMsg(actual_len >= 12,
 				   "NFSv3 lookup request",
-				   ("bad read len %d @%d.%09d; %d %d",actual_len,
+				   ("bad lookup len %d @%d.%09d; %d %d",actual_len,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
-		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-			     ("bad"));
+		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
 		ShortDataAssertMsg(actual_len >= 4+fhlen+4,"NFSv3 lookup request",("bad"));
 		string filename = getLookupFilename(xdr+1+fhlen/4,actual_len - (4+fhlen));
 		if (false) printf("v3Lookup %lld %8x -> %8x; %d; %s\n",
@@ -1447,6 +1608,23 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 						
 	    }
 	    break;
+	case NFSPROC3_ACCESS:
+	    {
+		ShortDataAssertMsg(actual_len >= 8,
+				   "NFSv3 access request",
+				   ("bad access len %d @%d.%09d; %d %d",actual_len,
+				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
+				    ip_hdr->protocol,IPPROTO_UDP));
+		int fhlen = ntohl(xdr[0]);
+		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
+		ShortDataAssertMsg(actual_len == 4+fhlen+4, "NFSv3 access request",("bad"));
+		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
+		// ignore access mode right after filehandle
+		d.replyhandler = 
+		    new NFSV3AccessReplyHandler(access_filehandle);
+	    }
+	    break;
+		
 	case NFSPROC3_READ:
 	    { 
 		ShortDataAssertMsg(actual_len >= (8+8+4),
@@ -1496,6 +1674,8 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    }
 	    break;
 	default:
+	    if (false) cout << "Warn unprocessed NFSV3 #" << d.procnum << endl;
+	    ++counts[unhandled_nfsv3_requests];
 	    return;
 	}
 }
@@ -1505,7 +1685,7 @@ updateIPPacketSeries(Clock::Tfrac time, u_int32_t srcHost, u_int32_t destHost,
 		     u_int32_t wire_len, struct udphdr *udp_hdr, struct tcphdr *tcp_hdr,
 		     bool is_fragment)
 {
-    ++ip_packet_count;
+    ++counts[ip_packet];
 
     if (mode == Info) {
 	// no actual work to do...
@@ -1583,6 +1763,7 @@ handleNFSRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int l4checksum, int payload_len,
 		 RPCRequest &req, RPCRequestData &d)
 {
+    ++counts[nfs_request];
     fillcommonNFSRecord(time,ip_hdr,source_port,dest_port,payload_len,
 			d.procnum,d.version,req.xid());
     INVARIANT(cur_record_id >= 0, "bad");
@@ -1592,9 +1773,13 @@ handleNFSRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	rpc_status.setNull();
     }
     if (d.version == 2) {
+	++counts[nfsv2_request];
 	handleNFSV2Request(time,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
     } else if (d.version == 3) {
+	++counts[nfsv3_request];
 	handleNFSV3Request(time,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
+    } else {
+	FATAL_ERROR(boost::format("Huh? NFSV%d") % d.version);
     }
 }
 
@@ -1603,8 +1788,14 @@ handleNFSReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	       int source_port, int dest_port, int l4checksum, int payload_len,
 	       RPCRequestData *req, RPCReply &reply)
 {
+    ++counts[nfs_reply];
     fillcommonNFSRecord(time,ip_hdr,source_port,dest_port,payload_len,
 			req->procnum,req->version,reply.xid());
+    if (req->version == 2) {
+	++counts[nfsv2_reply];
+    } else if (req->version == 3) {
+	++counts[nfsv3_reply];
+    }	
     if (mode == Convert) {
 	is_request.set(false);
 	rpc_status.setNull(); // don't know yet
@@ -1626,6 +1817,9 @@ handleMountRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	}
 	case MountProc::proc_umnt: {
 	    break; // nothing interesting here...
+	}
+	case 0: {
+	    break; // ignore quietly
 	}
 	default:
 	    printf("skipping mount request type %d\n",d.procnum);
@@ -1677,8 +1871,7 @@ handleMountReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 void
 duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 {
-    if (hval == NULL)
-	return;
+    ++counts[duplicate_request];
     AssertAlways(hval->server == d.server &&
 		 hval->client == d.client &&
 		 hval->xid == d.xid,("internal error\n"));
@@ -1690,11 +1883,12 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 	       hval->ipchecksum,hval->l4checksum,d.ipchecksum,d.l4checksum);
 	fflush(stdout);
     }
-    INVARIANT(hval->request_id >= first_record_id &&
-	      hval->request_id <= cur_record_id &&
-	      d.request_id >= first_record_id,
-	      boost::format("whoa %d not in [%d .. %d] or %d < %d")
-	      % hval->request_id % first_record_id % cur_record_id % d.request_id % first_record_id);
+//    INVARIANT((hval->request_id < 0 && d.request_id < 0) ||
+//	      (hval->request_id >= first_record_id &&
+//	       hval->request_id <= cur_record_id &&
+//	       d.request_id >= first_record_id),
+//	      boost::format("whoa %d not in [%d .. %d] or %d < %d")
+//	      % hval->request_id % first_record_id % cur_record_id % d.request_id % first_record_id);
     if (hval->rpcreqhashval != d.rpcreqhashval) {
 	for(vector<network_error_listT>::iterator i = known_bad_list.begin();
 	    i != known_bad_list.end(); ++i) {
@@ -1711,24 +1905,15 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 	}
     }
     if (hval->rpcreqhashval != d.rpcreqhashval) {
-	cout << boost::format("HIYA %d %d\n") % hval->request_id % first_record_id;
-	fprintf(stderr, "bad7.3 { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
+	++counts[bad_retransmit];
+	fprintf(stderr, "bad-retransmit { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
 		hval->request_id - first_record_id,
 		d.request_id - first_record_id,
 		hval->rpcreqhashval, d.rpcreqhashval,
 		hval->server, hval->client,
 		tracename.c_str());
-	fprintf(stderr, " // bad7 prog=%d/%d, ver=%d/%d, proc=%d/%d\n",d.program,hval->program,
-		d.version,hval->version,d.procnum,hval->procnum);
-	if (++cur_mismatch_duplicate_requests < max_mismatch_duplicate_requests) {
-	    fprintf(stderr," // bad7 automatically tolerating :) %d < %d\n",
-		    cur_mismatch_duplicate_requests, max_mismatch_duplicate_requests);
-	} else {
-	    fprintf(stderr," // bad7 NOT automatically tolerating :) %d < %d\n",
-		    cur_mismatch_duplicate_requests, max_mismatch_duplicate_requests);
-	    exitvalue = 1;
-	}
-	fflush(stderr);
+	fprintf(stderr, " // bad retransmit  prog=%d/%d, ver=%d/%d, proc=%d/%d, xid=%x\n",d.program,hval->program,
+		d.version,hval->version,d.procnum,hval->procnum, hval->xid);
     }
     // can't remove the original request in case we get a pair of
     // retransmissions; matching is a litle bit odd in this case,
@@ -1741,15 +1926,16 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 const unsigned char *p, const unsigned char *pend)
 {
     RPCRequest req(p,pend-p);
+    ++counts[rpc_request];
 	
     payload_len -= 4*(req.getrpcparam() - req.getxdr());
     if (false) printf("RPCRequest for prog %d, version %d, proc %d\n",
 		      req.host_prognum(),req.host_version(),
 		      req.host_procnum());
-    RPCRequestData d(ip_hdr->saddr,ip_hdr->daddr,req.xid());
-    d.request_id = -1;
-    d.program = req.host_prognum();
+    RPCRequestData d(ip_hdr->saddr, ip_hdr->daddr, req.xid(), dest_port);
+    d.request_id = -99;
     d.version = req.host_version();
+    d.program = req.host_prognum();
     d.procnum = req.host_procnum();
     d.request_at = time;
     d.rpcreqhashval = BobJenkinsHash(1972,p,pend-p);
@@ -1760,20 +1946,22 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
     if (d.program == RPCRequest::host_prog_nfs) {
 	handleNFSRequest(time,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,d);
 	RPCRequestData *hval = rpcHashTable.lookup(d);
-	duplicateRequestCheck(d, hval);
+	if (hval != NULL) {
+	    duplicateRequestCheck(d, hval);
+	}
     } else if (d.program == RPCRequest::host_prog_mount) {
-	d.request_id = 0; // fake
+	d.request_id = -1; // fake
 	handleMountRequest(time,ip_hdr,source_port,dest_port,payload_len,req,d);
     } else if (d.program == RPCRequest::host_prog_yp) {
-	d.request_id = 0; // fake
+	d.request_id = -2; // fake
     } else if (d.program == RPCRequest::host_prog_portmap) {
-	d.request_id = 0; // fake
+	d.request_id = -3; // fake
     } else {
 	// unknown program, just retain request...
 	printf("unrecognized rpc request program %d, version %d, procedure %d\n",
 	       d.program,d.version,d.procnum);
     }
-    INVARIANT(d.request_id != -1, "bad");
+    INVARIANT(d.request_id >= first_record_id || (d.request_id >= -3 && d.request_id <= -1), "bad");
     rpcHashTable.add(d); // only add if successful parse...
 }
 
@@ -1783,9 +1971,10 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	       const unsigned char *p, const unsigned char *pend)
 {
     RPCReply reply(p,pend-p);
+    ++counts[rpc_reply];
     // RPC reply parsing should handle all underflows    
     payload_len -= 4*(reply.getrpcresults() - reply.getxdr());
-    RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid()));
+    RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid(),source_port));
 	
     if (req != NULL) {
 	if (req->program == RPCRequest::host_prog_nfs) {
@@ -1804,9 +1993,9 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	delete req->replyhandler;
 	rpcHashTable.remove(*req);
     } else {
-	++missing_request_count;
+	++counts[possible_missing_request];
 	// really ought to do this as a fraction of total requests
-	AssertAlways(missing_request_count < max_missing_request_count,
+	AssertAlways(counts[possible_missing_request] < max_missing_request_count,
 		     ("whoa, more than %d possible reply packets without the request %lld packets so far; you need to tcpdump -s 256+; on %s\n",
 		      max_missing_request_count, cur_record_id - first_record_id,tracename.c_str()));
 	if (warn_unmatched_rpc_reply) {
@@ -1838,11 +2027,13 @@ handleUDPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 			 ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 			 ntohs(udp_hdr->len) - 8,
 			 p,pend);
+	++counts[udp_rpc_message];
     } else if (rpcmsg[1] == RPC::net_reply) {
 	handleRPCReply(time,ip_hdr,ntohs(udp_hdr->source),
 		       ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 		       ntohs(udp_hdr->len) - 8,
 		       p,pend);
+	++counts[udp_rpc_message];
     } else {
 	if (false) printf("unknown\n");
 	return; // can't be RPC
@@ -1861,8 +2052,8 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		  tcp_hdr->doff * 4, sizeof(struct tcphdr)));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
+    bool multiple_rpcs = false;
     while((pend-p) >= 4) { // handle multiple RPCs in single TCP message; hope they are aligned to start
-	++tcp_rpc_message_count;
 	u_int32_t rpclen = ntohl(*(u_int32_t *)p);
 	if (false) printf("  rpclen %x\n",rpclen);
 	if ((rpclen & 0x80000000) == 0) {
@@ -1890,7 +2081,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 			       ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
 			       rpclen,p,thismsgend);
 	    } else {
-		if (false) printf("not tcp rpcthing?\n");
+		return; // not an rpc
 	    }
 	} catch (ShortDataInRPCException &err) {
 	    // TODO: count all the occurences of this based on the file,line,message in err and print out
@@ -1900,8 +2091,13 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		      % reinterpret_cast<const void *>(thismsgend) % reinterpret_cast<const void *>(pend) 
 		      % wire_length % capture_size 
 		      % err.message % err.filename % err.lineno);
-	    ++tcp_short_data_in_rpc_count;
+	    ++counts[tcp_short_data_in_rpc];
 	}
+	++counts[tcp_rpc_message];
+	if (multiple_rpcs) {
+	    ++counts[tcp_multiple_rpcs];
+	}
+	multiple_rpcs = true;
 	p = thismsgend;
     }    
 }
@@ -1913,8 +2109,13 @@ void
 packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t wire_length, 
 	      Clock::Tfrac time)
 {
-    ++packet_count;
-    packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
+    ++counts[packet];
+    if (!bw_info.empty()) {
+	packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
+	if ((counts[packet] & 0xFFFF) == 0) {
+	    incrementalBandwidthInformation();
+	}
+    }
     const u_int32_t capture_remain = capture_size;
     INVARIANT(capture_remain >= min_ethernet_header_length + min_ip_header_length,
 	      boost::format("whoa tiny packet %d") % capture_remain);
@@ -1937,7 +2138,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     if (ethtype < 1500) {
         int protonum = (p[20] << 8) | p[21];
 
-	++weird_ethernet_type_count;
+	++counts[weird_ethernet_type];
 	cout << boost::format("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo?")
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
 	    % ethtype % wire_length % protonum
@@ -1954,7 +2155,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     }
 
     if (ethtype == 0x0806) {
-	++arp_type_count;
+	++counts[arp_type];
 	return;
     }
 
@@ -1962,7 +2163,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	cout << boost::format("Ignoring packet %d.%d, ethtype %d")
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) % ethtype
 	     << endl;
-	++ignored_nonip_count;
+	++counts[ignored_nonip];
 	return;
     }
 
@@ -1985,7 +2186,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 			 wire_length, udp_hdr, tcp_hdr, is_fragment);
     
     if (is_fragment) {
-	++ip_fragment_count;
+	++counts[ip_fragment];
 	if (false) printf("fragment %d?\n",ntohs(ip_hdr->frag_off));
 	return; // fragment; no reassembly for now
     }
@@ -2021,25 +2222,100 @@ get_max_missing_request_count(const char *tracename)
 }
 
 void
-doInfo(NettraceReader *from, const string &outname)
+doProcess(NettraceReader *from)
 {
     unsigned char *packet;
     uint32_t capture_size, wire_length;
     Clock::Tfrac time;
 
-    mode = Info;
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
 	INVARIANT(wire_length <= capture_size, "bad");
 	INVARIANT(wire_length >= 64, "bad");
 	packetHandler(packet, capture_size, wire_length, time);
     }
     delete from;
-    cout << "Ignored Non-IP packet count: " << ignored_nonip_count << endl
-	 << "Weird ethernet type count: " << weird_ethernet_type_count << endl
-	 << "ARP packet count: " << arp_type_count << endl 
-	 << "IP packet count: " << ip_packet_count << endl
-	 << "IP fragment count: " << ip_fragment_count << endl
-	;
+    for(rpcHashTableT::iterator i = rpcHashTable.begin();
+	i != rpcHashTable.end(); ++i) {
+	if (false) {
+	    cout << boost::format("outstanding RPC %x to %x, xid %x") 
+		% i->client % i->server % i->xid
+		 << endl;
+	}
+	++counts[outstanding_rpcs];
+    }
+    for(unsigned i=0; i < last_count; ++i) { 
+	cout << count_names[i] << " count: " << counts[i] << endl;
+    }
+    cout << "first_record_id: " << first_record_id << endl;
+    cout << "last_record_id (inclusive): " << cur_record_id << endl;
+}
+
+void
+doInfo(NettraceReader *from)
+{
+    mode = Info;
+    prepareBandwidthInformation();
+    doProcess(from);
+    summarizeBandwidthInformation();
+
+    exit(exitvalue);
+}
+
+void
+doConvert(NettraceReader *from, const char *ds_output_name, 
+	  commonPackingArgs &packing_args, int expected_records)
+{
+    mode = Convert;
+
+    DataSeriesSink *nfsdsout = new DataSeriesSink(ds_output_name, packing_args.compress_modes, 
+						  packing_args.compress_level);
+    ExtentTypeLibrary library;
+    ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
+    nfs_common_series.setType(nfs_common_type);
+    nfs_common_outmodule = new OutputModule(*nfsdsout,nfs_common_series,
+					    nfs_common_type,packing_args.extent_size);
+
+    ExtentType *nfs_attrops_type = library.registerType(nfs_attrops_xml);
+    nfs_attrops_series.setType(nfs_attrops_type);
+    nfs_attrops_outmodule = new OutputModule(*nfsdsout, nfs_attrops_series,
+					     nfs_attrops_type,packing_args.extent_size);
+
+    ExtentType *nfs_readwrite_type = library.registerType(nfs_readwrite_xml);
+    nfs_readwrite_series.setType(nfs_readwrite_type);
+    nfs_readwrite_outmodule = new OutputModule(*nfsdsout, nfs_readwrite_series,
+					       nfs_readwrite_type,packing_args.extent_size);
+
+    ExtentType *ippacket_type = library.registerType(ippacket_xml);
+    ippacket_series.setType(ippacket_type);
+    ippacket_outmodule = new OutputModule(*nfsdsout, ippacket_series,
+					       ippacket_type,packing_args.extent_size);
+
+    ExtentType *nfs_mount_type = library.registerType(nfs_mount_xml);
+    nfs_mount_series.setType(nfs_mount_type);
+    nfs_mount_outmodule = new OutputModule(*nfsdsout, nfs_mount_series,
+					       nfs_mount_type,packing_args.extent_size);
+
+    nfsdsout->writeExtentLibrary(library);
+
+    doProcess(from);
+    
+    cout << "flushing extents...\n";
+    nfs_common_outmodule->flushExtent();
+    delete nfs_common_outmodule;
+    nfs_attrops_outmodule->flushExtent();
+    delete nfs_attrops_outmodule;
+    nfs_readwrite_outmodule->flushExtent();
+    delete nfs_readwrite_outmodule;
+    ippacket_outmodule->flushExtent();
+    delete ippacket_outmodule;
+    nfs_mount_outmodule->flushExtent();
+    delete nfs_mount_outmodule;
+    delete nfsdsout;
+
+    INVARIANT((cur_record_id + 1 - first_record_id) == expected_records,
+	      boost::format("mismatch on expected # records: %d - %d != %d")
+	      % cur_record_id % first_record_id % expected_records);
+    exit(exitvalue);
 }
 
 void
@@ -2063,138 +2339,88 @@ uncompressFile(const string &src, const string &dest)
     ERFReader::openUncompress(src, &outbuf, &outsize);
 
     int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
-    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") % dest % strerror(errno));
+    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
+	      % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
     int ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
 }
 
+void testBWRolling()
+{
+    prepareBandwidthInformation();
+    if (true) {
+	// 1000 bytes/333us = 24.024 Mbits
+	for(unsigned i = 0; i<10000000; i+= 333) {
+	    packet_bw_rolling_info.push(packetTimeSize(i,1000));
+	}
+    }
+
+    if (true) {
+	// 2000 bytes/100us = 160 (+24 = 184) Mbits for 10% of the time
+	for(unsigned i = 5000000; i<6000000; i+= 100) {
+	    packet_bw_rolling_info.push(packetTimeSize(i, 2000));
+	}
+    }
+    
+    if (true) {
+	// 3000 bytes/25us = 960 (+24+160=1144) Mbits for 1% of the time
+	for(unsigned i = 5500000; i<5600000; i+= 25) {
+	    packet_bw_rolling_info.push(packetTimeSize(i, 3000));
+	}
+    }
+    summarizeBandwidthInformation();
+    exit(0);
+}
+
 int
 main(int argc, char **argv)
 {
+    if (false) testBWRolling();
     if (argc == 4 && strcmp(argv[1],"--uncompress") == 0) {
 	uncompressFile(argv[2],argv[3]);
 	exit(0);
     }
 
+    counts.resize(static_cast<unsigned>(last_count));
+    INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
     if (enable_encrypt_filenames) {
 	prepareEncryptEnvOrRandom();
     }
 
-    if (argc == 4 && strcmp(argv[1],"--info-erf") == 0) {
+    if (argc >= 3 && strcmp(argv[1],"--info-erf") == 0) {
 	cur_record_id = -1;
 	first_record_id = 0;
-	tracename = argv[2];
-	doInfo(new ERFReader(argv[2]), argv[3]);
-	exit(0);
+	MultiFileReader *mfr = new MultiFileReader();
+	for(int i = 2;i < argc; ++i) {
+	    mfr->addReader(new ERFReader(argv[i]));
+	}
+	doInfo(mfr);
     }
     
-    FATAL_ERROR("usage: ...");
+    if (argc >= 6 && strcmp(argv[1],"--convert-erf") == 0) {
+	commonPackingArgs packing_args;
+	getPackingArgs(&argc,argv,&packing_args);
+    
+	first_record_id = stringToLongLong(argv[2]);
+	cur_record_id = first_record_id - 1;
+	long expected_records = stringToLong(argv[3]);
+	MultiFileReader *mfr = new MultiFileReader();
+	for(int i = 5; i < argc; ++i) {
+	    mfr->addReader(new ERFReader(argv[i]));
+	}
+	doConvert(mfr, argv[4], packing_args, expected_records);
+    }
+	
+    FATAL_ERROR("usage: --uncompress <input-erf> <output-erf>\n"
+		"       --info-erf <input-erf...>\n"
+		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>");
 
 #if 0
- char errbuf[PCAP_ERRBUF_SIZE];
-    
-    commonPackingArgs packing_args;
-    getPackingArgs(&argc,argv,&packing_args);
-    
-    int expect_records = -1;
-
-    if (argc == 6) {
-      expect_records = atoi(argv[5]);
-      argc = 5;
-    }
-    INVARIANT(argc == 5,
-	      boost::format("Usage: %s <tracename> <record-id-start> <tcpdump input, - ok> <dataseries file> [<expected-records>]\n")
-	      % argv[0]);
-    
-    tracename = argv[1];
-
-    if (strncmp(tracename,"/mnt/trace-",strlen("/mnt/trace-")) == 0 &&
-	(tracename[11] >= '0' && tracename[11] <= '7' ||
-	 tracename[11] >= 'a' && tracename[11] <= 'n') &&
-	tracename[12] == '/') {
-      tracename += 13;
-    }
-    max_missing_request_count = get_max_missing_request_count(tracename);
-    cur_record_id = strtoll(argv[2], NULL, 10);
-    first_record_id = cur_record_id;
-    pcap_t *pd = pcap_open_offline(argv[3], errbuf);
-    if (pd == NULL) {
-	fprintf(stderr,"Error opening offline pcap file: %s\n", errbuf);
-	exit(1);
-    }
-
-    DataSeriesSink nfsdsout(argv[4],packing_args.compress_modes,packing_args.compress_level);
-    ExtentTypeLibrary library;
-    ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
-    nfs_common_series.setType(nfs_common_type);
-    nfs_common_outmodule = new OutputModule(nfsdsout,nfs_common_series,
-					    nfs_common_type,packing_args.extent_size);
-
-    ExtentType *nfs_attrops_type = library.registerType(nfs_attrops_xml);
-    nfs_attrops_series.setType(nfs_attrops_type);
-    nfs_attrops_outmodule = new OutputModule(nfsdsout, nfs_attrops_series,
-					     nfs_attrops_type,packing_args.extent_size);
-
-    ExtentType *nfs_readwrite_type = library.registerType(nfs_readwrite_xml);
-    nfs_readwrite_series.setType(nfs_readwrite_type);
-    nfs_readwrite_outmodule = new OutputModule(nfsdsout, nfs_readwrite_series,
-					       nfs_readwrite_type,packing_args.extent_size);
-
-    ExtentType *ippacket_type = library.registerType(ippacket_xml);
-    ippacket_series.setType(ippacket_type);
-    ippacket_outmodule = new OutputModule(nfsdsout, ippacket_series,
-					       ippacket_type,packing_args.extent_size);
-
-    ExtentType *nfs_mount_type = library.registerType(nfs_mount_xml);
-    nfs_mount_series.setType(nfs_mount_type);
-    nfs_mount_outmodule = new OutputModule(nfsdsout, nfs_mount_series,
-					       nfs_mount_type,packing_args.extent_size);
-
-    nfsdsout.writeExtentLibrary(library);
-    
-    AssertAlways(pcap_datalink(pd) == DLT_EN10MB,("unsupported\n"));
-    if (pcap_loop(pd, -1, packetHandler, NULL) < 0) {
-	exitvalue = 1;
-	if (strcmp(pcap_geterr(pd),"truncated dump file") == 0) {
-	    if (getenv("IGNORE_TRUNCATED_DUMPS") != NULL) {
-		exitvalue = 0;
-	  } else {
-	      fprintf(stderr,"set the env variable IGNORE_TRUNCATED_DUMPS to tolerate silently on %s\n",tracename);
-	      exitvalue = 1;  
-	  }
-	} 
-	if (exitvalue != 0) {
-	  fprintf(stderr, "%s: pcap_loop: %s\n",
-		  argv[0], pcap_geterr(pd));
-        }
-    }
-    
-    pcap_close(pd);
-    nfs_common_outmodule->flushExtent();
-    delete nfs_common_outmodule;
-    nfs_attrops_outmodule->flushExtent();
-    delete nfs_attrops_outmodule;
-    nfs_readwrite_outmodule->flushExtent();
-    delete nfs_readwrite_outmodule;
-    ippacket_outmodule->flushExtent();
-    delete ippacket_outmodule;
-    nfs_mount_outmodule->flushExtent();
-    delete nfs_mount_outmodule;
-
-    printf("next record id: %lld\n",cur_record_id);
-    fprintf(stderr,"possible replies with missing request: %d/%lld records\n",
-	    missing_request_count,cur_record_id - first_record_id);
-    if (tcp_rpc_message_count > 0) {
-	fprintf(stderr,"short data in tcp rpcs: %d/%d\n",tcp_short_data_in_rpc_count,tcp_rpc_message_count);
-	AssertAlways(tcp_short_data_in_rpc_count * 1000 < tcp_rpc_message_count,
-		     ("too many"));
-    }
     AssertAlways(expect_records == -1 || (cur_record_id - first_record_id) == expect_records,
 		 ("mismatch on expected # records: %lld - %lld != %d\n",
 		  cur_record_id,first_record_id,expect_records));
-    summarizeBandwidthInformation();
     return exitvalue;
 #endif
 }
