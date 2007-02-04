@@ -261,8 +261,9 @@ GeneralValue::asDouble()
 	    break;
 	}
 	default:
-	    AssertFatal(("internal error"));
+	    AssertFatal(("internal error")); 
 	}
+    return 0;
 }
 
 

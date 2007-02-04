@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-#pragma ident "@(#)nfs_prot.x	1.5	97/06/21 SMI"
+    // #pragma ident "@(#)nfs_prot.x	1.5	97/06/21 SMI"
 #define NFS_PORT 2049
 #define NFS_MAXDATA 8192
 #define NFS_MAXPATHLEN 1024

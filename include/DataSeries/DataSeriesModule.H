@@ -84,6 +84,13 @@ public:
     // many times or it will try to write an extent.
     void newRecord();
     void flushExtent(); // force current extent out, you can continue writing.
+
+    int extents;
+    int compress_none, compress_lzo, compress_gzip, compress_bz2, compress_lzf;
+    long long unpacked_size, unpacked_fixed, unpacked_variable, packed_size;
+    double pack_time;
+    
+    void printStats(std::ostream &to);
 private:
     DataSeriesSink &sink;
     ExtentSeries &series;

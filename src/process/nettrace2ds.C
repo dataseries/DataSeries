@@ -45,6 +45,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <zlib.h>
+#include <bzlib.h>
 
 #include <sys/types.h>
 #include <sys/time.h>
@@ -145,7 +146,7 @@ string count_names[] = {
     "packet_loss",
 };
 
-vector<unsigned int> counts;
+vector<int64_t> counts;
 
 static int exitvalue = 0;
 static string tracename;
@@ -319,29 +320,36 @@ public:
 	myprefetcher = Prefetcher::doit(filename);
     }
 
-    void openUncompress(const string &filename, unsigned char **buffer, uint32_t *bufsize) {
+    void openUncompress() {
 	if (myprefetcher == NULL) {
 	    prefetch();
 	}
 	myprefetcher->join();
 	
-	*buffer = NULL;
-	*bufsize = 0;
-
 	if (suffixequal(filename,".128MiB.lzf")) {
-	    *buffer = new unsigned char[128*1024*1024];
-	    *bufsize = lzf_decompress(myprefetcher->data, myprefetcher->datasize, *buffer, 128*1024*1024);
-	    INVARIANT(*bufsize > 0 && *bufsize <= 128*1024*1024, "bad");
+	    buffer = new unsigned char[128*1024*1024];
+	    bufsize = lzf_decompress(myprefetcher->data, myprefetcher->datasize, buffer, 128*1024*1024);
+	    INVARIANT(bufsize > 0 && bufsize <= 128*1024*1024, "bad");
 	} else if (suffixequal(filename,".128MiB.zlib1") 
 		   || suffixequal(filename, ".128MiB.zlib6") 
 		   || suffixequal(filename, ".128MiB.zlib9")) {
-	    *buffer = new unsigned char[128*1024*1024];
+	    buffer = new unsigned char[128*1024*1024];
 	    uLongf destlen = 128*1024*1024;
-	    int ret = uncompress(static_cast<Bytef *>(*buffer),
+	    int ret = uncompress(static_cast<Bytef *>(buffer),
 				 &destlen,static_cast<const Bytef *>(myprefetcher->data),
 				 myprefetcher->datasize);
 	    INVARIANT(ret == Z_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
-	    *bufsize = destlen;
+	    bufsize = destlen;
+	} else if (suffixequal(filename, ".128MiB.bz2") ||
+		   suffixequal(filename, ".128MiB.bz2-new")) { // latter occurs during conversion
+	    buffer = new unsigned char[128*1024*1024];
+	    unsigned int destlen = 128*1024*1024;
+	    int ret = BZ2_bzBuffToBuffDecompress(reinterpret_cast<char *>(buffer),
+						 &destlen,
+						 reinterpret_cast<char *>(myprefetcher->data),
+						 myprefetcher->datasize, 0, 0);
+	    INVARIANT(ret == BZ_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
+	    bufsize = destlen;
 	} else {
 	    FATAL_ERROR(boost::format("Don't know how to unpack %s") % filename);
 	}
@@ -355,7 +363,7 @@ public:
 	    return false;
 	if (NULL == buffer) {
 	    cur_file_packet_num = 0;
-	    openUncompress(filename, &buffer, &bufsize);
+	    openUncompress();
 	    buffer_cur = buffer;
 	    buffer_end = buffer + bufsize;
 	    cout << boost::format("%s size is %d") % filename % bufsize << endl;
@@ -409,7 +417,7 @@ public:
 
 	return true;
     }
-private:
+
     Prefetcher *myprefetcher;
     int fd;
     unsigned char *buffer, *buffer_cur, *buffer_end;
@@ -779,11 +787,41 @@ public:
     string rpc_type;
 };
   
+const string nfs_convert_stats_xml(
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::NFS::convert-stats\" version=\"1.0\" >\n"
+  "  <field type=\"variable32\" name=\"stat-name\" pack_unique=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"count\" />\n"
+  "</ExtentType>\n"
+  );
+
+ExtentSeries nfs_convert_stats_series;
+OutputModule *nfs_convert_stats_outmodule;
+Variable32Field nfs_convert_stats_name(nfs_convert_stats_series, "stat-name");
+Int64Field nfs_convert_stats_count(nfs_convert_stats_series, "count");
+
+const string ip_bwrolling_xml(
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::Network::IP::bandwidth-rolling\" version=\"1.0\" >\n"
+  "  <field type=\"int32\" name=\"interval-us\" />\n"
+  "  <field type=\"int32\" name=\"sample-us\" />\n"
+  "  <field type=\"int64\" name=\"count\" />\n"
+  "  <field type=\"double\" name=\"quantile\" />\n"
+  "  <field type=\"double\" name=\"mbps\" />\n"
+  "</ExtentType>\n"
+  );
+
+ExtentSeries ip_bwrolling_series;
+OutputModule *ip_bwrolling_outmodule;
+Int32Field ip_bwrolling_interval_us(ip_bwrolling_series, "interval-us");
+Int32Field ip_bwrolling_sample_us(ip_bwrolling_series, "sample-us");
+Int64Field ip_bwrolling_count(ip_bwrolling_series, "count");
+DoubleField ip_bwrolling_quantile(ip_bwrolling_series, "quantile");
+DoubleField ip_bwrolling_mbps(ip_bwrolling_series, "mbps");
+
 #define ShortDataAssertMsg(condition,rpc_type,message) \
   ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
 
 const string nfs_common_xml(
-  "<ExtentType name=\"Trace::NFS::common\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"1.0\" >\n"
   "  <field type=\"int64\" name=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"packet-at\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"source-port\" />\n"
@@ -871,7 +909,7 @@ const string nfsv3ops[] = {
 int n_nfsv3ops = sizeof(nfsv3ops) / sizeof(const string);
 
 const string nfs_attrops_xml(
-  "<ExtentType name=\"NFS trace: attr-ops\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"NFS trace: attr-ops\" >\n"
   "  <field type=\"int64\" name=\"request-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"int64\" name=\"reply-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -1019,6 +1057,16 @@ incrementalBandwidthInformation()
     }
 }
 
+void ip_bwrolling_row(bandwidth_rolling *bw_info, double quantile) 
+{
+    ip_bwrolling_outmodule->newRecord();
+    ip_bwrolling_interval_us.set(bw_info->interval_microseconds);
+    ip_bwrolling_sample_us.set(bw_info->update_step);
+    ip_bwrolling_count.set(bw_info->mbps.countll());
+    ip_bwrolling_quantile.set(quantile);
+    ip_bwrolling_mbps.set(bw_info->mbps.getQuantile(quantile));
+}
+
 void
 summarizeBandwidthInformation()
 {
@@ -1041,6 +1089,18 @@ summarizeBandwidthInformation()
 	    bw_info[i]->mbps.printFile(stdout);
 	    bw_info[i]->mbps.printTail(stdout);
 	    printf("\n");
+	    if (mode == Convert) {
+		for(double quant=0.05; quant < 1.0; quant+=0.05) {
+		    ip_bwrolling_row(bw_info[i], quant);
+		}
+		double nentries = bw_info[i]->mbps.countll();
+		for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0; ) {
+		    ip_bwrolling_row(bw_info[i], 1-tail_frac);
+		    tail_frac /= 2.0;
+		    ip_bwrolling_row(bw_info[i], 1-tail_frac);
+		    tail_frac /= 5.0;
+		}
+	    }
 	}
     }
 }
@@ -1699,8 +1759,10 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		if (false) printf("v3GetAttr %lld %8x -> %8x; %d\n",
 				  time,d.client,d.server,actual_len);
-		AssertAlways(actual_len >= 8,
-			     ("bad getattr request @%lld: %d",cur_record_id,actual_len));
+		ShortDataAssertMsg(actual_len >= 8,"NFSv3 getattr request",
+				   ("bad getattr in %s request @%lld: %d",
+				    tracename.c_str(), cur_record_id,
+				    actual_len));
 		int fhlen = ntohl(xdr[0]);
 		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
 			     ("bad"));
@@ -2117,11 +2179,15 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	delete req->replyhandler;
 	rpcHashTable.remove(*req);
     } else {
-	// False positives do occur here as we can think something is a reply based solely on
-	// a few bytes in the packet.
+	// False positives do occur here as we can think something is
+	// a reply based solely on a few bytes in the packet.
+
+	// Bumped fraction up to 5% as getting lots of apparent false
+	// positives on trace-0/189501
+
 	++counts[possible_missing_request];
-	AssertAlways(counts[possible_missing_request] < 1000 || counts[possible_missing_request] < counts[ip_packet] * 0.01, 
-		     ("whoa, %d possible reply packets without the request %d packets so far; you need to tcpdump -s 256+; on %s\n",
+	AssertAlways(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
+		     ("whoa, %ld possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s\n",
 		      counts[possible_missing_request], counts[ip_packet], tracename.c_str()));
 	if (warn_unmatched_rpc_reply) {
 	    // many of these appear to be spurious, e.g. not really an rpc reply
@@ -2353,6 +2419,7 @@ doProcess(NettraceReader *from)
     uint32_t capture_size, wire_length;
     Clock::Tfrac time;
 
+    prepareBandwidthInformation();
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
 	INVARIANT(wire_length <= capture_size, "bad");
 	INVARIANT(wire_length >= 64, "bad");
@@ -2368,20 +2435,32 @@ doProcess(NettraceReader *from)
 	}
 	++counts[outstanding_rpcs];
     }
+    summarizeBandwidthInformation();
     for(unsigned i=0; i < last_count; ++i) { 
 	cout << count_names[i] << " count: " << counts[i] << endl;
+	if (mode == Convert) {
+	    nfs_convert_stats_outmodule->newRecord();
+	    nfs_convert_stats_name.set(count_names[i]);
+	    nfs_convert_stats_count.set(counts[i]);
+	}
     }
     cout << "first_record_id: " << first_record_id << endl;
     cout << "last_record_id (inclusive): " << cur_record_id << endl;
+    if (mode == Convert) {
+	nfs_convert_stats_outmodule->newRecord();
+	nfs_convert_stats_name.set("first_record_id");
+	nfs_convert_stats_count.set(first_record_id);
+	nfs_convert_stats_outmodule->newRecord();
+	nfs_convert_stats_name.set("last_record_id (inclusive)");
+	nfs_convert_stats_count.set(cur_record_id);
+    }
 }
 
 void
 doInfo(NettraceReader *from)
 {
     mode = Info;
-    prepareBandwidthInformation();
     doProcess(from);
-    summarizeBandwidthInformation();
 
     exit(exitvalue);
 }
@@ -2395,6 +2474,17 @@ doConvert(NettraceReader *from, const char *ds_output_name,
     DataSeriesSink *nfsdsout = new DataSeriesSink(ds_output_name, packing_args.compress_modes, 
 						  packing_args.compress_level);
     ExtentTypeLibrary library;
+
+    ExtentType *nfs_convert_stats_type = library.registerType(nfs_convert_stats_xml);
+    nfs_convert_stats_series.setType(nfs_convert_stats_type);
+    nfs_convert_stats_outmodule = new OutputModule(*nfsdsout, nfs_convert_stats_series,
+						nfs_convert_stats_type, packing_args.extent_size);
+
+    ExtentType *ip_bwrolling_type = library.registerType(ip_bwrolling_xml);
+    ip_bwrolling_series.setType(ip_bwrolling_type);
+    ip_bwrolling_outmodule = new OutputModule(*nfsdsout, ip_bwrolling_series,
+					      ip_bwrolling_type, packing_args.extent_size);
+
     ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
     nfs_common_series.setType(nfs_common_type);
     nfs_common_outmodule = new OutputModule(*nfsdsout,nfs_common_series,
@@ -2424,16 +2514,31 @@ doConvert(NettraceReader *from, const char *ds_output_name,
 
     doProcess(from);
     
+    // Want complete statistics, so flush first
     cout << "flushing extents...\n";
+    nfs_convert_stats_outmodule->flushExtent();
+    ip_bwrolling_outmodule->flushExtent();
     nfs_common_outmodule->flushExtent();
-    delete nfs_common_outmodule;
     nfs_attrops_outmodule->flushExtent();
-    delete nfs_attrops_outmodule;
     nfs_readwrite_outmodule->flushExtent();
-    delete nfs_readwrite_outmodule;
     ippacket_outmodule->flushExtent();
-    delete ippacket_outmodule;
     nfs_mount_outmodule->flushExtent();
+
+    cout << "Extent statistics:\n";
+    nfs_convert_stats_outmodule->printStats(cout); cout << endl;
+    ip_bwrolling_outmodule->printStats(cout); cout << endl;
+    nfs_common_outmodule->printStats(cout); cout << endl;
+    nfs_attrops_outmodule->printStats(cout); cout << endl;
+    nfs_readwrite_outmodule->printStats(cout); cout << endl;
+    ippacket_outmodule->printStats(cout); cout << endl;
+    nfs_mount_outmodule->printStats(cout); cout << endl;
+
+    delete nfs_convert_stats_outmodule;
+    delete ip_bwrolling_outmodule;
+    delete nfs_common_outmodule;
+    delete nfs_attrops_outmodule;
+    delete nfs_readwrite_outmodule;
+    delete ippacket_outmodule;
     delete nfs_mount_outmodule;
     delete nfsdsout;
 
@@ -2472,7 +2577,54 @@ uncompressFile(const string &src, const string &dest)
 //    INVARIANT(write_amt == outsize, "bad");
 //    int ret = close(outfd);
 //    INVARIANT(ret == 0, "bad close");
+    exit(0);
 }
+
+void recompressFileBZ2(const string &src, const string &dest)
+{
+    check_file_missing(dest);
+
+    ERFReader myerfreader(src);
+    
+    myerfreader.openUncompress();
+    
+    char *outbuf = new char[myerfreader.bufsize];
+    unsigned int outsize = myerfreader.bufsize;
+
+    int ret = BZ2_bzBuffToBuffCompress(outbuf, &outsize, 
+				       reinterpret_cast<char *>(myerfreader.buffer), 
+				       myerfreader.bufsize,
+				       9,0,0);
+    INVARIANT(ret == BZ_OK, "bad");
+
+    INVARIANT(outsize <= myerfreader.bufsize, "bad");
+	
+    int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
+    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
+	      % dest % strerror(errno));
+    INVARIANT(outbuf != NULL && outsize > 0, "internal");
+    ssize_t write_amt = write(outfd, outbuf, outsize);
+    INVARIANT(write_amt == outsize, "bad");
+    ret = close(outfd);
+    INVARIANT(ret == 0, "bad close");
+    exit(0);
+}
+
+void checkERFEqual(const string &src1, const string &src2)
+{
+    ERFReader erf1(src1);
+    ERFReader erf2(src2);
+    
+    erf1.prefetch();
+    erf2.prefetch();
+    erf1.openUncompress();
+    erf2.openUncompress();
+    
+    INVARIANT(erf1.bufsize == erf2.bufsize, "different bufsize");
+    INVARIANT(memcmp(erf1.buffer, erf2.buffer, erf1.bufsize) == 0, "memcmp failed");
+    exit(0);
+}
+
 
 void testBWRolling()
 {
@@ -2507,7 +2659,14 @@ main(int argc, char **argv)
     if (false) testBWRolling();
     if (argc == 4 && strcmp(argv[1],"--uncompress") == 0) {
 	uncompressFile(argv[2],argv[3]);
-	exit(0);
+    }
+
+    if (argc == 4 && strcmp(argv[1],"--recompress-bz2") == 0) {
+	recompressFileBZ2(argv[2], argv[3]);
+    }
+    
+    if (argc == 4 && strcmp(argv[1],"--check-erf-equal") == 0) {
+	checkERFEqual(argv[2], argv[3]);
     }
 
     counts.resize(static_cast<unsigned>(last_count));
@@ -2545,12 +2704,5 @@ main(int argc, char **argv)
     FATAL_ERROR("usage: --uncompress <input-erf> <output-erf>\n"
 		"       --info-erf <input-erf...>\n"
 		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>");
-
-#if 0
-    AssertAlways(expect_records == -1 || (cur_record_id - first_record_id) == expect_records,
-		 ("mismatch on expected # records: %lld - %lld != %d\n",
-		  cur_record_id,first_record_id,expect_records));
-    return exitvalue;
-#endif
 }
 

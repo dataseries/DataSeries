@@ -50,8 +50,8 @@ prepareEncrypt(const std::string &key_a, const std::string &key_b)
 {
     hmac_key_1 = key_a;
     hmac_key_2 = key_b;
-    AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
+    INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
+	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     AES_set_encrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&encrypt_key);
     AES_set_decrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&decrypt_key);
 }
@@ -187,7 +187,7 @@ prepareEncryptEnvOrRandom()
 		       hex2raw(getenv("NAME_KEY_2")));
     } else {
 	fprintf(stderr,"Warning; no NAME_KEY_[12] env variables, using random hmac\n");
-	FILE *f = fopen("/dev/random","r");
+	FILE *f = fopen("/dev/urandom","r");
 	AssertAlways(f != NULL,("bad"));
 	const int randombytes = 32;
 	char buf[randombytes + 100];
@@ -261,8 +261,8 @@ encryptString(string in)
 	}
     }
 
-    AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
+    INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
+	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     // partial HMAC construction
     string tmp = hmac_key_2;
     tmp.append(in);
@@ -294,8 +294,8 @@ encryptString(string in)
 string
 decryptString(string in)
 {
-    AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
+    INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
+	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     aesDecryptFast(&decrypt_key,(unsigned char *)&*in.begin(),in.size());
     int hmaclen = in[0];
     AssertAlways(hmaclen >= 7 && hmaclen <= 22,("bad decrypt"));

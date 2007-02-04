@@ -118,7 +118,7 @@ public:
 		return HashTable_hashbytes(v_variable32->data(),
 					   v_variable32->size());
 		break;
-	    default: AssertFatal(("internal")); break;
+	    default: AssertFatal(("internal")); return 0; break;
 	    }
     }
 
