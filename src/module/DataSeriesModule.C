@@ -71,8 +71,8 @@ FilterModule::getExtent()
 
 OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 			   const ExtentType *_outputtype, int _target_extent_size)
-    : extents(0),
-      compress_none(0), compress_lzo(0), compress_gzip(0), compress_bz2(0),
+    : extents(0), compress_none(0), compress_lzo(0), compress_gzip(0), 
+      compress_bz2(0), compress_lzf(0),
       unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
       packed_size(0), pack_time(0),
       sink(_sink), series(_series), outputtype(_outputtype),

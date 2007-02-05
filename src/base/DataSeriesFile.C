@@ -111,11 +111,11 @@ DataSeriesSource::DataSeriesSource(const std::string &_filename)
     }
     int32 packedsize = *(int32 *)(tail + 4);
     off64_t indexoffset = *(int64 *)(tail + 16);
-    AssertAlways(tailoffset - packedsize == indexoffset,
-		 ("mismatch on index offset %lld - %d != %lld!\n",
-		  tailoffset,packedsize,indexoffset));
+    INVARIANT(tailoffset - packedsize == indexoffset,
+	      boost::format("mismatch on index offset %d - %d != %d!")
+	      % tailoffset % packedsize % indexoffset);
     indexExtent = preadExtent(indexoffset);
-    AssertAlways(indexExtent != NULL,("index extent read failed\n"));
+    INVARIANT(indexExtent != NULL, "index extent read failed");
 }
 
 DataSeriesSource::~DataSeriesSource()
@@ -161,7 +161,8 @@ DataSeriesSink::DataSeriesSink(const std::string &filename,
 			       int _compression_modes,
 			       int _compression_level)
     : extents(0),
-      compress_none(0), compress_lzo(0), compress_gzip(0), compress_bz2(0),
+      compress_none(0), compress_lzo(0), compress_gzip(0), 
+      compress_bz2(0), compress_lzf(0),
       unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
       packed_size(2*4+4*8), pack_time(0),
       index_series(global_dataseries_indextype),
@@ -234,12 +235,12 @@ void
 DataSeriesSink::checkedWrite(const void *buf, int bufsize)
 {
     ssize_t ret = write(fd,buf,bufsize);
-    AssertAlways(ret != -1,
-		 ("Error on write of %d bytes: %s\n",bufsize,
-		  strerror(errno)));
-    AssertAlways(ret == bufsize,
-		 ("Partial write %d bytes out of %d bytes (disk full?): %s\n",
-		  ret,bufsize,strerror(errno)));
+    INVARIANT(ret != -1,
+	      boost::format("Error on write of %d bytes: %s")
+	      % bufsize % strerror(errno));
+    INVARIANT(ret == bufsize,
+	      boost::format("Partial write %d bytes out of %d bytes (disk full?): %s")
+	      % ret % bufsize % strerror(errno));
 }
 
 double
