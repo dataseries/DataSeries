@@ -909,7 +909,7 @@ const string nfsv3ops[] = {
 int n_nfsv3ops = sizeof(nfsv3ops) / sizeof(const string);
 
 const string nfs_attrops_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"NFS trace: attr-ops\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"1.0\" >\n"
   "  <field type=\"int64\" name=\"request-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"int64\" name=\"reply-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -942,7 +942,7 @@ Int64Field attrops_used_bytes(nfs_attrops_series,"used-bytes");
 Int64Field attrops_modify_time(nfs_attrops_series,"modify-time");
 
 const string nfs_readwrite_xml(
-  "<ExtentType name=\"NFS trace: read-write\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::read-write\" version=\"1.0\" >\n"
   "  <field type=\"int64\" name=\"request-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"int64\" name=\"reply-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_style=\"hex\" pack_unique=\"yes\" />\n"
@@ -961,7 +961,7 @@ Int64Field readwrite_offset(nfs_readwrite_series,"offset");
 Int32Field readwrite_bytes(nfs_readwrite_series,"bytes");
 
 const string ippacket_xml(
-  "<ExtentType name=\"Network trace: IP packets\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::Network::IP\" version=\"1.0\" >\n"
   "  <field type=\"int64\" name=\"packet-at\" pack_relative=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"destination\" print_format=\"%08x\" />\n"
@@ -986,7 +986,7 @@ BoolField ippacket_is_fragment(ippacket_series,"is-fragment");
 Int32Field ippacket_tcp_seqnum(ippacket_series,"tcp-seqnum",Field::flag_nullable);
 
 const string nfs_mount_xml(
-  "<ExtentType name=\"NFS trace: mount\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::mount\" version=\"1.0\">\n"
   "  <field type=\"int64\" name=\"request-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int64\" name=\"reply-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"server\" print_format=\"%08x\" />\n"

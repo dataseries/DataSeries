@@ -24,12 +24,16 @@ sub new {
 	} elsif (/^((info)|(convert)|(lzf2bz2)|(freeup))$/o) {
 	    die "already have a mode" if defined $this->{mode};
 	    $this->{mode} = $_;
-	} elsif (/^outdir=(\S+)$/o) {
-	    $this->{outdir} = $1;
+	} elsif (/^infodir=(\S+)$/o) {
+	    $this->{infodir} = $1;
+	} elsif (/^dsdir=(\S+)$/o) {
+	    $this->{dsdir} = $1;
 	} elsif (/^groupsize=(\d+)$/o) {
 	    $this->{groupsize} = $1;
 	} elsif (/^compress=(.+)$/o) {
 	    $this->{compress} = $1;
+	} elsif (/^extent-size=(\d+)$/o) {
+	    $this->{extent_size} = $1;
 	} elsif (/^record-start=(\d+)$/o) {
 	    $this->{first_record_num} = $1;
 	} elsif (/^freedir=(.+)$/o) {
@@ -38,16 +42,41 @@ sub new {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
     }
+    die "Don't have a mode??"
+	unless defined $this->{mode};
     if ($this->{mode} eq 'info' || $this->{mode} eq 'convert') {
-	die "Need to define outdir" unless defined $this->{outdir};
-	die "$this->{outdir} is not a directory" unless -d $this->{outdir};
+	die "Need to define infodir" unless defined $this->{infodir};
+	die "$this->{infodir} is not a directory" unless -d $this->{infodir};
     }
-    if ($this->{mode} eq 'convert' && ! defined $this->{compress}) {
-	print "Using default compress mode of bz2\n";
-	$this->{compress} = 'bz2';
+    if ($this->{mode} eq 'convert') {
+	die "Need to defined record-start=#" 
+	    unless defined $this->{first_record_num};
+	unless (defined $this->{compress}) {
+	    print "Using default compress mode of bz2\n";
+	    $this->{compress} = 'bz2';
+	}
+	unless (defined $this->{extent_size}) {
+	    print "Using default extent size of 67108864\n";
+	    $this->{extent_size} = 67108864;
+	}
+	unless (defined $this->{dsdir}) {
+	    print "Using default dsdir of infodir ($this->{infodir})\n";
+	    $this->{dsdir} = $this->{infodir};
+	}
+	unless (defined $ENV{NAME_KEY_1} && defined $ENV{NAME_KEY_2}) {
+	    print "Missing \$ENV{NAME_KEY_[12]}, trying to read from ~/.hash-keys.txt.gpg\n";
+	    open(KEYS, "gpg --decrypt $ENV{HOME}/.hash-keys.txt.gpg |") 
+		or die "can't run gpg: $!";
+	    $_ = <KEYS>; chomp;
+	    die "?? $_" unless /^setenv NAME_KEY_1 ([0-9a-f]{32,})$/o;
+	    $ENV{NAME_KEY_1} = $1;
+	    $_ = <KEYS>; chomp;
+	    die "?? $_" unless /^setenv NAME_KEY_2 ([0-9a-f]{32,})$/o;
+	    $ENV{NAME_KEY_2} = $1;
+	    close(KEYS);
+	}
+
     }
-    die "Need to defined record-start=#" 
-	if $this->{mode} eq 'convert' && !defined $this->{first_record_num};
     die "Need to define freedir"
 	if $this->{mode} eq 'freedir' && !defined $this->{freedir};
     return $this;
@@ -103,7 +132,7 @@ sub find_things_to_build {
 	    delete $num_to_file{$k};
 	}
 	++$group_count;
-	my $infoname = "$this->{outdir}/$first_num-$last_num\.info";
+	my $infoname = "$this->{infodir}/$first_num-$last_num\.info";
 	if ($this->{mode} eq 'info') {
 	    push(@ret, { 'first' => $first_num, 'last' => $last_num, 'files' => \@group,
 			 'infoname' => $infoname, })
@@ -120,7 +149,7 @@ sub find_things_to_build {
 	    die "?? '$_'"
 		unless /^last_record_id \(inclusive\): (\d+)$/o;
 	    my $record_count = $1 + 1;
-	    my $dsname = "$this->{outdir}/$first_num-$last_num\.ds";
+	    my $dsname = "$this->{dsdir}/$first_num-$last_num\.ds";
 	    push(@ret, { 'first' => $first_num, 'last' => $last_num, 'files' => \@group,
 			 'dsname' => $dsname, 'record_start' => $running_record_num,
 			 'record_count' => $record_count })
@@ -131,8 +160,8 @@ sub find_things_to_build {
 	}
     }
     if ($this->{mode} eq 'convert') {
-	open(LAST_RUNNING, ">$this->{outdir}/last-running")
-	    or die "Can't open $this->{outdir}/last-running for write: $!";
+	open(LAST_RUNNING, ">$this->{infodir}/last-running")
+	    or die "Can't open $this->{infodir}/last-running for write: $!";
 	print LAST_RUNNING $running_record_num,"\n";
 	close(LAST_RUNNING);
 	print "Last running record num: $running_record_num\n";
@@ -152,7 +181,7 @@ sub rebuild_thing_do {
 	die "??" unless defined $thing_info->{dsname};
 	die "??" unless defined $thing_info->{record_start} && defined $thing_info->{record_count};
 	
-	$cmd = "nettrace2ds --convert-erf --compress-$this->{compress} $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	$cmd = "nettrace2ds --convert-erf --compress-$this->{compress} --extent-size=$this->{extent_size} $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
 	unlink("$thing_info->{dsname}-fail");
 	print "Creating $thing_info->{dsname}...\n";
     } elsif ($this->{mode} eq 'info') {
