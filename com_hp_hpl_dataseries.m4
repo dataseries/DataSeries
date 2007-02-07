@@ -100,6 +100,9 @@ if test ! "$with_srt" = 'no'; then
     if test $have_srt_hdr = no; then
     	AC_CHECK_HEADER($prefix/include/SRT/SRTTrace.H,have_srt_hdr=yes;SRT_CFLAGS="-I$prefix/include/SRT",)
     fi
+    if test $have_srt_hdr = no; then
+    	AC_CHECK_HEADER($prefix/include/srtLite/SRTTrace.H,have_srt_hdr=yes;SRT_CFLAGS="-I$prefix/include/SRT",)
+    fi
     CPPFLAGS=$save_srt_cppflags
     # important to use different functions for the library checks or the check
     # will be incorrectly cached.
@@ -108,6 +111,17 @@ if test ! "$with_srt" = 'no'; then
     	srt_libs_save=$LIBS
     	LIBS="-L$prefix/lib $LIBS"
     	AC_CHECK_LIB(SRTlite,srtVersionCheck2,have_srt_lib=yes;SRT_LIBS="-L$prefix/lib -lSRTlite -lz -lbz2",,$LINTEL_LIBS -lz -lbz2)
+    	LIBS=$srt_libs_save
+    fi
+
+    if test $have_srt_lib = no; then
+	AC_CHECK_LIB(srtLite,srtVersion,have_srt_lib=yes;SRT_LIBS="-lsrtLite $LINTEL_LIBS -lz -lbz2",,$LINTEL_LIBS -lz -lbz2)
+    fi
+
+    if test $have_srt_lib = no; then
+    	srt_libs_save=$LIBS
+    	LIBS="-L$prefix/lib $LIBS"
+    	AC_CHECK_LIB(srtLite,srtVersionCheck2,have_srt_lib=yes;SRT_LIBS="-L$prefix/lib -lsrtLite -lz -lbz2",,$LINTEL_LIBS -lz -lbz2)
     	LIBS=$srt_libs_save
     fi
     
