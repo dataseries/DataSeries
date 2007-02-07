@@ -12,9 +12,12 @@
 #ifndef __DATASERIES_GENERALFIELD_H
 #define __DATASERIES__GENERALFIELD_H
 
+#include <stddef.h>
+
 #include <streamcompat.H>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h> 
+#include <boost/static_assert.hpp>
 
 #include <Lintel/HashMap.H>
 
@@ -113,7 +116,9 @@ public:
 	    case ExtentType::ft_int64: 
 		return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
 	    case ExtentType::ft_double: 
-		return BobJenkinsHashMixULL(*reinterpret_cast<const u_int64_t *>(&gvval.v_double));
+		BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
+		BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) == offsetof(gvvalT, v_int64));
+		return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
 	    case ExtentType::ft_variable32: 
 		return HashTable_hashbytes(v_variable32->data(),
 					   v_variable32->size());
@@ -132,7 +137,7 @@ protected:
     friend class GF_Double;
     friend class GF_Variable32;
     ExtentType::fieldType gvtype;
-    union {
+    union gvvalT {
 	bool v_bool;
 	ExtentType::byte v_byte;
 	ExtentType::int32 v_int32;
