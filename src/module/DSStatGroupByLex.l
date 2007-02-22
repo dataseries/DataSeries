@@ -24,7 +24,7 @@ DSStatGroupByLex_setInputString(const char *str, int len)
 
 %}
 
-field [a-zA-Z_][a-zA-Z0-9_]*
+field [a-zA-Z_]([a-zA-Z0-9_]|(\\.))*
 
 %%
 
