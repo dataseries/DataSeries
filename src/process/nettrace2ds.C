@@ -569,6 +569,21 @@ protected:
     virtual void enable_dynamic_cast() { };
 };
 
+class ShortDataInRPCException : public RPC::parse_exception {
+public:
+    ShortDataInRPCException(const std::string &_condition, const std::string &_rpc_type,
+			    const std::string &_message, const char *filename, const int lineno)
+	: RPC::parse_exception(_condition, _message, filename, lineno),
+	       rpc_type(_rpc_type) { // rpc_type example "NFSv2 Write Reply"
+    }
+    virtual ~ShortDataInRPCException() throw() { }; 
+    string rpc_type;
+};
+  
+#define ShortDataAssertMsg(condition,rpc_type,message) \
+  ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
+
+
 class RPCRequest : public RPC {
 public:
     static const uint32_t host_prog_portmap = 100000;
@@ -585,7 +600,7 @@ public:
     static const uint32_t host_auth_sys = 1;
     static const uint32_t net_auth_sys = CONSTANTHOSTNETSWAP(host_auth_sys);
     RPCRequest(const void *bytes, int _len) : RPC(bytes,_len), orig_xid(xid()) {
-	RPCParseAssert(len >= 10*4);
+	ShortDataAssertMsg(len >= 10*4, "unknown", ("rpc header too small"));
 	RPCParseAssert(rpchdr[1] == 0);
 	RPCParseAssert(rpchdr[2] == net_rpc_version);
 	if (rpchdr[6] == 0) {
@@ -603,7 +618,7 @@ public:
 	    unsigned hostname_len = ntohl(*cur_pos);
 	    ++cur_pos;
 	    hostname_len = roundup4(hostname_len);
-	    AssertAlways(auth_credlen >= 5*4 + hostname_len,("bad\n"));
+	    ShortDataAssertMsg(auth_credlen >= 5*4 + hostname_len,"unknown",("auth credentials too small\n"));
 	    cur_pos += hostname_len / 4;
 	    auth_sys_uid = cur_pos;
 	    cur_pos += 2; // uid, gid
@@ -776,17 +791,6 @@ private:
     int version;
 };
 
-class ShortDataInRPCException : public RPC::parse_exception {
-public:
-    ShortDataInRPCException(const std::string &_condition, const std::string &_rpc_type,
-			    const std::string &_message, const char *filename, const int lineno)
-	: RPC::parse_exception(_condition, _message, filename, lineno),
-	       rpc_type(_rpc_type) { // rpc_type example "NFSv2 Write Reply"
-    }
-    virtual ~ShortDataInRPCException() throw() { }; 
-    string rpc_type;
-};
-  
 const string nfs_convert_stats_xml(
   "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::NFS::convert-stats\" version=\"1.0\" >\n"
   "  <field type=\"variable32\" name=\"stat-name\" pack_unique=\"yes\" />\n"
@@ -816,9 +820,6 @@ Int32Field ip_bwrolling_sample_us(ip_bwrolling_series, "sample-us");
 Int64Field ip_bwrolling_count(ip_bwrolling_series, "count");
 DoubleField ip_bwrolling_quantile(ip_bwrolling_series, "quantile");
 DoubleField ip_bwrolling_mbps(ip_bwrolling_series, "mbps");
-
-#define ShortDataAssertMsg(condition,rpc_type,message) \
-  ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
 
 const string nfs_common_xml(
   "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"1.0\" >\n"

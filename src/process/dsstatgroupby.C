@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 
     SequenceModule seq(prefetch);
 
-    unsigned argpos;
+    int argpos;
     for(argpos = 3; argpos < argc; argpos += 2) {
 	if (argpos + 2 > argc) usage(argv[0], "missing -- in arguments");
 	string expr(argv[argpos]);

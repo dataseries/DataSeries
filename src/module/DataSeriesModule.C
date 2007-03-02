@@ -74,6 +74,7 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
     : extents(0), compress_none(0), compress_lzo(0), compress_gzip(0), 
       compress_bz2(0), compress_lzf(0),
       unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
+      unpacked_variable_raw(0), 
       packed_size(0), pack_time(0),
       sink(_sink), series(_series), outputtype(_outputtype),
       target_extent_size(_target_extent_size)
@@ -105,7 +106,8 @@ void
 OutputModule::flushExtent()
 {
     if (cur_extent->fixeddata.size() > 0) {
-	
+	unpacked_variable_raw += cur_extent->variabledata.size();
+
         int old_extents;
 	int old_compress_none, old_compress_lzo, old_compress_gzip, old_compress_bz2, old_compress_lzf;
 	long long old_unpacked_size, old_unpacked_fixed, old_unpacked_variable, old_packed_size;
@@ -149,8 +151,8 @@ OutputModule::printStats(std::ostream &to)
     to << boost::format("  compression (none,lzo,gzip,bz2,lzf): (%d,%d,%d,%d,%d)")
 	% compress_none % compress_lzo % compress_gzip % compress_bz2 % compress_lzf
        << std::endl;
-    to << boost::format("  unpacked: %d = %d (fixed) + %d (variable)")
-	% unpacked_size % unpacked_fixed % unpacked_variable
+    to << boost::format("  unpacked: %d = %d (fixed) + %d (variable, %d raw)")
+	% unpacked_size % unpacked_fixed % unpacked_variable % unpacked_variable_raw
        << std::endl;
     to << boost::format("  packed size: %d; pack time: %.3f")
 	% packed_size % pack_time

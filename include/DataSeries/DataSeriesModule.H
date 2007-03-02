@@ -87,7 +87,7 @@ public:
 
     int extents;
     int compress_none, compress_lzo, compress_gzip, compress_bz2, compress_lzf;
-    long long unpacked_size, unpacked_fixed, unpacked_variable, packed_size;
+    long long unpacked_size, unpacked_fixed, unpacked_variable, unpacked_variable_raw, packed_size;
     double pack_time;
     
     void printStats(std::ostream &to);
