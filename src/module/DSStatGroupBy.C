@@ -22,6 +22,7 @@ extern "C" {
 }
 
 YYSTYPE DSStatGroupBy_yylval;
+using namespace std;
 
 namespace DSStatGroupByExpr {
     class Expr {
@@ -35,7 +36,21 @@ namespace DSStatGroupByExpr {
     public:
 	ExprField(ExtentSeries &series, const std::string &fieldname)
 	{ 
-	    field = GeneralField::create(NULL, series, fieldname);
+	    // Allow for arbitrary fieldnames through escaping...
+	    if (fieldname.find('\\', 0) != string::npos) {
+		string fixup;
+		fixup.reserve(fieldname.size());
+		for(unsigned i=0; i<fieldname.size(); ++i) {
+		    if (fieldname[i] == '\\') {
+			++i;
+			INVARIANT(i < fieldname.size(), "missing escaped value");
+		    }
+		    fixup.push_back(fieldname[i]);
+		}
+		field = GeneralField::create(NULL, series, fixup);
+	    } else {
+		field = GeneralField::create(NULL, series, fieldname);
+	    }
 	}
 	
 	virtual ~ExprField() { };
