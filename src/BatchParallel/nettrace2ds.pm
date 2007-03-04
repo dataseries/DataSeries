@@ -38,6 +38,8 @@ sub new {
 	    $this->{first_record_num} = $1;
 	} elsif (/^freedir=(.+)$/o) {
 	    $this->{freedir} = $1;
+	} elsif (/^finished_before=(\d+)$/o) {
+	    $this->{finished_before} = $1;
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
@@ -121,6 +123,7 @@ sub find_things_to_build {
     my @ret;
     my $group_count = 0;
     my $running_record_num = $this->{first_record_num};
+    $this->{finished_before} ||= 0;
     for(my $i=0; $i < @nums; $i += $this->{groupsize}) {
 	my @group;
 	my $first_num = $nums[$i];
@@ -153,7 +156,8 @@ sub find_things_to_build {
 	    push(@ret, { 'first' => $first_num, 'last' => $last_num, 'files' => \@group,
 			 'dsname' => $dsname, 'record_start' => $running_record_num,
 			 'record_count' => $record_count })
-		if ! -f $dsname || $this->file_older($dsname, @group);
+		if $last_num >= $this->{finished_before} && 
+		(! -f $dsname || $this->file_older($dsname, @group));
 	    $running_record_num += $record_count;
 	} else {
 	    die "??";

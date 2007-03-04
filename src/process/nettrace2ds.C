@@ -600,7 +600,7 @@ public:
     static const uint32_t host_auth_sys = 1;
     static const uint32_t net_auth_sys = CONSTANTHOSTNETSWAP(host_auth_sys);
     RPCRequest(const void *bytes, int _len) : RPC(bytes,_len), orig_xid(xid()) {
-	ShortDataAssertMsg(len >= 10*4, "unknown", ("rpc header too small"));
+	RPCParseAssert(len >= 10*4); // may mis-interpret tcp length, so may not be at end of segment
 	RPCParseAssert(rpchdr[1] == 0);
 	RPCParseAssert(rpchdr[2] == net_rpc_version);
 	if (rpchdr[6] == 0) {
@@ -792,21 +792,21 @@ private:
 };
 
 const string nfs_convert_stats_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::NFS::convert-stats\" version=\"1.0\" >\n"
-  "  <field type=\"variable32\" name=\"stat-name\" pack_unique=\"yes\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::NFS::convert-stats\" version=\"2.0\" >\n"
+  "  <field type=\"variable32\" name=\"stat_name\" pack_unique=\"yes\" />\n"
   "  <field type=\"int64\" name=\"count\" />\n"
   "</ExtentType>\n"
   );
 
 ExtentSeries nfs_convert_stats_series;
 OutputModule *nfs_convert_stats_outmodule;
-Variable32Field nfs_convert_stats_name(nfs_convert_stats_series, "stat-name");
+Variable32Field nfs_convert_stats_name(nfs_convert_stats_series, "stat_name");
 Int64Field nfs_convert_stats_count(nfs_convert_stats_series, "count");
 
 const string ip_bwrolling_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::Network::IP::bandwidth-rolling\" version=\"1.0\" >\n"
-  "  <field type=\"int32\" name=\"interval-us\" />\n"
-  "  <field type=\"int32\" name=\"sample-us\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Summary::Network::IP::bandwidth-rolling\" version=\"2.0\" >\n"
+  "  <field type=\"int32\" name=\"interval_us\" />\n"
+  "  <field type=\"int32\" name=\"sample_us\" />\n"
   "  <field type=\"int64\" name=\"count\" />\n"
   "  <field type=\"double\" name=\"quantile\" />\n"
   "  <field type=\"double\" name=\"mbps\" />\n"
@@ -815,49 +815,49 @@ const string ip_bwrolling_xml(
 
 ExtentSeries ip_bwrolling_series;
 OutputModule *ip_bwrolling_outmodule;
-Int32Field ip_bwrolling_interval_us(ip_bwrolling_series, "interval-us");
-Int32Field ip_bwrolling_sample_us(ip_bwrolling_series, "sample-us");
+Int32Field ip_bwrolling_interval_us(ip_bwrolling_series, "interval_us");
+Int32Field ip_bwrolling_sample_us(ip_bwrolling_series, "sample_us");
 Int64Field ip_bwrolling_count(ip_bwrolling_series, "count");
 DoubleField ip_bwrolling_quantile(ip_bwrolling_series, "quantile");
 DoubleField ip_bwrolling_mbps(ip_bwrolling_series, "mbps");
 
 const string nfs_common_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"1.0\" >\n"
-  "  <field type=\"int64\" name=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"packet-at\" print_divisor=\"4295\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"2.0\" >\n"
+  "  <field type=\"int64\" name=\"packet_at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"packet_at\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
-  "  <field type=\"int32\" name=\"source-port\" />\n"
+  "  <field type=\"int32\" name=\"source_port\" />\n"
   "  <field type=\"int32\" name=\"dest\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
-  "  <field type=\"int32\" name=\"dest-port\" />\n"
-  "  <field type=\"bool\" name=\"is-udp\" print_true=\"UDP\" print_false=\"TCP\" />\n"
-  "  <field type=\"bool\" name=\"is-request\" print_true=\"request\" print_false=\"response\" />\n"
-  "  <field type=\"byte\" name=\"nfs-version\" print_format=\"V%d\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"transaction-id\" print_format=\"%08x\" />\n"
-  "  <field type=\"byte\" name=\"op-id\" opt_nullable=\"yes\" note=\"op-id is nfs-version dependent\" />\n"
+  "  <field type=\"int32\" name=\"dest_port\" />\n"
+  "  <field type=\"bool\" name=\"is_udp\" print_true=\"UDP\" print_false=\"TCP\" />\n"
+  "  <field type=\"bool\" name=\"is_request\" print_true=\"request\" print_false=\"response\" />\n"
+  "  <field type=\"byte\" name=\"nfs_version\" print_format=\"V%d\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"transaction_id\" print_format=\"%08x\" />\n"
+  "  <field type=\"byte\" name=\"op_id\" opt_nullable=\"yes\" note=\"op_id is nfs-version dependent\" />\n"
   "  <field type=\"variable32\" name=\"operation\" pack_unique=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"rpc-status\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"payload-length\" />\n"
-  "  <field type=\"int64\" name=\"record-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"record-id\" />\n"
+  "  <field type=\"int32\" name=\"rpc_status\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"payload_length\" />\n"
+  "  <field type=\"int64\" name=\"record_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"record_id\" />\n"
   "</ExtentType>\n"
 );
 
 ExtentSeries nfs_common_series;
 OutputModule *nfs_common_outmodule;
-Int64Field packet_at(nfs_common_series,"packet-at");
+Int64Field packet_at(nfs_common_series,"packet_at");
 Int32Field source(nfs_common_series,"source");
-Int32Field source_port(nfs_common_series,"source-port");
+Int32Field source_port(nfs_common_series,"source_port");
 Int32Field dest(nfs_common_series,"dest");
-Int32Field dest_port(nfs_common_series,"dest-port");
-BoolField is_udp(nfs_common_series,"is-udp");
-BoolField is_request(nfs_common_series,"is-request");
-ByteField nfs_version(nfs_common_series,"nfs-version",Field::flag_nullable);
-Int32Field xid(nfs_common_series,"transaction-id");
+Int32Field dest_port(nfs_common_series,"dest_port");
+BoolField is_udp(nfs_common_series,"is_udp");
+BoolField is_request(nfs_common_series,"is_request");
+ByteField nfs_version(nfs_common_series,"nfs_version",Field::flag_nullable);
+Int32Field xid(nfs_common_series,"transaction_id");
 // Int32Field euid(nfs_common_series,"euid",Field::flag_nullable);
 // Int32Field egid(nfs_common_series,"egid",Field::flag_nullable);
-ByteField opid(nfs_common_series,"op-id",Field::flag_nullable);
+ByteField opid(nfs_common_series,"op_id",Field::flag_nullable);
 Variable32Field operation(nfs_common_series,"operation");
-Int32Field rpc_status(nfs_common_series,"rpc-status",Field::flag_nullable);
-Int32Field payload_length(nfs_common_series,"payload-length");
-Int64Field common_record_id(nfs_common_series,"record-id");
+Int32Field rpc_status(nfs_common_series,"rpc_status",Field::flag_nullable);
+Int32Field payload_length(nfs_common_series,"payload_length");
+Int64Field common_record_id(nfs_common_series,"record_id");
 
 const string nfsv2ops[] = {
     "null",
@@ -910,86 +910,86 @@ const string nfsv3ops[] = {
 int n_nfsv3ops = sizeof(nfsv3ops) / sizeof(const string);
 
 const string nfs_attrops_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"1.0\" >\n"
-  "  <field type=\"int64\" name=\"request-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
-  "  <field type=\"int64\" name=\"reply-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"2.0\" >\n"
+  "  <field type=\"int64\" name=\"request_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
+  "  <field type=\"int64\" name=\"reply_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_style=\"hex\" pack_unique=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"lookup-dir-filehandle\" print_style=\"hex\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"lookup_dir_filehandle\" print_style=\"hex\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"typeid\" />\n"
   "  <field type=\"variable32\" name=\"type\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"mode\" comment=\"only includes bits from 0xFFF down, so type is not reproduced here\" print_format=\"%x\" />\n"
   "  <field type=\"int32\" name=\"uid\" />\n"
   "  <field type=\"int32\" name=\"gid\" />\n"
-  "  <field type=\"int64\" name=\"file-size\" />\n"
-  "  <field type=\"int64\" name=\"used-bytes\" />\n"
-  "  <field type=\"int64\" name=\"modify-time\" pack_relative=\"modify-time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision modify times\" />\n"
+  "  <field type=\"int64\" name=\"file_size\" />\n"
+  "  <field type=\"int64\" name=\"used_bytes\" />\n"
+  "  <field type=\"int64\" name=\"modify_time\" pack_relative=\"modify_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision modify times\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries nfs_attrops_series;
 OutputModule *nfs_attrops_outmodule;
-Int64Field attrops_request_id(nfs_attrops_series,"request-id");
-Int64Field attrops_reply_id(nfs_attrops_series,"reply-id");
+Int64Field attrops_request_id(nfs_attrops_series,"request_id");
+Int64Field attrops_reply_id(nfs_attrops_series,"reply_id");
 Variable32Field attrops_filename(nfs_attrops_series,"filename", Field::flag_nullable);
 Variable32Field attrops_filehandle(nfs_attrops_series,"filehandle");
-Variable32Field attrops_lookupdirfilehandle(nfs_attrops_series,"lookup-dir-filehandle", Field::flag_nullable);
+Variable32Field attrops_lookupdirfilehandle(nfs_attrops_series,"lookup_dir_filehandle", Field::flag_nullable);
 ByteField attrops_typeid(nfs_attrops_series,"typeid");
 Variable32Field attrops_type(nfs_attrops_series,"type");
 Int32Field attrops_mode(nfs_attrops_series,"mode");
 Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
-Int64Field attrops_filesize(nfs_attrops_series,"file-size");
-Int64Field attrops_used_bytes(nfs_attrops_series,"used-bytes");
-Int64Field attrops_modify_time(nfs_attrops_series,"modify-time");
+Int64Field attrops_filesize(nfs_attrops_series,"file_size");
+Int64Field attrops_used_bytes(nfs_attrops_series,"used_bytes");
+Int64Field attrops_modify_time(nfs_attrops_series,"modify_time");
 
 const string nfs_readwrite_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::read-write\" version=\"1.0\" >\n"
-  "  <field type=\"int64\" name=\"request-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
-  "  <field type=\"int64\" name=\"reply-id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request-id\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::read-write\" version=\"2.0\" >\n"
+  "  <field type=\"int64\" name=\"request_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
+  "  <field type=\"int64\" name=\"reply_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_style=\"hex\" pack_unique=\"yes\" />\n"
-  "  <field type=\"bool\" name=\"is-read\" />\n"
+  "  <field type=\"bool\" name=\"is_read\" />\n"
   "  <field type=\"int64\" name=\"offset\" />\n"
   "  <field type=\"int32\" name=\"bytes\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries nfs_readwrite_series;
 OutputModule *nfs_readwrite_outmodule;
-Int64Field readwrite_request_id(nfs_readwrite_series,"request-id");
-Int64Field readwrite_reply_id(nfs_readwrite_series,"reply-id");
+Int64Field readwrite_request_id(nfs_readwrite_series,"request_id");
+Int64Field readwrite_reply_id(nfs_readwrite_series,"reply_id");
 Variable32Field readwrite_filehandle(nfs_readwrite_series,"filehandle");
-BoolField readwrite_is_read(nfs_readwrite_series,"is-read");
+BoolField readwrite_is_read(nfs_readwrite_series,"is_read");
 Int64Field readwrite_offset(nfs_readwrite_series,"offset");
 Int32Field readwrite_bytes(nfs_readwrite_series,"bytes");
 
 const string ippacket_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::Network::IP\" version=\"1.0\" >\n"
-  "  <field type=\"int64\" name=\"packet-at\" pack_relative=\"packet-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::Network::IP\" version=\"2.0\" >\n"
+  "  <field type=\"int64\" name=\"packet_at\" pack_relative=\"packet_at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"destination\" print_format=\"%08x\" />\n"
-  "  <field type=\"int32\" name=\"wire-length\" />\n"
-  "  <field type=\"bool\" name=\"udp-tcp\" opt_nullable=\"yes\" comment=\"true on udp, false on tcp, null on neither\" />\n"
-  "  <field type=\"int32\" name=\"source-port\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"destination-port\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"bool\" name=\"is-fragment\" />\n"
-  "  <field type=\"int32\" name=\"tcp-seqnum\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"wire_length\" />\n"
+  "  <field type=\"bool\" name=\"udp_tcp\" opt_nullable=\"yes\" comment=\"true on udp, false on tcp, null on neither\" />\n"
+  "  <field type=\"int32\" name=\"source_port\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"destination_port\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"bool\" name=\"is_fragment\" />\n"
+  "  <field type=\"int32\" name=\"tcp_seqnum\" opt_nullable=\"yes\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries ippacket_series;
 OutputModule *ippacket_outmodule;
-Int64Field ippacket_packet_at(ippacket_series,"packet-at");
+Int64Field ippacket_packet_at(ippacket_series,"packet_at");
 Int32Field ippacket_source(ippacket_series,"source");
 Int32Field ippacket_destination(ippacket_series,"destination");
-Int32Field ippacket_wire_length(ippacket_series,"wire-length");
-BoolField ippacket_udp_tcp(ippacket_series,"udp-tcp",Field::flag_nullable);
-Int32Field ippacket_source_port(ippacket_series,"source-port",Field::flag_nullable);
-Int32Field ippacket_destination_port(ippacket_series,"destination-port",Field::flag_nullable);
-BoolField ippacket_is_fragment(ippacket_series,"is-fragment");
-Int32Field ippacket_tcp_seqnum(ippacket_series,"tcp-seqnum",Field::flag_nullable);
+Int32Field ippacket_wire_length(ippacket_series,"wire_length");
+BoolField ippacket_udp_tcp(ippacket_series,"udp_tcp",Field::flag_nullable);
+Int32Field ippacket_source_port(ippacket_series,"source_port",Field::flag_nullable);
+Int32Field ippacket_destination_port(ippacket_series,"destination_port",Field::flag_nullable);
+BoolField ippacket_is_fragment(ippacket_series,"is_fragment");
+Int32Field ippacket_tcp_seqnum(ippacket_series,"tcp_seqnum",Field::flag_nullable);
 
 const string nfs_mount_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::mount\" version=\"1.0\">\n"
-  "  <field type=\"int64\" name=\"request-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
-  "  <field type=\"int64\" name=\"reply-at\" pack_relative=\"request-at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::mount\" version=\"2.0\">\n"
+  "  <field type=\"int64\" name=\"request_at\" pack_relative=\"request_at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
+  "  <field type=\"int64\" name=\"reply_at\" pack_relative=\"request_at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"server\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"client\" print_format=\"%08x\" />\n"
   "  <field type=\"variable32\" name=\"pathname\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -998,8 +998,8 @@ const string nfs_mount_xml(
 
 ExtentSeries nfs_mount_series;
 OutputModule *nfs_mount_outmodule;
-Int64Field nfs_mount_request_at(nfs_mount_series,"request-at");
-Int64Field nfs_mount_reply_at(nfs_mount_series,"reply-at");
+Int64Field nfs_mount_request_at(nfs_mount_series,"request_at");
+Int64Field nfs_mount_reply_at(nfs_mount_series,"reply_at");
 Int32Field nfs_mount_server(nfs_mount_series,"server");
 Int32Field nfs_mount_client(nfs_mount_series,"client");
 Variable32Field nfs_mount_pathname(nfs_mount_series,"pathname");
