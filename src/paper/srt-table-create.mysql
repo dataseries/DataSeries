@@ -1,0 +1,77 @@
+# To convert a csv file:
+# perl -ne 's/null/\\N/go;s/F/0/go;s/T/0/go;print' <hourly-00000.csv >|hourly-00000.sqlload
+#
+# Then load data infile '/tmp/hourly-00000.sqlload' into table srt_data fields terminated by ',';
+# 10.58 seconds to load hourly-0000x.sqlload on nw9440 laptop
+
+# query -1
+# reset query cache; select device_number, count(*), avg(leave_driver - enter_driver), stddev(leave_driver - enter_driver), min(leave_driver - enter_driver), max(leave_driver - enter_driver) from srt_data group by device_number;
+# 1.75, 1.72, 1.70 seconds
+
+# query -2
+# reset query cache; select logical_volume_number, count(*), avg(leave_driver - enter_driver), stddev(leave_driver - enter_driver), min(leave_driver - enter_driver), max(leave_driver - enter_driver) from srt_data group by logical_volume_number;
+# 1.20, 1.18, 1.22
+
+# query -3
+# reset query cache; select bytes, count(*), avg(leave_driver - enter_driver), stddev(leave_driver - enter_driver), min(leave_driver - enter_driver), max(leave_driver - enter_driver) from srt_data group by bytes;
+# 2.18, 2.17, 2.20
+
+# reset query cache; select bytes, count(*), avg(return_to_driver - enter_driver), stddev(return_to_driver - enter_driver), min(return_to_driver - enter_driver), max(return_to_driver - enter_driver) from srt_data group by bytes;
+# 2.17, 2.19, 2.14 seconds for -6
+
+
+# query -6 and -3
+# reset query cache; select bytes, count(*), avg(return_to_driver - enter_driver), stddev(return_to_driver - enter_driver), min(return_to_driver - enter_driver), max(return_to_driver - enter_driver), count(*), avg(leave_driver - enter_driver), stddev(leave_driver - enter_driver), min(leave_driver - enter_driver), max(leave_driver - enter_driver) from srt_data group by bytes;
+# 2.62, 2.62, 2.62
+
+
+
+create table srt_data (
+
+enter_driver             double    not null,
+leave_driver	         double    not null,
+return_to_driver	 double    not null,
+
+bytes                    int       not null,
+machine_id               int       not null,
+device_number            int       not null,
+driver_type              int	   	   ,
+thread_id                int	   	   ,
+queue_length             int       not null,
+pid	                 int       not null,
+logical_volume_number    int       not null,
+
+disk_offset	         bigint	   not null,
+lv_offset                bigint	   	   ,
+
+buffertype	         tinyint   not null,
+
+flag_synchronous	 bool      not null,
+flag_raw		 bool      not null,
+flag_nocache		 bool      not null,
+flag_call		 bool      not null,
+flag_fsysio		 bool      not null,
+flag_bufdata_invalid 	 bool      not null,
+flag_cache		 bool      not null,
+flag_pftimeout	     	 bool      not null,
+flag_writev		 bool      not null,
+flag_rewrite	 	 bool      not null,
+flag_delwrite		 bool      not null,
+flag_async		 bool      not null,
+flag_ndelay		 bool      not null,
+flag_wanted		 bool      not null,
+flag_end_of_data	 bool      not null,
+flag_phys		 bool      not null,
+flag_busy		 bool      not null,
+flag_error		 bool      not null,
+flag_done		 bool      not null,
+is_read		         bool      not null,
+flag_ordwrite	         bool      not null,
+flag_merged		 bool      not null,
+flag_merged_from	 bool      not null,
+act_release		 bool      not null,
+act_allocate	         bool      not null,
+act_free		 bool      not null,
+act_raw		         bool      not null,
+act_flush		 bool      not null
+);
