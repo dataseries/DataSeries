@@ -10,6 +10,8 @@
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/commonargs.H>
 
+#include "cryptutil.H"
+
 const std::string logfu_xml
 (
  "<ExtentType name=\"TiColi trace\" >\n"
@@ -136,6 +138,8 @@ main(int argc, char *argv[])
     Int32Field offset(logfuseries,"offset");
     Int32Field length(logfuseries,"length");
 
+    prepareEncrypt("01234567890123456789", "01234567890123456789");
+
     Extent *logfuextent = new Extent(logfuseries);
     int nrecords = 0;
     int nread = 0;
@@ -164,7 +168,7 @@ main(int argc, char *argv[])
 	    std::string s_zero = extract_field(buffer,&bufpos);
 	    s_path = extract_to_end(buffer,&bufpos);
 	} else 
-	    s_path = extract_field(buffer,&bufpos);
+	    s_path = encryptString(extract_field(buffer,&bufpos));
 
 	if ((s_oper == "readdir") || (s_oper == "start") || (s_oper == "readlink") || (s_oper == "open")) {
 	    s_offset = extract_field(buffer,&bufpos);

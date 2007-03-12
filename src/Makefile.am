@@ -70,12 +70,13 @@ libDataSeries_la_SOURCES = \
 
 BUILT_SOURCES = lex.DSStatGroupBy_yy.c
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
+bin_PROGRAMS = ds2txt logfu2ds pssimple2ds dsextentindex lvpvprocessusage textindex \
 	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
+logfu2ds_SOURCES = process/logfu2ds.C process/cryptutil.C
 dsextentindex_SOURCES = process/dsextentindex.C
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 textindex_SOURCES = process/textindex.C
@@ -93,6 +94,7 @@ network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 if WITH_CRYPTO
 bin_PROGRAMS += nettrace2ds
 nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
+logfu2ds_LDADD = libDataSeries.la -lcrypto
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm
 endif
 endif
