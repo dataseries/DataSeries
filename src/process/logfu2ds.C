@@ -14,12 +14,22 @@
 
 const std::string logfu_xml
 (
- "<ExtentType name=\"TiColi trace\" >\n"
+ "<ExtentType name=\"Trace::LogFu::common\" >\n"
  "  <field type=\"variable32\" name=\"timestamp\" pack_unique=\"yes\" />\n"
  "  <field type=\"variable32\" name=\"oper\" pack_unique=\"yes\" />\n"
- "  <field type=\"variable32\" name=\"path\" pack_unique=\"yes\" />\n"
- "  <field type=\"int32\" name=\"offset\" />\n"
- "  <field type=\"int32\" name=\"length\" />\n"
+ "  <field type=\"variable32\" name=\"path\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+ "  <field type=\"variable32\" name=\"oldpath\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+ "  <field type=\"variable32\" name=\"newpath\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+ "  <field type=\"variable32\" name=\"hostname\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+ "  <field type=\"variable32\" name=\"message\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+ "  <field type=\"int64\" name=\"offset\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int64\" name=\"length\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"owner\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"group\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"mode\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"flags\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"dev\" opt_nullable=\"yes\" />\n"
+ "  <field type=\"int32\" name=\"datasync\" opt_nullable=\"yes\" />\n"
  "</ExtentType>\n"
 );
 
@@ -49,31 +59,14 @@ void
 isinteger(const std::string &s)
 {
     for(unsigned int i=0;i<s.size();++i) {
-	AssertAlways(isdigit(s[i]),("%s is supposed to be an integer\n",s.c_str()));
+	AssertAlways(isdigit(s[i]),("%s is supposed to be an integer\n",
+	    s.c_str()));
     }
 }
 
 void
 readString(FILE *in, std::string &ret)
 {
-#if 0
-    // this doesn't work on popened files or something like that :(
-    const int bufsize = 4096;
-    char buf[bufsize];
-    fgets(buf,bufsize,in);
-    buf[bufsize-1] = '\0';
-    int len = strlen(buf);
-    if (len == 0) {
-	AssertAlways(feof(in),("got 0 bytes but not at eof?!\n"));
-	return;
-    }
-    AssertAlways(len < bufsize - 1,("Internal error, string too long in input\n"));
-    AssertAlways(len > 10,("Internal error, string too short in input\n"));
-    AssertAlways(buf[len-1] == '\n',("Internal error, string '%s' doesn't end with newline %d\n",buf,feof(in)));
-    buf[len-1] = '\0';
-    ret.resize(0);
-    ret.append(buf,len-1);
-#endif
     std::vector<char> foo_str; // Linux & HP-UX STL differ enough that I
     // can't find a common way to append a single character to a string, 
     // so either construct in a vector and convert, or build a char * out 
@@ -126,7 +119,8 @@ main(int argc, char *argv[])
     AssertAlways(infile != NULL,
 		 ("Failure opening %s: %s\n",argv[1],strerror(errno)));
     
-    DataSeriesSink logfudsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
+    DataSeriesSink logfudsout(argv[2],packing_args.compress_modes,
+        packing_args.compress_level);
     ExtentTypeLibrary library;
     ExtentType *logfutype = library.registerType(logfu_xml);
     ExtentSeries logfuseries(*logfutype);
@@ -134,9 +128,19 @@ main(int argc, char *argv[])
 
     Variable32Field timestamp(logfuseries,"timestamp");
     Variable32Field oper(logfuseries,"oper");
-    Variable32Field path(logfuseries,"path");
-    Int32Field offset(logfuseries,"offset");
-    Int32Field length(logfuseries,"length");
+    Variable32Field path(logfuseries,"path",Field::flag_nullable);
+    Variable32Field oldpath(logfuseries,"oldpath",Field::flag_nullable);
+    Variable32Field newpath(logfuseries,"newpath",Field::flag_nullable);
+    Variable32Field hostname(logfuseries,"hostname",Field::flag_nullable);
+    Variable32Field message(logfuseries,"message",Field::flag_nullable);
+    Int64Field offset(logfuseries,"offset",Field::flag_nullable);
+    Int64Field length(logfuseries,"length",Field::flag_nullable);
+    Int32Field mode(logfuseries,"mode",Field::flag_nullable);
+    Int32Field owner(logfuseries,"owner",Field::flag_nullable);
+    Int32Field group(logfuseries,"group",Field::flag_nullable);
+    Int32Field flags(logfuseries,"flags",Field::flag_nullable);
+    Int32Field datasync(logfuseries,"datasync",Field::flag_nullable);
+    Int32Field dev(logfuseries,"dev",Field::flag_nullable);
 
     prepareEncrypt("01234567890123456789", "01234567890123456789");
 
@@ -147,8 +151,8 @@ main(int argc, char *argv[])
     while(1) {
 	readString(infile,buffer);
 	++nread;
-	if ((int)(logfuextent->extentsize()+buffer.size()) > packing_args.extent_size ||
-	    feof(infile)) {
+	if ((int)(logfuextent->extentsize()+buffer.size()) >
+	    packing_args.extent_size || feof(infile)) {
 	    logfudsout.writeExtent(logfuextent);
 	    logfuextent->clear();
 	}
@@ -156,30 +160,72 @@ main(int argc, char *argv[])
 	if (feof(infile))
 	    break;
 	int bufpos = 0;
+
 	std::string s_timestamp = extract_field(buffer,&bufpos);
 	AssertAlways(s_timestamp.size() > 0,("bad timestamp\n"));
+
 	std::string s_oper = extract_field(buffer,&bufpos);
 	AssertAlways(s_oper.size() > 0,("bad operation\n"));
+
 	std::string s_path;
-	std::string s_offset = "0";
-	std::string s_length = "0";
+	std::string s_oldpath;
+	std::string s_newpath;
+	std::string s_hostname;
+	std::string s_message;
+	std::string s_offset;
+	std::string s_length;
+	std::string s_mode;
+	std::string s_flags;
+	std::string s_owner;
+	std::string s_group;
+	std::string s_datasync;
+	std::string s_dev;
 
 	if (s_oper == "generic") {
 	    std::string s_zero = extract_field(buffer,&bufpos);
-	    s_path = extract_to_end(buffer,&bufpos);
+	    s_message = extract_to_end(buffer,&bufpos);
+	} else if (s_oper == "start") {
+	    s_hostname = extract_field(buffer,&bufpos);
+	    s_offset = extract_field(buffer,&bufpos);
+	} else if (s_oper == "stop") {
+	    std::string s_zero = extract_field(buffer,&bufpos);
+	} else if ((s_oper == "rename") || (s_oper == "symlink") || (s_oper == "link")) {
+	    s_oldpath = encryptString(extract_field(buffer,&bufpos));
+	    s_newpath = encryptString(extract_field(buffer,&bufpos));
 	} else 
 	    s_path = encryptString(extract_field(buffer,&bufpos));
 
-	if ((s_oper == "readdir") || (s_oper == "start") || (s_oper == "readlink") || (s_oper == "open")) {
+	if ((s_oper == "readlink") || (s_oper == "truncate") || (s_oper == "ftruncate")) {
+	    s_length = extract_field(buffer,&bufpos);
+	    isinteger(s_offset);
+	} else if ((s_oper == "readdir")) {
 	    s_offset = extract_field(buffer,&bufpos);
 	    isinteger(s_offset);
-	}
-
-	if ((s_oper == "read") || (s_oper == "write")) {
-	    s_offset = extract_field(buffer,&bufpos);
-	    isinteger(s_offset);
+	} else if ((s_oper == "read") || (s_oper == "write")) {
 	    s_length = extract_field(buffer,&bufpos);
 	    isinteger(s_length);
+	    s_offset = extract_field(buffer,&bufpos);
+	    isinteger(s_offset);
+	} else if ((s_oper == "mkdir") || (s_oper == "chmod") || (s_oper == "access") ||
+	    (s_oper == "create")) {
+	    s_mode = extract_field(buffer,&bufpos);
+	    isinteger(s_mode);
+	} else if ((s_oper == "open")) {
+	    s_flags = extract_field(buffer,&bufpos);
+	    isinteger(s_flags);
+	} else if ((s_oper == "chown")) {
+	    s_owner = extract_field(buffer,&bufpos);
+	    isinteger(s_flags);
+	} else if ((s_oper == "fsync")) {
+	    s_datasync = extract_field(buffer,&bufpos);
+	    isinteger(s_mode);
+	    s_group = extract_field(buffer,&bufpos);
+	    isinteger(s_group);
+	} else if (s_oper == "mknod") {
+	    s_mode = extract_field(buffer,&bufpos);
+	    isinteger(s_mode);
+	    s_dev = extract_field(buffer,&bufpos);
+	    isinteger(s_dev);
 	}
 	
 	++nrecords;
@@ -187,13 +233,25 @@ main(int argc, char *argv[])
 	timestamp.set(s_timestamp);
 	oper.set(s_oper);
 	path.set(s_path);
+	newpath.set(s_newpath);
+	oldpath.set(s_oldpath);
+	hostname.set(s_hostname);
+	message.set(s_message);
 	offset.set(atoi(s_offset.c_str()));
 	length.set(atoi(s_length.c_str()));
+	mode.set(atoi(s_mode.c_str()));
+	owner.set(atoi(s_owner.c_str()));
+	group.set(atoi(s_group.c_str()));
+	flags.set(atoi(s_flags.c_str()));
+	datasync.set(atoi(s_datasync.c_str()));
+	dev.set(atoi(s_dev.c_str()));
     }
     if (popened) {
-	AssertAlways(pclose(infile) == 0,("Error on pclose: %s\n",strerror(errno)));
+	AssertAlways(pclose(infile) == 0,("Error on pclose: %s\n",
+	    strerror(errno)));
     } else {
-	AssertAlways(fclose(infile) == 0,("Error on fclose: %s\n",strerror(errno)));
+	AssertAlways(fclose(infile) == 0,("Error on fclose: %s\n",
+	    strerror(errno)));
     }
     printf("%d records, %d extents; %lld bytes, %lld compressed, %.6gs seconds to pack\n",
 	   nrecords, logfudsout.extents, logfudsout.unpacked_size, logfudsout.packed_size,logfudsout.pack_time);
@@ -201,9 +259,13 @@ main(int argc, char *argv[])
 	   (double)logfudsout.unpacked_size / (double)logfudsout.packed_size,
 	   logfudsout.unpacked_fixed, logfudsout.unpacked_variable);
     printf("  extents-part-compression: ");
-    if (logfudsout.compress_none > 0) printf("%d none, ",logfudsout.compress_none);
-    if (logfudsout.compress_lzo > 0) printf("%d lzo, ",logfudsout.compress_lzo);
-    if (logfudsout.compress_gzip > 0) printf("%d gzip, ",logfudsout.compress_gzip);
-    if (logfudsout.compress_bz2 > 0) printf("%d bz2, ",logfudsout.compress_bz2);
+    if (logfudsout.compress_none > 0)
+        printf("%d none, ",logfudsout.compress_none);
+    if (logfudsout.compress_lzo > 0)
+        printf("%d lzo, ",logfudsout.compress_lzo);
+    if (logfudsout.compress_gzip > 0)
+        printf("%d gzip, ",logfudsout.compress_gzip);
+    if (logfudsout.compress_bz2 > 0)
+        printf("%d bz2, ",logfudsout.compress_bz2);
     printf("\n  packed in %.6gs\n",logfudsout.pack_time);
 }
