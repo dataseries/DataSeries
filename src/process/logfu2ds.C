@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include <Lintel/LintelAssert.H>
+
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/commonargs.H>
 
