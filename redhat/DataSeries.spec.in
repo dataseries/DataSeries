@@ -1,0 +1,113 @@
+#
+# SPEC file for DataSeries
+#
+Name:           DataSeries
+Version:        __VERSION__
+URL:            http://tesla.hpl.hp.com/opensource.html
+Source:         %{name}-%{version}.tar.gz
+Release:        1
+Summary:        Support tools and library 
+Group:          Libraries
+License:        BSD
+Packager:	HPL SSD Software <software@cello.hpl.hp.com>
+BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+
+%description
+A collection of libraries and tools.
+
+%package	libs
+Summary:        DataSeries library files
+Group:          Libraries
+Requires:       %{name}-libs = %{version}-%{release}
+Requires:       pkgconfig
+License:        BSD
+
+%package	devel
+Summary:        DataSeries devel files
+Group:          Development/Libraries
+Requires:       %{name}-devel = %{version}-%{release}
+Requires:       pkgconfig
+License:        BSD
+
+%description	libs
+DataSeries libraries
+
+%description	devel
+DataSeries header files
+
+%prep
+%setup -q
+
+%build
+autoreconf --install
+mkdir build
+cd build
+../configure --prefix=/usr --enable-optmode=optimize 
+make
+
+%install
+cd build
+rm -rf $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries/
+cp ../Release.info $RPM_BUILD_ROOT/usr/share/doc/DataSeries/Release.info
+cp ../Changelog.mtn $RPM_BUILD_ROOT/usr/share/doc/DataSeries/Changelog.mtn
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files
+/usr/bin/dataseries-config
+/usr/bin/ds2txt
+/usr/bin/dsextentindex
+/usr/bin/dsrepack
+/usr/bin/dsselect
+/usr/bin/dsstatgroupby
+/usr/bin/indexnfscommon
+/usr/bin/ipdsanalysis
+/usr/bin/lvpvprocessusage
+/usr/bin/nettrace2ds
+/usr/bin/network-driverdump
+/usr/bin/pssimple2ds
+/usr/bin/textindex
+/usr/share/bp_modules/BatchParallel/ds2txt.pm
+/usr/share/bp_modules/BatchParallel/nettrace2ds.pm
+/usr/share/doc/DataSeries/Changelog.mtn
+/usr/share/doc/DataSeries/Release.info
+
+%files devel
+/usr/share/cmake-modules/FindDataSeries.cmake
+/usr/include/DataSeries/DStoTextModule.H
+/usr/include/DataSeries/DataSeriesFile.H
+/usr/include/DataSeries/DataSeriesModule.H
+/usr/include/DataSeries/Extent.H
+/usr/include/DataSeries/ExtentField.H
+/usr/include/DataSeries/ExtentSeries.H
+/usr/include/DataSeries/ExtentType.H
+/usr/include/DataSeries/GeneralField.H
+/usr/include/DataSeries/GroupByModule.H
+/usr/include/DataSeries/IndexSourceModule.H
+/usr/include/DataSeries/MinMaxIndexModule.H
+/usr/include/DataSeries/PrefetchBufferModule.H
+/usr/include/DataSeries/RowAnalysisModule.H
+/usr/include/DataSeries/SequenceModule.H
+/usr/include/DataSeries/TypeIndexModule.H
+/usr/include/DataSeries/commonargs.H
+/usr/lib/libDataSeries.a
+/usr/share/aclocal/com_hp_hpl_dataseries.m4
+
+%files libs
+/usr/lib/libDataSeries.la
+/usr/lib/libDataSeries.so.0.0.0
+
+%changelog
+
+* Thu Mar 22 2007 software@cello.hpl.hp.com
+- corrected license, changed version to datestamp
+
+* Fri Mar 02 2007 software@cello.hpl.hp.com
+- cmake modules added 
+
+* Wed Feb 14 2007 software@cello.hpl.hp.com
+- Initial RPM release.
+make
