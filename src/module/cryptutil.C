@@ -28,7 +28,7 @@
 #include <Lintel/Clock.H>
 #include <Lintel/StringUtil.H>
 
-#include <cryptutil.H>
+#include <DataSeries/cryptutil.H>
 
 using namespace std;
 

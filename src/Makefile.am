@@ -64,6 +64,7 @@ libDataSeries_la_SOURCES = \
 	module/RowAnalysisModule.C \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C \
+	module/cryptutil.C  \
 	lex.DSStatGroupBy_yy.c \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
@@ -73,7 +74,7 @@ BUILT_SOURCES = lex.DSStatGroupBy_yy.c
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
 	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby
 
-LDADD = libDataSeries.la 
+LDADD = libDataSeries.la -lcrypto
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 dsextentindex_SOURCES = process/dsextentindex.C
@@ -84,7 +85,7 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
-nettrace2ds_SOURCES = process/nettrace2ds.C process/cryptutil.C 
+nettrace2ds_SOURCES = process/nettrace2ds.C
 
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump 
@@ -120,7 +121,6 @@ check_PROGRAMS = test
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
 if WITH_CRYPTO
-test_SOURCES += process/cryptutil.C
 test_LDADD += -lcrypto
 endif
 
