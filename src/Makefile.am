@@ -45,7 +45,7 @@ lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
@@ -74,7 +74,7 @@ BUILT_SOURCES = lex.DSStatGroupBy_yy.c
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
 	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby
 
-LDADD = libDataSeries.la -lcrypto
+LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 dsextentindex_SOURCES = process/dsextentindex.C
@@ -93,7 +93,7 @@ network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 
 if WITH_CRYPTO
 bin_PROGRAMS += nettrace2ds
-nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
+nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm
 endif
 endif
@@ -120,9 +120,6 @@ lex.DSStatGroupBy_yy.c: module/DSStatGroupByLex.l
 check_PROGRAMS = test
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
-if WITH_CRYPTO
-test_LDADD += -lcrypto
-endif
 
 check-local: $(CHECK_TARGETS)
 
