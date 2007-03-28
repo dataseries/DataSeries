@@ -100,6 +100,8 @@ rm -rf $RPM_BUILD_ROOT
 %files libs
 /usr/lib/libDataSeries.la
 /usr/lib/libDataSeries.so.0.0.0
+/usr/lib/libDataSeries.so.0
+/usr/lib/libDataSeries.so
 
 %changelog
 
