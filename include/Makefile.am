@@ -21,4 +21,5 @@ nobase_include_HEADERS = \
 	DataSeries/RowAnalysisModule.H \
 	DataSeries/SequenceModule.H \
 	DataSeries/TypeIndexModule.H \
-	DataSeries/commonargs.H
+	DataSeries/commonargs.H \
+	DataSeries/cryptutil.H
