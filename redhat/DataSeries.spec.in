@@ -13,13 +13,14 @@ Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 %description
-A collection of libraries and tools.
+Generic trace format work.
 
 %package	libs
 Summary:        DataSeries library files
 Group:          Libraries
 Requires:       %{name}-libs = %{version}-%{release}
 Requires:       pkgconfig
+Requires:       Lintel-libs
 License:        BSD
 
 %package	devel
@@ -93,21 +94,17 @@ rm -rf $RPM_BUILD_ROOT
 /usr/include/DataSeries/SequenceModule.H
 /usr/include/DataSeries/TypeIndexModule.H
 /usr/include/DataSeries/commonargs.H
+/usr/include/DataSeries/cryptutil.H
 /usr/lib/libDataSeries.a
 /usr/share/aclocal/com_hp_hpl_dataseries.m4
 
 %files libs
 /usr/lib/libDataSeries.la
 /usr/lib/libDataSeries.so.0.0.0
+/usr/lib/libDataSeries.so.0
+/usr/lib/libDataSeries.so
 
 %changelog
 
-* Thu Mar 22 2007 software@cello.hpl.hp.com
-- corrected license, changed version to datestamp
-
-* Fri Mar 02 2007 software@cello.hpl.hp.com
-- cmake modules added 
-
-* Wed Feb 14 2007 software@cello.hpl.hp.com
+* Tue Mar 27 2007 software@cello.hpl.hp.com
 - Initial RPM release.
-make
