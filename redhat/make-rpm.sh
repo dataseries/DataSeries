@@ -14,7 +14,7 @@ if [ -d _MTN ]; then
 	rm Release.info
     fi
     echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
-    echo "Creation-Date: `date +%Y-%m-%d`" >>Release.info
+    echo "Creation-Date: `date +%Y-%m-%d-%H-%M`" >>Release.info
     echo "BEGIN_EXTRA_STATUS" >>Release.info
     mtn status >>Release.info
     echo "END_EXTRA_STATUS" >>Release.info
