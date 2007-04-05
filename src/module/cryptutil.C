@@ -326,18 +326,18 @@ dsstring(string &instr, bool do_encrypt)
     if (instr == empty_string) {
 	return empty_string;
     }
-    Clock::Tll a = Clock::now();
+    //    Clock::Tll a = Clock::now();
     string encrypt;
     if (do_encrypt) {
 	encrypt = encryptString(instr);
     } else {
 	encrypt = instr;
     }
-    Clock::Tll b = Clock::now();
-    encrypt_cycles += b - a;
+    //    Clock::Tll b = Clock::now();
+    //    encrypt_cycles += b - a;
     string *ok = encrypted_to_okstring.lookup(encrypt);
-    Clock::Tll c = Clock::now();
-    lookup_cycles += c - b;
+    //    Clock::Tll c = Clock::now();
+    //    lookup_cycles += c - b;
     if (ok) {
 	return *ok;
     } 
@@ -351,22 +351,22 @@ sqlstring(string &instr, bool do_encrypt)
 	return null_string;
     }
     string ret(quote_string);
-    Clock::Tll a = Clock::now();
+    //    Clock::Tll a = Clock::now();
     string encrypt;
     if (do_encrypt) {
 	encrypt = encryptString(instr);
-	Clock::Tll b = Clock::now();
-	encrypt_cycles += b - a;
+	//	Clock::Tll b = Clock::now();
+	//	encrypt_cycles += b - a;
 	string *ok = encrypted_to_okstring.lookup(encrypt);
-	Clock::Tll c = Clock::now();
-	lookup_cycles += c - b;
+	//	Clock::Tll c = Clock::now();
+	//	lookup_cycles += c - b;
 	if (ok) {
 	    ret.append(*ok);
 	} else {
 	    ++hexcount;
 	    ret.append(hexstring(encrypt));
-	    Clock::Tll d = Clock::now();
-	    hex_cycles += d - c;
+	    //	    Clock::Tll d = Clock::now();
+	    //	    hex_cycles += d - c;
 	}
     } else {
 	ret.append(instr);
@@ -379,12 +379,12 @@ sqlstring(string &instr, bool do_encrypt)
 void
 printEncodeStats()
 {
-    Clock::calibrateClock();
-    Clock myclock;
-    fprintf(stderr,"encrypt %.3f; hex(%d) %.3f; lookup %.3f\n",
-	    1.0e-6 * encrypt_cycles * myclock.inverse_clock_rate, 
-	    hexcount,1.0e-6 * hex_cycles * myclock.inverse_clock_rate, 
-	    1.0e-6 * lookup_cycles * myclock.inverse_clock_rate);
+//    Clock::calibrateClock();
+//    Clock myclock;
+//    fprintf(stderr,"encrypt %.3f; hex(%d) %.3f; lookup %.3f\n",
+//	    1.0e-6 * encrypt_cycles * myclock.inverse_clock_rate, 
+//	    hexcount,1.0e-6 * hex_cycles * myclock.inverse_clock_rate, 
+//	    1.0e-6 * lookup_cycles * myclock.inverse_clock_rate);
 }
 
 unsigned
