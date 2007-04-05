@@ -15,7 +15,7 @@
 #if WITH_CRYPTO
 #include <openssl/opensslv.h>
 #include <openssl/evp.h>
-#include <process/cryptutil.H>
+#include <DataSeries/cryptutil.H>
 #endif
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
