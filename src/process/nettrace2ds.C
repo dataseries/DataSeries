@@ -29,8 +29,6 @@
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
 
-#define enable_encrypt_filenames 1
-
 // Do this first to get byteswap things...
 #include <DataSeries/Extent.H>
 
@@ -67,6 +65,7 @@
 #include <Lintel/Deque.H>
 #include <Lintel/Clock.H>
 #include <Lintel/PThread.H>
+#include <Lintel/AssertBoost.H>
 
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesModule.H>
@@ -80,12 +79,16 @@ extern "C" {
 using namespace std;
 
 enum ModeT { Info, Convert };
-
 ModeT mode = Info;
+
+enum InfoT { ERFInfo, PCAPInfo };
+InfoT info = ERFInfo;
 
 const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
 const bool warn_unmatched_rpc_reply = false; // not watching output
+
+const uint32_t pcap_packet_max_size = 65536;
 
 enum CountTypes {
     ignored_nonip = 0,
@@ -114,7 +117,10 @@ enum CountTypes {
     duplicate_request,
     bad_retransmit,
     packet_loss,
-    last_count
+    tcp_packet, 
+    not_an_rpc,
+    rpc_parse_error,
+    last_count // marker: maximum count of types
 };
 
 string count_names[] = {
@@ -144,9 +150,14 @@ string count_names[] = {
     "duplicate_request",
     "bad_retransmit",
     "packet_loss",
+    "tcp_packet",
+    "not_an_rpc",
+    "rpc_parse_error",
 };
 
 vector<int64_t> counts;
+
+bool enable_encrypt_filenames = true;
 
 static int exitvalue = 0;
 static string tracename;
@@ -422,6 +433,82 @@ public:
     int fd;
     unsigned char *buffer, *buffer_cur, *buffer_end;
     uint32_t bufsize;
+    bool eof;
+};
+
+class PCAPReader: public NettraceReader {
+public:
+    PCAPReader(const string &filename) : NettraceReader(filename), 
+                                         fd(-1), 
+                                         packet_cur(NULL), 
+                                         eof(false) { }
+    virtual void prefetch() { } // unimplemented yet
+    virtual bool nextPacket(unsigned char **packet_ptr, 
+                            uint32_t *capture_size,
+			    uint32_t *wire_length, 
+                            Clock::Tfrac *time) {
+        if (eof) { return false; } 
+        else { // PCAP file either unopened or being read
+            uint32_t ret;
+            if (packet_cur == NULL) { // open the PCAP file
+                fd = open(filename.c_str(), O_RDONLY);
+                INVARIANT(fd > 0, boost::format("cannot open PCAP file %s: %s")
+                          % filename % strerror(errno));
+                cur_file_packet_num = 0;
+                // read in the PCAP file header first
+                pcap_file_header fh;
+                ret = read(fd, &fh, sizeof(pcap_file_header));
+                INVARIANT(ret >= 0, boost::format("error when reading %s PCAP file header (errno=%d)")
+                          % filename % strerror(errno));
+                if (ret == 0) { // this file has no PCAP file header (empty file)
+                    eof = true;
+                    return false;
+                }
+                else { // this file has a PCAP file header
+                    INVARIANT(pcap_packet_max_size >= fh.snaplen,
+                              boost::format("packet buffer too small, should be at least %d")
+                                            % fh.snaplen);
+                    packet_cur = packet_end = new unsigned char[pcap_packet_max_size];
+                    INVARIANT(packet_cur != NULL, boost::format("out of memory, need %d bytes")
+                              % pcap_packet_max_size);
+                }
+            }   
+            // read the next packet header
+            pcap_pkthdr ph; 
+            ret = read(fd, &ph, sizeof(pcap_pkthdr));
+            INVARIANT(ret >= 0, boost::format("error reading packet header (%s, errno=%d)")
+                      % filename % strerror(errno));
+            if (ret == 0) { // no more packets
+                eof = true;
+                delete packet_cur;
+                return false;
+            }
+            else { // read the next packet
+                ret = read(fd, packet_cur, ph.caplen);
+                INVARIANT(ret == ph.caplen, boost::format("error reading packet (%s, errno=%d)")
+                          % filename % strerror(errno));
+                packet_end = packet_cur + ph.caplen;
+                // book keeping and return values
+                ++cur_file_packet_num;
+                std::cout << "process packet " << cur_file_packet_num << endl;
+
+                // std::cout << "packet: " << cur_file_packet_num << endl;
+                // std::cout << "capture length: " << ph.caplen << endl;
+                // std::cout << "length: " << ph.len << endl;
+                // std::cout << "time: " << ctime((const time_t*)&ph.ts.tv_sec) << endl; 
+
+                *packet_ptr = packet_cur;
+                *capture_size = ph.caplen;
+                *wire_length = ph.len;
+                *time = ((Clock::Tfrac)ph.ts.tv_sec << 32) + ((Clock::Tfrac)ph.ts.tv_usec << 32)/1000000;
+                return true;
+            }
+        }
+    }
+
+private:
+    int fd;
+    unsigned char *packet_cur, *packet_end; // point to the current packet
     bool eof;
 };
 
@@ -1947,7 +2034,7 @@ void
 handleNFSRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int l4checksum, int payload_len,
 		 RPCRequest &req, RPCRequestData &d)
-{
+{       
     ++counts[nfs_request];
     fillcommonNFSRecord(time,ip_hdr,source_port,dest_port,payload_len,
 			d.procnum,d.version,req.xid());
@@ -2111,8 +2198,9 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 const unsigned char *p, const unsigned char *pend)
 {
     RPCRequest req(p,pend-p);
+
     ++counts[rpc_request];
-	
+
     payload_len -= 4*(req.getrpcparam() - req.getxdr());
     if (false) printf("RPCRequest for prog %d, version %d, proc %d\n",
 		      req.host_prognum(),req.host_version(),
@@ -2159,6 +2247,7 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 {
     RPCReply reply(p,pend-p);
     ++counts[rpc_reply];
+
     // RPC reply parsing should handle all underflows    
     payload_len -= 4*(reply.getrpcresults() - reply.getxdr());
     RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid(),source_port));
@@ -2187,9 +2276,10 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	// positives on trace-0/189501
 
 	++counts[possible_missing_request];
-	AssertAlways(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
-		     ("whoa, %ld possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s\n",
-		      counts[possible_missing_request], counts[ip_packet], tracename.c_str()));
+
+//	INVARIANT(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
+//		  boost::format("whoa, %d possible reply packets without the request %d packets so far; you need to tcpdump -s 256+; on %s") 
+//		  % counts[possible_missing_request] % counts[ip_packet] % tracename.c_str());
 	if (warn_unmatched_rpc_reply) {
 	    // many of these appear to be spurious, e.g. not really an rpc reply
 	    cout << boost::format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
@@ -2237,11 +2327,12 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		const unsigned char *p, const unsigned char *pend,
 		uint32_t capture_size, uint32_t wire_length)
 {
+    ++counts[tcp_packet];
+
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
-    AssertAlways((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
-		 ("bad doff %d %ld\n",
-		  tcp_hdr->doff * 4, sizeof(struct tcphdr)));
+    INVARIANT((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
+	      boost::format("bad doff %d %d") % (static_cast<int>(tcp_hdr->doff) * 4) % sizeof(struct tcphdr));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
     bool multiple_rpcs = false;
@@ -2284,7 +2375,11 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		      % wire_length % capture_size 
 		      % err.message % err.filename % err.lineno);
 	    ++counts[tcp_short_data_in_rpc];
-	}
+	} catch (RPC::parse_exception &err) {
+            // TODO: give a warning for now, incomplete;
+            ++counts[rpc_parse_error];
+            std::cout << boost::format("RPC parse error: %s %s %s %d\n") % err.condition % err.message % err.filename % err.lineno;
+        }
 	++counts[tcp_rpc_message];
 	if (multiple_rpcs) {
 	    ++counts[tcp_multiple_rpcs];
@@ -2331,11 +2426,10 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
         int protonum = (p[20] << 8) | p[21];
 
 	++counts[weird_ethernet_type];
-	cout << boost::format("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo?")
+	cout << boost::format("Weird ethernet type in packet @%d.%06d len=%d, wire length %d; proto %d jumbo?")
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
 	    % ethtype % wire_length % protonum
 	     << endl;
-
 	return;
     }
 
@@ -2422,8 +2516,16 @@ doProcess(NettraceReader *from)
 
     prepareBandwidthInformation();
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
-	INVARIANT(wire_length <= capture_size, "bad");
-	INVARIANT(wire_length >= 64, "bad");
+        if (info == ERFInfo) {
+            // for ERF packets, full packets are typically captured, 
+            // hence wire_length should = capture_size; however, capture_size 
+            // is rounded to 8 byes, hence wire_length could be < capture_size
+            INVARIANT(wire_length <= capture_size, "bad");
+            INVARIANT(wire_length >= 64, "bad");
+        }
+        else if (info == PCAPInfo) {
+            INVARIANT(wire_length >= capture_size, "bad packet, wire_length shouldn't < capture_size");
+        }
 	packetHandler(packet, capture_size, wire_length, time);
     }
     delete from;
@@ -2458,9 +2560,10 @@ doProcess(NettraceReader *from)
 }
 
 void
-doInfo(NettraceReader *from)
+doInfo(NettraceReader *from, InfoT type)
 {
     mode = Info;
+    info = type;
     doProcess(from);
 
     exit(exitvalue);
@@ -2605,7 +2708,7 @@ void recompressFileBZ2(const string &src, const string &dest)
 	      % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
-    INVARIANT(write_amt == outsize, "bad");
+    INVARIANT(static_cast<unsigned int>(write_amt) == outsize, "bad");
     ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
     exit(0);
@@ -2674,6 +2777,7 @@ main(int argc, char **argv)
     INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
 
     if (argc >= 3 && strcmp(argv[1],"--info-erf") == 0) {
+        enable_encrypt_filenames = true;
 	prepareEncrypt("abcdef0123456789","abcdef0123456789");
 	cur_record_id = -1;
 	first_record_id = 0;
@@ -2681,10 +2785,22 @@ main(int argc, char **argv)
 	for(int i = 2;i < argc; ++i) {
 	    mfr->addReader(new ERFReader(argv[i]));
 	}
-	doInfo(mfr);
+	doInfo(mfr, ERFInfo);
+    }
+
+    if (argc >= 3 && strcmp(argv[1],"--info-pcap") == 0) {
+        enable_encrypt_filenames = false;
+	cur_record_id = -1;
+	first_record_id = 0;
+	MultiFileReader *mfr = new MultiFileReader();
+	for(int i = 2;i < argc; ++i) {
+	    mfr->addReader(new PCAPReader(argv[i]));
+	}
+	doInfo(mfr, PCAPInfo);
     }
     
     if (argc >= 6 && strcmp(argv[1],"--convert-erf") == 0) {
+        enable_encrypt_filenames = true;
 	if (enable_encrypt_filenames) {
 	    prepareEncryptEnvOrRandom();
 	}
@@ -2704,6 +2820,7 @@ main(int argc, char **argv)
 	
     FATAL_ERROR("usage: --uncompress <input-erf> <output-erf>\n"
 		"       --info-erf <input-erf...>\n"
+                "       --info-pcap <input-pcap...>\n"
 		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>");
 }
 
