@@ -9,6 +9,7 @@ use strict;
 use vars '@ISA';
 use File::Copy;
 use File::Compare;
+use Filesys::Statvfs;
 
 @ISA = qw/BatchParallel::common/;
 
@@ -18,7 +19,7 @@ sub new {
     my $this = bless {}, $class;
     while (@_ > 0) {
 	$_ = shift @_;
-	if ($_ eq 'help') {
+	if ($_ eq 'help' || $_ eq 'usage') {
 	    $this->usage();
 	    exit(0);
 	} elsif (/^((info)|(convert)|(lzf2bz2)|(freeup))$/o) {
@@ -32,16 +33,18 @@ sub new {
 	    $this->{groupsize} = $1;
 	} elsif (/^compress=(.+)$/o) {
 	    $this->{compress} = $1;
+	} elsif (/^compress-level=(\d+)$/o) {
+	    $this->{compress_level} = $1;
 	} elsif (/^extent-size=(\d+)$/o) {
 	    $this->{extent_size} = $1;
 	} elsif (/^record-start=(\d+)$/o) {
 	    $this->{first_record_num} = $1;
 	} elsif (/^freedir=(.+)$/o) {
 	    $this->{freedir} = $1;
-	} elsif (/^finished_before=(\d+)$/o) {
+	} elsif (/^finished-before=(\d+)$/o) {
 	    $this->{finished_before} = $1;
 	} else {
-	    die "unknown options specified for batch-parallel module $class: '@_'";
+	    die "unknown options specified for batch-parallel module $class: '$_'";
 	}
     }
     die "Don't have a mode??"
@@ -54,8 +57,12 @@ sub new {
 	die "Need to defined record-start=#" 
 	    unless defined $this->{first_record_num};
 	unless (defined $this->{compress}) {
-	    print "Using default compress mode of bz2\n";
-	    $this->{compress} = 'bz2';
+	    print "Using default compress mode of smart\n";
+	    $this->{compress} = 'smart';
+	}
+	unless (defined $this->{compress_level}) {
+	    print "Using default compress level of 9\n";
+	    $this->{compress_level} = 9;
 	}
 	unless (defined $this->{extent_size}) {
 	    print "Using default extent size of 67108864\n";
@@ -85,7 +92,9 @@ sub new {
 }
 
 sub usage {
-    print "batch-parallel nettrace2ds look at the code\n";
+    print "batch-parallel nettrace2ds info infodir=<dir> [groupsize=#] -- /mnt/trace-*/trace-#\n";
+    print "batch-parallel [--noshuffle] nettrace2ds convert infodir=<dir> dsdir=<dir> record-start=# [groupsize=#] [finished-before=#] -- /mnt/trace-*/trace-#\n";
+    print "batch-parallel nettrace2ds ...; look at the code\n";
 }
 
 sub file_is_source {
@@ -184,8 +193,24 @@ sub rebuild_thing_do {
     if ($this->{mode} eq 'convert') {
 	die "??" unless defined $thing_info->{dsname};
 	die "??" unless defined $thing_info->{record_start} && defined $thing_info->{record_count};
+
+	my $compress = "--compress-$this->{compress} --compress-level=$this->{compress_level} --extent-size=$this->{extent_size}";
+	if ($this->{compress} eq 'smart') {
+	    my ($bsize, $frsize, $blocks, $bfree, $bavail,
+		$files, $ffree, $favail, $flag, $namemax) 
+		= statvfs($this->{dsdir});
+	    my $ratio_available = $bavail / $blocks;
+	    print "(debug) ratio: $ratio_available\n";
+	    if ($ratio_available > 0.9) {
+		$compress = "--compress-lzf --compress-level=1 --extent-size=65536";
+	    } elsif ($ratio_available > 0.5) {
+		$compress = "--compress-gz --compress-level=6 --extent-size=131072";
+	    } else {
+		$compress = "--compress-bz2 --compress-level=9 --extent-size=67108864";
+	    }
+	}
 	
-	$cmd = "nettrace2ds --convert-erf --compress-$this->{compress} --extent-size=$this->{extent_size} $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	$cmd = "nettrace2ds --convert-erf $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
 	unlink("$thing_info->{dsname}-fail");
 	print "Creating $thing_info->{dsname}...\n";
     } elsif ($this->{mode} eq 'info') {

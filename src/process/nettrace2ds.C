@@ -51,6 +51,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/statvfs.h>
 
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -93,7 +94,7 @@ enum CountTypes {
     weird_ethernet_type,
     ip_packet,
     ip_fragment,
-    packet,
+    packet_count,
     rpc_request,
     rpc_reply,
     nfs_request,
@@ -114,6 +115,7 @@ enum CountTypes {
     duplicate_request,
     bad_retransmit,
     packet_loss,
+    tiny_packet,
     last_count
 };
 
@@ -144,6 +146,7 @@ string count_names[] = {
     "duplicate_request",
     "bad_retransmit",
     "packet_loss",
+    "tiny_packet",
 };
 
 vector<int64_t> counts;
@@ -1571,6 +1574,7 @@ public:
 	    } else {
 		  AssertAlways(op_status == 70 || // stale file handle
 			       op_status == 28 || // out of space
+			       op_status == 13 || // permission denied
 			       op_status == 69, // disk quota exceeded
 			       ("bad12 op_status = %d",op_status)); 
 	    }
@@ -1630,6 +1634,7 @@ public:
 	    } else {
 		AssertAlways(op_status == 70 || // stale file handle
 			     op_status == 28 || // out of space
+			     op_status == 13 || // permission denied
 			     op_status == 69, // disk quota exceeded
 			     ("bad12 op_status = %d",op_status)); 
 	    }
@@ -1726,20 +1731,20 @@ handleNFSV2Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
     maybeDumpRecord(xdr,actual_len);
     switch(d.procnum)
 	{
-	case NFSPROC_GETATTR: 
-	    {
-		FATAL_ERROR("untested -- didn't get exercised, so don't trust until checked");
-		if (false) printf("v2GetAttr %lld %8x -> %8x; %d\n",
-				  time,d.client,d.server,actual_len);
-		RPCParseAssertMsg(actual_len == 32,
-				  ("bad getattr request @%d.%09d rec#%lld: %d",
-				   Clock::TfracToSec(time), Clock::TfracToNanoSec(time),
-				   cur_record_id,actual_len));
-		string filehandle((char *)(xdr), 32);
-		d.replyhandler =
-		    new NFSV2GetAttrReplyHandler(filehandle);
-	    }
-	    break;
+//	case NFSPROC_GETATTR: 
+//	    {
+//		FATAL_ERROR("untested -- didn't get exercised, so don't trust until checked");
+//		if (false) printf("v2GetAttr %lld %8x -> %8x; %d\n",
+//				  time,d.client,d.server,actual_len);
+//		RPCParseAssertMsg(actual_len == 32,
+//				  ("bad getattr request @%d.%09d rec#%lld: %d",
+//				   Clock::TfracToSec(time), Clock::TfracToNanoSec(time),
+//				   cur_record_id,actual_len));
+//		string filehandle((char *)(xdr), 32);
+//		d.replyhandler =
+//		    new NFSV2GetAttrReplyHandler(filehandle);
+//	    }
+//	    break;
 	default:
 	    ++counts[unhandled_nfsv2_requests];
 	    return;
@@ -2301,10 +2306,10 @@ void
 packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t wire_length, 
 	      Clock::Tfrac time)
 {
-    ++counts[packet];
+    ++counts[packet_count];
     if (!bw_info.empty()) {
 	packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
-	if ((counts[packet] & 0xFFFF) == 0) {
+	if ((counts[packet_count] & 0xFFFF) == 0) {
 	    incrementalBandwidthInformation();
 	}
     }
@@ -2413,8 +2418,18 @@ get_max_missing_request_count(const char *tracename)
     return 1000;
 }
 
+unsigned long long
+freeDiskBytes(const char *outputname)
+{
+    struct statvfs buf;
+
+    INVARIANT(statvfs(outputname, &buf) == 0, "bad");
+    
+    return static_cast<unsigned long long>(buf.f_bavail) * buf.f_bsize;
+}
+
 void
-doProcess(NettraceReader *from)
+doProcess(NettraceReader *from, const char *outputname)
 {
     unsigned char *packet;
     uint32_t capture_size, wire_length;
@@ -2423,8 +2438,25 @@ doProcess(NettraceReader *from)
     prepareBandwidthInformation();
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
 	INVARIANT(wire_length <= capture_size, "bad");
-	INVARIANT(wire_length >= 64, "bad");
+	if (wire_length < 64) {
+	    cout << boost::format("weird tiny packet length %d") % wire_length
+		 << endl;
+	    ++counts[tiny_packet];
+	    continue;
+	}
+		  
 	packetHandler(packet, capture_size, wire_length, time);
+	if ((outputname != NULL) && (counts[packet_count] & 0x1FFFFF) == 0) { 
+	    // every 2 million packets
+	    while(freeDiskBytes(outputname) < 1024*1024*1024) {
+		cerr << "Pausing in conversion, free disk space < 1GiB" 
+		     << endl;
+		sleep(300);
+	    }
+	    cout << boost::format("Free disk bytes: %d") 
+		% freeDiskBytes(outputname)
+		 << endl;
+	}
     }
     delete from;
     for(rpcHashTableT::iterator i = rpcHashTable.begin();
@@ -2461,7 +2493,7 @@ void
 doInfo(NettraceReader *from)
 {
     mode = Info;
-    doProcess(from);
+    doProcess(from, NULL);
 
     exit(exitvalue);
 }
@@ -2513,7 +2545,7 @@ doConvert(NettraceReader *from, const char *ds_output_name,
 
     nfsdsout->writeExtentLibrary(library);
 
-    doProcess(from);
+    doProcess(from, ds_output_name);
     
     // Want complete statistics, so flush first
     cout << "flushing extents...\n";

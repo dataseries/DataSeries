@@ -27,7 +27,7 @@ if ($ARGV[0] eq 'partition') {
 sub usage {
     my($msg) = @_;
 
-    print STDERR "Error: @_" if @_;
+    print STDERR "Error: @_\n" if @_;
     die "Usage: $0 (list)|(add_serial)|(partition)|(format)|(mount)|(umount)";
 }
 	
