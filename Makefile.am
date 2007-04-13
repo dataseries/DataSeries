@@ -12,3 +12,6 @@ SUBDIRS = include src
 
 aclocaldir = $(datadir)/aclocal
 aclocal_DATA = com_hp_hpl_dataseries.m4
+
+cmakemodulesdir = $(datadir)/cmake-modules
+cmakemodules_DATA = FindDataSeries.cmake
