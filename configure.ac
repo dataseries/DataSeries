@@ -37,6 +37,13 @@ AC_SUBST(LIBTOOL_DEPS)
 AC_LANG(C++)
 
 HPL_REQUIRELIB_LINTEL
+AC_MSG_CHECKING([for lintel boost support...])
+if lintel-config --has-feature boost; then
+   AC_MSG_RESULT(ok)
+else
+   AC_MSG_RESULT(failed)
+   AC_MSG_FAILURE([DataSeries requires that lintel have Boost support, but it is missing from lintel-config --features])
+fi
 HPL_REQUIRELIB_XML2
 
 HPL_WITHLIB_SRT
@@ -48,7 +55,7 @@ HPL_WITHLIB_LZO
 HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
 HPL_WITHLIB_PCAP
-HPL_WITHLIB_CRYPTO
+HPL_REQUIRELIB_CRYPTO
 
 AC_ARG_ENABLE(paper,
   [  --enable-paper    build binaries for the paper -- default NO],

@@ -87,13 +87,13 @@ public:
 				       packing_args.extent_size);
     }
 
-    ~Indexer() {
+    virtual ~Indexer() {
 	delete word_module;
 	delete output;
     }
 
     void processArgs(vector<string> &args, int filename_start) {
-	for(int i=filename_start; i<args.size(); ++i) {
+	for(unsigned i=filename_start; i<args.size(); ++i) {
 	    cout << "indexing " << args[i] << "..."; cout.flush();
 	    DataSeriesSource source(args[i]);
 
@@ -152,8 +152,10 @@ public:
     emailIndexer(const string &index_filename, commonPackingArgs &packing_args) 
 	: Indexer(index_filename, packing_args) {
     }
+    
+    virtual ~emailIndexer() { }
 
-    string nextLine(const string &msg, int &offset) {
+    string nextLine(const string &msg, unsigned &offset) {
 	string ret;
 	while(1) {
 	    AssertAlways(offset < msg.size(),("bad"));
@@ -166,7 +168,7 @@ public:
 	return ret;
     }
 	
-    bool nextHeaderLine(const string &msg, int &offset, string &headerline) {
+    bool nextHeaderLine(const string &msg, unsigned &offset, string &headerline) {
 	// TODO: collapse multi-line headers to single line stripping
 	// newline and tab and replace with space.
 
@@ -177,7 +179,7 @@ public:
 	return headerline.size() > 1; // > 1 ==> more headers possible
     }
 	
-    bool nextWord(const string &msg, int &offset, string &word) {
+    bool nextWord(const string &msg, unsigned &offset, string &word) {
 	while(offset < msg.size() && isspace(msg[offset])) {
 	    ++offset;
 	}
@@ -199,13 +201,13 @@ public:
 	string msg = text_in.stringval();
 	
 	string headerline;
-	int offset = 0;
+	unsigned offset = 0;
 	while(nextHeaderLine(msg,offset,headerline)) {
 	    if (prefixequal(headerline,"From: ") ||
 		prefixequal(headerline,"To: ") ||
 		prefixequal(headerline,"Subject: ")) {
 		// TODO: work out how to split these a bit.
-		int tmp_offset = 0;
+		unsigned tmp_offset = 0;
 		string header_type;
 		AssertAlways(nextWord(headerline, tmp_offset, header_type) == true,
 			     ("bad"));
@@ -262,7 +264,7 @@ usage(const char *argv0, const char *msg)
 	    "%s"
 	    "   [--email-entries <new-ds-file> <source-file>...]\n"
 	    "   [--email-index <textindex-ds-file> <ds-file...>\n"
-	    "   [--search-and <substrings...> -- <textindex-ds-file>\n",
+	    "   [--search-and <substrings...> -- <textindex-ds-file>\n"
 	    "   [--search-and-case-insensitive <substrings...> -- <textindex-ds-file>\n",
 	    msg,argv0,packingOptions().c_str());
     exit(1);
@@ -315,7 +317,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
     OutputModule entries_module(output, entries_series, entries_type,
 				packing_args.extent_size);
     int cur_id = 0;
-    for(int i=3;i<args.size();++i) {
+    for(unsigned i=3;i<args.size();++i) {
 	FILE *f = fopen(args[i].c_str(), "r");
 	cout << "open " << args[i] << ".\n";
 	cout << "importing...";
@@ -370,7 +372,7 @@ public:
 	  substring_types(_substring_types), substrings(_substrings),
 	  case_insensitive(_case_insensitive) {
 	if (case_insensitive) {
-	    for(int i=0; i<substrings.size(); ++i) {
+	    for(unsigned i=0; i<substrings.size(); ++i) {
 		substrings[i] = lowerCaseString(substrings[i]);
 	    }
 	}
@@ -423,7 +425,7 @@ public:
 	}
 	for(vector<int>::iterator i = matches.begin(); i != matches.end(); ++i) {
 	    int substring_num = *i;
-	    AssertAlways(found.size() > substring_num,("bad"));
+	    AssertAlways(substring_num >= 0 && found.size() > static_cast<unsigned>(substring_num),("bad"));
 	    found[substring_num] = true;
 	    if (debug_word_find) {
 		printf("Found %d (%s:%s) in %d via %s\n",substring_num, substring_types[substring_num].c_str(),
@@ -457,7 +459,7 @@ search_and(vector<string> &args, bool case_insensitive)
     
     vector<string> substring_types;
     vector<string> substrings;
-    int args_offset = 2;
+    unsigned args_offset = 2;
     for(;args_offset < args.size() && args[args_offset] != "--"; ++args_offset) {
 	unsigned colon_offset = args[args_offset].find(':',0);
 	if (colon_offset < args[args_offset].size()) {
@@ -489,7 +491,7 @@ search_and(vector<string> &args, bool case_insensitive)
 		bool all_found = true;
 		vector<bool> &found = j->second;
 		AssertAlways(found.size() == substrings.size(),("bad"));
-		for(int k=0; k<found.size(); ++k) {
+		for(unsigned k=0; k<found.size(); ++k) {
 		    if (false == found[k]) {
 			all_found = false;
 			break;

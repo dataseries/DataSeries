@@ -97,6 +97,7 @@ public:
     static std::string nullableFieldname(const std::string &fieldname);
 
     std::string name;
+    float version;
     std::string xmldesc;
     xmlDocPtr field_desc_doc;
     std::string xmlFieldDesc(const std::string &column) const {

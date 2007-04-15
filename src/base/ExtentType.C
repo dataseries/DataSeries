@@ -14,6 +14,7 @@
 #include <Lintel/LintelAssert.H>
 #include <Lintel/PThread.H>
 #include <Lintel/HashTable.H>
+#include <Lintel/StringUtil.H>
 
 #include <DataSeries/ExtentType.H>
 
@@ -91,6 +92,12 @@ ExtentType::ExtentType(const std::string &_xmldesc)
 		 ("invalid extent type name, max of 255 characters allowed\n"));
 
     if (debug_xml_decode) printf("ExtentType '%s'\n",name.c_str());
+
+    xmlChar *extentversion = xmlGetProp(cur, (const xmlChar *)"version");
+    if (extentversion == NULL)
+        version = 0;
+    else
+        version = stringToDouble((char *)extentversion);
 
     cur = cur->xmlChildrenNode;
     int bool_fields = 0, byte_fields = 0, int32_fields = 0, eight_fields = 0, 

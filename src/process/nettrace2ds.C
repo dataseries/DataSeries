@@ -73,7 +73,7 @@
 #include <DataSeries/DataSeriesModule.H>
 
 #include <nfs_prot.h>
-#include <cryptutil.H>
+#include <DataSeries/cryptutil.H>
 extern "C" {
 #include <liblzf-1.6/lzf.h>
 }

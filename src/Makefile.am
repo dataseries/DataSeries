@@ -45,7 +45,7 @@ lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
@@ -64,6 +64,7 @@ libDataSeries_la_SOURCES = \
 	module/RowAnalysisModule.C \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C \
+	module/cryptutil.C  \
 	lex.DSStatGroupBy_yy.c \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
@@ -84,7 +85,7 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
-nettrace2ds_SOURCES = process/nettrace2ds.C process/cryptutil.C 
+nettrace2ds_SOURCES = process/nettrace2ds.C
 
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump 
@@ -92,7 +93,7 @@ network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 
 if WITH_CRYPTO
 bin_PROGRAMS += nettrace2ds
-nettrace2ds_LDADD = libDataSeries.la -lcrypto -lpcap
+nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm
 endif
 endif
@@ -119,10 +120,6 @@ lex.DSStatGroupBy_yy.c: module/DSStatGroupByLex.l
 check_PROGRAMS = test
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
-if WITH_CRYPTO
-test_SOURCES += process/cryptutil.C
-test_LDADD += -lcrypto
-endif
 
 check-local: $(CHECK_TARGETS)
 
