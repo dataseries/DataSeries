@@ -35,7 +35,7 @@ struct PerTypeWork {
     vector<GeneralField *> infields, outfields;
     PerTypeWork(DataSeriesSink &output, unsigned extent_size, ExtentType *t) 
 	: inputseries(t), outputseries(t) {
-	for(unsigned i = 0; i < t->getNFields(); ++i) {
+	for(int i = 0; i < t->getNFields(); ++i) {
 	    const string &s = t->getFieldName(i);
 	    infields.push_back(GeneralField::create(NULL, inputseries, s));
 	    outfields.push_back(GeneralField::create(NULL, outputseries, s));
@@ -84,6 +84,9 @@ main(int argc, char *argv[])
 	    if (j->first == "DataSeries: ExtentIndex" ||
 		j->first == "DataSeries: XmlType") {
 		continue;
+	    }
+	    if (prefixequal(j->first, "DataSeries:")) {
+		cerr << boost::format("Warning, found extent type of name '%s'; probably should skip it") % j->first << endl;
 	    }
 	    ++extent_count;
 	    ExtentType *tmp = library.getTypeByName(j->first, true);
