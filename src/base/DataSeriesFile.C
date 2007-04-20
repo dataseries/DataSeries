@@ -13,6 +13,10 @@
 #include <errno.h>
 #include <sys/resource.h>
 
+#include <ostream>;
+
+using namespace std;
+
 #include <Lintel/Double.H>
 #include <Lintel/HashTable.H>
 
@@ -28,22 +32,41 @@
 #error "Must compile with -D_LARGEFILE64_SOURCE"
 #endif
 
-static const std::string dataseries_type_xml = 
+static const string dataseries_type_xml = 
   "<ExtentType name=\"DataSeries: XmlType\">\n"
   "  <field type=\"variable32\" name=\"xmltype\" />\n"
   "</ExtentType>\n";
 
 static ExtentType global_dataseries_type(dataseries_type_xml);
 
-const std::string dataseries_type_index =
+const string dataseries_type_index =
   "<ExtentType name=\"DataSeries: ExtentIndex\">\n"
   "  <field type=\"int64\" name=\"offset\" />\n"
   "  <field type=\"variable32\" name=\"extenttype\" />\n"
   "</ExtentType>\n";
 
+const string dataseries_type_index_v2 =
+  "<ExtentType name=\"DataSeries::ExtentIndex\" >\n"
+  "  <field type=\"int64\" name=\"offset\" />\n"
+  "  <field type=\"variable32\" name=\"extenttype\" />\n"
+  "  <!-- technically the next bits are in the header for each extent; \n"
+  "       this would allow for the possibility of reading the files without\n"
+  "       reading the index at the end, although this is not currently\n"
+  "       supported.  However, these end up being useful for figuring\n"
+  "       out properties of a given DS file without having to write\n"
+  "       a separate interface that can skitter through a file and extract\n"
+  "       all of this information. -->\n"
+  "  <field type=\"byte\" name=\"fixed_compress_mode\" />\n"
+  "  <field type=\"int32\" name=\"fixed_uncompressed_size\" />\n"
+  "  <field type=\"int32\" name=\"fixed_compressed_size\" />\n"
+  "  <field type=\"byte\" name=\"variable_compress_mode\" />\n"
+  "  <field type=\"int32\" name=\"variable_uncompressed_size\" />\n"
+  "  <field type=\"int32\" name=\"variable_compressed_size\" />\n"
+  "</ExtentType>\n";
+
 static ExtentType global_dataseries_indextype(dataseries_type_index);
 
-DataSeriesSource::DataSeriesSource(const std::string &_filename)
+DataSeriesSource::DataSeriesSource(const string &_filename)
     : filename(_filename), fd(-1), cur_offset(0)
 {
     reopenfile();
@@ -95,7 +118,7 @@ DataSeriesSource::DataSeriesSource(const std::string &_filename)
     ExtentSeries type_extent_series(e);
     Variable32Field typevar(type_extent_series,"xmltype");
     for(;type_extent_series.pos.morerecords();++type_extent_series.pos) {
-	std::string v = typevar.stringval();
+	string v = typevar.stringval();
 	mylibrary.registerType(v);
     }
     delete e;
@@ -157,7 +180,7 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     return ret;
 }
 
-DataSeriesSink::DataSeriesSink(const std::string &filename,
+DataSeriesSink::DataSeriesSink(const string &filename,
 			       int _compression_modes,
 			       int _compression_level)
     : extents(0),
@@ -171,7 +194,8 @@ DataSeriesSink::DataSeriesSink(const std::string &filename,
       field_extentType(index_series,"extenttype"),
       wrote_library(false),
       compression_modes(_compression_modes),
-      compression_level(_compression_level)
+      compression_level(_compression_level),
+      chained_checksum(0)
 {
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
 		 ("internal error; c++ initializers didn't run?\n"));
@@ -184,7 +208,7 @@ DataSeriesSink::DataSeriesSink(const std::string &filename,
     AssertAlways(fd >= 0,
 		 ("Error opening %s for write: %s\n",
 		  filename.c_str(),strerror(errno)));
-    const std::string filetype = "DSv1";
+    const string filetype = "DSv1";
     checkedWrite(filetype.data(),4);
     ExtentType::int32 int32check = 0x12345678;
     checkedWrite(&int32check,4);
@@ -223,7 +247,7 @@ DataSeriesSink::close()
     typedef ExtentType::int32 int32;
     *(int32 *)(tail + 4) = packed.size();
     *(int32 *)(tail + 8) = ~packed.size();
-    *(int32 *)(tail + 12) = BobJenkinsHash(random() ^ time(NULL),packed.begin(),packed.size());
+    *(int32 *)(tail + 12) = chained_checksum;
     *(ExtentType::int64 *)(tail + 16) = (ExtentType::int64)index_offset;
     *(int32 *)(tail + 24) = BobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
@@ -262,15 +286,24 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
     Extent type_extent(type_extent_series);
 
     Variable32Field typevar(type_extent_series,"xmltype");
-    for(std::map<const std::string,ExtentType *>::iterator i = lib.name_to_type.begin();
+    for(map<const string,ExtentType *>::iterator i = lib.name_to_type.begin();
 	i != lib.name_to_type.end();++i) {
 	ExtentType *et = i->second;
-	if (et->name != "DataSeries: XmlType") {
-	    type_extent_series.newRecord();
-	    AssertAlways(et->xmldesc.size() > 0,
-			 ("whoa extenttype has no xml data?!\n"));
-	    typevar.set(et->xmldesc.data(),et->xmldesc.size());
-	    valid_types[et] = true;
+	if (et->name == "DataSeries: XmlType") {
+	    continue; // no point of writing this out; can't use it.
+	}
+
+	type_extent_series.newRecord();
+	AssertAlways(et->xmldesc.size() > 0,
+		     ("whoa extenttype has no xml data?!\n"));
+	typevar.set(et->xmldesc.data(),et->xmldesc.size());
+	valid_types[et] = true;
+	if (et->majorVersion() == 0 && et->minorVersion() == 0 ||
+	    et->getNamespace().empty()) {
+	    // Once we have a version of dsrepack/dsselect that can
+	    // change the XML type, we can make this an error.
+	    cerr << boost::format("Warning: type '%s' is missing either a version or a namespace")
+		% et->name << endl;
 	}
     }
     Extent::ByteArray foo;
@@ -281,7 +314,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 void
 DataSeriesSink::verifyTail(ExtentType::byte *tail,
 			   bool need_bitflip,
-			   const std::string &filename)
+			   const string &filename)
 {
     // Only thing we can't check here is a match between the offset of
     // the tail and the offset stored in the tail.
@@ -317,7 +350,8 @@ DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
     AssertAlways(getrusage(RUSAGE_SELF,&pack_start)==0,
 		 ("?!"));
     int headersize, fixedsize, variablesize;
-    e->packData(data,compression_modes,compression_level,&headersize,&fixedsize,&variablesize);
+    uint32_t checksum = e->packData(data,compression_modes,compression_level,
+				    &headersize,&fixedsize,&variablesize);
     struct rusage pack_end;
     AssertAlways(getrusage(RUSAGE_SELF,&pack_end)==0,
 		 ("?!"));
@@ -357,6 +391,7 @@ DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
 	    AssertFatal(("whoa, unknown compress option %d\n",data[6*4+1]));
 	}
     }
+    chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
     return pack_extent_time;
 }
 

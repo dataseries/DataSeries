@@ -9,6 +9,9 @@
     ExtentType class implementation
 */
 
+#include <vector>
+
+using namespace std;
 #include <libxml/parser.h>
 
 #include <Lintel/LintelAssert.H>
@@ -19,7 +22,7 @@
 #include <DataSeries/ExtentType.H>
 
 struct xmlDecodeInfo {
-    std::string xmldesc;
+    string xmldesc;
     xmlDocPtr field_desc_doc;
     ExtentType *extenttype;
 };
@@ -39,8 +42,8 @@ struct xmlDecodeInfoEqual {
 static HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> xmlDecodeTable;
 PThreadMutex xmlDecodeTableMutex;
 
-static const std::string &
-getSharedDecodeString(const std::string &xmldesc)
+static const string &
+getSharedDecodeString(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
@@ -66,7 +69,7 @@ static const bool debug_getcolnum = false;
 static const bool debug_xml_decode = false;
 static const bool debug_packing = false;
 
-ExtentType::ExtentType(const std::string &_xmldesc)
+ExtentType::ExtentType(const string &_xmldesc)
     : xmldesc(getSharedDecodeString(_xmldesc)) // assuming the STL string implementation shares the underlying string when possible, this is a huge memory win.
 {
     AssertAlways(sizeof(byte) == 1 && sizeof(int32) == 4 &&
@@ -93,11 +96,19 @@ ExtentType::ExtentType(const std::string &_xmldesc)
 
     if (debug_xml_decode) printf("ExtentType '%s'\n",name.c_str());
 
-    xmlChar *extentversion = xmlGetProp(cur, (const xmlChar *)"version");
-    if (extentversion == NULL)
-        version = 0;
-    else
-        version = stringToDouble((char *)extentversion);
+    char *extentversion = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"version"));
+    if (extentversion == NULL) {
+        major_version = 0;
+	minor_version = 0;
+    } else {
+	vector<string> bits;
+	split(extentversion, ".", bits);
+	INVARIANT(bits.size() == 2, boost::format("bad version '%s' should be #.#") % extentversion);
+	major_version = static_cast<unsigned>(stringToLong(bits[0]));
+	minor_version = static_cast<unsigned>(stringToLong(bits[1]));
+    }
+
+    type_namespace = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"namespace"));
 
     cur = cur->xmlChildrenNode;
     int bool_fields = 0, byte_fields = 0, int32_fields = 0, eight_fields = 0, 
@@ -329,7 +340,7 @@ ExtentType::ExtentType(const std::string &_xmldesc)
 }
 
 int 
-ExtentType::getColumnNumber(const std::string &column) const
+ExtentType::getColumnNumber(const string &column) const
 {
     for(unsigned int i=0;i<field_info.size();i++) {
 	if (field_info[i].name == column) {
@@ -410,16 +421,16 @@ ExtentType::getDoubleBase(int column) const
     return field_info[column].doublebase;
 }
 
-std::string
-ExtentType::nullableFieldname(const std::string &fieldname)
+string
+ExtentType::nullableFieldname(const string &fieldname)
 {
-    std::string ret(" ");
+    string ret(" ");
 
     ret += fieldname;
     return ret;
 }
 
-std::string
+string
 ExtentType::xmlFieldDesc(int field_num) const
 {
     AssertAlways(field_num >= 0 && field_num < (int)field_info.size(),
@@ -427,7 +438,7 @@ ExtentType::xmlFieldDesc(int field_num) const
     xmlBufferPtr buf = xmlBufferCreate();
     xmlBufferSetAllocationScheme(buf,XML_BUFFER_ALLOC_DOUBLEIT);
     xmlNodeDump(buf,field_desc_doc,field_info[field_num].xmldesc,2,1);
-    std::string ret((char *)xmlBufferContent(buf));
+    string ret((char *)xmlBufferContent(buf));
     xmlBufferFree(buf);
     return ret;
 }
@@ -440,7 +451,7 @@ ExtentType::xmlNodeFieldDesc(int field_num) const
     return field_info[field_num].xmldesc;
 }
 
-static const std::string fieldtypes[] = {
+static const string fieldtypes[] = {
     "unknown",
     "bool",
     "byte",
@@ -450,9 +461,9 @@ static const std::string fieldtypes[] = {
     "variable32",
 };
 
-static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const std::string);
+static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const string);
 
-const std::string &
+const string &
 ExtentType::fieldTypeString(fieldType ft)
 {
     AssertAlways(ft >= 0 && ft < Nfieldtypes,
@@ -461,7 +472,7 @@ ExtentType::fieldTypeString(fieldType ft)
 }
 
 bool
-ExtentType::prefixmatch(const std::string &a, const std::string &prefix)
+ExtentType::prefixmatch(const string &a, const string &prefix)
 {
     if (a.size() < prefix.size())
 	return false;
@@ -469,7 +480,7 @@ ExtentType::prefixmatch(const std::string &a, const std::string &prefix)
 }
 
 ExtentType *
-ExtentTypeLibrary::registerType(const std::string &xmldesc)
+ExtentTypeLibrary::registerType(const string &xmldesc)
 {
     ExtentType *type = sharedExtentType(xmldesc);
     
@@ -481,7 +492,7 @@ ExtentTypeLibrary::registerType(const std::string &xmldesc)
 }    
 
 ExtentType *
-ExtentTypeLibrary::getTypeByName(const std::string &name, bool null_ok)
+ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
 {
     if (null_ok) {
 	if (name_to_type.find(name) == name_to_type.end()) {
@@ -494,10 +505,10 @@ ExtentTypeLibrary::getTypeByName(const std::string &name, bool null_ok)
 }
 
 ExtentType *
-ExtentTypeLibrary::getTypeByPrefix(const std::string &prefix, bool null_ok)
+ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
 {
     ExtentType *f = NULL;
-    for(std::map<const std::string, ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (strncmp(i->first.c_str(),prefix.c_str(),prefix.size()) == 0) {
 	    AssertAlways(f == NULL,
@@ -512,7 +523,7 @@ ExtentTypeLibrary::getTypeByPrefix(const std::string &prefix, bool null_ok)
 }
 
 ExtentType *
-ExtentTypeLibrary::sharedExtentType(const std::string &xmldesc)
+ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
@@ -547,7 +558,7 @@ ExtentTypeLibrary::sharedExtentType(const std::string &xmldesc)
 }
 
 xmlDocPtr 
-ExtentTypeLibrary::sharedDocPtr(const std::string &xmldesc)
+ExtentTypeLibrary::sharedDocPtr(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;

@@ -92,6 +92,7 @@ private:
     int fd;
     const int compression_modes;
     const int compression_level;
+    uint32_t chained_checksum; 
 };
     
 #endif
