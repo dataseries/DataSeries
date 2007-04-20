@@ -1,0 +1,46 @@
+Version DSV1 format:
+
+File Structure:
+    File Header
+    Type extent (same format as Extent Structure, but special type)
+    User-data extents
+    Index extent (same format as Extent Structure, but special type)
+    File Trailer
+
+  -- types for the Type and Index extent can be found in
+     src/base/DataSeriesFile.C
+
+File Header:
+    4 bytes 'DSv1'
+    int32 0x12345678 -- host byte order  
+    int64 0x123456789ABCDEF0 -- host byte order
+    double 3.1415926535897932384 -- host byte order
+    double +inf -- host byte order
+    double NaN -- host byte order
+
+Extent Structure:
+    Extent Header:
+        4 bytes compressed fixed-data size
+        4 bytes compressed variable-data size
+        4 bytes nrecords
+        4 bytes variable_size
+        4 bytes compressed adler32 digest
+        4 bytes partly-unpacked bjhash digest
+        1 byte fixed-records compression type
+        1 byte variable-records compression type
+        1 byte extent type name length
+        1 byte zero fill
+    <type name length> bytes extent type name
+    zero pad to 4 byte alignment
+    <compressed fixed-data size> bytes fixed data
+    zero pad to 4 byte alignment
+    <compressed variable-data size> variable data
+    zero pad to 4 byte alignment
+
+File Trailer -- for locating the index extent
+    4 bytes of 0xFF
+    4 bytes of compressed index extent size
+    4 bytes ~(above)
+    4 semi-random bytes -- used to be truely random, now is chained checksum
+    8 bytes index-extent offset
+    4 bytes bob jenkins hash of above
