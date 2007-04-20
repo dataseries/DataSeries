@@ -118,11 +118,11 @@ public:
     /// for arbitrary differences the latter because minor version
     /// changes have to be backwards compatible.
 
-    bool versionCompatible(unsigned app_major, unsigned app_minor) {
+    bool versionCompatible(unsigned app_major, unsigned app_minor) const {
 	return app_major == majorVersion() && app_minor <= minorVersion();
     }
-    unsigned majorVersion() { return major_version; }
-    unsigned minorVersion() { return minor_version; }
+    unsigned majorVersion() const { return major_version; }
+    unsigned minorVersion() const { return minor_version; }
 
     const std::string &getNamespace() { return type_namespace; }
 protected:
