@@ -81,8 +81,8 @@ using namespace std;
 enum ModeT { Info, Convert };
 ModeT mode = Info;
 
-enum InfoT { ERFInfo, PCAPInfo };
-InfoT info = ERFInfo;
+enum FileT { ERF, PCAP };
+FileT file_type = ERF;
 
 const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
@@ -120,6 +120,9 @@ enum CountTypes {
     tcp_packet, 
     not_an_rpc,
     rpc_parse_error,
+    rpc_request_len,
+    rpc_reply_len,
+    wire_len,
     last_count // marker: maximum count of types
 };
 
@@ -153,6 +156,9 @@ string count_names[] = {
     "tcp_packet",
     "not_an_rpc",
     "rpc_parse_error",
+    "rpc_request_len",
+    "rpc_reply_len",
+    "wire_len",
 };
 
 vector<int64_t> counts;
@@ -490,7 +496,6 @@ public:
                 packet_end = packet_cur + ph.caplen;
                 // book keeping and return values
                 ++cur_file_packet_num;
-                std::cout << "process packet " << cur_file_packet_num << endl;
 
                 // std::cout << "packet: " << cur_file_packet_num << endl;
                 // std::cout << "capture length: " << ph.caplen << endl;
@@ -2195,11 +2200,12 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 void
 handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		 int source_port, int dest_port, int l4checksum, int payload_len,
-		 const unsigned char *p, const unsigned char *pend)
+		 const unsigned char *p, const unsigned char *pend, uint32_t rpclen)
 {
     RPCRequest req(p,pend-p);
 
     ++counts[rpc_request];
+    counts[rpc_request_len] += rpclen;
 
     payload_len -= 4*(req.getrpcparam() - req.getxdr());
     if (false) printf("RPCRequest for prog %d, version %d, proc %d\n",
@@ -2243,10 +2249,12 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 void
 handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	       int source_port, int dest_port, int l4checksum, int payload_len,
-	       const unsigned char *p, const unsigned char *pend)
+	       const unsigned char *p, const unsigned char *pend, uint32_t rpclen)
 {
     RPCReply reply(p,pend-p);
+
     ++counts[rpc_reply];
+    counts[rpc_reply_len] += rpclen;
 
     // RPC reply parsing should handle all underflows    
     payload_len -= 4*(reply.getrpcresults() - reply.getxdr());
@@ -2308,13 +2316,13 @@ handleUDPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	handleRPCRequest(time,ip_hdr,ntohs(udp_hdr->source),
 			 ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 			 ntohs(udp_hdr->len) - 8,
-			 p,pend);
+			 p,pend, 0); // tmp hack
 	++counts[udp_rpc_message];
     } else if (rpcmsg[1] == RPC::net_reply) {
 	handleRPCReply(time,ip_hdr,ntohs(udp_hdr->source),
 		       ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
 		       ntohs(udp_hdr->len) - 8,
-		       p,pend);
+		       p,pend, 0); // tmp hack
 	++counts[udp_rpc_message];
     } else {
 	if (false) printf("unknown\n");
@@ -2328,7 +2336,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		uint32_t capture_size, uint32_t wire_length)
 {
     ++counts[tcp_packet];
-
+    
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
     INVARIANT((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
@@ -2336,13 +2344,23 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
     bool multiple_rpcs = false;
-    while((pend-p) >= 4) { // handle multiple RPCs in single TCP message; hope they are aligned to start
+    while((pend-p) >= 4) { // handle multiple RPCs in single TCP
+                           // message; hope they are aligned to start
 	u_int32_t rpclen = ntohl(*(u_int32_t *)p);
 	if (false) printf("  rpclen %x\n",rpclen);
+
 	if ((rpclen & 0x80000000) == 0) {
-	    return; // can't be RPC, high bit supposed to be set in length!
+            // note: the highest bit of the last fragment of an RPC
+            // (on TCP) packet is supposed to be set; so if this bit
+            // is not set, then it cannot be the last fragment of an
+            // RPC packet; however, if this packet is RPC but just not
+            // the last fragment, then the highest bit won't be set;
+            // also, it is possible that this packet is not RPC but
+            // happens to have the highest bit set;
+	    return; 
 	}
 	rpclen &= 0x7FFFFFFF;
+        
 	if (false) printf("  rpclen %d\n",rpclen);
 	p += 4;
 	u_int32_t *rpcmsg = (u_int32_t *)p;
@@ -2352,17 +2370,24 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	} else {
 	    thismsgend = p + rpclen;
 	}
-	try {
-	    if (rpcmsg[1] == 0) {
+	try { // note: rpcmsg[1] (the type is u_int32_t) is the
+              // call/reply (0/1) field of the RPC headers; however,
+              // RPC requests/replies may be broken into multiple
+              // packets and the "RPC continuation" packets do not
+              // have a header; so this test is not accurate for those
+              // packets; the statistics of those packets are
+              // reflected by other counters (e.g.,
+              // reply-missing-request);
+            if (rpcmsg[1] == 0) {
 		if (false) printf("tcprpcreq\n");
 		handleRPCRequest(time,ip_hdr,ntohs(tcp_hdr->source),
 				 ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
-				 rpclen,p,thismsgend);
+				 rpclen,p,thismsgend, rpclen);
 	    } else if (rpcmsg[1] == RPC::net_reply) {
 		if (false) printf("tcprpcrep\n");
 		handleRPCReply(time,ip_hdr,ntohs(tcp_hdr->source),
 			       ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
-			       rpclen,p,thismsgend);
+			       rpclen,p,thismsgend, rpclen);
 	    } else {
 		return; // not an rpc
 	    }
@@ -2397,6 +2422,8 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	      Clock::Tfrac time)
 {
     ++counts[packet];
+    counts[wire_len] += wire_length;
+
     if (!bw_info.empty()) {
 	packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
 	if ((counts[packet] & 0xFFFF) == 0) {
@@ -2459,6 +2486,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     int ip_hdrlen = ip_hdr->ihl * 4;
     p += ip_hdrlen;
     INVARIANT(p < pend, "short capture?!\n");
+
     bool is_fragment = (ntohs(ip_hdr->frag_off) & 0x1FFF) != 0;
 
     struct udphdr *udp_hdr = NULL;
@@ -2516,14 +2544,14 @@ doProcess(NettraceReader *from)
 
     prepareBandwidthInformation();
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
-        if (info == ERFInfo) {
+        if (file_type == ERF) {
             // for ERF packets, full packets are typically captured, 
             // hence wire_length should = capture_size; however, capture_size 
             // is rounded to 8 byes, hence wire_length could be < capture_size
             INVARIANT(wire_length <= capture_size, "bad");
             INVARIANT(wire_length >= 64, "bad");
         }
-        else if (info == PCAPInfo) {
+        else if (file_type == PCAP) {
             INVARIANT(wire_length >= capture_size, "bad packet, wire_length shouldn't < capture_size");
         }
 	packetHandler(packet, capture_size, wire_length, time);
@@ -2560,10 +2588,10 @@ doProcess(NettraceReader *from)
 }
 
 void
-doInfo(NettraceReader *from, InfoT type)
+doInfo(NettraceReader *from, FileT type)
 {
     mode = Info;
-    info = type;
+    file_type = type;
     doProcess(from);
 
     exit(exitvalue);
@@ -2785,7 +2813,7 @@ main(int argc, char **argv)
 	for(int i = 2;i < argc; ++i) {
 	    mfr->addReader(new ERFReader(argv[i]));
 	}
-	doInfo(mfr, ERFInfo);
+	doInfo(mfr, ERF);
     }
 
     if (argc >= 3 && strcmp(argv[1],"--info-pcap") == 0) {
@@ -2796,31 +2824,39 @@ main(int argc, char **argv)
 	for(int i = 2;i < argc; ++i) {
 	    mfr->addReader(new PCAPReader(argv[i]));
 	}
-	doInfo(mfr, PCAPInfo);
+	doInfo(mfr, PCAP);
     }
     
-    if (argc >= 6 && strcmp(argv[1],"--convert-erf") == 0) {
-        enable_encrypt_filenames = true;
-	if (enable_encrypt_filenames) {
-	    prepareEncryptEnvOrRandom();
-	}
+    if (argc >= 6) {
+	bool conv_erf = (strcmp(argv[1], "--convert-erf") == 0);
+	bool conv_pcap = (strcmp(argv[1], "--convert-pcap") == 0);
+	if (conv_erf || conv_pcap) {
+	    if (conv_erf) file_type = ERF;
+	    else file_type = PCAP;
+	    enable_encrypt_filenames = (file_type == ERF);
+	    if (enable_encrypt_filenames) {
+		prepareEncryptEnvOrRandom();
+	    }
 
-	commonPackingArgs packing_args;
-	getPackingArgs(&argc,argv,&packing_args);
+	    commonPackingArgs packing_args;
+	    getPackingArgs(&argc,argv,&packing_args);
     
-	first_record_id = stringToLongLong(argv[2]);
-	cur_record_id = first_record_id - 1;
-	long expected_records = stringToLong(argv[3]);
-	MultiFileReader *mfr = new MultiFileReader();
-	for(int i = 5; i < argc; ++i) {
-	    mfr->addReader(new ERFReader(argv[i]));
+	    first_record_id = stringToLongLong(argv[2]);
+	    cur_record_id = first_record_id - 1;
+	    long expected_records = stringToLong(argv[3]);
+	    MultiFileReader *mfr = new MultiFileReader();
+	    for(int i = 5; i < argc; ++i) {
+		if (file_type == ERF) mfr->addReader(new ERFReader(argv[i]));
+		else mfr->addReader(new PCAPReader(argv[i]));
+	    }
+	    doConvert(mfr, argv[4], packing_args, expected_records);
 	}
-	doConvert(mfr, argv[4], packing_args, expected_records);
     }
-	
+
     FATAL_ERROR("usage: --uncompress <input-erf> <output-erf>\n"
 		"       --info-erf <input-erf...>\n"
                 "       --info-pcap <input-pcap...>\n"
-		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>");
+		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>\n"
+		"       --convert-pcap <first-record-num> <expected-record-count> <output-ds-name> <input-pcap...>\n");
 }
 
