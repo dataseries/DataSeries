@@ -61,6 +61,7 @@
 #include <string>
 
 #include <Lintel/HashTable.H>
+#include <Lintel/AssertBoost.H>
 #include <Lintel/AssertException.H>
 #include <Lintel/StringUtil.H>
 #include <Lintel/PriorityQueue.H>
@@ -2192,9 +2193,9 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	// positives on trace-0/189501
 
 	++counts[possible_missing_request];
-	AssertAlways(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
-		     ("whoa, %ld possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s\n",
-		      counts[possible_missing_request], counts[ip_packet], tracename.c_str()));
+	INVARIANT(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
+		  boost::format("whoa, %d possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s")
+		  % counts[possible_missing_request] % counts[ip_packet] % tracename.c_str());
 	if (warn_unmatched_rpc_reply) {
 	    // many of these appear to be spurious, e.g. not really an rpc reply
 	    cout << boost::format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
@@ -2244,9 +2245,9 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 {
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
-    AssertAlways((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
-		 ("bad doff %d %ld\n",
-		  tcp_hdr->doff * 4, sizeof(struct tcphdr)));
+    INVARIANT((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
+	      boost::format("bad doff %d %d")
+	      % (tcp_hdr->doff * 4) % sizeof(struct tcphdr));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
     bool multiple_rpcs = false;
@@ -2298,7 +2299,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	p = thismsgend;
     }    
 }
-
+    
 const int min_ethernet_header_length = 14;
 const int min_ip_header_length = 20;
 
@@ -2411,7 +2412,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	}
     }	
 }
-
+ 
 int
 get_max_missing_request_count(const char *tracename)
 {
@@ -2637,7 +2638,7 @@ void recompressFileBZ2(const string &src, const string &dest)
 	      % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
-    INVARIANT(write_amt == outsize, "bad");
+    INVARIANT(write_amt == static_cast<ssize_t>(outsize), "bad");
     ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
     exit(0);
