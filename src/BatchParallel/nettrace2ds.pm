@@ -85,13 +85,21 @@ sub new {
 }
 
 sub usage {
-    print "batch-parallel nettrace2ds look at the code\n";
+    print "batch-parallel nettrace2ds info infodir=<dir>\n";
+    print "                           convert infodir=<dir> record-start=<num> [compress=<mode>] [extent-size=<size>] [dsdir=<dir>]\n";
+    print "                           lzf2bz2 ???\n";
+    print "                           freedir freedir=<dir>\n"
 }
 
+# PCAP file suffix is .pcap0, .pcap1, .pcap2, etc.;
+# this rule is dictated by the "-C" option of tcpdump;
+# which outputs files: xyz, xyz1, xyz2, etc.;
+# we have to manually change xyz to xyz0 to have a consistent file name format;
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
     return 1 if $filename =~ /^endace\.\d+\.128MiB\.((lzf)|(zlib\d)|(bz2))$/o;
+    return 1 if $filename =~ /\.pcap\d*$/o; 
     return 0;
 }
 
@@ -110,11 +118,45 @@ sub find_things_to_build {
 	return (scalar @ret, @ret);
     }
 
+    # now $this->{mode} = info|convert
+
+    # auto-detect file type 
+    # erf: files are named as "endace.<digits>.128MiB.<word>"
+    # pcap: files are named as "<word>.pcap<digits>"
+    my $is_erf = 0;
+    my $file;
+    foreach $file (@file_list) {
+	if  ($file =~ /endace\.(\d+)\.128MiB.\w+$/o) { # we don't use /^ b/c $file includes path name
+	    $is_erf = 1;
+	    last;
+	}
+    }
+    my $is_pcap = 0;
+    foreach $file (@file_list) {
+	if ($file =~ /\.pcap(\d*)/o) {
+	    $is_pcap = 1;
+	    last;
+	}
+    }
+    if (($is_erf==1 && $is_pcap==1) || ($is_erf==0 && $is_pcap==0)) {
+	die "Directory should contain only ERF or PCAP files.\n";
+    }
+
+    if ($is_erf == 1) { $this->{file_type} = 'erf'; }
+    else { $this->{file_type} = 'pcap'; }
+
     my %num_to_file;
-    map { /endace\.(\d+)\.128MiB.\w+$/o || die "huh $_"; 
-	  die "Duplicate number $1 from $_ and $num_to_file{$1}"
-	      if defined $num_to_file{$1};
-	  $num_to_file{$1} = $_; } @file_list;
+    if ($this->{file_type} eq 'erf') {
+	map { /endace\.(\d+)\.128MiB.\w+$/o || die "huh $_";
+	      die "Duplicate number $1 from $_ and $num_to_file{$1}"
+		  if defined $num_to_file{$1};
+	      $num_to_file{$1} = $_; } @file_list;
+    } else {
+	map { /.pcap(\d*)/o || die "huh $_"; # PCAP file name format is *.pcap0, *.pcap1, *.pcap2, etc.
+	      die "Duplicate number $1 from $_ and $num_to_file{$1}"
+		  if defined $num_to_file{$1};
+	      $num_to_file{$1} = $_; } @file_list;
+    }
 
     $this->{groupsize} = int(sqrt($source_count)) unless defined $this->{groupsize};
     
@@ -129,7 +171,9 @@ sub find_things_to_build {
 	my $first_num = $nums[$i];
 	my $last_num = $nums[$i+$this->{groupsize}-1] || $nums[@nums-1];
 	for(my $j = $first_num; $j <= $last_num; ++$j) {
-	    my $k = sprintf("%06d", $j);
+	    my $k;
+	    if ($this->{file_type} eq 'erf') { $k = sprintf("%06d", $j); }
+	    else { $k = $j; }
 	    die "missing num $k" unless defined $num_to_file{$k};
 	    push(@group, $num_to_file{$k});
 	    delete $num_to_file{$k};
@@ -159,7 +203,7 @@ sub find_things_to_build {
 		if $last_num >= $this->{finished_before} && 
 		(! -f $dsname || $this->file_older($dsname, @group));
 	    $running_record_num += $record_count;
-	} else {
+	} else { 
 	    die "??";
 	}
     }
@@ -184,13 +228,24 @@ sub rebuild_thing_do {
     if ($this->{mode} eq 'convert') {
 	die "??" unless defined $thing_info->{dsname};
 	die "??" unless defined $thing_info->{record_start} && defined $thing_info->{record_count};
-	
-	$cmd = "nettrace2ds --convert-erf --compress-$this->{compress} --extent-size=$this->{extent_size} $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	if ($this->{file_type} eq 'erf') {
+	    $cmd = "nettrace2ds --convert-erf --compress-$this->{compress} --extent-size=$this->{extent_size} $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	} elsif ($this->{file_type} eq 'pcap') {
+	    $cmd = "nettrace2ds --convert-pcap " . join(" ", @{$thing_info->{files}});
+	} else {
+	    die "Code shouldn't reach  here, file type is $this->{file_type} but should be erf or pcap\n";
+	}
 	unlink("$thing_info->{dsname}-fail");
 	print "Creating $thing_info->{dsname}...\n";
     } elsif ($this->{mode} eq 'info') {
 	die "??" unless defined $thing_info->{infoname};
-	$cmd = "nettrace2ds --info-erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+	if ($this->{file_type} eq 'erf') {
+	    $cmd = "nettrace2ds --info-erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+	} elsif ($this->{file_type} eq 'pcap') {
+	    $cmd = "nettrace2ds --info-pcap " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+	} else {
+	    die "Code shouldn't reach here, file type is $this->{file_type} but should be erf or pcap\n";
+	}
 	unlink("$thing_info->{infoname}-fail");
 	print "Creating $thing_info->{infoname}...\n";
     } elsif ($this->{mode} eq 'lzf2bz2') {
@@ -226,7 +281,8 @@ sub rebuild_thing_success {
 	    or die "rename failed: $!";
 	print "Successfully created $thing_info->{dsname}\n";
     } elsif ($this->{mode} eq 'info') {
-	die "huh" unless -f "$thing_info->{infoname}-new";
+	die "file $thing_info->{infoname}-new does not exist" 
+	    unless -f "$thing_info->{infoname}-new";
 	rename("$thing_info->{infoname}-new",$thing_info->{infoname})
 	    or die "rename failed: $!";
 	print "Successfully created $thing_info->{infoname}\n";
@@ -277,7 +333,13 @@ sub rebuild_thing_fail {
 }
 
 sub rebuild_thing_message {
-    die "unimplemented";
+    # die "unimplemented";
+    my($this, $thing_info) = @_;
+    print("rebuilding files: ");
+    for (my $i = 0; $i < @{$thing_info->{files}}; ++$i) {
+	print "$thing_info->{files}[$i] ";
+    }
+    print "\n";
 }
 
 sub df {
