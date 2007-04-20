@@ -473,7 +473,7 @@ test_extentpackunpack()
     ((Int32ValuE >> 24) & 0xff) | ((Int32ValuE >> 8) & 0xff00) \
   | ((Int32ValuE << 8) & 0xff0000) | ((Int32ValuE << 24) & 0xff000000)
 
-void doit_charflip(uint32_t *buf, int buflen)
+void doit_charflip(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	unsigned char *b = (unsigned char *)(buf+i);
@@ -487,14 +487,14 @@ void doit_charflip(uint32_t *buf, int buflen)
     }
 }
 
-void doit_intshift1(uint32_t *buf, int buflen)
+void doit_intshift1(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = REVERSE_INT32(buf[i]);
     }
 }
 
-void doit_intshift2(uint32_t *buf, int buflen)
+void doit_intshift2(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
@@ -503,7 +503,7 @@ void doit_intshift2(uint32_t *buf, int buflen)
     }
 }
 
-void doit_intshift3(uint32_t *buf, int buflen)
+void doit_intshift3(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
@@ -512,7 +512,7 @@ void doit_intshift3(uint32_t *buf, int buflen)
     }
 }
 
-void doit_intshift4(uint32_t *buf, int buflen)
+void doit_intshift4(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
@@ -522,7 +522,7 @@ void doit_intshift4(uint32_t *buf, int buflen)
 }
 
 #if __GNUC__ >= 2 && (defined(__i386__) || defined(__x86_64__))
-void doit_bswap_i486(uint32_t *buf, int buflen)
+void doit_bswap_i486(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	register uint32_t tmp = buf[i];
@@ -533,7 +533,7 @@ void doit_bswap_i486(uint32_t *buf, int buflen)
 #endif
 
 #ifdef bswap_32
-void doit_bswap_32(uint32_t *buf, int buflen)
+void doit_bswap_32(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = bswap_32(buf[i]);
@@ -543,7 +543,7 @@ void doit_bswap_32(uint32_t *buf, int buflen)
 
 void
 onebytefliptest(uint32_t *buf, int buflen, int reps,
-		void (*fn)(uint32_t *, int), const string &fnname,
+		void (*fn)(uint32_t *, unsigned), const string &fnname,
 		uint32_t &expected_sum, Stats &timing, Stats &flip4_time, bool first_run = false)
 {
     if (timing.count() > 2 && timing.mean()-timing.conf95() > (flip4_time.mean() + flip4_time.conf95())) {
@@ -586,10 +586,10 @@ bool range_overlap(double a_min, double a_max, double b_min, double b_max)
 void
 test_byteflip()
 {
-    static const int rounds = 5;
+    static const unsigned rounds = 5;
     // reps + bufsize takes ~1 second for each test on a 2.8GhZ p4 Xeon
-    static const int reps = 2 * 100;
-    static const int bufsize = 1000000;
+    static const unsigned reps = 2 * 100;
+    static const unsigned bufsize = 1000000;
 
     uint32_t buf[bufsize];
 

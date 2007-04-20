@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <sys/resource.h>
 
-#include <ostream>;
+#include <ostream>
 
 using namespace std;
 
@@ -47,8 +47,12 @@ const string dataseries_type_index =
 
 const string dataseries_type_index_v2 =
   "<ExtentType name=\"DataSeries::ExtentIndex\" >\n"
+  "  <!-- next fields are necessary/useful for finding the extents that\n"
+  "       a program wants to process without having a separate index file -->\n"
   "  <field type=\"int64\" name=\"offset\" />\n"
   "  <field type=\"variable32\" name=\"extenttype\" />\n"
+  "  <field type=\"variable32\" name=\"namespace\" />\n"
+  "  <field type=\"variable32\" name=\"version\" />\n"
   "  <!-- technically the next bits are in the header for each extent; \n"
   "       this would allow for the possibility of reading the files without\n"
   "       reading the index at the end, although this is not currently\n"

@@ -108,7 +108,10 @@ ExtentType::ExtentType(const string &_xmldesc)
 	minor_version = static_cast<unsigned>(stringToLong(bits[1]));
     }
 
-    type_namespace = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"namespace"));
+    char *namespace_charptr = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"namespace"));
+    if (namespace_charptr != NULL) {
+	type_namespace = namespace_charptr;
+    }
 
     cur = cur->xmlChildrenNode;
     int bool_fields = 0, byte_fields = 0, int32_fields = 0, eight_fields = 0, 
