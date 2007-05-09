@@ -18,8 +18,8 @@
 
 #include <libxml/tree.h>
 
-#include <LintelAssert.H>
-#include <Double.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Double.H>
 
 class ExtentType {
 public:
