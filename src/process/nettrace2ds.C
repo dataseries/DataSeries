@@ -1583,6 +1583,73 @@ public:
     }
 };
 
+class NFSV3ReadDirPlusReplyHandler : public NFSV3AttrOpReplyHandler {
+public:
+    NFSV3ReadDirPlusReplyHandler(const string &filehandle, const struct READDIRPLUS3args* args)
+	: NFSV3AttrOpReplyHandler(filehandle,empty_string, empty_string)
+    { }
+    virtual ~NFSV3ReadDirPlusReplyHandler() { }
+
+    void checkOpStatus(u_int32_t op_status) {
+	printf("got a nonzero readdir status %d\n", op_status);
+	AssertAlways(op_status == NFS3ERR_NOTDIR ||
+		     op_status == NFS3ERR_ACCES ||
+		     op_status == NFS3ERR_IO ||
+		     op_status == NFS3ERR_SERVERFAULT ||
+		     op_status == NFS3ERR_NOTSUPP ||
+		     op_status == NFS3ERR_BADHANDLE ||
+		     op_status == NFS3ERR_TOOSMALL ||
+		     op_status == NFS3ERR_BAD_COOKIE ||
+		     op_status == NFS3ERR_STALE ,
+		     ("bad11 %d",op_status)); 
+	// might at some point want to record failed lookups, as per the NFSV2 
+	// decode also
+    }
+
+    virtual void handleReply(RPCRequestData *reqdata, 
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
+			     int source_port, int dest_port, int l4checksum, int payload_len,
+			     RPCReply &reply) 
+    {
+	/*
+	const u_int32_t *xdr = reply.getrpcresults();
+	int actual_len = reply.getrpcresultslen();
+	ShortDataAssertMsg(actual_len >= 4,"NFSV3ReadDirPlusReply",("really got nothing"));
+	u_int32_t op_status = ntohl(*xdr);
+	if (op_status != 0) {
+	    checkOpStatus(op_status);
+	    return;
+	}
+	int fhlen = ntohl(xdr[1]);
+	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
+	ShortDataAssertMsg(actual_len >= 4 + 4 + fhlen,"NFSv3 ReadDirPlus reply",("bad"));
+	filehandle.assign((char *)xdr + 8,fhlen);
+	*/
+	NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
+					     l4checksum,payload_len,reply);
+    }
+
+    virtual int getfattroffset(RPCRequestData *reqdata,
+			       RPCReply &reply) 
+    {
+	return 2;
+	const u_int32_t *xdr = reply.getrpcresults();
+	int actual_len = reply.getrpcresultslen();
+	AssertAlways(actual_len >= 4,("bad"));
+	u_int32_t op_status = ntohl(*xdr);
+	AssertAlways(op_status == 0,("internal"));
+
+	int fhlen = ntohl(xdr[1]);
+	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
+	int objattroffset = 1 + 1 + fhlen / 4;  //This is probably not right
+	ShortDataAssertMsg(actual_len >= (objattroffset + 1 + 1) * 4 + fattr3_len,
+			   "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
+	AssertAlways(ntohl(xdr[objattroffset]) == 1,("bad"));
+	return objattroffset + 1;
+    }
+};
+
+
 class NFSV3AccessReplyHandler : public NFSV3AttrOpReplyHandler {
 public:
     NFSV3AccessReplyHandler(const string &filehandle)
@@ -1901,7 +1968,20 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		    new NFSV3AccessReplyHandler(access_filehandle);
 	    }
 	    break;
-		
+	case NFSPROC3_READDIRPLUS:
+	    {
+		if (false) printf("got a READDIRPLUS\n");
+		int fhlen = ntohl(xdr[0]);
+		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
+		if (false) printf("%d vs %d\n", actual_len, sizeof(struct READDIRPLUS3args));
+		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
+		struct READDIRPLUS3args *readDirPlus3arg = 
+		    (struct READDIRPLUS3args*)xdr;
+		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
+		d.replyhandler = 
+		    new NFSV3ReadDirPlusReplyHandler(access_filehandle, readDirPlus3arg);
+	    }
+	    break;
 	case NFSPROC3_READ:
 	    { 
 		ShortDataAssertMsg(actual_len >= (8+8+4),
