@@ -1002,7 +1002,7 @@ const string nfsv3ops[] = {
 int n_nfsv3ops = sizeof(nfsv3ops) / sizeof(const string);
 
 const string nfs_attrops_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"2.0\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"2.1\" >\n"
   "  <field type=\"int64\" name=\"request_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"int64\" name=\"reply_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -1015,7 +1015,9 @@ const string nfs_attrops_xml(
   "  <field type=\"int32\" name=\"gid\" />\n"
   "  <field type=\"int64\" name=\"file_size\" />\n"
   "  <field type=\"int64\" name=\"used_bytes\" />\n"
+  "  <field type=\"int64\" name=\"access_time\" pack_relative=\"access_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision access times\" />\n"
   "  <field type=\"int64\" name=\"modify_time\" pack_relative=\"modify_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision modify times\" />\n"
+  "  <field type=\"int64\" name=\"inochange_time\" pack_relative=\"inochange_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision inode change times\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries nfs_attrops_series;
@@ -1032,7 +1034,9 @@ Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
 Int64Field attrops_filesize(nfs_attrops_series,"file_size");
 Int64Field attrops_used_bytes(nfs_attrops_series,"used_bytes");
+Int64Field attrops_access_time(nfs_attrops_series,"access_time");
 Int64Field attrops_modify_time(nfs_attrops_series,"modify_time");
+Int64Field attrops_inochange_time(nfs_attrops_series,"inochange_time");
 
 const string nfs_readwrite_xml(
   "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::read-write\" version=\"2.0\" >\n"
@@ -1585,7 +1589,7 @@ public:
 
 class NFSV3ReadDirPlusReplyHandler : public NFSV3AttrOpReplyHandler {
 public:
-    NFSV3ReadDirPlusReplyHandler(const string &filehandle, const struct READDIRPLUS3args* args)
+    NFSV3ReadDirPlusReplyHandler(const string &filehandle)
 	: NFSV3AttrOpReplyHandler(filehandle,empty_string, empty_string)
     { }
     virtual ~NFSV3ReadDirPlusReplyHandler() { }
@@ -1611,28 +1615,84 @@ public:
 			     int source_port, int dest_port, int l4checksum, int payload_len,
 			     RPCReply &reply) 
     {
-	/*
-	const u_int32_t *xdr = reply.getrpcresults();
-	int actual_len = reply.getrpcresultslen();
-	ShortDataAssertMsg(actual_len >= 4,"NFSV3ReadDirPlusReply",("really got nothing"));
-	u_int32_t op_status = ntohl(*xdr);
-	if (op_status != 0) {
-	    checkOpStatus(op_status);
-	    return;
+	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	int v3fattroffset = getfattroffset(reqdata,reply);
+	if (v3fattroffset >= 0) {
+	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
+			       "NFSv3 attribute op",
+			       ("%d * 4 + %d <= %d",v3fattroffset,fattr3_len,reply.getrpcresultslen()));
+	    const u_int32_t *xdr = reply.getrpcresults();
+	    if (mode == Convert) {
+		const u_int32_t *curEntry = &(xdr[1+sizeof(post_op_attr)/4 + 2]); //1 for nfs status + sizeof directory attributes in words + 2 cookie verifier words
+		while (ntohl(*curEntry)) { //Value Follows == 1
+		    curEntry++;
+		    if (false) printf ("got inside!\n");
+		    nfs_attrops_outmodule->newRecord();
+		    attrops_request_id.set(reqdata->request_id);
+		    attrops_reply_id.set(cur_record_id);
+		    attrops_lookupdirfilehandle.set(filehandle);
+		    curEntry+= 2; //FileID we don't care
+		    u_int32_t nameSize = ntohl(*curEntry);
+		    curEntry++;
+		    char* charArray = (char*)curEntry;
+		    attrops_filename.set(charArray,nameSize);
+		    curEntry += nameSize / 4;
+		    if (nameSize % 4 != 0) {
+			curEntry++;
+		    }
+		    curEntry+= 2; //attrib cookie don't care
+		    int val = ntohl(*curEntry);
+		    curEntry++;
+		    if (val) { //Value Follows == 1
+			//post_op_attr
+			attrops_typeid.set(ntohl(*curEntry));
+			attrops_type.set(NFSV3_typelist[ntohl(*curEntry)]);
+			curEntry++;
+			attrops_mode.set(ntohl(*curEntry) & 0xFFF);
+			curEntry+=2;//nlink don't care
+			attrops_uid.set(ntohl(*curEntry));
+			curEntry++;
+			attrops_gid.set(ntohl(*curEntry));
+			curEntry++;
+			attrops_filesize.set(xdr_ll(curEntry,0));
+			curEntry+=2; //size is 64 bit
+			attrops_used_bytes.set(xdr_ll(curEntry,0));
+			curEntry+=8;//used is 64 bit,rdev,fsid,fileid don't care
+			attrops_access_time.set(getNFS3Time(curEntry));
+			curEntry+=2;
+			attrops_modify_time.set(getNFS3Time(curEntry));
+			curEntry+=2;
+			attrops_inochange_time.set(getNFS3Time(curEntry));
+			curEntry+=2;
+		    }
+		    int val2 = ntohl(*curEntry);
+		    curEntry++;
+		    if (val2) {// value follows
+			u_int32_t fhSize = ntohl(*curEntry);
+			curEntry++;
+			char* fhCharArray = (char*)&curEntry;
+			attrops_filehandle.set(fhCharArray,fhSize);
+			curEntry += fhSize / 4;
+			if (fhSize % 4 != 0) {
+			    curEntry++;
+			}
+		    }
+		}
+		xdr += v3fattroffset;
+		int type = ntohl(xdr[0]);
+		AssertAlways(type == 2,("Not a ReadDirPlus3 in ReadDirPlus3!"));
+	    }
+	    //Handle the attributes of the directory itself as well.
+	    NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
+		    l4checksum,payload_len,reply);
 	}
-	int fhlen = ntohl(xdr[1]);
-	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
-	ShortDataAssertMsg(actual_len >= 4 + 4 + fhlen,"NFSv3 ReadDirPlus reply",("bad"));
-	filehandle.assign((char *)xdr + 8,fhlen);
-	*/
-	NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
-					     l4checksum,payload_len,reply);
     }
 
     virtual int getfattroffset(RPCRequestData *reqdata,
 			       RPCReply &reply) 
     {
 	return 2;
+	/*
 	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(actual_len >= 4,("bad"));
@@ -1646,6 +1706,7 @@ public:
 			   "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
 	AssertAlways(ntohl(xdr[objattroffset]) == 1,("bad"));
 	return objattroffset + 1;
+	*/
     }
 };
 
@@ -1975,11 +2036,9 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
 		if (false) printf("%d vs %d\n", actual_len, sizeof(struct READDIRPLUS3args));
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
-		struct READDIRPLUS3args *readDirPlus3arg = 
-		    (struct READDIRPLUS3args*)xdr;
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 
-		    new NFSV3ReadDirPlusReplyHandler(access_filehandle, readDirPlus3arg);
+		    new NFSV3ReadDirPlusReplyHandler(access_filehandle);
 	    }
 	    break;
 	case NFSPROC3_READ:
