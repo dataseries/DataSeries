@@ -1618,95 +1618,132 @@ public:
 	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
 	int v3fattroffset = getfattroffset(reqdata,reply);
 	if (v3fattroffset >= 0) {
-	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
-			       "NFSv3 attribute op",
-			       ("%d * 4 + %d <= %d",v3fattroffset,fattr3_len,reply.getrpcresultslen()));
 	    const u_int32_t *xdr = reply.getrpcresults();
 	    if (mode == Convert) {
-		const u_int32_t *curEntry = &(xdr[1+sizeof(post_op_attr)/4 + 2]); //1 for nfs status + sizeof directory attributes in words + 2 cookie verifier words
-		while (ntohl(*curEntry)) { //Value Follows == 1
-		    curEntry++;
-		    if (false) printf ("got inside!\n");
-		    nfs_attrops_outmodule->newRecord();
-		    attrops_request_id.set(reqdata->request_id);
-		    attrops_reply_id.set(cur_record_id);
-		    attrops_lookupdirfilehandle.set(filehandle);
-		    curEntry+= 2; //FileID we don't care
-		    u_int32_t nameSize = ntohl(*curEntry);
-		    curEntry++;
-		    char* charArray = (char*)curEntry;
-		    attrops_filename.set(charArray,nameSize);
-		    curEntry += nameSize / 4;
-		    if (nameSize % 4 != 0) {
-			curEntry++;
-		    }
-		    curEntry+= 2; //attrib cookie don't care
-		    int val = ntohl(*curEntry);
-		    curEntry++;
-		    if (val) { //Value Follows == 1
-			//post_op_attr
-			attrops_typeid.set(ntohl(*curEntry));
-			attrops_type.set(NFSV3_typelist[ntohl(*curEntry)]);
-			curEntry++;
-			attrops_mode.set(ntohl(*curEntry) & 0xFFF);
-			curEntry+=2;//nlink don't care
-			attrops_uid.set(ntohl(*curEntry));
-			curEntry++;
-			attrops_gid.set(ntohl(*curEntry));
-			curEntry++;
-			attrops_filesize.set(xdr_ll(curEntry,0));
-			curEntry+=2; //size is 64 bit
-			attrops_used_bytes.set(xdr_ll(curEntry,0));
-			curEntry+=8;//used is 64 bit,rdev,fsid,fileid don't care
-			attrops_access_time.set(getNFS3Time(curEntry));
-			curEntry+=2;
-			attrops_modify_time.set(getNFS3Time(curEntry));
-			curEntry+=2;
-			attrops_inochange_time.set(getNFS3Time(curEntry));
-			curEntry+=2;
-		    }
-		    int val2 = ntohl(*curEntry);
-		    curEntry++;
-		    if (val2) {// value follows
-			u_int32_t fhSize = ntohl(*curEntry);
-			curEntry++;
-			char* fhCharArray = (char*)&curEntry;
-			attrops_filehandle.set(fhCharArray,fhSize);
-			curEntry += fhSize / 4;
-			if (fhSize % 4 != 0) {
-			    curEntry++;
+		u_int32_t curEntry = 4 + fattr3_len/4;
+		u_int32_t dirCount = 0;
+		int type = ntohl(xdr[v3fattroffset]);
+		AssertAlways(type == 2,("Not a ReadDirPlus3 in ReadDirPlus3!"));
+	    
+		//Handle the attributes of the directory itself as well.
+		NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
+		    l4checksum,payload_len,reply);
+		while (1) {
+		    u_int32_t structSize = 3; // FileID and nameSize
+		    if (ntohl(xdr[curEntry]) == 1) {
+			structSize++;
+			ShortDataAssertMsg((structSize + curEntry) * 4 <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry file Info missing",
+				("(%d + %d) * 4 <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			u_int32_t nameSize = ntohl(xdr[curEntry+structSize-1]);
+			ShortDataAssertMsg((structSize + curEntry) * 4 + nameSize <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry fileName missing",
+				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,nameSize,reply.getrpcresultslen()));
+			char* charArray = (char*)(xdr+curEntry+structSize);
+			structSize += nameSize / 4;
+			if (nameSize % 4 != 0) {
+			    structSize++;
 			}
+			structSize += 2; //attrib cookie
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry padding+attribcookie+valueFollows missing",
+				("(1 + %d + %d) * 4  <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			//We know we have at least a filename so make a record for it
+			nfs_attrops_outmodule->newRecord();
+			attrops_request_id.set(reqdata->request_id);
+			attrops_reply_id.set(cur_record_id);
+			attrops_lookupdirfilehandle.set(filehandle);
+			if (nameSize <= 0) {
+			    printf("nameSize is:%d, request_id is:%lld",nameSize, reqdata->request_id);
+			    AssertAlways(nameSize > 0, ("nameSize is not valid\n"));
+			}
+			attrops_filename.set(charArray,nameSize);
+		    } else {
+			structSize++;
+		    }
+		    if (ntohl(xdr[curEntry+structSize]) == 1) { //name_attributes_follow
+			structSize++;
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4 + fattr3_len  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry attributes or value follows (afterwards) missing",
+				("(1+ %d + %d) * 4 + %d  <= %d",curEntry,structSize, fattr3_len,reply.getrpcresultslen()));
+			//post_op_attr
+			attrops_typeid.set(ntohl(xdr[curEntry+structSize]));
+			u_int32_t type = ntohl(xdr[curEntry+structSize]);
+			ShortDataAssertMsg(1 <= type && type < 8,
+				"NFSv3 dirEntry type not correct",
+				("1 <= %d < 8",type));
+			attrops_type.set(NFSV3_typelist[type]);
+			structSize++;
+			attrops_mode.set(ntohl(xdr[curEntry+structSize]) & 0xFFF);
+			structSize+=2;//nlink don't care
+			attrops_uid.set(ntohl(xdr[curEntry+structSize]));
+			structSize++;
+			attrops_gid.set(ntohl(xdr[curEntry+structSize]));
+			structSize++;
+			attrops_filesize.set(xdr_ll(xdr,curEntry+structSize));
+			structSize+=2; //size is 64 bit
+			attrops_used_bytes.set(xdr_ll(xdr,curEntry+structSize));
+			structSize+=8;//used is 64 bit,rdev,fsid,fileid don't care
+			attrops_access_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+			attrops_modify_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+			attrops_inochange_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+		    } else {
+			structSize++;
+		    } if (ntohl(xdr[curEntry+structSize]) == 1) {//name_handle follows
+			structSize++;
+			ShortDataAssertMsg((structSize + curEntry) * 4  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry namehandlesize missing",
+				("(%d + %d) * 4 <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			u_int32_t fhSize = ntohl(xdr[curEntry+structSize]);
+			structSize++;
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4 + fhSize <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry fileNameHandle or valueAfterwards missing",
+				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,fhSize,reply.getrpcresultslen()));
+			char* fhCharArray = (char*)xdr+curEntry+structSize;
+			structSize += fhSize / 4;
+			if (fhSize % 4 != 0) {
+			    structSize++;
+			}
+			attrops_filehandle.set(fhCharArray,fhSize);
+		    } else {
+			structSize++;
+		    } if (ntohl(xdr[curEntry+structSize]) == 1) { //There is a valid dir entry coming next
+			curEntry += structSize;
+			if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+		    } else {
+			if (ntohl(xdr[curEntry+structSize+1]) != 1) {
+			    printf("not the end of the directory entry.\n");
+			    printf("We're going to lose data if we don't do tcp reconstruction.\n");
+			}
+			if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+			break;
 		    }
 		}
-		xdr += v3fattroffset;
-		int type = ntohl(xdr[0]);
-		AssertAlways(type == 2,("Not a ReadDirPlus3 in ReadDirPlus3!"));
 	    }
-	    //Handle the attributes of the directory itself as well.
-	    NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
-		    l4checksum,payload_len,reply);
 	}
     }
 
     virtual int getfattroffset(RPCRequestData *reqdata,
 			       RPCReply &reply) 
     {
-	return 2;
-	/*
 	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(actual_len >= 4,("bad"));
+	AssertAlways(actual_len >= 4,("readdirplus3 packet size < 4"));
 	u_int32_t op_status = ntohl(*xdr);
-	AssertAlways(op_status == 0,("internal"));
+	AssertAlways(op_status == 0,("op_status non-zero in readdirplus3 after check"));
 
-	int fhlen = ntohl(xdr[1]);
-	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
-	int objattroffset = 1 + 1 + fhlen / 4;  //This is probably not right
-	ShortDataAssertMsg(actual_len >= (objattroffset + 1 + 1) * 4 + fattr3_len,
-			   "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
-	AssertAlways(ntohl(xdr[objattroffset]) == 1,("bad"));
-	return objattroffset + 1;
-	*/
+	int dirAttrFollows = ntohl(xdr[1]);
+	if (dirAttrFollows) {
+	    ShortDataAssertMsg(actual_len >= (5) * 4 + fattr3_len,
+		    "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
+	    return 2;
+	} else {
+	    // no File information in this reply
+	    return 0;
+	}
     }
 };
 
