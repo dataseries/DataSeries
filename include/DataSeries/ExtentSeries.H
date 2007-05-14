@@ -144,6 +144,8 @@ public:
 	void checkOffset(long offset) {
 #ifdef COMPILE_DEBUG
 	    forceCheckOffset(offset);
+#else
+	    (void)offset; // eliminate compilation warning
 #endif
 	}
 	void forceCheckOffset(long offset);
