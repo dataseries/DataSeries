@@ -39,16 +39,26 @@ struct xmlDecodeInfoEqual {
     }
 };
 
-static HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> xmlDecodeTable;
-PThreadMutex xmlDecodeTableMutex;
+struct xmlDecode {
+    HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> table;
+    PThreadMutex mutex;
+};
+
+static xmlDecode &decodeInfo()
+{
+    // C++ semantics say this will be initialized the first time we
+    // pass through this call
+    static xmlDecode decode_info;
+    return decode_info;
+}
 
 static const string &
 getSharedDecodeString(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
-    xmlDecodeTableMutex.lock();
-    xmlDecodeInfo **d = xmlDecodeTable.lookup(&k);
+    decodeInfo().mutex.lock();
+    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
     if (d == NULL) {
 	xmlDecodeInfo *f = new xmlDecodeInfo;
 	f->xmldesc = xmldesc;
@@ -59,9 +69,9 @@ getSharedDecodeString(const string &xmldesc)
 	f->field_desc_doc = xmlParseMemory((char *)xmldesc.data(),xmldesc.size());
 	AssertAlways(f->field_desc_doc != NULL,
 		     ("Error: parsing ExtentType description failed\n"));
-	d = xmlDecodeTable.add(f);
+	d = decodeInfo().table.add(f);
     }
-    xmlDecodeTableMutex.unlock();
+    decodeInfo().mutex.unlock();
     return (**d).xmldesc;
 }
 
@@ -530,24 +540,24 @@ ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
-    xmlDecodeTableMutex.lock();
-    xmlDecodeInfo **d = xmlDecodeTable.lookup(&k);
-    xmlDecodeTableMutex.unlock();
+    decodeInfo().mutex.lock();
+    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
+    decodeInfo().mutex.unlock();
     if (d != NULL && (**d).extenttype != NULL) {
 	// should be common case, just return the value
 	return (**d).extenttype;
     }
     if (d == NULL) {
 	getSharedDecodeString(xmldesc); // force pointer to exist.
-	xmlDecodeTableMutex.lock();
-	d = xmlDecodeTable.lookup(&k);
-	xmlDecodeTableMutex.unlock();
+	decodeInfo().mutex.lock();
+	d = decodeInfo().table.lookup(&k);
+	decodeInfo().mutex.unlock();
     }
     AssertAlways(d != NULL,("internal error\n"));
     if ((**d).extenttype == NULL) {
 	// now safe to create, as constructor will be able to look up string
 	ExtentType *f = new ExtentType(xmldesc); 
-	xmlDecodeTableMutex.lock();
+	decodeInfo().mutex.lock();
 	if ((**d).extenttype == NULL) {
 	    // normal case
 	    (**d).extenttype = f;
@@ -555,7 +565,7 @@ ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
 	    // someone else must have created it in the mean time, delete it.
 	    delete f;
 	}
-	xmlDecodeTableMutex.unlock();
+	decodeInfo().mutex.unlock();
     }
     return (**d).extenttype;
 }
@@ -565,9 +575,9 @@ ExtentTypeLibrary::sharedDocPtr(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
-    xmlDecodeTableMutex.lock();
-    xmlDecodeInfo **d = xmlDecodeTable.lookup(&k);
-    xmlDecodeTableMutex.unlock();
+    decodeInfo().mutex.lock();
+    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
+    decodeInfo().mutex.unlock();
     AssertAlways(d != NULL,("internal error\n"));
     return (**d).field_desc_doc;
 }
