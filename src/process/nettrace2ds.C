@@ -1640,6 +1640,9 @@ public:
 				"NFSv3 dirEntry fileName missing",
 				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,nameSize,reply.getrpcresultslen()));
 			char* charArray = (char*)(xdr+curEntry+structSize);
+			//if (nameSize > 4 && *charArray == 'M' && *(charArray+1) == 'a' && *(charArray+2) == 'i' && *(charArray+3) == 'l') {
+			//    printf ("got a Mail\n");
+			//}
 			structSize += nameSize / 4;
 			if (nameSize % 4 != 0) {
 			    structSize++;
@@ -1702,7 +1705,7 @@ public:
 			ShortDataAssertMsg((1 + structSize + curEntry) * 4 + fhSize <= reply.getrpcresultslen(),
 				"NFSv3 dirEntry fileNameHandle or valueAfterwards missing",
 				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,fhSize,reply.getrpcresultslen()));
-			char* fhCharArray = (char*)xdr+curEntry+structSize;
+			char* fhCharArray = (char*)(xdr+curEntry+structSize);
 			structSize += fhSize / 4;
 			if (fhSize % 4 != 0) {
 			    structSize++;
