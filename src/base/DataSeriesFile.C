@@ -101,6 +101,11 @@ DataSeriesSource::DataSeriesSource(const std::string &_filename)
     delete e;
 
     off64_t tailoffset = lseek64(fd,-7*4,SEEK_END);
+    printf("tailoffset %lld\n", tailoffset);
+    printf ("sizeof tailoffset %d\n", sizeof(tailoffset));
+    if (tailoffset < 0) {
+	perror("woo tailoffset was negative!");
+    }
     AssertAlways(tailoffset > 0,("seek to end failed?!\n"));
     byte tail[7*4];
     Extent::checkedPread(fd,tailoffset,tail,7*4);
