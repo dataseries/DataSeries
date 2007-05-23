@@ -131,13 +131,14 @@ public:
     static const int compress_lzf = 8;
     static const int compress_all = compress_bz2 | compress_zlib | compress_lzo | compress_lzf;
 
-    void packData(Extent::ByteArray &into, 
-		  int compression_modes = compress_all,
-		  int compression_level = 9,
-		  // sizes of following are pre-compression (if any)
-		  int *header_packed = NULL, 
-		  int *fixed_packed = NULL, 
-		  int *variable_packed = NULL); 
+    // returns a "checksum" calculated from the underlying checksums in the packed extent
+    uint32_t packData(Extent::ByteArray &into, 
+		      int compression_modes = compress_all,
+		      int compression_level = 9,
+		      // sizes of following are pre-compression (if any)
+		      int *header_packed = NULL, 
+		      int *fixed_packed = NULL, 
+		      int *variable_packed = NULL); 
 
     // Note you can't unpack the same data twice, it may modify the
     // input data
@@ -215,7 +216,7 @@ public:
     // This function is here to verify that we got the right
     // flip4bytes when we compiled DataSeries, it's used by
     // DataSeries/src/test.C
-    static void run_flip4bytes(uint32_t *buf, int buflen);
+    static void run_flip4bytes(uint32_t *buf, unsigned buflen);
 private:
     friend class ExtentSeries;
     void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record

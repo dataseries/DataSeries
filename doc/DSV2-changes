@@ -1,0 +1,25 @@
+At some point we want to change the underlying file format for dataseries.
+The plan is to call this DSV2 as it would encompass changes that cannot
+be made within the DSV1 format.
+
+Changes under consideration for DSV1:
+  * Change the extent type and extent index types to conform to the new
+    naming convention
+  * Add in a bunch of information about the stored extents into the extent
+    index; see DataSeriesFile.C for the current proposal.
+
+Changes under consideration for DSV2:
+  * Update the checksums that are used.  Current suggestion is to use SHA1
+    for the packed checksum, and adler32/zlib-crc32/bjhash for the unpacked
+    checksum with the modification that unpacked checksums aren't checked
+    by default.
+  * Change the part of the extent header that stores the type as a string
+    to storing the type as a 2-4 byte id this will reduce the overhead for
+    having small extents, although it will require us to assign a permanant
+    range for the built-in types and any future ones.  The id's would then
+    be stored in the extent-type extent
+  * Add in a part of the extent structure for storing transform rules.
+    This will allow us to remove the transform rules from the extent type,
+    and enable per-extent rules, which could lead to better compression.
+    Shouldn't need a unpacked fixed size as record size * nrecords should
+    be bigger than that.

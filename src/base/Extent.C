@@ -161,7 +161,7 @@ public:
 
 static const int variable_sizes_batch_size = 1024;
 
-void
+uint32_t
 Extent::packData(Extent::ByteArray &into,
 		 int compression_modes,
 		 int compression_level,
@@ -316,7 +316,7 @@ Extent::packData(Extent::ByteArray &into,
     // deliberately not precisely reversable
     AssertAlways((int)fixed_coded.size() == type->fixed_record_size * nrecords,
 		 ("internal error\n"));
-    unsigned int bjhash = BobJenkinsHash(1972,fixed_coded.begin(),type->fixed_record_size * nrecords);
+    uint32_t bjhash = BobJenkinsHash(1972,fixed_coded.begin(),type->fixed_record_size * nrecords);
     AssertAlways(variable_data_pos - variable_coded.begin() <= (int)variable_coded.size(),
 		 ("Internal error\n"));
     variable_coded.resize(variable_data_pos - variable_coded.begin());
@@ -396,6 +396,7 @@ Extent::packData(Extent::ByteArray &into,
     if (variable_packed != NULL) *variable_packed = variable_coded.size();
     delete compressed_fixed;
     delete compressed_variable;
+    return bjhash ^ static_cast<uint32_t>(adler32sum);
 }
 
 bool
@@ -653,7 +654,7 @@ Extent::getPackedExtentType(Extent::ByteArray &from)
 
     byte type_name_len = from[6*4+2];
 
-    int header_len = 6*4+4+type_name_len;
+    unsigned header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
@@ -703,7 +704,7 @@ Extent::unpackData(const ExtentType *_type,
     byte compressed_variable_mode = from[6*4+1];
     byte type_name_len = from[6*4+2];
     
-    int header_len = 6*4+4+type_name_len;
+    unsigned header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
@@ -729,7 +730,7 @@ Extent::unpackData(const ExtentType *_type,
     unpackAny(variabledata.begin()+4, compressed_variable_begin,
 	      compressed_variable_mode,
 	      variable_size-4, compressed_variable_size);
-    unsigned int bjhash = 0;
+    uint32_t bjhash = 0;
     if (dataseries_enable_postuncompress_check) {
 	bjhash = BobJenkinsHash(1972,fixeddata.begin(),fixeddata.size());
 	bjhash = BobJenkinsHash(bjhash,variabledata.begin(),variabledata.size());
@@ -947,7 +948,7 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
 }
 
 void
-Extent::run_flip4bytes(uint32_t *buf, int buflen)
+Extent::run_flip4bytes(uint32_t *buf, unsigned buflen)
 {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = Extent::flip4bytes(buf[i]);

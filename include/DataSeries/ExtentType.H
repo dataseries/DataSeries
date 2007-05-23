@@ -97,7 +97,6 @@ public:
     static std::string nullableFieldname(const std::string &fieldname);
 
     std::string name;
-    float version;
     std::string xmldesc;
     xmlDocPtr field_desc_doc;
     std::string xmlFieldDesc(const std::string &column) const {
@@ -113,6 +112,19 @@ public:
 
     static const std::string &fieldTypeString(fieldType ft);
     static bool prefixmatch(const std::string &a, const std::string &prefix);
+
+    /// compatible if app_major == majorVersion() and app_minor <=
+    /// minorVersion() the former because major version changes allow
+    /// for arbitrary differences the latter because minor version
+    /// changes have to be backwards compatible.
+
+    bool versionCompatible(unsigned app_major, unsigned app_minor) const {
+	return app_major == majorVersion() && app_minor <= minorVersion();
+    }
+    unsigned majorVersion() const { return major_version; }
+    unsigned minorVersion() const { return minor_version; }
+
+    const std::string &getNamespace() { return type_namespace; }
 protected:
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
@@ -178,6 +190,9 @@ protected:
 
     friend class Variable32Field;
     friend class Extent;
+private:
+    unsigned major_version, minor_version;
+    std::string type_namespace;
 };
 
 class ExtentTypeLibrary {
