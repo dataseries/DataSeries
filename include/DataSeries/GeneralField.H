@@ -189,6 +189,13 @@ public:
     virtual ~GeneralField();
     virtual void write(FILE *to) = 0;
     virtual void write(std::ostream &to) = 0;
+
+    /** create a new general field for a particular series; assumes that
+	the field type doesn't change over the course of the series. */
+    static GeneralField *create(ExtentSeries &series, 
+				const std::string &column) {
+	return create(NULL, series, column);
+    }
     /** fieldxml can be null, in which case it gets it from the series type. */
     static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
 				const std::string &column);
@@ -212,8 +219,8 @@ public:
 
     GeneralValue val() { return GeneralValue(this); }
     virtual double valDouble() = 0;
-protected:
 
+protected:
     ExtentType::fieldType gftype;
     friend class GeneralValue;
     GeneralField(ExtentType::fieldType _gftype)
