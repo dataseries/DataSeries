@@ -27,6 +27,10 @@ class Field {
 public:
     Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
 	  int _flags);
+    // TODO: consider setting ExtentSeries::dead; and/or removing
+    // ourselves from the list in the series.  Potential complications
+    // involve destructor order, so the series might have to mark the
+    // fields that it's dying.
     virtual ~Field() {}
     
     static const int flag_nullable = 1;

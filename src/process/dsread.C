@@ -1,5 +1,4 @@
 // -*-C++-*-
-/*
    (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -8,6 +7,8 @@
 /** @file
     A program with no purpose other than to do profiling and benchmarking.
 */
+
+// TODO: make this work and put it into the standard build, or drop it.
 
 #include <DataSeriesModule.H>
 
