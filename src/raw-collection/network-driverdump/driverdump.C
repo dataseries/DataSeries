@@ -20,8 +20,8 @@
 #include <string>
 using namespace std;
 
-#include <LintelAssert.H>
-#include <PThread.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/PThread.H>
 #include <linux/wait.h>
 #include "kernel-driver-add.h"
 

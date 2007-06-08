@@ -127,9 +127,9 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     }
     delete e;
     off64_t tailoffset = lseek64(fd,-7*4,SEEK_END);
-    if (tailoffset < 0) {
-    	tailoffset = 4294967296LL + tailoffset;
-    }
+    //if (tailoffset < 0) {
+    //	tailoffset = 4294967296LL + tailoffset;
+    //}
     AssertAlways(tailoffset > 0,("seek to end failed?!\n"));
     byte tail[7*4];
     Extent::checkedPread(fd,tailoffset,tail,7*4);
