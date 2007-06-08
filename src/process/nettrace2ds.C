@@ -85,9 +85,14 @@ enum ModeT { Info, Convert };
 
 ModeT mode = Info;
 
+enum FileT { ERF, PCAP };
+FileT file_type = ERF;
+
 const bool warn_duplicate_reqs = false;
 const bool warn_parse_failures = false;
 const bool warn_unmatched_rpc_reply = false; // not watching output
+
+const uint32_t pcap_packet_max_size = 65536;
 
 enum CountTypes {
     ignored_nonip = 0,
@@ -117,7 +122,13 @@ enum CountTypes {
     bad_retransmit,
     packet_loss,
     tiny_packet,
-    last_count
+    tcp_packet, 
+    not_an_rpc,
+    rpc_parse_error,
+    rpc_tcp_request_len,
+    rpc_tcp_reply_len,
+    wire_len,
+    last_count // marker: maximum count of types
 };
 
 string count_names[] = {
@@ -148,6 +159,12 @@ string count_names[] = {
     "bad_retransmit",
     "packet_loss",
     "tiny_packet",
+    "tcp_packet",
+    "not_an_rpc",
+    "rpc_parse_error",
+    "rpc_tcp_request_len",
+    "rpc_tcp_reply_len",
+    "wire_len",
 };
 
 vector<int64_t> counts;
@@ -426,6 +443,81 @@ public:
     int fd;
     unsigned char *buffer, *buffer_cur, *buffer_end;
     uint32_t bufsize;
+    bool eof;
+};
+
+class PCAPReader: public NettraceReader {
+public:
+    PCAPReader(const string &filename) : NettraceReader(filename), 
+                                         fd(-1), 
+                                         packet_cur(NULL), 
+                                         eof(false) { }
+    virtual void prefetch() { } // unimplemented yet
+    virtual bool nextPacket(unsigned char **packet_ptr, 
+                            uint32_t *capture_size,
+			    uint32_t *wire_length, 
+                            Clock::Tfrac *time) {
+        if (eof) { return false; } 
+        else { // PCAP file either unopened or being read
+            uint32_t ret;
+            if (packet_cur == NULL) { // open the PCAP file
+                fd = open(filename.c_str(), O_RDONLY);
+                INVARIANT(fd > 0, boost::format("cannot open PCAP file %s: %s")
+                          % filename % strerror(errno));
+                cur_file_packet_num = 0;
+                // read in the PCAP file header first
+                pcap_file_header fh;
+                ret = read(fd, &fh, sizeof(pcap_file_header));
+                INVARIANT(ret >= 0, boost::format("error when reading %s PCAP file header (errno=%d)")
+                          % filename % strerror(errno));
+                if (ret == 0) { // this file has no PCAP file header (empty file)
+                    eof = true;
+                    return false;
+                }
+                else { // this file has a PCAP file header
+                    INVARIANT(pcap_packet_max_size >= fh.snaplen,
+                              boost::format("packet buffer too small, should be at least %d")
+                                            % fh.snaplen);
+                    packet_cur = packet_end = new unsigned char[pcap_packet_max_size];
+                    INVARIANT(packet_cur != NULL, boost::format("out of memory, need %d bytes")
+                              % pcap_packet_max_size);
+                }
+            }   
+            // read the next packet header
+            pcap_pkthdr ph; 
+            ret = read(fd, &ph, sizeof(pcap_pkthdr));
+            INVARIANT(ret >= 0, boost::format("error reading packet header (%s, errno=%d)")
+                      % filename % strerror(errno));
+            if (ret == 0) { // no more packets
+                eof = true;
+                delete packet_cur;
+                return false;
+            }
+            else { // read the next packet
+                ret = read(fd, packet_cur, ph.caplen);
+                INVARIANT(ret == ph.caplen, boost::format("error reading packet (%s, errno=%d)")
+                          % filename % strerror(errno));
+                packet_end = packet_cur + ph.caplen;
+                // book keeping and return values
+                ++cur_file_packet_num;
+
+                // std::cout << "packet: " << cur_file_packet_num << endl;
+                // std::cout << "capture length: " << ph.caplen << endl;
+                // std::cout << "length: " << ph.len << endl;
+                // std::cout << "time: " << ctime((const time_t*)&ph.ts.tv_sec) << endl; 
+
+                *packet_ptr = packet_cur;
+                *capture_size = ph.caplen;
+                *wire_length = ph.len;
+                *time = ((Clock::Tfrac)ph.ts.tv_sec << 32) + ((Clock::Tfrac)ph.ts.tv_usec << 32)/1000000;
+                return true;
+            }
+        }
+    }
+
+private:
+    int fd;
+    unsigned char *packet_cur, *packet_end; // point to the current packet
     bool eof;
 };
 
@@ -914,7 +1006,7 @@ const string nfsv3ops[] = {
 int n_nfsv3ops = sizeof(nfsv3ops) / sizeof(const string);
 
 const string nfs_attrops_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"2.0\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::attr-ops\" version=\"2.1\" >\n"
   "  <field type=\"int64\" name=\"request_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"int64\" name=\"reply_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"request_id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" pack_unique=\"yes\" print_style=\"maybehex\" />\n"
@@ -927,7 +1019,9 @@ const string nfs_attrops_xml(
   "  <field type=\"int32\" name=\"gid\" />\n"
   "  <field type=\"int64\" name=\"file_size\" />\n"
   "  <field type=\"int64\" name=\"used_bytes\" />\n"
+  "  <field type=\"int64\" name=\"access_time\" pack_relative=\"access_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision access times\" />\n"
   "  <field type=\"int64\" name=\"modify_time\" pack_relative=\"modify_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision modify times\" />\n"
+  "  <field type=\"int64\" name=\"inochange_time\" pack_relative=\"inochange_time\" comment=\"time in ns since Unix epoch; doubles don't have enough precision to represent a year in ns and NFSv3 gives us ns precision inode change times\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries nfs_attrops_series;
@@ -944,7 +1038,9 @@ Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
 Int64Field attrops_filesize(nfs_attrops_series,"file_size");
 Int64Field attrops_used_bytes(nfs_attrops_series,"used_bytes");
+Int64Field attrops_access_time(nfs_attrops_series,"access_time");
 Int64Field attrops_modify_time(nfs_attrops_series,"modify_time");
+Int64Field attrops_inochange_time(nfs_attrops_series,"inochange_time");
 
 const string nfs_readwrite_xml(
   "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::read-write\" version=\"2.0\" >\n"
@@ -1495,6 +1591,175 @@ public:
     }
 };
 
+class NFSV3ReadDirPlusReplyHandler : public NFSV3AttrOpReplyHandler {
+public:
+    NFSV3ReadDirPlusReplyHandler(const string &filehandle)
+	: NFSV3AttrOpReplyHandler(filehandle,empty_string, empty_string)
+    { }
+    virtual ~NFSV3ReadDirPlusReplyHandler() { }
+
+    void checkOpStatus(u_int32_t op_status) {
+	printf("got a nonzero readdir status %d\n", op_status);
+	AssertAlways(op_status == NFS3ERR_NOTDIR ||
+		     op_status == NFS3ERR_ACCES ||
+		     op_status == NFS3ERR_IO ||
+		     op_status == NFS3ERR_SERVERFAULT ||
+		     op_status == NFS3ERR_NOTSUPP ||
+		     op_status == NFS3ERR_BADHANDLE ||
+		     op_status == NFS3ERR_TOOSMALL ||
+		     op_status == NFS3ERR_BAD_COOKIE ||
+		     op_status == NFS3ERR_STALE ,
+		     ("bad11 %d",op_status)); 
+	// might at some point want to record failed lookups, as per the NFSV2 
+	// decode also
+    }
+
+    virtual void handleReply(RPCRequestData *reqdata, 
+			     Clock::Tfrac time, const struct iphdr *ip_hdr,
+			     int source_port, int dest_port, int l4checksum, int payload_len,
+			     RPCReply &reply) 
+    {
+	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	int v3fattroffset = getfattroffset(reqdata,reply);
+	if (v3fattroffset >= 0) {
+	    const u_int32_t *xdr = reply.getrpcresults();
+	    if (mode == Convert) {
+		u_int32_t curEntry = 4 + fattr3_len/4;
+		u_int32_t dirCount = 0;
+		int type = ntohl(xdr[v3fattroffset]);
+		AssertAlways(type == 2,("Not a ReadDirPlus3 in ReadDirPlus3!"));
+	    
+		//Handle the attributes of the directory itself as well.
+		NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
+		    l4checksum,payload_len,reply);
+		while (1) {
+		    u_int32_t structSize = 3; // FileID and nameSize
+		    if (ntohl(xdr[curEntry]) == 1) {
+			structSize++;
+			ShortDataAssertMsg((structSize + curEntry) * 4 <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry file Info missing",
+				("(%d + %d) * 4 <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			u_int32_t nameSize = ntohl(xdr[curEntry+structSize-1]);
+			ShortDataAssertMsg((structSize + curEntry) * 4 + nameSize <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry fileName missing",
+				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,nameSize,reply.getrpcresultslen()));
+			const char* charArray = (char*)(xdr+curEntry+structSize);
+			if (enable_encrypt_filenames) {
+			    string enc_ret = encryptString(charArray);
+			    string dec_ret = decryptString(enc_ret);
+			    AssertAlways(strcmp(dec_ret.c_str(),charArray) == 0,("bad"));
+			    AssertAlways(strcmp(enc_ret.c_str(),charArray) != 0,("Enc bytes == unencrypted bytes!"));
+			    const char *temp = charArray;
+			    charArray = enc_ret.c_str();
+			}
+			structSize += nameSize / 4;
+			if (nameSize % 4 != 0) {
+			    structSize++;
+			}
+			structSize += 2; //attrib cookie
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry padding+attribcookie+valueFollows missing",
+				("(1 + %d + %d) * 4  <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			//We know we have at least a filename so make a record for it
+			nfs_attrops_outmodule->newRecord();
+			attrops_request_id.set(reqdata->request_id);
+			attrops_reply_id.set(cur_record_id);
+			attrops_lookupdirfilehandle.set(filehandle);
+			if (nameSize <= 0) {
+			    printf("nameSize is:%d, request_id is:%lld",nameSize, reqdata->request_id);
+			    AssertAlways(nameSize > 0, ("nameSize is not valid\n"));
+			}
+			attrops_filename.set(charArray,nameSize);
+		    } else {
+			structSize++;
+		    }
+		    if (ntohl(xdr[curEntry+structSize]) == 1) { //name_attributes_follow
+			structSize++;
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4 + fattr3_len  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry attributes or value follows (afterwards) missing",
+				("(1+ %d + %d) * 4 + %d  <= %d",curEntry,structSize, fattr3_len,reply.getrpcresultslen()));
+			//post_op_attr
+			attrops_typeid.set(ntohl(xdr[curEntry+structSize]));
+			u_int32_t type = ntohl(xdr[curEntry+structSize]);
+			ShortDataAssertMsg(1 <= type && type < 8,
+				"NFSv3 dirEntry type not correct",
+				("1 <= %d < 8",type));
+			attrops_type.set(NFSV3_typelist[type]);
+			structSize++;
+			attrops_mode.set(ntohl(xdr[curEntry+structSize]) & 0xFFF);
+			structSize+=2;//nlink don't care
+			attrops_uid.set(ntohl(xdr[curEntry+structSize]));
+			structSize++;
+			attrops_gid.set(ntohl(xdr[curEntry+structSize]));
+			structSize++;
+			attrops_filesize.set(xdr_ll(xdr,curEntry+structSize));
+			structSize+=2; //size is 64 bit
+			attrops_used_bytes.set(xdr_ll(xdr,curEntry+structSize));
+			structSize+=8;//used is 64 bit,rdev,fsid,fileid don't care
+			attrops_access_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+			attrops_modify_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+			attrops_inochange_time.set(getNFS3Time(xdr+curEntry+structSize));
+			structSize+=2;
+		    } else {
+			structSize++;
+		    } if (ntohl(xdr[curEntry+structSize]) == 1) {//name_handle follows
+			structSize++;
+			ShortDataAssertMsg((structSize + curEntry) * 4  <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry namehandlesize missing",
+				("(%d + %d) * 4 <= %d",curEntry,structSize,reply.getrpcresultslen()));
+			u_int32_t fhSize = ntohl(xdr[curEntry+structSize]);
+			structSize++;
+			ShortDataAssertMsg((1 + structSize + curEntry) * 4 + fhSize <= reply.getrpcresultslen(),
+				"NFSv3 dirEntry fileNameHandle or valueAfterwards missing",
+				("(%d + %d) * 4 + %d <= %d",curEntry,structSize,fhSize,reply.getrpcresultslen()));
+			char* fhCharArray = (char*)(xdr+curEntry+structSize);
+			structSize += fhSize / 4;
+			if (fhSize % 4 != 0) {
+			    structSize++;
+			}
+			attrops_filehandle.set(fhCharArray,fhSize);
+		    } else {
+			structSize++;
+		    } if (ntohl(xdr[curEntry+structSize]) == 1) { //There is a valid dir entry coming next
+			curEntry += structSize;
+			if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+		    } else {
+			if (ntohl(xdr[curEntry+structSize+1]) != 1) {
+			    printf("not the end of the directory entry.\n");
+			    printf("We're going to lose data if we don't do tcp reconstruction.\n");
+			}
+			if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+			break;
+		    }
+		}
+	    }
+	}
+    }
+
+    virtual int getfattroffset(RPCRequestData *reqdata,
+			       RPCReply &reply) 
+    {
+	const u_int32_t *xdr = reply.getrpcresults();
+	int actual_len = reply.getrpcresultslen();
+	AssertAlways(actual_len >= 4,("readdirplus3 packet size < 4"));
+	u_int32_t op_status = ntohl(*xdr);
+	AssertAlways(op_status == 0,("op_status non-zero in readdirplus3 after check"));
+
+	int dirAttrFollows = ntohl(xdr[1]);
+	if (dirAttrFollows) {
+	    ShortDataAssertMsg(actual_len >= (5) * 4 + fattr3_len,
+		    "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
+	    return 2;
+	} else {
+	    // no File information in this reply
+	    return 0;
+	}
+    }
+};
+
+
 class NFSV3AccessReplyHandler : public NFSV3AttrOpReplyHandler {
 public:
     NFSV3AccessReplyHandler(const string &filehandle)
@@ -1815,7 +2080,18 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		    new NFSV3AccessReplyHandler(access_filehandle);
 	    }
 	    break;
-		
+	case NFSPROC3_READDIRPLUS:
+	    {
+		if (false) printf("got a READDIRPLUS\n");
+		int fhlen = ntohl(xdr[0]);
+		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
+		if (false) printf("%d vs %d\n", actual_len, sizeof(struct READDIRPLUS3args));
+		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
+		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
+		d.replyhandler = 
+		    new NFSV3ReadDirPlusReplyHandler(access_filehandle);
+	    }
+	    break;
 	case NFSPROC3_READ:
 	    { 
 		ShortDataAssertMsg(actual_len >= (8+8+4),
@@ -2243,6 +2519,8 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		const unsigned char *p, const unsigned char *pend,
 		uint32_t capture_size, uint32_t wire_length)
 {
+    ++counts[tcp_packet];
+    
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
     INVARIANT((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
@@ -2255,7 +2533,14 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	u_int32_t rpclen = ntohl(*(u_int32_t *)p);
 	if (false) printf("  rpclen %x\n",rpclen);
 	if ((rpclen & 0x80000000) == 0) {
-	    return; // can't be RPC, high bit supposed to be set in length!
+            // note: the highest bit of the last fragment of an RPC
+            // (on TCP) packet is supposed to be set; so if this bit
+            // is not set, then it cannot be the last fragment of an
+            // RPC packet; however, if this packet is RPC but just not
+            // the last fragment, then the highest bit won't be set;
+            // also, it is possible that this packet is not RPC but
+            // happens to have the highest bit set;
+	    return; 
 	}
 	rpclen &= 0x7FFFFFFF;
 	if (false) printf("  rpclen %d\n",rpclen);
@@ -2267,14 +2552,23 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	} else {
 	    thismsgend = p + rpclen;
 	}
-	try {
-	    if (rpcmsg[1] == 0) {
+	try { // note: rpcmsg[1] (the type is u_int32_t) is the
+              // call/reply (0/1) field of the RPC headers; however,
+              // RPC requests/replies may be broken into multiple
+              // packets and the "RPC continuation" packets do not
+              // have a header; so this test is not accurate for those
+              // packets; the statistics of those packets are
+              // reflected by other counters (e.g.,
+              // reply-missing-request);
+            if (rpcmsg[1] == 0) {
 		if (false) printf("tcprpcreq\n");
+		counts[rpc_tcp_request_len] += rpclen;
 		handleRPCRequest(time,ip_hdr,ntohs(tcp_hdr->source),
 				 ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
 				 rpclen,p,thismsgend);
 	    } else if (rpcmsg[1] == RPC::net_reply) {
 		if (false) printf("tcprpcrep\n");
+		counts[rpc_tcp_reply_len] += rpclen;
 		handleRPCReply(time,ip_hdr,ntohs(tcp_hdr->source),
 			       ntohs(tcp_hdr->dest),ntohs(tcp_hdr->check),
 			       rpclen,p,thismsgend);
@@ -2290,7 +2584,11 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		      % wire_length % capture_size 
 		      % err.message % err.filename % err.lineno);
 	    ++counts[tcp_short_data_in_rpc];
-	}
+	} catch (RPC::parse_exception &err) {
+            // TODO: give a warning for now, incomplete;
+            ++counts[rpc_parse_error];
+            std::cout << boost::format("RPC parse error: %s %s %s %d\n") % err.condition % err.message % err.filename % err.lineno;
+        }
 	++counts[tcp_rpc_message];
 	if (multiple_rpcs) {
 	    ++counts[tcp_multiple_rpcs];
@@ -2308,6 +2606,8 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	      Clock::Tfrac time)
 {
     ++counts[packet_count];
+    counts[wire_len] += wire_length;
+
     if (!bw_info.empty()) {
 	packet_bw_rolling_info.push(packetTimeSize(Clock::TfracToTll(time), wire_length));
 	if ((counts[packet_count] & 0xFFFF) == 0) {
@@ -2438,14 +2738,21 @@ doProcess(NettraceReader *from, const char *outputname)
 
     prepareBandwidthInformation();
     while(from->nextPacket(&packet, &capture_size, &wire_length, &time)) {
-	INVARIANT(wire_length <= capture_size, "bad");
-	if (wire_length < 64) {
-	    cout << boost::format("weird tiny packet length %d") % wire_length
-		 << endl;
-	    ++counts[tiny_packet];
-	    continue;
-	}
-		  
+        if (file_type == ERF) {
+            // for ERF packets, full packets are typically captured, 
+            // hence wire_length should = capture_size; however, capture_size 
+            // is rounded to 8 byes, hence wire_length could be < capture_size
+            INVARIANT(wire_length <= capture_size, "bad");
+	    if (wire_length < 64) {
+		cout << boost::format("weird tiny packet length %d") % wire_length
+		     << endl;
+		++counts[tiny_packet];
+		continue;
+	    }
+        }
+        else if (file_type == PCAP) {
+            INVARIANT(wire_length >= capture_size, "bad packet, wire_length shouldn't < capture_size");
+        }
 	packetHandler(packet, capture_size, wire_length, time);
 	if ((outputname != NULL) && (counts[packet_count] & 0x1FFFFF) == 0) { 
 	    // every 2 million packets
@@ -2706,37 +3013,56 @@ main(int argc, char **argv)
     counts.resize(static_cast<unsigned>(last_count));
     INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
 
-    if (argc >= 3 && strcmp(argv[1],"--info-erf") == 0) {
+    bool info = (argc >= 4 && strcmp(argv[1], "--info") == 0);
+    bool conv = (argc >= 6 && strcmp(argv[1], "--convert") == 0);
+    bool pcap = (argc >= 4 && strcmp(argv[2], "--pcap") == 0);
+    bool erf = (argc >= 4 && strcmp(argv[2], "--erf") == 0);
+    if (erf) {
+	file_type = ERF;
+    } else if (pcap) {
+	file_type = PCAP;
+    }
+
+    int startFileArg = INT_MAX;
+    MultiFileReader *mfr = new MultiFileReader();
+
+    if (info) { //An info operation
 	prepareEncrypt("abcdef0123456789","abcdef0123456789");
-	cur_record_id = -1;
 	first_record_id = 0;
-	MultiFileReader *mfr = new MultiFileReader();
-	for(int i = 2;i < argc; ++i) {
-	    mfr->addReader(new ERFReader(argv[i]));
-	}
-	doInfo(mfr);
+	cur_record_id = -1;
+	startFileArg = 3;
     }
     
-    if (argc >= 6 && strcmp(argv[1],"--convert-erf") == 0) {
+    commonPackingArgs packing_args;
+    long expected_records = 0;
+    if (conv) { //A conv operation
 	if (enable_encrypt_filenames) {
 	    prepareEncryptEnvOrRandom();
 	}
-
-	commonPackingArgs packing_args;
 	getPackingArgs(&argc,argv,&packing_args);
     
-	first_record_id = stringToLongLong(argv[2]);
+	first_record_id = stringToLongLong(argv[3]);
 	cur_record_id = first_record_id - 1;
-	long expected_records = stringToLong(argv[3]);
-	MultiFileReader *mfr = new MultiFileReader();
-	for(int i = 5; i < argc; ++i) {
-	    mfr->addReader(new ERFReader(argv[i]));
-	}
-	doConvert(mfr, argv[4], packing_args, expected_records);
+	expected_records = stringToLong(argv[4]);
+	startFileArg = 6;
     }
-	
+    for(int i = startFileArg;i < argc; ++i) {
+	if (erf) {
+	    mfr->addReader(new ERFReader(argv[i]));
+	} else if (pcap) {
+	    mfr->addReader(new PCAPReader(argv[i]));
+	}
+    }
+
+    if (info) {
+	doInfo(mfr);
+    } else if (conv) {
+	doConvert(mfr, argv[5], packing_args, expected_records);
+    }
     FATAL_ERROR("usage: --uncompress <input-erf> <output-erf>\n"
-		"       --info-erf <input-erf...>\n"
-		"       --convert-erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>");
+	    "       --info --erf <input-erf...>\n"
+	    "       --info --pcap <input-pcap...>\n"
+	    "       --convert --erf <first-record-num> <expected-record-count> <output-ds-name> <input-erf...>\n"
+	    "       --convert --pcap <first-record-num> <expected-record-count> <output-ds-name> <input-pcap...>\n");
 }
 
