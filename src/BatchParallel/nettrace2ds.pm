@@ -163,11 +163,10 @@ sub find_things_to_build {
 		  if defined $num_to_file{$1};
 	      $num_to_file{$1} = $_; } @file_list;
     }
-
     $this->{groupsize} = int(sqrt($source_count)) unless defined $this->{groupsize};
     
     my @nums = sort { $a <=> $b } keys %num_to_file;
-    
+
     my @ret;
     my $group_count = 0;
     my $running_record_num = $this->{first_record_num};
@@ -209,7 +208,7 @@ sub find_things_to_build {
 		if $last_num >= $this->{finished_before} && 
 		(! -f $dsname || $this->file_older($dsname, @group));
 	    $running_record_num += $record_count;
-	} else { 
+	} else {
 	    die "??";
 	}
     }
@@ -251,15 +250,19 @@ sub rebuild_thing_do {
 	    }
 	}
 	
-	$cmd = "nettrace2ds --convert-erf $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	if ($this->{file_type} eq 'erf') {
+	    $cmd = "nettrace2ds --convert --erf $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	} elsif ($this->{file_type} eq 'pcap') {
+	    $cmd = "nettrace2ds --convert --pcap $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
+	}
 	unlink("$thing_info->{dsname}-fail");
 	print "Creating $thing_info->{dsname}...\n";
     } elsif ($this->{mode} eq 'info') {
 	die "??" unless defined $thing_info->{infoname};
 	if ($this->{file_type} eq 'erf') {
-	    $cmd = "nettrace2ds --info-erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+	    $cmd = "nettrace2ds --info --erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
 	} elsif ($this->{file_type} eq 'pcap') {
-	    $cmd = "nettrace2ds --info-pcap " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
+	    $cmd = "nettrace2ds --info --pcap " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
 	} else {
 	    die "Code shouldn't reach here, file type is $this->{file_type} but should be erf or pcap\n";
 	}
