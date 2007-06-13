@@ -1469,7 +1469,8 @@ public:
 	    return;
 	}
 	int fhlen = ntohl(xdr[1]);
-	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
+	RPCParseAssertMsg(fhlen >= 4 && (fhlen % 4) == 0,
+			  ("bad fhlen = %d", fhlen));
 	ShortDataAssertMsg(actual_len >= 4 + 4 + fhlen,"NFSv3 lookup reply",("bad"));
 	filehandle.assign((char *)xdr + 8,fhlen);
 	NFSV3AttrOpReplyHandler::handleReply(reqdata,time,ip_hdr,source_port,dest_port,
@@ -1533,7 +1534,8 @@ public:
     {
 	const u_int32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(actual_len >= 8,("bad"));
+	ShortDataAssertMsg(actual_len >= 8, "NFSV3 access reply, firstbits",
+			   ("bad %d", actual_len));
 
 	int has_post_op_attr = ntohl(xdr[1]);
 	if (0 == has_post_op_attr) {
@@ -1569,15 +1571,26 @@ public:
 
 	if (op_status != 0) {
 	    if (is_read) {
-		  AssertAlways(op_status == 70 || // stale file handle
-			       op_status == 13, // permission denied
-			       ("bad12 %d", op_status)); 
+		if (op_status == 137) {
+		    // Seeing these in some cache traces?!
+		    cout << "Warning, weird op status in write reply " << op_status << endl;
+		} else {
+		    AssertAlways(op_status == 70 || // stale file handle
+				 op_status == 13, // permission denied
+				 ("bad12 %d", op_status)); 
+		}
 	    } else {
-		  AssertAlways(op_status == 70 || // stale file handle
-			       op_status == 28 || // out of space
-			       op_status == 13 || // permission denied
-			       op_status == 69, // disk quota exceeded
-			       ("bad12 op_status = %d",op_status)); 
+		if ((op_status >= 12000 && op_status <= 16000) ||
+		    op_status == 137) {
+		    // Seeing these in some cache traces?!
+		    cout << "Warning, weird op status in write reply " << op_status << endl;
+		} else {
+		    AssertAlways(op_status == 70 || // stale file handle
+				 op_status == 28 || // out of space
+				 op_status == 13 || // permission denied
+				 op_status == 69, // disk quota exceeded
+				 ("bad12 op_status = %d",op_status)); 
+		}
 	    }
 	    return -1;
 	}
@@ -1629,15 +1642,26 @@ public:
 	actual_len -= 4;
 	if (op_status != 0) {
 	    if (is_read) {
-		AssertAlways(op_status == 70 || // stale file handle
-			     op_status == 13, // permission denied
-			     ("bad12 %d", op_status)); 
+		if (op_status == 137) {
+		    // Weird things being seen in NFS cache traces
+		    cout << "Warning, weird op status in write reply " << op_status << endl;
+		} else {
+		    AssertAlways(op_status == 70 || // stale file handle
+				 op_status == 13, // permission denied
+				 ("bad12 %d", op_status)); 
+		}
 	    } else {
-		AssertAlways(op_status == 70 || // stale file handle
-			     op_status == 28 || // out of space
-			     op_status == 13 || // permission denied
-			     op_status == 69, // disk quota exceeded
-			     ("bad12 op_status = %d",op_status)); 
+		if ((op_status >= 12000 && op_status <= 16000) ||
+		    op_status == 137) {
+		    // Weird things being seen in NFS cache traces
+		    cout << "Warning, weird op status in write reply " << op_status << endl;
+		} else {
+		    AssertAlways(op_status == 70 || // stale file handle
+				 op_status == 28 || // out of space
+				 op_status == 13 || // permission denied
+				 op_status == 69, // disk quota exceeded
+				 ("bad12 op_status = %d",op_status)); 
+		}
 	    }
 	} else {
 	    if (mode == Convert) {
