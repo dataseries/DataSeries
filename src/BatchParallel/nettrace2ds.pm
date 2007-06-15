@@ -97,15 +97,19 @@ sub usage {
     print "batch-parallel nettrace2ds ...; look at the code\n";
 }
 
-# PCAP file suffix is .pcap0, .pcap1, .pcap2, etc.;
-# this rule is dictated by the "-C" option of tcpdump;
-# which outputs files: xyz, xyz1, xyz2, etc.;
-# we have to manually change xyz to xyz0 to have a consistent file name format;
+# erf: files are named as "endace.<digits>.128MiB.<word>"
+# pcap: files are named as "<word>.pcap<digits>"
+#       pcap rule is dictated by the "-C" option of tcpdump;
+#       which outputs files: xyz, xyz1, xyz2, etc.;
+#       we have to manually change xyz to xyz0 to have a consistent file 
+#       name format; TODO: make this automatically work with xyz inferred 
+#       as xyz0
+
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
     return 1 if $filename =~ /^endace\.\d+\.128MiB\.((lzf)|(zlib\d)|(bz2))$/o;
-    return 1 if $filename =~ /\.pcap\d*$/o; 
+    return 1 if $filename =~ /^\w+\.pcap\d+$/o; 
     return 0;
 }
 
@@ -123,46 +127,35 @@ sub find_things_to_build {
 	my @ret = grep(/\.lzf$/o, @file_list);
 	return (scalar @ret, @ret);
     }
+    
+    die "internal" 
+	unless $this->{mode} eq 'info' || $this->{mode} eq 'convert';
 
-    # now $this->{mode} = info|convert
-
-    # auto-detect file type 
-    # erf: files are named as "endace.<digits>.128MiB.<word>"
-    # pcap: files are named as "<word>.pcap<digits>"
-    my $is_erf = 0;
-    my $file;
-    foreach $file (@file_list) {
-	if  ($file =~ /endace\.(\d+)\.128MiB.\w+$/o) { # we don't use /^ b/c $file includes path name
-	    $is_erf = 1;
-	    last;
-	}
-    }
-    my $is_pcap = 0;
-    foreach $file (@file_list) {
-	if ($file =~ /\.pcap(\d*)/o) {
-	    $is_pcap = 1;
-	    last;
-	}
-    }
-    if (($is_erf==1 && $is_pcap==1) || ($is_erf==0 && $is_pcap==0)) {
-	die "Directory should contain only ERF or PCAP files.\n";
-    }
-
-    if ($is_erf == 1) { $this->{file_type} = 'erf'; }
-    else { $this->{file_type} = 'pcap'; }
+    die "No sources??" 
+	unless @file_list > 0;
+    # auto-detect file type; naming convention above file_is_source
 
     my %num_to_file;
-    if ($this->{file_type} eq 'erf') {
-	map { /endace\.(\d+)\.128MiB.\w+$/o || die "huh $_";
-	      die "Duplicate number $1 from $_ and $num_to_file{$1}"
-		  if defined $num_to_file{$1};
-	      $num_to_file{$1} = $_; } @file_list;
-    } else {
-	map { /.pcap(\d*)/o || die "huh $_"; # PCAP file name format is *.pcap0, *.pcap1, *.pcap2, etc.
-	      die "Duplicate number $1 from $_ and $num_to_file{$1}"
-		  if defined $num_to_file{$1};
-	      $num_to_file{$1} = $_; } @file_list;
-    }
+    map { 
+	if (/\bendace\.(\d+)\.128MiB.\w+$/o) {
+	    die "Inputs contain both erf and pcap files??"
+		if defined $this->{file_type} && $this->{file_type} ne 'erf';
+	    $this->{file_type} = 'erf';
+	    die "Duplicate number $1 from $_ and $num_to_file{$1}"
+		if defined $num_to_file{$1};
+	    $num_to_file{$1} = $_;
+	} elsif (/\b\w+\.pcap(\d+)$/o) {
+	    die "Inputs contain both erf and pcap files??"
+		if defined $this->{file_type} && $this->{file_type} ne 'pcap';
+	    $this->{file_type} = 'pcap';
+	    die "Duplicate number $1 from $_ and $num_to_file{$1}"
+		if defined $num_to_file{$1};
+	    $num_to_file{$1} = $_; } @file_list;
+	} else {
+	    die "Unrecognized file type $_";
+	}
+    } @file_list;
+
     $this->{groupsize} = int(sqrt($source_count)) unless defined $this->{groupsize};
     
     my @nums = sort { $a <=> $b } keys %num_to_file;
@@ -176,9 +169,9 @@ sub find_things_to_build {
 	my $first_num = $nums[$i];
 	my $last_num = $nums[$i+$this->{groupsize}-1] || $nums[@nums-1];
 	for(my $j = $first_num; $j <= $last_num; ++$j) {
-	    my $k;
-	    if ($this->{file_type} eq 'erf') { $k = sprintf("%06d", $j); }
-	    else { $k = $j; }
+	    my $k = $j;
+	    $k = sprintf("%06d", $j)
+		if $this->{file_type} eq 'erf';
 	    die "missing num $k" unless defined $num_to_file{$k};
 	    push(@group, $num_to_file{$k});
 	    delete $num_to_file{$k};
@@ -212,6 +205,9 @@ sub find_things_to_build {
 	    die "??";
 	}
     }
+    my @tmp = keys %num_to_file;
+    die "Internal, still have numbers: @tmp"
+        if @tmp > 0;
     if ($this->{mode} eq 'convert') {
 	open(LAST_RUNNING, ">$this->{infodir}/last-running")
 	    or die "Can't open $this->{infodir}/last-running for write: $!";
@@ -250,22 +246,12 @@ sub rebuild_thing_do {
 	    }
 	}
 	
-	if ($this->{file_type} eq 'erf') {
-	    $cmd = "nettrace2ds --convert --erf $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
-	} elsif ($this->{file_type} eq 'pcap') {
-	    $cmd = "nettrace2ds --convert --pcap $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
-	}
+	$cmd = "nettrace2ds --convert --$this->{file_type} $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
 	unlink("$thing_info->{dsname}-fail");
 	print "Creating $thing_info->{dsname}...\n";
     } elsif ($this->{mode} eq 'info') {
 	die "??" unless defined $thing_info->{infoname};
-	if ($this->{file_type} eq 'erf') {
-	    $cmd = "nettrace2ds --info --erf " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
-	} elsif ($this->{file_type} eq 'pcap') {
-	    $cmd = "nettrace2ds --info --pcap " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
-	} else {
-	    die "Code shouldn't reach here, file type is $this->{file_type} but should be erf or pcap\n";
-	}
+	$cmd = "nettrace2ds --info --$this->{file_type} " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";
 	unlink("$thing_info->{infoname}-fail");
 	print "Creating $thing_info->{infoname}...\n";
     } elsif ($this->{mode} eq 'lzf2bz2') {
@@ -353,7 +339,6 @@ sub rebuild_thing_fail {
 }
 
 sub rebuild_thing_message {
-    # die "unimplemented";
     my($this, $thing_info) = @_;
     print("rebuilding files: ");
     for (my $i = 0; $i < @{$thing_info->{files}}; ++$i) {

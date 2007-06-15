@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details

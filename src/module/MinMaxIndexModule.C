@@ -98,7 +98,6 @@ MinMaxIndexModule::init(const std::string &index_filename,
 	delete sel.maxf;
     }
     delete sort_val;
-    unsigned sourcecount = 0;
     sort(kept_extents.begin(),kept_extents.end(),kept_extent_bysortvalue());
 }
 

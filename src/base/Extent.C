@@ -704,7 +704,7 @@ Extent::unpackData(const ExtentType *_type,
     byte compressed_variable_mode = from[6*4+1];
     byte type_name_len = from[6*4+2];
     
-    unsigned header_len = 6*4+4+type_name_len;
+    uint32_t header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
@@ -716,7 +716,7 @@ Extent::unpackData(const ExtentType *_type,
     int32 rounded_variable = compressed_variable_size;
     rounded_variable += (4-(rounded_variable%4))%4;
 
-    AssertAlways(header_len + rounded_fixed + rounded_variable == (int32)from.size(),
+    AssertAlways(header_len + rounded_fixed + rounded_variable == from.size(),
 		 ("Invalid extent data\n"));
 
     fixeddata.resize(nrecords * type->fixed_record_size);
