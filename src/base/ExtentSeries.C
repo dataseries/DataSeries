@@ -4,6 +4,7 @@
    See the file named COPYING for license details
 */
 
+#include <Lintel/AssertBoost.H>
 
 #include <DataSeries/ExtentSeries.H>
 #include <DataSeries/Extent.H>
@@ -92,9 +93,11 @@ ExtentSeries::iterator::forceCheckOffset(long offset)
 {
     AssertAlways(cur_extent != NULL, 
 		 ("internal error, current extent is NULL"));
-    AssertAlways(cur_pos + offset >= cur_extent->fixeddata.begin() &&
-		 cur_pos + offset < cur_extent->fixeddata.end(),
-		 ("internal error, %p + %d = %p not in [%p..%p]\n",
-		  cur_pos,offset,cur_pos+offset,cur_extent->fixeddata.begin(),
-		  cur_extent->fixeddata.end()));
+    INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
+	      cur_pos + offset < cur_extent->fixeddata.end(),
+	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n") 
+	      % reinterpret_cast<void *>(cur_pos) % offset
+	      % reinterpret_cast<void *>(cur_pos+offset)
+	      % reinterpret_cast<void *>(cur_extent->fixeddata.begin())
+	      % reinterpret_cast<void *>(cur_extent->fixeddata.end()));
 }
