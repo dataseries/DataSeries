@@ -1728,7 +1728,7 @@ public:
 		    } else {
 			if (ntohl(xdr[curEntry+structSize+1]) != 1) {
 			    printf("not the end of the directory entry.\n");
-			    printf("We're going to lose data if we don't do tcp reconstruction.\n");
+			    printf("We're going to lose data if we don't do readdirplus3 continuation parsing.\n");
 			}
 			if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
 			break;
