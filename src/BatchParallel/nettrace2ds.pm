@@ -150,7 +150,7 @@ sub find_things_to_build {
 	    $this->{file_type} = 'pcap';
 	    die "Duplicate number $1 from $_ and $num_to_file{$1}"
 		if defined $num_to_file{$1};
-	    $num_to_file{$1} = $_; } @file_list;
+	    $num_to_file{$1} = $_;
 	} else {
 	    die "Unrecognized file type $_";
 	}

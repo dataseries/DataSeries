@@ -1705,7 +1705,9 @@ public:
 			   ("(1 + %d) * 4 + %d <= %d",curPos,fhSize,reply.getrpcresultslen()));
 	const char *fileHandle = reinterpret_cast<const char *>(xdr+curPos);
 	curPos += (fhSize+3) / 4; // round up
-	attrops_filehandle.set(fileHandle,fhSize);
+	if (mode == Convert) {
+	    attrops_filehandle.set(fileHandle,fhSize);
+	}
 	return curPos;
     }
 
@@ -1731,9 +1733,7 @@ public:
 		bool got_name_entry = false;
 		if (ntohl(xdr[curEntry]) == 1) {
 		    got_name_entry = true;
-		    curPos = parseNameEntry(curPos, reply, xdr, reqdata->request_id);
-		} else {
-		    ++curPos;
+		    curPos = parseNameEntry(curPos + 1, reply, xdr, reqdata->request_id);
 		}
 		ShortDataAssertMsg((curPos+1) * 4 <= reply.getrpcresultslen(),
 				   "NFSv3 dirEntry padding+attribcookie+valueFollows missing",
@@ -1767,9 +1767,8 @@ public:
 				       ("(1 + %d) * 4  <= %d",curPos,reply.getrpcresultslen()));
 
 		    if (ntohl(xdr[curPos]) != 1) {
-			FATAL_ERROR("eric does not think this is correct claim as !eof should just mean we need to issue another readdirplus, not do tcp reconstruction; tcp reconstruction necessity was all the shortdataassertmsg's");
 			printf("not the end of the directory entry.\n");
-			printf("We're going to lose data if we don't do tcp reconstruction.\n");
+			printf("We're going to lose data if we don't do readdirplus3 continuation parsing.\n");
 		    }
 		    if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
 		    break;
@@ -1789,8 +1788,7 @@ public:
 
 	int dirAttrFollows = ntohl(xdr[1]);
 	if (dirAttrFollows) {
-	    FATAL_ERROR("5 is something added together to skip, but what, it's also inconsistent with calling code which should only need fattr3_len more bytes beyond the return value.");
-	    ShortDataAssertMsg(actual_len >= (5) * 4 + fattr3_len,
+	    ShortDataAssertMsg(actual_len >= (2) * 4 + fattr3_len,
 		    "NFSv3 ReadDirPlus reply",("bad %d",actual_len));
 	    return 2;
 	} else {

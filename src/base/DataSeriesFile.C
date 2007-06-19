@@ -9,6 +9,9 @@
     DataSeriesFile implementation
 */
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/resource.h>
@@ -126,9 +129,12 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
 	mylibrary.registerType(v);
     }
     delete e;
-    off64_t tailoffset = lseek64(fd,-7*4,SEEK_END);
-    // TODO: switch this to using fstat and the size parameter, got a report from
-    // one user that on their machine lseek64 gives 32 bit truncated values.
+    struct stat ds_file_stat_truct;
+    int ret_val = fstat(fd,&ds_file_stat_truct);
+    INVARIANT(ret_val == 0,
+	      boost::format("fstat failed with %d as it's error code")
+	      % errno);
+    off64_t tailoffset = ds_file_stat_truct.st_size-7*4;
     AssertAlways(tailoffset > 0,("seek to end failed?!\n"));
     byte tail[7*4];
     Extent::checkedPread(fd,tailoffset,tail,7*4);
