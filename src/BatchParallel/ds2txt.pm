@@ -20,6 +20,10 @@ sub new {
 	} elsif (/^filter=(.+)$/o) {
 	    die "Already have a filter" if defined $this->{filter};
 	    $this->{filter} = $1;
+	} elsif (/^options=(.+)$/o) {
+	    die "Already specified ds2txt options"
+		if defined $this->{options};
+	    $this->{options} = $1;
 	} elsif (/^output_extension=(\w+)$/o) {
 	    die "Already have an output extension" if defined $this->{output_extension};
 	    $this->{output_extension} = $1;
@@ -31,7 +35,7 @@ sub new {
 }
 
 sub usage {
-    print "batch-parallel ds2txt [filter=<command>] -- file/directory...\n";
+    print "batch-parallel ds2txt [options=<ds2txt options>] [filter=<command>] -- file/directory...\n";
 }
 
 sub file_is_source {
@@ -53,7 +57,8 @@ sub destination_file {
 sub rebuild {
     my($this,$prefix,$fullpath,$destpath) = @_;
 
-    my $command = "ds2txt $fullpath";
+    $this->{options} ||= '';
+    my $command = "ds2txt $this->{options} $fullpath";
     $command .= " | $this->{filter}" if defined $this->{filter};
     $command .= " >$destpath";
     print "$command\n";
