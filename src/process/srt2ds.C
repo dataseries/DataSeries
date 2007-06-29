@@ -17,10 +17,10 @@
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesModule.H>
 
-#include <SRTTrace.H>
-#include <SRTrecord.H>
-#include <SRTTraceRaw.H>
-#include <SRTTrace_Filter.H>
+#include <SRT/SRTTrace.H>
+#include <SRT/SRTrecord.H>
+#include <SRT/SRTTraceRaw.H>
+#include <SRT/SRTTrace_Filter.H>
 
 static const bool delta_enter_kernel = false;
 static const bool scale_offset = false;

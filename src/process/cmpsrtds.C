@@ -11,10 +11,10 @@
 
 #include <Lintel/AssertBoost.H>
 
-#include <SRTTrace.H>
-#include <SRTrecord.H>
-#include <SRTTraceRaw.H>
-#include <SRTTrace_Filter.H>
+#include <SRT/SRTTrace.H>
+#include <SRT/SRTrecord.H>
+#include <SRT/SRTTraceRaw.H>
+#include <SRT/SRTTrace_Filter.H>
 
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/DataSeriesModule.H>
