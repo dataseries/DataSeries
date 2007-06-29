@@ -18,6 +18,8 @@
 
 #include <ostream>
 
+#include <boost/static_assert.hpp>
+
 using namespace std;
 
 #include <Lintel/Double.H>
@@ -129,13 +131,14 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
 	mylibrary.registerType(v);
     }
     delete e;
-    struct stat ds_file_stat_truct;
-    int ret_val = fstat(fd,&ds_file_stat_truct);
+    struct stat ds_file_stats;
+    int ret_val = fstat(fd,&ds_file_stats);
     INVARIANT(ret_val == 0,
-	      boost::format("fstat failed with %d as it's error code")
-	      % errno);
-    off64_t tailoffset = ds_file_stat_truct.st_size-7*4;
-    AssertAlways(tailoffset > 0,("seek to end failed?!\n"));
+	      boost::format("fstat failed: %s")
+	      % strerror(errno));
+    BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
+    off64_t tailoffset = ds_file_stats.st_size-7*4;
+    INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
     byte tail[7*4];
     Extent::checkedPread(fd,tailoffset,tail,7*4);
     DataSeriesSink::verifyTail(tail,need_bitflip,filename);
