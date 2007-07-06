@@ -1021,6 +1021,7 @@ const string nfs_attrops_xml(
   "  <field type=\"byte\" name=\"typeid\" />\n"
   "  <field type=\"variable32\" name=\"type\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"mode\" comment=\"only includes bits from 0xFFF down, so type is not reproduced here\" print_format=\"%x\" />\n"
+  "  <field type=\"int32\" name=\"hard_link_count\" comment=\"number of hard links to this file system object\"/>\n"
   "  <field type=\"int32\" name=\"uid\" />\n"
   "  <field type=\"int32\" name=\"gid\" />\n"
   "  <field type=\"int64\" name=\"file_size\" />\n"
@@ -1040,6 +1041,7 @@ Variable32Field attrops_lookupdirfilehandle(nfs_attrops_series,"lookup_dir_fileh
 ByteField attrops_typeid(nfs_attrops_series,"typeid");
 Variable32Field attrops_type(nfs_attrops_series,"type");
 Int32Field attrops_mode(nfs_attrops_series,"mode");
+Int32Field attrops_nlink(nfs_attrops_series,"hard_link_count");
 Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
 Int64Field attrops_filesize(nfs_attrops_series,"file_size");
@@ -1505,11 +1507,14 @@ public:
 		attrops_typeid.set(type);
 		attrops_type.set(NFSV3_typelist[type]);
 		attrops_mode.set(ntohl(xdr[1] & 0xFFF));
+		attrops_nlink.set(ntohl(xdr[2]));
 		attrops_uid.set(ntohl(xdr[3]));
 		attrops_gid.set(ntohl(xdr[4]));
 		attrops_filesize.set(xdr_ll(xdr,5));
 		attrops_used_bytes.set(xdr_ll(xdr,7));
+		attrops_access_time.set(getNFS3Time(xdr+15));
 		attrops_modify_time.set(getNFS3Time(xdr+17));
+		attrops_inochange_time.set(getNFS3Time(xdr+19));
 	    }
 	}
     }
@@ -1671,7 +1676,9 @@ public:
 	    attrops_type.set(NFSV3_typelist[type]);
 	    curPos++;
 	    attrops_mode.set(ntohl(xdr[curPos]) & 0xFFF);
-	    curPos+=2;//nlink don't care
+	    curPos++;
+	    attrops_nlink.set(ntohl(xdr[curPos]));
+	    curPos++;
 	    attrops_uid.set(ntohl(xdr[curPos]));
 	    curPos++;
 	    attrops_gid.set(ntohl(xdr[curPos]));
