@@ -137,8 +137,8 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 3,
-		 ("Usage: %s in-file out-file '- allowed for stdin/stdout'\n",
+    AssertAlways(argc == 3 || argc == 4,
+		 ("Usage: %s in-file out-file [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0]));
     if (strcmp(argv[1],"-")==0) {
 	tracestream = new SRTTraceRaw(fileno(stdin));
@@ -151,6 +151,13 @@ main(int argc, char *argv[])
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
+    printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
+    
+    if (argc == 4) {
+	trace_minor = atoi(argv[3]);
+	printf ("overriding minor with %d\n", trace_minor);
+    }
+
     SRTrawRecord *raw_tr = tracestream->record();
     AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
 		 tracestream->fail() == false,
@@ -202,8 +209,6 @@ main(int argc, char *argv[])
 	    printf("adjusted basetime %f\n", base_time);
 	}
     }
-    trace_minor = 4;
-    printf("trace_minor new %d\n", trace_minor);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
@@ -351,6 +356,7 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
+	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
 	outmodule.newRecord();

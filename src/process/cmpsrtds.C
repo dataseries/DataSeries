@@ -27,18 +27,25 @@ main(int argc, char *argv[])
 
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
-    AssertAlways(argc == 3,("Usage: %s in-srt in-ds\n",argv[0]));
+    AssertAlways(argc == 3 || argc == 4,("Usage: %s in-srt in-ds [minor_version]\n",argv[0]));
 		  
     tracestream = new SRTTraceRaw(argv+1,1);
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
 
-    TypeIndexModule srtdsin("Trace::BlockIO::SRT"); 
-    srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
+    TypeIndexModule srtdsin("Trace::BlockIO::HP-UX"); 
+    //srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
     srtdsin.addSource(argv[2]);
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
+    printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
+    
+    if (argc == 4) {
+	trace_minor = atoi(argv[3]);
+	printf ("overriding minor with %d\n", trace_minor);
+    }
+
     ExtentSeries srtseries;
 
     BoolField flag_synchronous(srtseries,"flag_synchronous");
@@ -70,12 +77,16 @@ main(int argc, char *argv[])
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
 
-    DoubleField enter_kernel(srtseries,"enter_driver", DoubleField::flag_allownonzerobase);
-    DoubleField leave_driver(srtseries,"leave_driver", DoubleField::flag_allownonzerobase);
-    DoubleField return_to_driver(srtseries,"return_to_driver", DoubleField::flag_allownonzerobase);
+    Int64Field enter_kernel(srtseries,"enter_driver");
+    Int64Field leave_driver(srtseries,"leave_driver");
+    Int64Field return_to_driver(srtseries,"return_to_driver");
     Int32Field bytes(srtseries,"bytes");
     Int64Field disk_offset(srtseries,"disk_offset");
-    Int32Field device_number(srtseries,"device_number");
+    ByteField device_major(srtseries, "device_major");
+    ByteField device_minor(srtseries, "device_minor");
+    ByteField device_controller(srtseries, "device_controller");
+    ByteField device_disk(srtseries, "device_disk");
+    ByteField device_partition(srtseries, "device_partition");
     Int32Field driver_type(srtseries,"driver_type", Field::flag_nullable);
     ByteField buffertype(srtseries,"buffertype");
 
@@ -134,14 +145,19 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
+	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
-	AssertAlways(fabs(enter_kernel.absval() - tr->created()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(leave_driver.absval() - tr->started()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(return_to_driver.absval() - tr->finished()) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(enter_kernel.val() - tr->tfrac_created()) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(leave_driver.val() - tr->tfrac_started()) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(return_to_driver.val() - tr->tfrac_finished()) < 5e-7,("bad compare\n"));
 	AssertAlways(bytes.val() == (int32)tr->length(),("bad compare\n"));
 	AssertAlways(disk_offset.val() == (int64)tr->offset(),("bad compare %d %lld %lld\n",nrecords,disk_offset.val(),(int64)tr->offset()));
-	AssertAlways(device_number.val() == (int32)tr->device_number(),("bad compare\n"));
+	AssertAlways(device_major.val() == ((int32)tr->device_number() >> 24),("bad compare\n"));
+	AssertAlways(device_minor.val() == ((int32)tr->device_number() >> 16 & 0xFF),("bad compare\n"));
+	AssertAlways(device_controller.val() == ((int32)tr->device_number() >> 12 & 0xF),("bad compare\n"));
+	AssertAlways(device_disk.val() == ((int32)tr->device_number() >> 8 & 0xF),("bad compare\n"));
+	AssertAlways(device_partition.val() == ((int32)tr->device_number() & 0xFF),("bad compare\n"));
 	AssertAlways(buffertype.val() == (int32)tr->buffertype(),("bad compare\n"));
 	AssertAlways(tr->is_synchronous() == flag_synchronous.val(),("bad compare"));
 	AssertAlways(tr->is_DUXaccess() == false,("bad compare"));
