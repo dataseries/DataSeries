@@ -205,7 +205,6 @@ main(int argc, char *argv[])
     trace_minor = 4;
     printf("trace_minor new %d\n", trace_minor);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
-    std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" />\n";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
     header_char_ver[0] = (char)('0' + trace_major);
@@ -214,9 +213,13 @@ main(int argc, char *argv[])
     header_char_ver[3] = '\0';
     srtheadertype_xml.append(header_char_ver);
     srtheadertype_xml.append("\" >\n");
+    std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
+    srtheadertype_xml.append(srt_header);
     srtheadertype_xml.append("</ExtentType>\n");
-    //Write out this extent type, set the library, write the text blob
-    //then set the extent to the below one and go for it with the conversion
+    ExtentTypeLibrary library;
+    ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
+    ExtentSeries srtheaderseries(*srtheadertype);
+    OutputModule headeroutmodule(srtdsout,srtheaderseries,srtheadertype,packing_args.extent_size);
 
     std::string srttype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::HP-UX";
     srttype_xml.append("\" version=\"");
@@ -255,11 +258,12 @@ main(int argc, char *argv[])
     }
     srttype_xml.append(srt_ioflags);
     srttype_xml.append("</ExtentType>\n");
-    ExtentTypeLibrary library;
     ExtentType *srttype = library.registerType(srttype_xml);
     ExtentSeries srtseries(*srttype);
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
+
+    Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
 
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
@@ -328,6 +332,14 @@ main(int argc, char *argv[])
 	thread_id = new Int32Field(srtseries,"thread_id",Field::flag_nullable);
 	lv_offset = new Int64Field(srtseries,"lv_offset",Field::flag_nullable);
     }
+
+    //Write out SRT header info to the DS file and flush the extent.
+    headeroutmodule.newRecord();
+    //printf("HI %s\n", tracestream->header());
+    
+    header_text.set(tracestream->header());
+    headeroutmodule.flushExtent();
+
     int nrecords = 0;
     while(1) {
 	if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) 
