@@ -196,7 +196,7 @@ main(int argc, char *argv[])
 	} else {
 	    // set the base time to the start of the year
 	    Clock::Tfrac curtime = base_time;
-	    printf("sizeof Tfrac %d curtime %f base_time %f\n", sizeof(Clock::Tfrac), curtime, base_time);
+	    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
 	    AssertAlways(curtime == base_time,
 			 ("internal self check failed\n"));
 	    /*
@@ -206,7 +206,7 @@ main(int argc, char *argv[])
 	    base_time = curtime;
 	    */
 	    base_time = 0;
-	    printf("adjusted basetime %f\n", base_time);
+	    printf("adjusted basetime %lld\n", base_time);
 	}
     }
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
