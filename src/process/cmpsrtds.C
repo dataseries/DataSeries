@@ -35,6 +35,8 @@ main(int argc, char *argv[])
     TypeIndexModule srtdsin("Trace::BlockIO::HP-UX"); 
     //srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
     srtdsin.addSource(argv[2]);
+    TypeIndexModule srtdsheaderin("Trace::BlockIO::SRTHeader");
+    srtdsheaderin.addSource(argv[2]);
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
@@ -45,6 +47,8 @@ main(int argc, char *argv[])
 	trace_minor = atoi(argv[3]);
 	printf ("overriding minor with %d\n", trace_minor);
     }
+    ExtentSeries srtheaderseries;
+    Variable32Field header_text(srtheaderseries, "header_text");
 
     ExtentSeries srtseries;
 
@@ -116,6 +120,12 @@ main(int argc, char *argv[])
 	thread_id = new Int32Field(srtseries,"thread_id", Field::flag_nullable);
 	lv_offset = new Int64Field(srtseries,"lv_offset", Field::flag_nullable);
     }
+    Extent *srtheaderextent = srtdsheaderin.getExtent();
+    INVARIANT(srtheaderextent != NULL, "can't find srtheader extents in input file");
+	      
+    srtheaderseries.setExtent(srtheaderextent);
+    AssertAlways(strcmp(tracestream->header(), (const char*)header_text.val()) == 0,("header's are NOT equal %s \n******************\n %s",tracestream->header(), header_text.val()));
+
     Extent *srtextent = srtdsin.getExtent();
     INVARIANT(srtextent != NULL, "can't find srt extents in input file");
 	      
