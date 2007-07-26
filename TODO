@@ -6,6 +6,10 @@
 
 sanitize regression data
 
+- consider making all the Extent * pointers boost::shared_ptr<>; this would
+  let us safely share them.  Would need a way to mark an extent as read only
+  for this to be safe.
+
 - think about whether we should change to preadExtent taking an 
   ExtentType::int64 type argument than an off64_t.  The values come out of
   DS as int64, but get used as off64_t; while these are in theory the same,
