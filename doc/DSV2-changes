@@ -23,3 +23,8 @@ Changes under consideration for DSV2:
     and enable per-extent rules, which could lead to better compression.
     Shouldn't need a unpacked fixed size as record size * nrecords should
     be bigger than that.
+  * Invert the semantics of the magic boolean for nullable such that 0
+    == null, and 1 == not-null, then the initial memset on the extent
+    will set all nullable extents to null, which is a more sane
+    default.  Tricky as the Field accessor would have to change or track
+    the underlying version.
