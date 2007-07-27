@@ -4,7 +4,7 @@
 #* Description:  File system directory scanner
 #* Author:       Brad Morrey
 #* Created:      Thu Jun 28 18:04:20 PDT 2007
-#* Modified:     Thu Jun 28 18:04:20 PDT 2007 (Brad Morrey) brad.morrey@hpl.hp.com
+#* Modified:     Thu Jul 23 18:04:20 PDT 2007 (Brad Morrey) brad.morrey@hpl.hp.com
 #* Language:     Perl
 #* Package:      N/A
 #* Status:       Experimental (Do Not Distribute)
@@ -30,9 +30,10 @@ $maxDepth = 1;
 $curDepth = 0;
 $entryRotateCount = 1000000;
 if ($#ARGV < 1) {
-    print "USAGE: perl fs_enumerator.pl OUTFILESPEC DIR [DIR ...]\n";
+    print "USAGE: perl fs_enumerator.pl OUTFILESPEC DIR|FILE [DIR|FILE ...]\n";
     print "OUTFILESPEC is the prefix for all output files\n";
     print "DIR is one or more directories to be scanned in order\n";
+    print "FILE is one or more files that contain a list of directories to be scanned\n";
     exit(0);
 }
 @dirList = @ARGV[1..$#ARGV];
@@ -42,11 +43,24 @@ print "startdir 0 is $dirList[0] 1 is $dirList[1]\n";
 
 $argDirCount = 0;
 $outFileCurCount = 0;
+@ver_dir_list = ();
 foreach $curDir (@dirList) {
+    if (-f $curDir) {
+	# $curDir is not a directory but a FILE
+	open (FILEOFDIRS, $curDir) || die "couldn't open $curDir ($!)";
+	while (defined ($cur_dir_line = <FILEOFDIRS>)) {
+	    chomp($cur_dir_line);
+	    dirVerify($cur_dir_line);
+	}
+    } else {
+	dirVerify($curDir);
+    }
+}
+
+foreach $curDir (@ver_dir_list) {
     $dirCopy = $curDir;
     $dirCopy =~ s/\//\_/g;
     print "$dirCopy\n";
-    #print "$outFileSpec-$dirCopy-$outFileCurCount.lzf\n";
     $outFileSpecComplete = "$outFileSpec-$dirCopy";
     rotateLogs();
     find(\&wanted, $curDir);
@@ -55,6 +69,15 @@ foreach $curDir (@dirList) {
     close(OUTFILE);
     $outFileCurCount = 0;
     $outFileEntryCount = 0;
+}
+
+sub dirVerify {
+    $curDir = $_[0];
+    if (-e $curDir && -d $curDir) {
+	push @ver_dir_list, $curDir;
+    } else {
+	print "found a non dir $curDir\n";
+    }
 }
 
 sub rotateLogs {
@@ -66,7 +89,6 @@ sub rotateLogs {
 
 $totalSize = 0;
 $curSize = 0;
-#find(\&wanted, $startDir);
 sub wanted {
     #print "$_\n";
     ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,

@@ -12,6 +12,7 @@
 #include <math.h>
 
 #include <Lintel/StringUtil.H>
+#include <Lintel/Clock.H>
 
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/commonargs.H>
@@ -59,19 +60,36 @@ const std::string srt_ioflags(
   "  <field type=\"bool\" name=\"act_flush\"/>\n"
   );
 
+
+
+const std::string srt_timefields(
+  "  <field type=\"int64\" name=\"enter_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
+  "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
+  "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
+  );
+
+
+
+
+/*
 const std::string srt_timefields(
   "  <field type=\"double\" name=\"enter_driver\" pack_scale=\"1e-6\" pack_relative=\"enter_driver\" opt_doublebase=\"%.15g\" />\n"
   "  <field type=\"double\" name=\"leave_driver\" pack_scale=\"1e-6\" pack_relative=\"enter_driver\" opt_doublebase=\"%.15g\" />\n"
   "  <field type=\"double\" name=\"return_to_driver\" pack_scale=\"1e-6\" pack_relative=\"enter_driver\" opt_doublebase=\"%.15g\" />\n"
   );
-
+*/
 const std::string srt_v3fields(
   "  <field type=\"int32\" name=\"bytes\"/>\n"
   "  <field type=\"int64\" name=\"disk_offset\" pack_relative=\"disk_offset\" />\n"
-  "  <field type=\"int32\" name=\"device_number\"/>\n"
+  "  <field type=\"byte\" name=\"device_major\" />\n"
+  "  <field type=\"byte\" name=\"device_minor\" />\n"
+  "  <field type=\"byte\" name=\"device_controller\" />\n"
+  "  <field type=\"byte\" name=\"device_disk\" />\n"
+  "  <field type=\"byte\" name=\"device_partition\" />\n"
   "  <field type=\"int32\" name=\"driver_type\"/>\n"
   "  <field type=\"int32\" name=\"cylinder_number\"/>\n"
   "  <field type=\"byte\" name=\"buffertype\"/>\n"
+  "  <field type=\"variable32\" name=\"buffertype_text\" pack_unique=\"yes\" />\n"
   );
 
 const std::string srt_v4fields(
@@ -89,7 +107,11 @@ const std::string srt_v6fields(
 const std::string srt_v7fields(
   "  <field type=\"int32\" name=\"bytes\"/>\n"
   "  <field type=\"int32\" name=\"machine_id\"/>\n"
-  "  <field type=\"int32\" name=\"device_number\"/>\n"
+  "  <field type=\"byte\" name=\"device_major\" />\n"
+  "  <field type=\"byte\" name=\"device_minor\" />\n"
+  "  <field type=\"byte\" name=\"device_controller\" />\n"
+  "  <field type=\"byte\" name=\"device_disk\" />\n"
+  "  <field type=\"byte\" name=\"device_partition\" />\n"
   "  <field type=\"int32\" name=\"driver_type\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"thread_id\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"queue_length\"/>\n"
@@ -115,8 +137,8 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 3,
-		 ("Usage: %s in-file out-file '- allowed for stdin/stdout'\n",
+    AssertAlways(argc == 3 || argc == 4,
+		 ("Usage: %s in-file out-file [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0]));
     if (strcmp(argv[1],"-")==0) {
 	tracestream = new SRTTraceRaw(fileno(stdin));
@@ -129,11 +151,18 @@ main(int argc, char *argv[])
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
+    printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
+    
+    if (argc == 4) {
+	trace_minor = atoi(argv[3]);
+	printf ("overriding minor with %d\n", trace_minor);
+    }
+
     SRTrawRecord *raw_tr = tracestream->record();
     AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
 		 tracestream->fail() == false,
 		 ("error, no first record in the srt trace!\n"));
-    double base_time, time_offset;
+    Clock::Tfrac base_time, time_offset;
     {
 	time_offset = 0;
 	SRTrecord *_tr = new SRTrecord(raw_tr, 
@@ -141,8 +170,8 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
-	base_time = tr->created();
-	if (base_time < 86400) {
+	base_time = tr->tfrac_created();
+	if ((base_time>>32) < 86400) { // Less than one day
 	    base_time = 0;
 #if 0
 	    // At some point want to have auto-inferring of time in this case
@@ -166,25 +195,67 @@ main(int argc, char *argv[])
 #endif
 	} else {
 	    // set the base time to the start of the year
-	    time_t curtime = (time_t)round(base_time);
-	    AssertAlways((double)curtime == round(base_time),
+	    Clock::Tfrac curtime = base_time;
+	    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
+	    AssertAlways(curtime == base_time,
 			 ("internal self check failed\n"));
-	    struct tm *gmt = gmtime(&curtime);
+	    /*
+	    time_t foo = (time_t)curtime;
+	    struct tm *gmt = gmtime(&foo);
 	    curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
 	    base_time = curtime;
+	    */
+	    base_time = 0;
+	    printf("adjusted basetime %lld\n", base_time);
 	}
     }
-    std::string srttype_xml = "<ExtentType name=\"Trace::BlockIO::SRT::V";;
-    char foo[2];
-    foo[0] = (char)('0' + trace_minor);
-    foo[1] = '\0';
-    srttype_xml.append(foo);
+    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
+    srtheadertype_xml.append("\" version=\"");
+    char header_char_ver[4];
+    header_char_ver[0] = (char)('0' + trace_major);
+    header_char_ver[1] = '.';
+    header_char_ver[2] = (char)('0' + trace_minor);
+    header_char_ver[3] = '\0';
+    srtheadertype_xml.append(header_char_ver);
+    srtheadertype_xml.append("\" >\n");
+    std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
+    srtheadertype_xml.append(srt_header);
+    srtheadertype_xml.append("</ExtentType>\n");
+    ExtentTypeLibrary library;
+    ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
+    ExtentSeries srtheaderseries(*srtheadertype);
+    OutputModule headeroutmodule(srtdsout,srtheaderseries,srtheadertype,packing_args.extent_size);
+
+    std::string srttype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::HP-UX";
+    srttype_xml.append("\" version=\"");
+    char char_ver[4];
+    char_ver[0] = (char)('0' + trace_major);
+    char_ver[1] = '.';
+    char_ver[2] = (char)('0' + trace_minor);
+    char_ver[3] = '\0';
+    srttype_xml.append(char_ver);
     srttype_xml.append("\" >\n");
     char *buf = new char[srt_timefields.size() + 200];
     sprintf(buf,srt_timefields.c_str(),base_time,base_time,base_time);
     srttype_xml.append(buf);
-    if (trace_minor == 3) {
-	srttype_xml.append(srt_v3fields);
+    printf("trace_minor %d\n", trace_minor);
+    if (trace_minor < 7) {
+	if (trace_minor > 0) {
+	    srttype_xml.append(srt_v3fields);
+	    printf("trace_minor got inside 3!%d\n", trace_minor);
+	} 
+	if (trace_minor >= 4) {
+	    srttype_xml.append(srt_v4fields);
+	    printf("trace_minor got inside 4!%d\n", trace_minor);
+	} 
+	if (trace_minor >= 5) {
+	    srttype_xml.append(srt_v5fields);
+	    printf("trace_minor got inside 5!%d\n", trace_minor);
+	} 
+	if (trace_minor >= 6) {
+	    srttype_xml.append(srt_v6fields);
+	    printf("trace_minor got inside 6!%d\n", trace_minor);
+	}
     } else if (trace_minor == 7) {
 	srttype_xml.append(srt_v7fields);
     } else {
@@ -192,18 +263,23 @@ main(int argc, char *argv[])
     }
     srttype_xml.append(srt_ioflags);
     srttype_xml.append("</ExtentType>\n");
-    ExtentTypeLibrary library;
     ExtentType *srttype = library.registerType(srttype_xml);
     ExtentSeries srtseries(*srttype);
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
 
-    DoubleField enter_kernel(srtseries,"enter_driver", DoubleField::flag_allownonzerobase);
-    DoubleField leave_driver(srtseries,"leave_driver", DoubleField::flag_allownonzerobase);
-    DoubleField return_to_driver(srtseries,"return_to_driver", DoubleField::flag_allownonzerobase);
+    Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
+
+    Int64Field enter_kernel(srtseries,"enter_driver");
+    Int64Field leave_driver(srtseries,"leave_driver");
+    Int64Field return_to_driver(srtseries,"return_to_driver");
     Int32Field bytes(srtseries,"bytes");
     Int64Field disk_offset(srtseries,"disk_offset");
-    Int32Field device_number(srtseries,"device_number");
+    ByteField device_major(srtseries, "device_major");
+    ByteField device_minor(srtseries, "device_minor");
+    ByteField device_controller(srtseries, "device_controller");
+    ByteField device_disk(srtseries, "device_disk");
+    ByteField device_partition(srtseries, "device_partition");
     Int32Field driver_type(srtseries,"driver_type", Field::flag_nullable);
     BoolField flag_synchronous(srtseries,"flag_synchronous");
     BoolField flag_raw(srtseries,"flag_raw");
@@ -235,7 +311,8 @@ main(int argc, char *argv[])
     BoolField act_flush(srtseries,"act_flush");
 
     ByteField buffertype(srtseries,"buffertype");
-
+    Variable32Field buffertype_text(srtseries, "buffertype_text");
+    
     Int32Field *cylinder_number = NULL;
     if (trace_minor >= 1 && trace_minor < 7) {
 	cylinder_number = new Int32Field(srtseries,"cylinder_number");
@@ -260,6 +337,14 @@ main(int argc, char *argv[])
 	thread_id = new Int32Field(srtseries,"thread_id",Field::flag_nullable);
 	lv_offset = new Int64Field(srtseries,"lv_offset",Field::flag_nullable);
     }
+
+    //Write out SRT header info to the DS file and flush the extent.
+    headeroutmodule.newRecord();
+    //printf("HI %s\n", tracestream->header());
+    
+    header_text.set(tracestream->header());
+    headeroutmodule.flushExtent();
+
     int nrecords = 0;
     while(1) {
 	if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) 
@@ -271,24 +356,35 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
+	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
 	outmodule.newRecord();
 	AssertAlways(fabs(tr->created() *1e6 - round(tr->created()*1e6)) < 0.1,
 		     ("bad created %.8f\n",tr->created()));
-	enter_kernel.set(round(1000000.0*(tr->created()-base_time))/1000000.0);
-	double tmp = tr->started() - tr->created();
+	enter_kernel.set(tr->tfrac_created()-base_time);
+	Clock::Tfrac tmp = tr->tfrac_started() - tr->tfrac_created();
+	/*
+	printf("tmp is %f from started %f and created %f\n", tmp, tr->started(), tr->created());
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad started %.8f\n",tr->started()));
-	leave_driver.set(round(1000000.0*(tr->started()-base_time))/1000000.0);
-        tmp = tr->finished() - tr->created();
+	*/
+	leave_driver.set(tr->tfrac_started()-base_time);
+        tmp = tr->tfrac_finished() - tr->tfrac_created();
+	/*
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad finished %.8f\n",tr->started()));
-	return_to_driver.set(round(1000000.0*(tr->finished()-base_time))/1000000.0);
+	*/
+	return_to_driver.set(tr->tfrac_finished()-base_time);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
-	device_number.set(tr->device_number());
+	device_major.set(tr->device_number() >> 24);
+	device_minor.set(tr->device_number() >> 16 & 0xFF);
+	device_controller.set(tr->device_number() >> 12 & 0xF);
+	device_disk.set(tr->device_number() >> 8 & 0xF);
+	device_partition.set(tr->device_number() & 0xFF);
 	buffertype.set((char)tr->buffertype());
+	buffertype_text.set(tr->buffertype_text());
 	flag_synchronous.set(tr->is_synchronous());
 	flag_raw.set(tr->is_raw());
 	flag_no_cache.set(tr->is_no_cache());
