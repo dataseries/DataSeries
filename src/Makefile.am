@@ -175,3 +175,9 @@ srtstat_LDADD = libDataSeries.la
 srtcsvstat_SOURCES = paper/srtcsvstat.C
 srtcsvstat_LDADD = @LINTEL_LIBTOOL@
 endif
+
+if ENABLE_EXAMPLE
+bin_PROGRAMS += merge-example
+
+merge_example_SOURCES = example/merge-example.cpp
+endif

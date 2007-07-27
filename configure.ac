@@ -64,6 +64,13 @@ AC_ARG_ENABLE(paper,
 
 AM_CONDITIONAL(ENABLE_PAPER, test "$enable_paper" = yes)
 
+AC_ARG_ENABLE(example,
+  [  --enable-example    build binaries for the examples -- default NO],
+  [enable_example=$enableval],
+  [enable_example=no])
+
+AM_CONDITIONAL(ENABLE_EXAMPLE, test "$enable_example" = yes)
+
 ## flags
 AC_SYS_LARGEFILE
 
