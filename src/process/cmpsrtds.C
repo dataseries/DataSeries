@@ -80,6 +80,7 @@ main(int argc, char *argv[])
     BoolField act_free(srtseries,"act_free");
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
+    BoolField net_buf(srtseries, "net_buf");
 
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
@@ -171,7 +172,6 @@ main(int argc, char *argv[])
 	AssertAlways(buffertype.val() == (int32)tr->buffertype(),("bad compare\n"));
 	AssertAlways(tr->is_synchronous() == flag_synchronous.val(),("bad compare"));
 	AssertAlways(tr->is_DUXaccess() == false,("bad compare"));
-	AssertAlways(tr->is_netbuf() == false,("bad compare"));
 	AssertAlways(tr->is_raw() == flag_raw.val(),("bad compare"));
 	AssertAlways(tr->is_no_cache() == flag_no_cache.val(),("bad compare"));
 	AssertAlways(tr->is_call() == flag_call.val(),("bad compare"));
@@ -202,6 +202,7 @@ main(int argc, char *argv[])
 	AssertAlways(tr->is_allocate() == act_allocate.val(),("bad compare"));
 	AssertAlways(tr->is_free() == act_free.val(),("bad compare"));
 	AssertAlways(tr->is_character_dev_io() == act_raw.val(),("bad compare"));
+	AssertAlways(tr->is_netbuf() == net_buf.val(), ("bad_compare"));
 
 	if (trace_minor >= 7 && tr->noDriver()) {
 	    AssertAlways(driver_type.isNull(),("bad compare\n"));

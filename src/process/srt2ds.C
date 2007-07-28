@@ -59,9 +59,6 @@ const std::string srt_ioflags(
   "  <field type=\"bool\" name=\"act_raw\"/>\n"
   "  <field type=\"bool\" name=\"act_flush\"/>\n"
   "  <field type=\"bool\" name=\"net_buf\"/>\n"
-  "  <field type=\"bool\" name=\"bad_block_revector\"/>\n"
-  "  <field type=\"bool\" name=\"is_buffer_head\"/>\n"
-  "  <field type=\"bool\" name=\"is_buffer_locked\"/>\n"
   );
 
 
@@ -323,9 +320,6 @@ main(int argc, char *argv[])
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
     BoolField net_buf(srtseries,"net_buf");
-    BoolField bad_block(srtseries,"bad_block_revector");
-    BoolField buffer_head(srtseries,"is_buffer_head");
-    BoolField buffer_locked(srtseries,"is_buffer_locked");
     
 
     ByteField buffertype(srtseries,"buffertype");
