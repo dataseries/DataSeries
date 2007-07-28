@@ -58,6 +58,10 @@ const std::string srt_ioflags(
   "  <field type=\"bool\" name=\"act_free\"/>\n"
   "  <field type=\"bool\" name=\"act_raw\"/>\n"
   "  <field type=\"bool\" name=\"act_flush\"/>\n"
+  "  <field type=\"bool\" name=\"net_buf\"/>\n"
+  "  <field type=\"bool\" name=\"bad_block_revector\"/>\n"
+  "  <field type=\"bool\" name=\"is_buffer_head\"/>\n"
+  "  <field type=\"bool\" name=\"is_buffer_locked\"/>\n"
   );
 
 
@@ -67,8 +71,6 @@ const std::string srt_timefields(
   "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
   "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
   );
-
-
 
 
 /*
@@ -157,19 +159,26 @@ main(int argc, char *argv[])
 	trace_minor = atoi(argv[3]);
 	printf ("overriding minor with %d\n", trace_minor);
     }
-
-    SRTrawRecord *raw_tr = tracestream->record();
-    AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
-		 tracestream->fail() == false,
-		 ("error, no first record in the srt trace!\n"));
+    SRTrawRecord *raw_tr;
     Clock::Tfrac base_time, time_offset;
-    {
+    SRTrecord *_tr;
+    SRTio *tr;
+    //do {
+	raw_tr = tracestream->record();
+	AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
+		tracestream->fail() == false,
+		("error, no first record in the srt trace!\n"));
 	time_offset = 0;
-	SRTrecord *_tr = new SRTrecord(raw_tr, 
-				      SRTrawTraceVersion(trace_major, trace_minor));
+	_tr = new SRTrecord(raw_tr, 
+		SRTrawTraceVersion(trace_major, trace_minor));
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
-	SRTio *tr = (SRTio *)_tr;
+	tr = (SRTio *)_tr;
+	if (tr->is_suspect()) {
+	    printf ("skipping suspect IO record\n");
+	}
+	//} while (tr->is_suspect());
+    {
 	base_time = tr->tfrac_created();
 	if ((base_time>>32) < 86400) { // Less than one day
 	    base_time = 0;
@@ -240,7 +249,11 @@ main(int argc, char *argv[])
     srttype_xml.append(buf);
     printf("trace_minor %d\n", trace_minor);
     if (trace_minor < 7) {
-	if (trace_minor > 0) {
+	if (trace_minor == 0) {
+	    //NEED VERSION 0 HERE
+	    //srttype_xml.append(srt_v0fields);
+	    printf("trace_minor got inside 0!%d\n", trace_minor);
+	} else if (trace_minor >= 3) {
 	    srttype_xml.append(srt_v3fields);
 	    printf("trace_minor got inside 3!%d\n", trace_minor);
 	} 
@@ -309,12 +322,19 @@ main(int argc, char *argv[])
     BoolField act_free(srtseries,"act_free");
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
+    BoolField net_buf(srtseries,"net_buf");
+    BoolField bad_block(srtseries,"bad_block_revector");
+    BoolField buffer_head(srtseries,"is_buffer_head");
+    BoolField buffer_locked(srtseries,"is_buffer_locked");
+    
 
     ByteField buffertype(srtseries,"buffertype");
     Variable32Field buffertype_text(srtseries, "buffertype_text");
     
     Int32Field *cylinder_number = NULL;
-    if (trace_minor >= 1 && trace_minor < 7) {
+    if (trace_minor == 0) {
+	//NEED VERSION 0 INIT HERE
+    } else if (trace_minor >= 1 && trace_minor < 7) {
 	cylinder_number = new Int32Field(srtseries,"cylinder_number");
     }
     Int32Field *queue_length = NULL;
@@ -414,9 +434,12 @@ main(int argc, char *argv[])
 	act_free.set(tr->is_free());
 	act_raw.set(tr->is_character_dev_io());
 	act_flush.set(tr->is_flush());
+	// The 1996 cello traces appear to have the flag set in some
+	// records.  This seems to be a mis-transcode from KI, but the
+	// Origin IO Flags header file from HP-UX from 1996 is lost.
+	net_buf.set(tr->is_netbuf());
 
 	AssertAlways(tr->is_DUXaccess() == false,("need more columns"));
-	AssertAlways(tr->is_netbuf() == false,("need more columns"));
 	AssertAlways(tr->is_private() == false,("need more columns"));
 	// is readahead is just a composite test of async && read && fsysio
 	//	AssertAlways(tr->is_readahead() == false,("need more columns"));
