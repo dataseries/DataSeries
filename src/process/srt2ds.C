@@ -392,7 +392,7 @@ main(int argc, char *argv[])
 	return_to_driver.set(tr->tfrac_finished()-base_time);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
-	device_major.set(tr->device_number() >> 24);
+	device_major.set(tr->device_number() >> 24 & 0xFF);
 	device_minor.set(tr->device_number() >> 16 & 0xFF);
 	device_controller.set(tr->device_number() >> 12 & 0xF);
 	device_disk.set(tr->device_number() >> 8 & 0xF);
