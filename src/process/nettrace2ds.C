@@ -1700,7 +1700,8 @@ public:
     }
 
     // return new curPos
-    int32_t parseNameHandle(int32_t curPos, RPCReply &reply, const uint32_t *xdr) {
+    int32_t parseNameHandle(int32_t curPos, RPCReply &reply, const uint32_t *xdr,
+			    bool got_name_entry) {
 	ShortDataAssertMsg((curPos+1) * 4  <= reply.getrpcresultslen(),
 			   "NFSv3 dirEntry namehandlesize missing",
 			   ("(%d + 1) * 4 <= %d",curPos,reply.getrpcresultslen()));
@@ -1712,7 +1713,7 @@ public:
 			   ("(1 + %d) * 4 + %d <= %d",curPos,fhSize,reply.getrpcresultslen()));
 	const char *fileHandle = reinterpret_cast<const char *>(xdr+curPos);
 	curPos += (fhSize+3) / 4; // round up
-	if (mode == Convert) {
+	if (mode == Convert && got_name_entry) {
 	    attrops_filehandle.set(fileHandle,fhSize);
 	}
 	return curPos;
@@ -1755,8 +1756,7 @@ public:
 				   "NFSv3 dirEntry ... + name_HandleFollows",
 				   ("(1 + %d) * 4  <= %d",curPos,reply.getrpcresultslen()));
 		if (ntohl(xdr[curPos]) == 1) {//name_handle follows
-		    INVARIANT(got_name_entry, "whoa, have name_handle w/o a name??");
-		    curPos = parseNameHandle(curPos + 1, reply, xdr);
+		    curPos = parseNameHandle(curPos + 1, reply, xdr, got_name_entry);
 		} else {
 		    ++curPos;
 		} 
@@ -1791,7 +1791,10 @@ public:
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(actual_len >= 4,("readdirplus3 packet size < 4"));
 	uint32_t op_status = ntohl(*xdr);
-	AssertAlways(op_status == 0,("op_status non-zero in readdirplus3 after check"));
+	if (op_status != 0) {
+	    cout << "Warning, readdirplus3 failed, op_status " << op_status << endl;
+	    return -1; 
+	}
 
 	int dirAttrFollows = ntohl(xdr[1]);
 	if (dirAttrFollows) {
@@ -2154,7 +2157,6 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		if (false) printf("got a READDIRPLUS\n");
 		int fhlen = ntohl(xdr[0]);
 		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
-		if (false) printf("%d vs %d\n", actual_len, sizeof(struct READDIRPLUS3args));
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 

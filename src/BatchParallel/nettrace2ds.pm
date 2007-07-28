@@ -135,6 +135,7 @@ sub find_things_to_build {
 	unless @file_list > 0;
     # auto-detect file type; naming convention above file_is_source
 
+    print "Mapping numbers to files...\n";
     my %num_to_file;
     map { 
 	if (/\bendace\.(\d+)\.128MiB.\w+$/o) {
@@ -160,11 +161,13 @@ sub find_things_to_build {
     
     my @nums = sort { $a <=> $b } keys %num_to_file;
 
+    print "Getting record numbers...";
     my @ret;
     my $group_count = 0;
     my $running_record_num = $this->{first_record_num};
     $this->{finished_before} ||= 0;
     for(my $i=0; $i < @nums; $i += $this->{groupsize}) {
+	print ".";
 	my @group;
 	my $first_num = $nums[$i];
 	my $last_num = $nums[$i+$this->{groupsize}-1] || $nums[@nums-1];
@@ -205,6 +208,7 @@ sub find_things_to_build {
 	    die "??";
 	}
     }
+    print "\n";
     my @tmp = keys %num_to_file;
     die "Internal, still have numbers: @tmp"
         if @tmp > 0;
@@ -231,24 +235,38 @@ sub rebuild_thing_do {
 	die "??" unless defined $thing_info->{record_start} && defined $thing_info->{record_count};
 
 	my $compress = "--compress-$this->{compress} --compress-level=$this->{compress_level} --extent-size=$this->{extent_size}";
+	my $comment = '';
 	if ($this->{compress} eq 'smart') {
 	    my ($bsize, $frsize, $blocks, $bfree, $bavail,
 		$files, $ffree, $favail, $flag, $namemax) 
 		= statvfs($this->{dsdir});
+	    my $avail_gib = $bavail * 1.0 * $bsize / (1024.0*1024.0*1024.0);
+	    while ($avail_gib < 10) { # 10e9 might not be enough
+		print "Waiting for more space to free up ($avail_gib GiB available)...\n";
+		sleep(60);
+		($bsize, $frsize, $blocks, $bfree, $bavail,
+		 $files, $ffree, $favail, $flag, $namemax) 
+		    = statvfs($this->{dsdir});
+		$avail_gib = $bavail * 512.0 / (1024.0*1024.0*1024.0)
+	    } 
 	    my $ratio_available = $bavail / $blocks;
-	    print "(debug) ratio: $ratio_available\n";
+	    print "(debug) ratio: $ratio_available\n"
+		if 0;
 	    if ($ratio_available > 0.9) {
 		$compress = "--compress-lzf --compress-level=1 --extent-size=65536";
+		$comment = 'via lzf';
 	    } elsif ($ratio_available > 0.5) {
 		$compress = "--compress-gz --compress-level=6 --extent-size=131072";
+		$comment = 'via gzip';
 	    } else {
 		$compress = "--compress-bz2 --compress-level=9 --extent-size=67108864";
+		$comment = 'via bz2';
 	    }
 	}
 	
 	$cmd = "nettrace2ds --convert --$this->{file_type} $compress $thing_info->{record_start} $thing_info->{record_count} $thing_info->{dsname}-new " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{dsname}-log 2>&1";
 	unlink("$thing_info->{dsname}-fail");
-	print "Creating $thing_info->{dsname}...\n";
+	print "Creating $thing_info->{dsname} ${comment} ...\n";
     } elsif ($this->{mode} eq 'info') {
 	die "??" unless defined $thing_info->{infoname};
 	$cmd = "nettrace2ds --info --$this->{file_type} " . join(" ", @{$thing_info->{files}}) . " >$thing_info->{infoname}-new 2>$thing_info->{infoname}-log";

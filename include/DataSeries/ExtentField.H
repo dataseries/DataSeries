@@ -61,10 +61,14 @@ public:
 	    }
 	} else {
 	    INVARIANT(val == false,
-		      "tried to set a non-nullable field to null?!\n");
+		      boost::format("tried to set a non-nullable field %s to null?!\n") % fieldname);
 	}
     }
-	    
+
+    const std::string &getName() {
+	return fieldname;
+    }
+
 protected:
     bool nullable;
     long null_offset;

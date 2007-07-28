@@ -107,7 +107,7 @@ lzf_compress (const void *const in_data, unsigned int in_len,
     memset (htab, 0, sizeof (htab));
 # else
     for (hslot = htab; hslot < htab + HSIZE; hslot++)
-      *hslot++ = ip;
+      *hslot = ip;
 # endif
 #endif
 
