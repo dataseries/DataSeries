@@ -20,6 +20,9 @@ sub new {
 	} elsif (/^compress=(.+)$/o) {
 	    die "Already have a filter" if defined $this->{compress};
 	    $this->{compress} = $1;
+        } elsif (/^minor=(.+)$/o) {
+            die "Already have a new minor version" if defined $this->{new_minor};
+            $this->{new_minor} = $1;
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
@@ -34,23 +37,24 @@ sub usage {
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
-    return 1 if $fullpath =~ /\.srt(|(\.bz2)|(\.gz))$/o;
+    return 1 if $fullpath =~ /\.srt(|(\.bz2)|(\.gz)|(\.Z))$/o;
     return 0;
 }
 
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
 
-    $fullpath =~ s/\.srt(|(\.bz2)|(\.gz))$/.ds/o;
+    $fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
     return $fullpath;
 }
 
 sub rebuild {
     my($this,$prefix,$fullpath,$destpath) = @_;
-
+    my $new_minor = '';
+    $new_minor = $this->{new_minor};
     my $compress = '';
     $compress = "--compress-$this->{compress}";
-    my $command = "srt2ds $compress $fullpath $destpath";
+    my $command = "srt2ds $compress $fullpath $destpath $new_minor";
     print "$command\n";
     return system($command) == 0;
 }

@@ -9,6 +9,9 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <math.h>
 
 #include <Lintel/StringUtil.H>
@@ -58,6 +61,7 @@ const std::string srt_ioflags(
   "  <field type=\"bool\" name=\"act_free\"/>\n"
   "  <field type=\"bool\" name=\"act_raw\"/>\n"
   "  <field type=\"bool\" name=\"act_flush\"/>\n"
+  "  <field type=\"bool\" name=\"net_buf\"/>\n"
   );
 
 
@@ -67,8 +71,6 @@ const std::string srt_timefields(
   "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
   "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
   );
-
-
 
 
 /*
@@ -128,6 +130,7 @@ int32 to_usec(double secs)
 }
 
 bool debug_each_extent = false;
+bool info_create = false;
 
 int
 main(int argc, char *argv[])
@@ -147,6 +150,19 @@ main(int argc, char *argv[])
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
     DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
+    char* info_file_name = (char*)malloc(strlen(argv[1]) + 5); // + .info
+    strcpy(info_file_name, argv[1]);
+    strcat(info_file_name,".info");
+    FILE* info_file_ptr = NULL;
+    if (access(info_file_name, R_OK|W_OK|F_OK) != 0) {
+	info_create = true;
+	info_file_ptr = fopen(info_file_name,"w");
+	if (info_file_ptr == NULL) {
+	    fprintf(stderr, "Info file %s cannot be created\n", info_file_name);
+	    perror("error was:");
+	    exit(1);
+	}
+    }
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
@@ -154,61 +170,86 @@ main(int argc, char *argv[])
     printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
     
     if (argc == 4) {
-	trace_minor = atoi(argv[3]);
+	trace_minor = strtol(argv[3],NULL, 10);
 	printf ("overriding minor with %d\n", trace_minor);
     }
-
-    SRTrawRecord *raw_tr = tracestream->record();
-    AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
-		 tracestream->fail() == false,
-		 ("error, no first record in the srt trace!\n"));
+    SRTrawRecord *raw_tr;
     Clock::Tfrac base_time, time_offset;
-    {
-	time_offset = 0;
-	SRTrecord *_tr = new SRTrecord(raw_tr, 
-				      SRTrawTraceVersion(trace_major, trace_minor));
-	AssertAlways(_tr->type() == SRTrecord::IO,
-		     ("Only know how to handle I/O records\n"));
-	SRTio *tr = (SRTio *)_tr;
-	base_time = tr->tfrac_created();
-	if ((base_time>>32) < 86400) { // Less than one day
-	    base_time = 0;
-#if 0
-	    // At some point want to have auto-inferring of time in this case
-	    const char *header = tracestream->header();
-	    printf("HI %s\n", header);
-
-	    vector<string> lines;
-	    split(header, "\n", lines);
-	    for(vector<string>::iterator i = lines.begin(); 
-		i != lines.end(); ++i) {
-		if (!prefixequal(*i, "tracedate = "))
-		    continue;
-		struct tm tm;
-		tm.tm_yday = -1;
-		printf("Warning, Inferring start time from ");
-		strptime((*i).c_str() + 12, "%a %b %d %H:%M:%S %Y", &tm);
-		AssertAlways(tm.tm_yday != -1, ("bad"));
-		
-	    }
-	    exit(0); // strptime()
-#endif
-	} else {
-	    // set the base time to the start of the year
-	    Clock::Tfrac curtime = base_time;
-	    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
-	    AssertAlways(curtime == base_time,
-			 ("internal self check failed\n"));
-	    /*
-	    time_t foo = (time_t)curtime;
-	    struct tm *gmt = gmtime(&foo);
-	    curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
-	    base_time = curtime;
-	    */
-	    base_time = 0;
-	    printf("adjusted basetime %lld\n", base_time);
-	}
+    SRTrecord *_tr;
+    SRTio *tr;
+    raw_tr = tracestream->record();
+    AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
+	    tracestream->fail() == false,
+	    ("error, no first record in the srt trace!\n"));
+    time_offset = 0;
+    _tr = new SRTrecord(raw_tr, 
+	    SRTrawTraceVersion(trace_major, trace_minor));
+    AssertAlways(_tr->type() == SRTrecord::IO,
+	    ("Only know how to handle I/O records\n"));
+    tr = (SRTio *)_tr;
+    if (tr->is_suspect()) {
+	printf ("skipping suspect IO record\n");
     }
+    if (info_create) {
+	const char *header = tracestream->header();
+	time_t epoc_sec = 0;
+	//printf("Header: %s\n", header);
+	std::vector<std::string> lines;
+	split(header, "\n", lines);
+	for(std::vector<std::string>::iterator i = lines.begin(); 
+	    i != lines.end(); ++i) {
+	    if (!prefixequal(*i, "tracedate"))
+		continue;
+	    const char* time_str = (*i).c_str();
+	    while (*time_str != '\"') {
+		time_str++;
+	    }
+	    struct tm tm;
+	    tm.tm_yday = -1;
+	    printf("Inferring start time from %s\n", time_str+1);
+	    fprintf(info_file_ptr, "%s\t", time_str+1);
+	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
+	    AssertAlways(tm.tm_yday != -1, ("bad"));
+	    epoc_sec = mktime(&tm);
+	    break;
+	}
+	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
+	//Sift the Trace to the end for the last record completion time.
+	uint64_t num_records = 0;
+	Clock::Tfrac old_finished = tr->tfrac_finished();
+	while (1) {
+	    if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) {
+		printf("num_records %lld\n", num_records);
+		fprintf(info_file_ptr, "%lld\n", old_finished);
+		exit(0);
+	    }
+	    num_records++;
+	    SRTrecord *_tr = new SRTrecord(raw_tr, 
+		    SRTrawTraceVersion(trace_major, trace_minor));
+	    
+	    AssertAlways(_tr->type() == SRTrecord::IO,
+		    ("Only know how to handle I/O records\n"));
+	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	    old_finished = ((SRTio *)_tr)->tfrac_finished();
+	    delete _tr;
+	    raw_tr = tracestream->record();
+	}
+    } else {
+	// set the base time from the info file
+    }
+    Clock::Tfrac curtime = base_time;
+    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
+    AssertAlways(curtime == base_time,
+	    ("internal self check failed\n"));
+    /*
+      time_t foo = (time_t)curtime;
+      struct tm *gmt = gmtime(&foo);
+      curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
+      base_time = curtime;
+    */
+    base_time = 0;
+    printf("adjusted basetime %lld\n", base_time);
+
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
@@ -240,7 +281,11 @@ main(int argc, char *argv[])
     srttype_xml.append(buf);
     printf("trace_minor %d\n", trace_minor);
     if (trace_minor < 7) {
-	if (trace_minor > 0) {
+	if (trace_minor == 0) {
+	    //NEED VERSION 0 HERE
+	    //srttype_xml.append(srt_v0fields);
+	    printf("trace_minor got inside 0!%d\n", trace_minor);
+	} else if (trace_minor >= 3) {
 	    srttype_xml.append(srt_v3fields);
 	    printf("trace_minor got inside 3!%d\n", trace_minor);
 	} 
@@ -309,12 +354,16 @@ main(int argc, char *argv[])
     BoolField act_free(srtseries,"act_free");
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
+    BoolField net_buf(srtseries,"net_buf");
+    
 
     ByteField buffertype(srtseries,"buffertype");
     Variable32Field buffertype_text(srtseries, "buffertype_text");
     
     Int32Field *cylinder_number = NULL;
-    if (trace_minor >= 1 && trace_minor < 7) {
+    if (trace_minor == 0) {
+	//NEED VERSION 0 INIT HERE
+    } else if (trace_minor >= 1 && trace_minor < 7) {
 	cylinder_number = new Int32Field(srtseries,"cylinder_number");
     }
     Int32Field *queue_length = NULL;
@@ -378,7 +427,7 @@ main(int argc, char *argv[])
 	return_to_driver.set(tr->tfrac_finished()-base_time);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
-	device_major.set(tr->device_number() >> 24);
+	device_major.set(tr->device_number() >> 24 & 0xFF);
 	device_minor.set(tr->device_number() >> 16 & 0xFF);
 	device_controller.set(tr->device_number() >> 12 & 0xF);
 	device_disk.set(tr->device_number() >> 8 & 0xF);
@@ -414,9 +463,12 @@ main(int argc, char *argv[])
 	act_free.set(tr->is_free());
 	act_raw.set(tr->is_character_dev_io());
 	act_flush.set(tr->is_flush());
+	// The 1996 cello traces appear to have the flag set in some
+	// records.  This seems to be a mis-transcode from KI, but the
+	// Origin IO Flags header file from HP-UX from 1996 is lost.
+	net_buf.set(tr->is_netbuf());
 
 	AssertAlways(tr->is_DUXaccess() == false,("need more columns"));
-	AssertAlways(tr->is_netbuf() == false,("need more columns"));
 	AssertAlways(tr->is_private() == false,("need more columns"));
 	// is readahead is just a composite test of async && read && fsysio
 	//	AssertAlways(tr->is_readahead() == false,("need more columns"));
