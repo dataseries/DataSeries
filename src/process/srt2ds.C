@@ -207,14 +207,33 @@ main(int argc, char *argv[])
 	    struct tm tm;
 	    tm.tm_yday = -1;
 	    printf("Inferring start time from %s\n", time_str+1);
-	    fprintf(info_file_ptr, "%s\n", time_str+1);
+	    fprintf(info_file_ptr, "%s\t", time_str+1);
 	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
 	    AssertAlways(tm.tm_yday != -1, ("bad"));
 	    epoc_sec = mktime(&tm);
 	    break;
 	}
 	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
-	exit(0); // strptime()
+	//Sift the Trace to the end for the last record completion time.
+	uint64_t num_records = 0;
+	Clock::Tfrac old_finished = tr->tfrac_finished();
+	while (1) {
+	    if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) {
+		printf("num_records %lld\n", num_records);
+		fprintf(info_file_ptr, "%lld\n", old_finished);
+		exit(0);
+	    }
+	    num_records++;
+	    SRTrecord *_tr = new SRTrecord(raw_tr, 
+		    SRTrawTraceVersion(trace_major, trace_minor));
+	    
+	    AssertAlways(_tr->type() == SRTrecord::IO,
+		    ("Only know how to handle I/O records\n"));
+	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	    old_finished = ((SRTio *)_tr)->tfrac_finished();
+	    delete _tr;
+	    raw_tr = tracestream->record();
+	}
     } else {
 	// set the base time from the info file
     }
