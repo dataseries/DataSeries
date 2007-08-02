@@ -72,7 +72,7 @@ libDataSeries_la_SOURCES = \
 BUILT_SOURCES = lex.DSStatGroupBy_yy.c
 
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby
+	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby 
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -85,21 +85,23 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
-nettrace2ds_SOURCES = process/nettrace2ds.C
 
+##### WITH_PCAP
 if WITH_PCAP
 bin_PROGRAMS += network-driverdump 
 network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
 
-if WITH_CRYPTO
-bin_PROGRAMS += nettrace2ds
+bin_PROGRAMS += nettrace2ds 
+
+nettrace2ds_SOURCES = process/nettrace2ds.C
+
 nettrace2ds_LDADD = libDataSeries.la -lpcap
-nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm
-endif
+nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
 
+##### WITH_SRT
 if WITH_SRT
 bin_PROGRAMS += srt2ds cmpsrtds
 
@@ -114,8 +116,21 @@ CHECK_TARGETS += ran.check-srt2ds
 nobase_bpmodules_DATA += BatchParallel/srt2ds.pm
 endif
 
+##### WITH_PCRE
+if WITH_PCRE
+bin_PROGRAMS += bacct2ds
+bacct2ds_SOURCES = process/bacct2ds.C
+bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
+
+nobase_bpmodules_DATA += BatchParallel/bacct2ds.pm
+endif
+
+##### BUILT Sources
+
 lex.DSStatGroupBy_yy.c: module/DSStatGroupByLex.l
 	flex $(top_srcdir)/src/module/DSStatGroupByLex.l
+
+##### Testing...
 
 check_PROGRAMS = test
 test_SOURCES = test.C 
