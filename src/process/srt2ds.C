@@ -9,6 +9,9 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <math.h>
 
 #include <Lintel/StringUtil.H>
@@ -127,6 +130,7 @@ int32 to_usec(double secs)
 }
 
 bool debug_each_extent = false;
+bool info_create = false;
 
 int
 main(int argc, char *argv[])
@@ -146,6 +150,19 @@ main(int argc, char *argv[])
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
     DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
+    char* info_file_name = (char*)malloc(strlen(argv[1]) + 5); // + .info
+    strcpy(info_file_name, argv[1]);
+    strcat(info_file_name,".info");
+    FILE* info_file_ptr = NULL;
+    if (access(info_file_name, R_OK|W_OK|F_OK) != 0) {
+	info_create = true;
+	info_file_ptr = fopen(info_file_name,"w");
+	if (info_file_ptr == NULL) {
+	    fprintf(stderr, "Info file %s cannot be created\n", info_file_name);
+	    perror("error was:");
+	    exit(1);
+	}
+    }
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
@@ -153,68 +170,67 @@ main(int argc, char *argv[])
     printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
     
     if (argc == 4) {
-	trace_minor = atoi(argv[3]);
+	trace_minor = strtol(argv[3],NULL, 10);
 	printf ("overriding minor with %d\n", trace_minor);
     }
     SRTrawRecord *raw_tr;
     Clock::Tfrac base_time, time_offset;
     SRTrecord *_tr;
     SRTio *tr;
-    //do {
-	raw_tr = tracestream->record();
-	AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
-		tracestream->fail() == false,
-		("error, no first record in the srt trace!\n"));
-	time_offset = 0;
-	_tr = new SRTrecord(raw_tr, 
-		SRTrawTraceVersion(trace_major, trace_minor));
-	AssertAlways(_tr->type() == SRTrecord::IO,
-		     ("Only know how to handle I/O records\n"));
-	tr = (SRTio *)_tr;
-	if (tr->is_suspect()) {
-	    printf ("skipping suspect IO record\n");
-	}
-	//} while (tr->is_suspect());
-    {
-	base_time = tr->tfrac_created();
-	if ((base_time>>32) < 86400) { // Less than one day
-	    base_time = 0;
-#if 0
-	    // At some point want to have auto-inferring of time in this case
-	    const char *header = tracestream->header();
-	    printf("HI %s\n", header);
-
-	    vector<string> lines;
-	    split(header, "\n", lines);
-	    for(vector<string>::iterator i = lines.begin(); 
-		i != lines.end(); ++i) {
-		if (!prefixequal(*i, "tracedate = "))
-		    continue;
-		struct tm tm;
-		tm.tm_yday = -1;
-		printf("Warning, Inferring start time from ");
-		strptime((*i).c_str() + 12, "%a %b %d %H:%M:%S %Y", &tm);
-		AssertAlways(tm.tm_yday != -1, ("bad"));
-		
-	    }
-	    exit(0); // strptime()
-#endif
-	} else {
-	    // set the base time to the start of the year
-	    Clock::Tfrac curtime = base_time;
-	    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
-	    AssertAlways(curtime == base_time,
-			 ("internal self check failed\n"));
-	    /*
-	    time_t foo = (time_t)curtime;
-	    struct tm *gmt = gmtime(&foo);
-	    curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
-	    base_time = curtime;
-	    */
-	    base_time = 0;
-	    printf("adjusted basetime %lld\n", base_time);
-	}
+    raw_tr = tracestream->record();
+    AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
+	    tracestream->fail() == false,
+	    ("error, no first record in the srt trace!\n"));
+    time_offset = 0;
+    _tr = new SRTrecord(raw_tr, 
+	    SRTrawTraceVersion(trace_major, trace_minor));
+    AssertAlways(_tr->type() == SRTrecord::IO,
+	    ("Only know how to handle I/O records\n"));
+    tr = (SRTio *)_tr;
+    if (tr->is_suspect()) {
+	printf ("skipping suspect IO record\n");
     }
+    if (info_create) {
+	const char *header = tracestream->header();
+	time_t epoc_sec = 0;
+	//printf("Header: %s\n", header);
+	std::vector<std::string> lines;
+	split(header, "\n", lines);
+	for(std::vector<std::string>::iterator i = lines.begin(); 
+	    i != lines.end(); ++i) {
+	    if (!prefixequal(*i, "tracedate"))
+		continue;
+	    const char* time_str = (*i).c_str();
+	    while (*time_str != '\"') {
+		time_str++;
+	    }
+	    struct tm tm;
+	    tm.tm_yday = -1;
+	    printf("Inferring start time from %s\n", time_str+1);
+	    fprintf(info_file_ptr, "%s\n", time_str+1);
+	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
+	    AssertAlways(tm.tm_yday != -1, ("bad"));
+	    epoc_sec = mktime(&tm);
+	    break;
+	}
+	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
+	exit(0); // strptime()
+    } else {
+	// set the base time from the info file
+    }
+    Clock::Tfrac curtime = base_time;
+    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
+    AssertAlways(curtime == base_time,
+	    ("internal self check failed\n"));
+    /*
+      time_t foo = (time_t)curtime;
+      struct tm *gmt = gmtime(&foo);
+      curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
+      base_time = curtime;
+    */
+    base_time = 0;
+    printf("adjusted basetime %lld\n", base_time);
+
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
