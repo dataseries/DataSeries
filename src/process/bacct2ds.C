@@ -24,6 +24,7 @@
 
 #include <Lintel/LintelAssert.H>
 #include <Lintel/HashMap.H>
+#include <Lintel/HashUnique.H>
 #include <Lintel/Clock.H>
 #include <Lintel/StringUtil.H>
 
@@ -46,6 +47,9 @@ vector<string> encrypted_parse_periodsep;
 vector<string> encrypted_parse_colonsep;
 vector<string> encrypted_parse_pipesep;
 vector<string> encrypted_parse_special;
+
+HashMap<string,string> encrypted_hostgroups;
+HashMap<string, HashUnique<string> > unrecognized_hostgroups;
 
 HashMap<string,bool> encrypted_ok_idx_noframe;
 
@@ -169,6 +173,7 @@ const string lsf_grizzly_xml(
   "  <field type=\"int64\" name=\"max_memory\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
   "  <field type=\"int64\" name=\"max_swap\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
   "  <field type=\"variable32\" name=\"exec_host\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"exec_host_group\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually machines are purchased in batches; if we can identify the batch, which one is it? dedicated groups (almost always serving LSF jobs) are named dedicated-\" />\n"
   "</ExtentType>\n");
 
 ExtentSeries lsf_grizzly_series;
@@ -220,6 +225,7 @@ DoubleField cpu_time(lsf_grizzly_series, "cpu_time");
 Int64Field max_memory(lsf_grizzly_series, "max_memory", Field::flag_nullable);
 Int64Field max_swap(lsf_grizzly_series, "max_swap", Field::flag_nullable);
 Variable32Field exec_host(lsf_grizzly_series, "exec_host", Field::flag_nullable);
+Variable32Field exec_host_group(lsf_grizzly_series, "exec_host_group", Field::flag_nullable);
 
 // was doing into.push_back(char), but this implementation is
 // way faster
@@ -715,53 +721,35 @@ extract_framerange_step_parallel(job_info &jinfo,const string &framebits,
     return true;
 }
 
+pcre *
+xpcre_compile(const char *regex)
+{
+    const char *errptr;
+    int erroffset;
+
+    pcre *ret = pcre_compile(regex,0,&errptr,&erroffset,NULL);
+    INVARIANT(ret != NULL,
+	      boost::format("pcre compile(%s) failed at: %s")
+	      % regex % errptr);
+    return ret;
+}
+
 bool // true on success
 parse_frameinfo(const string &framebits, job_info &jinfo)
 {
     if (regex_frame_one == NULL) {
-	const char *errptr;
-	int erroffset;
-	regex_frame_one = pcre_compile("^(\\d+)$",
-				       0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_one != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-	regex_frame_range = pcre_compile("^\\[(\\d+)-(\\d+)\\]$",
-					 0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_range != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
+	regex_frame_one = xpcre_compile("^(\\d+)$");
+	regex_frame_range = xpcre_compile("^\\[(\\d+)-(\\d+)\\]$");
 	regex_frame_range_step_1 =
-	    pcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]$",
-			 0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_range_step_1 != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-
+	    xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]$");
 	regex_frame_range_step_2 =
-	    pcre_compile("^\\[(\\d+)-(\\d+)\\]%(\\d+)$",
-			 0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_range_step_2 != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-
+	    xpcre_compile("^\\[(\\d+)-(\\d+)\\]%(\\d+)$");
 	regex_frame_range_step_3 =
-	    pcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]%(\\d+)$",
-			 0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_range_step_3 != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-
-	regex_frame_list = pcre_compile("^\\[(\\d+)(,\\d+)*,(\\d+)\\]$",
-					0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_list != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-
-	regex_frame_complex = pcre_compile("^\\[(\\d|-|:|,)+\\](%\\d+)?$",
-					0,&errptr,&erroffset,NULL);
-	AssertAlways(regex_frame_complex != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
-
+	    xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]%(\\d+)$");
+	regex_frame_list = xpcre_compile("^\\[(\\d+)(,\\d+)*,(\\d+)\\]$");
+	regex_frame_complex = xpcre_compile("^\\[(\\d|-|:|,)+\\](%\\d+)?$");
 	regex_frame_single_step = 
-	    pcre_compile("^\\[(\\d)+\\]%(\\d+)$",
-			 0, &errptr, &erroffset, NULL);
-	AssertAlways(regex_frame_single_step != NULL,
-		     ("pcre compile failed at: %s\n",errptr));
+	    xpcre_compile("^\\[(\\d)+\\]%(\\d+)$");
     }
     const int novector = 30;
     int ovector[novector];
@@ -1035,6 +1023,22 @@ void unhex_array(string hexstrings[], int nhexstrings,
     }
 }
 
+struct hostgroup_defnsT {
+    string encrypted;
+    string group;
+};
+
+static hostgroup_defnsT hostgroup_defns[] = 
+{
+    { "cecc2842c468e4c51ad942d95a2537c3", "dedicated-bear-0" },
+    { "f6c1fb207c5ba0a5f7f08637c222e53f", "dedicated-bear-1" },
+    { "773a8af8ee6ffb48faf5dd4de2dcb0b2", "dedicated-bear-2" },
+    { "a002b3e30a23779709da2f192c171dbe", "dedicated-bear-3" },
+    { "0697f0c72a559d090ca02a7d2946ba4c", "dedicated-bear-4" },
+    { "2979bc3e40d19293d68b3e019455fb3c", "dedicated-bear-5" },
+    { "660d9778aee6bc3701abc195b8365437", "dedicated-bear-6" },
+};
+
 void prepEncryptedStuff()
 {
     unhex_array(encrypted_parse_directory_hexstrings,
@@ -1064,6 +1068,12 @@ void prepEncryptedStuff()
     for(int i=0;i<count;++i) {
 	string f = hex2raw(ok_idx_noframe_strings[i]);
 	encrypted_ok_idx_noframe[f] = true;
+    }
+
+    for(unsigned i = 0; i < sizeof(hostgroup_defns)/sizeof(hostgroup_defnsT); 
+	++i) {
+	encrypted_hostgroups[hex2raw(hostgroup_defns[i].encrypted)] 
+	    = hostgroup_defns[i].group;
     }
 }
 
@@ -3509,6 +3519,89 @@ framelike(const string &v)
     }
 }
 
+string
+hostGroupUnrecognized(const string &group, const string &hostname)
+{
+    HashUnique<string> &tmp = unrecognized_hostgroups[group];
+    tmp.add(hostname);
+    if (tmp.size() > 10) {
+	vector<string> hostnames;
+	for(HashUnique<string>::iterator i = tmp.begin();
+	    i != tmp.end(); ++i) {
+	    hostnames.push_back(*i);
+	}
+	FATAL_ERROR(boost::format("too many hosts in group %s -> %s: %s")
+		    % group % hexstring(encryptString(group)) 
+		    % join(", ", hostnames));
+    }
+    return empty_string;
+}
+
+pcre *regex_hostgroup_one;
+pcre *regex_hostgroup_two; 
+
+string
+hostGroupWordPrefixCheck(const string &hostname)
+{
+    const int novector = 30;
+    int ovector[novector];
+
+    int rc = pcre_exec(regex_hostgroup_two, NULL, hostname.c_str(),
+		       hostname.length(), 0,0,ovector,novector);
+    if (rc == 2) {
+	string group;
+	xpcre_get_substring(hostname, ovector, rc, 1, group);
+	if (group.size() != hostname.size()) {
+	    return hostGroupUnrecognized(group, hostname);
+	}
+    }
+    INVARIANT(rc == PCRE_ERROR_NOMATCH,
+	      "unexpected error from pcre");
+
+    return empty_string;
+}
+
+string
+hostGroup(const string &hostname)
+{
+    if (regex_hostgroup_one == NULL) {
+	regex_hostgroup_one = xpcre_compile("^([a-z]+)\\d+$");
+	regex_hostgroup_two = xpcre_compile("^(\\w+)\\b");
+    }
+
+    if (cluster_name_str == "rwc" || cluster_name_str == "gld") {
+	const int novector = 30;
+	int ovector[novector];
+
+	int rc = pcre_exec(regex_hostgroup_one, NULL, hostname.c_str(),
+			   hostname.length(), 0,0,ovector,novector);
+	if (rc == 2) {
+	    string group;
+	    xpcre_get_substring(hostname, ovector, rc, 1, group);
+	    if (encrypted_hostgroups.exists(group)) {
+		return encrypted_hostgroups[group];
+	    } else {
+		return hostGroupUnrecognized(group, hostname);
+	    }
+	}
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  "unexpected error from pcre");
+
+	return hostGroupWordPrefixCheck(hostname);
+    } else if (cluster_name_str == "uc-hpl-pa") {
+	static string batch_cli = "batch-cli-";
+	static string dedicated_hpl_1 = "dedicated-hpl-1";
+	if (hostname.substr(0,10) == batch_cli) {
+	    return dedicated_hpl_1;
+	}
+	return hostGroupWordPrefixCheck(hostname);
+    } else {
+	FATAL_ERROR(boost::format("Don't know how to determine host groups for cluster %s")
+		    % cluster_name_str);
+	return empty_string;
+    }
+}
+
 const string str_zero("0");
 
 void
@@ -3658,6 +3751,7 @@ process_line(char *buf, int linenum)
     max_memory.nset(jinfo.max_memory);
     max_swap.nset(jinfo.max_swap);
     exec_host.nset(dsstring(jinfo.exec_host), empty_string);
+    exec_host_group.nset(hostGroup(jinfo.exec_host), empty_string);
 }
 
 int
