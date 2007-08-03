@@ -51,9 +51,13 @@ sub destination_file {
 sub rebuild {
     my($this,$prefix,$fullpath,$destpath) = @_;
     my $new_minor = '';
-    $new_minor = $this->{new_minor};
+    if (defined ($this->{new_minor})) {
+	$new_minor = $this->{new_minor};
+    }
     my $compress = '';
-    $compress = "--compress-$this->{compress}";
+    if (defined ($this->{compress})) {
+	$compress = "--compress-$this->{compress}";
+    }
     my $command = "srt2ds $compress $fullpath $destpath $new_minor";
     print "$command\n";
     return system($command) == 0;
