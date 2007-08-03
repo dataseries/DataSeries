@@ -175,7 +175,7 @@ main(int argc, char *argv[])
 	printf ("overriding minor with %d\n", trace_minor);
     }
     SRTrawRecord *raw_tr;
-    Clock::Tfrac base_time, time_offset;
+    Clock::Tfrac base_time = 0, time_offset = 0;
     SRTrecord *_tr;
     SRTio *tr;
     raw_tr = tracestream->record();
@@ -200,9 +200,10 @@ main(int argc, char *argv[])
 	for(std::vector<std::string>::iterator i = lines.begin(); 
 	    i != lines.end(); ++i) {
 	    // All headers have a tracedate
-	    if (!prefixequal(*i, "tracedate"))
-		continue;
 	    const char* time_str = (*i).c_str();
+	    time_str = strstr(time_str, "tracedate");
+	    if (time_str == NULL)
+		continue;
 	    /*
 	    // 1.2/4 and 1.6 traces have an equal sign
 	    while (time_str != NULL && *time_str != '=') {
