@@ -226,7 +226,7 @@ main(int argc, char *argv[])
 	    */
 	    break;
 	}
-	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
+	//printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
 	//Sift the Trace to the end for the last record completion time.
 	uint64_t num_records = 0;
 	Clock::Tfrac old_finished = tr->tfrac_finished();
