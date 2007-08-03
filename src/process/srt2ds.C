@@ -150,20 +150,21 @@ main(int argc, char *argv[])
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
     DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
-    char* info_file_name = (char*)malloc(strlen(argv[1]) + 5); // + .info
-    strcpy(info_file_name, argv[1]);
-    strcat(info_file_name,".info");
     FILE* info_file_ptr = NULL;
+    char* info_file_name = new char[strlen(argv[1]) + 6]; // + .info
+    info_file_name = strcpy(info_file_name, argv[1]);
+    info_file_name = strcat(info_file_name,".info");
+    printf ("%s\n", info_file_name);
     if (access(info_file_name, R_OK|W_OK|F_OK) != 0) {
 	info_create = true;
-	info_file_ptr = fopen(info_file_name,"w");
+	info_file_ptr = fopen((const char *)info_file_name,"w");
+	printf ("%s\n", info_file_name);
 	if (info_file_ptr == NULL) {
 	    fprintf(stderr, "Info file %s cannot be created\n", info_file_name);
 	    perror("error was:");
 	    exit(1);
 	}
     }
-
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
@@ -198,22 +199,34 @@ main(int argc, char *argv[])
 	split(header, "\n", lines);
 	for(std::vector<std::string>::iterator i = lines.begin(); 
 	    i != lines.end(); ++i) {
+	    // All headers have a tracedate
 	    if (!prefixequal(*i, "tracedate"))
 		continue;
 	    const char* time_str = (*i).c_str();
-	    while (*time_str != '\"') {
+	    /*
+	    // 1.2/4 and 1.6 traces have an equal sign
+	    while (time_str != NULL && *time_str != '=') {
+		time_str++;
+	    }
+	    // 1.2/4 and 1.6 traces have a space after the equal sign
+	    time_str++;
+	    // 1.2/4 traces have whitespace and then a leading "
+	    while (trace_minor == 4 && *time_str != '\"') {
 		time_str++;
 	    }
 	    struct tm tm;
 	    tm.tm_yday = -1;
-	    printf("Inferring start time from %s\n", time_str+1);
-	    fprintf(info_file_ptr, "%s\t", time_str+1);
+	    */
+	    printf("Inferring start time from %s\n", time_str);
+	    fprintf(info_file_ptr, "%s\t", time_str);
+	    /*
 	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
 	    AssertAlways(tm.tm_yday != -1, ("bad"));
 	    epoc_sec = mktime(&tm);
+	    */
 	    break;
 	}
-	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
+	//printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
 	//Sift the Trace to the end for the last record completion time.
 	uint64_t num_records = 0;
 	Clock::Tfrac old_finished = tr->tfrac_finished();
