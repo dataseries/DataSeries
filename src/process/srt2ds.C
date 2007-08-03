@@ -203,6 +203,7 @@ main(int argc, char *argv[])
 	    if (!prefixequal(*i, "tracedate"))
 		continue;
 	    const char* time_str = (*i).c_str();
+	    /*
 	    // 1.2/4 and 1.6 traces have an equal sign
 	    while (time_str != NULL && *time_str != '=') {
 		time_str++;
@@ -215,11 +216,14 @@ main(int argc, char *argv[])
 	    }
 	    struct tm tm;
 	    tm.tm_yday = -1;
-	    printf("Inferring start time from %s\n", time_str+1);
-	    fprintf(info_file_ptr, "%s\t", time_str+1);
+	    */
+	    printf("Inferring start time from %s\n", time_str);
+	    fprintf(info_file_ptr, "%s\t", time_str);
+	    /*
 	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
 	    AssertAlways(tm.tm_yday != -1, ("bad"));
 	    epoc_sec = mktime(&tm);
+	    */
 	    break;
 	}
 	printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
