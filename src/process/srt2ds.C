@@ -234,7 +234,7 @@ main(int argc, char *argv[])
 	while (1) {
 	    if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) {
 		printf("num_records %lld\n", num_records);
-		fprintf(info_file_ptr, "%lld\n", old_finished);
+		fprintf(info_file_ptr, "\"%lld\"\n", old_finished);
 		exit(0);
 	    }
 	    num_records++;
