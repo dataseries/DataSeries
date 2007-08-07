@@ -10,6 +10,7 @@ use vars '@ISA';
 use File::Copy;
 use File::Compare;
 use Filesys::Statvfs;
+use BatchParallel::nonmod::gpgkeys;
 
 @ISA = qw/BatchParallel::common/;
 
@@ -73,16 +74,7 @@ sub new {
 	    $this->{dsdir} = $this->{infodir};
 	}
 	unless (defined $ENV{NAME_KEY_1} && defined $ENV{NAME_KEY_2}) {
-	    print "Missing \$ENV{NAME_KEY_[12]}, trying to read from ~/.hash-keys.txt.gpg\n";
-	    open(KEYS, "gpg --decrypt $ENV{HOME}/.hash-keys.txt.gpg |") 
-		or die "can't run gpg: $!";
-	    $_ = <KEYS>; chomp;
-	    die "?? $_" unless /^setenv NAME_KEY_1 ([0-9a-f]{32,})$/o;
-	    $ENV{NAME_KEY_1} = $1;
-	    $_ = <KEYS>; chomp;
-	    die "?? $_" unless /^setenv NAME_KEY_2 ([0-9a-f]{32,})$/o;
-	    $ENV{NAME_KEY_2} = $1;
-	    close(KEYS);
+	    BatchParallel::nonmod::gpgkeys::setup_keys();
 	}
 
     }

@@ -1,0 +1,321 @@
+#!/usr/bin/perl -w
+BEGIN { @AnyDBM_File::ISA = qw(DB_File GDBM_File NDBM_File) }
+use AnyDBM_File;  
+use strict;
+use FileHandle;
+use File::Copy;
+use File::Find;
+
+die "Usage: $0 <basedir> <file{,.gz,.bz2}|dir>...
+  Timesplit files will be written into ?"
+    unless @ARGV >= 2 && -d $ARGV[0];
+
+my $basedir = shift @ARGV;
+
+my %processed;
+if (! -f "$basedir/processed.db") {
+    tie %processed, 'AnyDBM_File', "$basedir/processed-$$.db", O_CREAT|O_RDWR;
+} else {
+    copy("$basedir/processed.db","$basedir/processed-$$.db")
+	or die "Copy failed: $!";
+    tie %processed, 'AnyDBM_File', "$basedir/processed-$$.db", O_RDWR;
+}
+    
+my @files;
+find(sub { push(@files,$File::Find::name) if -f $_; },
+     @ARGV);
+
+$|=1;
+my $basename;
+if ($files[0] =~ /\blsb.acct\b/o) {
+    foreach my $file (@files) {
+	die "different types of files ($file) is not lsb.acct?!"
+	    unless $file =~ /\blsb.acct\b/o;
+    }
+    $basename = 'lsb.acct';
+} else {
+    die "don't know how to interpret file type $files[0]";
+}
+
+my $min_pending_compress = 0;
+my %pending_compresses;
+
+foreach my $file (@files) {
+    warn "relative path for $file, tracking processed files may not work right"
+	unless $file =~ m!^/!o;
+    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
+	$atime,$mtime,$ctime,$blksize,$blocks)
+	= stat($file);
+    if (defined $processed{$file}) {
+	if ($processed{$file} eq "$size-$mtime") {
+	    print "skipping unchanged file $file\n";
+	    next;
+	}
+	print "$file has been updated ($processed{$file} ne $size-$mtime)\n";
+    }
+
+    print "reading from $file:\n";
+    my $fh = openfile($file);
+
+    my @datagroup;
+    my $startevfile = 'N/A';
+    my $last_ev_time = 0;
+    while(<$fh>) {
+	last unless /\n$/o; # ignore truncated final line
+      	die "unknown input line $_"
+	    unless /^"[A-Z_]+" "\d+\.\d+" (\d+) \d+/o;
+	my $eventtime = $1;
+	if ($eventtime < $last_ev_time) {
+	    warn "Time out of order in $file, multi-dup processing";
+	    updateEventFile($startevfile, \@datagroup);
+	    @datagroup = ();
+	}
+	$last_ev_time = $eventtime;
+	my $evfile = eventtime2file($eventtime);
+	if ($evfile ne $startevfile) {
+	    updateEventFile($startevfile,\@datagroup);
+	    $startevfile = $evfile;
+	    @datagroup = ();
+	}
+	push(@datagroup,$_);
+    }
+    updateEventFile($startevfile,\@datagroup);
+    $processed{$file} = "$size-$mtime";
+    pending_compress(time);
+}
+
+pending_compress(time() + 1000000);
+untie %processed or die "Unable to untie: $!";
+unlink("$basedir/processed.db");
+rename("$basedir/processed-$$.db","$basedir/processed.db")
+    or die "Unable to rename: $!";
+
+sub pending_compress {
+    my ($now) = @_;
+
+    return if $min_pending_compress + 3600 > $now;
+
+    $min_pending_compress = $now;
+
+    my @to_compress;
+    while(my($file,$at) = each %pending_compresses) {
+	if ($at + 300 > $now) {
+	    $min_pending_compress = $at if $at < $min_pending_compress;
+	} else {
+	    push(@to_compress, $file);
+	}
+    }
+    foreach my $file (@to_compress) {
+	delete $pending_compresses{$file};
+	die "??" unless -f $file;
+	die "??" if -f "${file}.gz";
+	print "pending compress $file\n";
+	system("bzip2 -9v $file") == 0
+	    or die "bzip2 failed";
+    }
+}
+	
+
+sub eventtime2file {
+    my($eventtime) = @_;
+
+    my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) 
+	= gmtime($eventtime);
+
+    $year += 1900;
+    $mon += 1;
+    return sprintf("$year/%02d/${basename}.$year-%02d-%02d",
+		   $mon,$mon,$mday);
+}
+
+sub byNewTimes {
+    my($times,$a,$b) = @_;
+
+    my $ta = $times->{$a};
+    my $tb = $times->{$b};
+    die "??" unless defined $ta && defined $tb;
+    return $ta <=> $tb 
+	if $ta != $tb;
+    return $a cmp $b;
+}
+
+sub getTimes {
+    my($data) = @_;
+
+    my %ret;
+    foreach my $line (@$data) {
+	$ret{$line} = getTime($line);
+    }
+    return %ret;
+}
+
+sub getTime {
+    my ($line) = @_;
+
+    die "unknown line $line"
+	unless $line =~ /^"[A-Z_]+" "\d+\.\d+" (\d+) \d+/o;
+    return $1;
+}
+
+sub updateEventFile {
+    my($evfile,$newdata) = @_;
+
+    my %newtimes = getTimes($newdata);
+    @$newdata = sort { byNewTimes(\%newtimes,$a,$b) } @$newdata;
+    if ($evfile eq 'N/A') {
+	die "internal" unless @$newdata == 0;
+	return;
+    }
+    die "internal" if @$newdata == 0;
+    my $outname = "$basedir/$evfile";
+    my $compresstype;
+    $compresstype = '' if -f ${outname};
+    if (-f "${outname}.gz") {
+	die "${outname}$compresstype and ${outname}.gz both exist"
+	    if defined $compresstype;
+	$compresstype = '.gz';
+    }
+    if (-f "${outname}.bz2") {
+	die "${outname}$compresstype and ${outname}.bz2 both exist"
+	    if defined $compresstype;
+	$compresstype = '.bz2';
+    }
+
+    $compresstype = '' unless defined $compresstype;
+    if ($compresstype eq '') {
+	$pending_compresses{$outname} = time;
+    }
+
+    if (! -f "$outname$compresstype") {
+	print "  creating ${outname}$compresstype\n    ";
+	mkdirpart($outname);
+	open(OUTFILE,">$outname-new")
+	    or die "Unable to open $outname-new for write: $!";
+	print OUTFILE @$newdata;
+	close(OUTFILE) or die "close failed";
+    } else {
+	print "  updating ${outname}:\n    ";
+	my $fh = openfile("$outname$compresstype");
+	my @origdata = <$fh>;
+	close($fh);
+	open(OUTFILE,">$outname-new")
+	    or die "Unable to open $outname-new for write: $!";
+	my ($origidx,$newidx) = (0,0);
+	my ($dup_count,$new_count,$orig_count) = (0,0,0);
+	my %seen;
+	my $last_time = 0;
+	my $last_line = '';
+	while ($origidx < @origdata || $newidx < @$newdata) {
+	    my $origline = $origdata[$origidx];
+	    my $newline = $newdata->[$newidx];
+	    $origline = '"XXXX" "99999.99" 999999999999 999999' 
+		unless defined $origline;
+	    $newline  = '"XXXX" "99999.99" 999999999999 999999' 
+		unless defined $newline;
+	    my $origtime = getTime($origline);
+	    my $newtime = getTime($newline);
+	    
+	    my $line_time;
+	    my $new_line;
+	    if ($origline eq $newline) {
+		die "strange duplicate"
+		    if defined $seen{$origline};
+		$line_time = $origtime;
+		$seen{$origline} = $evfile;
+		++$dup_count;
+		$new_line = $origline;
+		++$origidx;
+		++$newidx;
+	    } elsif ($origtime < $newtime ||
+		     ($origtime == $newtime && $origline lt $newline)) {
+		die "strange duplicate"
+		    if defined $seen{$origline};
+		$line_time = $origtime;
+		++$orig_count;
+		$new_line = $origline;
+		++$origidx;
+	    } elsif ($newtime < $origtime ||
+		     ($origtime == $newtime && $newline lt $origline)) {
+		die "strange duplicate"
+		    if defined $seen{$newline};
+		$line_time = $newtime;
+		++$new_count;
+	        $new_line = $newline;
+		++$newidx;
+	    } else {
+		die "??";
+	    }
+
+	    die "?? '$line_time'" 
+		unless defined $line_time && $line_time =~ /^\d+$/o;
+	    die "??" if $line_time >= 9999999999; # << fake val
+	    die "bad ordering building $evfile"
+		unless $line_time >= $last_time;
+	    die "bad ordering building $evfile ($line_time)"
+		if $line_time == $last_time && $new_line lt $last_line;
+	    print OUTFILE $new_line;
+	    $last_line = $new_line;
+	    $last_time = $line_time;
+	}
+	my $totline = $dup_count + $new_count + $orig_count;
+	print "$totline total: $dup_count dups, $orig_count original, $new_count new...";
+	close(OUTFILE) or die "close failed";
+	if ($new_count == 0) {
+	    unlink("$outname-new") or die "unlink($outname-new) failed: $!";
+	    print "unchanged.\n";
+	    return;
+	}
+    }
+
+    if ($compresstype eq '.gz') {
+	die "HuH?";
+	print "compressing...";
+	system("gzip -9 $outname-new") == 0
+	    or die "gzip failed";
+    } elsif ($compresstype eq '.bz2') {
+	print "compressing...";
+	system("bzip2 -9 $outname-new") == 0
+	    or die "bzip2 failed";
+    } 
+    if (-f "$outname$compresstype") {
+	unlink("$outname$compresstype")
+	    or die "unable to unlink: $!";
+    }
+    rename("$outname-new$compresstype","$outname$compresstype")
+	or die "rename failed: $!";
+
+    print "done.\n";
+}
+
+sub openfile {
+    my ($filename) = @_;
+
+    my $ret;
+    if ($filename =~ /\.bz2$/o) {
+	$ret = new FileHandle "bunzip2 -c < $filename |"
+	    or die "bad: $!";
+    } elsif ($filename =~ /\.gz$/o) {
+	$ret = new FileHandle "gunzip -c < $filename |"
+	    or die "bad: $!";
+    } else {
+	$ret = new FileHandle "$filename"
+	    or die "bad: $!";
+    }
+    return $ret;
+}
+
+sub mkdirpart {
+    my ($filename) = @_;
+    
+    my @filebits = split(m!/!o,$filename);
+    my $dirname = shift @filebits;
+    $dirname = '/' if $dirname eq '';
+    while (@filebits > 0) {
+	# because we mkdir before we add to the filename, we 
+	# will not make the filename part of the directory.
+	unless (-d $dirname) {
+	    mkdir($dirname,0775) or die "can't mkdir $dirname: $!";
+	}
+	$dirname .= "/" . shift @filebits;
+    }
+}
