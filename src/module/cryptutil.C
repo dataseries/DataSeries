@@ -174,7 +174,7 @@ runCryptUtilChecks()
 	AssertAlways(enc != dec && dec == in,("bad"));
 	in.append(" ");
     }
-    cout << "CryptUtilChecks passed." << endl;
+    if (false) cout << "CryptUtilChecks passed." << endl;
 }
 
 void

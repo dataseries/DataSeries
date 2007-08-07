@@ -36,13 +36,13 @@ WITH_CRYPTO=0
 endif
 
 bpmodulesdir = $(datadir)/bp_modules
-nobase_bpmodules_DATA = BatchParallel/ds2txt.pm
+nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/nonmod/gpgkeys.pm
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
-bin_SCRIPTS = dataseries-config
+bin_SCRIPTS = dataseries-config 
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
 libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto
@@ -103,7 +103,8 @@ CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
 
 ##### WITH_SRT
 if WITH_SRT
-bin_PROGRAMS += srt2ds cmpsrtds
+bin_PROGRAMS += srt2ds cmpsrtds 
+bin_SCRIPTS += process/dssrt2txt
 
 srt2ds_SOURCES = process/srt2ds.C
 srt2ds_LDADD = @SRT_LIBS@ libDataSeries.la  
@@ -119,6 +120,8 @@ endif
 ##### WITH_PCRE
 if WITH_PCRE
 bin_PROGRAMS += bacct2ds
+bin_SCRIPTS += process/lsflog-timesplit
+
 bacct2ds_SOURCES = process/bacct2ds.C
 bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
 

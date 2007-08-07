@@ -1,5 +1,6 @@
 package BatchParallel::bacct2ds;
 use BatchParallel::nonmod::gpgkeys;
+use File::Path;
 
 die "module version mismatch" 
     unless $BatchParallel::common::interface_version < 2;
@@ -12,6 +13,7 @@ batch-parallel bacct2ds [help]
   [key=<nokey, key-filename, or ~/.<key>-hash-keys.txt.gpg>; 
    default autoguess from source files] 
   [bacct2ds=<binary-path, by default found in \$PATH] 
+  [no-binary-dependency]
   [compress=<bz2,gz,lzo,lzf, as supported by bacct2ds, default lzo>] 
   -- <source files>
 END_OF_USAGE
@@ -23,6 +25,7 @@ sub new {
 		 'bacct2ds' => undef,
 		 'compress' => 'lzo' };
     bless $this, $class;
+    my $bindep = 1;
     foreach my $arg (@_) {
 	if ($arg eq 'help') {
 	    $this->usage();
@@ -35,6 +38,8 @@ sub new {
 		unless -x $this->{bacct2ds};
 	} elsif ($arg =~ /^compress=(\w+)$/o) {
 	    $this->{compress} = $1;
+	} elsif ($arg eq 'no-binary-dependency') {
+	    $bindep = 0;
 	} else {
 	    $this->usage();
 	    die "don't understand argument '$arg'";
@@ -52,7 +57,8 @@ sub new {
 	    unless defined $this->{bacct2ds};
 	print "Found bacct2ds as $this->{bacct2ds}\n";
     }
-    push(@{$this->{static_deps}},$this->{bacct2ds});
+    push(@{$this->{static_deps}},$this->{bacct2ds})
+	if $bindep;
 
     return $this;
 }
@@ -66,6 +72,7 @@ sub file_is_source {
     $this->{keyguess}->{bear} = 1 if $fullpath =~ m!lsf-data/gld/!o;
 
     return 0 if $fullpath =~ /\.ds(-new)?$/o;
+    return 0 if $fullpath =~ /\~$/o;
     return 1 if $fullpath =~ /\blsb\.acct\b/o;
     return 0;
 }
@@ -90,10 +97,13 @@ sub pre_exec_setup {
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
 
-    if ($fullpath =~ m!/home/anderse/lsf-data/(\w+)/timesplit/!o) {
+    if ($fullpath =~ m!.*/lsf-data/(\w+)/timesplit/!o) {
 	$fullpath =~ s/\.((gz)|(bz2))$//o;
 	$fullpath =~ s!/timesplit/!/ds/!o;
-	# TODO: create path...
+
+	my $dirpath = $fullpath;
+	$dirpath =~ s![^/]+!!o;
+	mkpath($dirpath) unless -d $dirpath;
 	return $fullpath . ".ds";
     } else {
 	die "?? $fullpath";
@@ -121,12 +131,8 @@ sub rebuild {
     }
 
     my $cluster;
-    if ($fullpath =~ m!/home/anderse/lsf-data/rwc/timesplit!o) {
-	$cluster = 'rwc';
-    } elsif ($fullpath =~ m!/home/anderse/lsf-data/gld/timesplit!o) {
-	$gluster = 'gld';
-    } elsif ($fullpath =~ m!/home/anderse/projects/Tuscany/Tiger/lsf!o) {
-	$cluster = 'tiger';
+    if ($fullpath =~ m!/lsf-data/(\w+)/timesplit!o) {
+	$cluster = $1;
     } else {
 	die "?? can't work out cluster from $fullpath";
     }
