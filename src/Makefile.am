@@ -72,7 +72,7 @@ libDataSeries_la_SOURCES = \
 BUILT_SOURCES = lex.DSStatGroupBy_yy.c
 
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby 
+	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -85,6 +85,7 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
+iphost2ds_SOURCES = process/iphost2ds.C
 
 ##### WITH_PCAP
 if WITH_PCAP

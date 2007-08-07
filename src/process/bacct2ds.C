@@ -3775,8 +3775,6 @@ process_line(char *buf, int linenum)
 int
 main(int argc,char *argv[])
 {
-    enable_encrypt_memoize = true;
-
     commonPackingArgs packing_args;
     packing_args.extent_size = 8*1024*1024;
     getPackingArgs(&argc,argv,&packing_args);
