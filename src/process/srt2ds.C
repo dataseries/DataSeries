@@ -65,11 +65,10 @@ const std::string srt_ioflags(
   );
 
 
-
 const std::string srt_timefields(
-  "  <field type=\"int64\" name=\"enter_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
-  "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
-  "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"enter_driver\"  print_divisor=\"4295\" />\n"
+  "  <field type=\"int64\" name=\"enter_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
   );
 
 
@@ -158,13 +157,17 @@ main(int argc, char *argv[])
     if (access(info_file_name, R_OK|W_OK|F_OK) != 0) {
 	info_create = true;
 	info_file_ptr = fopen((const char *)info_file_name,"w");
-	printf ("%s\n", info_file_name);
-	if (info_file_ptr == NULL) {
-	    fprintf(stderr, "Info file %s cannot be created\n", info_file_name);
-	    perror("error was:");
-	    exit(1);
-	}
+    } else {
+	info_create = false;
+	info_file_ptr = fopen((const char*)info_file_name, "r");
     }
+    printf ("%s\n", info_file_name);
+    if (info_file_ptr == NULL) {
+	fprintf(stderr, "Info file %s cannot be created/opened\n", info_file_name);
+	perror("error was:");
+	exit(1);
+    }
+    
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
@@ -182,15 +185,11 @@ main(int argc, char *argv[])
     AssertAlways(raw_tr != NULL && tracestream->eof() == false &&
 	    tracestream->fail() == false,
 	    ("error, no first record in the srt trace!\n"));
-    time_offset = 0;
     _tr = new SRTrecord(raw_tr, 
 	    SRTrawTraceVersion(trace_major, trace_minor));
     AssertAlways(_tr->type() == SRTrecord::IO,
 	    ("Only know how to handle I/O records\n"));
     tr = (SRTio *)_tr;
-    if (tr->is_suspect()) {
-	printf ("skipping suspect IO record\n");
-    }
     if (info_create) {
 	const char *header = tracestream->header();
 	time_t epoc_sec = 0;
@@ -204,30 +203,10 @@ main(int argc, char *argv[])
 	    time_str = strstr(time_str, "tracedate");
 	    if (time_str == NULL)
 		continue;
-	    /*
-	    // 1.2/4 and 1.6 traces have an equal sign
-	    while (time_str != NULL && *time_str != '=') {
-		time_str++;
-	    }
-	    // 1.2/4 and 1.6 traces have a space after the equal sign
-	    time_str++;
-	    // 1.2/4 traces have whitespace and then a leading "
-	    while (trace_minor == 4 && *time_str != '\"') {
-		time_str++;
-	    }
-	    struct tm tm;
-	    tm.tm_yday = -1;
-	    */
 	    printf("Inferring start time from %s\n", time_str);
 	    fprintf(info_file_ptr, "%s\t", time_str);
-	    /*
-	    strptime(++time_str, "%a %b %d %H:%M:%S %Y", &tm);
-	    AssertAlways(tm.tm_yday != -1, ("bad"));
-	    epoc_sec = mktime(&tm);
-	    */
 	    break;
 	}
-	//printf("epoc_time %ld sizeof %d\n", epoc_sec, sizeof(epoc_sec));
 	//Sift the Trace to the end for the last record completion time.
 	uint64_t num_records = 0;
 	Clock::Tfrac old_finished = tr->tfrac_finished();
@@ -250,18 +229,26 @@ main(int argc, char *argv[])
 	}
     } else {
 	// set the base time from the info file
+	char info_file_string[1024];
+	char *ifs_ptr = info_file_string;
+	int str_size = 0;
+	str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
+	int read_count = 0;
+	while(read_count < str_size && *ifs_ptr != '\n') {
+	    ifs_ptr++;
+	    read_count++;
+	}
+	ifs_ptr++;
+	read_count++;
+	uint64_t new_tfrac_base = strtoll(ifs_ptr, &ifs_ptr, 10);
+	uint64_t new_tfrac_offset = strtoll(ifs_ptr, NULL, 10);
+	base_time = (Clock::Tfrac)new_tfrac_base;
+	time_offset = (Clock::Tfrac)new_tfrac_offset;
     }
     Clock::Tfrac curtime = base_time;
     printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
     AssertAlways(curtime == base_time,
 	    ("internal self check failed\n"));
-    /*
-      time_t foo = (time_t)curtime;
-      struct tm *gmt = gmtime(&foo);
-      curtime -= ((24 * gmt->tm_yday + gmt->tm_hour) * 60 + gmt->tm_min) * 60 + gmt->tm_sec;
-      base_time = curtime;
-    */
-    base_time = 0;
     printf("adjusted basetime %lld\n", base_time);
 
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
@@ -413,8 +400,9 @@ main(int argc, char *argv[])
 	if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) 
 	    break;
 	
-	SRTrecord *_tr = new SRTrecord(raw_tr, 
-				      SRTrawTraceVersion(trace_major, trace_minor));
+	SRTrecord *_tr = 
+	    new SRTrecord(raw_tr, 
+		    SRTrawTraceVersion(trace_major, trace_minor));
 	
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
@@ -425,20 +413,20 @@ main(int argc, char *argv[])
 	outmodule.newRecord();
 	AssertAlways(fabs(tr->created() *1e6 - round(tr->created()*1e6)) < 0.1,
 		     ("bad created %.8f\n",tr->created()));
-	enter_kernel.set(tr->tfrac_created()-base_time);
+	enter_kernel.set(tr->tfrac_created()+base_time);
 	Clock::Tfrac tmp = tr->tfrac_started() - tr->tfrac_created();
 	/*
 	printf("tmp is %f from started %f and created %f\n", tmp, tr->started(), tr->created());
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad started %.8f\n",tr->started()));
 	*/
-	leave_driver.set(tr->tfrac_started()-base_time);
+	leave_driver.set(tr->tfrac_started()+base_time);
         tmp = tr->tfrac_finished() - tr->tfrac_created();
 	/*
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad finished %.8f\n",tr->started()));
 	*/
-	return_to_driver.set(tr->tfrac_finished()-base_time);
+	return_to_driver.set(tr->tfrac_finished()+base_time);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
 	device_major.set(tr->device_number() >> 24 & 0xFF);
