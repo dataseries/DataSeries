@@ -174,11 +174,11 @@ runCryptUtilChecks()
 	AssertAlways(enc != dec && dec == in,("bad"));
 	in.append(" ");
     }
-    cout << "CryptUtilChecks passed." << endl;
+    if (false) cout << "CryptUtilChecks passed." << endl;
 }
 
 void
-prepareEncryptEnvOrRandom()
+prepareEncryptEnvOrRandom(bool random_ok)
 {
     runCryptUtilChecks();
 
@@ -186,6 +186,7 @@ prepareEncryptEnvOrRandom()
 	prepareEncrypt(hex2raw(getenv("NAME_KEY_1")),
 		       hex2raw(getenv("NAME_KEY_2")));
     } else {
+	INVARIANT(random_ok, "Missing environment variables NAME_KEY_1 and NAME_KEY_2; random choice not ok");
 	fprintf(stderr,"Warning; no NAME_KEY_[12] env variables, using random hmac\n");
 	FILE *f = fopen("/dev/urandom","r");
 	AssertAlways(f != NULL,("bad"));
@@ -248,13 +249,18 @@ aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 
 static HashMap<string,string> raw2encrypted;
 
-// not making this default to true because it could use a lot of memory
-bool enable_encrypt_memoize = false;
+static uint32_t encrypt_memoize_entries = 1000000;
+
+void
+encryptMemoizeMaxents(uint32_t nentries) 
+{
+    encrypt_memoize_entries = nentries;
+}
 
 string 
 encryptString(string in)
 {
-    if (enable_encrypt_memoize) {
+    if (encrypt_memoize_entries > 0) {
 	string *v = raw2encrypted.lookup(in);
 	if (v != NULL) {
 	    return *v;
@@ -285,7 +291,10 @@ encryptString(string in)
     tmp.append((char *)sha_out,hmaclen);
     tmp.append(in);
     aesEncryptFast(&encrypt_key,(unsigned char *)&*tmp.begin(),tmp.size());
-    if (enable_encrypt_memoize) {
+    if (encrypt_memoize_entries > 0) {
+	if (raw2encrypted.size() >= encrypt_memoize_entries) {
+	    raw2encrypted.clear();
+	}
 	raw2encrypted[in] = tmp;
     }
     return tmp;
@@ -314,7 +323,7 @@ decryptString(string in)
     return ret;
 }
     
-static Clock::Tll encrypt_cycles, hex_cycles, lookup_cycles;
+// static Clock::Tll encrypt_cycles, hex_cycles, lookup_cycles;
 static int hexcount;
 static string quote_string("'");
 static string null_string("NULL");

@@ -15,6 +15,9 @@
 // "standard" LSF fields and a portion which parses any cluster
 // specific lsf naming/directory naming conventions.
 
+// TODO: remove AssertAlways, printf, replace with INVARIANT,
+// boost::format, then remove LintelAssert.
+
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -33,6 +36,7 @@
 #include <DataSeries/cryptutil.H>
 
 using namespace std;
+using boost::format;
 
 bool print_parse_warnings = false;
 bool print_parse_warning_non_override_frame_number = false;
@@ -299,8 +303,9 @@ extract_fields(char *buf, vector<string> &fields, int linenum)
 	} else {
 	    buf = parsenumber(buf,tmp, linenum);
 	}
-	if (debug_extract_fields)
-	    printf("%d. %s\n",fields.size(),tmp.c_str());
+	if (debug_extract_fields) {
+	    cout << boost::format("%d. %s\n") % fields.size() % tmp.c_str();
+	}
 	fields.push_back(tmp);
 	if (*buf == ' ') {
 	    ++buf;
@@ -544,6 +549,7 @@ struct job_info {
 	} else if (frame_idx > 0 && frames_idx > 0) {
 	    string encx = encryptString(lsf_command.substr(frame_idx,  6));
 	    if (encx == encrypted_parse_special[2] &&
+		lsf_command.size() >= static_cast<uint32_t>(frames_idx) + 9 + 12 && 
 		lsf_command.substr(frames_idx+9, 12) == str_lsb_jobindex) {
 		job_frame = lsf_idx;
 	    } else {
@@ -564,7 +570,9 @@ struct job_info {
 		}
 	    }
 	} else {
-	    AssertAlways(frame_idx > 0,("bad %s %d",lsf_command.c_str(),lsf_idx));
+	    INVARIANT(frame_idx >= 0,
+		      format("bad frame index %d in command '%s' lsf_idx=%d")
+		      % frame_idx % lsf_command % lsf_idx);
 	    if (false) printf("XX %s -> %d %d '%s'\n",lsf_command.c_str(),
 		   lsf_idx,frame_idx,lsf_command.substr(frame_idx,5).c_str());
 	    if (lsf_command.substr(frame_idx+3,13) == str_dollar_lsb_jobindex ||
@@ -1030,13 +1038,17 @@ struct hostgroup_defnsT {
 
 static hostgroup_defnsT hostgroup_defns[] = 
 {
-    { "cecc2842c468e4c51ad942d95a2537c3", "dedicated-bear-0" },
-    { "f6c1fb207c5ba0a5f7f08637c222e53f", "dedicated-bear-1" },
-    { "773a8af8ee6ffb48faf5dd4de2dcb0b2", "dedicated-bear-2" },
-    { "a002b3e30a23779709da2f192c171dbe", "dedicated-bear-3" },
-    { "0697f0c72a559d090ca02a7d2946ba4c", "dedicated-bear-4" },
-    { "2979bc3e40d19293d68b3e019455fb3c", "dedicated-bear-5" },
-    { "660d9778aee6bc3701abc195b8365437", "dedicated-bear-6" },
+    // Roughly sorted in order of performance, some of the early ones
+    // might be incorrect
+    { "badf0582371e7dbefe193d5d523f3aed", "dedicated-bear-0" },
+    { "cecc2842c468e4c51ad942d95a2537c3", "dedicated-bear-1" },
+    { "202bed4b810145ec1391e4c5fd8ab363", "dedicated-bear-2" },
+    { "f6c1fb207c5ba0a5f7f08637c222e53f", "dedicated-bear-3" },
+    { "773a8af8ee6ffb48faf5dd4de2dcb0b2", "dedicated-bear-4" },
+    { "a002b3e30a23779709da2f192c171dbe", "dedicated-bear-5" },
+    { "0697f0c72a559d090ca02a7d2946ba4c", "dedicated-bear-6" },
+    { "2979bc3e40d19293d68b3e019455fb3c", "dedicated-bear-7" },
+    { "660d9778aee6bc3701abc195b8365437", "dedicated-bear-8" },
 };
 
 void prepEncryptedStuff()
@@ -1256,7 +1268,7 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
 	    }
 	}
 	string foo = jobname.substr(start_offset,end_offset - start_offset);
-	if (false) printf("  ColonSep JobName field %d: %s\n",fields.size(),foo.c_str());
+	if (false) cout << boost::format("  ColonSep JobName field %d: %s\n") % fields.size() % foo.c_str();
 	fields.push_back(foo);
 	start_offset = end_offset + 1;
     }
@@ -3553,10 +3565,15 @@ hostGroupWordPrefixCheck(const string &hostname)
 	xpcre_get_substring(hostname, ovector, rc, 1, group);
 	if (group.size() != hostname.size()) {
 	    return hostGroupUnrecognized(group, hostname);
+	} else {
+	    // full match, no unexpected group here unless someone 
+	    // names their group hosta hostb hostc
+	    return empty_string;
 	}
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      "unexpected error from pcre");
+	      boost::format("unexpected error from pcre on %s: %d") 
+	      % hostname % rc);
 
     return empty_string;
 }
@@ -3578,8 +3595,9 @@ hostGroup(const string &hostname)
 	if (rc == 2) {
 	    string group;
 	    xpcre_get_substring(hostname, ovector, rc, 1, group);
-	    if (encrypted_hostgroups.exists(group)) {
-		return encrypted_hostgroups[group];
+	    string encrypted_group = encryptString(group);
+	    if (encrypted_hostgroups.exists(encrypted_group)) {
+		return encrypted_hostgroups[encrypted_group];
 	    } else {
 		return hostGroupUnrecognized(group, hostname);
 	    }
@@ -3611,7 +3629,8 @@ process_line(char *buf, int linenum)
     extract_fields(buf, fields, linenum);
     bool has_maxrmem = true;
 
-    AssertAlways(fields.size() > 22,("bad field count %d\n",fields.size()));
+    INVARIANT(fields.size() > 22,
+	      boost::format("bad field count %d\n") % fields.size());
     int fieldcount = -1;
     if (false) {
     } else if (fields[1] == ver_62) {
@@ -3637,8 +3656,8 @@ process_line(char *buf, int linenum)
 	fields.push_back(str_zero);
 	fields.push_back(str_zero);
     } else {
-	AssertFatal(("bad version '%s' %d fields",
-		     fields[1].c_str(),fields.size()));
+	FATAL_ERROR(boost::format("bad version '%s' %d fields")
+		    % fields[1] % fields.size());
     }
     AssertAlways(fieldcount > 0, ("no version %s??", fields[1].c_str()));
     AssertAlways(fields[0] == job_finish || fields[0] == job_cache,
@@ -3646,16 +3665,16 @@ process_line(char *buf, int linenum)
 		  fields[0].c_str()));
     int naskhosts = uintfield(fields[22]);
     int exechostsoffset = naskhosts - 1;
-    AssertAlways((int)fields.size() > 24+exechostsoffset,
-		 ("bad field count %d\n",fields.size()));
+    INVARIANT((int)fields.size() > 24+exechostsoffset,
+	      boost::format("bad field count %d at line %d\n") 
+	      % fields.size() % linenum);
     int nexechosts = uintfield(fields[24+exechostsoffset]);
     int tailoffset = exechostsoffset + nexechosts - 1;
 
     // 4.2 doesn't have the reservation entry added to the end.
-    AssertAlways((int)fields.size() == fieldcount+tailoffset,
-		 ("bad %d != %d + %d on line %d",
-		  fields.size(),fieldcount,tailoffset,
-		  linenum));
+    INVARIANT((int)fields.size() == fieldcount+tailoffset,
+	      boost::format("bad %d != %d + %d on line %d")
+	      % fields.size() % fieldcount % tailoffset % linenum);
     AssertAlways(fields[54+tailoffset].size() == 0,("bad"));
     AssertAlways(fieldcount <= 61 || fields[66+tailoffset] == str_minus1,("bad"));
 	
@@ -3691,9 +3710,8 @@ process_line(char *buf, int linenum)
 	}
     }
 
-    if (false) printf("%d fields\n",fields.size() - tailoffset);
-    if (false) printf("YY %d %s %s\n",jinfo.job_name_unpacked,sqlstring(jinfo.production).c_str(),
-		      sqlstring(jinfo.team).c_str());
+    if (false) cout << boost::format("%d fields\n") % (fields.size() - tailoffset);
+    if (false) cout << boost::format("YY %d %s %s\n") % jinfo.job_name_unpacked % sqlstring(jinfo.production) % sqlstring(jinfo.team).c_str();
     if (false) printf("%s\n",sqlstring(jinfo.team).c_str());
     framelike(jinfo.frames);
     AssertAlways(jinfo.queue != empty_string,("internal error queue empty?!\n"));
@@ -3757,8 +3775,6 @@ process_line(char *buf, int linenum)
 int
 main(int argc,char *argv[])
 {
-    enable_encrypt_memoize = true;
-
     commonPackingArgs packing_args;
     packing_args.extent_size = 8*1024*1024;
     getPackingArgs(&argc,argv,&packing_args);

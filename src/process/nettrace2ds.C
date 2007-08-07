@@ -3091,6 +3091,10 @@ main(int argc, char **argv)
 
     counts.resize(static_cast<unsigned>(last_count));
     INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
+    // Make it hard to run without encryption; don't want to
+    // accidentally do that.
+    INVARIANT(enable_encrypt_filenames || getenv("DISABLE_ENCRYPTION") != NULL, 
+	      "enable_encrypt_filenames must be true or DISABLE_ENCRYPTION env variable set");
 
     if (argc >= 4) {
 	bool info = strcmp(argv[1], "--info") == 0;
