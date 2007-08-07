@@ -240,17 +240,25 @@ main(int argc, char *argv[])
 	}
 	ifs_ptr++;
 	read_count++;
+	char *tmp_ptr = ifs_ptr;
+	while (*tmp_ptr != '.') {
+	    tmp_ptr++;
+	    read_count++;
+	}
 	uint64_t new_tfrac_base = strtoll(ifs_ptr, &ifs_ptr, 10);
+	while (read_count < str_size && *ifs_ptr != ' ') {
+	    ifs_ptr++;
+	    read_count++;
+	}
 	uint64_t new_tfrac_offset = strtoll(ifs_ptr, NULL, 10);
 	base_time = (Clock::Tfrac)new_tfrac_base;
 	time_offset = (Clock::Tfrac)new_tfrac_offset;
     }
     Clock::Tfrac curtime = base_time;
-    printf("sizeof Tfrac %d curtime %lld base_time %lld\n", sizeof(Clock::Tfrac), curtime, base_time);
     AssertAlways(curtime == base_time,
 	    ("internal self check failed\n"));
     printf("adjusted basetime %lld\n", base_time);
-
+    printf("used time_offset %lld\n", time_offset);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
