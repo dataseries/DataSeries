@@ -251,7 +251,7 @@ main(int argc, char *argv[])
 	    ("internal self check failed\n"));
     printf("adjusted basetime %lld\n", base_time);
 
-    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTHeader";
+    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
     header_char_ver[0] = (char)('0' + trace_major);
@@ -262,6 +262,8 @@ main(int argc, char *argv[])
     srtheadertype_xml.append("\" >\n");
     std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
     srtheadertype_xml.append(srt_header);
+    std::string srt_start = "  <field type=\"int64\" name=\"start_time_offset\" comment=\"time in units of 2^-32 seconds added to the SRT trace tracedate to compute initial start_time of this trace\" />\n";
+    srtheadertype_xml.append(srt_start);
     srtheadertype_xml.append("</ExtentType>\n");
     ExtentTypeLibrary library;
     ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
@@ -315,6 +317,7 @@ main(int argc, char *argv[])
     srtdsout.writeExtentLibrary(library);
 
     Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
+    Int64Field start_time_offset(srtheaderseries, "start_time_offset", Field::flag_nullable);
 
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
@@ -393,6 +396,7 @@ main(int argc, char *argv[])
     //printf("HI %s\n", tracestream->header());
     
     header_text.set(tracestream->header());
+    start_time_offset.set(time_offset);
     headeroutmodule.flushExtent();
 
     int nrecords = 0;
