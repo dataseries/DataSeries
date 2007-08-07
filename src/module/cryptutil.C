@@ -314,7 +314,7 @@ decryptString(string in)
     return ret;
 }
     
-static Clock::Tll encrypt_cycles, hex_cycles, lookup_cycles;
+// static Clock::Tll encrypt_cycles, hex_cycles, lookup_cycles;
 static int hexcount;
 static string quote_string("'");
 static string null_string("NULL");
