@@ -6,6 +6,16 @@
 
 sanitize regression data
 
+- Replace the code in GeneralField.C that deals with print_format, print_offset,
+  print_multiplier, print_divisor, print_style to be a single concept
+  print_transforms="t1,t2,t3,t4,t5"  where a general value goes in the left, 
+  runs through the transforms and then gets printed out.  This would allow for
+  natural extentions to transforms that convert Clock::TFrac into
+  textual times in (s,ms,us,ns), int32 conversions into dotted quad IP
+  addresses, int64 to mac address, etc.  The more general version of this is full
+  expression parsing for the transforms, which is the more SQL way to
+  do all of this.
+
 - Think about what should happen if you try to access a nullable column with 
   a field that doesn't support nulls.  Right now it seems to accept this, which
   is not clearly the right thing to be doing.

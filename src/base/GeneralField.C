@@ -832,7 +832,7 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"text")==0) { 
 	    printstyle = printtext;
 	} else {
-	    AssertFatal(("print_style should be hex, maybehex or csv not '%s'\n",
+	    AssertFatal(("print_style should be hex, maybehex, csv, or text not '%s'\n",
 			 (char *)xmlprintstyle));
 	}
     }
