@@ -148,7 +148,6 @@ main(int argc, char *argv[])
 	tracestream = new SRTTraceRaw(argv+1,1);
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
-    DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
     FILE* info_file_ptr = NULL;
     char* info_file_name = new char[strlen(argv[1]) + 6]; // + .info
     info_file_name = strcpy(info_file_name, argv[1]);
@@ -161,7 +160,6 @@ main(int argc, char *argv[])
 	info_create = false;
 	info_file_ptr = fopen((const char*)info_file_name, "r");
     }
-    printf ("%s\n", info_file_name);
     if (info_file_ptr == NULL) {
 	fprintf(stderr, "Info file %s cannot be created/opened\n", info_file_name);
 	perror("error was:");
@@ -191,6 +189,7 @@ main(int argc, char *argv[])
 	    ("Only know how to handle I/O records\n"));
     tr = (SRTio *)_tr;
     if (info_create) {
+	//Make an info file and exit
 	const char *header = tracestream->header();
 	time_t epoc_sec = 0;
 	//printf("Header: %s\n", header);
@@ -207,7 +206,8 @@ main(int argc, char *argv[])
 	    fprintf(info_file_ptr, "%s\t", time_str);
 	    break;
 	}
-	//Sift the Trace to the end for the last record completion time.
+	//Sift the Trace to the end for the last record completion time
+	//Write that to the info file and exit
 	uint64_t num_records = 0;
 	Clock::Tfrac old_finished = tr->tfrac_finished();
 	while (1) {
@@ -227,38 +227,43 @@ main(int argc, char *argv[])
 	    delete _tr;
 	    raw_tr = tracestream->record();
 	}
-    } else {
-	// set the base time from the info file
-	char info_file_string[1024];
-	char *ifs_ptr = info_file_string;
-	int str_size = 0;
-	str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
-	int read_count = 0;
-	while(read_count < str_size && *ifs_ptr != '\n') {
-	    ifs_ptr++;
-	    read_count++;
-	}
+    }
+    // set the base time from the info file
+    char info_file_string[1024];
+    char *ifs_ptr = info_file_string;
+    int str_size = 0;
+    str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
+    int read_count = 0;
+    while(read_count < str_size && *ifs_ptr != '\n') {
 	ifs_ptr++;
 	read_count++;
-	char *tmp_ptr = ifs_ptr;
-	while (*tmp_ptr != '.') {
-	    tmp_ptr++;
-	    read_count++;
-	}
-	uint64_t new_tfrac_base = strtoll(ifs_ptr, &ifs_ptr, 10);
-	while (read_count < str_size && *ifs_ptr != ' ') {
-	    ifs_ptr++;
-	    read_count++;
-	}
-	uint64_t new_tfrac_offset = strtoll(ifs_ptr, NULL, 10);
-	base_time = (Clock::Tfrac)new_tfrac_base;
-	time_offset = (Clock::Tfrac)new_tfrac_offset;
     }
+    ifs_ptr++;
+    read_count++;
+    char *tmp_ptr = ifs_ptr;
+    while (*tmp_ptr != '.') {
+	tmp_ptr++;
+	read_count++;
+    }
+    *tmp_ptr = '\0';
+    tmp_ptr++;
+    read_count--; //goes up to the . not including it
+    uint64_t new_tfrac_base = stringToInt64(ifs_ptr, 10);
+    ifs_ptr = tmp_ptr;
+    while (read_count < str_size && *ifs_ptr != ' ') {
+	ifs_ptr++;
+	read_count++;
+    }
+    uint64_t new_tfrac_offset = stringToInt64(ifs_ptr, 10);
+    base_time = (Clock::Tfrac)new_tfrac_base;
+    time_offset = (Clock::Tfrac)new_tfrac_offset;
     Clock::Tfrac curtime = base_time;
     AssertAlways(curtime == base_time,
 	    ("internal self check failed\n"));
     printf("adjusted basetime %lld\n", base_time);
     printf("used time_offset %lld\n", time_offset);
+
+    DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
     srtheadertype_xml.append("\" version=\"");
     char header_char_ver[4];
@@ -268,10 +273,12 @@ main(int argc, char *argv[])
     header_char_ver[3] = '\0';
     srtheadertype_xml.append(header_char_ver);
     srtheadertype_xml.append("\" >\n");
+    std::string srt_start = "  <field type=\"int64\" name=\"start_time\" comment=\"Start time of this trace in units of 2^-32 seconds relative to the UNIX epoc.  Used SRT header tracedate and added start_time_offset.\" />\n";
+    srtheadertype_xml.append(srt_start);
+    std::string srt_start_offset = "  <field type=\"int64\" name=\"start_time_offset\" comment=\"time in units of 2^-32 seconds added to the SRT trace tracedate to compute initial start_time of this trace\" />\n";
+    srtheadertype_xml.append(srt_start_offset);
     std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
     srtheadertype_xml.append(srt_header);
-    std::string srt_start = "  <field type=\"int64\" name=\"start_time_offset\" comment=\"time in units of 2^-32 seconds added to the SRT trace tracedate to compute initial start_time of this trace\" />\n";
-    srtheadertype_xml.append(srt_start);
     srtheadertype_xml.append("</ExtentType>\n");
     ExtentTypeLibrary library;
     ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
@@ -295,24 +302,25 @@ main(int argc, char *argv[])
 	if (trace_minor == 0) {
 	    //NEED VERSION 0 HERE
 	    //srttype_xml.append(srt_v0fields);
-	    printf("trace_minor got inside 0!%d\n", trace_minor);
+	    printf("Adding fields for version 0\n");
 	} else if (trace_minor >= 3) {
 	    srttype_xml.append(srt_v3fields);
-	    printf("trace_minor got inside 3!%d\n", trace_minor);
+	    printf("Adding fields for version 3\n");
 	} 
 	if (trace_minor >= 4) {
 	    srttype_xml.append(srt_v4fields);
-	    printf("trace_minor got inside 4!%d\n", trace_minor);
+	    printf("Adding fields for version 4\n");
 	} 
 	if (trace_minor >= 5) {
 	    srttype_xml.append(srt_v5fields);
-	    printf("trace_minor got inside 5!%d\n", trace_minor);
+	    printf("Adding fields for version 5\n");
 	} 
 	if (trace_minor >= 6) {
 	    srttype_xml.append(srt_v6fields);
-	    printf("trace_minor got inside 6!%d\n", trace_minor);
+	    printf("Adding fields for version 6\n");
 	}
     } else if (trace_minor == 7) {
+	printf("Adding fields for version 7\n");
 	srttype_xml.append(srt_v7fields);
     } else {
 	AssertFatal(("missing support for srt trace version %d\n",trace_minor));
@@ -324,8 +332,9 @@ main(int argc, char *argv[])
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
 
-    Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
+    Int64Field start_time(srtheaderseries, "start_time", Field::flag_nullable);
     Int64Field start_time_offset(srtheaderseries, "start_time_offset", Field::flag_nullable);
+    Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
 
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
@@ -403,8 +412,9 @@ main(int argc, char *argv[])
     headeroutmodule.newRecord();
     //printf("HI %s\n", tracestream->header());
     
-    header_text.set(tracestream->header());
+    start_time.set(base_time);
     start_time_offset.set(time_offset);
+    header_text.set(tracestream->header());
     headeroutmodule.flushExtent();
 
     int nrecords = 0;
