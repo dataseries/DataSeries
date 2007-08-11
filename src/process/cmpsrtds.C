@@ -179,7 +179,6 @@ main(int argc, char *argv[])
     srtheaderseries.setExtent(srtheaderextent);
     AssertAlways(strcmp(tracestream->header(), (const char*)header_text.val()) == 0,("header's are NOT equal %s \n******************\n %s",tracestream->header(), header_text.val()));
     const char *header = tracestream->header();
-    time_t epoc_sec = 0;
     //printf("Header: %s\n", header);
     std::vector<std::string> lines;
     split(header, "\n", lines);

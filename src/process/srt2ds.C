@@ -191,7 +191,6 @@ main(int argc, char *argv[])
     if (info_create) {
 	//Make an info file and exit
 	const char *header = tracestream->header();
-	time_t epoc_sec = 0;
 	//printf("Header: %s\n", header);
 	std::vector<std::string> lines;
 	split(header, "\n", lines);
@@ -241,22 +240,24 @@ main(int argc, char *argv[])
     ifs_ptr++;
     read_count++;
     char *tmp_ptr = ifs_ptr;
-    while (*tmp_ptr != '.') {
+    while (read_count < str_size && *tmp_ptr != '.') {
 	tmp_ptr++;
 	read_count++;
     }
     *tmp_ptr = '\0';
     tmp_ptr++;
+    if (read_count < str_size) {
+	base_time = (Clock::Tfrac)stringToInt64(ifs_ptr, 10);
+    }
     read_count--; //goes up to the . not including it
-    uint64_t new_tfrac_base = stringToInt64(ifs_ptr, 10);
     ifs_ptr = tmp_ptr;
     while (read_count < str_size && *ifs_ptr != ' ') {
 	ifs_ptr++;
 	read_count++;
     }
-    uint64_t new_tfrac_offset = stringToInt64(ifs_ptr, 10);
-    base_time = (Clock::Tfrac)new_tfrac_base;
-    time_offset = (Clock::Tfrac)new_tfrac_offset;
+    if (read_count < str_size) {
+	time_offset = (Clock::Tfrac)stringToInt64(ifs_ptr, 10);
+    }
     Clock::Tfrac curtime = base_time;
     AssertAlways(curtime == base_time,
 	    ("internal self check failed\n"));
@@ -435,7 +436,23 @@ main(int argc, char *argv[])
 	outmodule.newRecord();
 	AssertAlways(fabs(tr->created() *1e6 - round(tr->created()*1e6)) < 0.1,
 		     ("bad created %.8f\n",tr->created()));
-	enter_kernel.set(tr->tfrac_created()+base_time);
+	// At the beginning of a trace we occasionally get negative
+	// time values.  These are marked as suspect IOs, when they 
+	// were converted from KI, but they were converted improperly.
+	// Their signature is a seconds time very close to base_time
+	if (llabs(tr->tfrac_created() - base_time) < 1717986918.4 * 5) {
+	    double created_double = tr->created();
+	    printf("found a suspect create %llf\n", created_double);
+	    uint32_t created_sec = (uint32_t)created_double;
+	    printf("sec part %ld\n", created_sec);
+	    created_double -= (double)created_sec;
+	    created_double *= 1e6;
+	    printf("microsec part %llf\n", created_double);
+	    //exit(0);
+	    enter_kernel.set(Clock::secMicroToTfrac(created_sec, (uint32_t)created_double));
+	} else {
+	    enter_kernel.set(tr->tfrac_created()+base_time);
+	}
 	Clock::Tfrac tmp = tr->tfrac_started() - tr->tfrac_created();
 	/*
 	printf("tmp is %f from started %f and created %f\n", tmp, tr->started(), tr->created());
