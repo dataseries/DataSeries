@@ -213,7 +213,7 @@ main(int argc, char *argv[])
 	AssertAlways(tm.tm_yday != -1, ("bad"));
 	time_t the_time = mktime(&tm);
 	//printf("tfrac_start:%lld, offset:%lld\n", start_time.val(), start_time_offset.val());
-	printf("SRT time:%ld, trace_base:%ld, info file base:%ld\n", the_time, Clock::TfracToSec(start_time.val()-start_time_offset.val()), Clock::TfracToSec(base_time - time_offset));
+	printf("SRT time:%ld, trace_base:%ld, info file base:%ld\n", the_time, Clock::TfracToSec(start_time.val()+start_time_offset.val()), Clock::TfracToSec(base_time + time_offset));
 	break;
     }
     exit(0);

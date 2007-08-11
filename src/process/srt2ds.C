@@ -449,9 +449,9 @@ main(int argc, char *argv[])
 	    created_double *= 1e6;
 	    printf("microsec part %llf\n", created_double);
 	    //exit(0);
-	    enter_kernel.set(Clock::secMicroToTfrac(created_sec, (uint32_t)created_double));
+	    enter_kernel.set(Clock::secMicroToTfrac(created_sec, (uint32_t)created_double) + time_offset);
 	} else {
-	    enter_kernel.set(tr->tfrac_created()+base_time);
+	    enter_kernel.set(tr->tfrac_created()+base_time+time_offset);
 	}
 	Clock::Tfrac tmp = tr->tfrac_started() - tr->tfrac_created();
 	/*
@@ -459,13 +459,13 @@ main(int argc, char *argv[])
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad started %.8f\n",tr->started()));
 	*/
-	leave_driver.set(tr->tfrac_started()+base_time);
+	leave_driver.set(tr->tfrac_started()+base_time + time_offset);
         tmp = tr->tfrac_finished() - tr->tfrac_created();
 	/*
 	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
 		     ("bad finished %.8f\n",tr->started()));
 	*/
-	return_to_driver.set(tr->tfrac_finished()+base_time);
+	return_to_driver.set(tr->tfrac_finished()+base_time + time_offset);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
 	device_major.set(tr->device_number() >> 24 & 0xFF);
