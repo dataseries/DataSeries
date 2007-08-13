@@ -214,10 +214,10 @@ main(int argc, char *argv[])
 	time_t the_time = mktime(&tm);
 	//printf("tfrac_start:%lld, offset:%lld\n", start_time.val(), start_time_offset.val());
 	printf("SRT time:%ld, trace_base:%ld, info file base:%ld\n", the_time, Clock::TfracToSec(start_time.val()+start_time_offset.val()), Clock::TfracToSec(base_time + time_offset));
+	printf("tfrac: SRT time:%lld trace_base:%lld info file base:%lld\n", Clock::secMicroToTfrac(the_time,0), start_time.val()+start_time_offset.val(),base_time+time_offset);
+	AssertAlways(the_time == Clock::TfracToSec(start_time.val()+start_time_offset.val()) && the_time == Clock::TfracToSec(base_time + time_offset), ("Start times DO NOT MATCH!"));
 	break;
     }
-    exit(0);
-
 
     Extent *srtextent = srtdsin.getExtent();
     INVARIANT(srtextent != NULL, "can't find srt extents in input file");
@@ -251,9 +251,9 @@ main(int argc, char *argv[])
 	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
-	AssertAlways(fabs(enter_kernel.val() - tr->tfrac_created()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(leave_driver.val() - tr->tfrac_started()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(return_to_driver.val() - tr->tfrac_finished()) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created()+base_time+time_offset)) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(leave_driver.val() - (base_time+time_offset+tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (base_time+time_offset+tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
+	AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished()+base_time+time_offset)) < 5e-7,("bad compare\n"));
 	AssertAlways(bytes.val() == (int32)tr->length(),("bad compare\n"));
 	AssertAlways(disk_offset.val() == (int64)tr->offset(),("bad compare %d %lld %lld\n",nrecords,disk_offset.val(),(int64)tr->offset()));
 	AssertAlways(device_major.val() == (((int32)tr->device_number() >> 24) & 0xFF),("bad compare %d versus %d\n", device_major.val(), ((int32)(tr->device_number()) >> 24) & 0xFF));
