@@ -208,11 +208,17 @@ main(int argc, char *argv[])
 	//Sift the Trace to the end for the last record completion time
 	//Write that to the info file and exit
 	uint64_t num_records = 0;
+	Clock::Tfrac oldest_create = 0;
+	if (tr->is_suspect()) {
+	  oldest_create = tr->tfrac_created();
+	}
 	Clock::Tfrac old_finished = tr->tfrac_finished();
 	while (1) {
 	    if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) {
 		printf("num_records %lld\n", num_records);
-		fprintf(info_file_ptr, "\"%lld\"\n", old_finished);
+		fprintf(info_file_ptr, "\"%lld\"\t", old_finished);
+		printf("oldestcreate %lld\n",oldest_create);
+		fprintf(info_file_ptr, "\"%lld\"\n",oldest_create);
 		exit(0);
 	    }
 	    num_records++;
@@ -223,6 +229,9 @@ main(int argc, char *argv[])
 		    ("Only know how to handle I/O records\n"));
 	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
+	    if (((SRTio *)_tr)->is_suspect() && (((SRTio *)_tr)->tfrac_created() < oldest_create)) {
+	      oldest_create = ((SRTio *)_tr)->tfrac_created();
+	    }
 	    delete _tr;
 	    raw_tr = tracestream->record();
 	}

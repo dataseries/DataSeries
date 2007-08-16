@@ -251,7 +251,7 @@ main(int argc, char *argv[])
 	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
-	AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created()+base_time+time_offset)) < 5e-7,("bad compare\n"));
+	AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created()+base_time+time_offset)) < 5e-7,("enter_kernel:%lld versus SRT created:%lld\n", enter_kernel.val(), (base_time+time_offset+tr->tfrac_created())));
 	AssertAlways(fabs(leave_driver.val() - (base_time+time_offset+tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (base_time+time_offset+tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
 	AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished()+base_time+time_offset)) < 5e-7,("bad compare\n"));
 	AssertAlways(bytes.val() == (int32)tr->length(),("bad compare\n"));
