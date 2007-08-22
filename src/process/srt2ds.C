@@ -445,36 +445,28 @@ main(int argc, char *argv[])
 	outmodule.newRecord();
 	AssertAlways(fabs(tr->created() *1e6 - round(tr->created()*1e6)) < 0.1,
 		     ("bad created %.8f\n",tr->created()));
-	// At the beginning of a trace we occasionally get negative
-	// time values.  These are marked as suspect IOs, when they 
-	// were converted from KI, but they were converted improperly.
-	// Their signature is a seconds time very close to base_time
-	if (llabs(tr->tfrac_created() - base_time) < 1717986918.4 * 5) {
+	// IO's that are questionable were marked as suspect IOs, when
+	// they were converted from KI, but they were converted
+	// improperly.  For 1992 traces, there are no suspect IO's.
+	// For 1996 traces their signature is an absolute create time
+	// from the UNIX epoc (jan 1, 1970 GMT).
+	if (tr->is_suspect()) {
 	    double created_double = tr->created();
-	    printf("found a suspect create %llf\n", created_double);
+	    printf("found a suspect create %f\n", created_double);
 	    uint32_t created_sec = (uint32_t)created_double;
-	    printf("sec part %ld\n", created_sec);
+	    printf("sec part %d\n", created_sec);
 	    created_double -= (double)created_sec;
 	    created_double *= 1e6;
-	    printf("microsec part %llf\n", created_double);
+	    printf("microsec part %f\n", created_double);
 	    //exit(0);
-	    enter_kernel.set(Clock::secMicroToTfrac(created_sec, (uint32_t)created_double) + time_offset);
+	    enter_kernel.set(tr->tfrac_created());
+	    leave_driver.set(tr->tfrac_started());
+	    return_to_driver.set(tr->tfrac_finished());
 	} else {
 	    enter_kernel.set(tr->tfrac_created()+base_time+time_offset);
+	    leave_driver.set(tr->tfrac_started()+base_time + time_offset);
+	    return_to_driver.set(tr->tfrac_finished()+base_time + time_offset);
 	}
-	Clock::Tfrac tmp = tr->tfrac_started() - tr->tfrac_created();
-	/*
-	printf("tmp is %f from started %f and created %f\n", tmp, tr->started(), tr->created());
-	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
-		     ("bad started %.8f\n",tr->started()));
-	*/
-	leave_driver.set(tr->tfrac_started()+base_time + time_offset);
-        tmp = tr->tfrac_finished() - tr->tfrac_created();
-	/*
-	AssertAlways(fabs(tmp * 1e6 - round(tmp * 1e6)) < 0.1,
-		     ("bad finished %.8f\n",tr->started()));
-	*/
-	return_to_driver.set(tr->tfrac_finished()+base_time + time_offset);
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
 	device_major.set(tr->device_number() >> 24 & 0xFF);
