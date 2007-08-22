@@ -210,7 +210,15 @@ main(int argc, char *argv[])
 	uint64_t num_records = 0;
 	Clock::Tfrac oldest_create = 0;
 	if (tr->is_suspect()) {
-	  oldest_create = tr->tfrac_created();
+	    if (tr->created() > 2147483648LL) { //1998 traces
+		SRTtime_t double_old = tr->created();
+		uint32_t c_sec = 4294967296LL - (uint32_t)double_old;
+		uint32_t c_usec = 4294967296LL - (uint32_t)((double_old - c_sec)*1e6);
+		oldest_create = 
+		    Clock::secMicroToTfrac(c_sec, c_usec);
+	    } else {
+		oldest_create = tr->tfrac_created();
+	    }
 	}
 	Clock::Tfrac old_finished = tr->tfrac_finished();
 	while (1) {
@@ -230,7 +238,16 @@ main(int argc, char *argv[])
 	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
 	    if (((SRTio *)_tr)->is_suspect() && (((SRTio *)_tr)->tfrac_created() < oldest_create)) {
-	      oldest_create = ((SRTio *)_tr)->tfrac_created();
+		if (((SRTio *)_tr)->created() > 2147483648LL) { //1998 traces
+		    SRTtime_t double_old = ((SRTio *)_tr)->created();
+		    uint32_t c_sec = (uint32_t)double_old;
+		    uint32_t c_usec = (uint32_t)((double_old - c_sec)*1e6);
+		    oldest_create = 
+			Clock::secMicroToTfrac((4294967296LL - c_sec),
+				(4294967296LL - c_usec));
+		} else {
+		    oldest_create = tr->tfrac_created();
+		}
 	    }
 	    delete _tr;
 	    raw_tr = tracestream->record();
@@ -450,16 +467,21 @@ main(int argc, char *argv[])
 	// improperly.  For 1992 traces, there are no suspect IO's.
 	// For 1996 traces their signature is an absolute create time
 	// from the UNIX epoc (jan 1, 1970 GMT).
+	// For 1998 traces their signature is an absolute time from
+	// the UNIX epoc but is computed using: 2**32 - create_time
+	// (the times underflowed).
 	if (tr->is_suspect()) {
 	    double created_double = tr->created();
 	    printf("found a suspect create %f\n", created_double);
 	    uint32_t created_sec = (uint32_t)created_double;
 	    printf("sec part %d\n", created_sec);
-	    created_double -= (double)created_sec;
-	    created_double *= 1e6;
-	    printf("microsec part %f\n", created_double);
-	    //exit(0);
-	    enter_kernel.set(tr->tfrac_created());
+	    uint32_t created_usec = (uint32_t)((created_double - created_sec)*1e6);
+	    printf("microsec part %f\n", created_usec);
+	    if (created_double > 2147483648LL) { //1998 traces
+		enter_kernel.set(Clock::secMicroToTfrac((4294967296LL - created_sec), (4294967296LL - created_usec)));
+	    } else {
+		enter_kernel.set(tr->tfrac_created());
+	    }
 	    leave_driver.set(tr->tfrac_started());
 	    return_to_driver.set(tr->tfrac_finished());
 	} else {
