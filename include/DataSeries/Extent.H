@@ -191,11 +191,9 @@ public:
     // on eof (with into.size() == 0); aborts otherwise
     // updates offset to the end of the extent
     static bool preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip);
+
     // returns true if it read amount bytes, returns false if it read
     // 0 bytes and eof_ok; aborts otherwise
-    //    static bool checkedRead(int fd, byte *into, int amount, 
-    //			    bool eof_ok = false);
-
     static bool checkedPread(int fd, off64_t offset, byte *into, int amount, 
 			    bool eof_ok = false);
 
@@ -206,6 +204,22 @@ public:
     static void unpackAny(byte *into, byte *from,
 			  byte compression_mode, int32 intosize,
 			  int32 fromsize);
+
+    // The verification checks are the dataseries internal checksums
+    // that verify that the files were read correctly.  The
+    // pre_uncompress check verifies the checksum over the compressed
+    // data.  The post_uncompress check verifies the data after it has
+    // been uncompressed, and after some of the transforms
+    // (e.g. relative packing) have been applied.  The
+    // unpack_variable32 check verifies that
+    // Variable32Field::selfcheck() passes for all of the variable32
+    // fields.
+
+    // set the environment variable to one or more of:
+    // DATASERIES_READ_CHECKS=preuncompress,postuncompress,variable32,all,none
+    // This function is automatically called before unpacking the first extent
+    // if it hasn't already been called.
+    static void setReadChecksFromEnv(bool default_with_env_unset = false);
 
     // be smart before directly accessing these!  here because making
     // them private and using friend class ExtentSeries::iterator

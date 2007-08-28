@@ -48,6 +48,7 @@ struct PerTypeWork {
 int
 main(int argc, char *argv[])
 {
+    // Always check on repacking...
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
@@ -59,6 +60,12 @@ main(int argc, char *argv[])
 	AssertAlways(stat(argv[argc-1],&buf) != 0, 
 		     ("Refusing to overwrite existing file %s.\n", argv[argc-1]));
     }
+
+    if (getenv("DATASERIES_EXTENT_CHECKS")) {
+	cerr << "Warning: DATASERIES_EXTENT_CHECKS is set; generally you want all checks on during a dsrepack.\n";
+    }
+    Extent::setReadChecksFromEnv(true);
+
     TypeIndexModule source("");
     ExtentTypeLibrary library;
     map<string, PerTypeWork *> per_type_work;
@@ -152,13 +159,11 @@ main(int argc, char *argv[])
 	   (double)output.unpacked_size / (double)output.packed_size,
 	   output.unpacked_fixed, output.unpacked_variable);
     printf("  extents-part-compression: ");
-    /*
     if (output.compress_none > 0) printf("%d none, ",output.compress_none);
     if (output.compress_lzo > 0) printf("%d lzo, ",output.compress_lzo);
     if (output.compress_gzip > 0) printf("%d gzip, ",output.compress_gzip);
     if (output.compress_bz2 > 0) printf("%d bz2, ",output.compress_bz2);
     printf("\n  packed in %.6gs\n",output.pack_time);
-    */
     return 0;
 }
 

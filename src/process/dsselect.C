@@ -29,6 +29,7 @@ using namespace std;
 int
 main(int argc, char *argv[])
 {
+    Extent::setReadChecksFromEnv(true); // going to be compressing, may as well check
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 

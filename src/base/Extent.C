@@ -48,8 +48,9 @@ extern "C" {
 }
 #endif
 
-#include <Lintel/HashTable.H>
 #include <Lintel/Clock.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/StringUtil.H>
 
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
@@ -61,9 +62,44 @@ extern "C" {
     }
 }
 
-bool dataseries_enable_preuncompress_check = true;
-bool dataseries_enable_postuncompress_check = true;
-bool dataseries_enable_unpack_variable32_check = true;
+using namespace std;
+
+static bool did_checks_init = false;
+static bool preuncompress_check = true;
+static bool postuncompress_check = true;
+static bool unpack_variable32_check = true;
+
+void
+Extent::setReadChecksFromEnv(bool defval)
+{
+    bool pre = defval, post = defval, var32 = defval;
+
+    if (getenv("DATASERIES_READ_CHECKS") != NULL) {
+	vector<string> checks;
+	split(getenv("DATASERIES_READ_CHECKS"), ",", checks);
+	for(vector<string>::iterator i = checks.begin(); 
+	    i != checks.end(); ++i) {
+	    if (*i == "preuncompress") {
+		pre = true;
+	    } else if (*i == "postuncompress") {
+		post = true;
+	    } else if (*i == "variable32") {
+		var32 = true;
+	    } else if (*i == "all") {
+		pre = post = var32 = true;
+	    } else if (*i == "none") {
+		pre = post = var32 = false;
+	    } else {
+		FATAL_ERROR(boost::format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
+			    % *i);
+	    }
+	}
+    }
+    preuncompress_check = pre;
+    postuncompress_check = post;
+    unpack_variable32_check = var32;
+    did_checks_init = true;
+}
 
 #if DATASERIES_ENABLE_LZO
 static int lzo_init = 0;
@@ -112,7 +148,7 @@ Extent::Extent(const ExtentType *_type)
     init();
 }
 
-Extent::Extent(const std::string &xmltype)
+Extent::Extent(const string &xmltype)
     : type(new ExtentType(xmltype))
 {
     init();
@@ -178,10 +214,10 @@ Extent::packData(Extent::ByteArray &into,
 	variableDuplicateEliminate_Equal> vardupelim;
 
     memcpy(fixed_coded.begin(), fixeddata.begin(), fixeddata.size());
-    std::vector<bool> warnings;
+    vector<bool> warnings;
     warnings.resize(type->field_info.size(),false);
     // copy so that packing is thread safe
-    std::vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
+    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
 	psr_copy[j].double_prev_v = 0; // shouldn't be necessary
 	psr_copy[j].int32_prev_v = 0;
@@ -322,7 +358,7 @@ Extent::packData(Extent::ByteArray &into,
     variable_coded.resize(variable_data_pos - variable_coded.begin());
 
     bjhash = BobJenkinsHash(bjhash,variable_coded.begin(),variable_coded.size());
-    std::vector<int32> variable_sizes;
+    vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variable_coded.begin() + variable_coded.size();
     for(byte *curvarpos = variable_coded.begin(4);curvarpos != endvarpos;) {
@@ -646,7 +682,7 @@ Extent::unpackAny(byte *into, byte *from,
 
 #define TIME_UNPACKING(x)
 
-const std::string
+const string
 Extent::getPackedExtentType(Extent::ByteArray &from)
 {
     AssertAlways(from.size() > (6*4+2),
@@ -658,7 +694,7 @@ Extent::getPackedExtentType(Extent::ByteArray &from)
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
-    std::string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
+    string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
     return type_name;
 }
 
@@ -677,12 +713,15 @@ Extent::unpackData(const ExtentType *_type,
 		   Extent::ByteArray &from,
 		   bool fix_endianness)
 {
+    if (!did_checks_init) {
+	setReadChecksFromEnv();
+    }
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
     AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
 
     uLong adler32sum = adler32(0L, Z_NULL, 0);
-    if (dataseries_enable_preuncompress_check) {
+    if (preuncompress_check) {
 	adler32sum = adler32(adler32sum, from.begin(), 4*4);
 	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
     }
@@ -691,7 +730,7 @@ Extent::unpackData(const ExtentType *_type,
 	    Extent::flip4bytes(from.begin() + i);
 	}
     }
-    if (dataseries_enable_preuncompress_check) {
+    if (preuncompress_check) {
 	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
 		     ("Invalid extent data, adler32 digest mismatch on compressed data %x != %x\n",*(int32 *)(from.begin() + 4*4),(int32)adler32sum));
     }
@@ -731,18 +770,18 @@ Extent::unpackData(const ExtentType *_type,
 	      compressed_variable_mode,
 	      variable_size-4, compressed_variable_size);
     uint32_t bjhash = 0;
-    if (dataseries_enable_postuncompress_check) {
+    if (postuncompress_check) {
 	bjhash = BobJenkinsHash(1972,fixeddata.begin(),fixeddata.size());
 	bjhash = BobJenkinsHash(bjhash,variabledata.begin(),variabledata.size());
     }
-    std::vector<int32> variable_sizes;
+    vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variabledata.begin() + variabledata.size();
     for(byte *curvarpos = &variabledata[4];curvarpos != endvarpos;) {
 	int32 size = *(int32 *)curvarpos;
 	variable_sizes.push_back(size);
 	if ((int)variable_sizes.size() == variable_sizes_batch_size) {
-	    if (dataseries_enable_postuncompress_check) {
+	    if (postuncompress_check) {
 		bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
 	    }
 	    variable_sizes.resize(0);
@@ -754,14 +793,14 @@ Extent::unpackData(const ExtentType *_type,
 	curvarpos += 4 + Variable32Field::roundupSize(size);
 	AssertAlways(curvarpos <= endvarpos,("internal error\n"));
     }
-    if (dataseries_enable_postuncompress_check) {
+    if (postuncompress_check) {
 	bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     }
     variable_sizes.resize(0);
-    AssertAlways(dataseries_enable_postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
+    AssertAlways(postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
 		 ("final partially unpacked hash check failed\n"));
     
-    std::vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
+    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
 	AssertAlways(psr_copy[j].double_prev_v == 0 &&
 		     psr_copy[j].int32_prev_v == 0 &&
@@ -801,7 +840,7 @@ Extent::unpackData(const ExtentType *_type,
 	    }
 	}
 	// check variable sized fields ...
-	if (dataseries_enable_unpack_variable32_check) {
+	if (unpack_variable32_check) {
 	    for(unsigned int j=0;j<type_variable32_field_columns_size;j++) {
 		int field = type->variable32_field_columns[j];
 		int32 offset = type->field_info[field].offset;
