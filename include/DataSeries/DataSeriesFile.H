@@ -49,6 +49,9 @@ private:
 
 class DataSeriesSink {
 public:
+    // TODO: is the following ("-" == stdout) a good idea?  I don't
+    // think anything uses it.
+
     // if filename is "-", will write to stdout...
     DataSeriesSink(const std::string &filename,
 		   int compression_modes = Extent::compress_all,
@@ -71,10 +74,30 @@ public:
     // non-compressed chunk (the fixed record pointers for the extent
     // type information); also, empty variable-sized extents are not
     // counted in the compress_* stats
-    int extents;
-    int compress_none, compress_lzo, compress_gzip, compress_bz2, compress_lzf;
-    long long unpacked_size, unpacked_fixed, unpacked_variable, packed_size;
-    double pack_time;
+    struct Stats {
+	uint32_t extents;
+	uint32_t compress_none, compress_lzo, compress_gzip, 
+	    compress_bz2, compress_lzf;
+	uint64_t unpacked_size, unpacked_fixed, unpacked_variable, 
+	    unpacked_variable_raw, packed_size;
+	double pack_time; // This statistic appears to be generally
+			  // wrong right now because of threading.
+
+	Stats() {
+	    reset();
+	}
+	void reset();
+
+	Stats & operator+=(const Stats &from);
+	Stats & operator-=(const Stats &from);
+	// all just data so use default copy constructor
+
+	/// specify an extent type if this statistic was entirely for one
+	/// type.
+	void printText(std::ostream &to, const std::string &extent_type = "");
+    };
+
+    Stats stats;
 
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
@@ -94,5 +117,12 @@ private:
     const int compression_level;
     uint32_t chained_checksum; 
 };
+
+inline DataSeriesSink::Stats 
+operator-(const DataSeriesSink::Stats &a, const DataSeriesSink::Stats &b) {
+    DataSeriesSink::Stats ret = a;
+    ret -= b;
+    return ret;
+}
     
 #endif

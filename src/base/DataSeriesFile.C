@@ -197,12 +197,7 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
 DataSeriesSink::DataSeriesSink(const string &filename,
 			       int _compression_modes,
 			       int _compression_level)
-    : extents(0),
-      compress_none(0), compress_lzo(0), compress_gzip(0), 
-      compress_bz2(0), compress_lzf(0),
-      unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
-      packed_size(2*4+4*8), pack_time(0),
-      index_series(global_dataseries_indextype),
+    : index_series(global_dataseries_indextype),
       index_extent(index_series),
       field_extentOffset(index_series,"offset"),
       field_extentType(index_series,"extenttype"),
@@ -211,6 +206,7 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       compression_level(_compression_level),
       chained_checksum(0)
 {
+    stats.packed_size += 2*4 + 4*8;
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
 		 ("internal error; c++ initializers didn't run?\n"));
     if (filename == "-") {
@@ -267,6 +263,9 @@ DataSeriesSink::close()
     checkedWrite(tail,7*4);
     delete [] tail;
     cur_offset = 0;
+    int ret = ::close(fd);
+    INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
+    fd = -1;
 }
 
 void
@@ -359,7 +358,8 @@ DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
     field_extentOffset.set(cur_offset);
     field_extentType.set(e->type->name);
     AssertAlways(cur_offset > 0,("Error: doWriteExtent on closed file\n"));
-    ++extents;
+    ++stats.extents;
+    stats.unpacked_variable_raw += e->variabledata.size();
     struct rusage pack_start;
     AssertAlways(getrusage(RUSAGE_SELF,&pack_start)==0,
 		 ("?!"));
@@ -372,41 +372,109 @@ DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
     checkedWrite(data.begin(),data.size());
     cur_offset += data.size();
     double pack_extent_time = (pack_end.ru_utime.tv_sec - pack_start.ru_utime.tv_sec) + (pack_end.ru_utime.tv_usec - pack_start.ru_utime.tv_usec)/1000000.0;
-    unpacked_size += headersize + fixedsize + variablesize;
-    unpacked_fixed += fixedsize;
-    unpacked_variable += variablesize;
-    packed_size += data.size();
-    pack_time += pack_extent_time;
+    stats.unpacked_size += headersize + fixedsize + variablesize;
+    stats.unpacked_fixed += fixedsize;
+    stats.unpacked_variable += variablesize;
+    stats.packed_size += data.size();
+    stats.pack_time += pack_extent_time;
     if (data[6*4] == 0) {
-	++compress_none;
+	++stats.compress_none;
     } else if (data[6*4] == 1) {
-	++compress_lzo;
+	++stats.compress_lzo;
     } else if (data[6*4] == 2) {
-	++compress_gzip;
+	++stats.compress_gzip;
     } else if (data[6*4] == 3) {
-	++compress_bz2;
+	++stats.compress_bz2;
     } else if (data[6*4] == 4) {
-	++compress_lzf;
+	++stats.compress_lzf;
     } else {
-	AssertFatal(("whoa, unknown compress option %d\n",data[6*4]));
+	FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
+		    % static_cast<unsigned>(data[6*4]));
     }
     if (*(ExtentType::int32 *)(data.begin()+4) > 0) {
 	if (data[6*4+1] == 0) {
-	    ++compress_none;
+	    ++stats.compress_none;
 	} else if (data[6*4+1] == 1) {
-	    ++compress_lzo;
+	    ++stats.compress_lzo;
 	} else if (data[6*4+1] == 2) {
-	    ++compress_gzip;
+	    ++stats.compress_gzip;
 	} else if (data[6*4+1] == 3) {
-	    ++compress_bz2;
+	    ++stats.compress_bz2;
 	} else if (data[6*4+1] == 4) {
-	    ++compress_lzf;
+	    ++stats.compress_lzf;
 	} else {
-	    AssertFatal(("whoa, unknown compress option %d\n",data[6*4+1]));
+	    FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
+			% static_cast<unsigned>(data[6*4+1]));
 	}
     }
     chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
     return pack_extent_time;
 }
 
+void
+DataSeriesSink::Stats::reset()
+{
+    extents = compress_none = compress_lzo = compress_gzip 
+	= compress_bz2 = compress_lzf = 0;
+    unpacked_size = unpacked_fixed = unpacked_variable 
+	= unpacked_variable_raw = packed_size = 0;
+    pack_time = 0;
+}
 
+DataSeriesSink::Stats &
+DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
+{
+    extents += from.extents;
+    compress_none += from.compress_none;
+    compress_lzo += from.compress_lzo;
+    compress_gzip += from.compress_gzip;
+    compress_bz2 += from.compress_bz2;
+    compress_lzf += from.compress_lzf;
+    unpacked_size += from.unpacked_size;
+    unpacked_fixed += from.unpacked_fixed;
+    unpacked_variable += from.unpacked_variable;
+    unpacked_variable_raw += from.unpacked_variable_raw;
+    packed_size += from.packed_size;
+    pack_time += from.pack_time;
+    return *this;
+}
+
+DataSeriesSink::Stats &
+DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
+{
+    extents -= from.extents;
+    compress_none -= from.compress_none;
+    compress_lzo -= from.compress_lzo;
+    compress_gzip -= from.compress_gzip;
+    compress_bz2 -= from.compress_bz2;
+    compress_lzf -= from.compress_lzf;
+    unpacked_size -= from.unpacked_size;
+    unpacked_fixed -= from.unpacked_fixed;
+    unpacked_variable -= from.unpacked_variable;
+    unpacked_variable_raw -= from.unpacked_variable_raw;
+    packed_size -= from.packed_size;
+    pack_time -= from.pack_time;
+
+    return *this;
+}
+
+void
+DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
+{
+    if (extent_type.empty()) {
+	to << boost::format("  wrote %d extents\n")
+	    % extents;
+    } else {
+	to << boost::format("  wrote %d extents of type %s\n")
+	    % extents % extent_type;
+    }
+
+    to << boost::format("  compression (none,lzo,gzip,bz2,lzf): (%d,%d,%d,%d,%d)\n")
+	% compress_none % compress_lzo % compress_gzip % compress_bz2 
+	% compress_lzf;
+    to << boost::format("  unpacked: %d = %d (fixed) + %d (variable, %d raw)\n")
+	% unpacked_size % unpacked_fixed % unpacked_variable 
+	% unpacked_variable_raw;
+    to << boost::format("  packed size: %d; pack time: %.3f\n")
+	% packed_size % pack_time;
+}

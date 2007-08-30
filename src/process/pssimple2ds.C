@@ -7,10 +7,14 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include <ostream>
+
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/commonargs.H>
 
-const std::string pstrace_xml
+using namespace std;
+
+const string pstrace_xml
 (
  "<ExtentType name=\"Process sample\" >\n"
  "  <field type=\"double\" name=\"sampletime\" pack_scale=\"1\" pack_relative=\"sampletime\" />\n"
@@ -23,8 +27,8 @@ const std::string pstrace_xml
  "</ExtentType>\n"
 );
 
-std::string
-extract_field(const std::string &buffer, int *bufpos)
+string
+extract_field(const string &buffer, int *bufpos)
 {
     unsigned int field_end = *bufpos;
     for(;field_end < buffer.size();field_end++) {
@@ -32,13 +36,13 @@ extract_field(const std::string &buffer, int *bufpos)
 	    break;
     }
     AssertAlways(field_end < buffer.size(),("bad input line %s\n",buffer.c_str()));
-    std::string ret = buffer.substr(*bufpos,field_end - *bufpos);
+    string ret = buffer.substr(*bufpos,field_end - *bufpos);
     *bufpos = field_end + 1;
     return ret;
 }
 
 void
-isinteger(const std::string &s)
+isinteger(const string &s)
 {
     for(unsigned int i=0;i<s.size();++i) {
 	AssertAlways(isdigit(s[i]),("%s is supposed to be an integer\n",s.c_str()));
@@ -46,7 +50,7 @@ isinteger(const std::string &s)
 }
 
 void
-readString(FILE *in, std::string &ret)
+readString(FILE *in, string &ret)
 {
 #if 0
     // this doesn't work on popened files or something like that :(
@@ -66,7 +70,7 @@ readString(FILE *in, std::string &ret)
     ret.resize(0);
     ret.append(buf,len-1);
 #endif
-    std::vector<char> foo_str; // Linux & HP-UX STL differ enough that I
+    vector<char> foo_str; // Linux & HP-UX STL differ enough that I
     // can't find a common way to append a single character to a string, 
     // so either construct in a vector and convert, or build a char * out 
     // of each character and append that way :(
@@ -139,7 +143,7 @@ main(int argc, char *argv[])
     Extent *psextent = new Extent(psseries);
     int nrecords = 0;
     int nread = 0;
-    std::string buffer;
+    string buffer;
     readString(infile,buffer);
     AssertAlways(buffer == "#curtime user pid ppid time command args...",
 		 ("Bad first line for ps trace buffer '%s'\n",buffer.c_str()));
@@ -155,7 +159,7 @@ main(int argc, char *argv[])
 	if (feof(infile))
 	    break;
 	int bufpos = 0;
-	std::string s_curtime = extract_field(buffer,&bufpos);
+	string s_curtime = extract_field(buffer,&bufpos);
 	isinteger(s_curtime);
 	if ((nread % 20000) == 0) {
 	    printf("%d records read so far, current time %.0f\n",nread,atof(s_curtime.c_str()));
@@ -164,12 +168,12 @@ main(int argc, char *argv[])
 	    continue;
 	}
 
-	std::string s_username = extract_field(buffer,&bufpos);
-	std::string s_pid = extract_field(buffer,&bufpos);
-	std::string s_ppid = extract_field(buffer,&bufpos);
-	std::string s_cputime = extract_field(buffer,&bufpos);
-	std::string s_command = extract_field(buffer,&bufpos);
-	std::string s_args = buffer.substr(bufpos);
+	string s_username = extract_field(buffer,&bufpos);
+	string s_pid = extract_field(buffer,&bufpos);
+	string s_ppid = extract_field(buffer,&bufpos);
+	string s_cputime = extract_field(buffer,&bufpos);
+	string s_command = extract_field(buffer,&bufpos);
+	string s_args = buffer.substr(bufpos);
 
 	isinteger(s_pid);
 	isinteger(s_ppid);
@@ -192,15 +196,6 @@ main(int argc, char *argv[])
     } else {
 	AssertAlways(fclose(infile) == 0,("Error on fclose: %s\n",strerror(errno)));
     }
-    printf("%d records, %d extents; %lld bytes, %lld compressed, %.6gs seconds to pack\n",
-	   nrecords, psdsout.extents, psdsout.unpacked_size, psdsout.packed_size,psdsout.pack_time);
-    printf("  %.4gx compression ratio; %lld fixed data, %lld variable data\n",
-	   (double)psdsout.unpacked_size / (double)psdsout.packed_size,
-	   psdsout.unpacked_fixed, psdsout.unpacked_variable);
-    printf("  extents-part-compression: ");
-    if (psdsout.compress_none > 0) printf("%d none, ",psdsout.compress_none);
-    if (psdsout.compress_lzo > 0) printf("%d lzo, ",psdsout.compress_lzo);
-    if (psdsout.compress_gzip > 0) printf("%d gzip, ",psdsout.compress_gzip);
-    if (psdsout.compress_bz2 > 0) printf("%d bz2, ",psdsout.compress_bz2);
-    printf("\n  packed in %.6gs\n",psdsout.pack_time);
+
+    psdsout.stats.printText(cout, pstype->name);
 }

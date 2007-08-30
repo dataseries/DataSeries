@@ -71,16 +71,12 @@ FilterModule::getExtent()
 
 OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 			   const ExtentType *_outputtype, int _target_extent_size)
-    : extents(0), compress_none(0), compress_lzo(0), compress_gzip(0), 
-      compress_bz2(0), compress_lzf(0),
-      unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
-      unpacked_variable_raw(0), 
-      packed_size(0), pack_time(0),
-      sink(_sink), series(_series), outputtype(_outputtype),
-      target_extent_size(_target_extent_size)
+    : target_extent_size(_target_extent_size),
+      outputtype(_outputtype),
+      sink(_sink), series(_series)
 {
-    AssertAlways(series.curExtent() == NULL,
-		 ("usage error, outputmodule series extent started with an extent\n"));
+    INVARIANT(series.curExtent() == NULL,
+	      "series specified for output module already had an extent");
     cur_extent = new Extent(outputtype);
     series.setExtent(cur_extent);
 }
@@ -89,7 +85,6 @@ OutputModule::~OutputModule()
 {
     flushExtent();
 }
-
 
 void
 OutputModule::newRecord()
@@ -106,55 +101,21 @@ void
 OutputModule::flushExtent()
 {
     if (cur_extent->fixeddata.size() > 0) {
-	unpacked_variable_raw += cur_extent->variabledata.size();
+	stats.unpacked_variable_raw += cur_extent->variabledata.size();
 
-        int old_extents;
-	int old_compress_none, old_compress_lzo, old_compress_gzip, old_compress_bz2, old_compress_lzf;
-	long long old_unpacked_size, old_unpacked_fixed, old_unpacked_variable, old_packed_size;
-	double old_pack_time;
+	DataSeriesSink::Stats old;
 
-        old_extents           = sink.extents           ;
-	old_compress_none     = sink.compress_none     ;
-	old_compress_lzo      = sink.compress_lzo      ;
-	old_compress_gzip     = sink.compress_gzip     ;
-	old_compress_bz2      = sink.compress_bz2      ;
-	old_compress_lzf      = sink.compress_lzf      ;
-	old_unpacked_size     = sink.unpacked_size     ;
-	old_unpacked_fixed    = sink.unpacked_fixed    ;
-	old_unpacked_variable = sink.unpacked_variable ;
-	old_packed_size       = sink.packed_size       ;
-	old_pack_time         = sink.pack_time         ;
-
+	old = sink.stats;
+	
 	sink.writeExtent(cur_extent);
 	cur_extent->clear();
 
-        extents           += sink.extents           - old_extents           ;
-	compress_none     += sink.compress_none     - old_compress_none     ;
-	compress_lzo      += sink.compress_lzo      - old_compress_lzo      ;
-	compress_gzip     += sink.compress_gzip     - old_compress_gzip     ;
-	compress_bz2      += sink.compress_bz2      - old_compress_bz2      ;
-	compress_lzf      += sink.compress_lzf      - old_compress_lzf      ;
-	unpacked_size     += sink.unpacked_size     - old_unpacked_size     ;
-	unpacked_fixed    += sink.unpacked_fixed    - old_unpacked_fixed    ;
-	unpacked_variable += sink.unpacked_variable - old_unpacked_variable ;
-	packed_size       += sink.packed_size       - old_packed_size       ;
-	pack_time         += sink.pack_time         - old_pack_time         ;
+	stats += sink.stats - old;
     }
 }
 
 void
 OutputModule::printStats(std::ostream &to)
 {
-    to << boost::format("  wrote %d extents of type %s")
-       % extents % outputtype->name 
-       << std::endl;
-    to << boost::format("  compression (none,lzo,gzip,bz2,lzf): (%d,%d,%d,%d,%d)")
-	% compress_none % compress_lzo % compress_gzip % compress_bz2 % compress_lzf
-       << std::endl;
-    to << boost::format("  unpacked: %d = %d (fixed) + %d (variable, %d raw)")
-	% unpacked_size % unpacked_fixed % unpacked_variable % unpacked_variable_raw
-       << std::endl;
-    to << boost::format("  packed size: %d; pack time: %.3f")
-	% packed_size % pack_time
-       << std::endl;
+    stats.printText(to, outputtype->name);
 }

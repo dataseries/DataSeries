@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -8,6 +7,8 @@
 /** @file
     IP trace data analysis
 */
+
+// TODO: update this to handle the newer style trace files.
 
 #include <iostream>
 
@@ -384,10 +385,12 @@ public:
 	    last_interval_start = intervals_base - interval_nsecs;
 	    last_interval_end = intervals_base;
 	}
-	AssertAlways(packet_at.val() > intervals_base,("bad %lld %lld", packet_at.val(), intervals_base));
+	INVARIANT(packet_at.val() > intervals_base,
+		  boost::format("bad %lld %lld")
+		  % packet_at.val() % intervals_base);
 	if (packet_at.val() >= last_interval_end) {
-	    int total_intervals = (packet_at.val() - intervals_base)/interval_nsecs+1;
-	    AssertAlways(total_intervals > sum_bytes.size(),("bad"));
+	    uint64_t total_intervals = (packet_at.val() - intervals_base)/interval_nsecs+1;
+	    INVARIANT(total_intervals > sum_bytes.size(),"bad");
 	    sum_bytes.resize(total_intervals);
 	    sum_packets.resize(total_intervals);
 	    last_interval_end = intervals_base + interval_nsecs * total_intervals;
@@ -400,8 +403,8 @@ public:
 	    sum_packets[sum_packets.size()-1] += 1;
 	    sum_bytes[sum_bytes.size()-1] += wire_len.val();
 	} else {
-	    int interval = (packet_at.val() - intervals_base)/interval_nsecs;
-	    AssertAlways(interval >= 0 && interval < sum_bytes.size() - 1,("bad"));
+	    uint64_t interval = (packet_at.val() - intervals_base)/interval_nsecs;
+	    INVARIANT(interval >= 0 && interval < sum_bytes.size() - 1, "bad");
 	    sum_packets[interval] += 1;
 	    sum_bytes[interval] += wire_len.val();
 	}
@@ -410,7 +413,7 @@ public:
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
 
-	for(int i=0;i<sum_bytes.size(); ++i) {
+	for(unsigned i=0;i<sum_bytes.size(); ++i) {
 	    long long interval_start = intervals_base + interval_nsecs * i;
 	    printf(" insert into ip_timeseries_data (interval_start, interval_nsecs, packets, bytes) values (%lld, %lld, %.0f, %.0f); \n",
 		   interval_start, interval_nsecs, sum_packets[i], sum_bytes[i]);

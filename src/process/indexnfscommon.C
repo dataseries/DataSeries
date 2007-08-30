@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -9,6 +8,7 @@
     indexer for NFS Common DataSeries files
 */
 
+// TODO: obsolete this.
 using namespace std;
 
 #include <sys/types.h>

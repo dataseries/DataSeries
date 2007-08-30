@@ -85,17 +85,18 @@ public:
     void newRecord();
     void flushExtent(); // force current extent out, you can continue writing.
 
-    int extents;
-    int compress_none, compress_lzo, compress_gzip, compress_bz2, compress_lzf;
-    long long unpacked_size, unpacked_fixed, unpacked_variable, unpacked_variable_raw, packed_size;
-    double pack_time;
+    DataSeriesSink::Stats stats;
     
     void printStats(std::ostream &to);
+    const int target_extent_size;
+    const ExtentType *outputtype;
+
+    size_t curExtentSize() {
+	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();
+    }
 private:
     DataSeriesSink &sink;
     ExtentSeries &series;
-    const ExtentType *outputtype;
-    int target_extent_size;
     Extent *cur_extent;
 };
 
