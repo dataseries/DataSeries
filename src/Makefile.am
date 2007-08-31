@@ -186,10 +186,13 @@ ran.check-dsselect: dsselect ds2txt
 
 
 if ENABLE_PAPER
-bin_PROGRAMS += srtstat srtcsvstat
+bin_PROGRAMS += srtstat srtstat2 srtcsvstat
 
 srtstat_SOURCES = paper/srtstat.C
 srtstat_LDADD = libDataSeries.la
+
+srtstat2_SOURCES = paper/srtstat2.C
+srtstat2_LDADD = libDataSeries.la
 
 srtcsvstat_SOURCES = paper/srtcsvstat.C
 srtcsvstat_LDADD = @LINTEL_LIBTOOL@
