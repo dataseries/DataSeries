@@ -11,6 +11,8 @@
 
 srtstat2 bytes device_number bytes logical_volume_number bytes machine_id -- 
 
+dsselect --compress-lzo Trace::BlockIO::SRT::V7 bytes,machine_id,device_number,driver_type,thread_id,queue_length,pid,logical_volume_number ~/hourly-all.lzo.ds ~/select-all.lzo.ds
+
 */
 
 #include <string>

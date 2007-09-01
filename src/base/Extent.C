@@ -62,6 +62,26 @@ extern "C" {
     }
 }
 
+void
+Extent::ByteArray::copyResize(size_t newsize, bool zero_it)
+{
+    size_t oldsize = size();
+    int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
+    byte *newV = new byte[target_max];
+    AssertAlways(((unsigned long)newV % 8) == 0,
+		 ("internal error, misaligned malloc return %ld\n",
+		  ((unsigned long)newV % 8)));
+    memcpy(newV,beginV,oldsize);
+    delete [] beginV;
+    beginV = newV;
+    endV = newV + newsize;
+    maxV = newV + target_max;
+    if (zero_it) {
+	memset(beginV + oldsize,0,newsize - oldsize);
+    }
+}
+
+
 using namespace std;
 
 static bool did_checks_init = false;
@@ -203,10 +223,12 @@ Extent::packData(Extent::ByteArray &into,
 		 int compression_level,
 		 int *header_packed, int *fixed_packed, int *variable_packed)
 {
+    // Don't need to zero the coded arrays as we will be filling them
+    // all in.
     Extent::ByteArray fixed_coded;
-    fixed_coded.resize(fixeddata.size());
+    fixed_coded.resize(fixeddata.size(), false);
     Extent::ByteArray variable_coded;
-    variable_coded.resize(variabledata.size());
+    variable_coded.resize(variabledata.size(), false);
     AssertAlways(variabledata.size() >= 4,("internal error\n"));
 
     HashTable<variableDuplicateEliminate, 
@@ -396,14 +418,14 @@ Extent::packData(Extent::ByteArray &into,
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable->size();
     extentsize += (4 - extentsize % 4) % 4;
-    into.resize(extentsize);
+    into.resize(extentsize, false);
 
     byte *l = into.begin();
     *(int32 *)l = compressed_fixed->size(); l += 4;
     *(int32 *)l = compressed_variable->size(); l += 4;
     *(int32 *)l = nrecords; l += 4;
     *(int32 *)l = variable_coded.size(); l += 4;
-    memset(l,0,4); l += 4; // compressed adler32 digest
+    *(int32 *)l = 0; l += 4; // compressed adler32 digest
     *(int32 *)l = bjhash; l += 4;
     *l = compressed_fixed_mode; l += 1;
     *l = compressed_variable_mode; l += 1;
@@ -441,8 +463,9 @@ Extent::packBZ2(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_BZ2    
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
+
     unsigned int outsize = into.size();
     int ret = BZ2_bzBuffToBuffCompress((char *)into.begin(),&outsize,
 				       (char *)input,inputsize,
@@ -465,7 +488,7 @@ Extent::packZLib(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_ZLIB
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
     uLongf outsize = into.size();
     int ret = compress2((Bytef *)into.begin(),&outsize,
@@ -488,7 +511,7 @@ Extent::packLZO(byte *input, int32 inputsize,
 		Extent::ByteArray &into, int compression_level)
 {
 #if DATASERIES_ENABLE_LZO
-    into.resize(inputsize + inputsize/64 + 16 + 3);
+    into.resize(inputsize + inputsize/64 + 16 + 3, false);
     lzo_uint out_len = 0;
 
     lzo_byte *work_memory = new lzo_byte[LZO1X_999_MEM_COMPRESS];
@@ -522,7 +545,7 @@ Extent::packLZF(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_LZF
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
 
     unsigned int ret = lzf_compress(input,inputsize,
@@ -580,7 +603,7 @@ Extent::packAny(byte *input, int32 input_size,
     // bz2 tends to pack the best if used, so try this one first
     if ((compression_modes & compress_bz2)) {
 	Extent::ByteArray *bz2_pack = new Extent::ByteArray;
-	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size());
+	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size(), false);
 	if (packBZ2(input,input_size,*bz2_pack,compression_level)) {
 	    if (false) printf("bz2 packing goes to %d bytes\n",bz2_pack->size());
 	    if (best_packed == NULL || bz2_pack->size() < best_packed->size()) {
@@ -596,7 +619,7 @@ Extent::packAny(byte *input, int32 input_size,
     // try zlib last...
     if ((compression_modes & compress_zlib)) {
 	Extent::ByteArray *zlib_pack = new Extent::ByteArray;
-	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size());
+	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size(), false);
 	if (packZLib(input,input_size,*zlib_pack,compression_level)) {
 	    if (false) printf("zlib packing goes to %d bytes\n",zlib_pack->size());
 	    if (best_packed == NULL || zlib_pack->size() < best_packed->size()) {
@@ -612,7 +635,7 @@ Extent::packAny(byte *input, int32 input_size,
     if (best_packed == NULL) {
 	// must be no coding, or all compression algorithms worked badly
 	best_packed = new Extent::ByteArray;
-	best_packed->resize(input_size);
+	best_packed->resize(input_size, false);
 	memcpy(best_packed->begin(),input,input_size);
     }
     return best_packed;
@@ -758,12 +781,12 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(header_len + rounded_fixed + rounded_variable == from.size(),
 		 ("Invalid extent data\n"));
 
-    fixeddata.resize(nrecords * type->fixed_record_size);
+    fixeddata.resize(nrecords * type->fixed_record_size, false);
     unpackAny(fixeddata.begin(),compressed_fixed_begin,
 	      compressed_fixed_mode,
 	      nrecords * type->fixed_record_size,
 	      compressed_fixed_size);
-    variabledata.resize(variable_size);
+    variabledata.resize(variable_size, false);
     AssertAlways(variable_size >= 4,("error unpacking, invalid variable size\n"));
     *(int32 *)variabledata.begin() = 0;
     unpackAny(variabledata.begin()+4, compressed_variable_begin,
@@ -953,7 +976,7 @@ bool
 Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip)
 {
     int prefix_size = 6*4 + 4*1;
-    into.resize(prefix_size);
+    into.resize(prefix_size, false);
     if (checkedPread(fd,offset,into.begin(),prefix_size, true) == false) {
 	into.resize(0);
 	return false;
@@ -979,7 +1002,7 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable;
     extentsize += (4 - extentsize % 4) % 4;
-    into.resize(extentsize);
+    into.resize(extentsize, false);
     checkedPread(fd, offset, into.begin() + prefix_size, 
 		 extentsize - prefix_size);
     offset += extentsize - prefix_size;

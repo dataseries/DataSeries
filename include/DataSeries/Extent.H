@@ -64,26 +64,18 @@ public:
 	ByteArray() { beginV = endV = maxV = NULL; }
 	~ByteArray() { delete [] beginV; }
 	const size_t size() const { return endV - beginV; }
-	void resize(size_t newsize) {
-	    unsigned oldsize = size();
+	void resize(size_t newsize, bool zero_it = true) {
+	    size_t oldsize = size();
 	    if (newsize <= oldsize) {
 		// shrink
 		endV = beginV + newsize;
 	    } else if (beginV + newsize <= maxV) {
 		endV = beginV + newsize;
-		memset(beginV + oldsize,0,newsize - oldsize);
+		if (zero_it) {
+		    memset(beginV + oldsize,0,newsize - oldsize);
+		}
 	    } else { 
-		int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
-		byte *newV = new byte[target_max];
-		AssertAlways(((unsigned long)newV % 8) == 0,
-			     ("internal error, misaligned malloc return %ld\n",
-			      ((unsigned long)newV % 8)));
-		memcpy(newV,beginV,oldsize);
-		delete [] beginV;
-		beginV = newV;
-		endV = newV + newsize;
-		maxV = newV + target_max;
-		memset(beginV + oldsize,0,newsize - oldsize);
+		copyResize(newsize, zero_it);
 	    } 
 	}
 	byte *begin() { return beginV; };
@@ -93,6 +85,7 @@ public:
 	
 	typedef byte * iterator;
     private:
+	void copyResize(size_t newsize, bool zero_it);
 	byte *beginV, *endV, *maxV;
     };
 
