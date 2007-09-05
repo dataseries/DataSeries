@@ -12,6 +12,11 @@
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
+#include <malloc.h>
+
+#include <iostream>
+
+#include <boost/limits.hpp>
 
 #if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
 #define pread64 pread
@@ -51,14 +56,210 @@ extern "C" {
 #include <Lintel/Clock.H>
 #include <Lintel/HashTable.H>
 #include <Lintel/StringUtil.H>
+#include <Lintel/PThread.H>
 
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 #include <DataSeries/DataSeriesFile.H>
 
+using namespace std;
+
 extern "C" {
     char *dataseriesVersion() {
 	return (char *)VERSION;
+    }
+}
+
+typedef multimap<size_t, Extent::byte *> retained_dataT;
+static retained_dataT &getRetainedData() {
+    static retained_dataT retained_data;
+    return retained_data;
+}
+static PThreadMutex &getRetainedMutex() {
+    static PThreadMutex mutex;
+    return mutex;
+}
+
+static bool debug_retained = false;
+
+static Extent::ByteArray::RetainedStats retained_stats;
+
+// Add statistic on thing returned vs thing allocated
+static size_t cur_retained_data_bytes = 0;
+static size_t min_retained_bytes = 65536;
+static size_t max_retained_bytes = 0;
+static uint32_t target_retained_arrays = 8;
+static size_t clamp_bytes_minimum = 32 * 1024 * 1024;
+static size_t clamp_bytes_maximum = 512 * 1024 * 1024;
+static size_t max_allocate_bytes = 0;
+
+void
+Extent::ByteArray::setMinRetainSize(size_t bytes)
+{
+    min_retained_bytes = bytes;
+}
+
+void
+Extent::ByteArray::setRetainedAutotuning(uint32_t target_arrays,
+					 size_t clamp_min, size_t clamp_max)
+{
+    target_retained_arrays = target_arrays;
+    clamp_bytes_minimum = clamp_min;
+    clamp_bytes_maximum = clamp_max;
+    if (target_retained_arrays == 0) {
+	clamp_bytes_minimum = clamp_bytes_maximum = 0;
+    }
+    recalcMaxRetainedBytes();
+}
+
+void
+Extent::ByteArray::recalcMaxRetainedBytes()
+{
+    uint64_t mult = static_cast<uint64_t>(target_retained_arrays) 
+	* max_allocate_bytes;
+    if (mult > clamp_bytes_maximum) { // overflow in size_t
+	max_retained_bytes = clamp_bytes_maximum;
+    } else if (mult < clamp_bytes_minimum) {
+	max_retained_bytes = clamp_bytes_minimum;
+    } else {
+	max_retained_bytes = mult;
+    }
+}
+
+Extent::ByteArray::~ByteArray()
+{
+    retainedFree(beginV, maxV - beginV);
+}
+
+// only enable retained allocation if we have glibc, detected by
+// looking for M_MMAP_MAX.
+Extent::byte *
+Extent::ByteArray::retainedAllocate(size_t bytes)
+{
+    if (bytes == 0) {
+	return NULL;
+#if defined(M_MMAP_MAX)
+    } else if (bytes >= min_retained_bytes) {
+	// TODO: add in something that if the thing we would return is
+	// >> what we were asked for (1.1x-2x, need to do some
+	// experimenting), then we force an allocation from the
+	// system, and we throw a big thing out of cache to make space
+	// for small things.
+	PThreadAutoLocker lock(getRetainedMutex());
+	if (bytes > max_allocate_bytes && target_retained_arrays > 0) {
+	    max_allocate_bytes = bytes;
+	    recalcMaxRetainedBytes();
+	}
+	retained_dataT::iterator i = getRetainedData().lower_bound(bytes);
+	if (i != getRetainedData().end()) {
+	    byte *ret = i->second;
+	    cur_retained_data_bytes -= i->first;
+	    if (debug_retained) {
+		cout << boost::format("retained: reuse malloc %d %d\n")
+		    % bytes % i->first;
+	    }
+	    ++retained_stats.recycle_malloc_count;
+	    retained_stats.recycle_malloc_bytes += bytes;
+	    getRetainedData().erase(i);
+	    return ret;
+	} else {
+	    if (debug_retained) {
+		size_t biggest_retained = 0;
+		if (!getRetainedData().empty()) {
+		    retained_dataT::iterator i = getRetainedData().end();
+		    --i;
+		    biggest_retained = i->first;
+		}
+		cout << boost::format("retained: system malloc %d %d %d\n")
+		    % bytes % biggest_retained % cur_retained_data_bytes;
+	    }
+	    ++retained_stats.system_malloc_count;
+	    retained_stats.system_malloc_bytes += bytes;
+	    if (cur_retained_data_bytes == 0) {
+		++retained_stats.system_malloc_nothing_retained_count;
+	    }
+	    return new byte[bytes];
+	}
+#endif
+    } else {
+	++retained_stats.small_alloc_count;
+	retained_stats.small_alloc_bytes += bytes;
+	return new byte[bytes];
+    }	
+}
+
+void
+Extent::ByteArray::retainedFree(byte *data, size_t bytes)
+{
+    if (bytes == 0) {
+	INVARIANT(data == NULL, "bad");
+#if defined(M_MMAP_MAX)
+    } else if (bytes >= min_retained_bytes) {
+	PThreadAutoLocker lock(getRetainedMutex());
+	if (bytes > max_retained_bytes) {
+	    if (debug_retained) {
+		cout << boost::format("retained: forced free %d\n")
+		    % bytes;
+	    }
+	    ++retained_stats.forced_free_count;
+	    retained_stats.forced_free_bytes += bytes;
+	    delete [] data;
+	} else {
+	    while(cur_retained_data_bytes > max_retained_bytes - bytes) {
+		INVARIANT(!getRetainedData().empty(), 
+			  boost::format("huh %d %d %d")
+			  % cur_retained_data_bytes % max_retained_bytes 
+			  % bytes);
+		retained_dataT::iterator i = getRetainedData().begin();
+		delete [] i->second;
+		cur_retained_data_bytes -= i->first;
+		if (debug_retained) {
+		    cout << boost::format("retained: freeup free %d\n")
+			% i->first;
+		}
+		++retained_stats.freeup_free_count;
+		retained_stats.freeup_free_bytes += i->first;
+		getRetainedData().erase(i);
+	    }
+	    if (debug_retained) {
+		cout << boost::format("retained: recycle free %d\n")
+		    % bytes;
+	    }
+	    getRetainedData().insert(pair<size_t, byte *>(bytes,data));
+	    cur_retained_data_bytes += bytes;
+	}
+#endif
+    } else {
+	delete [] data;
+    }
+}
+
+void
+Extent::ByteArray::flushRetainedAllocations()
+{
+    PThreadAutoLocker lock(getRetainedMutex());
+    for(retained_dataT::iterator i = getRetainedData().begin();
+	i != getRetainedData().end(); ++i) {
+	delete [] i->second;
+	cur_retained_data_bytes -= i->first;
+    }
+    getRetainedData().clear();
+    INVARIANT(cur_retained_data_bytes == 0, "huh");
+    if (debug_retained) {
+	cout << boost::format("post-flush stats(count,bytes):\n"
+			      "  target_retained %d max_retained_bytes %d\n"
+			      "  small_alloc(%d,%d)\n"
+			      "  system_malloc(%d,%d) nothing_retained %d\n"
+			      "  recycle_malloc(%d,%d)\n"
+			      "  forced_free(%d,%d)\n"
+			      "  freeup_free(%d,%d)\n")
+	    % target_retained_arrays % max_retained_bytes 
+	    % retained_stats.small_alloc_count    % retained_stats.small_alloc_bytes
+	    % retained_stats.system_malloc_count  % retained_stats.system_malloc_bytes
+	    % retained_stats.system_malloc_nothing_retained_count 
+	    % retained_stats.recycle_malloc_count % retained_stats.recycle_malloc_bytes
+	    % retained_stats.forced_free_count    % retained_stats.forced_free_bytes
+	    % retained_stats.freeup_free_count    % retained_stats.freeup_free_bytes;
     }
 }
 
@@ -67,12 +268,12 @@ Extent::ByteArray::copyResize(size_t newsize, bool zero_it)
 {
     size_t oldsize = size();
     int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
-    byte *newV = new byte[target_max];
+    byte *newV = retainedAllocate(target_max);
     AssertAlways(((unsigned long)newV % 8) == 0,
 		 ("internal error, misaligned malloc return %ld\n",
 		  ((unsigned long)newV % 8)));
     memcpy(newV,beginV,oldsize);
-    delete [] beginV;
+    retainedFree(beginV, maxV - beginV);
     beginV = newV;
     endV = newV + newsize;
     maxV = newV + target_max;
@@ -81,8 +282,6 @@ Extent::ByteArray::copyResize(size_t newsize, bool zero_it)
     }
 }
 
-
-using namespace std;
 
 static bool did_checks_init = false;
 static bool preuncompress_check = true;

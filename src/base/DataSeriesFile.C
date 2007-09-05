@@ -266,6 +266,8 @@ DataSeriesSink::close()
     int ret = ::close(fd);
     INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
     fd = -1;
+    index_series.clearExtent();
+    index_extent.clear();
 }
 
 void

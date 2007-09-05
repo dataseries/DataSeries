@@ -62,7 +62,7 @@ public:
     class ByteArray { 
     public:
 	ByteArray() { beginV = endV = maxV = NULL; }
-	~ByteArray() { delete [] beginV; }
+	~ByteArray();
 	const size_t size() const { return endV - beginV; }
 	void resize(size_t newsize, bool zero_it = true) {
 	    size_t oldsize = size();
@@ -84,8 +84,49 @@ public:
 	byte &operator[] (size_t offset) { return *(begin(offset)); }
 	
 	typedef byte * iterator;
+
+	// glibc malloc takes all malloc chunks above some threshold
+	// (default 64k), and allocates them using mmap.
+	// Unfortunately, it doesn't retain any of the large
+	// allocations, so when we are reading through a dataseries
+	// file, we are constantly mmapping and unmapping large
+	// extents.  The following works around this by retaining some
+	// amount of allocated chunks without freeing them.  Efforts
+	// to use the mallopt settings that should have controlled
+	// things like this were not successful, only entirely disabling
+	// the mmap feature had any effect.
+
+	static void setMaxRetainedBytes(size_t bytes);
+	// what is the smallest allocation we retain, default 64k
+	static void setMinRetainSize(size_t bytes);
+	// for autotuning, how many byte arrays should we be trying to be
+	// able to allocate; default 16, so 4-8 extents; clamp_minimum,
+	// clamp_maximum set the range of what we will keep around regardless
+	// of what else happens.  Set target_arrays to 0 to disable
+	// retaining.
+	static void setRetainedAutotuning(uint32_t target_arrays,
+					  size_t clamp_minimum = 32*1024*1024,
+					  size_t clamp_maximum = 512*1024*1024);
+
+	// purge all of the retained allocations.
+	static void flushRetainedAllocations();
+	struct RetainedStats {
+	    uint64_t small_alloc_count, small_alloc_bytes;
+	    uint64_t system_malloc_count, system_malloc_bytes;
+	    uint64_t system_malloc_nothing_retained_count;
+	    uint64_t recycle_malloc_count, recycle_malloc_bytes;
+	    uint64_t forced_free_count, forced_free_bytes;
+	    uint64_t freeup_free_count, freeup_free_bytes;
+	};
+	static const RetainedStats &getRetainedStats();
     private:
+	// for re-calculating after changing target retained arrays,
+	// or after changing the max bytearray size
+	static void recalcMaxRetainedBytes();
+
 	void copyResize(size_t newsize, bool zero_it);
+	static byte *retainedAllocate(size_t bytes);
+	static void retainedFree(byte *data, size_t size);
 	byte *beginV, *endV, *maxV;
     };
 
@@ -109,7 +150,9 @@ public:
 	variabledata.resize(0);
 	init();
     }
-    unsigned int extentsize() { return fixeddata.size() + variabledata.size(); }
+    unsigned int extentsize() { 
+	return fixeddata.size() + variabledata.size(); 
+    }
 
     // The following are defined by the file format and can't be changed.
     static const Extent::byte compress_mode_none = 0;

@@ -318,6 +318,7 @@ main(int argc, char *argv[])
     printf("decode_time:%.6g expanded:%lld\n", source.decode_time, source.total_uncompressed_bytes);
 
     all_stats.printText(cout);
+    Extent::ByteArray::flushRetainedAllocations();
     return 0;
 }
 

@@ -78,8 +78,9 @@ public:
 int
 main(int argc, char *argv[]) 
 {
-    //   TypeIndexModule source("Trace::BlockIO::SRT");
-    TypeIndexModule source("I/O trace: SRT-V7");
+    //    Extent::ByteArray::setRetainedAutotuning(4,0);
+    TypeIndexModule source("Trace::BlockIO::SRT");
+    // TypeIndexModule source("I/O trace: SRT-V7");
     PrefetchBufferModule *prefetch = new PrefetchBufferModule(source,64*1024*1024);
 
     SequenceModule seq(prefetch);
@@ -142,5 +143,6 @@ main(int argc, char *argv[])
     printf("wait fraction :  %8.2f\n",
 	   source.waitFraction());
     
+    Extent::ByteArray::flushRetainedAllocations();
     return 0;
 }
