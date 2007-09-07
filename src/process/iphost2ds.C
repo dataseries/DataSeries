@@ -21,7 +21,7 @@ using namespace std;
 using namespace boost;
 
 // This program converts the output of running:
-// (for i in `sort ip-addr-list-file`; do
+// (date +%s; for i in `sort ip-addr-list-file`; do
 //     echo "host $i"
 //     host $i
 // done) > output-file
@@ -38,12 +38,13 @@ using namespace boost;
 
 const string ip_hostname_xml
 (
- "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Network::IP-to-Hostname\" version=\"1.0\"\n"
+ "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Network::IP-to-Hostname\" version=\"1.1\"\n"
  " comment=\"May get multiple lines with the same ipv4_address if the reverse mapping goes to multiple hostnames, recognized, entries that were looked up but were not found get null for all three names\" >\n"
  "  <field type=\"variable32\" name=\"shortname\" pack_unique=\"yes\" opt_nullable=\"yes\" comment=\"first part of the name; may be an encrypted string, so use Lintel/StringUtil::maybeHex to print\" />\n"
  "  <field type=\"variable32\" name=\"fullname\" pack_unique=\"yes\" opt_nullable=\"yes\" comment=\"full dns name, excluding trailing .; may be an encrypted string, so use Lintel/StringUtil::maybeHex to print\" />\n"
  "  <field type=\"variable32\" name=\"domainname\" pack_unique=\"yes\" opt_nullable=\"yes\" comment=\"domain name of host, excluding trailing .; may be an encrypted string, so use Lintel/StringUtil::maybeHex to print\" />\n"
  "  <field type=\"int32\" name=\"ipv4_address\" pack_relative=\"ipv4_address\" print_format=\"%08x\" />\n"
+ "  <field type=\"int32\" name=\"mapping_time\" pack_relative=\"mapping_time\" print_format=\"%u\" comment=\"time in seconds since 1970 at which the ip to hostname mapping was calculated\" />\n"
  "</ExtentType>\n"
 );
 
@@ -78,14 +79,19 @@ main(int argc, char *argv[])
     Variable32Field fullname_field(ip_hostname_series, "fullname", Field::flag_nullable);
     Variable32Field domainname_field(ip_hostname_series, "domainname", Field::flag_nullable);
     Int32Field ipv4_addr_field(ip_hostname_series, "ipv4_address");
-    
+    Int32Field mapping_time_field(ip_hostname_series, "mapping_time");
+
     OutputModule *outmodule = new OutputModule(ip_hostname_out, 
 					       ip_hostname_series,
 					       ip_hostname_type, 
 					       packing_args.extent_size);
 
-    string hostline;
     uint32_t linenum = 0;
+    string mapping_time_line;
+    getline(infile, mapping_time_line); ++linenum;
+    uint32_t mapping_time = stringToUInt32(mapping_time_line);
+
+    string hostline;
     getline(infile, hostline); ++linenum;
     // Turns out you can get a reply from an inaddr query that
     // something is an alias.  For now we don't handle that case, you
@@ -127,9 +133,11 @@ main(int argc, char *argv[])
 		fullname_field.set(encryptString(fullname));
 		domainname_field.set(encryptString(domainname));
 		ipv4_addr_field.set(ipv4_addr);
+		mapping_time_field.set(mapping_time);
 	    } else if (answerline.substr(0, not_found.size()) == not_found) {
 		outmodule->newRecord();
 		ipv4_addr_field.set(ipv4_addr);
+		mapping_time_field.set(mapping_time);
 		shortname_field.setNull();
 		fullname_field.setNull();
 		domainname_field.setNull();
