@@ -12,6 +12,8 @@
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 
+#include <Lintel/PThread.H>
+
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 // ExtentField isn't used in this header, but makes using the library
@@ -75,6 +77,10 @@ public:
     // type information); also, empty variable-sized extents are not
     // counted in the compress_* stats
     struct Stats {
+	// Single global mutex for stats right now, should be sufficient
+	// given they are pretty infrequently accessed.
+	static PThreadMutex &getMutex();
+
 	uint32_t extents;
 	uint32_t compress_none, compress_lzo, compress_gzip, 
 	    compress_bz2, compress_lzf;
@@ -97,11 +103,21 @@ public:
 	void printText(std::ostream &to, const std::string &extent_type = "");
     };
 
-    Stats stats;
-
+    // You are only guarenteeed to have all the statistics for writing
+    // this file after you call close().
+    Stats getStats() {
+	// Make a copy so it's thread safe.
+	PThreadAutoLocker lock(Stats::getMutex());
+	Stats ret = stats; // with the auto-locker, do we have a
+			   // guarentee that the copy would be made
+			   // before we return?
+	return ret;
+    }
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
 private:
+    Stats stats;
+
     off64_t cur_offset; // set to -1 when sink is closed
     ExtentSeries index_series;
     Extent index_extent;

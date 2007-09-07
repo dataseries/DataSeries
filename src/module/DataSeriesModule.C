@@ -105,12 +105,12 @@ OutputModule::flushExtent()
 
 	DataSeriesSink::Stats old;
 
-	old = sink.stats;
+	old = sink.getStats();
 	
 	sink.writeExtent(cur_extent);
 	cur_extent->clear();
 
-	stats += sink.stats - old;
+	stats += sink.getStats() - old;
     }
 }
 

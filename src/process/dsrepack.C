@@ -299,7 +299,7 @@ main(int argc, char *argv[])
 			i->second->rotateOutput(*new_output);
 		    }
 		    output->close();
-		    all_stats += output->stats;
+		    all_stats += output->getStats();
 		    delete output;
 		    output = new_output;
 		}
@@ -313,7 +313,7 @@ main(int argc, char *argv[])
 	i->second->output_module->flushExtent();
     }
     output->close();
-    all_stats += output->stats;
+    all_stats += output->getStats();
 
     printf("decode_time:%.6g expanded:%lld\n", source.decode_time, source.total_uncompressed_bytes);
 

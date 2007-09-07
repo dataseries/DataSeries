@@ -460,6 +460,8 @@ DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
     return *this;
 }
 
+// TODO: make this take a int64 records argument also, default -1, and
+// print out record counts, etc, like logfu2ds.C
 void
 DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
 {
@@ -479,4 +481,12 @@ DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
 	% unpacked_variable_raw;
     to << boost::format("  packed size: %d; pack time: %.3f\n")
 	% packed_size % pack_time;
+}
+
+PThreadMutex &
+DataSeriesSink::Stats::getMutex()
+{
+    static PThreadMutex mutex;
+    
+    return mutex;
 }

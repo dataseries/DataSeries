@@ -197,5 +197,6 @@ main(int argc, char *argv[])
 	AssertAlways(fclose(infile) == 0,("Error on fclose: %s\n",strerror(errno)));
     }
 
-    psdsout.stats.printText(cout, pstype->name);
+    psdsout.close();
+    psdsout.getStats().printText(cout, pstype->name);
 }
