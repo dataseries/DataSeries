@@ -152,7 +152,7 @@ main(int argc, char *argv[])
 	++nread;
 	if ((int)(psextent->extentsize()+buffer.size()) > packing_args.extent_size ||
 	    feof(infile)) {
-	    psdsout.writeExtent(psextent);
+	    psdsout.writeExtent(*psextent, NULL);
 	    psextent->clear();
 	}
 	

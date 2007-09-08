@@ -296,7 +296,7 @@ writeIndexMap(char *out_filename)
 	AssertAlways(i->second.mtime > 0,("bad mtime\n"));
 	mtime.set(i->second.mtime);
     } 
-    sink.writeExtent(e);
+    sink.writeExtent(*e, NULL);
 }
 
 int

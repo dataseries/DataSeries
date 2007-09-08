@@ -247,7 +247,7 @@ DataSeriesSink::close()
 		 ("error: never wrote the extent type library?!"));
     AssertAlways(cur_offset >= 0,("error: close called twice?!"));
     ExtentType::int64 index_offset = cur_offset;
-    uint32_t packed_size = doWriteExtent(&index_extent);
+    uint32_t packed_size = doWriteExtent(index_extent, NULL);
     char *tail = new char[7*4];
     AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
     for(int i=0;i<4;i++) {
@@ -282,15 +282,20 @@ DataSeriesSink::checkedWrite(const void *buf, int bufsize)
 }
 
 void
-DataSeriesSink::writeExtent(Extent *e)
+DataSeriesSink::writeExtent(Extent &e, Stats *stats)
 {
-    AssertAlways(wrote_library,
-		 ("must write extent type library before writing extents!\n"));
-    AssertAlways(e != NULL,("bad argument to writeExtent\n"));
-    AssertAlways(valid_types[e->type],
-		 ("type %s (%p) wasn't in your type library\n",
-		  e->type->name.c_str(),e->type));
-    doWriteExtent(e);
+    INVARIANT(wrote_library,
+	      "must write extent type library before writing extents!\n");
+    INVARIANT(valid_types[e.type],
+	      boost::format("type %s (%p) wasn't in your type library")
+	      % e.type->name.c_str() % e.type);
+    doWriteExtent(e, stats);
+}
+
+void
+DataSeriesSink::finishWriting()
+{
+    // nothing to do right now.
 }
 
 void
@@ -320,7 +325,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 		% et->name << endl;
 	}
     }
-    doWriteExtent(&type_extent);
+    doWriteExtent(type_extent, NULL);
     wrote_library = true; 
 }
 
@@ -352,63 +357,42 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 }
 
 size_t
-DataSeriesSink::doWriteExtent(Extent *e)
+DataSeriesSink::doWriteExtent(Extent &e, Stats *to_update)
 {
     Extent::ByteArray data;
     index_series.newRecord();
     field_extentOffset.set(cur_offset);
-    field_extentType.set(e->type->name);
+    field_extentType.set(e.type->name);
     AssertAlways(cur_offset > 0,("Error: doWriteExtent on closed file\n"));
-    ++stats.extents;
-    stats.unpacked_variable_raw += e->variabledata.size();
-    struct rusage pack_start;
-    AssertAlways(getrusage(RUSAGE_SELF,&pack_start)==0,
-		 ("?!"));
+
+    struct timespec pack_start;
+    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_start) == 0, "??");
+    
     int headersize, fixedsize, variablesize;
-    uint32_t checksum = e->packData(data,compression_modes,compression_level,
-				    &headersize,&fixedsize,&variablesize);
-    struct rusage pack_end;
-    AssertAlways(getrusage(RUSAGE_SELF,&pack_end)==0,
-		 ("?!"));
+    uint32_t checksum = e.packData(data,compression_modes,compression_level,
+				   &headersize,&fixedsize,&variablesize);
+    struct timespec pack_end;
+    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_end) == 0, "??");
+
     checkedWrite(data.begin(),data.size());
     cur_offset += data.size();
-    double pack_extent_time = (pack_end.ru_utime.tv_sec - pack_start.ru_utime.tv_sec) + (pack_end.ru_utime.tv_usec - pack_start.ru_utime.tv_usec)/1000000.0;
-    stats.unpacked_size += headersize + fixedsize + variablesize;
-    stats.unpacked_fixed += fixedsize;
-    stats.unpacked_variable += variablesize;
-    stats.packed_size += data.size();
-    stats.pack_time += pack_extent_time;
-    if (data[6*4] == 0) {
-	++stats.compress_none;
-    } else if (data[6*4] == 1) {
-	++stats.compress_lzo;
-    } else if (data[6*4] == 2) {
-	++stats.compress_gzip;
-    } else if (data[6*4] == 3) {
-	++stats.compress_bz2;
-    } else if (data[6*4] == 4) {
-	++stats.compress_lzf;
-    } else {
-	FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
-		    % static_cast<unsigned>(data[6*4]));
-    }
-    if (*(ExtentType::int32 *)(data.begin()+4) > 0) {
-	if (data[6*4+1] == 0) {
-	    ++stats.compress_none;
-	} else if (data[6*4+1] == 1) {
-	    ++stats.compress_lzo;
-	} else if (data[6*4+1] == 2) {
-	    ++stats.compress_gzip;
-	} else if (data[6*4+1] == 3) {
-	    ++stats.compress_bz2;
-	} else if (data[6*4+1] == 4) {
-	    ++stats.compress_lzf;
-	} else {
-	    FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
-			% static_cast<unsigned>(data[6*4+1]));
-	}
-    }
+    double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
+	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
+    
     chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
+    PThreadAutoLocker lock(Stats::getMutex());
+    stats.update(headersize + fixedsize + variablesize, fixedsize,
+		 e.variabledata.size(), variablesize, 
+		 data.size(), *reinterpret_cast<uint32_t *>(data.begin()+4), 
+		 pack_extent_time, data[6*4], data[6*4+1]);
+    
+    if (to_update != NULL) {
+	to_update->update(headersize + fixedsize + variablesize, fixedsize,
+			  e.variabledata.size(), variablesize, 
+			  data.size(), *reinterpret_cast<uint32_t *>(data.begin()+4), 
+			  pack_extent_time, data[6*4], data[6*4+1]);
+    }
+		 
     return data.size();
 }
 
@@ -457,6 +441,43 @@ DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
     pack_time -= from.pack_time;
 
     return *this;
+}
+
+void
+DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed, 
+			      uint32_t unp_var_raw, uint32_t unp_variable, 
+			      uint32_t pkd_size, uint32_t pkd_var_size, 
+			      double pkd_time, 
+			      unsigned char fixed_compress_mode,
+			      unsigned char variable_compress_mode)
+{
+    ++extents;
+    unpacked_size += unp_size;
+    unpacked_fixed += unp_fixed;
+    unpacked_variable_raw += unp_var_raw;
+    unpacked_variable += unp_variable;
+    packed_size += pkd_size;
+    pack_time += pkd_time;
+    updateCompressMode(fixed_compress_mode);
+    if (pkd_var_size > 0) {
+	updateCompressMode(variable_compress_mode);
+    }
+}
+
+void
+DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode)
+{
+    switch(compress_mode) 
+	{
+	case 0: ++compress_none; break;
+	case 1: ++compress_lzo; break;
+	case 2: ++compress_gzip; break;
+	case 3: ++compress_bz2; break;
+	case 4: ++compress_lzf; break;
+	default:
+	    FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
+			% static_cast<unsigned>(compress_mode));
+	}
 }
 
 // TODO: make this take a int64 records argument also, default -1, and

@@ -85,8 +85,15 @@ public:
     void newRecord();
     void flushExtent(); // force current extent out, you can continue writing.
 
-    DataSeriesSink::Stats stats;
-    
+    void finishWriting() {
+	sink.finishWriting();
+    }
+    DataSeriesSink::Stats getStats() {
+	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());
+	DataSeriesSink::Stats ret = stats;
+	return ret;
+    }
+
     void printStats(std::ostream &to);
     const int target_extent_size;
     const ExtentType *outputtype;
@@ -95,6 +102,8 @@ public:
 	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();
     }
 private:
+    DataSeriesSink::Stats stats;
+    
     DataSeriesSink &sink;
     ExtentSeries &series;
     Extent *cur_extent;

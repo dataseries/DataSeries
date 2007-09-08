@@ -51,21 +51,6 @@ private:
 
 class DataSeriesSink {
 public:
-    // TODO: is the following ("-" == stdout) a good idea?  I don't
-    // think anything uses it.
-
-    // if filename is "-", will write to stdout...
-    DataSeriesSink(const std::string &filename,
-		   int compression_modes = Extent::compress_all,
-		   int compression_level = 9);
-    ~DataSeriesSink(); // automatically calls close() if needed.
-    void close();
-    void writeExtentLibrary(ExtentTypeLibrary &lib);
-    void writeExtent(Extent *e);
-    const off64_t cur_position() {
-	return cur_offset;
-    }
-
     // sundry statistics on this sink; expect to get one
     // non-compressed chunk (the fixed record pointers for the extent
     // type information); also, empty variable-sized extents are not
@@ -95,7 +80,35 @@ public:
 	/// specify an extent type if this statistic was entirely for one
 	/// type.
 	void printText(std::ostream &to, const std::string &extent_type = "");
+    private:
+	// You should grab the lock before calling this
+	void update(uint32_t unpacked_size, uint32_t unpacked_fixed,
+		    uint32_t unpacked_variable_raw,
+		    uint32_t unpacked_variable, uint32_t packed_size,
+		    uint32_t packed_variable_size, double pack_time, 
+		    unsigned char fixed_compress_mode,
+		    unsigned char variable_compress_mode);
+	void updateCompressMode(unsigned char compress_mode);
+	friend class DataSeriesSink;
     };
+
+    // TODO: is the following ("-" == stdout) a good idea?  I don't
+    // think anything uses it.
+
+    // if filename is "-", will write to stdout...
+    DataSeriesSink(const std::string &filename,
+		   int compression_modes = Extent::compress_all,
+		   int compression_level = 9);
+    ~DataSeriesSink(); // automatically calls close() if needed.
+    void close();
+    /// finishWriting() waits until all of the pending writes have been completed.
+    void finishWriting(); 
+    void writeExtentLibrary(ExtentTypeLibrary &lib);
+    // set toUpdate to NULL 
+    void writeExtent(Extent &e, Stats *toUpdate);
+    const off64_t cur_position() {
+	return cur_offset;
+    }
 
     // You are only guarenteeed to have all the statistics for writing
     // this file after you call close().
@@ -120,7 +133,7 @@ private:
     bool wrote_library;
     // returns the size of the compressed extent, needed for writing the
     // tail of the dataseries file.
-    size_t doWriteExtent(Extent *e);
+    size_t doWriteExtent(Extent &e, Stats *to_update);
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
     std::map<const ExtentType *,bool> valid_types;

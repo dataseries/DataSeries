@@ -100,22 +100,17 @@ OutputModule::newRecord()
 void
 OutputModule::flushExtent()
 {
+    INVARIANT(cur_extent != NULL, "??");
     if (cur_extent->fixeddata.size() > 0) {
 	stats.unpacked_variable_raw += cur_extent->variabledata.size();
 
-	DataSeriesSink::Stats old;
-
-	old = sink.getStats();
-	
-	sink.writeExtent(cur_extent);
+	sink.writeExtent(*cur_extent, &stats);
 	cur_extent->clear();
-
-	stats += sink.getStats() - old;
     }
 }
 
 void
 OutputModule::printStats(std::ostream &to)
 {
-    stats.printText(to, outputtype->name);
+    getStats().printText(to, outputtype->name);
 }

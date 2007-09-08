@@ -57,8 +57,9 @@ struct PerTypeWork {
 	outputseries.clearExtent();
 	output_module = new OutputModule(output, outputseries, 
 					 old->outputtype, old->target_extent_size);
-	sum_unpacked_size += old->stats.unpacked_size;
-	sum_packed_size += old->stats.packed_size;
+	DataSeriesSink::Stats stats = old->getStats();
+	sum_unpacked_size += stats.unpacked_size;
+	sum_packed_size += stats.packed_size;
 	delete old;
     }
 
