@@ -602,7 +602,7 @@ test_byteflip()
     printf("Initial execution:\n");
     onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, flip4_time, true);
 
-    const int max_runtimes = 10;
+    const unsigned max_runtimes = 10;
     Stats runtimes[max_runtimes];
     uint32_t expected_sum = flip4_sum;
 

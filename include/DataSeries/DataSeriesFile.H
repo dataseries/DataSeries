@@ -61,13 +61,7 @@ public:
     ~DataSeriesSink(); // automatically calls close() if needed.
     void close();
     void writeExtentLibrary(ExtentTypeLibrary &lib);
-    void writeExtent(Extent *e) {
-	Extent::ByteArray foo;
-	writeExtent(e,foo);
-    }
-    // returns the time to pack the extent in seconds, and the
-    // compressed extent is put into compressed
-    double writeExtent(Extent *e, Extent::ByteArray &compressed);
+    void writeExtent(Extent *e);
     const off64_t cur_position() {
 	return cur_offset;
     }
@@ -124,7 +118,9 @@ private:
     Int64Field field_extentOffset;
     Variable32Field field_extentType;
     bool wrote_library;
-    double doWriteExtent(Extent *e, Extent::ByteArray &compressed);
+    // returns the size of the compressed extent, needed for writing the
+    // tail of the dataseries file.
+    size_t doWriteExtent(Extent *e);
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
     std::map<const ExtentType *,bool> valid_types;

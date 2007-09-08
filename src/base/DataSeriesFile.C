@@ -247,16 +247,15 @@ DataSeriesSink::close()
 		 ("error: never wrote the extent type library?!"));
     AssertAlways(cur_offset >= 0,("error: close called twice?!"));
     ExtentType::int64 index_offset = cur_offset;
-    Extent::ByteArray packed;
-    doWriteExtent(&index_extent,packed);
+    uint32_t packed_size = doWriteExtent(&index_extent);
     char *tail = new char[7*4];
     AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
     for(int i=0;i<4;i++) {
 	tail[i] = 0xFF;
     }
     typedef ExtentType::int32 int32;
-    *(int32 *)(tail + 4) = packed.size();
-    *(int32 *)(tail + 8) = ~packed.size();
+    *(int32 *)(tail + 4) = packed_size;
+    *(int32 *)(tail + 8) = ~packed_size;
     *(int32 *)(tail + 12) = chained_checksum;
     *(ExtentType::int64 *)(tail + 16) = (ExtentType::int64)index_offset;
     *(int32 *)(tail + 24) = BobJenkinsHash(1776,tail,6*4);
@@ -282,8 +281,8 @@ DataSeriesSink::checkedWrite(const void *buf, int bufsize)
 	      % ret % bufsize % strerror(errno));
 }
 
-double
-DataSeriesSink::writeExtent(Extent *e, Extent::ByteArray &compressed)
+void
+DataSeriesSink::writeExtent(Extent *e)
 {
     AssertAlways(wrote_library,
 		 ("must write extent type library before writing extents!\n"));
@@ -291,7 +290,7 @@ DataSeriesSink::writeExtent(Extent *e, Extent::ByteArray &compressed)
     AssertAlways(valid_types[e->type],
 		 ("type %s (%p) wasn't in your type library\n",
 		  e->type->name.c_str(),e->type));
-    return doWriteExtent(e,compressed);
+    doWriteExtent(e);
 }
 
 void
@@ -321,9 +320,8 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 		% et->name << endl;
 	}
     }
-    Extent::ByteArray foo;
-    doWriteExtent(&type_extent,foo);
-    wrote_library = true;
+    doWriteExtent(&type_extent);
+    wrote_library = true; 
 }
 
 void
@@ -353,9 +351,10 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 		 ("bad hash in the tail!\n"));
 }
 
-double
-DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
+size_t
+DataSeriesSink::doWriteExtent(Extent *e)
 {
+    Extent::ByteArray data;
     index_series.newRecord();
     field_extentOffset.set(cur_offset);
     field_extentType.set(e->type->name);
@@ -410,7 +409,7 @@ DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
 	}
     }
     chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
-    return pack_extent_time;
+    return data.size();
 }
 
 void
