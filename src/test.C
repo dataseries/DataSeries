@@ -1006,6 +1006,7 @@ test_doublebase_nullable()
 int
 main(int argc, char *argv[])
 {
+    Extent::setReadChecksFromEnv(true);
 #if WITH_CRYPTO
     runCryptUtilChecks();
 #endif

@@ -152,7 +152,6 @@ int
 main(int argc, char *argv[])
 {
     uint64_t target_file_bytes = 0;
-    // Always check on repacking...
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
@@ -170,6 +169,7 @@ main(int argc, char *argv[])
 	      boost::format("Usage: %s <common-options> [--target-file-size=MiB] input-filename... output-filename\n") 
 	      % argv[0]);
     
+    // Always check on repacking...
     if (getenv("DATASERIES_EXTENT_CHECKS")) {
 	cerr << "Warning: DATASERIES_EXTENT_CHECKS is set; generally you want all checks on during a dsrepack.\n";
     }

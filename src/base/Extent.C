@@ -422,7 +422,7 @@ public:
     }
 };
 
-static const int variable_sizes_batch_size = 1024;
+static const unsigned variable_sizes_batch_size = 1024;
 
 uint32_t
 Extent::packData(Extent::ByteArray &into,
@@ -593,7 +593,7 @@ Extent::packData(Extent::ByteArray &into,
     for(byte *curvarpos = variable_coded.begin(4);curvarpos != endvarpos;) {
 	int32 size = *(int32 *)curvarpos;
 	variable_sizes.push_back(size);
-	if ((int)variable_sizes.size() == variable_sizes_batch_size) {
+	if (variable_sizes.size() == variable_sizes_batch_size) {
 	    bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
 	    variable_sizes.resize(0);
 	}
@@ -1009,19 +1009,20 @@ Extent::unpackData(const ExtentType *_type,
     byte *endvarpos = variabledata.begin() + variabledata.size();
     for(byte *curvarpos = &variabledata[4];curvarpos != endvarpos;) {
 	int32 size = *(int32 *)curvarpos;
-	variable_sizes.push_back(size);
-	if ((int)variable_sizes.size() == variable_sizes_batch_size) {
-	    if (postuncompress_check) {
+	if (postuncompress_check) {
+	    variable_sizes.push_back(size);
+
+	    if (variable_sizes.size() == variable_sizes_batch_size) {
 		bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
+		variable_sizes.resize(0);
 	    }
-	    variable_sizes.resize(0);
 	}
 	if (fix_endianness) {
 	    size = Extent::flip4bytes(size);
 	    *(int32 *)curvarpos = size;
 	}
 	curvarpos += 4 + Variable32Field::roundupSize(size);
-	AssertAlways(curvarpos <= endvarpos,("internal error\n"));
+	INVARIANT(curvarpos <= endvarpos,"internal error on variable data");
     }
     if (postuncompress_check) {
 	bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());

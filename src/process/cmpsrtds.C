@@ -27,6 +27,7 @@ main(int argc, char *argv[])
 {
     SRTTrace *tracestream;
 
+    Extent::setReadChecksFromEnv(true); // verifying things converted properly, should check
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
     AssertAlways(argc == 3 || argc == 4,("Usage: %s in-srt in-ds [minor_version]\n",argv[0]));
