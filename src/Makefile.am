@@ -45,7 +45,7 @@ lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config 
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto -lrt
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
