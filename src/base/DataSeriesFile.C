@@ -194,6 +194,20 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     return ret;
 }
 
+class DataSeriesSinkPThread : public PThread {
+public:
+    DataSeriesSinkPThread(DataSeriesSink *_mine)
+	: mine(_mine) { }
+
+    virtual void *run() {
+	mine->compressorThread();
+	return NULL;
+    }
+    DataSeriesSink *mine;
+};
+
+int DataSeriesSink::compressor_count = -1;
+
 DataSeriesSink::DataSeriesSink(const string &filename,
 			       int _compression_modes,
 			       int _compression_level)
@@ -204,7 +218,7 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       wrote_library(false),
       compression_modes(_compression_modes),
       compression_level(_compression_level),
-      chained_checksum(0)
+      chained_checksum(0), shutdown_compressors(false)
 {
     stats.packed_size += 2*4 + 4*8;
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
@@ -231,6 +245,16 @@ DataSeriesSink::DataSeriesSink(const string &filename,
     doublecheck = Double::NaN;
     checkedWrite(&doublecheck,8);
     cur_offset = 2*4 + 4*8;
+    int pthread_count = compressor_count;
+    if (pthread_count == -1) {
+	pthread_count = PThreadMisc::getNCpus();
+    }
+    
+    for(int i=0; i < pthread_count; ++i) {
+	DataSeriesSinkPThread *t = new DataSeriesSinkPThread(this);
+	compressors.push_back(t);
+	t->start();
+    }
 }
 
 DataSeriesSink::~DataSeriesSink()
@@ -246,8 +270,31 @@ DataSeriesSink::close()
     AssertAlways(wrote_library,
 		 ("error: never wrote the extent type library?!"));
     AssertAlways(cur_offset >= 0,("error: close called twice?!"));
+
+    mutex.lock();
+    shutdown_compressors = true;
+    cond.broadcast();
+    mutex.unlock();
+
+    for(vector<PThread *>::iterator i = compressors.begin();
+	i != compressors.end(); ++i) {
+	(**i).join();
+    }
+
+    INVARIANT(pending_work.empty(), "bad");
     ExtentType::int64 index_offset = cur_offset;
-    uint32_t packed_size = doWriteExtent(index_extent, NULL);
+    pending_work.push_back(new toCompress(index_extent, NULL));
+    pending_work.front()->in_progress = true;
+    processToCompress(pending_work.front());
+    mutex.lock();
+    INVARIANT(pending_work.size() == 1, "bad");
+    uint32_t packed_size = pending_work.front()->compressed.size();
+    mutex.unlock();
+    writeOutPending();
+
+    mutex.lock();
+    INVARIANT(pending_work.empty(), "bad");
+
     char *tail = new char[7*4];
     AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
     for(int i=0;i<4;i++) {
@@ -261,12 +308,13 @@ DataSeriesSink::close()
     *(int32 *)(tail + 24) = BobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
-    cur_offset = 0;
     int ret = ::close(fd);
     INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
     fd = -1;
+    cur_offset = -1;
     index_series.clearExtent();
     index_extent.clear();
+    mutex.unlock();
 }
 
 void
@@ -289,13 +337,7 @@ DataSeriesSink::writeExtent(Extent &e, Stats *stats)
     INVARIANT(valid_types[e.type],
 	      boost::format("type %s (%p) wasn't in your type library")
 	      % e.type->name.c_str() % e.type);
-    doWriteExtent(e, stats);
-}
-
-void
-DataSeriesSink::finishWriting()
-{
-    // nothing to do right now.
+    queueWriteExtent(e, stats);
 }
 
 void
@@ -325,8 +367,11 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 		% et->name << endl;
 	}
     }
-    doWriteExtent(type_extent, NULL);
+    queueWriteExtent(type_extent, NULL);
+    mutex.lock();
+    INVARIANT(!wrote_library, "bad, two calls to writeExtentLibrary()");
     wrote_library = true; 
+    mutex.unlock();
 }
 
 void
@@ -356,44 +401,134 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 		 ("bad hash in the tail!\n"));
 }
 
-size_t
-DataSeriesSink::doWriteExtent(Extent &e, Stats *to_update)
+void
+DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
 {
-    Extent::ByteArray data;
-    index_series.newRecord();
-    field_extentOffset.set(cur_offset);
-    field_extentType.set(e.type->name);
-    AssertAlways(cur_offset > 0,("Error: doWriteExtent on closed file\n"));
+    mutex.lock();
+    INVARIANT(cur_offset > 0, "queueWriteExtent on closed file");
+    pending_work.push_back(new toCompress(e, to_update));
+
+    if (compressors.empty()) {
+	INVARIANT(pending_work.size() == 1, "bad");
+	pending_work.front()->in_progress = true;
+	mutex.unlock();
+	processToCompress(pending_work.front());
+	writeOutPending();
+	return;
+    } 
+	
+    cond.signal();
+    while(pending_work.size() > 2 * compressors.size()) {
+	consumed_some_cond.wait(mutex);
+    }
+    mutex.unlock();
+	
+}
+
+void
+DataSeriesSink::writeOutPending()
+{
+    mutex.lock();
+    Deque<toCompress *> to_write;
+    while(!pending_work.empty() 
+	  && pending_work.front()->compressed.size() > 0
+	  && !pending_work.front()->in_progress) {
+	pending_work.front()->wipeExtent();
+	to_write.push_back(pending_work.front());
+	pending_work.pop_front();
+    }
+    // Need to take writeout_mutex before releasing mutex to make sure
+    // we write first; don't want to hold mutex as that would prevent
+    // additional work happening.
+    writeout_mutex.lock(); 
+    consumed_some_cond.broadcast();
+    mutex.unlock();
+    off64_t save_offset = cur_offset;
+    INVARIANT(save_offset == cur_offset, boost::format("bad %d != %d")
+	      % save_offset % cur_offset);
+    while(!to_write.empty()) {
+	toCompress *tc = to_write.front();
+	to_write.pop_front();
+	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
+	index_series.newRecord();
+	field_extentOffset.set(cur_offset);
+	field_extentType.set(tc->extent.type->name);
+
+	checkedWrite(tc->compressed.begin(), tc->compressed.size());
+	cur_offset += tc->compressed.size();
+	chained_checksum 
+	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
+	delete tc;
+    }
+    writeout_mutex.unlock();
+}
+
+void
+DataSeriesSink::processToCompress(toCompress *work)
+{
+    INVARIANT(work->in_progress, "??");
+    INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
 
     struct timespec pack_start;
     INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_start) == 0, "??");
     
     int headersize, fixedsize, variablesize;
-    uint32_t checksum = e.packData(data,compression_modes,compression_level,
-				   &headersize,&fixedsize,&variablesize);
+    work->checksum = work->extent.packData(work->compressed, compression_modes,
+					   compression_level, &headersize,
+					   &fixedsize, &variablesize);
     struct timespec pack_end;
     INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_end) == 0, "??");
 
-    checkedWrite(data.begin(),data.size());
-    cur_offset += data.size();
     double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
 	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
     
-    chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
+    // Slightly less efficient than calling update on the two separate stats,
+    // but easier to code.
+    Stats tmp;
+    tmp.update(headersize + fixedsize + variablesize, fixedsize,
+	       work->extent.variabledata.size(), variablesize, 
+	       work->compressed.size(), 
+	       *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
+	       pack_extent_time, work->compressed[6*4], 
+	       work->compressed[6*4+1]);
+
+    INVARIANT(work->compressed.size() > 0, "??");
+    work->in_progress = false;
     PThreadAutoLocker lock(Stats::getMutex());
-    stats.update(headersize + fixedsize + variablesize, fixedsize,
-		 e.variabledata.size(), variablesize, 
-		 data.size(), *reinterpret_cast<uint32_t *>(data.begin()+4), 
-		 pack_extent_time, data[6*4], data[6*4+1]);
-    
-    if (to_update != NULL) {
-	to_update->update(headersize + fixedsize + variablesize, fixedsize,
-			  e.variabledata.size(), variablesize, 
-			  data.size(), *reinterpret_cast<uint32_t *>(data.begin()+4), 
-			  pack_extent_time, data[6*4], data[6*4+1]);
+    stats += tmp;
+    if (work->to_update != NULL) {
+	*work->to_update += tmp;
     }
-		 
-    return data.size();
+}
+
+void 
+DataSeriesSink::compressorThread() 
+{
+    mutex.lock();
+    while(true) {
+	toCompress *work = NULL;
+	for(Deque<toCompress *>::iterator i = pending_work.begin();
+	    i != pending_work.end(); ++i) {
+	    if ((**i).compressed.size() == 0 &&
+		(**i).in_progress == false) {
+		work = *i;
+		work->in_progress = true;
+		break;
+	    }
+	}
+	if (work == NULL) {
+	    if (shutdown_compressors) {
+		break;
+	    }
+	    cond.wait(mutex);
+	} else {
+	    mutex.unlock();
+	    processToCompress(work);
+	    writeOutPending();
+	    mutex.lock();
+	}
+    }
+    mutex.unlock();
 }
 
 void

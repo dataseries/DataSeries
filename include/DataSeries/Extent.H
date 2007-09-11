@@ -82,7 +82,13 @@ public:
 	byte *begin(size_t offset) { return beginV + offset; }
 	byte *end() { return endV; };
 	byte &operator[] (size_t offset) { return *(begin(offset)); }
-	
+    
+	void swap(ByteArray &with) {
+	    swap(beginV,with.beginV);
+	    swap(endV,with.endV);
+	    swap(maxV,with.maxV);
+	}
+
 	typedef byte * iterator;
 
 	// glibc malloc takes all malloc chunks above some threshold
@@ -120,6 +126,11 @@ public:
 	};
 	static const RetainedStats &getRetainedStats();
     private:
+	void swap(byte * &a, byte * &b) {
+	    byte *tmp = a;
+	    a = b;
+	    b = tmp;
+	}
 	// for re-calculating after changing target retained arrays,
 	// or after changing the max bytearray size
 	static void recalcMaxRetainedBytes();
@@ -144,6 +155,8 @@ public:
     // you init with a series, and series.extent() == NULL, the Extent
     // creation will set the extent to the new extent.
     Extent(ExtentSeries &myseries);
+
+    void swap(Extent &with);
 
     void clear() {
 	fixeddata.resize(0);

@@ -383,6 +383,14 @@ Extent::Extent(ExtentSeries &myseries)
 }
 
 void
+Extent::swap(Extent &with)
+{ 
+    INVARIANT(with.type == type, "can't swap between incompatible types");
+    fixeddata.swap(with.fixeddata);
+    variabledata.swap(with.variabledata);
+}
+
+void
 Extent::createRecords(unsigned int nrecords)
 {
     fixeddata.resize(fixeddata.size() + nrecords * type->fixed_record_size);

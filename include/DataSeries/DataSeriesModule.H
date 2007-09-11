@@ -85,9 +85,6 @@ public:
     void newRecord();
     void flushExtent(); // force current extent out, you can continue writing.
 
-    void finishWriting() {
-	sink.finishWriting();
-    }
     DataSeriesSink::Stats getStats() {
 	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());
 	DataSeriesSink::Stats ret = stats;

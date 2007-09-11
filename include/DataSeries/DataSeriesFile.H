@@ -12,6 +12,7 @@
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 
+#include <Lintel/Deque.H>
 #include <Lintel/PThread.H>
 
 #include <DataSeries/Extent.H>
@@ -101,10 +102,10 @@ public:
 		   int compression_level = 9);
     ~DataSeriesSink(); // automatically calls close() if needed.
     void close();
-    /// finishWriting() waits until all of the pending writes have been completed.
-    void finishWriting(); 
+
     void writeExtentLibrary(ExtentTypeLibrary &lib);
-    // set toUpdate to NULL 
+    // set toUpdate to NULL if you have nothing to update.
+    // writeExtent is destructive, e will be empty on return.
     void writeExtent(Extent &e, Stats *toUpdate);
     const off64_t cur_position() {
 	return cur_offset;
@@ -120,9 +121,31 @@ public:
 			   // before we return?
 	return ret;
     }
+
+    // count == -1 ==> use Lintel/PThreadMisc::getNCpus()
+    // count == 0 ==> no separate thread for compressing, work done during
+    // call to writeExtent()
+    static void setDefaultCompressorCount(int count = -1);
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
 private:
+    struct toCompress {
+	Extent extent;
+	Stats *to_update;
+	bool in_progress;
+	uint32_t checksum;
+	Extent::ByteArray compressed;
+	toCompress(Extent &e, Stats *_to_update)
+	    : extent(e.type), to_update(_to_update), 
+	      in_progress(false), checksum(0) 
+	{
+	    extent.swap(e);
+	}
+	void wipeExtent() {
+	    Extent tmp(extent.type);
+	    extent.swap(tmp);
+	}
+    };
     Stats stats;
 
     off64_t cur_offset; // set to -1 when sink is closed
@@ -133,7 +156,6 @@ private:
     bool wrote_library;
     // returns the size of the compressed extent, needed for writing the
     // tail of the dataseries file.
-    size_t doWriteExtent(Extent &e, Stats *to_update);
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
     std::map<const ExtentType *,bool> valid_types;
@@ -141,6 +163,18 @@ private:
     const int compression_modes;
     const int compression_level;
     uint32_t chained_checksum; 
+
+    void queueWriteExtent(Extent &e, Stats *to_update);
+    void processToCompress(toCompress *work);
+    void writeOutPending();
+    static int compressor_count;
+    std::vector<PThread *> compressors;
+    bool shutdown_compressors;
+    Deque<toCompress *> pending_work;
+    PThreadMutex mutex, writeout_mutex;
+    PThreadCond cond, consumed_some_cond;
+    friend class DataSeriesSinkPThread;
+    void compressorThread();
 };
 
 inline DataSeriesSink::Stats 

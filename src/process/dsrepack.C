@@ -135,6 +135,17 @@ dataseries(7), dsselect(1)
 =cut
 */
 
+void
+checkFileMissing(const std::string &filename)
+{
+    struct stat buf;
+    INVARIANT(stat(filename.c_str(), &buf) != 0, 
+	      boost::format("Refusing to overwrite existing file %s.\n")
+	      % filename);
+}
+
+
+
 // TODO: Split up main(), it's getting a bit large
 const string target_file_size_arg("--target-file-size=");
 int
@@ -145,7 +156,7 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    if (prefixequal(argv[1], target_file_size_arg)) {
+    if (argc > 1 && prefixequal(argv[1], target_file_size_arg)) {
 	double mib = stringToDouble(string(argv[1]).substr(target_file_size_arg.size()));
 	INVARIANT(mib > 0, "max file size MiB must be > 0");
 	target_file_bytes = static_cast<uint64_t>(mib * 1024.0 * 1024.0);
@@ -159,13 +170,6 @@ main(int argc, char *argv[])
 	      boost::format("Usage: %s <common-options> [--target-file-size=MiB] input-filename... output-filename\n") 
 	      % argv[0]);
     
-    {
-	struct stat buf;
-	INVARIANT(stat(argv[argc-1],&buf) != 0, 
-		  boost::format("Refusing to overwrite existing file %s.\n")
-		  % argv[argc-1]);
-    }
-
     if (getenv("DATASERIES_EXTENT_CHECKS")) {
 	cerr << "Warning: DATASERIES_EXTENT_CHECKS is set; generally you want all checks on during a dsrepack.\n";
     }
@@ -189,6 +193,7 @@ main(int argc, char *argv[])
 	output_path = (boost::format("%s.%02d.ds") 
 		       % output_base_path % output_file_count).str();
     }
+    checkFileMissing(output_path);
     DataSeriesSink *output = 
 	new DataSeriesSink(output_path, packing_args.compress_modes,
 			   packing_args.compress_level);
@@ -290,6 +295,7 @@ main(int argc, char *argv[])
 		    output_path = (boost::format("%s.%02d.ds") 
 				   % output_base_path 
 				   % output_file_count).str();
+		    checkFileMissing(output_path);
 		    DataSeriesSink *new_output = 
 			new DataSeriesSink(output_path, 
 					   packing_args.compress_modes,
