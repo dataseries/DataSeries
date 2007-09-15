@@ -18,21 +18,26 @@
 #include <DataSeries/RowAnalysisModule.H>
 #include <DataSeries/GeneralField.H>
 
-namespace DSStatGroupByExpr {
-    class Expr;
-}
+namespace DSStatGroupBy {
+    class Expr {
+    public:
+	virtual ~Expr() { };
+	virtual double value() = 0;
+    };
+    class Parser;
+};
 
-class DSStatGroupBy : public RowAnalysisModule {
+class DSStatGroupByModule : public RowAnalysisModule {
 public:
-    DSStatGroupBy(DataSeriesModule &source,
-		  const std::string &_expression,
-		  const std::string &_groupby,
-		  const std::string &_stattype,
-		  ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeXMLIdentical);
+    DSStatGroupByModule(DataSeriesModule &source,
+			const std::string &_expression,
+			const std::string &_groupby,
+			const std::string &_stattype,
+			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeXMLIdentical);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;
 
-    virtual ~DSStatGroupBy();
+    virtual ~DSStatGroupByModule();
     
     virtual void prepareForProcessing();
 
@@ -40,10 +45,14 @@ public:
 
     virtual void printResult();
 
+private:
+    friend class DSStatGroupBy::Parser;
+    void setInputString(const std::string &str);
+
     mytableT mystats;
     std::string expression, groupby_name, stattype;
     GeneralField *groupby;
-    DSStatGroupByExpr::Expr *expr;
+    DSStatGroupBy::Expr *expr;
 };
 
 #endif

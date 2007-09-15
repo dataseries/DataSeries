@@ -11,7 +11,7 @@
 
 #include <boost/format.hpp>
 
-#include <DataSeries/DSStatGroupBy.H>
+#include <DataSeries/DSStatGroupByModule.H>
 #include <DataSeries/TypeIndexModule.H>
 #include <DataSeries/PrefetchBufferModule.H>
 #include <DataSeries/SequenceModule.H>
@@ -51,8 +51,8 @@ main(int argc, char *argv[])
 	if (expr == "--") 
 	    break;
 
-	seq.addModule(new DSStatGroupBy(seq.tail(), expr, group_by, 
-					stat_type));
+	seq.addModule(new DSStatGroupByModule(seq.tail(), expr, group_by, 
+					      stat_type));
     }
 
     ++argpos;
