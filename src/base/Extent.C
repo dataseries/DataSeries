@@ -12,6 +12,11 @@
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
+#include <malloc.h>
+
+#include <iostream>
+
+#include <boost/limits.hpp>
 
 #if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
 #define pread64 pread
@@ -48,12 +53,16 @@ extern "C" {
 }
 #endif
 
-#include <Lintel/HashTable.H>
 #include <Lintel/Clock.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/StringUtil.H>
+#include <Lintel/PThread.H>
 
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 #include <DataSeries/DataSeriesFile.H>
+
+using namespace std;
 
 extern "C" {
     char *dataseriesVersion() {
@@ -61,9 +70,255 @@ extern "C" {
     }
 }
 
-bool dataseries_enable_preuncompress_check = true;
-bool dataseries_enable_postuncompress_check = true;
-bool dataseries_enable_unpack_variable32_check = true;
+typedef multimap<size_t, Extent::byte *> retained_dataT;
+static retained_dataT &getRetainedData() {
+    static retained_dataT retained_data;
+    return retained_data;
+}
+static PThreadMutex &getRetainedMutex() {
+    static PThreadMutex mutex;
+    return mutex;
+}
+
+static bool debug_retained = false;
+
+static Extent::ByteArray::RetainedStats retained_stats;
+
+// Add statistic on thing returned vs thing allocated
+static size_t cur_retained_data_bytes = 0;
+static size_t min_retained_bytes = 65536;
+static size_t max_retained_bytes = 0;
+static uint32_t target_retained_arrays = 8;
+static size_t clamp_bytes_minimum = 32 * 1024 * 1024;
+static size_t clamp_bytes_maximum = 512 * 1024 * 1024;
+static size_t max_allocate_bytes = 0;
+
+void
+Extent::ByteArray::setMinRetainSize(size_t bytes)
+{
+    min_retained_bytes = bytes;
+}
+
+void
+Extent::ByteArray::setRetainedAutotuning(uint32_t target_arrays,
+					 size_t clamp_min, size_t clamp_max)
+{
+    target_retained_arrays = target_arrays;
+    clamp_bytes_minimum = clamp_min;
+    clamp_bytes_maximum = clamp_max;
+    if (target_retained_arrays == 0) {
+	clamp_bytes_minimum = clamp_bytes_maximum = 0;
+    }
+    recalcMaxRetainedBytes();
+}
+
+void
+Extent::ByteArray::recalcMaxRetainedBytes()
+{
+    uint64_t mult = static_cast<uint64_t>(target_retained_arrays) 
+	* max_allocate_bytes;
+    if (mult > clamp_bytes_maximum) { // overflow in size_t
+	max_retained_bytes = clamp_bytes_maximum;
+    } else if (mult < clamp_bytes_minimum) {
+	max_retained_bytes = clamp_bytes_minimum;
+    } else {
+	max_retained_bytes = mult;
+    }
+}
+
+Extent::ByteArray::~ByteArray()
+{
+    retainedFree(beginV, maxV - beginV);
+}
+
+// only enable retained allocation if we have glibc, detected by
+// looking for M_MMAP_MAX.
+Extent::byte *
+Extent::ByteArray::retainedAllocate(size_t bytes)
+{
+    if (bytes == 0) {
+	return NULL;
+#if defined(M_MMAP_MAX)
+    } else if (bytes >= min_retained_bytes) {
+	// TODO: add in something that if the thing we would return is
+	// >> what we were asked for (1.1x-2x, need to do some
+	// experimenting), then we force an allocation from the
+	// system, and we throw a big thing out of cache to make space
+	// for small things.
+	PThreadAutoLocker lock(getRetainedMutex());
+	if (bytes > max_allocate_bytes && target_retained_arrays > 0) {
+	    max_allocate_bytes = bytes;
+	    recalcMaxRetainedBytes();
+	}
+	retained_dataT::iterator i = getRetainedData().lower_bound(bytes);
+	if (i != getRetainedData().end()) {
+	    byte *ret = i->second;
+	    cur_retained_data_bytes -= i->first;
+	    if (debug_retained) {
+		cout << boost::format("retained: reuse malloc %d %d\n")
+		    % bytes % i->first;
+	    }
+	    ++retained_stats.recycle_malloc_count;
+	    retained_stats.recycle_malloc_bytes += bytes;
+	    getRetainedData().erase(i);
+	    return ret;
+	} else {
+	    if (debug_retained) {
+		size_t biggest_retained = 0;
+		if (!getRetainedData().empty()) {
+		    retained_dataT::iterator i = getRetainedData().end();
+		    --i;
+		    biggest_retained = i->first;
+		}
+		cout << boost::format("retained: system malloc %d %d %d\n")
+		    % bytes % biggest_retained % cur_retained_data_bytes;
+	    }
+	    ++retained_stats.system_malloc_count;
+	    retained_stats.system_malloc_bytes += bytes;
+	    if (cur_retained_data_bytes == 0) {
+		++retained_stats.system_malloc_nothing_retained_count;
+	    }
+	    return new byte[bytes];
+	}
+#endif
+    } else {
+	++retained_stats.small_alloc_count;
+	retained_stats.small_alloc_bytes += bytes;
+	return new byte[bytes];
+    }	
+}
+
+void
+Extent::ByteArray::retainedFree(byte *data, size_t bytes)
+{
+    if (bytes == 0) {
+	INVARIANT(data == NULL, "bad");
+#if defined(M_MMAP_MAX)
+    } else if (bytes >= min_retained_bytes) {
+	PThreadAutoLocker lock(getRetainedMutex());
+	if (bytes > max_retained_bytes) {
+	    if (debug_retained) {
+		cout << boost::format("retained: forced free %d\n")
+		    % bytes;
+	    }
+	    ++retained_stats.forced_free_count;
+	    retained_stats.forced_free_bytes += bytes;
+	    delete [] data;
+	} else {
+	    while(cur_retained_data_bytes > max_retained_bytes - bytes) {
+		INVARIANT(!getRetainedData().empty(), 
+			  boost::format("huh %d %d %d")
+			  % cur_retained_data_bytes % max_retained_bytes 
+			  % bytes);
+		retained_dataT::iterator i = getRetainedData().begin();
+		delete [] i->second;
+		cur_retained_data_bytes -= i->first;
+		if (debug_retained) {
+		    cout << boost::format("retained: freeup free %d\n")
+			% i->first;
+		}
+		++retained_stats.freeup_free_count;
+		retained_stats.freeup_free_bytes += i->first;
+		getRetainedData().erase(i);
+	    }
+	    if (debug_retained) {
+		cout << boost::format("retained: recycle free %d\n")
+		    % bytes;
+	    }
+	    getRetainedData().insert(pair<size_t, byte *>(bytes,data));
+	    cur_retained_data_bytes += bytes;
+	}
+#endif
+    } else {
+	delete [] data;
+    }
+}
+
+void
+Extent::ByteArray::flushRetainedAllocations()
+{
+    PThreadAutoLocker lock(getRetainedMutex());
+    for(retained_dataT::iterator i = getRetainedData().begin();
+	i != getRetainedData().end(); ++i) {
+	delete [] i->second;
+	cur_retained_data_bytes -= i->first;
+    }
+    getRetainedData().clear();
+    INVARIANT(cur_retained_data_bytes == 0, "huh");
+    if (debug_retained) {
+	cout << boost::format("post-flush stats(count,bytes):\n"
+			      "  target_retained %d max_retained_bytes %d\n"
+			      "  small_alloc(%d,%d)\n"
+			      "  system_malloc(%d,%d) nothing_retained %d\n"
+			      "  recycle_malloc(%d,%d)\n"
+			      "  forced_free(%d,%d)\n"
+			      "  freeup_free(%d,%d)\n")
+	    % target_retained_arrays % max_retained_bytes 
+	    % retained_stats.small_alloc_count    % retained_stats.small_alloc_bytes
+	    % retained_stats.system_malloc_count  % retained_stats.system_malloc_bytes
+	    % retained_stats.system_malloc_nothing_retained_count 
+	    % retained_stats.recycle_malloc_count % retained_stats.recycle_malloc_bytes
+	    % retained_stats.forced_free_count    % retained_stats.forced_free_bytes
+	    % retained_stats.freeup_free_count    % retained_stats.freeup_free_bytes;
+    }
+}
+
+void
+Extent::ByteArray::copyResize(size_t newsize, bool zero_it)
+{
+    size_t oldsize = size();
+    int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
+    byte *newV = retainedAllocate(target_max);
+    AssertAlways(((unsigned long)newV % 8) == 0,
+		 ("internal error, misaligned malloc return %ld\n",
+		  ((unsigned long)newV % 8)));
+    memcpy(newV,beginV,oldsize);
+    retainedFree(beginV, maxV - beginV);
+    beginV = newV;
+    endV = newV + newsize;
+    maxV = newV + target_max;
+    if (zero_it) {
+	memset(beginV + oldsize,0,newsize - oldsize);
+    }
+}
+
+
+static bool did_checks_init = false;
+static bool preuncompress_check = true;
+static bool postuncompress_check = true;
+static bool unpack_variable32_check = true;
+
+void
+Extent::setReadChecksFromEnv(bool defval)
+{
+    bool pre = defval, post = defval, var32 = defval;
+
+    if (getenv("DATASERIES_READ_CHECKS") != NULL) {
+	vector<string> checks;
+	split(getenv("DATASERIES_READ_CHECKS"), ",", checks);
+	for(vector<string>::iterator i = checks.begin(); 
+	    i != checks.end(); ++i) {
+	    if (*i == "preuncompress") {
+		pre = true;
+	    } else if (*i == "postuncompress") {
+		post = true;
+	    } else if (*i == "variable32") {
+		var32 = true;
+	    } else if (*i == "all") {
+		pre = post = var32 = true;
+	    } else if (*i == "none") {
+		pre = post = var32 = false;
+	    } else {
+		FATAL_ERROR(boost::format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
+			    % *i);
+	    }
+	}
+    }
+    preuncompress_check = pre;
+    postuncompress_check = post;
+    unpack_variable32_check = var32;
+    did_checks_init = true;
+}
 
 #if DATASERIES_ENABLE_LZO
 static int lzo_init = 0;
@@ -112,7 +367,7 @@ Extent::Extent(const ExtentType *_type)
     init();
 }
 
-Extent::Extent(const std::string &xmltype)
+Extent::Extent(const string &xmltype)
     : type(new ExtentType(xmltype))
 {
     init();
@@ -125,6 +380,14 @@ Extent::Extent(ExtentSeries &myseries)
     if (myseries.extent() == NULL) {
 	myseries.setExtent(*this);
     }
+}
+
+void
+Extent::swap(Extent &with)
+{ 
+    INVARIANT(with.type == type, "can't swap between incompatible types");
+    fixeddata.swap(with.fixeddata);
+    variabledata.swap(with.variabledata);
 }
 
 void
@@ -159,7 +422,7 @@ public:
     }
 };
 
-static const int variable_sizes_batch_size = 1024;
+static const unsigned variable_sizes_batch_size = 1024;
 
 uint32_t
 Extent::packData(Extent::ByteArray &into,
@@ -167,10 +430,12 @@ Extent::packData(Extent::ByteArray &into,
 		 int compression_level,
 		 int *header_packed, int *fixed_packed, int *variable_packed)
 {
+    // Don't need to zero the coded arrays as we will be filling them
+    // all in.
     Extent::ByteArray fixed_coded;
-    fixed_coded.resize(fixeddata.size());
+    fixed_coded.resize(fixeddata.size(), false);
     Extent::ByteArray variable_coded;
-    variable_coded.resize(variabledata.size());
+    variable_coded.resize(variabledata.size(), false);
     AssertAlways(variabledata.size() >= 4,("internal error\n"));
 
     HashTable<variableDuplicateEliminate, 
@@ -178,10 +443,10 @@ Extent::packData(Extent::ByteArray &into,
 	variableDuplicateEliminate_Equal> vardupelim;
 
     memcpy(fixed_coded.begin(), fixeddata.begin(), fixeddata.size());
-    std::vector<bool> warnings;
+    vector<bool> warnings;
     warnings.resize(type->field_info.size(),false);
     // copy so that packing is thread safe
-    std::vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
+    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
 	psr_copy[j].double_prev_v = 0; // shouldn't be necessary
 	psr_copy[j].int32_prev_v = 0;
@@ -322,13 +587,13 @@ Extent::packData(Extent::ByteArray &into,
     variable_coded.resize(variable_data_pos - variable_coded.begin());
 
     bjhash = BobJenkinsHash(bjhash,variable_coded.begin(),variable_coded.size());
-    std::vector<int32> variable_sizes;
+    vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variable_coded.begin() + variable_coded.size();
     for(byte *curvarpos = variable_coded.begin(4);curvarpos != endvarpos;) {
 	int32 size = *(int32 *)curvarpos;
 	variable_sizes.push_back(size);
-	if ((int)variable_sizes.size() == variable_sizes_batch_size) {
+	if (variable_sizes.size() == variable_sizes_batch_size) {
 	    bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
 	    variable_sizes.resize(0);
 	}
@@ -360,14 +625,14 @@ Extent::packData(Extent::ByteArray &into,
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable->size();
     extentsize += (4 - extentsize % 4) % 4;
-    into.resize(extentsize);
+    into.resize(extentsize, false);
 
     byte *l = into.begin();
     *(int32 *)l = compressed_fixed->size(); l += 4;
     *(int32 *)l = compressed_variable->size(); l += 4;
     *(int32 *)l = nrecords; l += 4;
     *(int32 *)l = variable_coded.size(); l += 4;
-    memset(l,0,4); l += 4; // compressed adler32 digest
+    *(int32 *)l = 0; l += 4; // compressed adler32 digest
     *(int32 *)l = bjhash; l += 4;
     *l = compressed_fixed_mode; l += 1;
     *l = compressed_variable_mode; l += 1;
@@ -405,8 +670,9 @@ Extent::packBZ2(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_BZ2    
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
+
     unsigned int outsize = into.size();
     int ret = BZ2_bzBuffToBuffCompress((char *)into.begin(),&outsize,
 				       (char *)input,inputsize,
@@ -429,7 +695,7 @@ Extent::packZLib(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_ZLIB
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
     uLongf outsize = into.size();
     int ret = compress2((Bytef *)into.begin(),&outsize,
@@ -452,7 +718,7 @@ Extent::packLZO(byte *input, int32 inputsize,
 		Extent::ByteArray &into, int compression_level)
 {
 #if DATASERIES_ENABLE_LZO
-    into.resize(inputsize + inputsize/64 + 16 + 3);
+    into.resize(inputsize + inputsize/64 + 16 + 3, false);
     lzo_uint out_len = 0;
 
     lzo_byte *work_memory = new lzo_byte[LZO1X_999_MEM_COMPRESS];
@@ -486,7 +752,7 @@ Extent::packLZF(byte *input, int32 inputsize,
 {
 #if DATASERIES_ENABLE_LZF
     if (into.size() == 0) {
-	into.resize(inputsize);
+	into.resize(inputsize, false);
     }
 
     unsigned int ret = lzf_compress(input,inputsize,
@@ -544,7 +810,7 @@ Extent::packAny(byte *input, int32 input_size,
     // bz2 tends to pack the best if used, so try this one first
     if ((compression_modes & compress_bz2)) {
 	Extent::ByteArray *bz2_pack = new Extent::ByteArray;
-	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size());
+	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size(), false);
 	if (packBZ2(input,input_size,*bz2_pack,compression_level)) {
 	    if (false) printf("bz2 packing goes to %d bytes\n",bz2_pack->size());
 	    if (best_packed == NULL || bz2_pack->size() < best_packed->size()) {
@@ -560,7 +826,7 @@ Extent::packAny(byte *input, int32 input_size,
     // try zlib last...
     if ((compression_modes & compress_zlib)) {
 	Extent::ByteArray *zlib_pack = new Extent::ByteArray;
-	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size());
+	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size(), false);
 	if (packZLib(input,input_size,*zlib_pack,compression_level)) {
 	    if (false) printf("zlib packing goes to %d bytes\n",zlib_pack->size());
 	    if (best_packed == NULL || zlib_pack->size() < best_packed->size()) {
@@ -576,7 +842,7 @@ Extent::packAny(byte *input, int32 input_size,
     if (best_packed == NULL) {
 	// must be no coding, or all compression algorithms worked badly
 	best_packed = new Extent::ByteArray;
-	best_packed->resize(input_size);
+	best_packed->resize(input_size, false);
 	memcpy(best_packed->begin(),input,input_size);
     }
     return best_packed;
@@ -646,7 +912,7 @@ Extent::unpackAny(byte *into, byte *from,
 
 #define TIME_UNPACKING(x)
 
-const std::string
+const string
 Extent::getPackedExtentType(Extent::ByteArray &from)
 {
     AssertAlways(from.size() > (6*4+2),
@@ -658,7 +924,7 @@ Extent::getPackedExtentType(Extent::ByteArray &from)
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
-    std::string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
+    string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
     return type_name;
 }
 
@@ -677,12 +943,15 @@ Extent::unpackData(const ExtentType *_type,
 		   Extent::ByteArray &from,
 		   bool fix_endianness)
 {
+    if (!did_checks_init) {
+	setReadChecksFromEnv();
+    }
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
     AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
 
     uLong adler32sum = adler32(0L, Z_NULL, 0);
-    if (dataseries_enable_preuncompress_check) {
+    if (preuncompress_check) {
 	adler32sum = adler32(adler32sum, from.begin(), 4*4);
 	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
     }
@@ -691,7 +960,7 @@ Extent::unpackData(const ExtentType *_type,
 	    Extent::flip4bytes(from.begin() + i);
 	}
     }
-    if (dataseries_enable_preuncompress_check) {
+    if (preuncompress_check) {
 	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
 		     ("Invalid extent data, adler32 digest mismatch on compressed data %x != %x\n",*(int32 *)(from.begin() + 4*4),(int32)adler32sum));
     }
@@ -719,49 +988,50 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(header_len + rounded_fixed + rounded_variable == from.size(),
 		 ("Invalid extent data\n"));
 
-    fixeddata.resize(nrecords * type->fixed_record_size);
+    fixeddata.resize(nrecords * type->fixed_record_size, false);
     unpackAny(fixeddata.begin(),compressed_fixed_begin,
 	      compressed_fixed_mode,
 	      nrecords * type->fixed_record_size,
 	      compressed_fixed_size);
-    variabledata.resize(variable_size);
+    variabledata.resize(variable_size, false);
     AssertAlways(variable_size >= 4,("error unpacking, invalid variable size\n"));
     *(int32 *)variabledata.begin() = 0;
     unpackAny(variabledata.begin()+4, compressed_variable_begin,
 	      compressed_variable_mode,
 	      variable_size-4, compressed_variable_size);
     uint32_t bjhash = 0;
-    if (dataseries_enable_postuncompress_check) {
+    if (postuncompress_check) {
 	bjhash = BobJenkinsHash(1972,fixeddata.begin(),fixeddata.size());
 	bjhash = BobJenkinsHash(bjhash,variabledata.begin(),variabledata.size());
     }
-    std::vector<int32> variable_sizes;
+    vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variabledata.begin() + variabledata.size();
     for(byte *curvarpos = &variabledata[4];curvarpos != endvarpos;) {
 	int32 size = *(int32 *)curvarpos;
-	variable_sizes.push_back(size);
-	if ((int)variable_sizes.size() == variable_sizes_batch_size) {
-	    if (dataseries_enable_postuncompress_check) {
+	if (postuncompress_check) {
+	    variable_sizes.push_back(size);
+
+	    if (variable_sizes.size() == variable_sizes_batch_size) {
 		bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
+		variable_sizes.resize(0);
 	    }
-	    variable_sizes.resize(0);
 	}
 	if (fix_endianness) {
 	    size = Extent::flip4bytes(size);
 	    *(int32 *)curvarpos = size;
 	}
 	curvarpos += 4 + Variable32Field::roundupSize(size);
-	AssertAlways(curvarpos <= endvarpos,("internal error\n"));
+	INVARIANT(curvarpos <= endvarpos,"internal error on variable data");
     }
-    if (dataseries_enable_postuncompress_check) {
+    if (postuncompress_check) {
 	bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     }
     variable_sizes.resize(0);
-    AssertAlways(dataseries_enable_postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
+    AssertAlways(postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
 		 ("final partially unpacked hash check failed\n"));
     
-    std::vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
+    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
 	AssertAlways(psr_copy[j].double_prev_v == 0 &&
 		     psr_copy[j].int32_prev_v == 0 &&
@@ -801,7 +1071,7 @@ Extent::unpackData(const ExtentType *_type,
 	    }
 	}
 	// check variable sized fields ...
-	if (dataseries_enable_unpack_variable32_check) {
+	if (unpack_variable32_check) {
 	    for(unsigned int j=0;j<type_variable32_field_columns_size;j++) {
 		int field = type->variable32_field_columns[j];
 		int32 offset = type->field_info[field].offset;
@@ -914,7 +1184,7 @@ bool
 Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip)
 {
     int prefix_size = 6*4 + 4*1;
-    into.resize(prefix_size);
+    into.resize(prefix_size, false);
     if (checkedPread(fd,offset,into.begin(),prefix_size, true) == false) {
 	into.resize(0);
 	return false;
@@ -940,7 +1210,7 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable;
     extentsize += (4 - extentsize % 4) % 4;
-    into.resize(extentsize);
+    into.resize(extentsize, false);
     checkedPread(fd, offset, into.begin() + prefix_size, 
 		 extentsize - prefix_size);
     offset += extentsize - prefix_size;

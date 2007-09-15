@@ -13,7 +13,6 @@
 extern "C" {
 #endif
 
-    // #pragma ident "@(#)nfs_prot.x	1.5	97/06/21 SMI"
 #define NFS_PORT 2049
 #define NFS_MAXDATA 8192
 #define NFS_MAXPATHLEN 1024
@@ -38,21 +37,17 @@ enum nfsstat {
 	NFSERR_NXIO = 6,
 	NFSERR_ACCES = 13,
 	NFSERR_EXIST = 17,
-	NFSERR_XDEV = 18,
 	NFSERR_NODEV = 19,
 	NFSERR_NOTDIR = 20,
 	NFSERR_ISDIR = 21,
-	NFSERR_INVAL = 22,
 	NFSERR_FBIG = 27,
 	NFSERR_NOSPC = 28,
 	NFSERR_ROFS = 30,
-	NFSERR_OPNOTSUPP = 45,
 	NFSERR_NAMETOOLONG = 63,
 	NFSERR_NOTEMPTY = 66,
 	NFSERR_DQUOT = 69,
 	NFSERR_STALE = 70,
-	NFSERR_REMOTE = 71,
-	NFSERR_WFLUSH = 72,
+	NFSERR_WFLUSH = 99,
 };
 typedef enum nfsstat nfsstat;
 
@@ -272,9 +267,9 @@ typedef uint64_t uint64;
 
 typedef int64_t int64;
 
-typedef u_int uint32;
+typedef uint32_t uint32;
 
-typedef int int32;
+typedef int32_t int32;
 
 typedef char *filename3;
 
@@ -650,7 +645,7 @@ struct READ3resfail {
 typedef struct READ3resfail READ3resfail;
 
 struct READ3res {
-	nfsstat status;
+	nfsstat3 status;
 	union {
 		READ3resok resok;
 		READ3resfail resfail;
@@ -709,7 +704,6 @@ typedef enum createmode3 createmode3;
 struct createhow3 {
 	createmode3 mode;
 	union {
-		sattr3 obj_attributes_u;
 		sattr3 obj_attributes;
 		createverf3 verf;
 	} createhow3_u;
@@ -812,9 +806,7 @@ typedef struct devicedata3 devicedata3;
 struct mknoddata3 {
 	ftype3 type;
 	union {
-		devicedata3 device_c;
 		devicedata3 device;
-		sattr3 pipe_attributes_s;
 		sattr3 pipe_attributes;
 	} mknoddata3_u;
 };

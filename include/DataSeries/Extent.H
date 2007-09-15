@@ -62,37 +62,82 @@ public:
     class ByteArray { 
     public:
 	ByteArray() { beginV = endV = maxV = NULL; }
-	~ByteArray() { delete [] beginV; }
+	~ByteArray();
 	const size_t size() const { return endV - beginV; }
-	void resize(size_t newsize) {
-	    unsigned oldsize = size();
+	void resize(size_t newsize, bool zero_it = true) {
+	    size_t oldsize = size();
 	    if (newsize <= oldsize) {
 		// shrink
 		endV = beginV + newsize;
 	    } else if (beginV + newsize <= maxV) {
 		endV = beginV + newsize;
-		memset(beginV + oldsize,0,newsize - oldsize);
+		if (zero_it) {
+		    memset(beginV + oldsize,0,newsize - oldsize);
+		}
 	    } else { 
-		int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
-		byte *newV = new byte[target_max];
-		AssertAlways(((unsigned long)newV % 8) == 0,
-			     ("internal error, misaligned malloc return %ld\n",
-			      ((unsigned long)newV % 8)));
-		memcpy(newV,beginV,oldsize);
-		delete [] beginV;
-		beginV = newV;
-		endV = newV + newsize;
-		maxV = newV + target_max;
-		memset(beginV + oldsize,0,newsize - oldsize);
+		copyResize(newsize, zero_it);
 	    } 
 	}
 	byte *begin() { return beginV; };
 	byte *begin(size_t offset) { return beginV + offset; }
 	byte *end() { return endV; };
 	byte &operator[] (size_t offset) { return *(begin(offset)); }
-	
+    
+	void swap(ByteArray &with) {
+	    swap(beginV,with.beginV);
+	    swap(endV,with.endV);
+	    swap(maxV,with.maxV);
+	}
+
 	typedef byte * iterator;
+
+	// glibc malloc takes all malloc chunks above some threshold
+	// (default 64k), and allocates them using mmap.
+	// Unfortunately, it doesn't retain any of the large
+	// allocations, so when we are reading through a dataseries
+	// file, we are constantly mmapping and unmapping large
+	// extents.  The following works around this by retaining some
+	// amount of allocated chunks without freeing them.  Efforts
+	// to use the mallopt settings that should have controlled
+	// things like this were not successful, only entirely disabling
+	// the mmap feature had any effect.
+
+	static void setMaxRetainedBytes(size_t bytes);
+	// what is the smallest allocation we retain, default 64k
+	static void setMinRetainSize(size_t bytes);
+	// for autotuning, how many byte arrays should we be trying to be
+	// able to allocate; default 16, so 4-8 extents; clamp_minimum,
+	// clamp_maximum set the range of what we will keep around regardless
+	// of what else happens.  Set target_arrays to 0 to disable
+	// retaining.
+	static void setRetainedAutotuning(uint32_t target_arrays,
+					  size_t clamp_minimum = 32*1024*1024,
+					  size_t clamp_maximum = 512*1024*1024);
+
+	// purge all of the retained allocations.
+	static void flushRetainedAllocations();
+	struct RetainedStats {
+	    uint64_t small_alloc_count, small_alloc_bytes;
+	    uint64_t system_malloc_count, system_malloc_bytes;
+	    uint64_t system_malloc_nothing_retained_count;
+	    uint64_t recycle_malloc_count, recycle_malloc_bytes;
+	    uint64_t forced_free_count, forced_free_bytes;
+	    uint64_t freeup_free_count, freeup_free_bytes;
+	};
+	static const RetainedStats &getRetainedStats();
     private:
+	void swap(byte * &a, byte * &b) {
+	    byte *tmp = a;
+	    a = b;
+	    b = tmp;
+	}
+	// for re-calculating after changing target retained arrays,
+	// or after changing the max bytearray size
+	static void recalcMaxRetainedBytes();
+
+	void copyResize(size_t newsize, bool zero_it);
+	static byte *retainedAllocate(size_t bytes);
+	static void retainedFree(byte *data, size_t size);
 	byte *beginV, *endV, *maxV;
     };
 
@@ -111,12 +156,16 @@ public:
     // creation will set the extent to the new extent.
     Extent(ExtentSeries &myseries);
 
+    void swap(Extent &with);
+
     void clear() {
 	fixeddata.resize(0);
 	variabledata.resize(0);
 	init();
     }
-    unsigned int extentsize() { return fixeddata.size() + variabledata.size(); }
+    unsigned int extentsize() { 
+	return fixeddata.size() + variabledata.size(); 
+    }
 
     // The following are defined by the file format and can't be changed.
     static const Extent::byte compress_mode_none = 0;
@@ -191,11 +240,9 @@ public:
     // on eof (with into.size() == 0); aborts otherwise
     // updates offset to the end of the extent
     static bool preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip);
+
     // returns true if it read amount bytes, returns false if it read
     // 0 bytes and eof_ok; aborts otherwise
-    //    static bool checkedRead(int fd, byte *into, int amount, 
-    //			    bool eof_ok = false);
-
     static bool checkedPread(int fd, off64_t offset, byte *into, int amount, 
 			    bool eof_ok = false);
 
@@ -206,6 +253,22 @@ public:
     static void unpackAny(byte *into, byte *from,
 			  byte compression_mode, int32 intosize,
 			  int32 fromsize);
+
+    // The verification checks are the dataseries internal checksums
+    // that verify that the files were read correctly.  The
+    // pre_uncompress check verifies the checksum over the compressed
+    // data.  The post_uncompress check verifies the data after it has
+    // been uncompressed, and after some of the transforms
+    // (e.g. relative packing) have been applied.  The
+    // unpack_variable32 check verifies that
+    // Variable32Field::selfcheck() passes for all of the variable32
+    // fields.
+
+    // set the environment variable to one or more of:
+    // DATASERIES_READ_CHECKS=preuncompress,postuncompress,variable32,all,none
+    // This function is automatically called before unpacking the first extent
+    // if it hasn't already been called.
+    static void setReadChecksFromEnv(bool default_with_env_unset = false);
 
     // be smart before directly accessing these!  here because making
     // them private and using friend class ExtentSeries::iterator

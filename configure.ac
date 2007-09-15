@@ -49,6 +49,7 @@ HPL_REQUIRELIB_XML2
 HPL_WITHLIB_SRT
 
 AC_LANG(C)
+HPL_WITHLIB_PCRE
 
 AM_CONDITIONAL(WITH_LZF, true)
 HPL_WITHLIB_LZO
@@ -63,6 +64,13 @@ AC_ARG_ENABLE(paper,
   [enable_paper=no])
 
 AM_CONDITIONAL(ENABLE_PAPER, test "$enable_paper" = yes)
+
+AC_ARG_ENABLE(example,
+  [  --enable-example    build binaries for the examples -- default NO],
+  [enable_example=$enableval],
+  [enable_example=no])
+
+AM_CONDITIONAL(ENABLE_EXAMPLE, test "$enable_example" = yes)
 
 ## flags
 AC_SYS_LARGEFILE

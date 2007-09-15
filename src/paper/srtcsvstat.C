@@ -12,7 +12,10 @@
     optimized. According to valgrind, we're spending about 40% of the
     instructions in strtod, 7% in strtol, 14% in fgets, 17% in the
     loop finding the ,'s.  Could probably optimize a little more by
-    doing our own fgets.
+    doing our own fgets.  Could use mmap if we were reading from an
+    uncompressed file and were very careful about scanning through the
+    file to handle files bigger than namespace.  Might be able to use
+    mmap with compressed files with the same problem of carefulness.
 */
 
 #include <string>

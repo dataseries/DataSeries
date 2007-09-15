@@ -1,0 +1,50 @@
+\chapter{Generic Programs}\label{chap:programs}
+
+There are a number of existing programs present in DataSeries that can
+be useful in working with DataSeries files.  We describe when one of
+these programs would be used, and sketch the general usage of each
+program here.  Detailed usage information on a program can be found on
+that programs manual page.
+
+Usually when you download DataSeries files from a remote repository,
+the files will have been compressed with bz2\cite{BZIP2} compression.
+This is done so that the files will be a small as possible during
+transfer. However, bz2 is slow to decompress, and so it is useful to
+convert the downloaded files to a faster decompression algorithm, and
+sacrifice increased local storage space space.  The {\tt
+dsrepack}\ref{program:dsrepack} program will perform this conversion.
+
+The next most common operation is to take a quick look at the
+downloaded DataSeries files.  The {\tt ds2txt}\ref{program:ds2txt}
+program will take a DataSeries file and convert it to text so that the
+type descriptions for the data stored in the file can be seen, and so
+that a few of the sample lines can be examined.
+
+A better understading of the data in the file may be gained by looking
+at some statistics in the downloaded files.  This can be done by using
+the {\tt dsstatgroupby}\ref{program:dsstatgroupby} program to
+calculate statistics over various combinations of columns grouped by
+another column.  This program can be looked at as a very restrictive
+version of the SQL select statement.
+
+Finally, before running a large number of analysis programs over the
+downloaded files, it is usually useful to build an index over the
+downloaded files.  This step can be performed by running {\tt
+dsextentindex}\ref{program:dsextentindex}.  This generates an index
+which can efficiently return the extents\ref{file-format:extent}
+(sub-file chunks) that contain some amount of the desired data for the
+analysis.
+
+\section{{\tt dsrepack} -- re-compressing and merging DataSeries files}
+\label{program:dsrepack}
+
+\section{{\tt ds2txt} -- converting DataSeries files to text}
+\label{program:ds2txt}
+
+\section{{\tt dsstatgroupby} -- calculating statistics over input data}
+\label{program:dsstatgroupby}
+
+\section{{\tt dsextentindex} -- indexing DataSeries files}
+\label{program:dsextentindex}
+
+

@@ -139,7 +139,7 @@ public:
 	    }
 	}
 	bool morerecords() {
-	    return cur_pos < cur_extent->fixeddata.end();
+	    return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
 	}
 	void checkOffset(long offset) {
 #ifdef COMPILE_DEBUG

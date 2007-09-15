@@ -10,6 +10,8 @@
 #include <math.h>
 
 #include <Lintel/AssertBoost.H>
+#include <Lintel/StringUtil.H>
+#include <Lintel/Clock.H>
 
 #include <SRT/SRTTrace.H>
 #include <SRT/SRTrecord.H>
@@ -25,20 +27,82 @@ main(int argc, char *argv[])
 {
     SRTTrace *tracestream;
 
+    Extent::setReadChecksFromEnv(true); // verifying things converted properly, should check
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
-    AssertAlways(argc == 3,("Usage: %s in-srt in-ds\n",argv[0]));
+    AssertAlways(argc == 3 || argc == 4,("Usage: %s in-srt in-ds [minor_version]\n",argv[0]));
 		  
     tracestream = new SRTTraceRaw(argv+1,1);
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
 
-    TypeIndexModule srtdsin("Trace::BlockIO::SRT"); 
-    srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
+    TypeIndexModule srtdsin("Trace::BlockIO::HP-UX"); 
+    //srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
     srtdsin.addSource(argv[2]);
+    TypeIndexModule srtdsheaderin("Trace::BlockIO::SRTMetadata");
+    srtdsheaderin.addSource(argv[2]);
+
+    //Get start_time and offset from the info file.
+    FILE* info_file_ptr = NULL;
+    char* info_file_name = new char[strlen(argv[1]) + 6]; // + .info
+    info_file_name = strcpy(info_file_name, argv[1]);
+    info_file_name = strcat(info_file_name,".info");
+    printf ("%s\n", info_file_name);
+    AssertAlways(access(info_file_name, R_OK|W_OK|F_OK) == 0,("Unable to open %s for read", info_file_name));
+    info_file_ptr = fopen((const char*)info_file_name, "r");
+    if (info_file_ptr == NULL) {
+	fprintf(stderr, "Info file %s cannot be opened\n", info_file_name);
+	perror("error was:");
+	exit(1);
+    }
+    char info_file_string[1024];
+    char *ifs_ptr = info_file_string;
+    int str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
+    int read_count = 0;
+    while(read_count < str_size && *ifs_ptr != '\n') {
+	ifs_ptr++;
+	read_count++;
+    }
+    ifs_ptr++;
+    read_count++;
+    char *tmp_ptr = ifs_ptr;
+    while (*tmp_ptr != '.') {
+	tmp_ptr++;
+	read_count++;
+    }
+    *tmp_ptr = '\0';
+    tmp_ptr++;
+    read_count--; //goes up to the . not including it
+    int64_t new_tfrac_base = stringToInt64(ifs_ptr, 10);
+    ifs_ptr = tmp_ptr;
+    while (read_count < str_size && *ifs_ptr != ' ') {
+	ifs_ptr++;
+	read_count++;
+    }
+    Clock::Tfrac base_time = 0, time_offset = 0;
+    uint64_t new_tfrac_offset = stringToInt64(ifs_ptr, 10);
+    base_time = (Clock::Tfrac)new_tfrac_base;
+    time_offset = (Clock::Tfrac)new_tfrac_offset;
+    Clock::Tfrac curtime = base_time;
+    AssertAlways(curtime == base_time,
+	    ("internal self check failed\n"));
+    printf("adjusted basetime %lld\n", base_time);
+    printf("used time_offset %lld\n", time_offset);
+
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     
+    printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
+    
+    if (argc == 4) {
+	trace_minor = atoi(argv[3]);
+	printf ("overriding minor with %d\n", trace_minor);
+    }
+    ExtentSeries srtheaderseries;
+    Variable32Field header_text(srtheaderseries, "header_text");
+    Int64Field start_time_offset(srtheaderseries, "start_time_offset");
+    Int64Field start_time(srtheaderseries, "start_time");
+
     ExtentSeries srtseries;
 
     BoolField flag_synchronous(srtseries,"flag_synchronous");
@@ -69,13 +133,18 @@ main(int argc, char *argv[])
     BoolField act_free(srtseries,"act_free");
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
+    BoolField net_buf(srtseries, "net_buf");
 
-    DoubleField enter_kernel(srtseries,"enter_driver", DoubleField::flag_allownonzerobase);
-    DoubleField leave_driver(srtseries,"leave_driver", DoubleField::flag_allownonzerobase);
-    DoubleField return_to_driver(srtseries,"return_to_driver", DoubleField::flag_allownonzerobase);
+    Int64Field enter_kernel(srtseries,"enter_driver");
+    Int64Field leave_driver(srtseries,"leave_driver");
+    Int64Field return_to_driver(srtseries,"return_to_driver");
     Int32Field bytes(srtseries,"bytes");
     Int64Field disk_offset(srtseries,"disk_offset");
-    Int32Field device_number(srtseries,"device_number");
+    ByteField device_major(srtseries, "device_major");
+    ByteField device_minor(srtseries, "device_minor");
+    ByteField device_controller(srtseries, "device_controller");
+    ByteField device_disk(srtseries, "device_disk");
+    ByteField device_partition(srtseries, "device_partition");
     Int32Field driver_type(srtseries,"driver_type", Field::flag_nullable);
     ByteField buffertype(srtseries,"buffertype");
 
@@ -105,6 +174,52 @@ main(int argc, char *argv[])
 	thread_id = new Int32Field(srtseries,"thread_id", Field::flag_nullable);
 	lv_offset = new Int64Field(srtseries,"lv_offset", Field::flag_nullable);
     }
+    Extent *srtheaderextent = srtdsheaderin.getExtent();
+    INVARIANT(srtheaderextent != NULL, "can't find srtheader extents in input file");
+	      
+    srtheaderseries.setExtent(srtheaderextent);
+    AssertAlways(strcmp(tracestream->header(), (const char*)header_text.val()) == 0,("header's are NOT equal %s \n******************\n %s",tracestream->header(), header_text.val()));
+    const char *header = tracestream->header();
+    //printf("Header: %s\n", header);
+    std::vector<std::string> lines;
+    split(header, "\n", lines);
+    for(std::vector<std::string>::iterator i = lines.begin(); 
+	i != lines.end(); ++i) {
+	// All headers have a tracedate
+	const char* time_str = (*i).c_str();
+	time_str = strstr(time_str, "tracedate");
+	if (time_str == NULL)
+	    continue;
+	const char* date_part = time_str;
+	date_part = strstr(time_str, "tracedate    = \"");
+	if (date_part != NULL) {
+	    //1992 Trace
+	    date_part = strstr(time_str, "\"");
+	    date_part++;
+	} else {
+	    date_part = strstr(time_str, "tracedate = ");
+	    if (date_part != NULL) {
+		//1996,1998,1999 Trace
+		date_part = strstr(time_str, "= ");
+		date_part++;
+		date_part++;
+	    } else {
+		AssertAlways(false, ("Don't understand this trace format's timestamp"));
+	    }
+	}
+	printf("Inferring start time from %s\n", date_part);
+	struct tm tm;
+	tm.tm_yday = -1;
+	strptime(date_part, "%a %b %d %H:%M:%S %Y", &tm);
+	AssertAlways(tm.tm_yday != -1, ("bad"));
+	time_t the_time = mktime(&tm);
+	//printf("tfrac_start:%lld, offset:%lld\n", start_time.val(), start_time_offset.val());
+	printf("SRT time:%ld, trace_base:%ld, info file base:%ld\n", the_time, Clock::TfracToSec(start_time.val()+start_time_offset.val()), Clock::TfracToSec(base_time + time_offset));
+	printf("tfrac: SRT time:%lld trace_base:%lld info file base:%lld\n", Clock::secMicroToTfrac(the_time,0), start_time.val()+start_time_offset.val(),base_time+time_offset);
+	AssertAlways(the_time == Clock::TfracToSec(start_time.val()+start_time_offset.val()) && the_time == Clock::TfracToSec(base_time + time_offset), ("Start times DO NOT MATCH!"));
+	break;
+    }
+
     Extent *srtextent = srtdsin.getExtent();
     INVARIANT(srtextent != NULL, "can't find srt extents in input file");
 	      
@@ -134,18 +249,30 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
+	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
-	AssertAlways(fabs(enter_kernel.absval() - tr->created()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(leave_driver.absval() - tr->started()) < 5e-7,("bad compare\n"));
-	AssertAlways(fabs(return_to_driver.absval() - tr->finished()) < 5e-7,("bad compare\n"));
+	if (tr->is_suspect()) {
+	  AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created())) < 5e-7,("enter_kernel:%lld versus SRT created:%lld\n", enter_kernel.val(), (tr->tfrac_created())));
+	  AssertAlways(fabs(leave_driver.val() - (tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
+	  AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished())) < 5e-7,("bad compare\n"));
+	} else {
+	  AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created()+base_time+time_offset)) < 5e-7,("enter_kernel:%lld versus SRT created:%lld\n", enter_kernel.val(), (base_time+time_offset+tr->tfrac_created())));
+	  
+	  AssertAlways(fabs(leave_driver.val() - (base_time+time_offset+tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (base_time+time_offset+tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
+	  AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished()+base_time+time_offset)) < 5e-7,("bad compare\n"));
+	}
+
 	AssertAlways(bytes.val() == (int32)tr->length(),("bad compare\n"));
 	AssertAlways(disk_offset.val() == (int64)tr->offset(),("bad compare %d %lld %lld\n",nrecords,disk_offset.val(),(int64)tr->offset()));
-	AssertAlways(device_number.val() == (int32)tr->device_number(),("bad compare\n"));
+	AssertAlways(device_major.val() == (((int32)tr->device_number() >> 24) & 0xFF),("bad compare %d versus %d\n", device_major.val(), ((int32)(tr->device_number()) >> 24) & 0xFF));
+	AssertAlways(device_minor.val() == ((int32)tr->device_number() >> 16 & 0xFF),("bad compare\n"));
+	AssertAlways(device_controller.val() == ((int32)tr->device_number() >> 12 & 0xF),("bad compare\n"));
+	AssertAlways(device_disk.val() == ((int32)tr->device_number() >> 8 & 0xF),("bad compare\n"));
+	AssertAlways(device_partition.val() == ((int32)tr->device_number() & 0xFF),("bad compare\n"));
 	AssertAlways(buffertype.val() == (int32)tr->buffertype(),("bad compare\n"));
 	AssertAlways(tr->is_synchronous() == flag_synchronous.val(),("bad compare"));
 	AssertAlways(tr->is_DUXaccess() == false,("bad compare"));
-	AssertAlways(tr->is_netbuf() == false,("bad compare"));
 	AssertAlways(tr->is_raw() == flag_raw.val(),("bad compare"));
 	AssertAlways(tr->is_no_cache() == flag_no_cache.val(),("bad compare"));
 	AssertAlways(tr->is_call() == flag_call.val(),("bad compare"));
@@ -176,6 +303,7 @@ main(int argc, char *argv[])
 	AssertAlways(tr->is_allocate() == act_allocate.val(),("bad compare"));
 	AssertAlways(tr->is_free() == act_free.val(),("bad compare"));
 	AssertAlways(tr->is_character_dev_io() == act_raw.val(),("bad compare"));
+	AssertAlways(tr->is_netbuf() == net_buf.val(), ("bad_compare"));
 
 	if (trace_minor >= 7 && tr->noDriver()) {
 	    AssertAlways(driver_type.isNull(),("bad compare\n"));

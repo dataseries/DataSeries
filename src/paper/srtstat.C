@@ -38,9 +38,9 @@ public:
 	  start_field(_start_field),
 	  end_field(_end_field),
 	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field),
-	  groupby(series, groupby_field)
+	  start_time(series, start_field, DoubleField::flag_allownonzerobase), 
+	  end_time(series, end_field, DoubleField::flag_allownonzerobase), 
+	  groupby(series, groupby_field, DoubleField::flag_allownonzerobase)
     {
     }
 
@@ -75,18 +75,12 @@ public:
     Int32Field groupby;
 };
 
-extern bool dataseries_enable_preuncompress_check;
-extern bool dataseries_enable_postuncompress_check;
-extern bool dataseries_enable_unpack_variable32_check;
-
 int
 main(int argc, char *argv[]) 
 {
-    dataseries_enable_preuncompress_check = getenv("DISABLE_DS_PRECHECK") == NULL;
-    dataseries_enable_postuncompress_check = getenv("DISABLE_DS_POSTCHECK") == NULL;
-    dataseries_enable_unpack_variable32_check = getenv("DISABLE_DS_VARCHECK") == NULL;
-
+    //    Extent::ByteArray::setRetainedAutotuning(4,0);
     TypeIndexModule source("Trace::BlockIO::SRT");
+    // TypeIndexModule source("I/O trace: SRT-V7");
     PrefetchBufferModule *prefetch = new PrefetchBufferModule(source,64*1024*1024);
 
     SequenceModule seq(prefetch);
@@ -149,5 +143,6 @@ main(int argc, char *argv[])
     printf("wait fraction :  %8.2f\n",
 	   source.waitFraction());
     
+    Extent::ByteArray::flushRetainedAllocations();
     return 0;
 }

@@ -10,7 +10,7 @@
 */
 
 #ifndef __DATASERIES_GENERALFIELD_H
-#define __DATASERIES__GENERALFIELD_H
+#define __DATASERIES_GENERALFIELD_H
 
 #include <stddef.h>
 

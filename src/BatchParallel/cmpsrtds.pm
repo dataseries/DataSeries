@@ -4,7 +4,7 @@
 #  See the file named COPYING for license details
 #
 
-package BatchParallel::srt2ds;
+package BatchParallel::cmpsrtds;
 
 @ISA = qw/BatchParallel::common/;
 
@@ -17,12 +17,9 @@ sub new {
 	if ($_ eq 'help') {
 	    $this->usage();
 	    exit(0);
-	} elsif (/^compress=(.+)$/o) {
-	    die "Already have a filter" if defined $this->{compress};
-	    $this->{compress} = $1;
-        } elsif (/^minor=(.+)$/o) {
-            die "Already have a new minor version" if defined $this->{new_minor};
-            $this->{new_minor} = $1;
+	} elsif (/^minor=(.+)$/o) {
+	    die "Already have a new minor version" if defined $this->{new_minor};
+	    $this->{new_minor} = $1;
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
@@ -31,20 +28,22 @@ sub new {
 }
 
 sub usage {
-    print "batch-parallel srt2ds [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
+    print "batch-parallel cmpsrtds -- file/directory...\n";
 }
 
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
-
-    return 1 if $fullpath =~ /\.srt(|(\.bz2)|(\.gz)|(\.Z))$/o;
+    if ($fullpath =~ /\.srt(|(\.Z)|(\.bz2)|(\.gz))$/o) {
+	print "$fullpath matches\n";
+	return 1;
+    }
     return 0;
 }
 
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
-
-    $fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
+    $fullpath =~ s/\.srt(|(\.Z)|(\.bz2)|(\.gz))$/.out/o;
+    print "destfullpath $fullpath\n";
     return $fullpath;
 }
 
@@ -54,11 +53,10 @@ sub rebuild {
     if (defined ($this->{new_minor})) {
 	$new_minor = $this->{new_minor};
     }
-    my $compress = '';
-    if (defined ($this->{compress})) {
-	$compress = "--compress-$this->{compress}";
-    }
-    my $command = "srt2ds $compress $fullpath $destpath $new_minor";
+    $dsfilepath = $fullpath;
+    $dsfilepath =~ s/\.srt(|(\.Z)|(\.bz2)|(\.gz))$/.ds/o;
+    
+    my $command = "cmpsrtds $fullpath $dsfilepath $new_minor";
     print "$command\n";
     return system($command) == 0;
 }

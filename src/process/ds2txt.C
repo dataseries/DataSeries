@@ -26,6 +26,7 @@ main(int argc, char *argv[])
     TypeIndexModule source("");
     DStoTextModule toText(source);
 
+    Extent::setReadChecksFromEnv(true); // ds2txt so slow, may as well check
     string select_extent_type, select_fields;
 
     bool skip_types = false;

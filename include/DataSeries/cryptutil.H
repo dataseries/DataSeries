@@ -21,10 +21,15 @@
 
 #include <string>
 
-extern bool enable_encrypt_memoize;
 std::string shastring(const std::string &in);
 void prepareEncrypt(const std::string &key_a, const std::string &key_b);
-void prepareEncryptEnvOrRandom();
+void prepareEncryptEnvOrRandom(bool random_ok = false);
+
+// How many entries can we memoize for encryption; default is
+// currently 1 million, so with 16 bytes strings this is about 32MB of
+// memoized memory (16 unencryptd + 16 encrypted)
+void encryptMemoizeMaxents(uint32_t nentries);
+
 void runCryptUtilChecks();
 std::string encryptString(std::string in);
 std::string decryptString(std::string in);

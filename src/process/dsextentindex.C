@@ -328,6 +328,7 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 int
 main(int argc, char *argv[])
 {
+    Extent::setReadChecksFromEnv(true); // want to make sure everything is ok
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 

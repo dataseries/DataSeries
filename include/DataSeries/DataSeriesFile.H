@@ -12,6 +12,9 @@
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 
+#include <Lintel/Deque.H>
+#include <Lintel/PThread.H>
+
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 // ExtentField isn't used in this header, but makes using the library
@@ -49,43 +52,110 @@ private:
 
 class DataSeriesSink {
 public:
+    // sundry statistics on this sink; expect to get one
+    // non-compressed chunk (the fixed record pointers for the extent
+    // type information); also, empty variable-sized extents are not
+    // counted in the compress_* stats
+    struct Stats {
+	// Single global mutex for stats right now, should be sufficient
+	// given they are pretty infrequently accessed.
+	static PThreadMutex &getMutex();
+
+	uint32_t extents;
+	uint32_t compress_none, compress_lzo, compress_gzip, 
+	    compress_bz2, compress_lzf;
+	uint64_t unpacked_size, unpacked_fixed, unpacked_variable, 
+	    unpacked_variable_raw, packed_size;
+	double pack_time; // This statistic appears to be generally
+			  // wrong right now because of threading.
+
+	Stats() {
+	    reset();
+	}
+	void reset();
+
+	Stats & operator+=(const Stats &from);
+	Stats & operator-=(const Stats &from);
+	// all just data so use default copy constructor
+
+	/// specify an extent type if this statistic was entirely for one
+	/// type.
+	void printText(std::ostream &to, const std::string &extent_type = "");
+    private:
+	// You should grab the lock before calling this
+	void update(uint32_t unpacked_size, uint32_t unpacked_fixed,
+		    uint32_t unpacked_variable_raw,
+		    uint32_t unpacked_variable, uint32_t packed_size,
+		    uint32_t packed_variable_size, double pack_time, 
+		    unsigned char fixed_compress_mode,
+		    unsigned char variable_compress_mode);
+	void updateCompressMode(unsigned char compress_mode);
+	friend class DataSeriesSink;
+    };
+
+    // TODO: is the following ("-" == stdout) a good idea?  I don't
+    // think anything uses it.
+
     // if filename is "-", will write to stdout...
     DataSeriesSink(const std::string &filename,
 		   int compression_modes = Extent::compress_all,
 		   int compression_level = 9);
     ~DataSeriesSink(); // automatically calls close() if needed.
     void close();
+
     void writeExtentLibrary(ExtentTypeLibrary &lib);
-    void writeExtent(Extent *e) {
-	Extent::ByteArray foo;
-	writeExtent(e,foo);
-    }
-    // returns the time to pack the extent in seconds, and the
-    // compressed extent is put into compressed
-    double writeExtent(Extent *e, Extent::ByteArray &compressed);
+    // set toUpdate to NULL if you have nothing to update.
+    // writeExtent is destructive, e will be empty on return.
+    void writeExtent(Extent &e, Stats *toUpdate);
     const off64_t cur_position() {
 	return cur_offset;
     }
 
-    // sundry statistics on this sink; expect to get one
-    // non-compressed chunk (the fixed record pointers for the extent
-    // type information); also, empty variable-sized extents are not
-    // counted in the compress_* stats
-    int extents;
-    int compress_none, compress_lzo, compress_gzip, compress_bz2, compress_lzf;
-    long long unpacked_size, unpacked_fixed, unpacked_variable, packed_size;
-    double pack_time;
+    // You are only guarenteeed to have all the statistics for writing
+    // this file after you call close().
+    Stats getStats() {
+	// Make a copy so it's thread safe.
+	PThreadAutoLocker lock(Stats::getMutex());
+	Stats ret = stats; // with the auto-locker, do we have a
+			   // guarentee that the copy would be made
+			   // before we return?
+	return ret;
+    }
 
+    // count == -1 ==> use Lintel/PThreadMisc::getNCpus()
+    // count == 0 ==> no separate thread for compressing, work done during
+    // call to writeExtent()
+    static void setDefaultCompressorCount(int count = -1);
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
 private:
+    struct toCompress {
+	Extent extent;
+	Stats *to_update;
+	bool in_progress;
+	uint32_t checksum;
+	Extent::ByteArray compressed;
+	toCompress(Extent &e, Stats *_to_update)
+	    : extent(e.type), to_update(_to_update), 
+	      in_progress(false), checksum(0) 
+	{
+	    extent.swap(e);
+	}
+	void wipeExtent() {
+	    Extent tmp(extent.type);
+	    extent.swap(tmp);
+	}
+    };
+    Stats stats;
+
     off64_t cur_offset; // set to -1 when sink is closed
     ExtentSeries index_series;
     Extent index_extent;
     Int64Field field_extentOffset;
     Variable32Field field_extentType;
     bool wrote_library;
-    double doWriteExtent(Extent *e, Extent::ByteArray &compressed);
+    // returns the size of the compressed extent, needed for writing the
+    // tail of the dataseries file.
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
     std::map<const ExtentType *,bool> valid_types;
@@ -93,6 +163,25 @@ private:
     const int compression_modes;
     const int compression_level;
     uint32_t chained_checksum; 
+
+    void queueWriteExtent(Extent &e, Stats *to_update);
+    void processToCompress(toCompress *work);
+    void writeOutPending();
+    static int compressor_count;
+    std::vector<PThread *> compressors;
+    bool shutdown_compressors;
+    Deque<toCompress *> pending_work;
+    PThreadMutex mutex, writeout_mutex;
+    PThreadCond cond, consumed_some_cond;
+    friend class DataSeriesSinkPThread;
+    void compressorThread();
 };
+
+inline DataSeriesSink::Stats 
+operator-(const DataSeriesSink::Stats &a, const DataSeriesSink::Stats &b) {
+    DataSeriesSink::Stats ret = a;
+    ret -= b;
+    return ret;
+}
     
 #endif

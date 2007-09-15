@@ -194,23 +194,33 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     return ret;
 }
 
+class DataSeriesSinkPThread : public PThread {
+public:
+    DataSeriesSinkPThread(DataSeriesSink *_mine)
+	: mine(_mine) { }
+
+    virtual void *run() {
+	mine->compressorThread();
+	return NULL;
+    }
+    DataSeriesSink *mine;
+};
+
+int DataSeriesSink::compressor_count = -1;
+
 DataSeriesSink::DataSeriesSink(const string &filename,
 			       int _compression_modes,
 			       int _compression_level)
-    : extents(0),
-      compress_none(0), compress_lzo(0), compress_gzip(0), 
-      compress_bz2(0), compress_lzf(0),
-      unpacked_size(0), unpacked_fixed(0), unpacked_variable(0), 
-      packed_size(2*4+4*8), pack_time(0),
-      index_series(global_dataseries_indextype),
+    : index_series(global_dataseries_indextype),
       index_extent(index_series),
       field_extentOffset(index_series,"offset"),
       field_extentType(index_series,"extenttype"),
       wrote_library(false),
       compression_modes(_compression_modes),
       compression_level(_compression_level),
-      chained_checksum(0)
+      chained_checksum(0), shutdown_compressors(false)
 {
+    stats.packed_size += 2*4 + 4*8;
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
 		 ("internal error; c++ initializers didn't run?\n"));
     if (filename == "-") {
@@ -235,6 +245,16 @@ DataSeriesSink::DataSeriesSink(const string &filename,
     doublecheck = Double::NaN;
     checkedWrite(&doublecheck,8);
     cur_offset = 2*4 + 4*8;
+    int pthread_count = compressor_count;
+    if (pthread_count == -1) {
+	pthread_count = PThreadMisc::getNCpus();
+    }
+    
+    for(int i=0; i < pthread_count; ++i) {
+	DataSeriesSinkPThread *t = new DataSeriesSinkPThread(this);
+	compressors.push_back(t);
+	t->start();
+    }
 }
 
 DataSeriesSink::~DataSeriesSink()
@@ -250,23 +270,51 @@ DataSeriesSink::close()
     AssertAlways(wrote_library,
 		 ("error: never wrote the extent type library?!"));
     AssertAlways(cur_offset >= 0,("error: close called twice?!"));
+
+    mutex.lock();
+    shutdown_compressors = true;
+    cond.broadcast();
+    mutex.unlock();
+
+    for(vector<PThread *>::iterator i = compressors.begin();
+	i != compressors.end(); ++i) {
+	(**i).join();
+    }
+
+    INVARIANT(pending_work.empty(), "bad");
     ExtentType::int64 index_offset = cur_offset;
-    Extent::ByteArray packed;
-    doWriteExtent(&index_extent,packed);
+    pending_work.push_back(new toCompress(index_extent, NULL));
+    pending_work.front()->in_progress = true;
+    processToCompress(pending_work.front());
+    mutex.lock();
+    INVARIANT(pending_work.size() == 1, "bad");
+    uint32_t packed_size = pending_work.front()->compressed.size();
+    mutex.unlock();
+    writeOutPending();
+
+    mutex.lock();
+    INVARIANT(pending_work.empty(), "bad");
+
     char *tail = new char[7*4];
     AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
     for(int i=0;i<4;i++) {
 	tail[i] = 0xFF;
     }
     typedef ExtentType::int32 int32;
-    *(int32 *)(tail + 4) = packed.size();
-    *(int32 *)(tail + 8) = ~packed.size();
+    *(int32 *)(tail + 4) = packed_size;
+    *(int32 *)(tail + 8) = ~packed_size;
     *(int32 *)(tail + 12) = chained_checksum;
     *(ExtentType::int64 *)(tail + 16) = (ExtentType::int64)index_offset;
     *(int32 *)(tail + 24) = BobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
-    cur_offset = 0;
+    int ret = ::close(fd);
+    INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
+    fd = -1;
+    cur_offset = -1;
+    index_series.clearExtent();
+    index_extent.clear();
+    mutex.unlock();
 }
 
 void
@@ -281,16 +329,15 @@ DataSeriesSink::checkedWrite(const void *buf, int bufsize)
 	      % ret % bufsize % strerror(errno));
 }
 
-double
-DataSeriesSink::writeExtent(Extent *e, Extent::ByteArray &compressed)
+void
+DataSeriesSink::writeExtent(Extent &e, Stats *stats)
 {
-    AssertAlways(wrote_library,
-		 ("must write extent type library before writing extents!\n"));
-    AssertAlways(e != NULL,("bad argument to writeExtent\n"));
-    AssertAlways(valid_types[e->type],
-		 ("type %s (%p) wasn't in your type library\n",
-		  e->type->name.c_str(),e->type));
-    return doWriteExtent(e,compressed);
+    INVARIANT(wrote_library,
+	      "must write extent type library before writing extents!\n");
+    INVARIANT(valid_types[e.type],
+	      boost::format("type %s (%p) wasn't in your type library")
+	      % e.type->name.c_str() % e.type);
+    queueWriteExtent(e, stats);
 }
 
 void
@@ -320,9 +367,11 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 		% et->name << endl;
 	}
     }
-    Extent::ByteArray foo;
-    doWriteExtent(&type_extent,foo);
-    wrote_library = true;
+    queueWriteExtent(type_extent, NULL);
+    mutex.lock();
+    INVARIANT(!wrote_library, "bad, two calls to writeExtentLibrary()");
+    wrote_library = true; 
+    mutex.unlock();
 }
 
 void
@@ -352,61 +401,247 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 		 ("bad hash in the tail!\n"));
 }
 
-double
-DataSeriesSink::doWriteExtent(Extent *e, Extent::ByteArray &data)
+void
+DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
 {
-    index_series.newRecord();
-    field_extentOffset.set(cur_offset);
-    field_extentType.set(e->type->name);
-    AssertAlways(cur_offset > 0,("Error: doWriteExtent on closed file\n"));
-    ++extents;
-    struct rusage pack_start;
-    AssertAlways(getrusage(RUSAGE_SELF,&pack_start)==0,
-		 ("?!"));
-    int headersize, fixedsize, variablesize;
-    uint32_t checksum = e->packData(data,compression_modes,compression_level,
-				    &headersize,&fixedsize,&variablesize);
-    struct rusage pack_end;
-    AssertAlways(getrusage(RUSAGE_SELF,&pack_end)==0,
-		 ("?!"));
-    checkedWrite(data.begin(),data.size());
-    cur_offset += data.size();
-    double pack_extent_time = (pack_end.ru_utime.tv_sec - pack_start.ru_utime.tv_sec) + (pack_end.ru_utime.tv_usec - pack_start.ru_utime.tv_usec)/1000000.0;
-    unpacked_size += headersize + fixedsize + variablesize;
-    unpacked_fixed += fixedsize;
-    unpacked_variable += variablesize;
-    packed_size += data.size();
-    pack_time += pack_extent_time;
-    if (data[6*4] == 0) {
-	++compress_none;
-    } else if (data[6*4] == 1) {
-	++compress_lzo;
-    } else if (data[6*4] == 2) {
-	++compress_gzip;
-    } else if (data[6*4] == 3) {
-	++compress_bz2;
-    } else if (data[6*4] == 4) {
-	++compress_lzf;
-    } else {
-	AssertFatal(("whoa, unknown compress option %d\n",data[6*4]));
+    mutex.lock();
+    INVARIANT(cur_offset > 0, "queueWriteExtent on closed file");
+    pending_work.push_back(new toCompress(e, to_update));
+
+    if (compressors.empty()) {
+	INVARIANT(pending_work.size() == 1, "bad");
+	pending_work.front()->in_progress = true;
+	mutex.unlock();
+	processToCompress(pending_work.front());
+	writeOutPending();
+	return;
+    } 
+	
+    cond.signal();
+    while(pending_work.size() > 2 * compressors.size()) {
+	consumed_some_cond.wait(mutex);
     }
-    if (*(ExtentType::int32 *)(data.begin()+4) > 0) {
-	if (data[6*4+1] == 0) {
-	    ++compress_none;
-	} else if (data[6*4+1] == 1) {
-	    ++compress_lzo;
-	} else if (data[6*4+1] == 2) {
-	    ++compress_gzip;
-	} else if (data[6*4+1] == 3) {
-	    ++compress_bz2;
-	} else if (data[6*4+1] == 4) {
-	    ++compress_lzf;
-	} else {
-	    AssertFatal(("whoa, unknown compress option %d\n",data[6*4+1]));
-	}
-    }
-    chained_checksum = BobJenkinsHashMix3(checksum, chained_checksum, 1972);
-    return pack_extent_time;
+    mutex.unlock();
+	
 }
 
+void
+DataSeriesSink::writeOutPending()
+{
+    mutex.lock();
+    Deque<toCompress *> to_write;
+    while(!pending_work.empty() 
+	  && pending_work.front()->compressed.size() > 0
+	  && !pending_work.front()->in_progress) {
+	pending_work.front()->wipeExtent();
+	to_write.push_back(pending_work.front());
+	pending_work.pop_front();
+    }
+    // Need to take writeout_mutex before releasing mutex to make sure
+    // we write first; don't want to hold mutex as that would prevent
+    // additional work happening.
+    writeout_mutex.lock(); 
+    consumed_some_cond.broadcast();
+    mutex.unlock();
+    off64_t save_offset = cur_offset;
+    INVARIANT(save_offset == cur_offset, boost::format("bad %d != %d")
+	      % save_offset % cur_offset);
+    while(!to_write.empty()) {
+	toCompress *tc = to_write.front();
+	to_write.pop_front();
+	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
+	index_series.newRecord();
+	field_extentOffset.set(cur_offset);
+	field_extentType.set(tc->extent.type->name);
 
+	checkedWrite(tc->compressed.begin(), tc->compressed.size());
+	cur_offset += tc->compressed.size();
+	chained_checksum 
+	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
+	delete tc;
+    }
+    writeout_mutex.unlock();
+}
+
+void
+DataSeriesSink::processToCompress(toCompress *work)
+{
+    INVARIANT(work->in_progress, "??");
+    INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
+
+    struct timespec pack_start;
+    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_start) == 0, "??");
+    
+    int headersize, fixedsize, variablesize;
+    work->checksum = work->extent.packData(work->compressed, compression_modes,
+					   compression_level, &headersize,
+					   &fixedsize, &variablesize);
+    struct timespec pack_end;
+    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_end) == 0, "??");
+
+    double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
+	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
+    
+    // Slightly less efficient than calling update on the two separate stats,
+    // but easier to code.
+    Stats tmp;
+    tmp.update(headersize + fixedsize + variablesize, fixedsize,
+	       work->extent.variabledata.size(), variablesize, 
+	       work->compressed.size(), 
+	       *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
+	       pack_extent_time, work->compressed[6*4], 
+	       work->compressed[6*4+1]);
+
+    INVARIANT(work->compressed.size() > 0, "??");
+    work->in_progress = false;
+    PThreadAutoLocker lock(Stats::getMutex());
+    stats += tmp;
+    if (work->to_update != NULL) {
+	*work->to_update += tmp;
+    }
+}
+
+void 
+DataSeriesSink::compressorThread() 
+{
+    mutex.lock();
+    while(true) {
+	toCompress *work = NULL;
+	for(Deque<toCompress *>::iterator i = pending_work.begin();
+	    i != pending_work.end(); ++i) {
+	    if ((**i).compressed.size() == 0 &&
+		(**i).in_progress == false) {
+		work = *i;
+		work->in_progress = true;
+		break;
+	    }
+	}
+	if (work == NULL) {
+	    if (shutdown_compressors) {
+		break;
+	    }
+	    cond.wait(mutex);
+	} else {
+	    mutex.unlock();
+	    processToCompress(work);
+	    writeOutPending();
+	    mutex.lock();
+	}
+    }
+    mutex.unlock();
+}
+
+void
+DataSeriesSink::Stats::reset()
+{
+    extents = compress_none = compress_lzo = compress_gzip 
+	= compress_bz2 = compress_lzf = 0;
+    unpacked_size = unpacked_fixed = unpacked_variable 
+	= unpacked_variable_raw = packed_size = 0;
+    pack_time = 0;
+}
+
+DataSeriesSink::Stats &
+DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
+{
+    extents += from.extents;
+    compress_none += from.compress_none;
+    compress_lzo += from.compress_lzo;
+    compress_gzip += from.compress_gzip;
+    compress_bz2 += from.compress_bz2;
+    compress_lzf += from.compress_lzf;
+    unpacked_size += from.unpacked_size;
+    unpacked_fixed += from.unpacked_fixed;
+    unpacked_variable += from.unpacked_variable;
+    unpacked_variable_raw += from.unpacked_variable_raw;
+    packed_size += from.packed_size;
+    pack_time += from.pack_time;
+    return *this;
+}
+
+DataSeriesSink::Stats &
+DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
+{
+    extents -= from.extents;
+    compress_none -= from.compress_none;
+    compress_lzo -= from.compress_lzo;
+    compress_gzip -= from.compress_gzip;
+    compress_bz2 -= from.compress_bz2;
+    compress_lzf -= from.compress_lzf;
+    unpacked_size -= from.unpacked_size;
+    unpacked_fixed -= from.unpacked_fixed;
+    unpacked_variable -= from.unpacked_variable;
+    unpacked_variable_raw -= from.unpacked_variable_raw;
+    packed_size -= from.packed_size;
+    pack_time -= from.pack_time;
+
+    return *this;
+}
+
+void
+DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed, 
+			      uint32_t unp_var_raw, uint32_t unp_variable, 
+			      uint32_t pkd_size, uint32_t pkd_var_size, 
+			      double pkd_time, 
+			      unsigned char fixed_compress_mode,
+			      unsigned char variable_compress_mode)
+{
+    ++extents;
+    unpacked_size += unp_size;
+    unpacked_fixed += unp_fixed;
+    unpacked_variable_raw += unp_var_raw;
+    unpacked_variable += unp_variable;
+    packed_size += pkd_size;
+    pack_time += pkd_time;
+    updateCompressMode(fixed_compress_mode);
+    if (pkd_var_size > 0) {
+	updateCompressMode(variable_compress_mode);
+    }
+}
+
+void
+DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode)
+{
+    switch(compress_mode) 
+	{
+	case 0: ++compress_none; break;
+	case 1: ++compress_lzo; break;
+	case 2: ++compress_gzip; break;
+	case 3: ++compress_bz2; break;
+	case 4: ++compress_lzf; break;
+	default:
+	    FATAL_ERROR(boost::format("whoa, unknown compress option %d\n") 
+			% static_cast<unsigned>(compress_mode));
+	}
+}
+
+// TODO: make this take a int64 records argument also, default -1, and
+// print out record counts, etc, like logfu2ds.C
+void
+DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
+{
+    if (extent_type.empty()) {
+	to << boost::format("  wrote %d extents\n")
+	    % extents;
+    } else {
+	to << boost::format("  wrote %d extents of type %s\n")
+	    % extents % extent_type;
+    }
+
+    to << boost::format("  compression (none,lzo,gzip,bz2,lzf): (%d,%d,%d,%d,%d)\n")
+	% compress_none % compress_lzo % compress_gzip % compress_bz2 
+	% compress_lzf;
+    to << boost::format("  unpacked: %d = %d (fixed) + %d (variable, %d raw)\n")
+	% unpacked_size % unpacked_fixed % unpacked_variable 
+	% unpacked_variable_raw;
+    to << boost::format("  packed size: %d; pack time: %.3f\n")
+	% packed_size % pack_time;
+}
+
+PThreadMutex &
+DataSeriesSink::Stats::getMutex()
+{
+    static PThreadMutex mutex;
+    
+    return mutex;
+}

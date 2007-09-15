@@ -1021,6 +1021,7 @@ const string nfs_attrops_xml(
   "  <field type=\"byte\" name=\"typeid\" />\n"
   "  <field type=\"variable32\" name=\"type\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"mode\" comment=\"only includes bits from 0xFFF down, so type is not reproduced here\" print_format=\"%x\" />\n"
+  "  <field type=\"int32\" name=\"hard_link_count\" comment=\"number of hard links to this file system object\"/>\n"
   "  <field type=\"int32\" name=\"uid\" />\n"
   "  <field type=\"int32\" name=\"gid\" />\n"
   "  <field type=\"int64\" name=\"file_size\" />\n"
@@ -1040,6 +1041,7 @@ Variable32Field attrops_lookupdirfilehandle(nfs_attrops_series,"lookup_dir_fileh
 ByteField attrops_typeid(nfs_attrops_series,"typeid");
 Variable32Field attrops_type(nfs_attrops_series,"type");
 Int32Field attrops_mode(nfs_attrops_series,"mode");
+Int32Field attrops_nlink(nfs_attrops_series,"hard_link_count");
 Int32Field attrops_uid(nfs_attrops_series,"uid");
 Int32Field attrops_gid(nfs_attrops_series,"gid");
 Int64Field attrops_filesize(nfs_attrops_series,"file_size");
@@ -1505,11 +1507,14 @@ public:
 		attrops_typeid.set(type);
 		attrops_type.set(NFSV3_typelist[type]);
 		attrops_mode.set(ntohl(xdr[1] & 0xFFF));
+		attrops_nlink.set(ntohl(xdr[2]));
 		attrops_uid.set(ntohl(xdr[3]));
 		attrops_gid.set(ntohl(xdr[4]));
 		attrops_filesize.set(xdr_ll(xdr,5));
 		attrops_used_bytes.set(xdr_ll(xdr,7));
+		attrops_access_time.set(getNFS3Time(xdr+15));
 		attrops_modify_time.set(getNFS3Time(xdr+17));
+		attrops_inochange_time.set(getNFS3Time(xdr+19));
 	    }
 	}
     }
@@ -1671,7 +1676,9 @@ public:
 	    attrops_type.set(NFSV3_typelist[type]);
 	    curPos++;
 	    attrops_mode.set(ntohl(xdr[curPos]) & 0xFFF);
-	    curPos+=2;//nlink don't care
+	    curPos++;
+	    attrops_nlink.set(ntohl(xdr[curPos]));
+	    curPos++;
 	    attrops_uid.set(ntohl(xdr[curPos]));
 	    curPos++;
 	    attrops_gid.set(ntohl(xdr[curPos]));
@@ -1693,7 +1700,8 @@ public:
     }
 
     // return new curPos
-    int32_t parseNameHandle(int32_t curPos, RPCReply &reply, const uint32_t *xdr) {
+    int32_t parseNameHandle(int32_t curPos, RPCReply &reply, const uint32_t *xdr,
+			    bool got_name_entry) {
 	ShortDataAssertMsg((curPos+1) * 4  <= reply.getrpcresultslen(),
 			   "NFSv3 dirEntry namehandlesize missing",
 			   ("(%d + 1) * 4 <= %d",curPos,reply.getrpcresultslen()));
@@ -1705,7 +1713,7 @@ public:
 			   ("(1 + %d) * 4 + %d <= %d",curPos,fhSize,reply.getrpcresultslen()));
 	const char *fileHandle = reinterpret_cast<const char *>(xdr+curPos);
 	curPos += (fhSize+3) / 4; // round up
-	if (mode == Convert) {
+	if (mode == Convert && got_name_entry) {
 	    attrops_filehandle.set(fileHandle,fhSize);
 	}
 	return curPos;
@@ -1748,8 +1756,7 @@ public:
 				   "NFSv3 dirEntry ... + name_HandleFollows",
 				   ("(1 + %d) * 4  <= %d",curPos,reply.getrpcresultslen()));
 		if (ntohl(xdr[curPos]) == 1) {//name_handle follows
-		    INVARIANT(got_name_entry, "whoa, have name_handle w/o a name??");
-		    curPos = parseNameHandle(curPos + 1, reply, xdr);
+		    curPos = parseNameHandle(curPos + 1, reply, xdr, got_name_entry);
 		} else {
 		    ++curPos;
 		} 
@@ -1784,7 +1791,10 @@ public:
 	int actual_len = reply.getrpcresultslen();
 	AssertAlways(actual_len >= 4,("readdirplus3 packet size < 4"));
 	uint32_t op_status = ntohl(*xdr);
-	AssertAlways(op_status == 0,("op_status non-zero in readdirplus3 after check"));
+	if (op_status != 0) {
+	    cout << "Warning, readdirplus3 failed, op_status " << op_status << endl;
+	    return -1; 
+	}
 
 	int dirAttrFollows = ntohl(xdr[1]);
 	if (dirAttrFollows) {
@@ -2147,7 +2157,6 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		if (false) printf("got a READDIRPLUS\n");
 		int fhlen = ntohl(xdr[0]);
 		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
-		if (false) printf("%d vs %d\n", actual_len, sizeof(struct READDIRPLUS3args));
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 
@@ -3082,6 +3091,10 @@ main(int argc, char **argv)
 
     counts.resize(static_cast<unsigned>(last_count));
     INVARIANT(sizeof(count_names)/sizeof(string) == last_count, "bad");
+    // Make it hard to run without encryption; don't want to
+    // accidentally do that.
+    INVARIANT(enable_encrypt_filenames || getenv("DISABLE_ENCRYPTION") != NULL, 
+	      "enable_encrypt_filenames must be true or DISABLE_ENCRYPTION env variable set");
 
     if (argc >= 4) {
 	bool info = strcmp(argv[1], "--info") == 0;
