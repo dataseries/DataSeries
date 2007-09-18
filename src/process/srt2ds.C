@@ -579,17 +579,18 @@ main(int argc, char *argv[])
 	raw_tr = tracestream->record();
     }
     outmodule.flushExtent();
+    DataSeriesSink::Stats srtdsout_stats = srtdsout.getStats();
     fprintf(stderr,"%d records, %d extents; %lld bytes, %lld compressed\n",
-	    nrecords, srtdsout.extents, srtdsout.unpacked_size, srtdsout.packed_size);
+	    nrecords, srtdsout_stats.extents, srtdsout_stats.unpacked_size, srtdsout_stats.packed_size);
     fprintf(stderr,"  %.4gx compression ratio; %lld fixed data, %lld variable data\n",
-	    (double)srtdsout.unpacked_size / (double)srtdsout.packed_size,
-	    srtdsout.unpacked_fixed, srtdsout.unpacked_variable);
+	    (double)srtdsout_stats.unpacked_size / (double)srtdsout_stats.packed_size,
+	    srtdsout_stats.unpacked_fixed, srtdsout_stats.unpacked_variable);
     fprintf(stderr,"  extents-part-compression: ");
-    if (srtdsout.compress_none > 0) fprintf(stderr,"%d none, ",srtdsout.compress_none);
-    if (srtdsout.compress_lzo > 0) fprintf(stderr,"%d lzo, ",srtdsout.compress_lzo);
-    if (srtdsout.compress_gzip > 0) fprintf(stderr,"%d gzip, ",srtdsout.compress_gzip);
-    if (srtdsout.compress_bz2 > 0) fprintf(stderr,"%d bz2, ",srtdsout.compress_bz2);
+    if (srtdsout_stats.compress_none > 0) fprintf(stderr,"%d none, ",srtdsout_stats.compress_none);
+    if (srtdsout_stats.compress_lzo > 0) fprintf(stderr,"%d lzo, ",srtdsout_stats.compress_lzo);
+    if (srtdsout_stats.compress_gzip > 0) fprintf(stderr,"%d gzip, ",srtdsout_stats.compress_gzip);
+    if (srtdsout_stats.compress_bz2 > 0) fprintf(stderr,"%d bz2, ",srtdsout_stats.compress_bz2);
     fprintf(stderr," packed in %.6gs\n",
-	   srtdsout.pack_time);
+	   srtdsout_stats.pack_time);
     return 0;
 }
