@@ -337,12 +337,15 @@ DataSeriesSink::writeExtent(Extent &e, Stats *stats)
     INVARIANT(valid_types[e.type],
 	      boost::format("type %s (%p) wasn't in your type library")
 	      % e.type->name.c_str() % e.type);
+    INVARIANT(!shutdown_compressors,
+	      "must not call writeExtent after calling close()");
     queueWriteExtent(e, stats);
 }
 
 void
 DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 {
+    INVARIANT(!wrote_library, "Can only write extent library once");
     ExtentSeries type_extent_series(global_dataseries_type);
     Extent type_extent(type_extent_series);
 

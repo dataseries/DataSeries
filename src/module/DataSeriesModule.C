@@ -75,6 +75,7 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
       outputtype(_outputtype),
       sink(_sink), series(_series)
 {
+    INVARIANT(outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");
     cur_extent = new Extent(outputtype);
@@ -83,14 +84,17 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 
 OutputModule::~OutputModule()
 {
-    flushExtent();
+    if (cur_extent != NULL) {
+	close();
+    }
 }
 
 void
 OutputModule::newRecord()
 {
-    AssertAlways(series.curExtent() == cur_extent,
-		 ("usage error, someone else changed the series extent\n"));
+    INVARIANT(series.curExtent() == cur_extent,
+	      "usage error, someone else changed the series extent");
+    INVARIANT(cur_extent != NULL, "called newRecord() after close()");
     if ((int)(cur_extent->extentsize() + outputtype->fixedrecordsize()) > target_extent_size) {
 	flushExtent();
     }
@@ -108,6 +112,22 @@ OutputModule::flushExtent()
 	cur_extent->clear();
     }
 }
+
+void
+OutputModule::close()
+{
+    Extent *old_extent = cur_extent;
+    cur_extent = NULL;
+    series.clearExtent();
+
+    if (old_extent->fixeddata.size() > 0) {
+	stats.unpacked_variable_raw += old_extent->variabledata.size();
+
+	sink.writeExtent(*old_extent, &stats);
+    }
+    delete old_extent;
+}
+
 
 void
 OutputModule::printStats(std::ostream &to)

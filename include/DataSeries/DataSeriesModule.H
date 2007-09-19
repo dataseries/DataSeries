@@ -84,6 +84,7 @@ public:
     // many times or it will try to write an extent.
     void newRecord();
     void flushExtent(); // force current extent out, you can continue writing.
+    void close();
 
     DataSeriesSink::Stats getStats() {
 	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());

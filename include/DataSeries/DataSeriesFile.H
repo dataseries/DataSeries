@@ -103,13 +103,21 @@ public:
     ~DataSeriesSink(); // automatically calls close() if needed.
     void close();
 
+    // must be called once before calling writeExtent.
     void writeExtentLibrary(ExtentTypeLibrary &lib);
+
     // set toUpdate to NULL if you have nothing to update.
     // writeExtent is destructive, e will be empty on return.
+    // writeExtent is thread safe, although obviously the precise
+    // order of writing the extents can't be guarenteed if two
+    // writeExtent calls are executing at the same time.
     void writeExtent(Extent &e, Stats *toUpdate);
-    const off64_t cur_position() {
-	return cur_offset;
-    }
+
+    // Removed as this is no longer a good idea when writes don't 
+    // complete immediately.
+//    const off64_t cur_position() {
+//	return cur_offset;
+//    }
 
     // You are only guarenteeed to have all the statistics for writing
     // this file after you call close().
