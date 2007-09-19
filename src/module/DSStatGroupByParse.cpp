@@ -38,7 +38,7 @@
 #include "DSStatGroupByParse.hpp"
 
 /* User implementation prologue.  */
-#line 38 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 40 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
 
 
 YY_DECL;
@@ -475,42 +475,42 @@ namespace DSStatGroupBy
     switch (yyn)
       {
 	  case 2:
-#line 138 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 140 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { module.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 143 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 145 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 4:
-#line 144 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 146 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 145 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 147 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 146 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 148 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 147 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 149 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 8:
-#line 148 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 150 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprField(module.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
     break;
 
   case 9:
-#line 149 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 151 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
     break;
 
@@ -843,7 +843,7 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,   138,   138,   143,   144,   145,   146,   147,   148,   149
+         0,   140,   140,   145,   146,   147,   148,   149,   150,   151
   };
 
   // Print the state stack on the debug stream.
@@ -930,7 +930,7 @@ namespace DSStatGroupBy
 
 } // namespace DSStatGroupBy
 
-#line 152 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 154 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
 
 
 void

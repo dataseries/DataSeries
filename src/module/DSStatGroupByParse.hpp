@@ -39,7 +39,135 @@
 
 #include <string>
 #include <iostream>
-#include "stack.hh"
+/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* Stack handling for Bison parsers in C++
+
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor,
+   Boston, MA 02110-1301, USA.  */
+
+/* As a special exception, you may create a larger work that contains
+   part or all of the Bison parser skeleton and distribute that work
+   under terms of your choice, so long as that work isn't itself a
+   parser generator using the skeleton or a modified version thereof
+   as a parser skeleton.  Alternatively, if you modify or redistribute
+   the parser skeleton itself, you may (at your option) remove this
+   special exception, which will cause the skeleton and the resulting
+   Bison output files to be licensed under the GNU General Public
+   License without this special exception.
+
+   This special exception was added by the Free Software Foundation in
+   version 2.2 of Bison.  */
+
+#ifndef BISON_STACK_HH
+# define BISON_STACK_HH
+
+#include <deque>
+
+namespace DSStatGroupBy
+{
+  template <class T, class S = std::deque<T> >
+  class stack
+  {
+  public:
+
+    // Hide our reversed order.
+    typedef typename S::reverse_iterator iterator;
+    typedef typename S::const_reverse_iterator const_iterator;
+
+    stack () : seq_ ()
+    {
+    }
+
+    stack (unsigned int n) : seq_ (n)
+    {
+    }
+
+    inline
+    T&
+    operator [] (unsigned int i)
+    {
+      return seq_[i];
+    }
+
+    inline
+    const T&
+    operator [] (unsigned int i) const
+    {
+      return seq_[i];
+    }
+
+    inline
+    void
+    push (const T& t)
+    {
+      seq_.push_front (t);
+    }
+
+    inline
+    void
+    pop (unsigned int n = 1)
+    {
+      for (; n; --n)
+	seq_.pop_front ();
+    }
+
+    inline
+    unsigned int
+    height () const
+    {
+      return seq_.size ();
+    }
+
+    inline const_iterator begin () const { return seq_.rbegin (); }
+    inline const_iterator end () const { return seq_.rend (); }
+
+  private:
+
+    S seq_;
+  };
+
+  /// Present a slice of the top of a stack.
+  template <class T, class S = stack<T> >
+  class slice
+  {
+  public:
+
+    slice (const S& stack,
+	   unsigned int range) : stack_ (stack),
+				 range_ (range)
+    {
+    }
+
+    inline
+    const T&
+    operator [] (unsigned int i) const
+    {
+      return stack_[range_ - i];
+    }
+
+  private:
+
+    const S& stack_;
+    unsigned int range_;
+  };
+}
+
+#endif // not BISON_STACK_HH
 
 namespace DSStatGroupBy
 {
@@ -48,7 +176,7 @@ namespace DSStatGroupBy
 }
 
 /* First part of user declarations.  */
-#line 17 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 19 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
 
 #include <string>
 #include <DataSeries/DSStatGroupByModule.H>
@@ -61,7 +189,151 @@ namespace DSStatGroupBy
 /* Line 35 of lalr1.cc.  */
 #line 63 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.hpp"
 
-#include "location.hh"
+/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* Locations for Bison parsers in C++
+
+   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin Street, Fifth Floor,
+   Boston, MA 02110-1301, USA.  */
+
+/* As a special exception, you may create a larger work that contains
+   part or all of the Bison parser skeleton and distribute that work
+   under terms of your choice, so long as that work isn't itself a
+   parser generator using the skeleton or a modified version thereof
+   as a parser skeleton.  Alternatively, if you modify or redistribute
+   the parser skeleton itself, you may (at your option) remove this
+   special exception, which will cause the skeleton and the resulting
+   Bison output files to be licensed under the GNU General Public
+   License without this special exception.
+
+   This special exception was added by the Free Software Foundation in
+   version 2.2 of Bison.  */
+
+/**
+ ** \file location.hh
+ ** Define the DSStatGroupBy::location class.
+ */
+
+#ifndef BISON_LOCATION_HH
+# define BISON_LOCATION_HH
+
+# include <iostream>
+# include <string>
+# include "position.hh"
+
+namespace DSStatGroupBy
+{
+
+  /// Abstract a location.
+  class location
+  {
+  public:
+
+    /// Construct a location.
+    location ()
+      : begin (), end ()
+    {
+    }
+
+
+    /// Initialization.
+    inline void initialize (std::string* fn)
+    {
+      begin.initialize (fn);
+      end = begin;
+    }
+
+    /** \name Line and Column related manipulators
+     ** \{ */
+  public:
+    /// Reset initial location to final location.
+    inline void step ()
+    {
+      begin = end;
+    }
+
+    /// Extend the current location to the COUNT next columns.
+    inline void columns (unsigned int count = 1)
+    {
+      end += count;
+    }
+
+    /// Extend the current location to the COUNT next lines.
+    inline void lines (unsigned int count = 1)
+    {
+      end.lines (count);
+    }
+    /** \} */
+
+
+  public:
+    /// Beginning of the located region.
+    position begin;
+    /// End of the located region.
+    position end;
+  };
+
+  /// Join two location objects to create a location.
+  inline const location operator+ (const location& begin, const location& end)
+  {
+    location res = begin;
+    res.end = end.end;
+    return res;
+  }
+
+  /// Add two location objects.
+  inline const location operator+ (const location& begin, unsigned int width)
+  {
+    location res = begin;
+    res.columns (width);
+    return res;
+  }
+
+  /// Add and assign a location.
+  inline location& operator+= (location& res, unsigned int width)
+  {
+    res.columns (width);
+    return res;
+  }
+
+  /** \brief Intercept output stream redirection.
+   ** \param ostr the destination output stream
+   ** \param loc a reference to the location to redirect
+   **
+   ** Avoid duplicate information.
+   */
+  inline std::ostream& operator<< (std::ostream& ostr, const location& loc)
+  {
+    position last = loc.end - 1;
+    ostr << loc.begin;
+    if (last.filename
+	&& (!loc.begin.filename
+	    || *loc.begin.filename != *last.filename))
+      ostr << '-' << last;
+    else if (loc.begin.line != last.line)
+      ostr << '-' << last.line  << '.' << last.column;
+    else if (loc.begin.column != last.column)
+      ostr << '-' << last.column;
+    return ostr;
+  }
+
+}
+
+#endif // not BISON_LOCATION_HH
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -110,7 +382,7 @@ namespace DSStatGroupBy
     /// Symbol semantic values.
 #ifndef YYSTYPE
     union semantic_type
-#line 32 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 34 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
 {
     double constant;
     DSStatGroupBy::Expr *expression;

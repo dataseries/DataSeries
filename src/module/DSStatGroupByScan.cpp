@@ -450,6 +450,8 @@ static yyconst flex_int16_t yy_chk[31] =
 
 /** @file
     Expression lexer for DSStatGroupBy
+    To rebuild the scanner, you need to run make rebuild_DSStatGroupBy in the
+    src subdirectory of your build directory.
 */
 
 #include <cstdlib>
@@ -461,9 +463,9 @@ static yyconst flex_int16_t yy_chk[31] =
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
-#line 35 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 37 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 #define YY_USER_ACTION  cur_column += (yyleng);
-#line 467 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 469 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
 
 #define INITIAL 0
 
@@ -678,7 +680,7 @@ YY_DECL
 	register int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
-#line 38 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 40 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 
 
 
@@ -687,7 +689,7 @@ typedef DSStatGroupBy::Parser::token token;
 static unsigned cur_column;
 
 
-#line 691 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 693 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
 
 	if ( !yyg->yy_init )
 		{
@@ -769,41 +771,41 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 46 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 48 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 { /* ignore whitespace */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 48 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 50 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 return token_type(yytext[0]);
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 49 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 51 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 { yylval->constant = stringToDouble(yytext); 
              return token::CONSTANT; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 51 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 53 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 { yylval->field = new std::string(yytext);
 	  return token::FIELD; }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 54 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 56 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 { return token::END_OF_STRING; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 55 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 57 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 { FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 57 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 59 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 ECHO;
 	YY_BREAK
-#line 807 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 809 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1867,7 +1869,7 @@ void DSStatGroupByScanfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 57 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 59 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
 
 
 
