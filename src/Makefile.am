@@ -56,6 +56,8 @@ libDataSeries_la_SOURCES = \
 	base/GeneralField.C \
 	process/commonargs.C \
 	module/DSStatGroupByModule.C \
+	module/DSStatGroupByParse.cpp \
+	module/DSStatGroupByScan.cpp \
 	module/DStoTextModule.C \
 	module/DataSeriesModule.C \
 	module/IndexSourceModule.C \
@@ -65,12 +67,8 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C \
 	module/cryptutil.C  \
-	DSStatGroupByScan.cpp \
-	DSStatGroupByParse.cpp \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
-
-BUILT_SOURCES = DSStatGroupByScan.cpp DSStatGroupByParse.cpp
 
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
 	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds
@@ -130,14 +128,14 @@ bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
 nobase_bpmodules_DATA += BatchParallel/bacct2ds.pm
 endif
 
-##### BUILT Sources
-
-DSStatGroupByScan.cpp: module/DSStatGroupByScan.ll
-	flex $<
-	mv lex.DSStatGroupByScan.c $@
-
-DSStatGroupByParse.cpp: module/DSStatGroupByParse.yy
-	bison -d -o $@ $<
+rebuild_DSStatGroupBy:
+	@echo "version check, from debian etch, known to work."
+	@echo "was unable to get the flex and bison stuff to work on both"
+	@echo "debian etch and RHEL4 with flex 2.5.4 and bison 1.875"
+	[ "`flex --version`" = "flex 2.5.33" ]
+	[ "`bison --version | head -1`" = "bison (GNU Bison) 2.3" ]
+	flex -o $(top_srcdir)/src/module/DSStatGroupByScan.cpp $(top_srcdir)/src/module/DSStatGroupByScan.ll
+	bison -d -o $(top_srcdir)/src/module/DSStatGroupByParse.cpp $(top_srcdir)/src/module/DSStatGroupByParse.yy
 
 ##### Testing...
 

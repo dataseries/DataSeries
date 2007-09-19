@@ -7,6 +7,8 @@
 
 /** @file
     Expression lexer for DSStatGroupBy
+    To rebuild the scanner, you need to run make rebuild_DSStatGroupBy in the
+    src subdirectory of your build directory.
 */
 
 #include <cstdlib>
@@ -15,13 +17,6 @@
 #include <DSStatGroupByParse.hpp>
 #include <Lintel/StringUtil.H>
 #include <DataSeries/DSStatGroupByModule.H>
-
-/* Work around an incompatibility in flex (at least versions
-   2.5.31 through 2.5.33): it generates code that does
-   not conform to C89.  See Debian bug 333231
-   <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=333231>.  */
-#undef yywrap
-#define yywrap() 1
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
@@ -32,6 +27,7 @@
 %option nounput
 %option batch
 %option prefix="DSStatGroupByScan"
+%option reentrant
 
 constant [0-9]+(\.[0-9]+)?
 blank [ \t\n]
@@ -63,9 +59,18 @@ static unsigned cur_column;
 %%
 
 void 
-DSStatGroupByModule::setInputString(const std::string &str)
+DSStatGroupByModule::startScanning(const std::string &str)
 {
-    YY_BUFFER_STATE s = yy_scan_bytes(str.data(),str.size());
-    yy_switch_to_buffer(s);
+    INVARIANT(scanner_state == NULL, "bad");
+    yylex_init(&scanner_state);
+    YY_BUFFER_STATE s = yy_scan_bytes(str.data(),str.size(), scanner_state);
+    yy_switch_to_buffer(s, scanner_state);
+}
+
+void
+DSStatGroupByModule::finishScanning()
+{
+    yylex_destroy(scanner_state);
+    scanner_state = NULL;
 }
 

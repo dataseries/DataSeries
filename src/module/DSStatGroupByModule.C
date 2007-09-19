@@ -40,13 +40,14 @@ DSStatGroupByModule::prepareForProcessing()
     // Have to do this here rather than constructor as we need the XML
     // from the first extent in order to build the generalfield
 
-    setInputString(expression);
+    startScanning(expression);
     
     expr = NULL;
-    DSStatGroupBy::Parser parser(*this);
+    DSStatGroupBy::Parser parser(*this, scanner_state);
     int ret = parser.parse();
     INVARIANT(ret == 0 && expr != NULL, "parse failed");
-    
+    finishScanning();
+
     groupby = GeneralField::create(NULL, series, groupby_name);
 }
 

@@ -6,6 +6,8 @@
 
 /** @file
     Expression parser for DSStatGroupBy
+    To rebuild the parser, you need to run make rebuild_DSStatGroupBy in the
+    src subdirectory of your build directory.
 */
 
 %skeleton "lalr1.cc"
@@ -20,12 +22,14 @@
 
 #define YY_DECL \
   DSStatGroupBy::Parser::token_type \
-  DSStatGroupByScanlex(DSStatGroupBy::Parser::semantic_type *yylval)
+  DSStatGroupByScanlex(DSStatGroupBy::Parser::semantic_type *yylval, void * yyscanner)
 %}
 
 %name-prefix="DSStatGroupBy"
 %parse-param { DSStatGroupByModule &module }
+%parse-param { void *scanner_state }
 %error-verbose
+%lex-param { void *scanner_state }
 
 %union {
     double constant;

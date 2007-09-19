@@ -47,12 +47,14 @@ public:
 
 private:
     friend class DSStatGroupBy::Parser;
-    void setInputString(const std::string &str);
+    void startScanning(const std::string &str);
+    void finishScanning();
 
     mytableT mystats;
     std::string expression, groupby_name, stattype;
     GeneralField *groupby;
     DSStatGroupBy::Expr *expr;
+    void *scanner_state;
 };
 
 #endif
