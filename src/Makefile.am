@@ -55,6 +55,7 @@ libDataSeries_la_SOURCES = \
 	base/ExtentType.C \
 	base/GeneralField.C \
 	process/commonargs.C \
+	module/DSStatGroupByModule.C \
 	module/DStoTextModule.C \
 	module/DataSeriesModule.C \
 	module/IndexSourceModule.C \
@@ -64,11 +65,15 @@ libDataSeries_la_SOURCES = \
 	module/SequenceModule.C \
 	module/TypeIndexModule.C \
 	module/cryptutil.C  \
+	DSStatGroupByScan.cpp \
+	DSStatGroupByParse.cpp \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
 
+BUILT_SOURCES = DSStatGroupByScan.cpp DSStatGroupByParse.cpp
+
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack iphost2ds
+	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds
 
 LDADD = libDataSeries.la 
 ds2txt_SOURCES = process/ds2txt.C
@@ -80,6 +85,7 @@ ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/
 indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
+dsstatgroupby_SOURCES = process/dsstatgroupby.C
 iphost2ds_SOURCES = process/iphost2ds.C
 
 ##### WITH_PCAP
@@ -123,6 +129,15 @@ bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
 
 nobase_bpmodules_DATA += BatchParallel/bacct2ds.pm
 endif
+
+##### BUILT Sources
+
+DSStatGroupByScan.cpp: module/DSStatGroupByScan.ll
+	flex $<
+	mv lex.DSStatGroupByScan.c $@
+
+DSStatGroupByParse.cpp: module/DSStatGroupByParse.yy
+	bison -d -o $@ $<
 
 ##### Testing...
 
