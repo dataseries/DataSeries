@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 #include <netpacket/packet.h>
 #include <net/ethernet.h>     /* the L2 protocols */
+#include <boost/format.hpp>
 
 // TODO: on shutdown with 3 threads in the kernel, sending a signal to
 // the parent thread isn't enough to get all of them to exit.  Need to
@@ -66,9 +67,10 @@ check_enough_freespace(FILE *fp)
     AssertAlways(fstatvfs(fileno(fp),&fs_stats) == 0,
 		 ("fstatfs failed: %s\n",strerror(errno)));
 
-    if (false)
-	printf("freespace %ld available blocks %ld free blocks %ld blocksize\n",
-	       fs_stats.f_bavail,fs_stats.f_bfree,fs_stats.f_bsize);
+    if (false) {
+	cout << boost::format("freespace %ld available blocks %ld free blocks %ld blocksize\n")
+	    % fs_stats.f_bavail % fs_stats.f_bfree % fs_stats.f_bsize;
+    }
     long long freebytes = (long long)fs_stats.f_bsize * (long long)fs_stats.f_bavail;
     long long needbytes = (long long)buffer_size * (long long)nthreads;
     if (freebytes < needbytes) {
