@@ -137,7 +137,7 @@ rebuild_DSStatGroupBy:
 	flex -o $(top_srcdir)/src/module/DSStatGroupByScan.cpp $(top_srcdir)/src/module/DSStatGroupByScan.ll
 	bison -d -o $(top_srcdir)/src/module/DSStatGroupByParse.cpp $(top_srcdir)/src/module/DSStatGroupByParse.yy
 	perl $(top_srcdir)/src/module/parser-fixup.pl $(top_srcdir)/src/module DSStatGroupByParse
-	rm $(top_srcdir)/src/module/stack.hh $(top_srcdir)/src/module/location.hh
+	rm $(top_srcdir)/src/module/stack.hh $(top_srcdir)/src/module/location.hh $(top_srcdir)/src/module/position.hh
 
 ##### Testing...
 

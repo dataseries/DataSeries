@@ -1,15 +1,11 @@
 #!/usr/bin/perl -w
 use strict;
 
-open(F1, "$ARGV[0]/$ARGV[1].hpp") or die "bad";
-my @data = <F1>;
-open(F2, "$ARGV[0]/stack.hh") or die "bad";
-my @stack = <F2>;
-open(F3, "$ARGV[0]/location.hh") or die "bad";
-my @location = <F3>;
-close(F1); 
-close(F2);
-close(F3);
+my @data = readFile("$ARGV[0]/$ARGV[1].hpp");
+my @stack = readFile("$ARGV[0]/stack.hh");
+my @location = readFile("$ARGV[0]/location.hh");
+my @position = readFile("$ARGV[0]/position.hh");
+
 open(OUT, ">$ARGV[0]/$ARGV[1].hpp") or die "bad";
 my ($stack, $location) = (0,0);
 foreach $_ (@data) {
@@ -17,8 +13,19 @@ foreach $_ (@data) {
 	print OUT @stack;
 	++$stack;
     } elsif (/^#include "location.hh"$/o) {
-	print OUT @location;
-	++$location ;
+	++$location;
+	my $position = 0;
+	foreach $_ (@location) {
+	    if (/^# include "position.hh"$/o) {
+		++$position;
+		print OUT @position;
+	    } else {
+		print OUT $_;
+	    }
+	}
+	die "?? position include count wrong" unless $position == 1;
+    } elsif (/^#line/o) {
+	# drop
     } else {
 	print OUT $_;
     }
@@ -27,3 +34,11 @@ close(OUT);
 die "?? stack include count wrong" unless $stack == 1;
 die "?? location include count wrong" unless $location == 1;
 
+sub readFile {
+    my($path) = @_;
+
+    open(F, $path) or die "can't read $path: $!";
+    my @ret = <F>;
+    close(F);
+    return @ret;
+}
