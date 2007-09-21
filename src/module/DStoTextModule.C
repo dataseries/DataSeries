@@ -97,7 +97,7 @@ DStoTextModule::enableCSV(void)
 
 void
 DStoTextModule::getExtentPrintSpecs(std::map<std::string, xmlNodePtr> &printspecs,
-				      ExtentSeries &es)
+				    ExtentSeries &es)
 {
     printspecs = overridePrintSpecs[es.type->name];
     xmlDocPtr doc = ExtentTypeLibrary::sharedDocPtr(es.type->xmldesc);

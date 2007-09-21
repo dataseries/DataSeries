@@ -312,7 +312,7 @@ GeneralValue::valInt64()
 	    return gvval.v_int64;
 	    break;
 	case ExtentType::ft_double:
-	    return static_cast<double>(gvval.v_double);
+	    return static_cast<int64_t>(gvval.v_double);
 	    break;
 	case ExtentType::ft_variable32: {
 	    return stringToInt64(*v_variable32);
@@ -656,8 +656,23 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     if (xml_divisor == NULL) {
 	divisor = 1;
     } else {
-	divisor = atoll((char *)xml_divisor);
+	divisor = stringToInt64(reinterpret_cast<char *>(xml_divisor));
     }
+
+    relative_field = NULL;
+    xmlChar *xml_offset = myXmlGetProp(fieldxml, (const xmlChar *)"print_offset");
+    if (xml_offset == NULL) {
+	offset = 0;
+    } else if (xmlStrcmp(xml_offset,(const xmlChar *)"first") == 0) {
+	offset = 0;
+	offset_first = true;
+    } else if (xmlStrncmp(xml_offset,(const xmlChar *)"relativeto:",11) == 0) {
+	std::string relname = (char *)(xml_offset + 11);
+	relative_field = new Int64Field(series,relname);
+    } else {
+	offset = stringToInt64(reinterpret_cast<char *>(xml_offset));
+    }
+
 }
 
 GF_Int64::~GF_Int64() 
@@ -670,7 +685,13 @@ GF_Int64::write(FILE *to)
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
-	fprintf(to,printspec,myfield.val()/divisor);
+	if (offset_first) {
+	    offset = myfield.val();
+	    offset_first = false;
+	} else if (relative_field != NULL) {
+	    offset = relative_field->val();
+	}
+	fprintf(to,printspec,(myfield.val() - offset)/divisor);
     }
 }
 
@@ -781,7 +802,7 @@ GF_Double::write(FILE *to)
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
-	if (offset != offset) {
+	if (isnan(offset)) {
 	    offset = myfield.val();
 	}
 	if (relative_field != NULL) {
