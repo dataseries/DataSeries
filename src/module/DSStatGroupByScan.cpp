@@ -1,6 +1,6 @@
-#line 2 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 2 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.cpp"
 
-#line 4 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 4 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -355,8 +355,8 @@ static void yy_fatal_error (yyconst char msg[] ,yyscan_t yyscanner );
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
 
-#define YY_NUM_RULES 6
-#define YY_END_OF_BUFFER 7
+#define YY_NUM_RULES 7
+#define YY_END_OF_BUFFER 8
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -364,10 +364,12 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[17] =
+static yyconst flex_int16_t yy_accept[34] =
     {   0,
-        0,    0,    7,    5,    1,    1,    2,    3,    4,    1,
-        0,    3,    4,    0,    3,    0
+        0,    0,    8,    6,    1,    1,    2,    3,    4,    4,
+        1,    0,    3,    4,    0,    4,    3,    0,    0,    0,
+        0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+        0,    5,    0
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -380,11 +382,11 @@ static yyconst flex_int32_t yy_ec[256] =
         6,    6,    6,    6,    6,    6,    6,    1,    1,    1,
         1,    1,    1,    1,    7,    7,    7,    7,    7,    7,
         7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        1,    8,    1,    1,    7,    1,    7,    7,    7,    7,
+        7,    7,    8,    9,    7,    7,    7,    7,    7,    7,
+        1,   10,    1,    1,    7,    1,   11,    7,   12,   13,
 
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
+       14,   15,    7,    7,    7,    7,    7,    7,    7,   16,
+       17,    7,    7,   18,   19,    7,    7,    7,    7,    7,
         7,    7,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -402,35 +404,50 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst flex_int32_t yy_meta[9] =
+static yyconst flex_int32_t yy_meta[20] =
     {   0,
-        1,    2,    3,    1,    1,    4,    4,    4
+        1,    1,    1,    1,    1,    2,    2,    2,    2,    2,
+        2,    2,    2,    2,    2,    2,    2,    2,    2
     } ;
 
-static yyconst flex_int16_t yy_base[20] =
+static yyconst flex_int16_t yy_base[35] =
     {   0,
-        0,    0,   21,   22,    0,    0,   22,    4,   12,    0,
-       13,    0,   10,    0,   11,   22,    9,   11,   12
+        0,    0,   57,   58,   18,   20,   58,   19,   46,   16,
+       25,   49,   24,   44,   32,   30,   47,   43,   36,   32,
+       38,   36,   38,   29,   37,   30,   31,   25,   25,   26,
+       19,   58,   58,   29
     } ;
 
-static yyconst flex_int16_t yy_def[20] =
+static yyconst flex_int16_t yy_def[35] =
     {   0,
-       16,    1,   16,   16,   17,   17,   16,   16,   18,   17,
-       16,    8,   18,   19,   16,    0,   16,   16,   16
+       33,    1,   33,   33,   33,   33,   33,   33,   34,   34,
+       33,   33,   33,   34,   34,   34,   33,   33,   33,   33,
+       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
+       33,   33,    0,   33
     } ;
 
-static yyconst flex_int16_t yy_nxt[31] =
+static yyconst flex_int16_t yy_nxt[78] =
     {   0,
-        4,    5,    6,    7,    4,    8,    9,    4,   11,   12,
-       10,   10,   13,   13,   13,   13,   15,   14,   15,   14,
-       16,    3,   16,   16,   16,   16,   16,   16,   16,   16
+        4,    5,    6,    7,    4,    8,    9,    9,    9,    4,
+        9,    9,    9,    9,   10,    9,    9,    9,    9,   11,
+       11,   11,   11,   12,   13,   15,   11,   11,   12,   13,
+       14,   16,   14,   14,   18,   14,   14,   32,   31,   15,
+       30,   29,   28,   27,   26,   25,   24,   23,   22,   21,
+       20,   19,   17,   15,   17,   15,   33,    3,   33,   33,
+       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
+       33,   33,   33,   33,   33,   33,   33
     } ;
 
-static yyconst flex_int16_t yy_chk[31] =
+static yyconst flex_int16_t yy_chk[78] =
     {   0,
-        1,    1,    1,    1,    1,    1,    1,    1,    8,    8,
-       17,   17,   19,   19,   18,   19,   15,   13,   11,    9,
-        3,   16,   16,   16,   16,   16,   16,   16,   16,   16
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    5,
+        5,    6,    6,    8,    8,   10,   11,   11,   13,   13,
+       34,   10,   15,   15,   16,   15,   15,   31,   30,   16,
+       29,   28,   27,   26,   25,   24,   23,   22,   21,   20,
+       19,   18,   17,   14,   12,    9,    3,   33,   33,   33,
+       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
+       33,   33,   33,   33,   33,   33,   33
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -440,8 +457,8 @@ static yyconst flex_int16_t yy_chk[31] =
 #define yymore() yymore_used_but_not_detected
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
-#line 1 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
-#line 2 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 1 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
+#line 2 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 /*
    (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
@@ -457,15 +474,15 @@ static yyconst flex_int16_t yy_chk[31] =
 #include <cstdlib>
 #include <errno.h>
 #include <string>
-#include <DSStatGroupByParse.hpp>
+#include <module/DSStatGroupByParse.hpp>
 #include <Lintel/StringUtil.H>
 #include <DataSeries/DSStatGroupByModule.H>
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
-#line 37 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 38 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 #define YY_USER_ACTION  cur_column += (yyleng);
-#line 469 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 486 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.cpp"
 
 #define INITIAL 0
 
@@ -680,7 +697,7 @@ YY_DECL
 	register int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
-#line 40 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 41 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 
 
 
@@ -689,7 +706,7 @@ typedef DSStatGroupBy::Parser::token token;
 static unsigned cur_column;
 
 
-#line 693 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 710 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.cpp"
 
 	if ( !yyg->yy_init )
 		{
@@ -742,13 +759,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 17 )
+				if ( yy_current_state >= 34 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_current_state != 16 );
+		while ( yy_current_state != 33 );
 		yy_cp = yyg->yy_last_accepting_cpos;
 		yy_current_state = yyg->yy_last_accepting_state;
 
@@ -771,41 +788,46 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 48 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 49 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 { /* ignore whitespace */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 50 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 51 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 return token_type(yytext[0]);
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 51 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 52 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 { yylval->constant = stringToDouble(yytext); 
              return token::CONSTANT; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 53 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 54 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 { yylval->field = new std::string(yytext);
 	  return token::FIELD; }
 	YY_BREAK
-case YY_STATE_EOF(INITIAL):
-#line 56 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
-{ return token::END_OF_STRING; }
-	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 57 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
-{ FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
+#line 56 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
+{ return token::FN_TfracToSeconds; }
+	YY_BREAK
+case YY_STATE_EOF(INITIAL):
+#line 57 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
+{ return token::END_OF_STRING; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 59 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 58 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
+{ FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
+	YY_BREAK
+case 7:
+YY_RULE_SETUP
+#line 60 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 ECHO;
 	YY_BREAK
-#line 809 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.cpp"
+#line 831 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1090,7 +1112,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 17 )
+			if ( yy_current_state >= 34 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1119,11 +1141,11 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 17 )
+		if ( yy_current_state >= 34 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 16);
+	yy_is_jam = (yy_current_state == 33);
 
 	return yy_is_jam ? 0 : yy_current_state;
 }
@@ -1869,7 +1891,7 @@ void DSStatGroupByScanfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 59 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByScan.ll"
+#line 60 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByScan.ll"
 
 
 

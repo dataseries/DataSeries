@@ -64,11 +64,13 @@ public:
     ~GeneralValue() { delete v_variable32; }
 
     void set(const GeneralValue &from);
-    void set(const GeneralValue *from) { set(*from); }
+    void set(const GeneralValue *from) { 
+	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+    }
     void set(const GeneralField &from);
-    void set(const GeneralField *from) { set(*from); }
-    void setInt32(ExtentType::int32 from);
-    void setVariable32(const std::string &from);
+    void set(const GeneralField *from) { 
+	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+    }
 
     /** \brief return this < gv 
 
@@ -102,32 +104,14 @@ public:
 	return *this;
     }
     ExtentType::fieldType getType() { return gvtype; }
-    /** add this value into the hash */
-    u_int32_t hash() const {
-	switch(gvtype) 
-	    {
-	    case ExtentType::ft_unknown: return 0;
-	    case ExtentType::ft_bool: 
-		return gvval.v_bool;
-	    case ExtentType::ft_byte: 
-		return gvval.v_byte;
-	    case ExtentType::ft_int32: 
-		return static_cast<u_int32_t>(gvval.v_int32);
-	    case ExtentType::ft_int64: 
-		return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
-	    case ExtentType::ft_double: 
-		BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
-		BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) == offsetof(gvvalT, v_int64));
-		return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
-	    case ExtentType::ft_variable32: 
-		return HashTable_hashbytes(v_variable32->data(),
-					   v_variable32->size());
-		break;
-	    default: AssertFatal(("internal")); return 0; break;
-	    }
-    }
+    /** calculate a hash of this value */
+    uint32_t hash() const;
 
-    double asDouble();
+    void setInt32(ExtentType::int32 from);
+    void setVariable32(const std::string &from);
+    double valDouble();
+    int64_t valInt64();
+
 protected:
     // let all of the general field classes get at our value/type
     friend class GF_Bool;
@@ -292,6 +276,7 @@ public:
     virtual bool isNull();
     virtual double valDouble();
     ExtentType::int64 val() { return myfield.val(); }
+    void set(int64_t v) { myfield.set(v); }
     char *printspec;
     ExtentType::int64 divisor;
     Int64Field myfield;

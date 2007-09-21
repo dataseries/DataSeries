@@ -23,6 +23,7 @@ namespace DSStatGroupBy {
     public:
 	virtual ~Expr() { };
 	virtual double value() = 0;
+	virtual int64_t valueInt64() = 0;
     };
     class Parser;
 };

@@ -38,7 +38,7 @@
 #include "DSStatGroupByParse.hpp"
 
 /* User implementation prologue.  */
-#line 40 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 40 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
 
 
 YY_DECL;
@@ -51,6 +51,9 @@ namespace DSStatGroupBy {
     public:
 	ExprConstant(double v) : val(v) { }
 	virtual double value() { return val; }
+	// TODO: consider parsing the string as both a double and an
+	// int64 to get better precision.
+	virtual int64_t valueInt64() { return static_cast<int64_t>(val); }
     private:
 	double val;
     };
@@ -83,14 +86,32 @@ namespace DSStatGroupBy {
 	virtual double value() {
 	    return field->valDouble();
 	}
+	virtual int64_t valueInt64() {
+	    return GeneralValue(*field).valInt64();
+	}
     private:
 	GeneralField *field;
+    };
+
+    class ExprUnary : public Expr {
+    public:
+	ExprUnary(Expr *_subexpr)
+	    : subexpr(_subexpr) { }
+	virtual ~ExprUnary() {
+	    delete subexpr;
+	}
+    protected:
+	Expr *subexpr;
     };
 
     class ExprBinary : public Expr {
     public:
 	ExprBinary(Expr *_left, Expr *_right)
 	    : left(_left), right(_right) { }
+	virtual ~ExprBinary() {
+	    delete left; 
+	    delete right;
+	}
     protected:
 	Expr *left, *right;
     };
@@ -100,6 +121,9 @@ namespace DSStatGroupBy {
 	ExprAdd(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() + right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() + right->valueInt64(); 
+	}
     };
 
     class ExprSubtract : public ExprBinary {
@@ -107,6 +131,9 @@ namespace DSStatGroupBy {
 	ExprSubtract(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() - right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() - right->valueInt64(); 
+	}
     };
 
     class ExprMultiply : public ExprBinary {
@@ -114,6 +141,9 @@ namespace DSStatGroupBy {
 	ExprMultiply(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() * right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() * right->valueInt64(); 
+	}
     };
 
     class ExprDivide : public ExprBinary {
@@ -121,15 +151,34 @@ namespace DSStatGroupBy {
 	ExprDivide(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() / right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() / right->valueInt64(); 
+	}
     };
 
+    class ExprFnTfracToSeconds : public ExprUnary {
+    public:
+	ExprFnTfracToSeconds(Expr *subexpr) 
+	    : ExprUnary(subexpr) 
+	{ }
+	virtual double value() {
+	    return subexpr->valueInt64() / 4294967296.0;
+	}
+	virtual int64_t valueInt64() {
+	    // TODO: Should we warn/error on this? we're dropping lots
+	    // of precision here.  Also should we round or truncate as
+	    // is currently implemented?
+	    int64_t t = subexpr->valueInt64();
+	    return Clock::TfracToSec(t);
+	}
+    };
 }
 
 using namespace DSStatGroupBy;
 
 
 /* Line 317 of lalr1.cc.  */
-#line 133 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.cpp"
+#line 182 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -475,48 +524,53 @@ namespace DSStatGroupBy
     switch (yyn)
       {
 	  case 2:
-#line 140 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 190 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { module.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 145 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 195 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 4:
-#line 146 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 196 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 147 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 197 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 148 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 198 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 149 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 199 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 8:
-#line 150 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 200 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprField(module.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
     break;
 
   case 9:
-#line 151 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 201 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
     { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
+    break;
+
+  case 10:
+#line 202 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+    { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 520 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.cpp"
+#line 574 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -723,12 +777,13 @@ namespace DSStatGroupBy
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const signed char Parser::yypact_ninf_ = -7;
+  const signed char Parser::yypact_ninf_ = -8;
   const signed char
   Parser::yypact_[] =
   {
-        11,    -7,    -7,    11,     3,     5,    16,    -7,    -7,    11,
-      11,    11,    11,    -7,    -6,    -6,    -7,    -7
+        12,    -8,    -8,    -6,    12,     6,     5,    12,    17,    -8,
+      -8,    12,    12,    12,    12,    23,    -8,    -7,    -7,    -8,
+      -8,    -8
   };
 
   /* YYDEFACT[S] -- default rule to reduce with in state S when YYTABLE
@@ -737,22 +792,23 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yydefact_[] =
   {
-         0,     8,     9,     0,     0,     0,     0,     1,     2,     0,
-       0,     0,     0,     7,     3,     4,     5,     6
+         0,     8,     9,     0,     0,     0,     0,     0,     0,     1,
+       2,     0,     0,     0,     0,     0,     7,     3,     4,     5,
+       6,    10
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const signed char
   Parser::yypgoto_[] =
   {
-        -7,    -7,    -3
+        -8,    -8,    -4
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
   const signed char
   Parser::yydefgoto_[] =
   {
-        -1,     4,     5
+        -1,     5,     6
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -762,18 +818,20 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yytable_[] =
   {
-         6,    11,    12,     7,     0,     8,    14,    15,    16,    17,
-       9,    10,    11,    12,     1,     2,     0,     0,     0,     0,
-       3,     9,    10,    11,    12,     0,    13
+         8,    13,    14,    15,     7,    10,     9,    17,    18,    19,
+      20,    11,    12,    13,    14,     1,     2,     3,     0,     0,
+       0,     0,     4,    11,    12,    13,    14,     0,    16,    11,
+      12,    13,    14,     0,    21
   };
 
   /* YYCHECK.  */
   const signed char
   Parser::yycheck_[] =
   {
-         3,     7,     8,     0,    -1,     0,     9,    10,    11,    12,
-       5,     6,     7,     8,     3,     4,    -1,    -1,    -1,    -1,
-       9,     5,     6,     7,     8,    -1,    10
+         4,     8,     9,     7,    10,     0,     0,    11,    12,    13,
+      14,     6,     7,     8,     9,     3,     4,     5,    -1,    -1,
+      -1,    -1,    10,     6,     7,     8,     9,    -1,    11,     6,
+       7,     8,     9,    -1,    11
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -781,8 +839,9 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yystos_[] =
   {
-         0,     3,     4,     9,    12,    13,    13,     0,     0,     5,
-       6,     7,     8,    10,    13,    13,    13,    13
+         0,     3,     4,     5,    10,    13,    14,    10,    14,     0,
+       0,     6,     7,     8,     9,    14,    11,    14,    14,    14,
+      14,    11
   };
 
 #if YYDEBUG
@@ -791,8 +850,8 @@ namespace DSStatGroupBy
   const unsigned short int
   Parser::yytoken_number_[] =
   {
-         0,   256,   257,   258,   259,    43,    45,    42,    47,    40,
-      41
+         0,   256,   257,   258,   259,   260,    43,    45,    42,    47,
+      40,    41
   };
 #endif
 
@@ -800,14 +859,16 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yyr1_[] =
   {
-         0,    11,    12,    13,    13,    13,    13,    13,    13,    13
+         0,    12,    13,    14,    14,    14,    14,    14,    14,    14,
+      14
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
   const unsigned char
   Parser::yyr2_[] =
   {
-         0,     2,     2,     3,     3,     3,     3,     3,     1,     1
+         0,     2,     2,     3,     3,     3,     3,     3,     1,     1,
+       4
   };
 
 #if YYDEBUG || YYERROR_VERBOSE || YYTOKEN_TABLE
@@ -816,8 +877,9 @@ namespace DSStatGroupBy
   const char*
   const Parser::yytname_[] =
   {
-    "END_OF_STRING", "error", "$undefined", "FIELD", "CONSTANT", "'+'",
-  "'-'", "'*'", "'/'", "'('", "')'", "$accept", "complete_expr", "expr", 0
+    "END_OF_STRING", "error", "$undefined", "FIELD", "CONSTANT",
+  "FN_TfracToSeconds", "'+'", "'-'", "'*'", "'/'", "'('", "')'", "$accept",
+  "complete_expr", "expr", 0
   };
 #endif
 
@@ -826,9 +888,10 @@ namespace DSStatGroupBy
   const Parser::rhs_number_type
   Parser::yyrhs_[] =
   {
-        12,     0,    -1,    13,     0,    -1,    13,     5,    13,    -1,
-      13,     6,    13,    -1,    13,     7,    13,    -1,    13,     8,
-      13,    -1,     9,    13,    10,    -1,     3,    -1,     4,    -1
+        13,     0,    -1,    14,     0,    -1,    14,     6,    14,    -1,
+      14,     7,    14,    -1,    14,     8,    14,    -1,    14,     9,
+      14,    -1,    10,    14,    11,    -1,     3,    -1,     4,    -1,
+       5,    10,    14,    11,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -836,14 +899,16 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yyprhs_[] =
   {
-         0,     0,     3,     6,    10,    14,    18,    22,    26,    28
+         0,     0,     3,     6,    10,    14,    18,    22,    26,    28,
+      30
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,   140,   140,   145,   146,   147,   148,   149,   150,   151
+         0,   190,   190,   195,   196,   197,   198,   199,   200,   201,
+     202
   };
 
   // Print the state stack on the debug stream.
@@ -887,7 +952,7 @@ namespace DSStatGroupBy
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       9,    10,     7,     5,     2,     6,     2,     8,     2,     2,
+      10,    11,     8,     6,     2,     7,     2,     9,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -908,7 +973,8 @@ namespace DSStatGroupBy
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     1,     2,     3,     4
+       2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
+       5
     };
     if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
@@ -917,20 +983,20 @@ namespace DSStatGroupBy
   }
 
   const int Parser::yyeof_ = 0;
-  const int Parser::yylast_ = 26;
+  const int Parser::yylast_ = 34;
   const int Parser::yynnts_ = 3;
   const int Parser::yyempty_ = -2;
-  const int Parser::yyfinal_ = 7;
+  const int Parser::yyfinal_ = 9;
   const int Parser::yyterror_ = 1;
   const int Parser::yyerrcode_ = 256;
-  const int Parser::yyntokens_ = 11;
+  const int Parser::yyntokens_ = 12;
 
-  const unsigned int Parser::yyuser_token_number_max_ = 259;
+  const unsigned int Parser::yyuser_token_number_max_ = 260;
   const Parser::token_number_type Parser::yyundef_token_ = 2;
 
 } // namespace DSStatGroupBy
 
-#line 154 "/home/anderse/projects/DataSeries.groupby/src/module/DSStatGroupByParse.yy"
+#line 205 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
 
 
 void

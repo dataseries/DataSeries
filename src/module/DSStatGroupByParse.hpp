@@ -540,7 +540,8 @@ namespace DSStatGroupBy
    enum yytokentype {
      END_OF_STRING = 0,
      FIELD = 258,
-     CONSTANT = 259
+     CONSTANT = 259,
+     FN_TfracToSeconds = 260
    };
 
     };

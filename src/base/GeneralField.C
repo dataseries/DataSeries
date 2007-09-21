@@ -24,9 +24,9 @@ using namespace std;
 void
 GeneralValue::set(const GeneralField &from)
 {
-    AssertAlways(gvtype == ExtentType::ft_unknown || 
-		 gvtype == from.gftype,
-		 ("invalid to change type of generalvalue\n"));
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == from.gftype,
+	      "invalid to change type of generalvalue");
     gvtype = from.gftype;
     switch(gvtype) 
 	{
@@ -47,16 +47,16 @@ GeneralValue::set(const GeneralField &from)
 	    *v_variable32 = tmp->myfield.stringval(); 
 	    break;
 	}
-	default: AssertFatal(("internal error")); break;
+	default: FATAL_ERROR("internal error, unexpected type"); break;
 	}
 }
 
 void
 GeneralValue::set(const GeneralValue &from)
 {
-    AssertAlways(gvtype == ExtentType::ft_unknown || 
-		 gvtype == from.gvtype,
-		 ("invalid to change type of generalvalue\n"));
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == from.gvtype,
+	      "invalid to change type of generalvalue");
     gvtype = from.gvtype;
     switch(gvtype) 
 	{
@@ -75,16 +75,41 @@ GeneralValue::set(const GeneralValue &from)
 	    if (NULL == v_variable32) v_variable32 = new string;
 	    *v_variable32 = *from.v_variable32;
 	    break;
-	default: AssertFatal(("internal error")); break;
+	default: FATAL_ERROR("internal error, unexpected type"); break;
+	}
+}
+
+uint32_t GeneralValue::hash() const
+{
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: return 0;
+	case ExtentType::ft_bool: 
+	    return gvval.v_bool;
+	case ExtentType::ft_byte: 
+	    return gvval.v_byte;
+	case ExtentType::ft_int32: 
+	    return static_cast<u_int32_t>(gvval.v_int32);
+	case ExtentType::ft_int64: 
+	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	case ExtentType::ft_double: 
+	    BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
+	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) == offsetof(gvvalT, v_int64));
+	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	case ExtentType::ft_variable32: 
+	    return HashTable_hashbytes(v_variable32->data(),
+				       v_variable32->size());
+	    break;
+	default: FATAL_ERROR("internal error, unexpected type"); return 0; break;
 	}
 }
 
 void
 GeneralValue::setInt32(ExtentType::int32 from)
 {
-    AssertAlways(gvtype == ExtentType::ft_unknown || 
-		 gvtype == ExtentType::ft_int32,
-		 ("invalid to change type of generalvalue\n"));
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_int32,
+	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_int32;
     gvval.v_int32 = from;
 }
@@ -92,9 +117,9 @@ GeneralValue::setInt32(ExtentType::int32 from)
 void
 GeneralValue::setVariable32(const string &from)
 {
-    AssertAlways(gvtype == ExtentType::ft_unknown || 
-		 gvtype == ExtentType::ft_variable32,
-		 ("invalid to change type of generalvalue\n"));
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_variable32,
+	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_variable32;
     if (NULL == v_variable32) v_variable32 = new string;
     *v_variable32 = from;
@@ -103,8 +128,8 @@ GeneralValue::setVariable32(const string &from)
 bool 
 GeneralValue::strictlylessthan(const GeneralValue &gv) const 
 {
-    AssertAlways(gvtype == gv.gvtype,
-		 ("currently invalid to compare general values of different types\n"));
+    INVARIANT(gvtype == gv.gvtype,
+	      "currently invalid to compare general values of different types");
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: return false;
@@ -128,7 +153,7 @@ GeneralValue::strictlylessthan(const GeneralValue &gv) const
 	    }
 	}
 	default:
-	    AssertFatal(("internal error"));
+	    FATAL_ERROR("internal error, unexpected type");
 	    return false;
 	}
     
@@ -137,8 +162,8 @@ GeneralValue::strictlylessthan(const GeneralValue &gv) const
 bool 
 GeneralValue::equal(const GeneralValue &gv) const
 {
-    AssertAlways(gvtype == gv.gvtype,
-		 ("currently invalid to compare general values of different types\n"));
+    INVARIANT(gvtype == gv.gvtype,
+	      "currently invalid to compare general values of different types");
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: return false;
@@ -161,7 +186,7 @@ GeneralValue::equal(const GeneralValue &gv) const
 	    }
 	}
 	default:
-	    AssertFatal(("internal error"));
+	    FATAL_ERROR("internal error, unexpected type");
 	    return false;
 	}
     
@@ -195,7 +220,7 @@ GeneralValue::write(FILE *to)
 	    break;
 	}
 	default:
-	    AssertFatal(("internal error"));
+	    FATAL_ERROR("internal error, unexpected type");
 	}
     
 }
@@ -228,18 +253,18 @@ GeneralValue::write(ostream &to) const
 	    break;
 	}
 	default:
-	    AssertFatal(("internal error"));
+	    FATAL_ERROR("internal error, unexpected type");
 	}
     return to;
 }
 
 double
-GeneralValue::asDouble()
+GeneralValue::valDouble()
 {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
-	    AssertFatal(("value undefined, can't run toDouble()"));
+	    FATAL_ERROR("value undefined, can't run valDouble()");
 	    break;
 	case ExtentType::ft_bool:
 	    return gvval.v_bool ? 1 : 0;
@@ -261,7 +286,40 @@ GeneralValue::asDouble()
 	    break;
 	}
 	default:
-	    AssertFatal(("internal error")); 
+	    FATAL_ERROR("internal error, unexpected type"); 
+	}
+    return 0;
+}
+
+int64_t
+GeneralValue::valInt64()
+{
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt64()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return static_cast<double>(gvval.v_double);
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToInt64(*v_variable32);
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
 	}
     return 0;
 }
@@ -362,18 +420,19 @@ GF_Bool::set(GeneralField *from)
 	    myfield.set(((GF_Double *)from)->val() == 0);
 	    break;
 	case ExtentType::ft_variable32:
-	    AssertFatal(("variable32 -> bool not implemented yet"));
+	    FATAL_ERROR("variable32 -> bool not implemented yet");
 	    break;
-	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	default: 
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
 	}
 }
 
 void
 GF_Bool::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_bool,
-		 ("can't set GF_Bool from non-bool general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_bool,
+	      "can't set GF_Bool from non-bool general value");
     myfield.set(from->gvval.v_bool);
 }
 
@@ -415,7 +474,8 @@ GF_Byte::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val());
-	AssertAlways(ok > 0 && ok < 1000,("bad printspec '%s'\n",printspec));
+	INVARIANT(ok > 0 && ok < 1000,
+		  boost::format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -452,10 +512,11 @@ GF_Byte::set(GeneralField *from)
 	    val = static_cast<ByteField::byte>(round(((GF_Double *)from)->val()));
 	    break;
 	case ExtentType::ft_variable32:
-	    AssertFatal(("unimplemented conversion from variable32 -> byte"));
+	    FATAL_ERROR("unimplemented conversion from variable32 -> byte");
 	    break;
 	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
     }
     myfield.set(val);
 }
@@ -463,8 +524,8 @@ GF_Byte::set(GeneralField *from)
 void
 GF_Byte::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_byte,
-		 ("can't set GF_Byte from non-byte general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_byte,
+	      "can't set GF_Byte from non-byte general value");
     myfield.set(from->gvval.v_byte);
 }
 
@@ -512,7 +573,8 @@ GF_Int32::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	AssertAlways(ok > 0 && ok < 1000,("bad printspec '%s'\n",printspec));
+	INVARIANT(ok > 0 && ok < 1000,
+		  boost::format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -548,18 +610,19 @@ GF_Int32::set(GeneralField *from)
 	    myfield.set((ExtentType::int32)round(((GF_Double *)from)->val()));
 	    break;
 	case ExtentType::ft_variable32:
-	    AssertFatal(("unimplemented conversion from variable32 -> int32"));
+	    FATAL_ERROR("unimplemented conversion from variable32 -> int32");
 	    break;
 	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
 	}
 }
 
 void
 GF_Int32::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_int32,
-		 ("can't set GF_Int32 from non-int32 general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_int32,
+	      "can't set GF_Int32 from non-int32 general value");
     myfield.set(from->gvval.v_int32);
 }
 
@@ -619,7 +682,8 @@ GF_Int64::write(std::ostream &to)
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	AssertAlways(ok > 0 && ok < 1000,("bad printspec '%s'\n",printspec));
+	INVARIANT(ok > 0 && ok < 1000,
+		  boost::format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -655,18 +719,19 @@ GF_Int64::set(GeneralField *from)
 	    myfield.set((ExtentType::int64)round(((GF_Double *)from)->val()));
 	    break;
 	case ExtentType::ft_variable32:
-	    AssertFatal(("unimplemented conversion from variable32 -> int64"));
+	    FATAL_ERROR("unimplemented conversion from variable32 -> int64");
 	    break;
 	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
 	}
 }
 
 void
 GF_Int64::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_int64,
-		 ("can't set GF_Int64 from non-int64 general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_int64,
+	      "can't set GF_Int64 from non-int64 general value");
     myfield.set(from->gvval.v_int64);
 }
 
@@ -744,7 +809,8 @@ GF_Double::write(std::ostream &to)
 	}
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,multiplier * (myfield.val() - offset));
-	AssertAlways(ok > 0 && ok < 1000,("bad printspec '%s'\n",printspec));
+	INVARIANT(ok > 0 && ok < 1000,
+		  boost::format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -782,18 +848,19 @@ GF_Double::set(GeneralField *from)
 	}
 	    break;
 	case ExtentType::ft_variable32:
-	    AssertFatal(("unimplemented conversion from variable32 -> double"));
+	    FATAL_ERROR("unimplemented conversion from variable32 -> double");
 	    break;
 	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
 	}
 }
 
 void
 GF_Double::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_double,
-		 ("can't set GF_Double from non-double general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_double,
+	      "can't set GF_Double from non-double general value");
     myfield.set(from->gvval.v_double);
 }
 
@@ -832,8 +899,9 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"text")==0) { 
 	    printstyle = printtext;
 	} else {
-	    AssertFatal(("print_style should be hex, maybehex, csv, or text not '%s'\n",
-			 (char *)xmlprintstyle));
+	    FATAL_ERROR(boost::format("print_style should be hex, maybehex,"
+				      " csv, or text not '%s'")
+			% reinterpret_cast<char *>(xmlprintstyle));
 	}
     }
     
@@ -954,15 +1022,16 @@ GF_Variable32::set(GeneralField *from)
 	}
 	break;
 	default:
-	    AssertFatal(("internal error, unknown field type %d\n",from->getType()));
+	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
+			% from->getType());
 	}
 }
 
 void
 GF_Variable32::set(const GeneralValue *from)
 {
-    AssertAlways(from->gvtype == ExtentType::ft_variable32,
-		 ("can't set GF_Variable32 from non-variable32 general value"));
+    INVARIANT(from->gvtype == ExtentType::ft_variable32,
+	      "can't set GF_Variable32 from non-variable32 general value");
     myfield.set(*from->v_variable32);
 }
 
@@ -979,7 +1048,7 @@ GeneralField::~GeneralField()
 GeneralField *
 GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column)
 {
-    AssertAlways(series.type != NULL,("need to set series type!\n"));
+    INVARIANT(series.type != NULL,"need to set series type!");
     if (fieldxml == NULL) {
 	fieldxml = series.type->xmlNodeFieldDesc(column);
     }
@@ -998,7 +1067,7 @@ GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
 	case ExtentType::ft_variable32:
 	    return new GF_Variable32(fieldxml,series,column);
 	default:
-	    AssertFatal(("unimplemented\n"));
+	    FATAL_ERROR("unimplemented");
 	}    
     return NULL;
 }
@@ -1012,7 +1081,7 @@ ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
 	 dest.getTypeCompat() == ExtentSeries::typeXMLIdentical) 
 	&& source.type->xmldesc == dest.type->xmldesc) {
 	fixed_copy_size = source.type->fixedrecordsize();
-	AssertAlways(fixed_copy_size > 0,("internal error\n"));
+	INVARIANT(fixed_copy_size > 0,"internal error");
 	for(int i=0;i<source.type->getNFields(); ++i) {
 	    const std::string &fieldname = source.type->getFieldName(i);
 	    if (source.type->getFieldType(fieldname) == ExtentType::ft_variable32) {

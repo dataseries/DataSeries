@@ -76,7 +76,7 @@
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesModule.H>
 
-#include <nfs_prot.h>
+#include <process/nfs_prot.h>
 #include <DataSeries/cryptutil.H>
 extern "C" {
 #include <liblzf-1.6/lzf.h>

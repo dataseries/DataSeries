@@ -38,7 +38,7 @@ endif
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/nonmod/gpgkeys.pm
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src/process -I$(top_srcdir)/src/module -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
@@ -71,20 +71,34 @@ libDataSeries_la_SOURCES = \
 	liblzf-1.6/lzf_d.c 
 
 bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds
+	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds 
 
 LDADD = libDataSeries.la 
-ds2txt_SOURCES = process/ds2txt.C
-pssimple2ds_SOURCES = process/pssimple2ds.C
+
+# General purpose
+bin_PROGRAMS += dsextentindex dsselect dsrepack dsstatgroupby
 dsextentindex_SOURCES = process/dsextentindex.C
-lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
-textindex_SOURCES = process/textindex.C
-ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C # process/nfsdsanalysis-common.C 
-indexnfscommon_SOURCES = process/indexnfscommon.C
 dsselect_SOURCES = process/dsselect.C
 dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
+
+# Converters
+bin_PROGRAMS += ds2txt pssimple2ds iphost2ds
+ds2txt_SOURCES = process/ds2txt.C
+pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
+
+# Type-specific processing
+bin_PROGRAMS += textindex indexnfscommon
+textindex_SOURCES = process/textindex.C
+indexnfscommon_SOURCES = process/indexnfscommon.C
+
+# Type specific analysis
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis 
+lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
+ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
+#lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
+#	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
 
 ##### WITH_PCAP
 if WITH_PCAP

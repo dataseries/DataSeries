@@ -1,4 +1,4 @@
-/*
+/* -*- C++ -*-
    (c) Copyright 2007, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -49,6 +49,9 @@ namespace DSStatGroupBy {
     public:
 	ExprConstant(double v) : val(v) { }
 	virtual double value() { return val; }
+	// TODO: consider parsing the string as both a double and an
+	// int64 to get better precision.
+	virtual int64_t valueInt64() { return static_cast<int64_t>(val); }
     private:
 	double val;
     };
@@ -81,14 +84,32 @@ namespace DSStatGroupBy {
 	virtual double value() {
 	    return field->valDouble();
 	}
+	virtual int64_t valueInt64() {
+	    return GeneralValue(*field).valInt64();
+	}
     private:
 	GeneralField *field;
+    };
+
+    class ExprUnary : public Expr {
+    public:
+	ExprUnary(Expr *_subexpr)
+	    : subexpr(_subexpr) { }
+	virtual ~ExprUnary() {
+	    delete subexpr;
+	}
+    protected:
+	Expr *subexpr;
     };
 
     class ExprBinary : public Expr {
     public:
 	ExprBinary(Expr *_left, Expr *_right)
 	    : left(_left), right(_right) { }
+	virtual ~ExprBinary() {
+	    delete left; 
+	    delete right;
+	}
     protected:
 	Expr *left, *right;
     };
@@ -98,6 +119,9 @@ namespace DSStatGroupBy {
 	ExprAdd(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() + right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() + right->valueInt64(); 
+	}
     };
 
     class ExprSubtract : public ExprBinary {
@@ -105,6 +129,9 @@ namespace DSStatGroupBy {
 	ExprSubtract(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() - right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() - right->valueInt64(); 
+	}
     };
 
     class ExprMultiply : public ExprBinary {
@@ -112,6 +139,9 @@ namespace DSStatGroupBy {
 	ExprMultiply(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() * right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() * right->valueInt64(); 
+	}
     };
 
     class ExprDivide : public ExprBinary {
@@ -119,8 +149,27 @@ namespace DSStatGroupBy {
 	ExprDivide(Expr *left, Expr *right) : 
 	    ExprBinary(left,right) { }
 	virtual double value() { return left->value() / right->value(); }
+	virtual int64_t valueInt64() { 
+	    return left->valueInt64() / right->valueInt64(); 
+	}
     };
 
+    class ExprFnTfracToSeconds : public ExprUnary {
+    public:
+	ExprFnTfracToSeconds(Expr *subexpr) 
+	    : ExprUnary(subexpr) 
+	{ }
+	virtual double value() {
+	    return subexpr->valueInt64() / 4294967296.0;
+	}
+	virtual int64_t valueInt64() {
+	    // TODO: Should we warn/error on this? we're dropping lots
+	    // of precision here.  Also should we round or truncate as
+	    // is currently implemented?
+	    int64_t t = subexpr->valueInt64();
+	    return Clock::TfracToSec(t);
+	}
+    };
 }
 
 using namespace DSStatGroupBy;
@@ -131,6 +180,7 @@ using namespace DSStatGroupBy;
 %token            END_OF_STRING 0
 %token <field>    FIELD 
 %token <constant> CONSTANT
+%token            FN_TfracToSeconds
 
 %type  <expression>     expr
 
@@ -149,6 +199,7 @@ expr: expr '+' expr { $$ = new ExprAdd($1, $3); }
     | '(' expr ')'  { $$ = $2; }
     | FIELD { $$ = new ExprField(module.series, *$1); }
     | CONSTANT { $$ = new ExprConstant($1); }
+    | FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
 ;
 
 %%

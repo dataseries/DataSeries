@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <errno.h>
 #include <string>
-#include <DSStatGroupByParse.hpp>
+#include <module/DSStatGroupByParse.hpp>
 #include <Lintel/StringUtil.H>
 #include <DataSeries/DSStatGroupByModule.H>
 
@@ -32,6 +32,7 @@
 constant [0-9]+(\.[0-9]+)?
 blank [ \t\n]
 field [a-zA-Z_]([a-zA-Z0-9_]|(\\.))*
+TfracToSeconds fn\.TfracToSeconds
 
 %{
 #define YY_USER_ACTION  cur_column += (yyleng);
@@ -52,7 +53,7 @@ static unsigned cur_column;
              return token::CONSTANT; }
 {field} { yylval->field = new std::string(yytext);
 	  return token::FIELD; }
-
+{TfracToSeconds} { return token::FN_TfracToSeconds; }
 <<EOF>> { return token::END_OF_STRING; }
 . { FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
 
