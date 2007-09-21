@@ -277,7 +277,7 @@ public:
     virtual double valDouble();
     void set(int64_t v) { myfield.set(v);}
     ExtentType::int64 val() { return myfield.val(); }
-    void set(int64_t v) { myfield.set(v); }
+
     char *printspec;
     ExtentType::int64 divisor;
     Int64Field myfield;
