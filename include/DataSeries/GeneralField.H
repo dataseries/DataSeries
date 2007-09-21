@@ -291,6 +291,7 @@ public:
     virtual void set(const GeneralValue *from);
     virtual bool isNull();
     virtual double valDouble();
+    void set(int64_t v) { myfield.set(v);}
     ExtentType::int64 val() { return myfield.val(); }
     char *printspec;
     ExtentType::int64 divisor;

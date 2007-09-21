@@ -32,7 +32,7 @@
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
 
-#define enable_encrypt_filenames 1
+#define enable_encrypt_filenames 0
 
 // Do this first to get byteswap things...
 #include <DataSeries/Extent.H>
@@ -490,7 +490,7 @@ public:
 		  % filename % strerror(errno));
 	if (ret == 0) { // no more packets
 	    eof = true;
-	    delete packet_buf;
+	    delete [] packet_buf;
 	    packet_buf = NULL;
 	    return false;
 	} else { // read the next packet
@@ -2708,8 +2708,12 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     }
 
     int ethtype = (p[12] << 8) | p[13];
-    // 1522 is the size that the endace card captures at, 1514+4(vlan tag)+4(crc32?)
-    INVARIANT(wire_length <= 1522, boost::format("whoa, long packet %d") % wire_length);
+    //1522 is the size that the endace card captures at, 1514+4(vlan tag)+4(crc32?)
+    //TODO Jumbo Frame Support
+    //TODO Capture file (i.e. TCP) Checksum verification
+    //TODO also generate TCP offload warning with high percentage of
+    //bad checksums or a packet larger than maximum jumbo frame size.
+    INVARIANT(wire_length <= 1522, boost::format("Found a long packet of length %d.  Support for jumbo frames is unsupported.\nTCP offload may be enabled.\ndisable under Linux with:\tethtool -K eth# tso off") % wire_length);
 
     if (ethtype < 1500) {
         int protonum = (p[20] << 8) | p[21];
