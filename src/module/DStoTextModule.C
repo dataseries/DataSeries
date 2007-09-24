@@ -12,10 +12,9 @@
 #include <DataSeries/DStoTextModule.H>
 #include <DataSeries/GeneralField.H>
 
-#if defined(__HP_aCC) && __HP_aCC < 35000
-#else
 using namespace std;
-#endif
+
+static const string str_star("*");
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       ostream &text_dest)
@@ -31,6 +30,7 @@ DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 
 DStoTextModule::~DStoTextModule()
 {
+    // TODO: delete all the general fields in PerTypeState.
 }
 
 void
@@ -45,6 +45,15 @@ DStoTextModule::setPrintSpec(const char *xmlText)
 }
 
 void
+DStoTextModule::setPrintSpec(const string &extenttype,
+			     const string &fieldname,
+			     xmlNodePtr printSpec)
+{
+    type_to_state[extenttype].override_print_specs[fieldname] = printSpec;
+}
+
+
+void
 DStoTextModule::setHeader(const char *xmlText)
 {
     xmlNodePtr cur = parseXML(xmlText,"header");
@@ -55,6 +64,12 @@ DStoTextModule::setHeader(const char *xmlText)
     setHeader((char *)extenttype,(char *)header);
 }
 
+void 
+DStoTextModule::setHeader(const string &extenttype,
+			  const string &header) {
+    type_to_state[extenttype].header = header;
+}
+
 void
 DStoTextModule::setFields(const char *xmlText)
 {
@@ -62,8 +77,8 @@ DStoTextModule::setFields(const char *xmlText)
     xmlChar *extenttype = xmlGetProp(cur, (const xmlChar *)"type");
     AssertAlways(extenttype != NULL,
 		 ("error fields must have a type!\n"));
-    std::string s_et = (char *)extenttype;
-    std::vector<std::string> &fields = fieldLists[s_et];
+    string s_et = reinterpret_cast<char *>(extenttype);
+    vector<string> &fields = type_to_state[s_et].field_names;
     for(cur = cur->xmlChildrenNode; cur != NULL; cur = cur->next) {
 	if (xmlIsBlankNode(cur)) {
 	    cur = cur->next;
@@ -74,18 +89,28 @@ DStoTextModule::setFields(const char *xmlText)
 		      cur->name));
 	xmlChar *name = xmlGetProp(cur,(const xmlChar *)"name");
 	AssertAlways(name != NULL,("error field must have a name\n"));
-	std::string s_name = (char *)name;
+	string s_name = (char *)name;
 	fields.push_back(s_name);
     }
 }
 
+void 
+DStoTextModule::addPrintField(const string &extenttype, 
+			      const string &field)
+{
+    if (extenttype == str_star) {
+	default_fields.push_back(field);
+    } else {
+	type_to_state[extenttype].field_names.push_back(field);
+    }
+}
+
+
 void
-DStoTextModule::setSeparator(const std::string &s)
+DStoTextModule::setSeparator(const string &s)
 {
     separator = s;
 }
-
-static const std::string str_star("*");
 
 void
 DStoTextModule::enableCSV(void)
@@ -96,11 +121,13 @@ DStoTextModule::enableCSV(void)
 
 
 void
-DStoTextModule::getExtentPrintSpecs(std::map<std::string, xmlNodePtr> &printspecs,
-				    ExtentSeries &es)
+DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
 {
-    printspecs = overridePrintSpecs[es.type->name];
-    xmlDocPtr doc = ExtentTypeLibrary::sharedDocPtr(es.type->xmldesc);
+    if (!state.print_specs.empty()) {
+	return;
+    }
+    state.print_specs = state.override_print_specs;
+    xmlDocPtr doc = ExtentTypeLibrary::sharedDocPtr(state.series.type->xmldesc);
     xmlNodePtr cur = xmlDocGetRootElement(doc);
     cur = cur->xmlChildrenNode;
     while (cur != NULL) {
@@ -111,52 +138,59 @@ DStoTextModule::getExtentPrintSpecs(std::map<std::string, xmlNodePtr> &printspec
 	    break;
 	xmlChar *fname = xmlGetProp(cur,(const xmlChar *)"name");
 	AssertAlways(fname != NULL,("?!\n"));
-	if (printspecs[(char *)fname] == NULL) {
-	    printspecs[(char *)fname] = cur;
+	string s_fname = reinterpret_cast<char *>(fname);
+	if (state.print_specs[s_fname] == NULL) {
+	    state.print_specs[s_fname] = cur;
 	}
 	cur = cur->next;
     }
 }
 
 void
-DStoTextModule::getExtentPrintHeaders(std::map<std::string, xmlNodePtr> &printspecs,
-				      ExtentSeries &es, std::vector<GeneralField *> &fields)
+DStoTextModule::getExtentPrintHeaders(PerTypeState &state) 
 {
+    const string &type_name = state.series.type->name;
     if (print_extent_type) {
 	if (text_dest == NULL) {
-	    *stream_text_dest << "# Extent, type='" << es.type->name << "'" << std::endl;
+	    *stream_text_dest << "# Extent, type='" << type_name << "'\n";
 	} else {
-	    fprintf(text_dest,"# Extent, type='%s'\n",es.type->name.c_str());
+	    fprintf(text_dest,"# Extent, type='%s'\n", type_name.c_str());
 	}
     }
 
     bool print_default_fieldnames = print_extent_fieldnames;
-    if (print_extent_fieldnames && headers[es.type->name].size() != 0) {
+    if (print_extent_fieldnames && !state.header.empty()) {
 	if (text_dest == NULL) {
-	    *stream_text_dest << headers[es.type->name] << std::endl;
+	    *stream_text_dest << state.header << "\n";
 	} else {
-	    fprintf(text_dest,"%s\n",headers[es.type->name].c_str());
+	    fprintf(text_dest,"%s\n",state.header.c_str());
 	}
 	print_default_fieldnames = false;
     }
-    std::vector<std::string> &field_names = fieldLists[es.type->name];
-    if (field_names.empty() && fieldLists[str_star].empty() == false) {
-	field_names = fieldLists[str_star];
+    if (state.field_names.empty() && !default_fields.empty()) {
+	state.field_names = default_fields;
     }
-    if (field_names.empty()) {
-	for(int i=0;i<es.type->getNFields();++i) {
-	    field_names.push_back(es.type->getFieldName(i));
+
+    if (state.field_names.empty()) {
+	for(int i=0;i<state.series.type->getNFields();++i) {
+	    state.field_names.push_back(state.series.type->getFieldName(i));
 	}
     }
-    bool printed_any = false;
-    for(std::vector<std::string>::iterator i = field_names.begin();
-	i != field_names.end(); ++i) {
-	xmlNodePtr field_desc = printspecs[*i];
-	fields.push_back(GeneralField::create(field_desc,es,*i));
-	if (csvEnabled) {
-	    fields[fields.size()-1]->enableCSV();
+    if (state.fields.empty()) {
+	for(vector<string>::iterator i = state.field_names.begin();
+	    i != state.field_names.end(); ++i) {
+	    xmlNodePtr field_desc = state.print_specs[*i];
+	    state.fields.push_back(GeneralField::create(field_desc,
+							state.series,*i));
+	    if (csvEnabled) {
+		state.fields.back()->enableCSV();
+	    }
 	}
-	if (print_default_fieldnames) {
+    }
+    if (print_default_fieldnames) {
+	bool printed_any = false;
+	for(vector<string>::iterator i = state.field_names.begin();
+	    i != state.field_names.end(); ++i) {
 	    if (text_dest == NULL) {
 		if (printed_any)
 		    *stream_text_dest << separator;
@@ -172,7 +206,7 @@ DStoTextModule::getExtentPrintHeaders(std::map<std::string, xmlNodePtr> &printsp
 
     if (print_default_fieldnames) {
 	if (text_dest == NULL) {
-	    *stream_text_dest << std::endl;
+	    *stream_text_dest << "\n";
 	} else {
 	    fprintf(text_dest,"\n");
 	}
@@ -192,42 +226,38 @@ DStoTextModule::getExtent()
     if (print_index == false && e->type->name == "DataSeries: ExtentIndex") {
 	return e;
     }
-    ExtentSeries es(e);
 
-    std::map<std::string, xmlNodePtr> printspecs;
-    getExtentPrintSpecs(printspecs,es);
-    std::vector<GeneralField *> fields;
-    getExtentPrintHeaders(printspecs,es,fields);
+    PerTypeState &state = type_to_state[e->type->name];
 
-    for (;es.pos.morerecords();++es.pos) {
-	for(unsigned int i=0;i<fields.size();i++) {
+    state.series.setExtent(e);
+    getExtentPrintSpecs(state);
+    getExtentPrintHeaders(state);
+
+    for (;state.series.pos.morerecords();++state.series.pos) {
+	for(unsigned int i=0;i<state.fields.size();i++) {
 	    if (text_dest == NULL) {
-		fields[i]->write(*stream_text_dest);		
-		if (i != (fields.size() - 1)){		  
+		state.fields[i]->write(*stream_text_dest);		
+		if (i != (state.fields.size() - 1)){		  
 		    *stream_text_dest << separator;
 		}
 	    } else {
-		fields[i]->write(text_dest);
-		if (i != (fields.size() - 1))
+		state.fields[i]->write(text_dest);
+		if (i != (state.fields.size() - 1))
 		    fprintf(text_dest,separator.c_str());
 	    }
 	}
 	if (text_dest == NULL) {
-	    *stream_text_dest << std::endl;
+	    *stream_text_dest << "\n";
 	} else {
 	    fprintf(text_dest,"\n");
 	}
-    }
-    for(std::vector<GeneralField *>::iterator i = fields.begin();
-	i != fields.end();++i) {
-	delete *i;
     }
     return e;
 }
 
 // this interface assumes you're just going to leak the document
 xmlNodePtr
-DStoTextModule::parseXML(std::string xml, const std::string &roottype)
+DStoTextModule::parseXML(string xml, const string &roottype)
 {
     LIBXML_TEST_VERSION;
     xmlKeepBlanksDefault(0);

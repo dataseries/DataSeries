@@ -643,7 +643,8 @@ atoll(char *str)
 #endif
 
 GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
-    : GeneralField(ExtentType::ft_int64), myfield(series,column,Field::flag_nullable)
+    : GeneralField(ExtentType::ft_int64), myfield(series,column,Field::flag_nullable),
+      relative_field(NULL), offset_first(false)
 {
     xmlChar *xmlprintspec = myXmlGetProp(fieldxml, (const xmlChar *)"print_format");
     if (xmlprintspec == NULL) {
@@ -659,7 +660,6 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
 	divisor = stringToInt64(reinterpret_cast<char *>(xml_divisor));
     }
 
-    relative_field = NULL;
     xmlChar *xml_offset = myXmlGetProp(fieldxml, (const xmlChar *)"print_offset");
     if (xml_offset == NULL) {
 	offset = 0;

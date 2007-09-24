@@ -30,19 +30,13 @@ public:
     void setPrintSpec(const char *xmlText);
     void setPrintSpec(const std::string &extenttype,
 		      const std::string &fieldname,
-		      xmlNodePtr printSpec) {
-	overridePrintSpecs[extenttype][fieldname] = printSpec;
-    }
+		      xmlNodePtr printSpec);
     void setHeader(const char *xmlText);
     void setHeader(const std::string &extenttype,
-		   const std::string &header) {
-	headers[extenttype] = header;
-    }
+		   const std::string &header);
     void setFields(const char *xmlText);
     void addPrintField(const std::string &extenttype, 
-		       const std::string &field) {
-	fieldLists[extenttype].push_back(field);
-    }
+		       const std::string &field);
     
     void skipIndex() {
 	print_index = false;
@@ -65,20 +59,31 @@ public:
 
     // this interface memory leaks the document;
     static xmlNodePtr parseXML(std::string xml, const std::string &roottype);
-private:
-    void getExtentPrintSpecs(std::map<std::string, xmlNodePtr> &printspecs,
-			       ExtentSeries &es);
 
-    void getExtentPrintHeaders(std::map<std::string, xmlNodePtr> &printspecs,
-			       ExtentSeries &es, std::vector<GeneralField *> &fields);
+    // need to keep around state because relative printing should be
+    // done relative to the first row of the first extent, not the
+    // first row of each extent.
+    struct PerTypeState {
+	ExtentSeries series;
+	std::map<std::string, xmlNodePtr> override_print_specs, print_specs;
+	std::string header;
+	std::vector<std::string> field_names;
+	std::vector<GeneralField *> fields;
+    };
+
+private:
+    void getExtentPrintSpecs(PerTypeState &state);
+
+    // Also initializes state.fields if necessary.
+    void getExtentPrintHeaders(PerTypeState &state);
 			       
     DataSeriesModule &source;
     std::ostream *stream_text_dest;
     FILE *text_dest;
 
-    std::map<std::string, std::map<std::string, xmlNodePtr> > overridePrintSpecs;
-    std::map<std::string, std::string> headers;
-    std::map<std::string, std::vector<std::string> > fieldLists;
+    std::map<std::string, PerTypeState> type_to_state;
+    std::vector<std::string> default_fields;
+
     bool print_index, print_extent_type, print_extent_fieldnames;
     bool csvEnabled;
     std::string separator; 
