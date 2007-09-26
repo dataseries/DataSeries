@@ -81,6 +81,7 @@ static PThreadMutex &getRetainedMutex() {
 }
 
 static bool debug_retained = false;
+static bool disable_retained = false;
 
 static Extent::ByteArray::RetainedStats retained_stats;
 
@@ -136,6 +137,9 @@ Extent::ByteArray::~ByteArray()
 Extent::byte *
 Extent::ByteArray::retainedAllocate(size_t bytes)
 {
+    if (disable_retained) {
+	return new byte[bytes];
+    }
     if (bytes == 0) {
 	return NULL;
 #if defined(M_MMAP_MAX)
@@ -191,6 +195,10 @@ Extent::ByteArray::retainedAllocate(size_t bytes)
 void
 Extent::ByteArray::retainedFree(byte *data, size_t bytes)
 {
+    if (disable_retained) {
+	delete [] data;
+	return;
+    }
     if (bytes == 0) {
 	INVARIANT(data == NULL, "bad");
 #if defined(M_MMAP_MAX)
@@ -448,6 +456,7 @@ Extent::packData(Extent::ByteArray &into,
     // copy so that packing is thread safe
     vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
+	INVARIANT(psr_copy[j].field_num < type->field_info.size(), "whoa");
 	psr_copy[j].double_prev_v = 0; // shouldn't be necessary
 	psr_copy[j].int32_prev_v = 0;
 	psr_copy[j].int64_prev_v = 0;
@@ -503,6 +512,7 @@ Extent::packData(Extent::ByteArray &into,
 	    int field = type->pack_other_relative[j].field_num;
 	    int base_field = type->pack_other_relative[j].base_field_num;
 	    int field_offset = type->field_info[field].offset;
+	    DEBUG_INVARIANT(field_offset < type->fixed_record_size, "bad");
 	    switch(type->field_info[field].type)
 		{
 		case ExtentType::ft_double: {
@@ -532,6 +542,7 @@ Extent::packData(Extent::ByteArray &into,
 	for(unsigned int j=0;j<psr_copy.size();++j) {
 	    int field = psr_copy[j].field_num;
 	    int offset = type->field_info[field].offset;
+	    DEBUG_INVARIANT(offset < type->fixed_record_size, "bad");
 	    switch(type->field_info[field].type) 
 		{
 		case ExtentType::ft_double: {
@@ -553,7 +564,13 @@ Extent::packData(Extent::ByteArray &into,
 		}
 		break;
 		default:
-		    AssertFatal(("Internal error\n"));
+		    INVARIANT(field < type->field_info.size(), 
+			      boost::format("bad field number %d > %d record %d") % field % type->field_info.size() % nrecords);
+
+		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+				% type->field_info[field].type 
+				% type->field_info[field].name
+				% field % offset % type->name);
 		}
 	}
 	// pack scaled fields ...
@@ -1033,6 +1050,8 @@ Extent::unpackData(const ExtentType *_type,
     
     vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
     for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
+	INVARIANT(psr_copy[j].field_num < type->field_info.size(), "whoa");
+	
 	AssertAlways(psr_copy[j].double_prev_v == 0 &&
 		     psr_copy[j].int32_prev_v == 0 &&
 		     psr_copy[j].int64_prev_v == 0,("internal"));
@@ -1122,7 +1141,13 @@ Extent::unpackData(const ExtentType *_type,
 		}		    
 		break;
 		default:
-		    AssertFatal(("unimplemented\n"));
+		    INVARIANT(field < type->field_info.size(), 
+			      boost::format("bad field number %d > %d") % field % type->field_info.size());
+
+		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+				% type->field_info[field].type 
+				% type->field_info[field].name
+				% field % offset % type->name);
 		}
 	}
 	// unpack other-relative fields ...

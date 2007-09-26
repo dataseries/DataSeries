@@ -224,6 +224,16 @@ public:
     virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+
+    // TODO: add the other type-specific set functions to all of the
+    // GF_types.
+    void set(const GF_Bool *from) {
+	if (from->myfield.isNull()) {
+	    myfield.setNull();
+	} else {
+	    myfield.set(from->myfield.val());
+	}
+    }
     virtual double valDouble();
     bool val() { return myfield.val(); }
     BoolField myfield;
@@ -257,6 +267,13 @@ public:
     virtual void write(std::ostream &to);
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+    void set(const GF_Int32 *from) {
+	if (from->myfield.isNull()) {
+	    myfield.setNull();
+	} else {
+	    myfield.set(from->myfield.val());
+	}
+    }
     virtual bool isNull();
     virtual double valDouble();
     ExtentType::int32 val() { return myfield.val(); }

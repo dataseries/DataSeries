@@ -56,11 +56,18 @@ public:
     // non-compressed chunk (the fixed record pointers for the extent
     // type information); also, empty variable-sized extents are not
     // counted in the compress_* stats
-    struct Stats {
+    class Stats {
+    public:
 	// Single global mutex for stats right now, should be sufficient
 	// given they are pretty infrequently accessed.
 	static PThreadMutex &getMutex();
 
+	Stats(const Stats &from) {
+	    *this = from;
+	}
+	Stats & operator=(const Stats &from);
+	// If anything other than plain old data gets put in here, 
+	// then the assignment operator needs to be fixed.
 	uint32_t extents;
 	uint32_t compress_none, compress_lzo, compress_gzip, 
 	    compress_bz2, compress_lzf;
@@ -72,8 +79,8 @@ public:
 	Stats() {
 	    reset();
 	}
+	~Stats();
 	void reset();
-
 	Stats & operator+=(const Stats &from);
 	Stats & operator-=(const Stats &from);
 	// all just data so use default copy constructor
@@ -81,7 +88,9 @@ public:
 	/// specify an extent type if this statistic was entirely for one
 	/// type.
 	void printText(std::ostream &to, const std::string &extent_type = "");
+
     private:
+	uint32_t use_count; // how many updates are pending to this stats?
 	// You should grab the lock before calling this
 	void update(uint32_t unpacked_size, uint32_t unpacked_fixed,
 		    uint32_t unpacked_variable_raw,
@@ -124,11 +133,14 @@ public:
     Stats getStats() {
 	// Make a copy so it's thread safe.
 	PThreadAutoLocker lock(Stats::getMutex());
-	Stats ret = stats; // with the auto-locker, do we have a
-			   // guarentee that the copy would be made
-			   // before we return?
+	Stats ret = stats; 
 	return ret;
     }
+
+    // If you are going to delete a Stats that you previously used to
+    // write to a DataSeriesFile before you close the file, you need
+    // to call this.
+    void removeStatsUpdate(Stats *would_update);
 
     // count == -1 ==> use Lintel/PThreadMisc::getNCpus()
     // count == 0 ==> no separate thread for compressing, work done during
@@ -136,6 +148,7 @@ public:
     static void setDefaultCompressorCount(int count = -1);
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
+    
 private:
     struct toCompress {
 	Extent extent;
@@ -152,6 +165,9 @@ private:
 	void wipeExtent() {
 	    Extent tmp(extent.type);
 	    extent.swap(tmp);
+	}
+	bool readyToWrite() {
+	    return compressed.size() > 0 && !in_progress;
 	}
     };
     Stats stats;
@@ -174,15 +190,18 @@ private:
 
     void queueWriteExtent(Extent &e, Stats *to_update);
     void processToCompress(toCompress *work);
-    void writeOutPending();
+    void writeOutPending(bool have_lock = false); // always exits without lock held.
     static int compressor_count;
     std::vector<PThread *> compressors;
-    bool shutdown_compressors;
+    PThread *writer;
+    bool shutdown_workers;
     Deque<toCompress *> pending_work;
-    PThreadMutex mutex, writeout_mutex;
-    PThreadCond cond, consumed_some_cond;
-    friend class DataSeriesSinkPThread;
+    PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
+    PThreadCond available_queue_cond, available_work_cond, available_write_cond;
+    friend class DataSeriesSinkPThreadCompressor;
     void compressorThread();
+    friend class DataSeriesSinkPThreadWriter;
+    void writerThread();
 };
 
 inline DataSeriesSink::Stats 

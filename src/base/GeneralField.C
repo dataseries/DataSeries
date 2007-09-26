@@ -395,6 +395,14 @@ GF_Bool::isNull()
     return myfield.isNull();
 }
 
+// TODO: see whether it's worth optimizing the set functions to special
+// case the same-type copy; that's probably the common case.
+// one experiment with this for GF_Bool did not show any benefit.
+// fixing dsrepack to use type-specific fields for the copy did have a 
+// huge benefit; it may be worth trying to figure out if there is a way 
+// to get most of the benefit without having to make a special case like 
+// that.
+
 void
 GF_Bool::set(GeneralField *from)
 {
