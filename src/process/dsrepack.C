@@ -354,7 +354,7 @@ main(int argc, char *argv[])
 	    for(unsigned int i=0; i<ptw->infields.size(); ++i) {
 		ptw->outfields[i]->set(ptw->infields[i]);
 	    }
-	    if (cur_file_bytes >= target_file_bytes) {
+	    if (target_file_bytes > 0 && cur_file_bytes >= target_file_bytes) {
 		output->flushPending();
 		uint64_t est_file_size = fileSize(output_path);
 		for(map<string, PerTypeWork *>::iterator i = per_type_work.begin();
@@ -363,6 +363,8 @@ main(int argc, char *argv[])
 		}
 		if (est_file_size >= target_file_bytes) {
 		    ++output_file_count;
+		    INVARIANT(output_file_count < 1000, 
+			      "split into 1000 parts; assuming you didn't want that and stopping");
 		    output_path = (boost::format("%s.part-%02d.ds") 
 				   % output_base_path 
 				   % output_file_count).str();
