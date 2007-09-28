@@ -12,8 +12,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.H>
 #include <Lintel/HashMap.H>
+#include <Lintel/StringUtil.H>
 
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesFile.H>
@@ -94,6 +95,9 @@ updateNamespaceVersions(Extent &e)
 	    type_namespace = new string(e.type->getNamespace());
 	    major_version = e.type->majorVersion();
 	    minor_version = e.type->minorVersion();
+	    if (false) {
+		cout << "Using namespace " << *type_namespace << ", major version " << major_version << "\n";
+	    }
 	}
 	INVARIANT(*type_namespace == e.type->getNamespace(),
 		  boost::format("conflicting namespaces, found both '%s' and '%s'")
@@ -116,6 +120,7 @@ indexExtent(DataSeriesSource &source, const string &filename,
     // copy offset as preadExtent updates offset to offset of next extent
     off64_t tmp_offset = offset; 
     Extent *e = source.preadExtent(tmp_offset);
+    updateNamespaceVersions(*e);
     inseries.setExtent(e);
     AssertAlways(inseries.pos.morerecords(),("internal"));
 
@@ -201,6 +206,8 @@ int indexed_extents = 0;
 void
 indexFile(const string &filename)
 {
+    cout << "indexing " << filename << " ...";
+    cout.flush();
     AssertAlways(filename.size() > 0,("empty filename?!"));
     if (filename[0] != '/') {
 	fprintf(stderr,"warning, filename %s is relative, not absolute\n",filename.c_str());
@@ -209,6 +216,7 @@ indexFile(const string &filename)
     if (modifytimes.lookup(filename) != NULL) {
 	if (modifytimes[filename] == modify_time) {
 	    ++already_indexed_files;
+	    cout << "already indexed.\n";
 	    return;
 	}
 	if (modify_time < modifytimes[filename]) {
@@ -236,16 +244,20 @@ indexFile(const string &filename)
     Int64Field offset(s,"offset");
 
     for(;s.pos.morerecords();++s.pos) {
+	cout << "."; cout.flush();
 	if (ExtentType::prefixmatch(extenttype.stringval(),type_prefix)) {
 	    ++indexed_extents;
 	    indexExtent(source,filename,offset.val());
 	}
     }
+    cout << "\n";
 }
 
 void
 readExistingIndex(const char *index_filename, string &fieldlist)
 {
+    cout << "reading existing index " << index_filename << "..."; 
+    cout.flush();
     TypeIndexModule info_mod("DSIndex::Extent::Info");
     TypeIndexModule modifytimes_mod("DSIndex::Extent::ModifyTimes");
     info_mod.addSource(index_filename);
@@ -277,7 +289,6 @@ readExistingIndex(const char *index_filename, string &fieldlist)
     while(true) {
 	e = modifytimes_mod.getExtent();
 	if (e == NULL) break;
-	updateNamespaceVersions(*e);
 	++modifytimes_count;
 	ExtentSeries modifyseries(e);
 	Variable32Field modifyfilename(modifyseries,"filename");
@@ -293,12 +304,15 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 		 ("must have modifytimes extent in index %s!",
 		  index_filename));
 
+    cout << "."; 
+    cout.flush();
     split(fieldlist,",",fields);
 
     // get extent to define type
     e = minmax_mod.getExtent();
     AssertAlways(e != NULL,("must have at least one minmax extent"));
     ExtentSeries minmaxseries(e);
+    // TODO: check type.
     vector<GeneralField *> mins, maxs;
     vector<BoolField *> hasnulls;
     const string str_min("min:"), str_max("max:"), str_hasnull("hasnull:");
@@ -314,7 +328,10 @@ readExistingIndex(const char *index_filename, string &fieldlist)
     }
 
     IndexValues iv;
-    while(true) {
+    do {
+	cout << ".";
+	cout.flush();
+	updateNamespaceVersions(*e);
 	for(minmaxseries.setExtent(e);minmaxseries.pos.morerecords();++minmaxseries.pos) {
 	    iv.filename = filenameF.stringval();
 	    iv.offset = extent_offsetF.val();
@@ -342,9 +359,9 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 	}
 	// get extent at end of loop because we got it earlier to define the type
 	e = minmax_mod.getExtent();
-	if (e == NULL) break;
-    }
-    
+    } while (e != NULL);
+
+    cout << "\n";
     for(unsigned i = 0;i<fields.size();++i) {
 	infieldtypes.push_back(mins[i]->getType());
 	delete mins[i];
@@ -392,6 +409,11 @@ main(int argc, char *argv[])
     printf("indexed %d extents over %d files with %d files already indexed\n",
 	   indexed_extents,argc - files_start,already_indexed_files);
     printf("%d total extents indexed in file\n",ivHashTable.size());
+
+    if (indexed_extents == 0) {
+	cout << "No new extents; not updating file.\n";
+	exit(0);
+    }
  
     string minmaxtype_xml = "<ExtentType";
     if (type_namespace != NULL) {
