@@ -4,7 +4,7 @@
   <field type="variable32" name="fields" />
 </ExtentType>
 
-<ExtentType name="DSIndex::Extent::MinMax::Batch::LSF::Grizzly">
+<ExtentType namespace="ssd.hpl.hp.com" version="1.0" name="DSIndex::Extent::MinMax::Batch::LSF::Grizzly">
   <field type="variable32" name="filename" />
   <field type="int64" name="extent_offset" />
   <field type="int32" name="rowcount" />
