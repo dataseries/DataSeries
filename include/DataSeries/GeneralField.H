@@ -331,7 +331,11 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(GF_Variable32 *from) {
-	myfield.set(from->myfield.val(),from->myfield.size());
+	if (from->myfield.isNull()) {
+	    myfield.setNull();
+	} else {
+	    myfield.set(from->myfield.val(),from->myfield.size());
+	}
     }
     void clear() {
 	myfield.clear();

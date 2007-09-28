@@ -62,15 +62,15 @@ GeneralValue::set(const GeneralValue &from)
 	{
 	case ExtentType::ft_unknown: break;
 	case ExtentType::ft_bool: 
-	    gvval.v_bool = from.gvval.v_bool;
+	    gvval.v_bool = from.gvval.v_bool; break;
 	case ExtentType::ft_byte: 
-	    gvval.v_byte = from.gvval.v_byte;
+	    gvval.v_byte = from.gvval.v_byte; break;
 	case ExtentType::ft_int32: 
-	    gvval.v_int32 = from.gvval.v_int32;
+	    gvval.v_int32 = from.gvval.v_int32; break;
 	case ExtentType::ft_int64: 
-	    gvval.v_int64 = from.gvval.v_int64;
+	    gvval.v_int64 = from.gvval.v_int64; break;
 	case ExtentType::ft_double: 
-	    gvval.v_double = from.gvval.v_double;
+	    gvval.v_double = from.gvval.v_double; break;
 	case ExtentType::ft_variable32: 
 	    if (NULL == v_variable32) v_variable32 = new string;
 	    *v_variable32 = *from.v_variable32;
@@ -94,13 +94,14 @@ uint32_t GeneralValue::hash() const
 	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
 	case ExtentType::ft_double: 
 	    BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
-	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) == offsetof(gvvalT, v_int64));
+	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) 
+				== offsetof(gvvalT, v_int64));
 	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
 	case ExtentType::ft_variable32: 
 	    return HashTable_hashbytes(v_variable32->data(),
 				       v_variable32->size());
-	    break;
-	default: FATAL_ERROR("internal error, unexpected type"); return 0; break;
+	default: FATAL_ERROR("internal error, unexpected type"); 
+	    return 0; 
 	}
 }
 

@@ -44,7 +44,7 @@ sub new {
 	} elsif (/^transform=(.+)$/o) {
 	    $this->{transform} = $1;
 	} else {
-	    die "unknown options specified for batch-parallel module $class: '@_'";
+	    die "unknown options specified for batch-parallel module $class: '$_'";
 	}
     }
     if ($this->{transform} eq 'subdir') {
@@ -131,9 +131,9 @@ sub rebuild {
     die "Unable to create $destdir: $@" 
 	unless -d $destdir;
     # dsrepack won't overwrite files even though we are writing $file-new
-    if ($this->{target_file_size} eq '') {
+    if (!defined $this->{target_file_size}) {
 	if (-f $destpath) {
-	    unlink($destpath) or die "can't unlinnk $destpath: $!";
+	    unlink($destpath) or die "can't unlink $destpath: $!";
 	}
 	my @cmd = grep(defined, "dsrepack", @{$this->{compress}}, $this->{extent_size}, $srcpath, $destpath);
 	print join(" ", @cmd), "\n";

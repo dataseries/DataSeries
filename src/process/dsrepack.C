@@ -68,6 +68,7 @@ struct PerTypeWork {
     vector<GeneralField *> infields, outfields, all_fields;
     vector<GF_Bool *> in_boolfields, out_boolfields;
     vector<GF_Int32 *> in_int32fields, out_int32fields;
+    vector<GF_Variable32 *> in_var32fields, out_var32fields;
 
     double sum_unpacked_size, sum_packed_size;
     PerTypeWork(DataSeriesSink &output, unsigned extent_size, ExtentType *t) 
@@ -89,6 +90,10 @@ struct PerTypeWork {
 		case ExtentType::ft_int32: 
 		    in_int32fields.push_back(safe_downcast<GF_Int32>(in));
 		    out_int32fields.push_back(safe_downcast<GF_Int32>(out));
+		    break;
+		case ExtentType::ft_variable32: 
+		    in_var32fields.push_back(safe_downcast<GF_Variable32>(in));
+		    out_var32fields.push_back(safe_downcast<GF_Variable32>(out));
 		    break;
 		default:
 		    infields.push_back(in);
@@ -312,9 +317,8 @@ main(int argc, char *argv[])
 
     DataSeriesSink::Stats all_stats;
     uint32_t extent_num = 0;
-    unsigned partial_row_count = 0;
-    unsigned max_partial_row_count 
-	= target_file_bytes > 0 ? 10000 : 2000*1000*1000;
+    uint64_t cur_file_bytes = 0;
+
     while(true) {
 	Extent *inextent = from->getExtent();
 	if (inextent == NULL)
@@ -336,18 +340,22 @@ main(int argc, char *argv[])
 	    ptw->inputseries.pos.morerecords();
 	    ++ptw->inputseries.pos) {
 	    ptw->output_module->newRecord();
+	    cur_file_bytes += ptw->outputseries.type->fixedrecordsize();
 	    for(unsigned int i=0; i < ptw->in_boolfields.size(); ++i) {
 		ptw->out_boolfields[i]->set(ptw->in_boolfields[i]);
 	    }
 	    for(unsigned int i=0; i < ptw->in_int32fields.size(); ++i) {
 		ptw->out_int32fields[i]->set(ptw->in_int32fields[i]);
 	    }
+	    for(unsigned int i=0; i < ptw->in_var32fields.size(); ++i) {
+		cur_file_bytes += ptw->in_var32fields[i]->myfield.size();
+		ptw->out_var32fields[i]->set(ptw->in_var32fields[i]);
+	    }
 	    for(unsigned int i=0; i<ptw->infields.size(); ++i) {
 		ptw->outfields[i]->set(ptw->infields[i]);
 	    }
-	    ++partial_row_count;
-	    if (partial_row_count == max_partial_row_count) {
-		partial_row_count = 0;
+	    if (cur_file_bytes >= target_file_bytes) {
+		output->flushPending();
 		uint64_t est_file_size = fileSize(output_path);
 		for(map<string, PerTypeWork *>::iterator i = per_type_work.begin();
 		    i != per_type_work.end(); ++i) {
@@ -373,6 +381,7 @@ main(int argc, char *argv[])
 		    delete output;
 		    output = new_output;
 		}
+		cur_file_bytes = est_file_size;
 	    }
 	}
 	delete inextent;

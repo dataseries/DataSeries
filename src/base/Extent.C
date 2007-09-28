@@ -540,7 +540,7 @@ Extent::packData(Extent::ByteArray &into,
 	}
 	// pack self relative ...
 	for(unsigned int j=0;j<psr_copy.size();++j) {
-	    int field = psr_copy[j].field_num;
+	    unsigned field = psr_copy[j].field_num;
 	    int offset = type->field_info[field].offset;
 	    DEBUG_INVARIANT(offset < type->fixed_record_size, "bad");
 	    switch(type->field_info[field].type) 
@@ -1115,7 +1115,7 @@ Extent::unpackData(const ExtentType *_type,
 
 	// unpack self-relative fields ...
 	for(unsigned int j=0;j<type_pack_self_relative_size;++j) {
-	    int field = psr_copy[j].field_num;
+	    unsigned field = psr_copy[j].field_num;
 	    int offset = type->field_info[field].offset;
 	    switch(type->field_info[field].type) 
 		{

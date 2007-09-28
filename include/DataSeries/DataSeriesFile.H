@@ -122,6 +122,10 @@ public:
     // writeExtent calls are executing at the same time.
     void writeExtent(Extent &e, Stats *toUpdate);
 
+    // if another thread is writing extents at the same time, this could
+    // wait forever.
+    void flushPending();
+
     // Removed as this is no longer a good idea when writes don't 
     // complete immediately.
 //    const off64_t cur_position() {
@@ -194,6 +198,7 @@ private:
     static int compressor_count;
     std::vector<PThread *> compressors;
     PThread *writer;
+    uint32_t writes_in_progress_count;
     bool shutdown_workers;
     Deque<toCompress *> pending_work;
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.

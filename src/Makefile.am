@@ -113,7 +113,7 @@ nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex
 
 ##### WITH_SRT
 if WITH_SRT
@@ -203,6 +203,18 @@ ran.check-dsselect: dsselect ds2txt
 	cmp dsselect.test.1.ref dsselect.test.1.txt
 	touch $@
 
+ran.check-dsextentindex: dsextentindex ds2txt
+	@-rm test.index.1.ds test.index.2.ds
+	./dsextentindex --compress-lzf --new I/O enter_driver,machine_id,disk_offset,is_read test.index.1.ds $(top_srcdir)/check-data/h03126.ds-littleend
+	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl $(top_srcdir) >test.index.1.ds.txt
+	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1a.ref
+	./dsextentindex --compress-lzf test.index.1.ds $(top_srcdir)/check-data/h03126.ds-bigend
+	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.1.ds.txt
+	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1b.ref
+	./dsextentindex --compress-lzf --new Batch::LSF::Grizzly cluster_name,submit_time,end_time test.index.2.ds $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds 
+	./ds2txt --skip-index test.index.2.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.2.ds.txt
+	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
+	touch $@
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

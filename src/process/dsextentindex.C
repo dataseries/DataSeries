@@ -66,8 +66,11 @@ ExtentSeries inseries(ExtentSeries::typeLoose);
 vector<GeneralField *> infields;
 vector<ExtentType::fieldType> infieldtypes;
 
+const string *type_namespace;
+unsigned major_version, minor_version;
+
 const string modifytype_xml = 
-"<ExtentType name=\"DSIndex::Extent::ModifyTimes\">\n"
+"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::ModifyTimes\" version=\"1.0\" >\n"
 "  <field type=\"variable32\" name=\"filename\" />\n"
 "  <field type=\"int64\" name=\"modify-time\" />\n"
 "</ExtentType>\n";
@@ -76,10 +79,33 @@ typedef HashMap<string, ExtentType::int64> modifytimesT;
 modifytimesT modifytimes;
 
 const string indexinfo_xml =
-"<ExtentType name=\"DSIndex::Extent::Info\">\n"
+"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::Info\" version=\"1.0\">\n"
 "  <field type=\"variable32\" name=\"type-prefix\" />\n"
 "  <field type=\"variable32\" name=\"fields\" />\n"
 "</ExtentType>\n";
+
+void
+updateNamespaceVersions(Extent &e)
+{
+    if (e.type->getNamespace().empty()) {
+	INVARIANT(type_namespace == NULL, "invalid to index some extents with a namespace and some without");
+    } else {
+	if (type_namespace == NULL) {
+	    type_namespace = new string(e.type->getNamespace());
+	    major_version = e.type->majorVersion();
+	    minor_version = e.type->minorVersion();
+	}
+	INVARIANT(*type_namespace == e.type->getNamespace(),
+		  boost::format("conflicting namespaces, found both '%s' and '%s'")
+		  % *type_namespace % e.type->getNamespace());
+	INVARIANT(major_version == e.type->majorVersion(),
+		  boost::format("conflicting major versions, found both %d and %d")
+		  % major_version % minor_version);
+	if (e.type->minorVersion() < minor_version) {
+	    minor_version = e.type->minorVersion();
+	}
+    } 
+}
 
 void
 indexExtent(DataSeriesSource &source, const string &filename, 
@@ -204,6 +230,7 @@ indexFile(const string &filename)
 
     DataSeriesSource source(filename);
 
+    // TODO: re-do this with TypeIndexModule.
     ExtentSeries s(source.indexExtent);
     Variable32Field extenttype(s,"extenttype");
     Int64Field offset(s,"offset");
@@ -250,6 +277,7 @@ readExistingIndex(const char *index_filename, string &fieldlist)
     while(true) {
 	e = modifytimes_mod.getExtent();
 	if (e == NULL) break;
+	updateNamespaceVersions(*e);
 	++modifytimes_count;
 	ExtentSeries modifyseries(e);
 	Variable32Field modifyfilename(modifyseries,"filename");
@@ -364,7 +392,13 @@ main(int argc, char *argv[])
     printf("indexed %d extents over %d files with %d files already indexed\n",
 	   indexed_extents,argc - files_start,already_indexed_files);
     printf("%d total extents indexed in file\n",ivHashTable.size());
-    string minmaxtype_xml = ("<ExtentType name=\"DSIndex::Extent::MinMax::");
+ 
+    string minmaxtype_xml = "<ExtentType";
+    if (type_namespace != NULL) {
+	minmaxtype_xml.append((boost::format(" namespace=\"%s\" version=\"%d.%d\"")
+			       % *type_namespace % major_version % minor_version).str());
+    }
+    minmaxtype_xml.append(" name=\"DSIndex::Extent::MinMax::");
     minmaxtype_xml.append(type_prefix);
     minmaxtype_xml.append("\">\n");
     minmaxtype_xml.append("  <field type=\"variable32\" name=\"filename\" />\n");
