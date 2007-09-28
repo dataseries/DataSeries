@@ -1,0 +1,18 @@
+0) Download and build the DataSeries source
+1) Download some of the LSF dataseries files from
+   http://...
+2) Repack the files with lzo, e.g. (changing file/transform arguments as needed):
+   % batch-parallel dsrepack compress=lzo transform='s,2007/,2007-lzo/,' -- 2007
+
+3) Index the files, e.g. (with appropriate substitutions for the
+   directory names:
+   % dsextentindex --compress-lzo --new Batch::LSF::Grizzly cluster_name,submit_time,end_time ~/nobackup-data/2007-lzo/index.ds `find $HOME/nobackup-data/2007-lzo -name \*.ds -print`
+   
+   You can update an index by just running:
+   % dsextentindex --compress-lzo ~/nobackup-data/2007-lzo/index.ds `find $HOME/nobackup-data/2007-lzo -name \*.ds -print`
+   
+   which will handle the case where you download multiple times, index
+   directories separately, or start indexing before the repacking step
+   completes.
+
+
