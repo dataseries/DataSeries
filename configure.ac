@@ -57,6 +57,7 @@ HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
 HPL_WITHLIB_PCAP
 HPL_REQUIRELIB_CRYPTO
+HPL_WITHLIB_DMALLOC
 
 AC_ARG_ENABLE(paper,
   [  --enable-paper    build binaries for the paper -- default NO],

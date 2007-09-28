@@ -29,15 +29,10 @@ else
 DATASERIES_ENABLE_BZ2=0
 endif
 
-if WITH_CRYPTO
-WITH_CRYPTO=1
-else
-WITH_CRYPTO=0
-endif
-
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/nonmod/gpgkeys.pm
 
+# TODO: remove the WITH_CRYPTO, dataseries requires it now.
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
@@ -45,7 +40,7 @@ lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config 
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto -lrt
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ @DMALLOC_LIBS@ @CRYPTO_LIBS@ -lrt 
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
@@ -70,10 +65,9 @@ libDataSeries_la_SOURCES = \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds 
+bin_PROGRAMS =
 
-LDADD = libDataSeries.la 
+LDADD = libDataSeries.la
 
 # General purpose
 bin_PROGRAMS += dsextentindex dsselect dsrepack dsstatgroupby
@@ -94,11 +88,11 @@ textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis 
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
-#lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
-#	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
+	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
 
 ##### WITH_PCAP
 if WITH_PCAP
