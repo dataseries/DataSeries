@@ -88,7 +88,7 @@ protected:
     FixedField(ExtentSeries &_dataseries, const std::string &field, 
 	       ExtentType::fieldType ft, int flags);
 
-    byte *rawval() {
+    byte *rawval() const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL,
 			"internal error; extent not set\n");
 	dataseries.pos.checkOffset(offset);
@@ -106,7 +106,7 @@ public:
     BoolField(ExtentSeries &_dataseries, const std::string &field, 
 	      int flags = 0, bool default_value = false);
 
-    bool val() { 
+    bool val() const { 
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -133,7 +133,7 @@ public:
     ByteField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
 	      byte default_value = '\0');
 
-    byte val() { 
+    byte val() const { 
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -154,7 +154,7 @@ public:
     Int32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
 	       int32 default_value = 0);
 
-    int32 val() { 
+    int32 val() const { 
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -181,7 +181,7 @@ public:
     Int64Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
 	       int64 default_value = 0);
 
-    int64 val() { 
+    int64 val() const { 
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -210,7 +210,7 @@ public:
     DoubleField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
 		double default_value = 0);
 
-    const double val() { 
+    double val() const { 
 	if (isNull()) {
 	    return default_value;
 	} else {
@@ -218,7 +218,7 @@ public:
 	}
     }
   
-    const double absval() { 
+    double absval() const { 
 	if (isNull()) {
 	    // 2006-06-30 EricAnderson, used to return just
 	    // default_value, but that seems inconsistent with what is

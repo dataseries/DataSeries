@@ -75,7 +75,7 @@ getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)
 }
 
 static const std::string packing_opts = 
-  "    --{disable,compress,enable}-{lzo,gz,bz2} (default --enable-*)\n"
+  "    --{disable,compress,enable}-{lzf,lzo,gz,bz2} (default --enable-*)\n"
   "    --compress-none --compress-level=[0-9] (default 9)\n"
   "    --extent-size=[>=1024] (default 10*1024*1024 if bz2 is enabled, 512*1024 otherwise)\n";
 

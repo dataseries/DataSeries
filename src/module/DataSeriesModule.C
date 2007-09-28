@@ -84,6 +84,7 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 
 OutputModule::~OutputModule()
 {
+    sink.removeStatsUpdate(&stats);
     if (cur_extent != NULL) {
 	close();
     }

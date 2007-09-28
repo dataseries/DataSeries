@@ -30,10 +30,46 @@ static const bool show_progress = true;
 
 using namespace std;
 
+// TODO: figure out why when compressing from lzo to lzf, we can only
+// get up to ~200% cpu utilization rather than going to 400% on a 4way
+// machine.  Possibilites are decompression bandwidth and copy
+// bandwidth, but neither seem particularly likely.  One oddness from
+// watching the strace is that the source file seems to be very bursty
+// rather than smoothly reading in data.  Watching the threads in top
+// on a 2 way machine, we only got to ~150% cpu utilization yet no
+// thread was at 100%.  Fiddling with priorities of the compression
+// threads in DataSeriesFile didn't seem to do anything.
+
+// Derived from boost implementation; TODO move this into Lintel.
+template <class Target, class Source>
+inline Target *safe_downcast(Source *x)
+{
+    // detect logic error
+    Target *ret = dynamic_cast<Target *>(x);
+    INVARIANT(ret == x,
+              boost::format("dynamic cast failed in %s")
+              % __PRETTY_FUNCTION__);  
+    return ret;
+}
+
 struct PerTypeWork {
     OutputModule *output_module;
     ExtentSeries inputseries, outputseries;
-    vector<GeneralField *> infields, outfields;
+    // Splitting out the types here is ugly.  However, it's a huge
+    // performance improvement to not be going through the virtual
+    // function call.  In particular, repacking an BlockIO::SRT file
+    // from LZO to LZF took 285 CPU seconds originally, 244 CPU s
+    // after adding in the bool specific case, and 235 seconds after
+    // special casing for int32's.  That file has lots of booleans
+    // somewhat fewer int32s, and then some doubles.
+
+    // TODO: special case the remaining types, but leave in the
+    // general field fallback.
+    vector<GeneralField *> infields, outfields, all_fields;
+    vector<GF_Bool *> in_boolfields, out_boolfields;
+    vector<GF_Int32 *> in_int32fields, out_int32fields;
+    vector<GF_Variable32 *> in_var32fields, out_var32fields;
+
     double sum_unpacked_size, sum_packed_size;
     PerTypeWork(DataSeriesSink &output, unsigned extent_size, ExtentType *t) 
 	: inputseries(t), outputseries(t), 
@@ -41,25 +77,53 @@ struct PerTypeWork {
     {
 	for(int i = 0; i < t->getNFields(); ++i) {
 	    const string &s = t->getFieldName(i);
-	    infields.push_back(GeneralField::create(NULL, inputseries, s));
-	    outfields.push_back(GeneralField::create(NULL, outputseries, s));
+	    GeneralField *in = GeneralField::create(NULL, inputseries, s);
+	    GeneralField *out = GeneralField::create(NULL, outputseries, s);
+	    all_fields.push_back(in);
+	    all_fields.push_back(out);
+	    switch(t->getFieldType(s)) 
+		{
+		case ExtentType::ft_bool: 
+		    in_boolfields.push_back(safe_downcast<GF_Bool>(in));
+		    out_boolfields.push_back(safe_downcast<GF_Bool>(out));
+		    break;
+		case ExtentType::ft_int32: 
+		    in_int32fields.push_back(safe_downcast<GF_Int32>(in));
+		    out_int32fields.push_back(safe_downcast<GF_Int32>(out));
+		    break;
+		case ExtentType::ft_variable32: 
+		    in_var32fields.push_back(safe_downcast<GF_Variable32>(in));
+		    out_var32fields.push_back(safe_downcast<GF_Variable32>(out));
+		    break;
+		default:
+		    infields.push_back(in);
+		    outfields.push_back(out);
+		    break;
+		}
 	}
 	output_module = new OutputModule(output, outputseries, t, 
 					 extent_size);
     }
 
+    ~PerTypeWork() {
+	for(vector<GeneralField *>::iterator i = all_fields.begin();
+	    i != all_fields.end(); ++i) {
+	    delete *i;
+	}
+    }
+
     void rotateOutput(DataSeriesSink &output) {
 	OutputModule *old = output_module;
-	old->flushExtent();
+	old->close();
 	
-	INVARIANT(outputseries.extent()->fixeddata.size() == 0, "huh?");
-	delete outputseries.extent();
-	outputseries.clearExtent();
-	output_module = new OutputModule(output, outputseries, 
-					 old->outputtype, old->target_extent_size);
+	INVARIANT(outputseries.extent() == NULL, "huh?");
+
 	DataSeriesSink::Stats stats = old->getStats();
 	sum_unpacked_size += stats.unpacked_size;
 	sum_packed_size += stats.packed_size;
+
+	output_module = new OutputModule(output, outputseries, 
+					 old->outputtype, old->target_extent_size);
 	delete old;
     }
 
@@ -144,8 +208,6 @@ checkFileMissing(const std::string &filename)
 	      % filename);
 }
 
-
-
 // TODO: Split up main(), it's getting a bit large
 const string target_file_size_arg("--target-file-size=");
 int
@@ -166,8 +228,8 @@ main(int argc, char *argv[])
     }
 
     INVARIANT(argc > 2,
-	      boost::format("Usage: %s <common-options> [--target-file-size=MiB] input-filename... output-filename\n") 
-	      % argv[0]);
+	      boost::format("Usage: %s [common-args] [--target-file-size=MiB] input-filename... output-filename\nCommon args:\n%s") 
+	      % argv[0] % packingOptions());
     
     // Always check on repacking...
     if (getenv("DATASERIES_EXTENT_CHECKS")) {
@@ -190,7 +252,7 @@ main(int argc, char *argv[])
 	// worth having three digits of split numbers always.  Common
 	// case likely to be below 10, but splitting ~1G into 100MB
 	// chunks could end up with more than 10, so want two digits.
-	output_path = (boost::format("%s.%02d.ds") 
+	output_path = (boost::format("%s.part-%02d.ds") 
 		       % output_base_path % output_file_count).str();
     }
     checkFileMissing(output_path);
@@ -255,9 +317,8 @@ main(int argc, char *argv[])
 
     DataSeriesSink::Stats all_stats;
     uint32_t extent_num = 0;
-    unsigned partial_row_count = 0;
-    unsigned max_partial_row_count 
-	= target_file_bytes > 0 ? 10000 : 2000*1000*1000;
+    uint64_t cur_file_bytes = 0;
+
     while(true) {
 	Extent *inextent = from->getExtent();
 	if (inextent == NULL)
@@ -279,12 +340,22 @@ main(int argc, char *argv[])
 	    ptw->inputseries.pos.morerecords();
 	    ++ptw->inputseries.pos) {
 	    ptw->output_module->newRecord();
+	    cur_file_bytes += ptw->outputseries.type->fixedrecordsize();
+	    for(unsigned int i=0; i < ptw->in_boolfields.size(); ++i) {
+		ptw->out_boolfields[i]->set(ptw->in_boolfields[i]);
+	    }
+	    for(unsigned int i=0; i < ptw->in_int32fields.size(); ++i) {
+		ptw->out_int32fields[i]->set(ptw->in_int32fields[i]);
+	    }
+	    for(unsigned int i=0; i < ptw->in_var32fields.size(); ++i) {
+		cur_file_bytes += ptw->in_var32fields[i]->myfield.size();
+		ptw->out_var32fields[i]->set(ptw->in_var32fields[i]);
+	    }
 	    for(unsigned int i=0; i<ptw->infields.size(); ++i) {
 		ptw->outfields[i]->set(ptw->infields[i]);
 	    }
-	    ++partial_row_count;
-	    if (partial_row_count == max_partial_row_count) {
-		partial_row_count = 0;
+	    if (target_file_bytes > 0 && cur_file_bytes >= target_file_bytes) {
+		output->flushPending();
 		uint64_t est_file_size = fileSize(output_path);
 		for(map<string, PerTypeWork *>::iterator i = per_type_work.begin();
 		    i != per_type_work.end(); ++i) {
@@ -292,7 +363,9 @@ main(int argc, char *argv[])
 		}
 		if (est_file_size >= target_file_bytes) {
 		    ++output_file_count;
-		    output_path = (boost::format("%s.%02d.ds") 
+		    INVARIANT(output_file_count < 1000, 
+			      "split into 1000 parts; assuming you didn't want that and stopping");
+		    output_path = (boost::format("%s.part-%02d.ds") 
 				   % output_base_path 
 				   % output_file_count).str();
 		    checkFileMissing(output_path);
@@ -310,6 +383,7 @@ main(int argc, char *argv[])
 		    delete output;
 		    output = new_output;
 		}
+		cur_file_bytes = est_file_size;
 	    }
 	}
 	delete inextent;
