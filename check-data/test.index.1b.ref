@@ -41,8 +41,8 @@ type-prefix fields
 I/O enter_driver,machine_id,disk_offset,is_read
 # Extent, type='DSIndex::Extent::MinMax::I/O'
 filename extent_offset rowcount min:enter_driver max:enter_driver hasnull:enter_driver min:machine_id max:machine_id hasnull:machine_id min:disk_offset max:disk_offset hasnull:disk_offset min:is_read max:is_read hasnull:is_read
-/home/anderse/projects/DataSeries/check-data/h03126.ds-littleend 552 43000 65044.6301 68743.7746 F 679349363 679349363 F 2367488 17616764928 F F T F
 /home/anderse/projects/DataSeries/check-data/h03126.ds-bigend 552 43000 65044.6301 68743.7746 F 679349363 679349363 F 2367488 17616764928 F F T F
+/home/anderse/projects/DataSeries/check-data/h03126.ds-littleend 552 43000 65044.6301 68743.7746 F 679349363 679349363 F 2367488 17616764928 F F T F
 # Extent, type='DSIndex::Extent::ModifyTimes'
 filename modify-time
 /home/anderse/projects/DataSeries/check-data/h03126.ds-bigend ########

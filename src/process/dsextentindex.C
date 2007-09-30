@@ -54,6 +54,16 @@ struct ivEqual {
 
 typedef HashTable<IndexValues,ivHash,ivEqual> ivHashTableT;
 
+struct IndexValuesByFilenameOffset {
+    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) {
+	if (a.data.filename == b.data.filename) {
+	    return a.data.offset < b.data.offset;
+	} else {
+	    return a.data.filename < b.data.filename;
+	}
+    }
+};
+
 ivHashTableT ivHashTable;
 
 string type_prefix;
@@ -76,8 +86,14 @@ const string modifytype_xml =
 "  <field type=\"int64\" name=\"modify-time\" />\n"
 "</ExtentType>\n";
 
-typedef HashMap<string, ExtentType::int64> modifytimesT;
-modifytimesT modifytimes;
+typedef HashMap<string, ExtentType::int64> modifyTimesT;
+modifyTimesT modifytimes;
+
+struct ModifyTimesByFilename {
+    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) {
+	return a.data.first < b.data.first;
+    }
+};
 
 const string indexinfo_xml =
 "<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::Info\" version=\"1.0\">\n"
@@ -456,7 +472,7 @@ main(int argc, char *argv[])
 
     output.writeExtentLibrary(library);
 
-    // write info extents
+    // write info extents -- one row
 
     ExtentSeries infoseries(infotype);
     Variable32Field info_type_prefix(infoseries,"type-prefix");
@@ -492,8 +508,15 @@ main(int argc, char *argv[])
     OutputModule minmaxmodule(output,minmaxseries,minmaxtype,
 			      packing_args.extent_size);
     if (false) printf("LL %d\n",ivHashTable.size());
-    for(ivHashTableT::iterator j = ivHashTable.begin(); j != ivHashTable.end(); ++j) {
-	IndexValues &v = *j;
+    INVARIANT(ivHashTable.dense(), "need to implement the densify hash table function");
+
+    // This sort and the next one are both here to make the regression
+    // tests work out, not because they are needed in any way by the
+    // MinMaxIndexModule.
+    ivHashTableT::hte_vectorT iv_rawtable = ivHashTable.unsafeGetRawDataVector();
+    sort(iv_rawtable.begin(), iv_rawtable.end(), IndexValuesByFilenameOffset());
+    for(ivHashTableT::hte_vectorT::iterator j = iv_rawtable.begin(); j != iv_rawtable.end(); ++j) {
+	IndexValues &v(j->data);
 	minmaxmodule.newRecord();
 	filenameF.set(v.filename);
 	extent_offsetF.set(v.offset);
@@ -524,10 +547,13 @@ main(int argc, char *argv[])
 						  modifyseries.type,
 						  packing_args.extent_size);
 
-    for(modifytimesT::iterator i = modifytimes.begin(); i != modifytimes.end(); ++i) {
+    typedef modifyTimesT::HashTableT::hte_vectorT mt_vectorT;
+    mt_vectorT mt_rawtable = modifytimes.getHashTable().unsafeGetRawDataVector();
+    sort(mt_rawtable.begin(), mt_rawtable.end(), ModifyTimesByFilename());
+    for(mt_vectorT::iterator i = mt_rawtable.begin(); i != mt_rawtable.end(); ++i) {
 	modifymodule->newRecord();
-	modifyfilename.set(i->first);
-	modifytime.set(i->second);
+	modifyfilename.set(i->data.first);
+	modifytime.set(i->data.second);
     }
 
     modifymodule->flushExtent();

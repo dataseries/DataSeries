@@ -32,8 +32,7 @@ endif
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
 
-# TODO: remove the WITH_CRYPTO, dataseries requires it now.
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
@@ -107,7 +106,7 @@ nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-lsfdsanalysis
 
 ##### WITH_SRT
 if WITH_SRT
@@ -209,6 +208,10 @@ ran.check-dsextentindex: dsextentindex ds2txt
 	./ds2txt --skip-index test.index.2.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.2.ds.txt
 	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
 	touch $@
+
+ran.check-lsfdsanalysis: lsfdsanalysis
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production -a 120:1167681240:1167681600:all,sequence $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.lsfdsanalysis.txt
+	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat
