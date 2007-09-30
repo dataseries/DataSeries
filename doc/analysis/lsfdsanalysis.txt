@@ -24,7 +24,3 @@
    calculation is that each job is using one cpu, which is not
    entirely accurate over this data set.
 
-
-
-
-1170316800
