@@ -15,4 +15,16 @@
    directories separately, or start indexing before the repacking step
    completes.
 
+4) Run an analysis: 
+   % lsfdsanalysis -a 86400:1167638400:1199174400:all ~/nobackup-data/2007-lzo/index.ds 1167638400 1199174400
 
+   which will calculate for the entire farm that number of pending
+   jobs, running jobs and user system and idle time for those jobs
+   grouped into day long intervals.  The assumption for the idle
+   calculation is that each job is using one cpu, which is not
+   entirely accurate over this data set.
+
+
+
+
+1170316800

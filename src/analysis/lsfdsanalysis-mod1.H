@@ -25,9 +25,9 @@
 
 namespace LSFDSAnalysisMod {
     // in lsfdsanalysis-mod1.C
-    void initFarmLoadArgs();
-    void handleFarmLoadArgs(const char *arg);
-    RowAnalysisModule *newFarmLoad(DataSeriesModule &tail);
+    struct FarmLoadArgs;
+    FarmLoadArgs *handleFarmLoadArgs(const std::string &arg);
+    RowAnalysisModule *newFarmLoad(DataSeriesModule &tail, FarmLoadArgs *args);
     
     void handleTraceMetaIdArgs(const char *arg);
     void addTraceMetaIdModules(SequenceModule &sequence);

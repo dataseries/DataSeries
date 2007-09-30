@@ -22,6 +22,8 @@
 
 using namespace std;
 
+namespace LSFDSAnalysisMod {
+
 enum FarmLoad_groups { // code assumes GroupAll is first
     FarmLoad_All = 0, FarmLoad_Production, FarmLoad_Sequence, FarmLoad_Team,
     FarmLoad_Queue, FarmLoad_Hostgroup, FarmLoad_TeamGroup, FarmLoad_Cluster,
@@ -34,11 +36,36 @@ static const string FarmLoad_groupNames[] = {
     "team_group", "cluster", "username", "exechost"
 };
 
-static bool FarmLoad_enableGroup[FarmLoad_Ngroups], FarmLoad_noerstest;
-static int FarmLoad_granularity, FarmLoad_start, FarmLoad_end; 
+struct FarmLoadArgs {
+    bool enable_group[FarmLoad_Ngroups], noerstest;
+    unsigned rollup_granularity, rollup_start, rollup_end; 
+    FarmLoadArgs() {
+	for(unsigned i = 0; i < FarmLoad_Ngroups; ++i) {
+	    enable_group[i] = false;
+	}
+	noerstest = false;
+	rollup_granularity = rollup_start = rollup_end = 0;
+    }
+};
+
+unsigned roundDown(unsigned v, unsigned granularity) {
+    unsigned ret = v - (v % granularity);
+    INVARIANT(ret <= v && ((ret % granularity) == 0),
+	      boost::format("bad %d %d") % ret % v);
+    return ret;
+}
+
+unsigned roundUp(unsigned v, unsigned granularity) {
+    unsigned ret = v + ((granularity - (v % granularity)) % granularity);
+    INVARIANT(ret >= v && ((ret % granularity) == 0),
+	      boost::format("bad %d %d") % ret % v);
+    return ret;
+}
 
 class FarmLoad : public RowAnalysisModule {
 public:
+    static const int cap_user_per_second = 4;
+
     struct rollupData {
 	double pend_count, run_count, user_time, system_time, idle_time;
 	rollupData() : pend_count(0), run_count(0), user_time(0), 
@@ -66,22 +93,16 @@ public:
 
     typedef HashTable<hteData *, hteHash, hteEqual> FarmLoadHash;
 
-    int rounddown(int v) {
-	int ret = v - (v % rollupGranularity);
-	AssertAlways(ret <= v,("bad %d %d\n",ret,v));
-	return ret;
+    int rounddown(unsigned v) {
+	return roundDown(v, args.rollup_granularity);
     }
-    int roundup(int v) {
-	int ret = v + ((rollupGranularity -  (v % rollupGranularity)) % rollupGranularity);
-	AssertAlways(ret >= v,("bad %d %d\n",ret,v));
-	return ret;
+    int roundup(unsigned v) {
+	return roundUp(v, args.rollup_granularity);
     }
 
-    FarmLoad(DataSeriesModule &_source, int _rollupGranularity, int _rollup_start, int _rollup_end)
+    FarmLoad(DataSeriesModule &_source, FarmLoadArgs *_args)
 	: RowAnalysisModule(_source), 
-	  rollupGranularity(_rollupGranularity),
-	  rollup_start(rounddown(_rollup_start)),
-	  rollup_end(roundup(_rollup_end)),
+	  args(*_args),
 	  cluster(series,"cluster_name"),
 	  production(series,"production", Field::flag_nullable, def_unknown), 
 	  sequence(series,"sequence", Field::flag_nullable, def_unknown),
@@ -91,10 +112,12 @@ public:
 	  queue(series,"queue"), team(series,"team"),
 	  user_time(series,"user_time"), system_time(series,"system_time"),
 	  exec_host(series,"exec_host", Field::flag_nullable), 
-	  exec_host_group(series, "exec_host_group", Field::flag_nullable),
 	  username(series,"username"),
+	  exec_host_group(series, "exec_host_group", Field::flag_nullable),
 	  user_id(series,"user_id"),
-	  minsubmit(2000000000), maxend(0), nrecords(0), nrecordsinwindow(0), negative_idle_records(0)
+	  minsubmit(2000000000), maxend(0), nrecords(0), 
+	  nrecordsinwindow(0), negative_idle_records(0),
+	  capped_rate_records(0)
     {
 	allRollup = new hteData;
 	allRollup->group = str_all;
@@ -107,7 +130,8 @@ public:
     
     hteData getEntTmp;
     void addEnt(vector<hteData *> &ents,
-		FarmLoad_groups group,const string &key) {
+		FarmLoad_groups group, 
+		const string &key) {
 	FarmLoadHash *ht = rollups[group];
 	
 	getEntTmp.group = key;
@@ -119,28 +143,6 @@ public:
 	}
 	ents.push_back(*ret);
     }
-
-//    const string hostGroup(const string &in) {
-//	if (in.size() <= 2) {
-//	    return group_misc;
-//	}
-//	if (prefixequal(in, 
-//	if (in[0] == 'c' && in[1] == 'q' && isdigit(in[2])) {
-//	    return group_cq;
-//	} else if (in[0] == 'h' && in[1] == 'p' && isdigit(in[2])) {
-//	    return group_hp;
-//	} else if (in[0] == 's' && in[1] == 'g' && isdigit(in[2])) {
-//	    return group_sg;
-//	} else if (in.size() > 3 && in[0] == 'e' && in[1] == 'r' && in[2] == 's' && isdigit(in[3])) {
-//	    return group_ers;
-//	}
-//	if (false) { // fails for erstest5 :(
-//	    for(unsigned i=0;i<in.size();i++) {
-//		AssertAlways(!isdigit(in[i]),("bad %s\n",in.c_str()));
-//	    }
-//	}
-//	return group_misc;
-//    }
 
     static const string teamGroup(const string &production, const string &in) {
 	const string *foo = team_remap.lookup(in);
@@ -159,12 +161,17 @@ public:
 	return *foo;
     }
 
+    // TODO: consider making this faster by having addPend, addRun
+    // take the bucket to update, and do the bucket calculation
+    // in addTimes.
+
     void addPend(int time, vector<hteData *> &ents,double frac)
     {
-	int offset = time - rollup_start;
+	DEBUG_INVARIANT(frac > 0, "should have pruned earlier");
+	int offset = time - args.rollup_start;
 	AssertAlways(offset >= 0,("bad; time start = %d",time));
-	offset = offset / rollupGranularity;
-	AssertAlways(offset < maxRollupChunks,("bad (%d - %d)/%d = %d ",time,rollup_start,rollupGranularity,offset));
+	offset = offset / args.rollup_granularity;
+	AssertAlways(offset < maxRollupChunks,("bad (%d - %d)/%d = %d ",time,args.rollup_start,args.rollup_granularity,offset));
 	for(unsigned i = 0;i<ents.size();++i) {
 	    if(ents[i]->data.size() <= (unsigned)offset) {
 		ents[i]->data.resize(offset+1);
@@ -176,9 +183,10 @@ public:
     void addRun(int time, vector<hteData *> &ents, double user_per_sec,
 		double system_per_sec, double frac)
     {
-	int offset = time - rollup_start;
-	AssertAlways(offset >= 0,("bad"));
-	offset = offset / rollupGranularity;
+	DEBUG_INVARIANT(frac > 0, "should have pruned earlier");
+	int offset = time - args.rollup_start;
+	INVARIANT(offset >= 0,boost::format("bad %d %d") % time % args.rollup_start);
+	offset = offset / args.rollup_granularity;
 	AssertAlways(offset < maxRollupChunks,("bad"));
 	for(unsigned i = 0;i<ents.size();++i) {
 	    if(ents[i]->data.size() <= (unsigned)offset) {
@@ -192,116 +200,183 @@ public:
 	}
     }	
 
-    double partialStartFrac(int rounddown,int exact) 
+    double partialStartFrac(unsigned rounddown, unsigned exact) 
     {
-	AssertAlways(rounddown < exact,("bad"));
-	return (double)(rollupGranularity - (exact - rounddown))/(double)rollupGranularity;
+	AssertAlways(rounddown < exact 
+		     && exact < rounddown + args.rollup_granularity,("bad"));
+	return (double)(args.rollup_granularity - (exact - rounddown))/(double)args.rollup_granularity;
     }
 
-    double partialEndFrac(int rounddown,int exact)
+    double partialEndFrac(unsigned rounddown, unsigned exact)
     {
-	AssertAlways(rounddown < exact,("bad"));
-	return (double)(exact - rounddown)/(double)rollupGranularity;
+	AssertAlways(rounddown < exact 
+		     && exact < rounddown + args.rollup_granularity,("bad"));
+	return (double)(exact - rounddown)/(double)args.rollup_granularity;
     }
 
-    void addTimes(vector<hteData *> &ents, ExtentType::int32 exact_submit, 
-		  ExtentType::int32 exact_start, ExtentType::int32 exact_end,
-		  double wall_time, double user_per_sec, double system_per_sec) {
-	int submit = rounddown(exact_submit);
-	int start = rounddown(exact_start);
-	int end = rounddown(exact_end);
-	AssertAlways(submit <= start && start <= end,
-		     ("bad %d %d %d\n",submit,start,end));
-	if (exact_start < submit + rollupGranularity) { // submit in tiny window before bucket boundary
-	    if (exact_submit > exact_start) { // any pending?
-		addPend(submit,ents,(exact_submit - exact_start)/(double)rollupGranularity);
+    void addTimes(vector<hteData *> &ents, unsigned exact_submit, 
+		  unsigned exact_start, unsigned exact_end,
+		  double user_per_sec, double system_per_sec) {
+	unsigned align_submit = rounddown(exact_submit);
+	unsigned align_start = rounddown(exact_start);
+	unsigned align_end = rounddown(exact_end);
+	INVARIANT(align_submit <= align_start && align_start <= align_end,
+		  boost::format("bad %d %d %d") 
+		  % align_submit % align_start % align_end);
+	// TODO: see if there is a clean way to make these to parts
+	// the same; they are essentially the same algorithm, but they
+	// call the add pending function with different arguments.
+	// boost::function/lambda perhaps?
+	if (exact_start > exact_submit) {  // have pending time to account for
+	    if (align_start == align_submit) { // all in one bucket
+		INVARIANT(exact_start < align_submit + args.rollup_granularity, "bad");
+		addPend(align_submit, ents, (exact_start - exact_submit)/(double)args.rollup_granularity);
+	    } else { // exact_submit .. exact_start crosses a bucket boundary
+		if (align_submit < exact_submit) { // partial pending in first bucket
+		    addPend(align_submit,ents,
+			    partialStartFrac(align_submit,exact_submit));
+		    align_submit += args.rollup_granularity;
+		} else {
+		    INVARIANT(align_submit == exact_submit, "bad");
+		}
+		// bulk pending in middle
+		for(;align_submit < align_start;align_submit += args.rollup_granularity) {
+		    addPend(align_submit,ents,1);
+		}
+		if (align_submit < exact_start) { // partial pend at end
+		    addPend(align_submit, ents,
+			    partialEndFrac(align_submit,exact_start));
+		}
 	    }
-	} else { // submit .. start crosses a bucket boundary
-	    if (submit < exact_submit) { // partial pend at start
-		addPend(submit,ents,
-			partialStartFrac(submit,exact_submit));
-		submit += rollupGranularity;
-	    }
-	    // bulk pend in middle
-	    for(;submit < start;submit += rollupGranularity) {
-		addPend(submit,ents,1);
-	    }
-	    if (submit < exact_start) { // partial pend at end
-		addPend(submit,ents,
-			partialEndFrac(submit,exact_start));
-	    }
+	    INVARIANT(align_submit == align_start,"bad");
+	} else {
+	    INVARIANT(exact_start == exact_submit, "bad");
 	}
-	AssertAlways(submit == start,("bad"));
-	if (wall_time > 0) {
-	    if (exact_end < start + rollupGranularity) { // start in tiny window before bucket boundary
-		if (exact_end > exact_start) { // any start?
-		    addRun(start,ents,user_per_sec,system_per_sec,
-			   (double)(exact_end - exact_start)/(double)rollupGranularity);
-		} 
+	if (exact_end > exact_start) { // have running time to account for
+	    if (align_end == align_start) { // all in one bucket
+		INVARIANT(exact_end < align_start + args.rollup_granularity, "bad");
+		addRun(align_start, ents, user_per_sec, system_per_sec,
+		       (double)(exact_end - exact_start)/(double)args.rollup_granularity);
 	    } else {
-		if (start < exact_start) { // partial start at start
-		    addRun(start,ents,user_per_sec,system_per_sec,
-			   partialStartFrac(start,exact_start));
-		    start += rollupGranularity;
+		if (align_start < exact_start) { // partial run in first bucket
+		    addRun(align_start, ents, user_per_sec, system_per_sec,
+			   partialStartFrac(align_start, exact_start));
+		    align_start += args.rollup_granularity;
 		}
 		// bulk of run in middle
-		for(;start < end; start += rollupGranularity) {
-		    addRun(start,ents,user_per_sec,system_per_sec,1);
+		for(;align_start < align_end; align_start += args.rollup_granularity) {
+		    addRun(align_start, ents, user_per_sec, system_per_sec, 1);
 		}
-		AssertAlways(start == end,("bad %d %d ;; %d %d",start,end,exact_start,exact_end));
-		if (start < exact_end) { // partial run at end
-		    addRun(start,ents,user_per_sec,system_per_sec,
-			   partialEndFrac(start,exact_end));
+		INVARIANT(align_start == align_end,
+			  boost::format("bad %d %d ;; %d %d") 
+			  % align_start % align_end % exact_start % exact_end);
+		if (align_start < exact_end) { // partial run at end
+		    addRun(align_start, ents, user_per_sec, system_per_sec,
+			   partialEndFrac(align_start,exact_end));
 		}
 	    }
 	}
     }
  
+    void setGroupsToUpdate() {
+	groups_to_update.clear();
+	if (args.enable_group[FarmLoad_All]) 
+	    groups_to_update.push_back(allRollup);
+	if (args.enable_group[FarmLoad_Production]) 
+	    addEnt(groups_to_update,FarmLoad_Production, production.stringval());
+	if (args.enable_group[FarmLoad_Sequence]) 
+	    addEnt(groups_to_update,FarmLoad_Sequence, 
+		   maybehexstring(production.stringval()).append(str_colon).append(maybehexstring(sequence.stringval())));
+	if (args.enable_group[FarmLoad_Team]) 
+	    addEnt(groups_to_update,FarmLoad_Team, team.stringval());
+	if (args.enable_group[FarmLoad_Queue]) 
+	    addEnt(groups_to_update,FarmLoad_Queue, queue.stringval());
+	if (args.enable_group[FarmLoad_Cluster]) 
+	    addEnt(groups_to_update,FarmLoad_Cluster, cluster.stringval());
+	if (args.enable_group[FarmLoad_Username]) 
+	    addEnt(groups_to_update,FarmLoad_Username, username.stringval());
+	if (args.enable_group[FarmLoad_ExecHost] &&
+	    exec_host.isNull() == false) 
+	    addEnt(groups_to_update, FarmLoad_ExecHost, exec_host.stringval());
+	if (exec_host.isNull() == false && args.enable_group[FarmLoad_Hostgroup]) {
+	    string hostgroup;
+	    if (exec_host_group.isNull()) {
+		hostgroup = group_misc;
+	    } else {
+		hostgroup = exec_host_group.stringval();
+	    }
+	    addEnt(groups_to_update,FarmLoad_Hostgroup, hostgroup);
+	}
+	if (args.enable_group[FarmLoad_TeamGroup]) 
+	    addEnt(groups_to_update, FarmLoad_TeamGroup, teamGroup(production.stringval(),team.stringval()));
+    }
+	
     virtual void processRow() { 
-	vector<hteData *> ents;
 	// variables for exact to the second times, as used in
 	// this calculations, so cropped to the start and end
 	// windows.
-	if (FarmLoad_noerstest && ersTestJob(user_id.val())) { 
+	if (args.noerstest && ersTestJob(user_id.val())) { 
 	    // ERS testing, ignore
 	    return;
 	}
-	ExtentType::int32 exact_submit, exact_start, exact_end;
+	unsigned exact_submit, exact_start, exact_end;
 	    
+	INVARIANT(submit_time.val() >= 0 && start_time.val() >= 0 
+		  && end_time.val() >= 0 && event_time.val() >= 0,
+		  "bad");
 	exact_submit = submit_time.val();
+	// Next two decisions handle the case where we are analyzing
+	// from jobs that are still running; in that case the event
+	// time is the time the record was generated, which is either
+	// the current time or the time the job was cancelled.
 	exact_start = start_time.isNull() ? event_time.val() : start_time.val();
 	exact_end = end_time.isNull() ? event_time.val() : end_time.val();
 
 	minsubmit = min(minsubmit,exact_submit);
 	maxend = max(maxend,exact_end);
 	++nrecords;
-	if (exact_end < rollup_start || exact_submit > rollup_end) {
+	if (exact_end < args.rollup_start || exact_submit > args.rollup_end) {
 	    return;
 	}
-	double wall_time = 0, user_per_sec = 0, system_per_sec = 0;
+
+	// Calculate these before we crop to the rollup window
+	double user_per_sec = 0, system_per_sec = 0;
 	    
-	if (start_time.isNull() == false) {
-	    wall_time = exact_end - exact_start;
+	if (start_time.isNull() == false && exact_end > exact_start) {
+	    unsigned wall_time = exact_end - exact_start;
+	    user_per_sec = user_time.val() / wall_time;
+	    system_per_sec = system_time.val() / wall_time;
 	    if (wall_time > 0) {
-		user_per_sec = user_time.val() / wall_time;
-		system_per_sec = system_time.val() / wall_time;
+		// This used to show up mostly because if a job was
+		// restarted, it appeared the entire cpu time got
+		// counted but the start and stop was of the last run.
+		// Now we have multi-threaded programs, so this can be
+		// legitimate.  Ought to be tracking nexechosts also,
+		// but that doesn't seem to be in the dataseries
+		// translation.  Similarly, ought to have a secondary
+		// table that tells us for each dedicated host type
+		// how many CPUs it has so we can cap user per second
+		// on a per-host basis.
 		if ((user_per_sec + system_per_sec) > 1) {
 		    negative_idle_records += 1;
-		    if (user_per_sec > 2) {
-			fprintf(stderr,"bad %.6f %.6f ;; %.6f %.6f ;;  %d - %d = %d ;; %s %s\n",user_per_sec, system_per_sec,
+		    if (user_per_sec > cap_user_per_second) {
+			++capped_rate_records;
+			fprintf(stderr,
+				"unexpectedly high user time %.6f %.6f ;; %.6f %.6f ;;  %d - %d = %d ;; %s %s\n",
+				user_per_sec, system_per_sec,
 				user_time.val(), system_time.val(), 
 				end_time.val(),start_time.val(),end_time.val() - start_time.val(),
-				cluster.stringval().c_str(),exec_host.stringval().c_str());
-			user_per_sec = 2; // hardcode fixup...
+				cluster.stringval().c_str(),maybehexstring(exec_host.stringval()).c_str());
+			user_per_sec = cap_user_per_second; // hardcode fixup...
 		    }
 		}
 	    }
 	}
 	// crop to windows
-	exact_submit = max(exact_submit,rollup_start);
-	exact_start = max(exact_start,rollup_start);
-	exact_start = min(exact_start,rollup_end);
-	exact_end = min(exact_end,rollup_end);
+	exact_submit = max(exact_submit,args.rollup_start);
+	exact_start = max(exact_start,args.rollup_start);
+	exact_start = min(exact_start,args.rollup_end);
+	exact_end = min(exact_end,args.rollup_end);
 
 	if (exact_submit > exact_start || exact_start > exact_end) {
 	    fprintf(stderr,"weird %d %d %d -> %d %d %d\n",
@@ -317,44 +392,18 @@ public:
 	AssertAlways(exact_submit <= exact_start && exact_start <= exact_end,
 		     ("internal %d %d %d\n",exact_submit,exact_start,exact_end));
 	++nrecordsinwindow;
-	ents.clear();
-	if (FarmLoad_enableGroup[FarmLoad_All]) 
-	    ents.push_back(allRollup);
-	if (FarmLoad_enableGroup[FarmLoad_Production]) 
-	    addEnt(ents,FarmLoad_Production, production.stringval());
-	if (FarmLoad_enableGroup[FarmLoad_Sequence]) 
-	    addEnt(ents,FarmLoad_Sequence, maybehexstring(production.stringval()).append(str_colon).append(maybehexstring(sequence.stringval())));
-	if (FarmLoad_enableGroup[FarmLoad_Team]) 
-	    addEnt(ents,FarmLoad_Team, team.stringval());
-	if (FarmLoad_enableGroup[FarmLoad_Queue]) 
-	    addEnt(ents,FarmLoad_Queue, queue.stringval());
-	if (FarmLoad_enableGroup[FarmLoad_Cluster]) 
-	    addEnt(ents,FarmLoad_Cluster, cluster.stringval());
-	if (FarmLoad_enableGroup[FarmLoad_Username]) 
-	    addEnt(ents,FarmLoad_Username, username.stringval());
-	if (FarmLoad_enableGroup[FarmLoad_ExecHost] &&
-	    exec_host.isNull() == false) 
-	    addEnt(ents, FarmLoad_ExecHost, exec_host.stringval());
-	if (exec_host.isNull() == false && FarmLoad_enableGroup[FarmLoad_Hostgroup]) {
-	    string hostgroup;
-	    if (exec_host_group.isNull()) {
-		hostgroup = group_misc;
-	    } else {
-		hostgroup = exec_host_group.stringval();
-	    }
-	    addEnt(ents,FarmLoad_Hostgroup, hostgroup);
-	}
-	if (FarmLoad_enableGroup[FarmLoad_TeamGroup]) 
-	    addEnt(ents, FarmLoad_TeamGroup, teamGroup(production.stringval(),team.stringval()));
-	addTimes(ents, exact_submit, exact_start, exact_end,
-		 wall_time, user_per_sec, system_per_sec);
+
+	setGroupsToUpdate();
+
+	addTimes(groups_to_update, exact_submit, exact_start, exact_end,
+		 user_per_sec, system_per_sec);
     }
 
     void printResultOne(hteData &x, const string &ptype) {
 	printf("Begin Group %s; subent %s\n",ptype.c_str(),maybehexstring(x.group).c_str());
 	for(unsigned j=0;j<x.data.size();++j) {
 	    printf("  %d %.2f %.2f %.2f %.2f %.2f\n",
-		   j * rollupGranularity + rollup_start,
+		   j * args.rollup_granularity + args.rollup_start,
 		   x.data[j].pend_count, 
 		   x.data[j].run_count, 
 		   x.data[j].user_time, 
@@ -376,9 +425,11 @@ public:
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
 
 	printf("total time range %d .. %d; %d total records, %d records in window %d .. %d\n",
-	       minsubmit,maxend,nrecords,nrecordsinwindow,rollup_start,rollup_end);
+	       minsubmit,maxend,nrecords,nrecordsinwindow,args.rollup_start,args.rollup_end);
+	printf("%d jobs over 100%% cpu utilization, %d capped at %d%% utilization\n", negative_idle_records,
+	       capped_rate_records, 100 * cap_user_per_second);
 	printf("columns are: time, pend_count, run_count, user_time, system_time, idle_time\n");
-	printf("values are normalized to %d seconds\n",rollupGranularity);
+	printf("values are normalized to %d seconds\n",args.rollup_granularity);
 	printResultOne(*allRollup,str_all);
 	for(unsigned i = 1;i<rollups.size();++i) {
 	    printResultHT(rollups[i],FarmLoad_groupNames[i]);
@@ -387,7 +438,7 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
     static const int maxRollupChunks = 100000;
-    const int rollupGranularity, rollup_start, rollup_end;
+    const FarmLoadArgs args;
 
     Variable32Field cluster,production,sequence;
     Int32Field event_time, submit_time, start_time, end_time;
@@ -395,90 +446,77 @@ public:
     DoubleField user_time, system_time;
     Variable32Field exec_host, username, exec_host_group;
     Int32Field user_id;
-    int minsubmit, maxend, nrecords, nrecordsinwindow, negative_idle_records;
+    unsigned minsubmit, maxend, nrecords, nrecordsinwindow, negative_idle_records, capped_rate_records;
 
     hteData *allRollup; // special case this one, avoid hash table lookups
     vector<FarmLoadHash *> rollups;
+    vector<hteData *> groups_to_update; // we update the same number of groups lots of times, this avoids allocating the vector every time.
 };
 
-void
-LSFDSAnalysisMod::initFarmLoadArgs()
+FarmLoadArgs *
+handleFarmLoadArgs(const string &arg)
 {
-    FarmLoad_noerstest = true;
-    FarmLoad_granularity = 60;
-    FarmLoad_end = time(NULL) - 5*60;
-    FarmLoad_start = FarmLoad_start - 24*3600;
-    for(int i=0;i<FarmLoad_Ngroups;++i) {
-	FarmLoad_enableGroup[i] = true;
-    }
-    // these are fairly slow, so off by default
-    FarmLoad_enableGroup[FarmLoad_Username] = false; 
-    FarmLoad_enableGroup[FarmLoad_ExecHost] = false; 
-}
-
-void
-LSFDSAnalysisMod::handleFarmLoadArgs(const char *arg)
-{
+    FarmLoadArgs *ret = new FarmLoadArgs();
     static const string str_erstest("erstest");
 
-    const char *granularity = arg;
     const string usage("invalid option to -a, expect  <granularity>:<start-secs>:<end-secs>:<rollupgroups...>; use no args to see valid rollupgroups");
-    char *startsecs = index(granularity,':');
-    AssertAlways(startsecs != NULL,("%s",usage.c_str()));
-    ++startsecs;
-    char *endsecs = index(startsecs,':');
-    AssertAlways(endsecs != NULL,("%s",usage.c_str()));
-    ++endsecs;
-    char *rollupgroups = index(endsecs,':');
-    AssertAlways(rollupgroups != NULL && rollupgroups[1] != '\0',
-		 ("%s",usage.c_str()));
-    ++rollupgroups;
-    FarmLoad_granularity = atoi(granularity);
-    FarmLoad_start = atoi(startsecs);
-    FarmLoad_end = atoi(endsecs);
-    if (*rollupgroups == '*') {
+
+    vector<string> args;
+    split(arg, ":", args);
+    INVARIANT(args.size() == 4, usage);
+
+    ret->rollup_granularity = stringToInt32(args[0]);
+    unsigned start = stringToUInt32(args[1]);
+    unsigned end = stringToUInt32(args[2]);
+
+    ret->rollup_start = roundDown(start, ret->rollup_granularity);
+    ret->rollup_end = roundUp(end, ret->rollup_granularity);
+
+    if (start != ret->rollup_start) {
+	cout << boost::format("Warning, rounding start time %d to %d because of granularity %d\n")
+	    % start % ret->rollup_start % ret->rollup_granularity;
+    }
+
+    if (end != ret->rollup_end) {
+	cout << boost::format("Warning, rounding end time %d to %d because of granularity %d\n")
+	    % end % ret->rollup_end % ret->rollup_granularity;
+    }
+
+    if (args[3] == "*") {
 	for(int i=0;i<FarmLoad_Ngroups;++i) {
-	    FarmLoad_enableGroup[i] = true;
+	    ret->enable_group[i] = true;
 	}
     } else {
-	string tmp = rollupgroups;
 	vector<string> bits;
-	for(unsigned i = 0; i<FarmLoad_Ngroups;++i) {
-	    FarmLoad_enableGroup[i] = false;
-	}
-	split(tmp,",",bits);
-	if (false) printf("%s split into: ",tmp.c_str());
+	split(args[3],",",bits);
+
 	for(unsigned i = 0;i<bits.size();++i) {
-	    if (false) printf("'%s', ",bits[i].c_str());
 	    bool found = false;
 	    for(unsigned j = 0;j<FarmLoad_Ngroups;++j) {
 		if (FarmLoad_groupNames[j] == bits[i]) {
-		    FarmLoad_enableGroup[j] = true;
+		    ret->enable_group[j] = true;
 		    found = true;
 		    break;
 		}
 	    }
 	    if (bits[i] == str_erstest) {
 		found = true;
-		FarmLoad_noerstest = false;
+		ret->noerstest = false;
 	    }
-	    AssertAlways(found,
-			 ("didn't find farmload rollup type '%s'\n",
-			  bits[i].c_str()));
+	    INVARIANT(found, boost::format("didn't find farmload rollup type '%s'") % bits[i]);
 	}
-	if (false) printf("\n");
     }
 
-    AssertAlways(FarmLoad_granularity > 0,("bad"));
-    AssertAlways(FarmLoad_start < FarmLoad_end,
-		 ("bad %d %d",FarmLoad_start,FarmLoad_end));
+    INVARIANT(ret->rollup_granularity > 0,"bad");
+    INVARIANT(ret->rollup_start < ret->rollup_end,
+	      boost::format("bad %d %d") % ret->rollup_start % ret->rollup_end);
+    return ret;
 }
 
 RowAnalysisModule *
-LSFDSAnalysisMod::newFarmLoad(DataSeriesModule &tail)
+newFarmLoad(DataSeriesModule &tail, FarmLoadArgs *args)
 {
-    return new FarmLoad(tail,FarmLoad_granularity,
-			FarmLoad_start,FarmLoad_end); 
+    return new FarmLoad(tail,args);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -603,14 +641,14 @@ public:
 };
 
 void
-LSFDSAnalysisMod::handleTraceMetaIdArgs(const char *arg)
+handleTraceMetaIdArgs(const char *arg)
 {
     int meta_id = atoi(optarg);
     trace_meta_id_list.push_back(meta_id);
 }
 
 void
-LSFDSAnalysisMod::addTraceMetaIdModules(SequenceModule &sequence)
+addTraceMetaIdModules(SequenceModule &sequence)
 {
     for(vector<int>::iterator i = trace_meta_id_list.begin();
 	i != trace_meta_id_list.end();++i) {
@@ -755,7 +793,7 @@ public:
 };
 
 void
-LSFDSAnalysisMod::addProductionReportModules(SequenceModule &sequence)
+addProductionReportModules(SequenceModule &sequence)
 {
     sequence.addModule(new ProductionReport(sequence.tail()));    
 }
@@ -888,7 +926,7 @@ LSFDSAnalysisMod::addProductionReportModules(SequenceModule &sequence)
 // };
 
 // void 
-// LSFDSAnalysisMod::handleRenderRequestLookupArgs(const char *arg)
+// handleRenderRequestLookupArgs(const char *arg)
 // {
 //     if (isdigit(*arg)) {
 // 	int rr_id = atoi(arg);
@@ -1010,7 +1048,7 @@ LSFDSAnalysisMod::addProductionReportModules(SequenceModule &sequence)
 // };
 
 // void
-// LSFDSAnalysisMod::addRRLookupModules(SequenceModule &rrSequence, SequenceModule &rjSequence)
+// addRRLookupModules(SequenceModule &rrSequence, SequenceModule &rjSequence)
 // {
 //     if (find_rr_id_list.empty() == false || 
 // 	find_rr_team_list.empty() == false ||
@@ -1028,3 +1066,4 @@ LSFDSAnalysisMod::addProductionReportModules(SequenceModule &sequence)
 //     } 
 // }
 
+}

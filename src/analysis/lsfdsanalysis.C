@@ -667,7 +667,7 @@ public:
 
   struct hteHash {
     unsigned operator()(const hte &a) {
-      unsigned tmp = HashTable_hashbytes(a.production.data(),a.production.size(),tmp);
+      unsigned tmp = HashTable_hashbytes(a.production.data(),a.production.size(),1972);
       tmp = HashTable_hashbytes(a.sequence.data(),a.sequence.size());
       return HashTable_hashbytes(a.shot.data(),a.shot.size(),tmp);
     }
@@ -1263,7 +1263,6 @@ usage(char *argv[])
     cerr << "   Note that the index form won't pick up any of the rr/rj ds files, so\n";
     cerr << "   those analysis won't work.\n";
     cerr << " flags: (default is to run all analysis)\n";
-    cerr << " -_ # invert selections\n";
     cerr << " -a <granularity>:<start-secs>:<end-secs>:<rollup-groups> # FarmLoad analysis\n";
     cerr << "    rollup-groups is * or group,group,... where group is: all, production\n";
     cerr << "    sequence, team, queue, hostgroup, team_group, cluster, username, exechost\n";
@@ -1289,23 +1288,21 @@ usage(char *argv[])
     exit(1);
 }
 
+static vector<LSFDSAnalysisMod::FarmLoadArgs *> farm_load_args;
+
 int
 parseopts(int argc, char *argv[])
 {
-    bool exclude_opt, any_selected;
+    bool any_selected;
 
-    LSFDSAnalysisMod::initFarmLoadArgs();
-    exclude_opt = any_selected = false;
+    any_selected = false;
     while (1) {
-	int opt = getopt(argc, argv, "_a:b:c:d:ef:ghijkl:m:n:");
+	int opt = getopt(argc, argv, "a:b:c:d:ef:ghijkl:m:n:");
 	if (opt == -1) break;
-	if (opt != '_')
-	    any_selected = true;
 	switch(opt){
-	case '_': exclude_opt = true; break;
 	case 'a': {
-	    LSFDSAnalysisMod::handleFarmLoadArgs(optarg);
-	    options[optFarmLoad] = true; 
+	    any_selected = true;
+	    farm_load_args.push_back(LSFDSAnalysisMod::handleFarmLoadArgs(optarg));
 	    break;
 	}
 	case 'b': {
@@ -1417,17 +1414,8 @@ parseopts(int argc, char *argv[])
 	    AssertFatal(("getopt returned '%c'\n",opt));
 	}
     }
-    if (any_selected == false) {
-	for(int i=0;i<optLastOption;++i) {
-	    options[i] = true;
-	}
-    }
-
-    if (exclude_opt) { // invert all options
-	for(int i=0;i<optLastOption;++i) {
-	    options[i] = ! options[i];
-	}
-    }
+    INVARIANT(any_selected, "You need to have selected at least one option.\n"
+	      "Try running iwth -h for options");
 
     return optind;
 };
@@ -1520,8 +1508,9 @@ main(int argc, char *argv[])
     // LSF data analysis ...
     SequenceModule lsfSequence(prefetcha);
 
-    if (options[optFarmLoad]) {
-	lsfSequence.addModule(LSFDSAnalysisMod::newFarmLoad(lsfSequence.tail()));
+    for(vector<LSFDSAnalysisMod::FarmLoadArgs *>::iterator i = farm_load_args.begin();
+	i != farm_load_args.end(); ++i) {
+	lsfSequence.addModule(LSFDSAnalysisMod::newFarmLoad(lsfSequence.tail(), *i));
     }
 
     if (options[optTraceMetaId]) {
