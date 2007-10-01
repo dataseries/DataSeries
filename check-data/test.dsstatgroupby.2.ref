@@ -1,0 +1,20 @@
+# Begin DSStatGroupByModule
+# production, count(*), mean(start_time - submit_time), stddev, min, max
+0387948b0fd460bfa4869f2dcbbd5383, 294, 79774, 96611.5, 2, 365181
+462dfed79b1d496cff59e85818b86620, 134, 47789.7, 94011.8, 2, 343831
+90f6c50bbfe393b1b04f995ed4659764, 68, 74740, 112062, 2, 332029
+# End DSStatGroupByModule
+
+# Begin DSStatGroupByModule
+# production, count(*), mean(cpu_time/(end_time-start_time)), stddev, min, max
+0387948b0fd460bfa4869f2dcbbd5383, 294, 0.503068, 0.150719, 0.140158, 0.865523
+462dfed79b1d496cff59e85818b86620, 134, 0.48598, 0.144532, 0.151737, 0.831683
+90f6c50bbfe393b1b04f995ed4659764, 68, 0.479199, 0.150949, 0.104753, 0.762611
+# End DSStatGroupByModule
+
+# extents: 0.25 MB -> 0.32 MB in 0.00 secs decode time
+#                    common
+# MB compressed:       0.25
+# MB uncompressed:     0.32
+# decode seconds:      0.00
+# wait fraction:       0.00

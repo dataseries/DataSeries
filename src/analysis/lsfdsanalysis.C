@@ -1415,7 +1415,7 @@ parseopts(int argc, char *argv[])
 	}
     }
     INVARIANT(any_selected, "You need to have selected at least one option.\n"
-	      "Try running iwth -h for options");
+	      "Try running with -h for options");
 
     return optind;
 };

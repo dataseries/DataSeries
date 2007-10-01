@@ -106,7 +106,7 @@ nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-lsfdsanalysis
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis
 
 ##### WITH_SRT
 if WITH_SRT
@@ -209,8 +209,14 @@ ran.check-dsextentindex: dsextentindex ds2txt
 	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
 	touch $@
 
+ran.check-dsstatgroupby: dsstatgroupby
+	./dsstatgroupby basic 'I/O' '1000*(return_to_driver - leave_driver)' 'device_number' 'bytes/1024' 'machine_id' -- ~/projects/DataSeries/check-data/h03126.ds-littleend | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.1
+	cmp test.dsstatgroupby.1 $(top_srcdir)/check-data/test.dsstatgroupby.1.ref
+	./dsstatgroupby basic 'Batch::LSF' 'start_time - submit_time' 'production' 'cpu_time/(end_time-start_time)' production -- ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.2
+	cmp test.dsstatgroupby.2 $(top_srcdir)/check-data/test.dsstatgroupby.2.ref
+
 ran.check-lsfdsanalysis: lsfdsanalysis
-	./lsfdsanalysis -a 60:1167681240:1167681600:all,production -a 120:1167681240:1167681600:all,sequence $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.lsfdsanalysis.txt
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production -a 120:1167681240:1167681600:all,sequence $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
 
 if ENABLE_PAPER

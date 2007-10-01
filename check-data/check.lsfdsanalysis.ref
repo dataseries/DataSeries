@@ -63,9 +63,9 @@ Begin Group sequence; subent 90f6c50bbfe393b1b04f995ed4659764:732e38a6d31cc88389
   1167681480 0.31 3.19 1.14 0.15 1.89
 End Group sequence; subent 90f6c50bbfe393b1b04f995ed4659764:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
 End-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
-extents: 0.25 MB -> 0.32 MB in 0.03 secs decode time
+extents: 0.25 MB -> 0.32 MB in 0.00 secs decode time
                    common
 MB compressed:       0.25
 MB uncompressed:     0.32
-decode seconds:      0.03
-wait fraction :      0.00
+decode seconds:      0.00
+wait fraction:       0.00
