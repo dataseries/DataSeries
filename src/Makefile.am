@@ -41,6 +41,9 @@ bin_SCRIPTS = dataseries-config
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
 libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ @DMALLOC_LIBS@ @CRYPTO_LIBS@ -lrt 
 
+# TODO transition all the source files to .cpp, includes to .hpp so we
+# might be able to build on windows.
+
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
 	base/Extent.C \
@@ -49,9 +52,10 @@ libDataSeries_la_SOURCES = \
 	base/ExtentType.C \
 	base/GeneralField.C \
 	process/commonargs.C \
+	module/DSExpr.cpp \
+	module/DSExprParse.cpp \
+	module/DSExprScan.cpp \
 	module/DSStatGroupByModule.C \
-	module/DSStatGroupByParse.cpp \
-	module/DSStatGroupByScan.cpp \
 	module/DStoTextModule.C \
 	module/DataSeriesModule.C \
 	module/IndexSourceModule.C \
@@ -135,15 +139,15 @@ bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
 nobase_bpmodules_DATA += BatchParallel/bacct2ds.pm
 endif
 
-rebuild_DSStatGroupBy:
+rebuild_DSExpr:
 	@echo "version check, from debian etch, known to work."
 	@echo "was unable to get the flex and bison stuff to work on both"
 	@echo "debian etch and RHEL4 with flex 2.5.4 and bison 1.875"
 	[ "`flex --version`" = "flex 2.5.33" ]
 	[ "`bison --version | head -1`" = "bison (GNU Bison) 2.3" ]
-	flex -o $(top_srcdir)/src/module/DSStatGroupByScan.cpp $(top_srcdir)/src/module/DSStatGroupByScan.ll
-	bison -d -o $(top_srcdir)/src/module/DSStatGroupByParse.cpp $(top_srcdir)/src/module/DSStatGroupByParse.yy
-	perl $(top_srcdir)/src/module/parser-fixup.pl $(top_srcdir)/src/module DSStatGroupByParse
+	flex -o $(top_srcdir)/src/module/DSExprScan.cpp $(top_srcdir)/src/module/DSExprScan.ll
+	bison -d -o $(top_srcdir)/src/module/DSExprParse.cpp $(top_srcdir)/src/module/DSExprParse.yy
+	perl $(top_srcdir)/src/module/expr-parser-fixup.pl $(top_srcdir)/src/module DSExprParse
 	rm $(top_srcdir)/src/module/stack.hh $(top_srcdir)/src/module/location.hh $(top_srcdir)/src/module/position.hh
 
 ##### Testing...

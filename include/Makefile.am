@@ -5,8 +5,12 @@
 #
 # automake input file
 
+# TODO transition all the source files to .cpp, includes to .hpp so we
+# might be able to build on windows.
+
 nobase_include_HEADERS = \
 	DataSeries/DataSeriesFile.H \
+	DataSeries/DSExpr.hpp \
 	DataSeries/DStoTextModule.H \
 	DataSeries/Extent.H \
 	DataSeries/ExtentField.H \
