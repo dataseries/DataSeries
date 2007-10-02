@@ -14,9 +14,13 @@
 #include <cstdlib>
 #include <errno.h>
 #include <string>
-#include <module/DSStatGroupByParse.hpp>
+
+#include <Lintel/AssertBoost.H>
 #include <Lintel/StringUtil.H>
-#include <DataSeries/DSStatGroupByModule.H>
+
+#include <DataSeries/DSExpr.hpp>
+
+#include <module/DSExprParse.hpp>
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
@@ -41,8 +45,8 @@ TfracToSeconds fn\.TfracToSeconds
 %%
 
 %{
-typedef DSStatGroupBy::Parser::token_type token_type;
-typedef DSStatGroupBy::Parser::token token;
+typedef DSExprImpl::Parser::token_type token_type;
+typedef DSExprImpl::Parser::token token;
 static unsigned cur_column;
 %}
 
@@ -60,7 +64,7 @@ static unsigned cur_column;
 %%
 
 void 
-DSStatGroupByModule::startScanning(const std::string &str)
+DSExprImpl::Driver::startScanning(const std::string &str)
 {
     INVARIANT(scanner_state == NULL, "bad");
     yylex_init(&scanner_state);
@@ -69,7 +73,7 @@ DSStatGroupByModule::startScanning(const std::string &str)
 }
 
 void
-DSStatGroupByModule::finishScanning()
+DSExprImpl::Driver::finishScanning()
 {
     yylex_destroy(scanner_state);
     scanner_state = NULL;

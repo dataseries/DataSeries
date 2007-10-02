@@ -111,6 +111,7 @@ public:
     void setVariable32(const std::string &from);
     double valDouble();
     int64_t valInt64();
+    bool valBool();
 
 protected:
     // let all of the general field classes get at our value/type

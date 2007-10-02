@@ -325,6 +325,40 @@ GeneralValue::valInt64()
     return 0;
 }
 
+bool
+GeneralValue::valBool()
+{
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt64()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte ? true : false;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32 ? true : false;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64 ? true : false;
+	    break;
+	case ExtentType::ft_double:
+	    return gvval.v_double ? true : false;
+	    break;
+	case ExtentType::ft_variable32: {
+	    FATAL_ERROR("haven't decided how to translate strings to bools");
+	    return false;
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+	}
+    return 0;
+}
+
 
 void GeneralField::enableCSV(void){
     csvEnabled = true;

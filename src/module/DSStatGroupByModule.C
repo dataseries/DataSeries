@@ -14,8 +14,6 @@
 
 #include <DataSeries/DSStatGroupByModule.H>
 
-#include "DSStatGroupByParse.hpp"
-
 using namespace std;
 
 DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
@@ -38,15 +36,9 @@ void
 DSStatGroupByModule::prepareForProcessing()
 {
     // Have to do this here rather than constructor as we need the XML
-    // from the first extent in order to build the generalfield
+    // from the first extent in order to build the generalfields
 
-    startScanning(expression);
-    
-    expr = NULL;
-    DSStatGroupBy::Parser parser(*this, scanner_state);
-    int ret = parser.parse();
-    INVARIANT(ret == 0 && expr != NULL, "parse failed");
-    finishScanning();
+    expr = DSExpr::make(series, expression);
 
     groupby = GeneralField::create(NULL, series, groupby_name);
 }
@@ -66,7 +58,7 @@ DSStatGroupByModule::processRow()
 	}
 	mystats[groupby->val()] = stat;
     }
-    stat->add(expr->value());
+    stat->add(expr->valDouble());
 }
 
 void

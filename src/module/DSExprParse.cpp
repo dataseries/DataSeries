@@ -33,32 +33,39 @@
    version 2.2 of Bison.  */
 
 // Take the name prefix into account.
-#define yylex   DSStatGroupBylex
+#define yylex   DSExprImpllex
 
-#include "DSStatGroupByParse.hpp"
+#include "DSExprParse.hpp"
 
 /* User implementation prologue.  */
-#line 40 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 59 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
 
+
+#include <Lintel/Clock.H>
+
+#include <DataSeries/GeneralField.H>
 
 YY_DECL;
 
 #undef yylex
-#define yylex DSStatGroupByScanlex
+#define yylex DSExprScanlex
 
-namespace DSStatGroupBy {
-    class ExprConstant : public Expr {
+namespace DSExprImpl {
+    // TODO: make valGV to do general value calculations.
+
+    class ExprConstant : public DSExpr {
     public:
 	ExprConstant(double v) : val(v) { }
-	virtual double value() { return val; }
+	virtual double valDouble() { return val; }
 	// TODO: consider parsing the string as both a double and an
 	// int64 to get better precision.
-	virtual int64_t valueInt64() { return static_cast<int64_t>(val); }
+	virtual int64_t valInt64() { return static_cast<int64_t>(val); }
+	virtual bool valBool() { return val ? true : false; }
     private:
 	double val;
     };
 
-    class ExprField : public Expr {
+    class ExprField : public DSExpr {
     public:
 	ExprField(ExtentSeries &series, const std::string &fieldname)
 	{ 
@@ -83,102 +90,124 @@ namespace DSStatGroupBy {
 	    delete field;
 	};
 
-	virtual double value() {
+	virtual double valDouble() {
 	    return field->valDouble();
 	}
-	virtual int64_t valueInt64() {
+	virtual int64_t valInt64() {
 	    return GeneralValue(*field).valInt64();
+	}
+	virtual bool valBool() {
+	    return GeneralValue(*field).valBool();
 	}
     private:
 	GeneralField *field;
     };
 
-    class ExprUnary : public Expr {
+    class ExprUnary : public DSExpr {
     public:
-	ExprUnary(Expr *_subexpr)
+	ExprUnary(DSExpr *_subexpr)
 	    : subexpr(_subexpr) { }
 	virtual ~ExprUnary() {
 	    delete subexpr;
 	}
     protected:
-	Expr *subexpr;
+	DSExpr *subexpr;
     };
 
-    class ExprBinary : public Expr {
+    class ExprBinary : public DSExpr {
     public:
-	ExprBinary(Expr *_left, Expr *_right)
+	ExprBinary(DSExpr *_left, DSExpr *_right)
 	    : left(_left), right(_right) { }
 	virtual ~ExprBinary() {
 	    delete left; 
 	    delete right;
 	}
     protected:
-	Expr *left, *right;
+	DSExpr *left, *right;
     };
 
     class ExprAdd : public ExprBinary {
     public:
-	ExprAdd(Expr *left, Expr *right) : 
+	ExprAdd(DSExpr *left, DSExpr *right) : 
 	    ExprBinary(left,right) { }
-	virtual double value() { return left->value() + right->value(); }
-	virtual int64_t valueInt64() { 
-	    return left->valueInt64() + right->valueInt64(); 
+	virtual double valDouble() { 
+	    return left->valDouble() + right->valDouble(); 
+	}
+	virtual int64_t valInt64() { 
+	    return left->valInt64() + right->valInt64(); 
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
 	}
     };
 
     class ExprSubtract : public ExprBinary {
     public:
-	ExprSubtract(Expr *left, Expr *right) : 
+	ExprSubtract(DSExpr *left, DSExpr *right) : 
 	    ExprBinary(left,right) { }
-	virtual double value() { return left->value() - right->value(); }
-	virtual int64_t valueInt64() { 
-	    return left->valueInt64() - right->valueInt64(); 
+	virtual double valDouble() { 
+	    return left->valDouble() - right->valDouble(); 
+	}
+	virtual int64_t valInt64() { 
+	    return left->valInt64() - right->valInt64(); 
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
 	}
     };
 
     class ExprMultiply : public ExprBinary {
     public:
-	ExprMultiply(Expr *left, Expr *right) : 
+	ExprMultiply(DSExpr *left, DSExpr *right) : 
 	    ExprBinary(left,right) { }
-	virtual double value() { return left->value() * right->value(); }
-	virtual int64_t valueInt64() { 
-	    return left->valueInt64() * right->valueInt64(); 
+	virtual double valDouble() { 
+	    return left->valDouble() * right->valDouble(); 
+	}
+	virtual int64_t valInt64() { 
+	    return left->valInt64() * right->valInt64(); 
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
 	}
     };
 
     class ExprDivide : public ExprBinary {
     public:
-	ExprDivide(Expr *left, Expr *right) : 
+	ExprDivide(DSExpr *left, DSExpr *right) : 
 	    ExprBinary(left,right) { }
-	virtual double value() { return left->value() / right->value(); }
-	virtual int64_t valueInt64() { 
-	    return left->valueInt64() / right->valueInt64(); 
+	virtual double valDouble() { 
+	    return left->valDouble() / right->valDouble(); 
+	}
+	virtual int64_t valInt64() { 
+	    return left->valInt64() / right->valInt64(); 
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
 	}
     };
 
     class ExprFnTfracToSeconds : public ExprUnary {
     public:
-	ExprFnTfracToSeconds(Expr *subexpr) 
+	ExprFnTfracToSeconds(DSExpr *subexpr) 
 	    : ExprUnary(subexpr) 
 	{ }
-	virtual double value() {
-	    return subexpr->valueInt64() / 4294967296.0;
+	virtual double valDouble() {
+	    return subexpr->valInt64() / 4294967296.0;
 	}
-	virtual int64_t valueInt64() {
-	    // TODO: Should we warn/error on this? we're dropping lots
-	    // of precision here.  Also should we round or truncate as
-	    // is currently implemented?
-	    int64_t t = subexpr->valueInt64();
-	    return Clock::TfracToSec(t);
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("shouldn't try to get valInt64 using fn.TfracToSeconds, it drops too much precision");
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
 	}
     };
 }
 
-using namespace DSStatGroupBy;
+using namespace DSExprImpl;
 
 
 /* Line 317 of lalr1.cc.  */
-#line 182 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.cpp"
+#line 211 "/home/anderse/projects/DataSeries/src/module/DSExprParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -237,7 +266,7 @@ do {					\
 #define YYABORT		goto yyabortlab
 #define YYERROR		goto yyerrorlab
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
 #if YYERROR_VERBOSE
 
@@ -281,10 +310,10 @@ namespace DSStatGroupBy
 #endif
 
   /// Build a parser object.
-  Parser::Parser (DSStatGroupByModule &module_yyarg, void *scanner_state_yyarg)
+  Parser::Parser (DSExprImpl::Driver &driver_yyarg, void *scanner_state_yyarg)
     : yydebug_ (false),
       yycdebug_ (&std::cerr),
-      module (module_yyarg),
+      driver (driver_yyarg),
       scanner_state (scanner_state_yyarg)
   {
   }
@@ -524,53 +553,53 @@ namespace DSStatGroupBy
     switch (yyn)
       {
 	  case 2:
-#line 190 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
-    { module.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
+#line 238 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+    { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 195 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 243 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 4:
-#line 196 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 244 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 197 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 245 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 198 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 246 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 199 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 247 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 8:
-#line 200 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
-    { (yyval.expression) = new ExprField(module.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
+#line 248 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
     break;
 
   case 9:
-#line 201 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 249 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
     break;
 
   case 10:
-#line 202 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 250 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 574 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.cpp"
+#line 603 "/home/anderse/projects/DataSeries/src/module/DSExprParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -907,8 +936,8 @@ namespace DSStatGroupBy
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,   190,   190,   195,   196,   197,   198,   199,   200,   201,
-     202
+         0,   238,   238,   243,   244,   245,   246,   247,   248,   249,
+     250
   };
 
   // Print the state stack on the debug stream.
@@ -994,15 +1023,15 @@ namespace DSStatGroupBy
   const unsigned int Parser::yyuser_token_number_max_ = 260;
   const Parser::token_number_type Parser::yyundef_token_ = 2;
 
-} // namespace DSStatGroupBy
+} // namespace DSExprImpl
 
-#line 205 "/home/anderse/projects/DataSeries/src/module/DSStatGroupByParse.yy"
+#line 253 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
 
 
 void
-DSStatGroupBy::Parser::error(const DSStatGroupBy::location &,
-  	                     const std::string &)
+DSExprImpl::Parser::error(const DSExprImpl::location &,
+			  const std::string &err)
 {
-	FATAL_ERROR("??");
+	FATAL_ERROR(boost::format("error parsing: %s") % err);
 }
 
