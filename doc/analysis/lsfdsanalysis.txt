@@ -1,0 +1,26 @@
+0) Download and build the DataSeries source
+1) Download some of the LSF dataseries files from
+   http://...
+2) Repack the files with lzo, e.g. (changing file/transform arguments as needed):
+   % batch-parallel dsrepack compress=lzo transform='s,2007/,2007-lzo/,' -- 2007
+
+3) Index the files, e.g. (with appropriate substitutions for the
+   directory names:
+   % dsextentindex --compress-lzo --new Batch::LSF::Grizzly cluster_name,submit_time,end_time ~/nobackup-data/2007-lzo/index.ds `find $HOME/nobackup-data/2007-lzo -name \*.ds -print`
+   
+   You can update an index by just running:
+   % dsextentindex --compress-lzo ~/nobackup-data/2007-lzo/index.ds `find $HOME/nobackup-data/2007-lzo -name \*.ds -print`
+   
+   which will handle the case where you download multiple times, index
+   directories separately, or start indexing before the repacking step
+   completes.
+
+4) Run an analysis: 
+   % lsfdsanalysis -a 86400:1167638400:1199174400:all ~/nobackup-data/2007-lzo/index.ds 1167638400 1199174400
+
+   which will calculate for the entire farm that number of pending
+   jobs, running jobs and user system and idle time for those jobs
+   grouped into day long intervals.  The assumption for the idle
+   calculation is that each job is using one cpu, which is not
+   entirely accurate over this data set.
+

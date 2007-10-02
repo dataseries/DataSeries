@@ -234,7 +234,9 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       wrote_library(false),
       compression_modes(_compression_modes),
       compression_level(_compression_level),
-      chained_checksum(0), shutdown_workers(false)
+      chained_checksum(0), 
+      writes_in_progress_count(0),
+      shutdown_workers(false)
 {
     stats.packed_size += 2*4 + 4*8;
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
@@ -470,11 +472,22 @@ DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
     } 
 	
     available_work_cond.signal();
-    while(pending_work.size() > 2 * compressors.size()) {
+    while((writes_in_progress_count + pending_work.size()) 
+	  > 2 * compressors.size()) {
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
 	
+}
+
+void
+DataSeriesSink::flushPending()
+{
+    mutex.lock();
+    while((writes_in_progress_count + pending_work.size()) > 0) {
+	available_queue_cond.wait(mutex);
+    }
+    mutex.unlock();
 }
 
 void
@@ -483,6 +496,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
     if (!have_lock) {
 	mutex.lock();
     }
+    INVARIANT(writes_in_progress_count == 0, "bad");
     Deque<toCompress *> to_write;
     while(!pending_work.empty() 
 	  && pending_work.front()->compressed.size() > 0
@@ -491,7 +505,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	to_write.push_back(pending_work.front());
 	pending_work.pop_front();
     }
-    available_queue_cond.broadcast();
+    writes_in_progress_count = to_write.size();
     mutex.unlock();
 
     while(!to_write.empty()) {
@@ -508,6 +522,12 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
 	delete tc;
     }
+
+    mutex.lock();
+    writes_in_progress_count = 0;
+    // Don't say there is free space until we actually finished writing.
+    available_queue_cond.broadcast();
+    mutex.unlock();
 }
 
 void

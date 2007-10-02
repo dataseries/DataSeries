@@ -89,7 +89,7 @@ public:
 	int i = visible_fields[columnnum];
 	return field_info[i].name;
     }
-    const int fixedrecordsize() const { return fixed_record_size; }
+    const unsigned fixedrecordsize() const { return fixed_record_size; }
 
     ExtentType(const std::string &xmldesc);
     const int getNFields() const { return visible_fields.size(); };
@@ -124,7 +124,7 @@ public:
     unsigned majorVersion() const { return major_version; }
     unsigned minorVersion() const { return minor_version; }
 
-    const std::string &getNamespace() { return type_namespace; }
+    const std::string &getNamespace() const { return type_namespace; }
 protected:
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
@@ -176,7 +176,7 @@ protected:
     };
     std::vector<pack_other_relativeT> pack_other_relative;
     struct pack_self_relativeT {
-	int field_num;
+	unsigned field_num;
 	double double_prev_v;
 	double scale,multiplier;
 	int32 int32_prev_v;

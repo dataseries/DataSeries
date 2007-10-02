@@ -13,6 +13,7 @@
 #define __ROW_ANALYSIS_MODULE_H
 
 #include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/DSExpr.hpp>
 
 class SequenceModule;
 
@@ -49,19 +50,37 @@ public:
     /** print your result to stdout. Default function prints nothing */
     virtual void printResult();
 
-    /** \brief iterate across the sequence printing results if possible.
-      * Tries to dynamically case each module in the sequence to a
-      * RowAnalysisModule.  If it does not succeed, it ignores the
-      * module.
+    /** \brief processRow is only called if where evaluates to true
+     *
+     * Sets an expression that controls whether or not the processRow
+     * function will be called.  For each row the expression is
+     * evaluated, and if it evaluates to true, then processRow will be
+     * called. An empty expression is treated as true for all values.
+     *
+     * @param where the expression to evaluate
+     */
+    void setWhereExpr(const std::string &where_expression);
 
-      * @param expected_nonprintable if >= 0 aborts if # non-printable doesn't match expectation
-      * @return the number of modules that could not be printed */
+    /** \brief iterate across the sequence printing results if possible.
+     * Tries to dynamically case each module in the sequence to a
+     * RowAnalysisModule.  If it does not succeed, it ignores the
+     * module.
+
+     * @param expected_nonprintable if >= 0 aborts if # non-printable doesn't match expectation
+     * @return the number of modules that could not be printed */
     static int printAllResults(SequenceModule &sequence,
 			       int expected_nonprintable = -1);
+
+    uint64_t processed_rows, ignored_rows;
+
 protected:
     ExtentSeries series;
     DataSeriesModule &source;
+
+private:
     bool prepared;
+    std::string where_expr_str;
+    DSExpr *where_expr;
 };
 
 #endif

@@ -1,0 +1,110 @@
+Begin-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+total time range 1167316316 .. 1167681547; 496 total records, 496 records in window 1167681240 .. 1167681600
+0 jobs over 100% cpu utilization, 0 capped at 400% utilization
+columns are: time, pend_count, run_count, user_time, system_time, idle_time
+values are normalized to 60 seconds
+Begin Group all; subent all
+  1167681240 286.28 11.70 4.52 0.59 6.59
+  1167681300 229.87 76.10 35.81 3.86 36.43
+  1167681360 176.78 66.08 36.52 3.86 25.71
+  1167681420 91.73 85.00 39.27 4.00 41.73
+  1167681480 11.52 64.55 25.33 2.97 36.25
+  1167681540 0.00 1.30 0.37 0.06 0.87
+End Group all; subent all
+Begin Group production; subent 0387948b0fd460bfa4869f2dcbbd5383
+  1167681240 206.43 4.38 1.52 0.21 2.65
+  1167681300 180.72 36.13 17.62 1.69 16.83
+  1167681360 144.08 41.67 23.74 2.27 15.66
+  1167681420 76.45 58.15 26.54 2.65 28.95
+  1167681480 9.12 44.70 18.35 1.89 24.45
+  1167681540 0.00 0.82 0.27 0.04 0.51
+End Group production; subent 0387948b0fd460bfa4869f2dcbbd5383
+Begin Group production; subent 462dfed79b1d496cff59e85818b86620
+  1167681240 51.13 5.12 2.13 0.27 2.71
+  1167681300 33.78 23.38 10.35 1.34 11.70
+  1167681360 22.73 14.68 7.21 1.08 6.39
+  1167681420 10.95 16.37 8.19 0.89 7.30
+  1167681480 1.78 13.57 4.70 0.77 8.10
+  1167681540 0.00 0.38 0.10 0.02 0.26
+End Group production; subent 462dfed79b1d496cff59e85818b86620
+Begin Group production; subent 90f6c50bbfe393b1b04f995ed4659764
+  1167681240 28.72 2.20 0.87 0.11 1.23
+  1167681300 15.37 16.58 7.85 0.84 7.90
+  1167681360 9.97 9.73 5.57 0.51 3.66
+  1167681420 4.33 10.48 4.54 0.46 5.48
+  1167681480 0.62 6.28 2.28 0.31 3.70
+  1167681540 0.00 0.10 0.01 0.00 0.09
+End Group production; subent 90f6c50bbfe393b1b04f995ed4659764
+End-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+
+Begin-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+total time range 1167316316 .. 1167681547; 496 total records, 496 records in window 1167681240 .. 1167681600
+0 jobs over 100% cpu utilization, 0 capped at 400% utilization
+columns are: time, pend_count, run_count, user_time, system_time, idle_time
+values are normalized to 120 seconds
+Begin Group all; subent all
+  1167681240 258.07 43.90 20.17 2.23 21.51
+  1167681360 134.26 75.54 37.89 3.93 33.72
+  1167681480 5.76 32.93 12.85 1.52 18.56
+End Group all; subent all
+Begin Group sequence; subent 0387948b0fd460bfa4869f2dcbbd5383:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+  1167681240 193.57 20.26 9.57 0.95 9.74
+  1167681360 110.27 49.91 25.14 2.46 22.31
+  1167681480 4.56 22.76 9.31 0.96 12.48
+End Group sequence; subent 0387948b0fd460bfa4869f2dcbbd5383:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+Begin Group sequence; subent 462dfed79b1d496cff59e85818b86620:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+  1167681240 42.46 14.25 6.24 0.81 7.21
+  1167681360 16.84 15.53 7.70 0.98 6.84
+  1167681480 0.89 6.97 2.40 0.40 4.18
+End Group sequence; subent 462dfed79b1d496cff59e85818b86620:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+Begin Group sequence; subent 90f6c50bbfe393b1b04f995ed4659764:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+  1167681240 22.04 9.39 4.36 0.47 4.56
+  1167681360 7.15 10.11 5.05 0.49 4.57
+  1167681480 0.31 3.19 1.14 0.15 1.89
+End Group sequence; subent 90f6c50bbfe393b1b04f995ed4659764:732e38a6d31cc88389678b36a8c388af3e89bdfac4e88b9228922c3586a2c609
+End-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+
+Begin-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+total time range 1167316316 .. 1167681547; 326 total records, 326 records in window 1167681240 .. 1167681600
+0 jobs over 100% cpu utilization, 0 capped at 400% utilization
+columns are: time, pend_count, run_count, user_time, system_time, idle_time
+values are normalized to 60 seconds
+Begin Group all; subent all
+  1167681240 194.50 0.00 0.00 0.00 0.00
+  1167681300 199.67 0.00 0.00 0.00 0.00
+  1167681360 176.78 39.42 20.60 2.50 16.32
+  1167681420 91.73 82.90 37.69 3.94 41.27
+  1167681480 11.52 64.55 25.33 2.97 36.25
+  1167681540 0.00 1.30 0.37 0.06 0.87
+End Group all; subent all
+Begin Group production; subent 0387948b0fd460bfa4869f2dcbbd5383
+  1167681240 157.50 0.00 0.00 0.00 0.00
+  1167681300 162.67 0.00 0.00 0.00 0.00
+  1167681360 144.08 25.93 13.88 1.52 10.53
+  1167681420 76.45 57.07 25.71 2.62 28.74
+  1167681480 9.12 44.70 18.35 1.89 24.45
+  1167681540 0.00 0.82 0.27 0.04 0.51
+End Group production; subent 0387948b0fd460bfa4869f2dcbbd5383
+Begin Group production; subent 462dfed79b1d496cff59e85818b86620
+  1167681240 26.00 0.00 0.00 0.00 0.00
+  1167681300 26.00 0.00 0.00 0.00 0.00
+  1167681360 22.73 8.10 3.75 0.67 3.69
+  1167681420 10.95 15.45 7.51 0.86 7.08
+  1167681480 1.78 13.57 4.70 0.77 8.10
+  1167681540 0.00 0.38 0.10 0.02 0.26
+End Group production; subent 462dfed79b1d496cff59e85818b86620
+Begin Group production; subent 90f6c50bbfe393b1b04f995ed4659764
+  1167681240 11.00 0.00 0.00 0.00 0.00
+  1167681300 11.00 0.00 0.00 0.00 0.00
+  1167681360 9.97 5.38 2.97 0.30 2.11
+  1167681420 4.33 10.38 4.47 0.46 5.46
+  1167681480 0.62 6.28 2.28 0.31 3.70
+  1167681540 0.00 0.10 0.01 0.00 0.09
+End Group production; subent 90f6c50bbfe393b1b04f995ed4659764
+End-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
+extents: 0.25 MB -> 0.32 MB in 0.00 secs decode time
+                   common
+MB compressed:       0.25
+MB uncompressed:     0.32
+decode seconds:      0.00
+wait fraction:       0.00

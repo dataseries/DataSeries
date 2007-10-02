@@ -1,0 +1,64 @@
+# Extent Types ...
+<ExtentType namespace="dataseries.hpl.hp.com" name="DSIndex::Extent::Info" version="1.0">
+  <field type="variable32" name="type-prefix" />
+  <field type="variable32" name="fields" />
+</ExtentType>
+
+<ExtentType namespace="ssd.hpl.hp.com" version="1.0" name="DSIndex::Extent::MinMax::Batch::LSF::Grizzly">
+  <field type="variable32" name="filename" />
+  <field type="int64" name="extent_offset" />
+  <field type="int32" name="rowcount" />
+  <field type="variable32" name="min:cluster_name" />
+  <field type="variable32" name="max:cluster_name" />
+  <field type="bool" name="hasnull:cluster_name" />
+  <field type="int32" name="min:submit_time" />
+  <field type="int32" name="max:submit_time" />
+  <field type="bool" name="hasnull:submit_time" />
+  <field type="int32" name="min:end_time" />
+  <field type="int32" name="max:end_time" />
+  <field type="bool" name="hasnull:end_time" />
+</ExtentType>
+
+<ExtentType namespace="dataseries.hpl.hp.com" name="DSIndex::Extent::ModifyTimes" version="1.0" >
+  <field type="variable32" name="filename" />
+  <field type="int64" name="modify-time" />
+</ExtentType>
+
+<ExtentType name="DataSeries: ExtentIndex">
+  <field type="int64" name="offset" />
+  <field type="variable32" name="extenttype" />
+</ExtentType>
+
+<ExtentType name="DataSeries: XmlType">
+  <field type="variable32" name="xmltype" />
+</ExtentType>
+
+# Extent, type='DSIndex::Extent::Info'
+type-prefix fields
+Batch::LSF::Grizzly cluster_name,submit_time,end_time
+# Extent, type='DSIndex::Extent::MinMax::Batch::LSF::Grizzly'
+filename extent_offset rowcount min:cluster_name max:cluster_name hasnull:cluster_name min:submit_time max:submit_time hasnull:submit_time min:end_time max:end_time hasnull:end_time
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 1336 24 rwc rwc F 1167622970 1167681301 F 1167681309 1167681323 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 14372 24 rwc rwc F 1167463437 1167681309 F 1167681324 1167681334 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 27232 24 rwc rwc F 1167427584 1167681318 F 1167681334 1167681346 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 40720 24 rwc rwc F 1167364688 1167681341 F 1167681346 1167681357 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 53724 24 rwc rwc F 1167398483 1167681344 F 1167681357 1167681371 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 66356 24 rwc rwc F 1167521639 1167681369 F 1167681371 1167681383 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 79768 24 rwc rwc F 1167510718 1167681377 F 1167681384 1167681394 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 93004 25 rwc rwc F 1167421984 1167681387 F 1167681394 1167681408 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 105428 24 rwc rwc F 1167406050 1167681403 F 1167681410 1167681420 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 118508 24 rwc rwc F 1167386499 1167681413 F 1167681420 1167681432 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 131580 25 rwc rwc F 1167391189 1167681414 F 1167681432 1167681446 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 144144 24 rwc rwc F 1167322177 1167681433 F 1167681446 1167681459 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 156340 24 rwc rwc F 1167344230 1167681435 F 1167681459 1167681466 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 169200 24 rwc rwc F 1167403520 1167681440 F 1167681467 1167681473 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 181824 24 rwc rwc F 1167576038 1167681452 F 1167681474 1167681486 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 194816 24 rwc rwc F 1167447944 1167681459 F 1167681486 1167681496 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 208000 24 rwc rwc F 1167386481 1167681467 F 1167681497 1167681509 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 220408 25 rwc rwc F 1167333080 1167681499 F 1167681509 1167681518 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 232508 25 rwc rwc F 1167316316 1167681502 F 1167681518 1167681529 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 245400 24 rwc rwc F 1167356858 1167681513 F 1167681529 1167681543 F
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds 258472 12 rwc rwc F 1167333085 1167681522 F 1167681543 1167681547 F
+# Extent, type='DSIndex::Extent::ModifyTimes'
+filename modify-time
+/home/anderse/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds ########
