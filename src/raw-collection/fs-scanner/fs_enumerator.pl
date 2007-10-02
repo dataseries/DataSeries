@@ -20,6 +20,7 @@ use File::Find;
 use MIME::Base64;
 use strict;
 
+$|=1;
 my $maxDepth = 1;
 my $curDepth = 0;
 my $entryRotateCount = 1000000;
@@ -52,6 +53,13 @@ my $curSize = 0;
 
 while (@pending > 0) {
     my $thing = shift @pending;
+    my $logname = $thing; 
+    $logname =~ s!/!_!go;
+    $logname = "$outFileSpec-$logname";
+    if (-f "$logname-done") {
+	print "Already scanned $thing, skipping.\n";
+	next;
+    }
     waitFor($thing);
     if (-f $thing) {
  	open (FILEOFDIRS, $thing) || die "couldn't open $thing ($!)";
@@ -61,28 +69,24 @@ while (@pending > 0) {
 	}
 	close(FILEOFDIRS);
     } elsif (-d $thing) {
-	my $dirCopy = $thing;
-	$dirCopy =~ s!/!_!go;
-	$outFileSpecComplete = "$outFileSpec-$dirCopy";
-	if (-f "$outFileSpecComplete-done") {
-	    print "Already scanned $thing\n";
-	} else {
-	    print "logging to $outFileSpecComplete\n";
-	    $outFileCurCount = 0;
-	    rotateLogs();
+	$outFileSpecComplete = $logname;
+	die "??" if -e "$logname-done";
 
-	    $totalSize = $totalCount = $curSize = $outFileEntryCount = 0;
-	    $baseDirectory = $thing;
-	    find(\&wanted, $thing);
-	    print STDERR "done with \#$processed_dir_count: $thing\n";
-	    ++$processed_dir_count;
-	    close(OUTFILE);
-	    open(FOO, ">$outFileSpecComplete-done")
-		or die "boo";
-	    close(FOO);
-	}
+	print "logging to $outFileSpecComplete\n";
+	$outFileCurCount = 0;
+	rotateLogs();
+
+	$totalSize = $totalCount = $curSize = $outFileEntryCount = 0;
+	$baseDirectory = $thing;
+	find(\&wanted, $thing);
+	print STDERR "done with \#$processed_dir_count: $thing\n";
+	++$processed_dir_count;
+	close(OUTFILE);
+	open(FOO, ">$outFileSpecComplete-done")
+	    or die "boo";
+	close(FOO);
     } else {
-	die "neither a directory nor file be: $thing";
+	warn "WARNING: neither a directory nor file be, so skipping: $thing";
     }
 }
 
@@ -90,13 +94,16 @@ sub waitFor {
     my($what) = @_;
 
     print "waitFor $what: ";
-    for(my $i = 0; $i < 60; ++$i) {
+    for(my $i = 0; $i < 300; ++$i) {
 	last if -d $what || -f $what;
 	print ".";
 	sleep(1);
     }
-    print "ok." if -d $what || -f $what;
-    print "\n";
+    if (-d $what || -f $what) {
+	print "ok.\n";
+    } else {
+	print "failed, waited 300 seconds\n";
+    }
 }
 
 sub rotateLogs {

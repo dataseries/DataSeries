@@ -1049,6 +1049,7 @@ static hostgroup_defnsT hostgroup_defns[] =
     { "0697f0c72a559d090ca02a7d2946ba4c", "dedicated-bear-6" },
     { "2979bc3e40d19293d68b3e019455fb3c", "dedicated-bear-7" },
     { "660d9778aee6bc3701abc195b8365437", "dedicated-bear-8" },
+    { "801ea1a7e69bf1462e828576909db89b", "dedicated-bear-9" },
 };
 
 void prepEncryptedStuff()
