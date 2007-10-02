@@ -311,6 +311,17 @@ DataSeriesSink::close()
     writeOutPending();
     INVARIANT(pending_work.empty(), "bad");
     ExtentType::int64 index_offset = cur_offset;
+
+    // TODO: make a warning and/or test case for this?
+
+    // Special case handling of record for index series; this will
+    // present "difficulties" in the future when we want to put the
+    // compression type into the index series since we don't know that
+    // until after we've already compressed the data.
+    index_series.newRecord(); 
+    field_extentOffset.set(cur_offset);
+    field_extentType.set(index_extent.type->name);
+
     pending_work.push_back(new toCompress(index_extent, NULL));
     pending_work.front()->in_progress = true;
     processToCompress(pending_work.front());
