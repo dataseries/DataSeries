@@ -69,6 +69,7 @@ void
 RowAnalysisModule::setWhereExpr(const std::string &expr)
 {
     where_expr_str = expr;
+    INVARIANT(!prepared, "can't set where expr after prepare");
 }
 
 int

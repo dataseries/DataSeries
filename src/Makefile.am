@@ -221,7 +221,7 @@ ran.check-dsstatgroupby: dsstatgroupby
 	touch $@
 
 ran.check-lsfdsanalysis: lsfdsanalysis
-	./lsfdsanalysis -a 60:1167681240:1167681600:all,production -a 120:1167681240:1167681600:all,sequence $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
 	touch $@
 

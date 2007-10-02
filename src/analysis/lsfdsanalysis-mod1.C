@@ -39,6 +39,7 @@ static const string FarmLoad_groupNames[] = {
 struct FarmLoadArgs {
     bool enable_group[FarmLoad_Ngroups], noerstest;
     unsigned rollup_granularity, rollup_start, rollup_end; 
+    string where_expr;
     FarmLoadArgs() {
 	for(unsigned i = 0; i < FarmLoad_Ngroups; ++i) {
 	    enable_group[i] = false;
@@ -125,6 +126,7 @@ public:
 	for(unsigned i = 1;i<rollups.size();++i) {
 	    rollups[i] = new FarmLoadHash;
 	}
+	setWhereExpr(args.where_expr);
     }
     virtual ~FarmLoad() { }
     
@@ -459,16 +461,24 @@ handleFarmLoadArgs(const string &arg)
     FarmLoadArgs *ret = new FarmLoadArgs();
     static const string str_erstest("erstest");
 
-    const string usage("invalid option to -a, expect  <granularity>:<start-secs>:<end-secs>:<rollupgroups...>; use no args to see valid rollupgroups");
+    const string usage("invalid option to -a, expect  <granularity>:<start-secs>:<end-secs>:<rollupgroups...>:<where-clause>\n   use ? for the group to see valid rollupgroups, where-clause may be empty");
 
     vector<string> args;
     split(arg, ":", args);
-    INVARIANT(args.size() == 4, usage);
+    INVARIANT(args.size() == 5, usage);
 
+    if (args[4] == "?") {
+	cout << "Valid rollup groups: " << FarmLoad_groupNames[0];
+	for(unsigned i = 1; i < FarmLoad_Ngroups; ++i) {
+	    cout << ", " << FarmLoad_groupNames[i];
+	}
+	cout << "\n";
+	exit(0);
+    }
     ret->rollup_granularity = stringToInt32(args[0]);
     unsigned start = stringToUInt32(args[1]);
     unsigned end = stringToUInt32(args[2]);
-
+    
     ret->rollup_start = roundDown(start, ret->rollup_granularity);
     ret->rollup_end = roundUp(end, ret->rollup_granularity);
 
@@ -507,6 +517,7 @@ handleFarmLoadArgs(const string &arg)
 	}
     }
 
+    ret->where_expr = args[4];
     INVARIANT(ret->rollup_granularity > 0,"bad");
     INVARIANT(ret->rollup_start < ret->rollup_end,
 	      boost::format("bad %d %d") % ret->rollup_start % ret->rollup_end);

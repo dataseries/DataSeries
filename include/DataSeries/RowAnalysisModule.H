@@ -55,7 +55,7 @@ public:
      * Sets an expression that controls whether or not the processRow
      * function will be called.  For each row the expression is
      * evaluated, and if it evaluates to true, then processRow will be
-     * called.
+     * called. An empty expression is treated as true for all values.
      *
      * @param where the expression to evaluate
      */
