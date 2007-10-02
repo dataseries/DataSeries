@@ -38,7 +38,7 @@
 #include "DSExprParse.hpp"
 
 /* User implementation prologue.  */
-#line 59 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 60 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
 
 
 #include <Lintel/Clock.H>
@@ -553,47 +553,47 @@ namespace DSExprImpl
     switch (yyn)
       {
 	  case 2:
-#line 238 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 239 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 243 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 244 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 4:
-#line 244 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 245 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 245 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 246 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 246 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 247 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 247 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 248 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 8:
-#line 248 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 249 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
     break;
 
   case 9:
-#line 249 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 250 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
     break;
 
   case 10:
-#line 250 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 251 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
@@ -936,8 +936,8 @@ namespace DSExprImpl
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,   238,   238,   243,   244,   245,   246,   247,   248,   249,
-     250
+         0,   239,   239,   244,   245,   246,   247,   248,   249,   250,
+     251
   };
 
   // Print the state stack on the debug stream.
@@ -1025,7 +1025,7 @@ namespace DSExprImpl
 
 } // namespace DSExprImpl
 
-#line 253 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 254 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
 
 
 void

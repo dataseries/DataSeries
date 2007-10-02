@@ -28,7 +28,8 @@ namespace DSExprImpl {
     class Driver {
     public:
 	// Implementation in DSExpr.cpp
-	Driver(ExtentSeries &_series) : expr(NULL), series(_series) { }
+	Driver(ExtentSeries &_series) 
+	    : expr(NULL), series(_series), scanner_state(NULL) { }
 	~Driver();
 
 	void doit(const std::string &str);

@@ -218,10 +218,12 @@ ran.check-dsstatgroupby: dsstatgroupby
 	cmp test.dsstatgroupby.1 $(top_srcdir)/check-data/test.dsstatgroupby.1.ref
 	./dsstatgroupby basic 'Batch::LSF' 'start_time - submit_time' 'production' 'cpu_time/(end_time-start_time)' production -- ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.2
 	cmp test.dsstatgroupby.2 $(top_srcdir)/check-data/test.dsstatgroupby.2.ref
+	touch $@
 
 ran.check-lsfdsanalysis: lsfdsanalysis
 	./lsfdsanalysis -a 60:1167681240:1167681600:all,production -a 120:1167681240:1167681600:all,sequence $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	touch $@
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

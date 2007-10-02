@@ -23,7 +23,7 @@ DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
 					 ExtentSeries::typeCompatibilityT tc)
     : RowAnalysisModule(source, tc), expression(_expression), 
       groupby_name(_groupby), stattype(_stattype), groupby(NULL),
-      expr(NULL), scanner_state(NULL)
+      expr(NULL)
 {
 }
 

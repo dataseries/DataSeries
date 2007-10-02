@@ -3,6 +3,10 @@
 #include <DataSeries/DSExpr.hpp>
 #include <module/DSExprParse.hpp>
 
+DSExpr::~DSExpr()
+{
+}
+
 DSExpr *
 DSExpr::make(ExtentSeries &series, std::string &expression) 
 {
