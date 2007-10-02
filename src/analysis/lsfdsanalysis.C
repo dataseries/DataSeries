@@ -1306,11 +1306,13 @@ parseopts(int argc, char *argv[])
 	    break;
 	}
 	case 'b': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    LSFDSAnalysisMod::handleTraceMetaIdArgs(optarg);
 	    options[optTraceMetaId] = true;
 	    break;
 	}
 	case 'c': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    vector<string> opts;
 	    split(optarg,":",opts);
 	    AssertAlways(opts.size() == 3,
@@ -1334,6 +1336,7 @@ parseopts(int argc, char *argv[])
 //	    break;
 //	}
 	case 'e': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optProductionReport] = true;
 	    break;
 	}
@@ -1344,6 +1347,7 @@ parseopts(int argc, char *argv[])
 //	    break;
 //	}
 	case 'g': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optLSFJobTimePredict] = true;
 	    break;
 	}
@@ -1352,18 +1356,22 @@ parseopts(int argc, char *argv[])
 	    exit(1);
 	}
 	case 'i': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optHostAvailabilityReport] = true;
 	    break;
 	}
 	case 'j': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optComplexityAnalysis] = true;
 	    break;
 	}
 	case 'k': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optLSFJobStats] = true;
 	    break;
 	}
 	case 'l': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optLSFSlowJobs] = true;
 	    vector<string> opts;
 	    split(optarg,":",opts);
@@ -1380,11 +1388,13 @@ parseopts(int argc, char *argv[])
 	    break;
 	}
 	case 'm': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optHostCalibration] = true;
 	    hostcalibration_refhost = optarg;
 	    break;
 	}
 	case 'n': {
+	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    options[optBestEffort] = true;
 	    vector<string> opts;
 	    split(optarg,":",opts);
