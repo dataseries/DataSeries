@@ -21,21 +21,32 @@ using namespace std;
 void 
 usage(const std::string &program_name, const std::string &error)
 {
-    cerr << error << endl 
+    // TODO: should we make the usage ... from <prefix> in <file...>?
+    cerr << error << "\n"
 	 << "Usage: " << program_name 
-	 << " <stat-type> <extent-type-prefix> (<expr> <group-by>)* -- file..."
-	 << endl;
+	 << " <extent-type-prefix> (<stat-type> <expr> [where <expr>] group by <group-by>)*\n"
+	 << "  from file...\n"
+	 << "  supported stat-types: basic, quantile\n"
+	 << "  expressions include field names, numeric (double) constants, +,-,*,/,()\n"
+	 << "  boolean expressions currently support <\n"
+	 << "  for fields with non-alpha-numeric or _ in the name, escape with \\\n";
+    
     exit(0);
 }
 
 
 int 
-main(int argc, char *argv[])
+main(int argc, char *_argv[])
 {
-    if (argc <= 4) usage(argv[0], "insufficient arguments");
+    // converting to string from char * makes argv[i] == "blah" work.
+    vector<string> argv;
+    argv.reserve(argc);
+    for(int i=0; i<argc; ++i) {
+	argv.push_back(string(_argv[i]));
+    }
+    if (argc <= 8) usage(argv[0], "insufficient arguments");
 
-    string stat_type(argv[1]);
-    string extent_type_prefix(argv[2]);
+    string extent_type_prefix(argv[1]);
     
     TypeIndexModule source(extent_type_prefix);
     PrefetchBufferModule *prefetch = new PrefetchBufferModule(source, 64*1024*1024);
@@ -43,20 +54,34 @@ main(int argc, char *argv[])
     SequenceModule seq(prefetch);
 
     int argpos;
-    for(argpos = 3; argpos < argc; argpos += 2) {
-	if (argpos + 2 > argc) usage(argv[0], "missing -- in arguments");
-	string expr(argv[argpos]);
-	string group_by(argv[argpos+1]);
-
-	if (expr == "--") 
+    for(argpos = 2; argpos < argc;) {
+	if (argv[argpos] == "from") 
 	    break;
+	if (argpos + 5 >= argc) usage(argv[0], "missing from in arguments");
+	string stat_type(argv[argpos]); 
+	++argpos;
+	string expr(argv[argpos]); 
+	++argpos;
+	string where_expr;
+	if (argv[argpos] == "where") {
+	    ++argpos;
+	    where_expr = argv[argpos]; 
+	    ++argpos;
+	}
+	if (argpos + 3 >= argc || argv[argpos] != "group" ||
+	    argv[argpos+1] != "by") {
+	    usage(argv[0], "missing group by <fieldname>");
+	}
+	argpos += 2;
+	string group_by(argv[argpos]);
+	++argpos;
 
 	seq.addModule(new DSStatGroupByModule(seq.tail(), expr, group_by, 
-					      stat_type));
+					      stat_type, where_expr));
     }
 
     ++argpos;
-    if (argpos >= argc) usage(argv[0], "missing -- in arguments");
+    if (argpos >= argc) usage(argv[0], "missing from in arguments");
     for(;argpos<argc; ++argpos) {
 	source.addSource(argv[argpos]);
     }

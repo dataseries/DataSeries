@@ -52,7 +52,7 @@ static unsigned cur_column;
 
 {blank}+    { /* ignore whitespace */ }
 
-[+\-*/\(\)]     return token_type(yytext[0]);
+[+\-*/\(\)\>]     return token_type(yytext[0]);
 {constant} { yylval->constant = stringToDouble(yytext); 
              return token::CONSTANT; }
 {field} { yylval->field = new std::string(yytext);

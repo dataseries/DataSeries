@@ -24,7 +24,8 @@ public:
     DSStatGroupByModule(DataSeriesModule &source,
 			const std::string &_expression,
 			const std::string &_groupby,
-			const std::string &_stattype,
+			const std::string &_stattype = "basic",
+			const std::string &_whereexpr = "",
 			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeXMLIdentical);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;

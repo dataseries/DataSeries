@@ -14,7 +14,8 @@
 
 RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
 				     ExtentSeries::typeCompatibilityT _tc)
-    : series(_tc), source(_source), prepared(false)
+    : processed_rows(0), ignored_rows(0), 
+      series(_tc), source(_source), prepared(false), where_expr(NULL)
 {
 }
 
@@ -39,9 +40,17 @@ RowAnalysisModule::getExtent()
     if (!prepared) {
 	prepareForProcessing();
 	prepared = true;
+	if (!where_expr_str.empty()) {
+	    where_expr = DSExpr::make(series, where_expr_str);
+	}
     }
     for(;series.pos.morerecords();++series.pos) {
-	processRow();
+	if (!where_expr || where_expr->valBool()) {
+	    ++processed_rows;
+	    processRow();
+	} else {
+	    ++ignored_rows;
+	}
     }
     return e;
 }
@@ -54,6 +63,12 @@ RowAnalysisModule::completeProcessing()
 void
 RowAnalysisModule::printResult()
 {
+}
+
+void
+RowAnalysisModule::setWhereExpr(const std::string &expr)
+{
+    where_expr_str = expr;
 }
 
 int

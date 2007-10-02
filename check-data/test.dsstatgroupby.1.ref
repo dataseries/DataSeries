@@ -1,4 +1,5 @@
 # Begin DSStatGroupByModule
+# processed 43000 rows, where clause eliminated 0 rows
 # device_number, count(*), mean(1000*(return_to_driver - leave_driver)), stddev, min, max
 521282816, 2, 0.796, 0.008, 0.788, 0.804
 520864768, 8, 34.4546, 20.9033, 13.572, 82.346
@@ -80,6 +81,7 @@
 # End DSStatGroupByModule
 
 # Begin DSStatGroupByModule
+# processed 43000 rows, where clause eliminated 0 rows
 # machine_id, count(*), mean(bytes/1024), stddev, min, max
 679349363, 43000, 15.4934, 21.1463, 1, 64
 # End DSStatGroupByModule

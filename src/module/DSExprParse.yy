@@ -204,6 +204,21 @@ namespace DSExprImpl {
 	}
     };
 
+    class ExprStrictlyGreaterThan : public ExprBinary {
+    public:
+	ExprStrictlyGreaterThan(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return left->valDouble() > right->valDouble();
+	}
+    };
+
     class ExprFnTfracToSeconds : public ExprUnary {
     public:
 	ExprFnTfracToSeconds(DSExpr *subexpr) 
@@ -232,11 +247,15 @@ using namespace DSExprImpl;
 %token            FN_TfracToSeconds
 
 %type  <expression>     expr
+%type  <expression>     bool_expr
 
 %%
 %start complete_expr;
 
 complete_expr: expr END_OF_STRING { driver.expr = $1; } ;
+    | bool_expr END_OF_STRING { driver.expr = $1; } ;
+
+bool_expr: expr '>' expr { $$ = new ExprStrictlyGreaterThan($1, $3); }
 
 %left '+' '-';
 %left '*' '/';

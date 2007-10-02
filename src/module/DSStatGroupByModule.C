@@ -20,11 +20,15 @@ DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
 					 const string &_expression,
 					 const string &_groupby,
 					 const string &_stattype,
+					 const string &where_expr,
 					 ExtentSeries::typeCompatibilityT tc)
     : RowAnalysisModule(source, tc), expression(_expression), 
       groupby_name(_groupby), stattype(_stattype), groupby(NULL),
       expr(NULL)
 {
+    if (!where_expr.empty()) {
+	setWhereExpr(where_expr);
+    }
 }
 
 DSStatGroupByModule::~DSStatGroupByModule()
@@ -65,14 +69,26 @@ void
 DSStatGroupByModule::printResult()
 {
     cout << "# Begin DSStatGroupByModule" << endl;
-    cout << boost::format("# %s, count(*), mean(%s), stddev, min, max")
-	% groupby_name % expression << endl;
-    for(mytableT::iterator i = mystats.begin(); 
-	i != mystats.end(); ++i) {
-	cout << boost::format("%1%, %2%, %3$.6g, %4$.6g, %5$.6g, %6$.6g")
-	    % i->first % i->second->count() % i->second->mean() % i->second->stddev()
-	    % i->second->min() % i->second->max() 
-	     << endl;
+    cout << boost::format("# processed %d rows, where clause eliminated %d rows\n") 
+	% processed_rows % ignored_rows;
+    if (stattype == "basic") {
+	cout << boost::format("# %s, count(*), mean(%s), stddev, min, max\n")
+	    % groupby_name % expression;
+	for(mytableT::iterator i = mystats.begin(); 
+	    i != mystats.end(); ++i) {
+	    cout << boost::format("%1%, %2%, %3$.6g, %4$.6g, %5$.6g, %6$.6g\n")
+		% i->first % i->second->count() % i->second->mean() % i->second->stddev()
+		% i->second->min() % i->second->max();
+	}
+    } else {
+	cout << boost::format("# %s(%s) group by %s\n")
+	    % stattype % expression % groupby_name;
+	for(mytableT::iterator i = mystats.begin(); 
+	    i != mystats.end(); ++i) {
+	    cout << boost::format("# group %1%\n")
+		% i->first;
+	    i->second->printText(cout);
+	}
     }
     cout << "# End DSStatGroupByModule" << endl;
 }
