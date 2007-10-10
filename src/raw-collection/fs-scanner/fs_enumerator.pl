@@ -119,6 +119,10 @@ sub wanted {
 #    my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
 #     $atime,$mtime,$ctime,$blksize,$blocks) = stat $_;
     my @statbits = lstat $_;
+    if (@statbits == 0) {
+	warn "unable to stat $File::Find::name";
+	return;
+    }
     die "?? $File::Find::dir $_" unless @statbits == 13;
     my $b64Name = encode_base64($_, "")|| die "can't encode $_ because $!";
     my $b64NameLength = length $b64Name;
