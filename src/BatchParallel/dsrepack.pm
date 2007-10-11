@@ -237,14 +237,14 @@ sub determine_things_to_build {
 	    if ($all_nums) {
 		@sources = sort { $source2order{$a} <=> $source2order{$b} } @$sources;
 		my $prev = $source2order{$sources[0]} - 1;
-		for (@sources) {
+		for my $src (@sources) {
 		    ++$prev;
-		    if ($prev != $source2order{$_}) {
-			print "Warning, expected to find file $prev, instead found $_, file $source2order{$_}.\n";
+		    if ($prev != $source2order{$src}) {
+			print "Warning, expected to find file $prev, instead found $src, file $source2order{$src}.\n";
 			print "Continue [y]?";
 			$_ = <STDIN>;
 			exit(1) unless /^$/o || /^y/io;
-			$prev = $source2order{$_};
+			$prev = $source2order{$src};
 		    }
 		}
 	    } else {
