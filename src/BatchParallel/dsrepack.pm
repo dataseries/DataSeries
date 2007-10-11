@@ -244,7 +244,7 @@ sub determine_things_to_build {
 			print "Continue [y]?";
 			$_ = <STDIN>;
 			exit(1) unless /^$/o || /^y/io;
-			last;
+			$prev = $source2order{$_};
 		    }
 		}
 	    } else {
