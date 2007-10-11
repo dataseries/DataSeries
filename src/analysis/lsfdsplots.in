@@ -1,0 +1,729 @@
+#!@PERL_BINARY@ -w
+# -*- Perl -*-
+#
+#  (c) Copyright 2004-2007, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+
+use strict;
+use Getopt::Long;
+use FileHandle;
+use Fcntl ':seek';
+@PERL_MODULES_INC_UNSHIFT@
+
+use DataSeries::LSFcommon ':all';
+use DataSeries::Crypt;
+use Mercury::Tics;
+
+my $lsfdsanalysis = '@expanded_bindir@/lsfdsanalysis';
+my $datadir;
+my $plotdir;
+my $starttime;
+my $endtime;
+my $intervallen;
+my $windowlen;
+my $maxintervals;
+my $saveraw;
+my $readraw;
+my $avgintervals;
+my $mwavgintervals;
+my $mwmaxintervals;
+my $mwminintervals;
+my $cumulative = 0;
+my $groups;
+my $module_name = 'DataSeries::LSFPlots::Default';
+my $noplots;
+my $debug;
+
+# TODO: fix code so that x axis is in seconds; this will allow us to
+# clean up Mercury::Tics to only have one way of doing time.  relative
+# to start time hour units doesn't make a whole lot of sense except it
+# made the first round of this program to make xtics easy to generate
+
+my $ret = GetOptions('lsfdsanalysis=s' => \$lsfdsanalysis,
+		     'datadir=s' => \$datadir,
+		     'plotdir=s' => \$plotdir,
+		     'starttime=s' => \$starttime,
+		     'endtime=s' => \$endtime,
+		     'intervallen=i' => \$intervallen,
+		     'windowlen=s' => \$windowlen,
+		     'maxintervals=i' => \$maxintervals,
+		     'saveraw=s' => \$saveraw,
+		     'readraw=s' => \$readraw,
+		     'avgintervals=i' => \$avgintervals,
+		     'mwavgintervals=i' => \$mwavgintervals,
+		     'mwmaxintervals=i' => \$mwmaxintervals,
+		     'mwminintervals=i' => \$mwminintervals,
+		     'cumulative!' => \$cumulative,
+		     'groups=s' => \$groups,
+		     'module=s' => \$module_name,
+		     'noplots!' => \$noplots,
+	             'debug!' => \$debug);
+
+my $usage = 
+ "Usage: $0 --plotdir=<path> 
+    [--readraw=<filename>; automatically grabs window from raw]
+    [--datadir=<directory>]
+    One of the above two items are required.
+
+    [--module=module-name]
+    [--saveraw=<filename>] 
+    [--lsfdsanalysis=<path>] 
+    [--starttime=time, default endtime-windowlen] 
+    [--endtime=time, default now] 
+    times are anything accepted by perldoc Date::Parse, e.g. 2004-04-01 10:30
+    [--groups=* or group,group,group where group is: all, production, sequence,
+       team, queue, hostgroup, team_group, cluster, username, exechost]
+    [--maxintervals=target, default 1000]
+    [--intervallen=seconds, default set to get below maxintervals intervals]
+    [--windowlen=seconds, default 86400, relative to start or end if specified]
+
+    [--noplots] 
+    [--avgintervals=#, average intervals together, usually with readraw] 
+    [--mwavgintervals=#, moving window average intervals]
+    [--cumulative; convert to cumulative] 
+    [--molasses-special-case, merge split sequences]
+    [--debug]
+    with readraw, only --plotdir needs to be specified";
+
+die $usage unless $ret && @ARGV == 0;
+
+$DataSeries::LSFPlots::Default::class = 'DataSeries::LSFPlots::Default';
+eval "use $module_name;";
+if ($@ =~ /Can\'t locate \S+ in \@INC/o) {
+    eval "use DataSeries::LSFPlots::$module_name;";
+}
+die "can't use module $module_name or DataSeries::LSFPlots::module_name: $@"
+    if $@;
+
+my $module = new $DataSeries::LSFPlots::Default::class;
+
+$datadir ||= $module->datadir();
+$plotdir ||= $module->plotdir();
+$starttime ||= $module->starttime();
+$endtime ||= $module->endtime();
+$intervallen ||= $module->intervallen();
+$windowlen ||= $module->windowlen();
+$maxintervals ||= $module->maxintervals();
+$saveraw ||= $module->saveraw();
+$readraw ||= $module->readraw();
+$avgintervals ||= $module->avgintervals();
+$mwavgintervals ||= $module->mwavgintervals();
+$mwmaxintervals ||= $module->mwmaxintervals();
+$cumulative ||= $module->cumulative();
+$groups ||= $module->groups();
+
+die "$usage\nTrying to plot, but plotdir not set\n"
+    unless defined $plotdir || $noplots;
+
+die "$usage\nMissing either datadir or readraw option"
+    unless (defined $datadir) || (defined $readraw);
+
+my $yaxislabel = "CPUs occupied";
+
+my $fh;
+if (defined $readraw) {
+    $fh = new FileHandle $readraw
+	or die "Can't open $readraw for read: $!";
+    
+    while(<$fh>) {
+	last if /^Begin-virtual void FarmLoad::printResult/o;
+    }
+    die "Didn't find Begin-virtual void FarmLoad... in $readraw"
+	unless defined $_;
+    $_ = <$fh>;
+    chomp;
+    die "?? $_" 
+	unless /^total time range \d+ .. \d+; \d+ total records, \d+ records in window (\d+) .. (\d+)$/o;
+    ($starttime,$endtime) = setuptimes($starttime,undef,$endtime,$windowlen)
+	if defined $starttime && defined $endtime;
+    $starttime ||= $1;
+    $endtime ||= $2;
+    print "Using time window ", scalar localtime($starttime), " .. ", scalar localtime($endtime), "\n";
+    setupintervallen();
+    seek($fh, 0, SEEK_SET);
+} else {
+    ($starttime,$endtime) = setuptimes($starttime,undef,$endtime,$windowlen);
+    setupintervallen();
+
+    my @files = ("$datadir/index.ds",$starttime,$endtime);
+#    my @files = findfiles($datadir,$starttime,$endtime);
+	     
+    my $cmd = join(" ","$lsfdsanalysis -a $intervallen:$starttime:$endtime:$groups:",@files);
+
+    my $outfh;
+    if (defined $saveraw) {
+	$outfh = new FileHandle ">$saveraw" 
+	    or die "Can't open $saveraw for write: $!";
+    }
+
+    print "Running $cmd...\n";
+    $fh = new FileHandle "$cmd |" 
+	or die "Can't run $cmd: $!";
+    if (defined $saveraw) {
+	while(<$fh>) {
+	    print $outfh $_ or die "can't print to $saveraw: $!";
+	}
+	close($outfh);
+	$fh = new FileHandle $saveraw
+	    or die "Can't open $saveraw for read: $!";
+    }
+}
+processdata($fh)
+    unless $noplots;
+close($fh);
+
+my %farmload;
+my $plottics;
+my $comparedir;
+
+sub processdata {
+    my ($fh) = @_;
+
+    %farmload = readdata($fh);
+    print "Individual: ", join(", ",sort keys %farmload), "\n";
+    $plottics = plottics();
+    print "Plottics: $plottics\n";
+
+    unless (-d $plotdir) {
+	mkdir($plotdir,0777) || die "can't mkdir $plotdir: $!";
+    }
+    $comparedir = "$plotdir/compare";
+    unless (-d $comparedir) {
+	mkdir($comparedir,0777) || die "can't mkdir $comparedir: $!";
+    }
+    
+    $module->do_plots(\%farmload);
+
+    plotindividuals();
+}
+
+sub plotindividuals {
+    foreach my $group (sort keys %farmload) {
+	next if $group eq 'summary';
+	foreach my $subent (sort keys %{$farmload{$group}}) {
+	    next unless $module->do_individual_plot($group,$subent);
+	    plotoneindividual($group,$subent);
+    	}
+    }
+}
+
+sub plotoneindividual {
+    my($group,$subent) = @_;
+
+    my $data = $farmload{$group}->{$subent};
+    my $path = "$plotdir/$group";
+    mkdir ($path,0777) unless -d $path;
+    my $dsubent = decode($subent);
+    $dsubent =~ s/[^A-Za-z0-9_\-:]/_/go;
+    print "Individual plot for $group / $dsubent\n";
+    my($total,$pend,$run,$cpu,$idle) = writeData($data,"/tmp/plotdata-$$");
+    unless (-s $total > 0) {
+	warn "No data found for $group:$subent";
+	unlink($total,$pend,$run,$cpu,$idle);
+	return;
+    }
+    open(GNUPLOT,"| gnuplot")
+	|| die "no gnuplot\n";
+    autoflush GNUPLOT 1;
+    my $outtmp = "$path/$dsubent-tmp.ps";
+    unlink ($outtmp);
+    die "?? $outtmp" if -f $outtmp;
+    my $maxtime = ($endtime - $starttime)/3600;
+    $group =~ s/_/-/go;
+    my $str_subent = $dsubent;
+    $str_subent =~ s/_/-/go;
+    print GNUPLOT <<"END_OF_GENPLOT";
+set output "$outtmp"
+set terminal postscript landscape enhanced color solid 12
+set title "Data for $group / $str_subent"
+set xlabel "Time"
+set ylabel "$yaxislabel"
+set yrange [0:]
+set xrange [0:$maxtime]
+$plottics
+plot "$total" title "Total Jobs" with lines, "$pend" title "Pending Jobs" with lines, "$run" title "Running Jobs" with lines, "$cpu" title "Aggregate CPU" with lines, "$idle" title "Aggregate unused CPU" with lines
+END_OF_GENPLOT
+    close(GNUPLOT);
+    die "gnuplot failed" unless -s $outtmp;
+    unlink($total,$pend,$run,$cpu,$idle);
+    rename($outtmp,"$path/${dsubent}.ps")
+	|| die "bad$!";
+    pstopng("$path/${dsubent}.ps","$path/${dsubent}.png");
+}
+
+sub domulticompare {
+    my ($out_base,$group,$regex,$maxkeeprel) = @_;
+
+    $maxkeeprel = $module->multicompare_maxkeeprel($out_base,$group)
+	unless defined $maxkeeprel;
+    my $batch_size = 6;
+
+    my $summaryinfo = $farmload{summary}->{$group};
+    my @subents;
+    if (ref $regex eq 'ARRAY') {
+	@subents = @$regex;
+    } elsif (ref $regex eq 'Regexp') {
+	@subents = grep($_ =~ $regex,keys %{$farmload{$group}});
+    } else {
+	die "dunno how to deal with $regex";
+    }
+    my $sortby;
+    if ($cumulative) {
+	$sortby = 'max_run';
+    } else {
+	$sortby = 'sum_run';
+    }
+    map {  die "?? $_" unless defined $summaryinfo->{$_} && defined $summaryinfo->{$_}->{$sortby}; } @subents;
+    @subents = sort { $summaryinfo->{$a}->{$sortby} <=> $summaryinfo->{$b}->{$sortby} } @subents;
+    my $maxcumrun = 0;
+    map { $maxcumrun += $summaryinfo->{$_}->{$sortby} } @subents;
+    $maxcumrun *= $maxkeeprel;
+    my $cumrun = 0;
+    my $firstkeep = 0;
+    my @keep;
+    foreach my $se (@subents) {
+	die "?? $se" unless defined $summaryinfo->{$se} && defined $summaryinfo->{$se}->{$sortby};
+	$cumrun += $summaryinfo->{$se}->{$sortby};
+	if ($cumrun < $maxcumrun) {
+	    print "NOKEEP: $se $summaryinfo->{$se}->{$sortby} $cumrun\n"
+		if 0;
+	    ++$firstkeep;
+	} else {
+	    push(@keep,$se);
+	    print "KEEP: $se $summaryinfo->{$se}->{$sortby} $cumrun\n"
+		if 0;
+	}
+    }
+    my $nkeep = @keep;
+    print "FIRSTKEEP ($nkeep total) $keep[0]\n"
+	if 0;
+    @keep = reverse @keep;
+
+    my $maxy = 0;
+    foreach my $se (@keep) {
+	$maxy = $summaryinfo->{$se}->{max_run} if $summaryinfo->{$se}->{max_run} > $maxy;
+    }
+    my $plotnum = 0;
+    while(@keep > 0) {
+	my @slice = splice(@keep,0,$batch_size);
+	docompare("$out_base-$plotnum",$group,\@slice,undef,$maxy);
+	++$plotnum;
+    }
+    while (-f "$comparedir/$out_base-${plotnum}.ps") {
+	unlink("$comparedir/$out_base-${plotnum}.ps", "$comparedir/$out_base-${plotnum}.png");
+	++$plotnum;
+    }
+#    print "XX @subents\n";
+}
+
+sub docompare {
+    my ($outplot,$group,$subents,$lineincs,$maxy) = @_;
+
+    $outplot = decode($outplot);
+    $group = decode($group);
+    $lineincs ||= ['run'];
+    $maxy ||= '';
+    my %keep;
+    map { $keep{$_} = 1 } @$lineincs;
+    my $subhash = $farmload{$group};
+    unless (defined $subhash) {
+	warn "No data found for $group\n";
+	return;
+    }
+    my %data;
+    my @plotlist;
+    my @delfiles;
+    my $lt = 1;
+
+    if (ref($subents) eq 'Regexp') {
+	my $re = $subents;
+	my @ents;
+	foreach my $ent (keys %$subhash) {
+	    my $dent = decode($ent);
+	    push(@ents,$ent) if $ent =~ $re || $dent =~ $re;
+	}
+#	print "Regex $re -> @ents\n";
+	$subents = \@ents;
+    }
+
+    foreach my $subent (@$subents) {
+	my $dsubent = decode($subent);
+	my $data = $subhash->{$subent};
+	my($total,$pend,$run,$cpu,$idle) = writeData($data,"/tmp/plotdata-$subent-$$");
+	my %map = ('total' => $total, 'pend' => $pend, 'run' => $run, 'cpu' => $cpu, 'idle' => $idle);
+	foreach my $tmp (keys %map) {
+	    if ($keep{$tmp} && -s $map{$tmp} > 0) {
+		my $dtmp = decode($tmp);
+		my $dsubent_print = $dsubent;
+		$dsubent_print =~ s/_/-/o;
+		push(@plotlist,"\"$map{$tmp}\" title \"$dsubent_print: $dtmp\" with lines lt $lt lw 1.5");
+		++$lt;
+		++$lt if $lt == 6;
+		push(@delfiles,$map{$tmp});
+	    } else {
+		unlink($map{$tmp});
+		delete $map{$tmp};
+	    }
+	}
+	$data{$subent} = \%map;
+    }
+    if (@plotlist == 0) {
+	warn "No data found for $group: @$subents";
+	return;
+    }
+#    print "YY: ", join(", ", @plotlist);
+    open(GNUPLOT,"| gnuplot")
+	|| die "no gnuplot\n";
+    autoflush GNUPLOT 1;
+    my $outtmp = "$comparedir/$outplot-tmp.ps";
+    unlink ($outtmp);
+    die "?? $outtmp" if -f $outtmp;
+    my $txt_subents = join(" ", map { decode($_) } @$subents);
+    $txt_subents =~ s/_/-/go;
+    my $txt_plot = join(", ",@plotlist);
+    my $maxtime = ($endtime - $starttime)/3600;
+    $group =~ s/_/-/go;
+    $txt_subents =~ s/_/-/go;
+    print GNUPLOT <<"END_OF_GENPLOT";
+set output "$outtmp"
+set terminal postscript landscape enhanced color solid 12
+set title "Comparison of $group: $txt_subents"
+set xlabel "Time"
+set ylabel "$yaxislabel"
+set yrange [0:$maxy]
+set xrange [0:$maxtime]
+$plottics
+plot $txt_plot
+END_OF_GENPLOT
+    close(GNUPLOT);
+    die "gnuplot failed" unless -s $outtmp;
+    rename($outtmp,"$comparedir/${outplot}.ps")
+	|| die "bad$!";
+    (unlink @delfiles) == @delfiles || die "bad: $!";
+    pstopng("$comparedir/${outplot}.ps","$comparedir/${outplot}.png");
+}
+	
+sub pstopng {
+    my ($in,$out) = @_;
+
+    print "convert $in to $out: ";
+    my $width = 1024;
+    my $height = 768;
+    my $dblw = $width * 2;
+    my $dblh = $height * 2;
+    my $tmpfn = "/tmp/pstopng-$$\.ppm";
+    my $cmd = "pstopnm -xsize $dblw -ysize $dblh -xborder .015 -yborder .015 $in -stdout 2>/dev/null | tee $tmpfn | pnmscale 0.5 | pnmflip -r180 | tee $tmpfn-scale | pnmtopng -compression 9 >$out 2>/dev/null";
+    print "pstopnm...pnmscale...pnmflip...pnmtopng...";
+    my $ret = system($cmd);
+    die "Error running '$cmd'"
+	unless $ret == 0;
+    if (! -f $tmpfn) {
+	die "psplot or pstopnm error; didn't get $tmpfn";
+    }
+    if (-s $tmpfn < $dblw * $dblh * 3) {
+	die "psplot or pstopnm error; $tmpfn too small";
+    }
+    if (-s "$tmpfn-scale" < $width * $height * 3) {
+	die "pnmscale error; $tmpfn-scale too small";
+    }
+    if (-s $out < 1000) {
+	die "pnmtopng error; $out too small\n";
+    }
+    print "done.\n";
+    unlink($tmpfn,"$tmpfn-scale");
+}
+
+sub writeData {
+    my($data,$tmproot) = @_;
+
+    open(TOTAL,">$tmproot-total.dat") || die "bad:$!";
+    open(PEND,">$tmproot-pend.dat") || die "bad:$!";
+    open(RUN,">$tmproot-run.dat") || die "bad: $!";
+    open(CPU,">$tmproot-cpu.dat") || die "bad: $!";
+    open(IDLE,">$tmproot-idle.dat") || die "bad: $!";
+    foreach my $d (@$data) {
+	my ($time,$pend,$run,$user,$system,$idle) = @$d;
+	$time = ($time - $starttime)/3600;
+	my $cpu = $user + $system;
+	my $total = $pend + $run;
+	print TOTAL "$time $total\n";
+	print PEND "$time $pend\n";
+	print RUN "$time $run\n";
+	print CPU "$time $cpu\n";
+	print IDLE "$time $idle\n";
+    }
+    close(TOTAL);
+    close(PEND);
+    close(RUN);
+    close(CPU);
+    close(IDLE);
+    return("$tmproot-total.dat","$tmproot-pend.dat","$tmproot-run.dat",
+	   "$tmproot-cpu.dat","$tmproot-idle.dat");
+}
+
+sub plottics {
+    return Mercury::Tics::plottics($starttime,$endtime,1);
+}
+
+sub readdata {
+    my($fh) = @_;
+
+    while(<$fh>) {
+	print "$_" if $debug;
+	last if /^Begin-virtual void LSFDSAnalysisMod::FarmLoad::printResult/o;
+    }
+    die "?? command didn't work" unless defined $_ && /^Begin/o;
+    my %farmload; # time, pend, run, user, system, idle
+    $|=1;
+    print "Reading data...";
+    my $c = 0;
+    $_ = <$fh>;
+    die "?? $_" unless /^total time range (\d+) .. (\d+); (\d+) total records, (\d+) records in window \d+ .. \d+$/o;
+    die "
+No records in window " . scalar localtime($starttime) . " .. " . scalar localtime($endtime) . "
+ range is " . scalar localtime($1) . " .. " . scalar localtime($2) . "
+ with $3 records\n"
+	unless $4 > 0;
+    my $nrecords = $4;
+    while(<$fh>) {
+	last if /^End-virtual void LSFDSAnalysisMod::FarmLoad::printResult/o;
+	if (/^Begin Group (\S+); subent (\S+)/o) {
+	    my ($group,$subent) = ($1,$2);
+	    next if $group eq 'exechost' && $subent eq '*lots;';
+	    die "bad '$group' or '$subent'"
+		unless $group =~ /^\w+$/o && $subent =~ /^(\w|-|:)+$/o;
+	    next unless $module->keep_data($group,$subent);
+	    while(<$fh>) {
+		print "." if (++$c % 5000) == 0;
+		last if /^End Group/o;
+		# time pend run user system idle
+		die "?? $_" unless /^  (\d+) (\d+\.\d+) (\d+\.\d+) (-?\d+\.\d+) (-?\d+\.\d+) (-?\d+\.\d+)$/o;
+		# don't skip anything in the data, this allows us to avoid edge effects when doing the
+		# interval averaging, it makes it a little slower to process a small subset of a pre-calced
+		# file, but that's a rare use case
+		# TODO: fix this up so that it uses a clip start/end time based on the averaging intervals
+#		 next if $1 < $starttime;
+#		 next if $1 > $endtime;
+		push(@{$farmload{$group}->{$subent}},[$1,$2,$3,$4,$5,$6]);
+		# time, pend, run, user, system, idle
+	    }
+	    die "?? stdin" unless /^End Group/o;
+	}
+    }
+    print "$nrecords records found\n";
+    $module->post_read_parse_op(\%farmload);
+
+    avgintervals(\%farmload) if $avgintervals;
+    mwminintervals(\%farmload) if defined $mwminintervals;
+    mwmaxintervals(\%farmload) if defined $mwmaxintervals;
+    mwavgintervals(\%farmload) if defined $mwavgintervals;
+    cumulative(\%farmload) if $cumulative;
+
+    die "can't have group named summary to simplify implementation"
+	if defined $farmload{summary};
+    foreach my $group (keys %farmload) {
+	while (my ($subent,$sent) = each %{$farmload{$group}}) {
+	    my $sum_run = 0;
+	    my $max_run = 0;
+	    foreach my $ent (@$sent) {
+		my $run = $ent->[2];
+		$sum_run += $run;
+		$max_run = $run if $run > $max_run;
+	    }
+	    $farmload{summary}->{$group}->{$subent} = { 'sum_run' => $sum_run, 'max_run' => $max_run };
+	}
+    }
+		
+    $module->post_read_summary_op(\%farmload);
+    return %farmload;
+}
+
+sub avgintervals {
+    my ($farmload) = @_;
+
+    print "Averaging intervals...";
+    while (my ($group,$gent) = each %$farmload) {
+	print "!";
+	foreach my $subent (keys %$gent) {
+	    print ".";
+	    my $data = $gent->{$subent};
+	    my @avg;
+	    for(my $i=0;($i+$avgintervals)<@$data;$i += $avgintervals) {
+		my @avgent = ($data->[$i]->[0],0,0,0,0,0);
+		for (my $j=$i;$j<$i+$avgintervals;++$j) {
+		    for(my $k=1;$k<6;++$k) {
+			$avgent[$k] += $data->[$j]->[$k];
+		    }
+		}
+		for(my $k=1;$k<6;++$k) {
+		    $avgent[$k] /= $avgintervals;
+		}
+		push(@avg,\@avgent);
+	    }
+	    $gent->{$subent} = \@avg;
+	}
+    }
+    print "\n";
+}
+
+sub mwavgintervals {
+    my ($farmload) = @_;
+
+    print "Moving window averaging intervals...";
+    while (my ($group,$gent) = each %$farmload) {
+	print "!";
+	foreach my $subent (keys %$gent) {
+	    print ".";
+	    my $data = $gent->{$subent};
+	    my @avg;
+	    my @avgent = (0,0,0,0,0,0);
+	    for(my $i=0;$i<($mwavgintervals-1);++$i) {
+		for(my $k=1;$k<6;++$k) {
+		    $avgent[$k] += $data->[$i]->[$k];
+		}
+	    }
+	    for(my $i=$mwavgintervals;$i<@$data;++$i) {
+		for(my $k=1;$k<6;++$k) {
+		    $avgent[$k] += $data->[$i]->[$k];
+		}
+		my @xdata = map { $_ / $mwavgintervals } @avgent;
+		$xdata[0] = $data->[$i]->[0];
+		push(@avg,\@xdata);
+		for(my $k=1;$k<6;++$k) {
+		    $avgent[$k] -= $data->[$i-$mwavgintervals]->[$k];
+		}
+	    }
+	    $gent->{$subent} = \@avg;
+	}
+    }
+    print "\n";
+}
+
+sub mwmaxvals {
+    my $max = $_[0];
+    foreach my $t (@_) {
+	$max = $t if $t > $max;
+    }
+    return $max;
+}
+
+sub mwmaxintervals {
+    my ($farmload) = @_;
+
+    print "Moving window max intervals...";
+    while (my ($group,$gent) = each %$farmload) {
+	print "!";
+	foreach my $subent (keys %$gent) {
+	    print ".";
+	    my $data = $gent->{$subent};
+	    my @max;
+	    my @maxent = (undef,[],[],[],[],[]);
+	    for(my $i=0;$i<@$data;++$i) {
+		my @ent = ($data->[$i]->[0]);
+		for(my $k=1;$k<6;++$k) {
+		    push(@{$maxent[$k]},$data->[$i]->[$k]);
+		    shift @{$maxent[$k]} if @{$maxent[$k]} > $mwmaxintervals;
+		    $ent[$k] = mwmaxvals(@{$maxent[$k]});
+		}
+		push(@max,\@ent);
+	    }
+	    $gent->{$subent} = \@max;
+	}
+    }
+    print "\n";
+}
+
+sub mwminvals {
+    my $min = $_[0];
+    foreach my $t (@_) {
+	$min = $t if $t < $min;
+    }
+    return $min;
+}
+
+sub mwminintervals {
+    my ($farmload) = @_;
+
+    print "Moving window min intervals...";
+    while (my ($group,$gent) = each %$farmload) {
+	print "!";
+	foreach my $subent (keys %$gent) {
+	    print ".";
+	    my $data = $gent->{$subent};
+	    my @min;
+	    my @minent = (undef,[],[],[],[],[]);
+	    for(my $i=0;$i<@$data;++$i) {
+		my @ent = ($data->[$i]->[0]);
+		for(my $k=1;$k<6;++$k) {
+		    push(@{$minent[$k]},$data->[$i]->[$k]);
+		    shift @{$minent[$k]} if @{$minent[$k]} > $mwminintervals;
+		    $ent[$k] = mwminvals(@{$minent[$k]});
+		}
+		push(@min,\@ent);
+	    }
+	    $gent->{$subent} = \@min;
+	}
+    }
+    print "\n";
+}
+
+sub cumulative {
+    my ($farmload) = @_;
+
+    my $multiplier = 0;
+    if ($intervallen <= 3600) {
+	$yaxislabel = "CPU hours";
+	$multiplier = $intervallen / 3600;
+    } elsif ($intervallen <= 86400) {
+	$yaxislabel = "CPU days";
+	$multiplier = $intervallen / 86400;
+    } else {
+	$yaxislabel = "CPU years";
+	$multiplier = $intervallen / (365.25 * 86400);
+    }
+    print "Cumulative intervals...";
+    while (my ($group,$gent) = each %$farmload) {
+	print "!";
+	foreach my $subent (keys %$gent) {
+	    print ".";
+	    my $data = $gent->{$subent};
+	    my @sum;
+	    my @sument = (0,0,0,0,0,0);
+	    for(my $i=0;$i<@$data;++$i) {
+		for(my $k=1;$k<6;++$k) {
+		    $sument[$k] += $data->[$i]->[$k] * $multiplier;
+		}
+		my @tmp = @sument;
+		$tmp[0] = $data->[$i]->[0];
+		push(@sum,\@tmp);
+	    }
+	    $gent->{$subent} = \@sum;
+	}
+    }
+    print "\n";
+}
+
+sub setupintervallen {
+    $maxintervals ||= 1000;
+    unless (defined $intervallen) {
+	my $seconds = ($endtime - $starttime);
+	foreach my $x (qw/1 2 5 10 15 30 60 120 300 600 1800 3600 7200 14400 21600 43200 86400 604800 2419200/) {
+	    if (($seconds / $x) < $maxintervals) {
+		$intervallen = $x;
+		last;
+	    }
+	}
+	die "Can't find an appropriate intervallen for $seconds secs\n"
+	    unless defined $intervallen;
+    }
+
+    my $nintervals = int(($endtime - $starttime) / $intervallen);
+    warn "Whoa, lots of intervals, $nintervals may be a bit much\n"
+	unless $nintervals < $maxintervals;
+    die "Whoa, not allowing $nintervals intervals\n"
+	unless $nintervals < 20000;
+    die "Whoa, $intervallen not an integer\n"
+	unless $intervallen == int($intervallen);
+}
+

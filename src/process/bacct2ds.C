@@ -176,6 +176,8 @@ const string lsf_grizzly_xml(
   "  <field type=\"double\" name=\"cpu_time\" pack_scale=\"1e-6\" />\n"
   "  <field type=\"int64\" name=\"max_memory\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
   "  <field type=\"int64\" name=\"max_swap\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
+  "  <field type=\"int32\" name=\"num_processors\" />\n"
+  "  <field type=\"int32\" name=\"num_hosts\" />\n"
   "  <field type=\"variable32\" name=\"exec_host\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"exec_host_group\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually machines are purchased in batches; if we can identify the batch, which one is it? dedicated groups (almost always serving LSF jobs) are named dedicated-\" />\n"
   "</ExtentType>\n");
@@ -334,7 +336,15 @@ bool encmatch(const string &in, const string &match)
 //  2.  Event Time (%d)
 //  3.  jobId (%d)
 //  4.  userId (%d)
-//  5.  options (%d)
+//  5.  options (%d) 
+//      0x1 = has name, 0x2 = has queue, 0x4 = exec host spec
+//      0x10 = output file specified, 0x40 = exclusive 
+//      0x200 = usergroup, 
+//      0x4000 = rerunnable 
+//      0x10000 = hostspec 0x20000 = dependencies, 0x40000 = resreq
+//     
+//      0x100000 = preexecfile, 0x200000 = login shell, 0x400000 = mail results
+//      0x2000000 = projname
 //  6.  numProcessors (%d)
 //  7.  submitTime (%d)
 //  8.  beginTime (%d)  // requested start-after time

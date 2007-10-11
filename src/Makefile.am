@@ -32,6 +32,12 @@ endif
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
 
+dsperldir = $(datadir)/perl5/DataSeries
+dsperl_DATA = analysis/LSFcommon.pm analysis/Crypt.pm
+
+lsfplotsdir = $(dsperldir)/LSFPlots
+lsfplots_DATA = analysis/LSFPlots/Productions.pm analysis/LSFPlots/Default.pm analysis/LSFPlots/AllCpu.pm
+
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
@@ -91,11 +97,20 @@ textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis 
+bin_SCRIPTS += analysis/lsfdsplots analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
 lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+
+# Dunno why autoconf doesn't do this for us, it works only if lsfdsplots
+# isn't in a subdir.
+analysis/lsfdsplots: $(top_builddir)/config.status $(srcdir)/analysis/lsfdsplots.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+
+analysis/dsdecrypt: $(top_builddir)/config.status $(srcdir)/analysis/dsdecrypt.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 ##### WITH_PCAP
 if WITH_PCAP

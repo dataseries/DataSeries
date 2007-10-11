@@ -1259,7 +1259,7 @@ static vector<BestEffort::BEInfo> best_effort_reserved;
 void
 usage(char *argv[])
 {
-    cerr << "Usage: " << argv[0] << " [flags] (file-list+) or (index-file min_time max_time)\n";
+    cerr << "Usage: " << argv[0] << " [flags] (file-list+) or (index-file min_time max_time [cluster])\n";
     cerr << "   Note that the index form won't pick up any of the rr/rj ds files, so\n";
     cerr << "   those analysis won't work.\n";
     cerr << " flags: (default is to run all analysis)\n";
@@ -1470,7 +1470,7 @@ main(int argc, char *argv[])
 					    "submit_time",
 					    "end_time",
 					    "min:end_time");
-	} else {
+	} else if ((argc - first) == 4) {
 	    vector<MinMaxIndexModule::selector> tmp;
 	    GeneralValue minv,maxv;
 	    minv.setInt32(atoi(argv[first+1]));
@@ -1483,6 +1483,8 @@ main(int argc, char *argv[])
 					    "Batch::LSF::Grizzly",
 					    tmp,
 					    "min:end_time");
+	} else {
+	    FATAL_ERROR("internal");
 	}
     } else {
 	TypeIndexModule *tmp = new TypeIndexModule("Batch::LSF::Grizzly");

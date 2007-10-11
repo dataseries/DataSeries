@@ -198,7 +198,11 @@ public:
 	    d.run_count += frac;
 	    d.user_time += user_per_sec * frac;
 	    d.system_time += system_per_sec * frac;
-	    d.idle_time += (1-(user_per_sec + system_per_sec)) * frac;
+	    if ((user_per_sec + system_per_sec) < 1) {
+		// if the job ran multi-cpu but we don't know how much it 
+		// could have consumed, assume no idleness
+		d.idle_time += (1-(user_per_sec + system_per_sec)) * frac;
+	    }
 	}
     }	
 
