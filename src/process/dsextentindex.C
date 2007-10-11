@@ -442,8 +442,9 @@ main(int argc, char *argv[])
     minmaxtype_xml.append("  <field type=\"variable32\" name=\"filename\" />\n");
     minmaxtype_xml.append("  <field type=\"int64\" name=\"extent_offset\" />\n");
     minmaxtype_xml.append("  <field type=\"int32\" name=\"rowcount\" />\n");
-    AssertAlways(fields.size() == infieldtypes.size(),
-		 ("internal %d %d",fields.size(),infieldtypes.size()));
+    INVARIANT(fields.size() == infieldtypes.size(),
+	      boost::format("internal %d %d") % fields.size()
+	      % infieldtypes.size());
     for(unsigned i = 0;i<fields.size();++i) {
 	minmaxtype_xml.append("  <field type=\"");
 	minmaxtype_xml.append(ExtentType::fieldTypeString(infieldtypes[i]));

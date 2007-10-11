@@ -89,7 +89,7 @@ public:
     // raw access that the library has anyway.
     class iterator {
     public:
-	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(-1) { }
+	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(0) { }
 	iterator(Extent *e) { reset(e); }
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }

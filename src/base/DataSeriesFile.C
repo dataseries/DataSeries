@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 
 #include <ostream>
 
@@ -541,25 +542,47 @@ DataSeriesSink::writeOutPending(bool have_lock)
     mutex.unlock();
 }
 
+static void get_thread_cputime(struct timespec &ts)
+{
+    ts.tv_sec = 0; ts.tv_nsec = 0;
+
+    // getrusage combines all the threads together so results in
+    // massive over-counting.  clock_gettime can go backwards on
+    // RHEL4u4 on opteron2216HE's.  Probably the only option will be
+    // to get this out of /proc on linux, and who knows what on other
+    // platforms.
+
+    return;
+    // 
+    // #include <sys/syscall.h>
+//    long ret = syscall(__NR_clock_gettime, CLOCK_THREAD_CPUTIME_ID, &ts);
+//
+//    INVARIANT(ret == 0 && ts.tv_sec >= 0 && ts.tv_nsec >= 0, "??");
+//    return ts.tv_sec + ts.tv_nsec*1.0e-9;
+}
+
 void
 DataSeriesSink::processToCompress(toCompress *work)
 {
     INVARIANT(work->in_progress, "??");
     INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
 
-    struct timespec pack_start;
-    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_start) == 0, "??");
+    struct timespec pack_start, pack_end;
+    get_thread_cputime(pack_start);
     
     int headersize, fixedsize, variablesize;
     work->checksum = work->extent.packData(work->compressed, compression_modes,
 					   compression_level, &headersize,
 					   &fixedsize, &variablesize);
-    struct timespec pack_end;
-    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_end) == 0, "??");
+    get_thread_cputime(pack_end);
 
     double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
 	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
     
+    INVARIANT(pack_extent_time >= 0, 
+	      boost::format("get_thread_cputime broken? %d.%d - %d.%d = %.9g")
+	      % pack_end.tv_sec % pack_end.tv_nsec 
+	      % pack_start.tv_sec % pack_start.tv_nsec % pack_extent_time);
     // Slightly less efficient than calling update on the two separate stats,
     // but easier to code.
     Stats tmp;
@@ -690,6 +713,8 @@ DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
     unpacked_variable += from.unpacked_variable;
     unpacked_variable_raw += from.unpacked_variable_raw;
     packed_size += from.packed_size;
+    INVARIANT(from.pack_time >= 0, 
+	      boost::format("from.pack_time = %.6g < 0") % from.pack_time);
     pack_time += from.pack_time;
     return *this;
 }
@@ -738,6 +763,8 @@ DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed,
     unpacked_variable_raw += unp_var_raw;
     unpacked_variable += unp_variable;
     packed_size += pkd_size;
+    INVARIANT(pkd_time >= 0, 
+	      boost::format("update(pkd_time = %.6g < 0)") % pkd_time);
     pack_time += pkd_time;
     updateCompressMode(fixed_compress_mode);
     if (pkd_var_size > 0) {

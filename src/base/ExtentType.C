@@ -236,8 +236,10 @@ ExtentType::ExtentType(const string &_xmldesc)
 	    double scale = atof((char *)pack_scale_v);
 	    AssertAlways(scale != 0,("pack_scale=0 invalid\n"));
 	    pack_scale.push_back(pack_scaleT(field_info.size(),scale));
-	    if (debug_xml_decode) printf("pack_scaling field %d by %.10g (1/%.10g)\n",
-			      field_info.size(),1.0/scale,scale);
+	    if (debug_xml_decode) {
+		cout << boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
+		    % field_info.size() % (1.0/scale) % scale;
+	    }
 	}
 	xmlChar *pack_relative = xmlGetProp(cur, (const xmlChar *)"pack_relative");
 	if (pack_relative != NULL) {
@@ -367,33 +369,35 @@ ExtentType::getColumnNumber(const string &column) const
 ExtentType::int32
 ExtentType::getSize(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
-    AssertAlways(field_info[column].size > 0,
-		 ("internal error, getSize() on variable sized field doesn't make sense\n"));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
+    INVARIANT(field_info[column].size > 0,
+	      "internal error, getSize() on variable sized field doesn't make sense\n");
     return field_info[column].size;
 }
 
 ExtentType::int32
 ExtentType::getOffset(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
-    AssertAlways(field_info[column].offset >= 0,
-		 ("internal error, getOffset() on variable sized field (%s, #%d) doesn't make sense\n",field_info[column].name.c_str(),column));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
+    INVARIANT(field_info[column].offset >= 0,
+	      boost::format("internal error, getOffset() on variable sized field (%s, #%d) doesn't make sense\n")
+	      % field_info[column].name % column);
     return field_info[column].offset;
 }
 
 int
 ExtentType::getBitPos(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
-    AssertAlways(field_info[column].bitpos >= 0,
-		 ("internal error, getBitPos() on non-bool field (%s, #%d) doesn't make sense\n",field_info[column].name.c_str(),column));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
+    INVARIANT(field_info[column].bitpos >= 0,
+	      boost::format("internal error, getBitPos() on non-bool field (%s, #%d) doesn't make sense\n")
+	      % field_info[column].name % column);
     return field_info[column].bitpos;
 }
 
@@ -401,36 +405,36 @@ ExtentType::getBitPos(int column) const
 ExtentType::fieldType
 ExtentType::getFieldType(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
     return field_info[column].type;
 }
 
 bool
 ExtentType::getUnique(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
     return field_info[column].unique;
 }
 
 bool
 ExtentType::getNullable(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
     return field_info[column].nullable;
 }
 
 double
 ExtentType::getDoubleBase(int column) const
 {
-    AssertAlways(column >= 0 && column < (int)field_info.size(),
-		 ("internal error, column %d out of range [0..%d]\n",
-		  column,field_info.size()-1));
+    INVARIANT(column >= 0 && column < (int)field_info.size(),
+	      boost::format("internal error, column %d out of range [0..%d]\n")
+	      % column % (field_info.size()-1));
     return field_info[column].doublebase;
 }
 

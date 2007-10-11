@@ -452,10 +452,10 @@ main(int argc, char *argv[])
 	dpd.subcmd = driver_packet_dump_getstats;
 	AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
 		     ("error in test: %s\n",strerror(errno)));
-	printf("copy: packets %lld; bytes %lld\n",dpd.copy_packets,
-	       dpd.copy_bytes);
-	printf("drop: packets %lld; bytes %lld\n",dpd.drop_packets,
-	       dpd.drop_bytes);
+	cout << boost::format("copy: packets %d; bytes %d\n")
+	    % dpd.copy_packets % dpd.copy_bytes;
+	cout << boost::format("drop: packets %d; bytes %d\n")
+	    % dpd.drop_packets % dpd.drop_bytes;
 	exit(0);
     }
 

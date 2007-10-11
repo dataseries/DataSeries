@@ -76,7 +76,7 @@ ExtentSeries::clearExtent()
     my_extent = NULL;
     pos.cur_extent = NULL;
     pos.cur_pos = NULL;
-    pos.recordsize = -1;
+    pos.recordsize = 0;
 }
 
 void
