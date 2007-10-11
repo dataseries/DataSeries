@@ -73,8 +73,11 @@ public:
 	    compress_bz2, compress_lzf;
 	uint64_t unpacked_size, unpacked_fixed, unpacked_variable, 
 	    unpacked_variable_raw, packed_size;
-	double pack_time; // This statistic appears to be generally
-			  // wrong right now because of threading.
+
+	// The pack_time statistic has been disabled pending figuring
+	// out how to make it accurate.  For mor discussion, see
+	// DataSeriesFile.C:get_thread_cputime()
+	double pack_time; 
 
 	Stats() {
 	    reset();
