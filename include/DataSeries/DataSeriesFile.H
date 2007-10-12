@@ -73,8 +73,11 @@ public:
 	    compress_bz2, compress_lzf;
 	uint64_t unpacked_size, unpacked_fixed, unpacked_variable, 
 	    unpacked_variable_raw, packed_size;
-	double pack_time; // This statistic appears to be generally
-			  // wrong right now because of threading.
+
+	// The pack_time statistic has been disabled pending figuring
+	// out how to make it accurate.  For mor discussion, see
+	// DataSeriesFile.C:get_thread_cputime()
+	double pack_time; 
 
 	Stats() {
 	    reset();
@@ -121,6 +124,10 @@ public:
     // order of writing the extents can't be guarenteed if two
     // writeExtent calls are executing at the same time.
     void writeExtent(Extent &e, Stats *toUpdate);
+
+    // if another thread is writing extents at the same time, this could
+    // wait forever.
+    void flushPending();
 
     // Removed as this is no longer a good idea when writes don't 
     // complete immediately.
@@ -194,6 +201,7 @@ private:
     static int compressor_count;
     std::vector<PThread *> compressors;
     PThread *writer;
+    uint32_t writes_in_progress_count;
     bool shutdown_workers;
     Deque<toCompress *> pending_work;
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.

@@ -1,0 +1,49 @@
+# Extent Types ...
+<ExtentType namespace="dataseries.hpl.hp.com" name="DSIndex::Extent::Info" version="1.0">
+  <field type="variable32" name="type-prefix" />
+  <field type="variable32" name="fields" />
+</ExtentType>
+
+<ExtentType name="DSIndex::Extent::MinMax::I/O">
+  <field type="variable32" name="filename" />
+  <field type="int64" name="extent_offset" />
+  <field type="int32" name="rowcount" />
+  <field type="double" name="min:enter_driver" />
+  <field type="double" name="max:enter_driver" />
+  <field type="bool" name="hasnull:enter_driver" />
+  <field type="int32" name="min:machine_id" />
+  <field type="int32" name="max:machine_id" />
+  <field type="bool" name="hasnull:machine_id" />
+  <field type="int64" name="min:disk_offset" />
+  <field type="int64" name="max:disk_offset" />
+  <field type="bool" name="hasnull:disk_offset" />
+  <field type="bool" name="min:is_read" />
+  <field type="bool" name="max:is_read" />
+  <field type="bool" name="hasnull:is_read" />
+</ExtentType>
+
+<ExtentType namespace="dataseries.hpl.hp.com" name="DSIndex::Extent::ModifyTimes" version="1.0" >
+  <field type="variable32" name="filename" />
+  <field type="int64" name="modify-time" />
+</ExtentType>
+
+<ExtentType name="DataSeries: ExtentIndex">
+  <field type="int64" name="offset" />
+  <field type="variable32" name="extenttype" />
+</ExtentType>
+
+<ExtentType name="DataSeries: XmlType">
+  <field type="variable32" name="xmltype" />
+</ExtentType>
+
+# Extent, type='DSIndex::Extent::Info'
+type-prefix fields
+I/O enter_driver,machine_id,disk_offset,is_read
+# Extent, type='DSIndex::Extent::MinMax::I/O'
+filename extent_offset rowcount min:enter_driver max:enter_driver hasnull:enter_driver min:machine_id max:machine_id hasnull:machine_id min:disk_offset max:disk_offset hasnull:disk_offset min:is_read max:is_read hasnull:is_read
+/home/anderse/projects/DataSeries/check-data/h03126.ds-bigend 552 43000 65044.6301 68743.7746 F 679349363 679349363 F 2367488 17616764928 F F T F
+/home/anderse/projects/DataSeries/check-data/h03126.ds-littleend 552 43000 65044.6301 68743.7746 F 679349363 679349363 F 2367488 17616764928 F F T F
+# Extent, type='DSIndex::Extent::ModifyTimes'
+filename modify-time
+/home/anderse/projects/DataSeries/check-data/h03126.ds-bigend ########
+/home/anderse/projects/DataSeries/check-data/h03126.ds-littleend ########

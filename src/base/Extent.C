@@ -540,7 +540,7 @@ Extent::packData(Extent::ByteArray &into,
 	}
 	// pack self relative ...
 	for(unsigned int j=0;j<psr_copy.size();++j) {
-	    int field = psr_copy[j].field_num;
+	    unsigned field = psr_copy[j].field_num;
 	    int offset = type->field_info[field].offset;
 	    DEBUG_INVARIANT(offset < type->fixed_record_size, "bad");
 	    switch(type->field_info[field].type) 
@@ -672,7 +672,7 @@ Extent::packData(Extent::ByteArray &into,
     adler32sum = adler32(adler32sum, into.begin(), 4*4);
     adler32sum = adler32(adler32sum, into.begin() + 5*4, into.size()-5*4);
     *(int32 *)(into.begin() + 4*4) = adler32sum;
-    if (false) printf("final coded size %d bytes\n",into.size());
+    if (false) cout << boost::format("final coded size %d bytes\n") % into.size();
     if (header_packed != NULL) *header_packed = headersize;
     if (fixed_packed != NULL) *fixed_packed = fixed_coded.size();
     if (variable_packed != NULL) *variable_packed = variable_coded.size();
@@ -744,9 +744,9 @@ Extent::packLZO(byte *input, int32 inputsize,
 				       work_memory, NULL, 0, 0, compression_level);
     AssertAlways(ret == LZO_E_OK,
 		 ("internal error: lzo compression failed (%d)\n",ret));
-    AssertAlways(out_len < into.size(),
-		 ("internal error: lzo compression too large %d >= %d\n",
-		  out_len, into.size()));
+    INVARIANT(out_len < into.size(),
+	      boost::format("internal error: lzo compression too large %d >= %d\n")
+	      % out_len % into.size());
     
     // Might consider calling the optimize function, but the usage is a 
     // little confusing; it appears that it would need another output
@@ -799,7 +799,7 @@ Extent::packAny(byte *input, int32 input_size,
     if ((compression_modes & compress_lzo)) {
 	Extent::ByteArray *lzo_pack = new Extent::ByteArray;
 	if (packLZO(input,input_size,*lzo_pack,compression_level)) {
-	    if (false) printf("lzo packing goes to %d bytes\n",lzo_pack->size());
+	    if (false) cout << boost::format("lzo packing goes to %d bytes\n") % lzo_pack->size();
 	    if (best_packed == NULL || lzo_pack->size() < best_packed->size()) {
 		best_packed = lzo_pack;
 		*mode = compress_mode_lzo;
@@ -813,7 +813,7 @@ Extent::packAny(byte *input, int32 input_size,
     if ((compression_modes & compress_lzf)) {
 	Extent::ByteArray *lzf_pack = new Extent::ByteArray;
 	if (packLZF(input,input_size,*lzf_pack,compression_level)) {
-	    if (false) printf("lzf packing goes to %d bytes\n",lzf_pack->size());
+	    if (false) cout << boost::format("lzf packing goes to %d bytes\n") % lzf_pack->size();
 	    if (best_packed == NULL || lzf_pack->size() < best_packed->size()) {
 		best_packed = lzf_pack;
 		*mode = compress_mode_lzf;
@@ -829,7 +829,7 @@ Extent::packAny(byte *input, int32 input_size,
 	Extent::ByteArray *bz2_pack = new Extent::ByteArray;
 	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size(), false);
 	if (packBZ2(input,input_size,*bz2_pack,compression_level)) {
-	    if (false) printf("bz2 packing goes to %d bytes\n",bz2_pack->size());
+	    if (false) cout << boost::format("bz2 packing goes to %d bytes\n") % bz2_pack->size();
 	    if (best_packed == NULL || bz2_pack->size() < best_packed->size()) {
 		delete best_packed;
 		best_packed = bz2_pack;
@@ -845,7 +845,7 @@ Extent::packAny(byte *input, int32 input_size,
 	Extent::ByteArray *zlib_pack = new Extent::ByteArray;
 	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size(), false);
 	if (packZLib(input,input_size,*zlib_pack,compression_level)) {
-	    if (false) printf("zlib packing goes to %d bytes\n",zlib_pack->size());
+	    if (false) cout << boost::format("zlib packing goes to %d bytes\n") % zlib_pack->size();
 	    if (best_packed == NULL || zlib_pack->size() < best_packed->size()) {
 		delete best_packed;
 		best_packed = zlib_pack;
@@ -1115,7 +1115,7 @@ Extent::unpackData(const ExtentType *_type,
 
 	// unpack self-relative fields ...
 	for(unsigned int j=0;j<type_pack_self_relative_size;++j) {
-	    int field = psr_copy[j].field_num;
+	    unsigned field = psr_copy[j].field_num;
 	    int offset = type->field_info[field].offset;
 	    switch(type->field_info[field].type) 
 		{
@@ -1200,8 +1200,8 @@ Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok
     if (ret == 0 && eof_ok) {
 	return false;
     }
-    AssertAlways(ret == amount,("partial read %d of %d bytes: %s\n",
-				ret,amount,strerror(errno)));
+    INVARIANT(ret == amount, boost::format("partial read %d of %d bytes: %s\n")
+	      % ret % amount % strerror(errno));
     return true;
 }
 

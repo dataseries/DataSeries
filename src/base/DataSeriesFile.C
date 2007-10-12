@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 
 #include <ostream>
 
@@ -234,7 +235,9 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       wrote_library(false),
       compression_modes(_compression_modes),
       compression_level(_compression_level),
-      chained_checksum(0), shutdown_workers(false)
+      chained_checksum(0), 
+      writes_in_progress_count(0),
+      shutdown_workers(false)
 {
     stats.packed_size += 2*4 + 4*8;
     AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
@@ -309,6 +312,17 @@ DataSeriesSink::close()
     writeOutPending();
     INVARIANT(pending_work.empty(), "bad");
     ExtentType::int64 index_offset = cur_offset;
+
+    // TODO: make a warning and/or test case for this?
+
+    // Special case handling of record for index series; this will
+    // present "difficulties" in the future when we want to put the
+    // compression type into the index series since we don't know that
+    // until after we've already compressed the data.
+    index_series.newRecord(); 
+    field_extentOffset.set(cur_offset);
+    field_extentType.set(index_extent.type->name);
+
     pending_work.push_back(new toCompress(index_extent, NULL));
     pending_work.front()->in_progress = true;
     processToCompress(pending_work.front());
@@ -470,11 +484,22 @@ DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
     } 
 	
     available_work_cond.signal();
-    while(pending_work.size() > 2 * compressors.size()) {
+    while((writes_in_progress_count + pending_work.size()) 
+	  > 2 * compressors.size()) {
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
 	
+}
+
+void
+DataSeriesSink::flushPending()
+{
+    mutex.lock();
+    while((writes_in_progress_count + pending_work.size()) > 0) {
+	available_queue_cond.wait(mutex);
+    }
+    mutex.unlock();
 }
 
 void
@@ -483,6 +508,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
     if (!have_lock) {
 	mutex.lock();
     }
+    INVARIANT(writes_in_progress_count == 0, "bad");
     Deque<toCompress *> to_write;
     while(!pending_work.empty() 
 	  && pending_work.front()->compressed.size() > 0
@@ -491,7 +517,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	to_write.push_back(pending_work.front());
 	pending_work.pop_front();
     }
-    available_queue_cond.broadcast();
+    writes_in_progress_count = to_write.size();
     mutex.unlock();
 
     while(!to_write.empty()) {
@@ -508,6 +534,31 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
 	delete tc;
     }
+
+    mutex.lock();
+    writes_in_progress_count = 0;
+    // Don't say there is free space until we actually finished writing.
+    available_queue_cond.broadcast();
+    mutex.unlock();
+}
+
+static void get_thread_cputime(struct timespec &ts)
+{
+    ts.tv_sec = 0; ts.tv_nsec = 0;
+
+    // getrusage combines all the threads together so results in
+    // massive over-counting.  clock_gettime can go backwards on
+    // RHEL4u4 on opteron2216HE's.  Probably the only option will be
+    // to get this out of /proc on linux, and who knows what on other
+    // platforms.
+
+    return;
+    // 
+    // #include <sys/syscall.h>
+//    long ret = syscall(__NR_clock_gettime, CLOCK_THREAD_CPUTIME_ID, &ts);
+//
+//    INVARIANT(ret == 0 && ts.tv_sec >= 0 && ts.tv_nsec >= 0, "??");
+//    return ts.tv_sec + ts.tv_nsec*1.0e-9;
 }
 
 void
@@ -516,19 +567,22 @@ DataSeriesSink::processToCompress(toCompress *work)
     INVARIANT(work->in_progress, "??");
     INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
 
-    struct timespec pack_start;
-    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_start) == 0, "??");
+    struct timespec pack_start, pack_end;
+    get_thread_cputime(pack_start);
     
     int headersize, fixedsize, variablesize;
     work->checksum = work->extent.packData(work->compressed, compression_modes,
 					   compression_level, &headersize,
 					   &fixedsize, &variablesize);
-    struct timespec pack_end;
-    INVARIANT(clock_gettime(CLOCK_THREAD_CPUTIME_ID, &pack_end) == 0, "??");
+    get_thread_cputime(pack_end);
 
     double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
 	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
     
+    INVARIANT(pack_extent_time >= 0, 
+	      boost::format("get_thread_cputime broken? %d.%d - %d.%d = %.9g")
+	      % pack_end.tv_sec % pack_end.tv_nsec 
+	      % pack_start.tv_sec % pack_start.tv_nsec % pack_extent_time);
     // Slightly less efficient than calling update on the two separate stats,
     // but easier to code.
     Stats tmp;
@@ -659,6 +713,8 @@ DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
     unpacked_variable += from.unpacked_variable;
     unpacked_variable_raw += from.unpacked_variable_raw;
     packed_size += from.packed_size;
+    INVARIANT(from.pack_time >= 0, 
+	      boost::format("from.pack_time = %.6g < 0") % from.pack_time);
     pack_time += from.pack_time;
     return *this;
 }
@@ -707,6 +763,8 @@ DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed,
     unpacked_variable_raw += unp_var_raw;
     unpacked_variable += unp_variable;
     packed_size += pkd_size;
+    INVARIANT(pkd_time >= 0, 
+	      boost::format("update(pkd_time = %.6g < 0)") % pkd_time);
     pack_time += pkd_time;
     updateCompressMode(fixed_compress_mode);
     if (pkd_var_size > 0) {

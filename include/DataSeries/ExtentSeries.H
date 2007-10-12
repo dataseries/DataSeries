@@ -89,7 +89,7 @@ public:
     // raw access that the library has anyway.
     class iterator {
     public:
-	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(-1) { }
+	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(0) { }
 	iterator(Extent *e) { reset(e); }
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }
@@ -98,22 +98,14 @@ public:
 	    if (e == NULL) {
 		cur_extent = NULL;
 		cur_pos = NULL;
-		recordsize = -1;
+		recordsize = 0;
 	    } else {
 		cur_extent = e;
 		cur_pos = e->fixeddata.begin();
 		recordsize = e->type->fixedrecordsize();
 	    }
 	}
-	void setpos(byte *new_pos) {
-	    int recnum = (new_pos - cur_extent->fixeddata.begin()) / recordsize;
-	    AssertAlways(cur_extent != NULL && 
-			 new_pos >= cur_extent->fixeddata.begin() &&
-			 new_pos <= cur_extent->fixeddata.end() &&
-			 recnum * recordsize == (new_pos - cur_extent->fixeddata.begin()),
-			 ("bad new position\n"));
-	    cur_pos = new_pos;
-	}
+	void setpos(byte *new_pos);
 
 	int currecnum() {
 	    int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
@@ -124,20 +116,8 @@ public:
 	// call Extent::createRecords() or ExtentSeries::newRecord().
 	// newRecord() will update the series pos iterator. update()
 	// keeps the current position at the same relative record as before
-	void update(Extent *e) { 
-	    if (e->type->fixedrecordsize() == recordsize) {
-		int offset = cur_pos - cur_extent->fixeddata.begin();
-		byte *begin_pos = cur_extent->fixeddata.begin();
-		cur_pos = begin_pos + offset;
-	    } else {
-		int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
-		AssertAlways(recnum * recordsize == (cur_pos - cur_extent->fixeddata.begin()),
-			     ("whoa, pointer not on a record boundary?!\n"));
-		recordsize = e->type->fixedrecordsize();
-		byte *begin_pos = cur_extent->fixeddata.begin();
-		cur_pos = begin_pos + recnum * recordsize;
-	    }
-	}
+	void update(Extent *e);
+
 	bool morerecords() {
 	    return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
 	}
@@ -153,7 +133,7 @@ public:
 	friend class ExtentSeries;
 	Extent *cur_extent;
 	byte *cur_pos;
-	int recordsize;
+	unsigned recordsize;
     };
 
     iterator pos;

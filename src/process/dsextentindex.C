@@ -12,8 +12,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.H>
 #include <Lintel/HashMap.H>
+#include <Lintel/StringUtil.H>
 
 #include <DataSeries/commonargs.H>
 #include <DataSeries/DataSeriesFile.H>
@@ -53,6 +54,16 @@ struct ivEqual {
 
 typedef HashTable<IndexValues,ivHash,ivEqual> ivHashTableT;
 
+struct IndexValuesByFilenameOffset {
+    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) {
+	if (a.data.filename == b.data.filename) {
+	    return a.data.offset < b.data.offset;
+	} else {
+	    return a.data.filename < b.data.filename;
+	}
+    }
+};
+
 ivHashTableT ivHashTable;
 
 string type_prefix;
@@ -66,20 +77,55 @@ ExtentSeries inseries(ExtentSeries::typeLoose);
 vector<GeneralField *> infields;
 vector<ExtentType::fieldType> infieldtypes;
 
+const string *type_namespace;
+unsigned major_version, minor_version;
+
 const string modifytype_xml = 
-"<ExtentType name=\"DSIndex::Extent::ModifyTimes\">\n"
+"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::ModifyTimes\" version=\"1.0\" >\n"
 "  <field type=\"variable32\" name=\"filename\" />\n"
 "  <field type=\"int64\" name=\"modify-time\" />\n"
 "</ExtentType>\n";
 
-typedef HashMap<string, ExtentType::int64> modifytimesT;
-modifytimesT modifytimes;
+typedef HashMap<string, ExtentType::int64> modifyTimesT;
+modifyTimesT modifytimes;
+
+struct ModifyTimesByFilename {
+    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) {
+	return a.data.first < b.data.first;
+    }
+};
 
 const string indexinfo_xml =
-"<ExtentType name=\"DSIndex::Extent::Info\">\n"
+"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::Info\" version=\"1.0\">\n"
 "  <field type=\"variable32\" name=\"type-prefix\" />\n"
 "  <field type=\"variable32\" name=\"fields\" />\n"
 "</ExtentType>\n";
+
+void
+updateNamespaceVersions(Extent &e)
+{
+    if (e.type->getNamespace().empty()) {
+	INVARIANT(type_namespace == NULL, "invalid to index some extents with a namespace and some without");
+    } else {
+	if (type_namespace == NULL) {
+	    type_namespace = new string(e.type->getNamespace());
+	    major_version = e.type->majorVersion();
+	    minor_version = e.type->minorVersion();
+	    if (false) {
+		cout << "Using namespace " << *type_namespace << ", major version " << major_version << "\n";
+	    }
+	}
+	INVARIANT(*type_namespace == e.type->getNamespace(),
+		  boost::format("conflicting namespaces, found both '%s' and '%s'")
+		  % *type_namespace % e.type->getNamespace());
+	INVARIANT(major_version == e.type->majorVersion(),
+		  boost::format("conflicting major versions, found both %d and %d")
+		  % major_version % minor_version);
+	if (e.type->minorVersion() < minor_version) {
+	    minor_version = e.type->minorVersion();
+	}
+    } 
+}
 
 void
 indexExtent(DataSeriesSource &source, const string &filename, 
@@ -90,6 +136,7 @@ indexExtent(DataSeriesSource &source, const string &filename,
     // copy offset as preadExtent updates offset to offset of next extent
     off64_t tmp_offset = offset; 
     Extent *e = source.preadExtent(tmp_offset);
+    updateNamespaceVersions(*e);
     inseries.setExtent(e);
     AssertAlways(inseries.pos.morerecords(),("internal"));
 
@@ -175,6 +222,8 @@ int indexed_extents = 0;
 void
 indexFile(const string &filename)
 {
+    cout << "indexing " << filename << " ...";
+    cout.flush();
     AssertAlways(filename.size() > 0,("empty filename?!"));
     if (filename[0] != '/') {
 	fprintf(stderr,"warning, filename %s is relative, not absolute\n",filename.c_str());
@@ -183,6 +232,7 @@ indexFile(const string &filename)
     if (modifytimes.lookup(filename) != NULL) {
 	if (modifytimes[filename] == modify_time) {
 	    ++already_indexed_files;
+	    cout << "already indexed.\n";
 	    return;
 	}
 	if (modify_time < modifytimes[filename]) {
@@ -204,21 +254,26 @@ indexFile(const string &filename)
 
     DataSeriesSource source(filename);
 
+    // TODO: re-do this with TypeIndexModule.
     ExtentSeries s(source.indexExtent);
     Variable32Field extenttype(s,"extenttype");
     Int64Field offset(s,"offset");
 
     for(;s.pos.morerecords();++s.pos) {
+	cout << "."; cout.flush();
 	if (ExtentType::prefixmatch(extenttype.stringval(),type_prefix)) {
 	    ++indexed_extents;
 	    indexExtent(source,filename,offset.val());
 	}
     }
+    cout << "\n";
 }
 
 void
 readExistingIndex(const char *index_filename, string &fieldlist)
 {
+    cout << "reading existing index " << index_filename << "..."; 
+    cout.flush();
     TypeIndexModule info_mod("DSIndex::Extent::Info");
     TypeIndexModule modifytimes_mod("DSIndex::Extent::ModifyTimes");
     info_mod.addSource(index_filename);
@@ -265,12 +320,15 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 		 ("must have modifytimes extent in index %s!",
 		  index_filename));
 
+    cout << "."; 
+    cout.flush();
     split(fieldlist,",",fields);
 
     // get extent to define type
     e = minmax_mod.getExtent();
     AssertAlways(e != NULL,("must have at least one minmax extent"));
     ExtentSeries minmaxseries(e);
+    // TODO: check type.
     vector<GeneralField *> mins, maxs;
     vector<BoolField *> hasnulls;
     const string str_min("min:"), str_max("max:"), str_hasnull("hasnull:");
@@ -286,7 +344,10 @@ readExistingIndex(const char *index_filename, string &fieldlist)
     }
 
     IndexValues iv;
-    while(true) {
+    do {
+	cout << ".";
+	cout.flush();
+	updateNamespaceVersions(*e);
 	for(minmaxseries.setExtent(e);minmaxseries.pos.morerecords();++minmaxseries.pos) {
 	    iv.filename = filenameF.stringval();
 	    iv.offset = extent_offsetF.val();
@@ -314,9 +375,9 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 	}
 	// get extent at end of loop because we got it earlier to define the type
 	e = minmax_mod.getExtent();
-	if (e == NULL) break;
-    }
-    
+    } while (e != NULL);
+
+    cout << "\n";
     for(unsigned i = 0;i<fields.size();++i) {
 	infieldtypes.push_back(mins[i]->getType());
 	delete mins[i];
@@ -364,14 +425,26 @@ main(int argc, char *argv[])
     printf("indexed %d extents over %d files with %d files already indexed\n",
 	   indexed_extents,argc - files_start,already_indexed_files);
     printf("%d total extents indexed in file\n",ivHashTable.size());
-    string minmaxtype_xml = ("<ExtentType name=\"DSIndex::Extent::MinMax::");
+
+    if (indexed_extents == 0) {
+	cout << "No new extents; not updating file.\n";
+	exit(0);
+    }
+ 
+    string minmaxtype_xml = "<ExtentType";
+    if (type_namespace != NULL) {
+	minmaxtype_xml.append((boost::format(" namespace=\"%s\" version=\"%d.%d\"")
+			       % *type_namespace % major_version % minor_version).str());
+    }
+    minmaxtype_xml.append(" name=\"DSIndex::Extent::MinMax::");
     minmaxtype_xml.append(type_prefix);
     minmaxtype_xml.append("\">\n");
     minmaxtype_xml.append("  <field type=\"variable32\" name=\"filename\" />\n");
     minmaxtype_xml.append("  <field type=\"int64\" name=\"extent_offset\" />\n");
     minmaxtype_xml.append("  <field type=\"int32\" name=\"rowcount\" />\n");
-    AssertAlways(fields.size() == infieldtypes.size(),
-		 ("internal %d %d",fields.size(),infieldtypes.size()));
+    INVARIANT(fields.size() == infieldtypes.size(),
+	      boost::format("internal %d %d") % fields.size()
+	      % infieldtypes.size());
     for(unsigned i = 0;i<fields.size();++i) {
 	minmaxtype_xml.append("  <field type=\"");
 	minmaxtype_xml.append(ExtentType::fieldTypeString(infieldtypes[i]));
@@ -400,7 +473,7 @@ main(int argc, char *argv[])
 
     output.writeExtentLibrary(library);
 
-    // write info extents
+    // write info extents -- one row
 
     ExtentSeries infoseries(infotype);
     Variable32Field info_type_prefix(infoseries,"type-prefix");
@@ -436,8 +509,15 @@ main(int argc, char *argv[])
     OutputModule minmaxmodule(output,minmaxseries,minmaxtype,
 			      packing_args.extent_size);
     if (false) printf("LL %d\n",ivHashTable.size());
-    for(ivHashTableT::iterator j = ivHashTable.begin(); j != ivHashTable.end(); ++j) {
-	IndexValues &v = *j;
+    INVARIANT(ivHashTable.dense(), "need to implement the densify hash table function");
+
+    // This sort and the next one are both here to make the regression
+    // tests work out, not because they are needed in any way by the
+    // MinMaxIndexModule.
+    ivHashTableT::hte_vectorT iv_rawtable = ivHashTable.unsafeGetRawDataVector();
+    sort(iv_rawtable.begin(), iv_rawtable.end(), IndexValuesByFilenameOffset());
+    for(ivHashTableT::hte_vectorT::iterator j = iv_rawtable.begin(); j != iv_rawtable.end(); ++j) {
+	IndexValues &v(j->data);
 	minmaxmodule.newRecord();
 	filenameF.set(v.filename);
 	extent_offsetF.set(v.offset);
@@ -468,10 +548,13 @@ main(int argc, char *argv[])
 						  modifyseries.type,
 						  packing_args.extent_size);
 
-    for(modifytimesT::iterator i = modifytimes.begin(); i != modifytimes.end(); ++i) {
+    typedef modifyTimesT::HashTableT::hte_vectorT mt_vectorT;
+    mt_vectorT mt_rawtable = modifytimes.getHashTable().unsafeGetRawDataVector();
+    sort(mt_rawtable.begin(), mt_rawtable.end(), ModifyTimesByFilename());
+    for(mt_vectorT::iterator i = mt_rawtable.begin(); i != mt_rawtable.end(); ++i) {
 	modifymodule->newRecord();
-	modifyfilename.set(i->first);
-	modifytime.set(i->second);
+	modifyfilename.set(i->data.first);
+	modifytime.set(i->data.second);
     }
 
     modifymodule->flushExtent();

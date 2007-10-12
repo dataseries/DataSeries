@@ -15,25 +15,17 @@
 
 #include <Lintel/HashMap.H>
 
-#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.H>
-
-namespace DSStatGroupBy {
-    class Expr {
-    public:
-	virtual ~Expr() { };
-	virtual double value() = 0;
-	virtual int64_t valueInt64() = 0;
-    };
-    class Parser;
-};
+#include <DataSeries/RowAnalysisModule.H>
 
 class DSStatGroupByModule : public RowAnalysisModule {
 public:
     DSStatGroupByModule(DataSeriesModule &source,
 			const std::string &_expression,
 			const std::string &_groupby,
-			const std::string &_stattype,
+			const std::string &_stattype = "basic",
+			const std::string &_whereexpr = "",
 			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeXMLIdentical);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;
@@ -47,15 +39,10 @@ public:
     virtual void printResult();
 
 private:
-    friend class DSStatGroupBy::Parser;
-    void startScanning(const std::string &str);
-    void finishScanning();
-
     mytableT mystats;
     std::string expression, groupby_name, stattype;
     GeneralField *groupby;
-    DSStatGroupBy::Expr *expr;
-    void *scanner_state;
+    DSExpr *expr;
 };
 
 #endif

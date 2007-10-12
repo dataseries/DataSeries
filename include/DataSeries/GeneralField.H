@@ -111,6 +111,7 @@ public:
     void setVariable32(const std::string &from);
     double valDouble();
     int64_t valInt64();
+    bool valBool();
 
 protected:
     // let all of the general field classes get at our value/type
@@ -331,7 +332,11 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(GF_Variable32 *from) {
-	myfield.set(from->myfield.val(),from->myfield.size());
+	if (from->myfield.isNull()) {
+	    myfield.setNull();
+	} else {
+	    myfield.set(from->myfield.val(),from->myfield.size());
+	}
     }
     void clear() {
 	myfield.clear();

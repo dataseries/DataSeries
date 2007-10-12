@@ -78,7 +78,7 @@
 
 #include <deque>
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
   template <class T, class S = std::deque<T> >
   class stack
@@ -169,7 +169,7 @@ namespace DSStatGroupBy
 
 #endif // not BISON_STACK_HH
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
   class position;
   class location;
@@ -178,11 +178,31 @@ namespace DSStatGroupBy
 /* First part of user declarations.  */
 
 #include <string>
-#include <DataSeries/DSStatGroupByModule.H>
+#include <DataSeries/DSExpr.hpp>
 
 #define YY_DECL \
-  DSStatGroupBy::Parser::token_type \
-  DSStatGroupByScanlex(DSStatGroupBy::Parser::semantic_type *yylval, void * yyscanner)
+  DSExprImpl::Parser::token_type \
+  DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
+
+namespace DSExprImpl {
+    class Driver {
+    public:
+	// Implementation in DSExpr.cpp
+	Driver(ExtentSeries &_series) 
+	    : expr(NULL), series(_series), scanner_state(NULL) { }
+	~Driver();
+
+	void doit(const std::string &str);
+
+	void startScanning(const std::string &str);
+	void finishScanning();
+	
+	DSExpr *expr;
+	ExtentSeries &series;
+	void *scanner_state;
+    };
+};
+
 
 
 /* Line 35 of lalr1.cc.  */
@@ -223,7 +243,7 @@ namespace DSStatGroupBy
 
 /**
  ** \file location.hh
- ** Define the DSStatGroupBy::location class.
+ ** Define the DSExprImpl::location class.
  */
 
 #ifndef BISON_LOCATION_HH
@@ -267,7 +287,7 @@ namespace DSStatGroupBy
 
 /**
  ** \file position.hh
- ** Define the DSStatGroupBy::position class.
+ ** Define the DSExprImpl::position class.
  */
 
 #ifndef BISON_POSITION_HH
@@ -276,7 +296,7 @@ namespace DSStatGroupBy
 # include <iostream>
 # include <string>
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
   /// Abstract a position.
   class position
@@ -374,7 +394,7 @@ namespace DSStatGroupBy
 }
 #endif // not BISON_POSITION_HH
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
 
   /// Abstract a location.
@@ -511,7 +531,7 @@ do {							\
 } while (false)
 #endif
 
-namespace DSStatGroupBy
+namespace DSExprImpl
 {
 
   /// A Bison parser.
@@ -523,7 +543,7 @@ namespace DSStatGroupBy
     union semantic_type
 {
     double constant;
-    DSStatGroupBy::Expr *expression;
+    DSExpr *expression;
     std::string *field;
 }
 /* Line 35 of lalr1.cc.  */
@@ -549,7 +569,7 @@ namespace DSStatGroupBy
     typedef token::yytokentype token_type;
 
     /// Build a parser object.
-    Parser (DSStatGroupByModule &module_yyarg, void *scanner_state_yyarg);
+    Parser (DSExprImpl::Driver &driver_yyarg, void *scanner_state_yyarg);
     virtual ~Parser ();
 
     /// Parse.
@@ -664,7 +684,7 @@ namespace DSStatGroupBy
     /// For each rule, the index of the first RHS symbol in \a yyrhs_.
     static const unsigned char yyprhs_[];
     /// For each rule, its source line number.
-    static const unsigned char yyrline_[];
+    static const unsigned short int yyrline_[];
     /// For each scanner token number, its symbol number.
     static const unsigned short int yytoken_number_[];
     /// Report on the debug stream that the rule \a r is going to be reduced.
@@ -708,7 +728,7 @@ namespace DSStatGroupBy
 
 
     /* User arguments.  */
-    DSStatGroupByModule &module;
+    DSExprImpl::Driver &driver;
     void *scanner_state;
   };
 }

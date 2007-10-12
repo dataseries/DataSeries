@@ -1,0 +1,42 @@
+# Begin DSStatGroupByModule
+# processed 189 rows, where clause eliminated 307 rows
+# production, count(*), mean(start_time - submit_time), stddev, min, max
+462dfed79b1d496cff59e85818b86620, 30, 205239, 85375.1, 58371, 343831
+0387948b0fd460bfa4869f2dcbbd5383, 137, 163431, 81987, 54031, 365181
+90f6c50bbfe393b1b04f995ed4659764, 22, 229156, 59410.3, 105290, 332029
+# End DSStatGroupByModule
+
+# Begin DSStatGroupByModule
+# processed 496 rows, where clause eliminated 0 rows
+# production, count(*), mean(cpu_time/(end_time-start_time)), stddev, min, max
+0387948b0fd460bfa4869f2dcbbd5383, 294, 0.503068, 0.150719, 0.140158, 0.865523
+462dfed79b1d496cff59e85818b86620, 134, 0.48598, 0.144532, 0.151737, 0.831683
+90f6c50bbfe393b1b04f995ed4659764, 68, 0.479199, 0.150949, 0.104753, 0.762611
+# End DSStatGroupByModule
+
+# Begin DSStatGroupByModule
+# processed 189 rows, where clause eliminated 307 rows
+# quantile(start_time - submit_time) group by production
+# group 462dfed79b1d496cff59e85818b86620
+30 data points, mean 205239 +- 85375.1 [58371,343831]
+    quantiles every 3 data points:
+    10%: 84373, 113396, 144810, 201752, 221187, 248180, 275347, 290299, 306257
+  tails: 
+# group 0387948b0fd460bfa4869f2dcbbd5383
+137 data points, mean 163431 +- 81987 [54031,365181]
+    quantiles every 14 data points:
+    10%: 75920, 92924, 105348, 125433, 144778, 166976, 201758, 251025, 297362
+  tails: 90%: 297362, 95%: 340588
+# group 90f6c50bbfe393b1b04f995ed4659764
+22 data points, mean 229156 +- 59410.3 [105290,332029]
+    quantiles every 2 data points:
+    10%: 156154, 204976, 208346, 217998, 227248, 267435, 282842, 292469, 294916
+  tails: 
+# End DSStatGroupByModule
+
+# extents: 0.25 MB -> 0.32 MB in 0.00 secs decode time
+#                    common
+# MB compressed:       0.25
+# MB uncompressed:     0.32
+# decode seconds:      0.00
+# wait fraction:       0.00

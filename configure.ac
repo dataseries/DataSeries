@@ -27,6 +27,9 @@ AC_PROG_LD
 AM_PROG_AS
 AC_SUBST(LD)
 
+HPL_PERL_SUBSTS
+EXPAND_VARIABLE
+
 ## library bits...
 AC_ENABLE_SHARED
 AC_ENABLE_STATIC
@@ -57,6 +60,7 @@ HPL_WITHLIB_ZLIB
 HPL_WITHLIB_BZ2
 HPL_WITHLIB_PCAP
 HPL_REQUIRELIB_CRYPTO
+HPL_WITHLIB_DMALLOC
 
 AC_ARG_ENABLE(paper,
   [  --enable-paper    build binaries for the paper -- default NO],
@@ -100,7 +104,11 @@ LIBDATASERIES_VERSION=0:0:0
 
 AC_SUBST(LIBDATASERIES_VERSION)
 
-AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/dataseries-config])
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+expanded_bindir=`expand_variable $bindir`
+AC_SUBST(expanded_bindir)
+
+AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/dataseries-config src/analysis/lsfdsplots src/analysis/dsdecrypt])
 
 AC_OUTPUT
 

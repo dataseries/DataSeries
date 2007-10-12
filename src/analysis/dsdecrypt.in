@@ -1,0 +1,10 @@
+#!/usr/bin/perl -w
+use strict;
+@PERL_MODULES_INC_UNSHIFT@;
+use DataSeries::Crypt 'forcedecrypt';
+
+while(<>) {
+    my $line = $_;
+    print decode($line);
+}
+

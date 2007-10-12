@@ -29,23 +29,26 @@ else
 DATASERIES_ENABLE_BZ2=0
 endif
 
-if WITH_CRYPTO
-WITH_CRYPTO=1
-else
-WITH_CRYPTO=0
-endif
-
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) -DWITH_CRYPTO=$(WITH_CRYPTO)
+dsperldir = $(datadir)/perl5/DataSeries
+dsperl_DATA = analysis/LSFcommon.pm analysis/Crypt.pm
+
+lsfplotsdir = $(dsperldir)/LSFPlots
+lsfplots_DATA = analysis/LSFPlots/Productions.pm analysis/LSFPlots/Default.pm analysis/LSFPlots/AllCpu.pm
+
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config 
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
-libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ -lcrypto -lrt
+libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ @DMALLOC_LIBS@ @CRYPTO_LIBS@ -lrt 
+
+# TODO transition all the source files to .cpp, includes to .hpp so we
+# might be able to build on windows.
 
 libDataSeries_la_SOURCES = \
 	base/DataSeriesFile.C \
@@ -55,9 +58,10 @@ libDataSeries_la_SOURCES = \
 	base/ExtentType.C \
 	base/GeneralField.C \
 	process/commonargs.C \
+	module/DSExpr.cpp \
+	module/DSExprParse.cpp \
+	module/DSExprScan.cpp \
 	module/DSStatGroupByModule.C \
-	module/DSStatGroupByParse.cpp \
-	module/DSStatGroupByScan.cpp \
 	module/DStoTextModule.C \
 	module/DataSeriesModule.C \
 	module/IndexSourceModule.C \
@@ -70,10 +74,9 @@ libDataSeries_la_SOURCES = \
 	liblzf-1.6/lzf_c.c \
 	liblzf-1.6/lzf_d.c 
 
-bin_PROGRAMS = ds2txt pssimple2ds dsextentindex lvpvprocessusage textindex \
-	ipdsanalysis indexnfscommon dsselect dsrepack dsstatgroupby iphost2ds 
+bin_PROGRAMS =
 
-LDADD = libDataSeries.la 
+LDADD = libDataSeries.la
 
 # General purpose
 bin_PROGRAMS += dsextentindex dsselect dsrepack dsstatgroupby
@@ -94,11 +97,20 @@ textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis 
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis 
+bin_SCRIPTS += analysis/lsfdsplots analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
-#lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
-#	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
+	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+
+# Dunno why autoconf doesn't do this for us, it works only if lsfdsplots
+# isn't in a subdir.
+analysis/lsfdsplots: $(top_builddir)/config.status $(srcdir)/analysis/lsfdsplots.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+
+analysis/dsdecrypt: $(top_builddir)/config.status $(srcdir)/analysis/dsdecrypt.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
 ##### WITH_PCAP
 if WITH_PCAP
@@ -113,7 +125,7 @@ nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis
 
 ##### WITH_SRT
 if WITH_SRT
@@ -142,15 +154,15 @@ bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
 nobase_bpmodules_DATA += BatchParallel/bacct2ds.pm
 endif
 
-rebuild_DSStatGroupBy:
+rebuild_DSExpr:
 	@echo "version check, from debian etch, known to work."
 	@echo "was unable to get the flex and bison stuff to work on both"
 	@echo "debian etch and RHEL4 with flex 2.5.4 and bison 1.875"
 	[ "`flex --version`" = "flex 2.5.33" ]
 	[ "`bison --version | head -1`" = "bison (GNU Bison) 2.3" ]
-	flex -o $(top_srcdir)/src/module/DSStatGroupByScan.cpp $(top_srcdir)/src/module/DSStatGroupByScan.ll
-	bison -d -o $(top_srcdir)/src/module/DSStatGroupByParse.cpp $(top_srcdir)/src/module/DSStatGroupByParse.yy
-	perl $(top_srcdir)/src/module/parser-fixup.pl $(top_srcdir)/src/module DSStatGroupByParse
+	flex -o $(top_srcdir)/src/module/DSExprScan.cpp $(top_srcdir)/src/module/DSExprScan.ll
+	bison -d -o $(top_srcdir)/src/module/DSExprParse.cpp $(top_srcdir)/src/module/DSExprParse.yy
+	perl $(top_srcdir)/src/module/expr-parser-fixup.pl $(top_srcdir)/src/module DSExprParse
 	rm $(top_srcdir)/src/module/stack.hh $(top_srcdir)/src/module/location.hh $(top_srcdir)/src/module/position.hh
 
 ##### Testing...
@@ -203,6 +215,30 @@ ran.check-dsselect: dsselect ds2txt
 	cmp dsselect.test.1.ref dsselect.test.1.txt
 	touch $@
 
+ran.check-dsextentindex: dsextentindex ds2txt
+	@-rm test.index.1.ds test.index.2.ds
+	./dsextentindex --compress-lzf --new I/O enter_driver,machine_id,disk_offset,is_read test.index.1.ds $(top_srcdir)/check-data/h03126.ds-littleend
+	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl $(top_srcdir) >test.index.1.ds.txt
+	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1a.ref
+	./dsextentindex --compress-lzf test.index.1.ds $(top_srcdir)/check-data/h03126.ds-bigend
+	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.1.ds.txt
+	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1b.ref
+	./dsextentindex --compress-lzf --new Batch::LSF::Grizzly cluster_name,submit_time,end_time test.index.2.ds $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds 
+	./ds2txt --skip-index test.index.2.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.2.ds.txt
+	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
+	touch $@
+
+ran.check-dsstatgroupby: dsstatgroupby
+	./dsstatgroupby 'I/O' basic '1000*(return_to_driver - leave_driver)' group by 'device_number' basic 'bytes/1024' group by 'machine_id' from ~/projects/DataSeries/check-data/h03126.ds-littleend | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.1
+	cmp test.dsstatgroupby.1 $(top_srcdir)/check-data/test.dsstatgroupby.1.ref
+	./dsstatgroupby 'Batch::LSF' basic 'start_time - submit_time' where 'start_time - submit_time > 50000' group by 'production' basic 'cpu_time/(end_time-start_time)' group by production quantile 'start_time - submit_time' where 'start_time - submit_time > 50000' group by production from ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.2
+	cmp test.dsstatgroupby.2 $(top_srcdir)/check-data/test.dsstatgroupby.2.ref
+	touch $@
+
+ran.check-lsfdsanalysis: lsfdsanalysis
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
+	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	touch $@
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

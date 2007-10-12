@@ -76,7 +76,7 @@ ExtentSeries::clearExtent()
     my_extent = NULL;
     pos.cur_extent = NULL;
     pos.cur_pos = NULL;
-    pos.recordsize = -1;
+    pos.recordsize = 0;
 }
 
 void
@@ -87,6 +87,40 @@ ExtentSeries::addField(Field &field)
     }
     my_fields.push_back(&field);
 }
+
+void
+ExtentSeries::iterator::setpos(byte *new_pos)
+{
+    unsigned recnum = (new_pos - cur_extent->fixeddata.begin()) / recordsize;
+    INVARIANT(cur_extent != NULL, "no current extent?");
+    INVARIANT(new_pos >= cur_extent->fixeddata.begin(), 
+	      "new pos before start");
+    INVARIANT(new_pos <= cur_extent->fixeddata.end(),
+	      "new pos after end");
+    size_t offset = new_pos - cur_extent->fixeddata.begin();
+    INVARIANT(recnum * recordsize == offset,
+	      "new position not aligned to record boundary");
+    cur_pos = new_pos;
+}
+
+void
+ExtentSeries::iterator::update(Extent *e)
+{
+    if (e->type->fixedrecordsize() == recordsize) {
+	int offset = cur_pos - cur_extent->fixeddata.begin();
+	byte *begin_pos = cur_extent->fixeddata.begin();
+	cur_pos = begin_pos + offset;
+    } else {
+	unsigned recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
+	size_t offset = cur_pos - cur_extent->fixeddata.begin();
+	INVARIANT(recnum * recordsize == offset,
+		  ("whoa, pointer not on a record boundary?!\n"));
+	recordsize = e->type->fixedrecordsize();
+	byte *begin_pos = cur_extent->fixeddata.begin();
+	cur_pos = begin_pos + recnum * recordsize;
+    }
+}
+
 
 void
 ExtentSeries::iterator::forceCheckOffset(long offset)
