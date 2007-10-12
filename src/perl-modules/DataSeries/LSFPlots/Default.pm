@@ -30,7 +30,7 @@ sub new {
 
 ### defaults for command line options...
 
-sub datadir { return undef; }
+sub indexfile { return undef; }
 sub plotdir { return undef; }
 sub starttime { return undef; }
 sub endtime { return undef; }

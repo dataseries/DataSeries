@@ -1,9 +1,11 @@
 #
-#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#  (c) Copyright 2005-2007, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
 #
 # automake input file
+
+SUBDIRS = perl-modules
 
 if WITH_LZF
 DATASERIES_ENABLE_LZF=1
@@ -31,12 +33,6 @@ endif
 
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
-
-dsperldir = $(datadir)/perl5/DataSeries
-dsperl_DATA = analysis/LSFcommon.pm analysis/Crypt.pm
-
-lsfplotsdir = $(dsperldir)/LSFPlots
-lsfplots_DATA = analysis/LSFPlots/Productions.pm analysis/LSFPlots/Default.pm analysis/LSFPlots/AllCpu.pm
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
@@ -125,7 +121,7 @@ nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis ran.check-lsfdsplots
 
 ##### WITH_SRT
 if WITH_SRT
@@ -238,6 +234,12 @@ ran.check-dsstatgroupby: dsstatgroupby
 ran.check-lsfdsanalysis: lsfdsanalysis
 	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	touch $@
+
+ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
+	LINTEL_REGRESSION_TEST_INC_DIR=$(top_srcdir)/src/perl-modules perl ./analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547
+	grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
+	cmp check-lsfdsplots/all/all.ps-nodate $(top_srcdir)/check-data/lsfdsplots.ps.ref
 	touch $@
 
 if ENABLE_PAPER

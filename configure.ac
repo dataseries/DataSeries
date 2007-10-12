@@ -108,7 +108,7 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 expanded_bindir=`expand_variable $bindir`
 AC_SUBST(expanded_bindir)
 
-AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/dataseries-config src/analysis/lsfdsplots src/analysis/dsdecrypt])
+AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/perl-modules/Makefile src/dataseries-config src/analysis/lsfdsplots src/analysis/dsdecrypt])
 
 AC_OUTPUT
 

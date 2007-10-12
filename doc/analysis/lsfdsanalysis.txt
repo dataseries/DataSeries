@@ -24,3 +24,5 @@
    calculation is that each job is using one cpu, which is not
    entirely accurate over this data set.
 
+5) Make some graphs:
+   % lsfdsplots --indexfile=$HOME/nobackup-data/lsf/gld/index.ds --plotdir=/tmp/graphs --groups=all,production,queue --starttime='Jan 1 2007' --endtime='Dec 31 2007'
