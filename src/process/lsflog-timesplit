@@ -81,7 +81,12 @@ foreach my $file (@files) {
     }
     updateEventFile($startevfile,\@datagroup);
     $processed{$file} = "$size-$mtime";
-    pending_compress(time);
+    pending_compress();
+}
+
+my @to_compress = sort keys %pending_compresses;
+foreach my $file (@to_compress) {
+    do_pending_compress($file);
 }
 
 pending_compress(time() + 1000000);
@@ -91,28 +96,32 @@ rename("$basedir/processed-$$.db","$basedir/processed.db")
     or die "Unable to rename: $!";
 
 sub pending_compress {
-    my ($now) = @_;
+    my $now = time;
 
-    return if $min_pending_compress + 3600 > $now;
+    my $delay = 1800;
 
-    $min_pending_compress = $now;
+    return if $min_pending_compress + $delay > $now;
 
+    my $minfile;
     my @to_compress;
     while(my($file,$at) = each %pending_compresses) {
-	if ($at + 300 > $now) {
-	    $min_pending_compress = $at if $at < $min_pending_compress;
-	} else {
-	    push(@to_compress, $file);
-	}
+	$minfile ||= $file;
+	$min_pending_compress = $at if $at < $min_pending_compress;
+	$minfile = $file if $at < $pending_compresses{$minfile};
     }
-    foreach my $file (@to_compress) {
-	delete $pending_compresses{$file};
-	die "??" unless -f $file;
-	die "??" if -f "${file}.gz";
-	print "pending compress $file\n";
-	system("bzip2 -9v $file") == 0
-	    or die "bzip2 failed";
-    }
+    return unless defined $minfile;
+    return if $pending_compresses{$minfile} + $delay >= $now;
+    do_pending_compress($minfile);
+}
+
+sub do_pending_compress {
+    my($file) = @_;
+    delete $pending_compresses{$file};
+    die "?? $file" unless -f $file;
+    die "??" if -f "${file}.gz" || -f "${file}.bz2";
+    print "pending compress $file\n";
+    system("gzip -9v $file") == 0
+	or die "gzip failed";
 }
 	
 
@@ -182,12 +191,10 @@ sub updateEventFile {
     }
 
     $compresstype = '' unless defined $compresstype;
-    if ($compresstype eq '') {
-	$pending_compresses{$outname} = time;
-    }
+    $pending_compresses{$outname} = time;
 
     if (! -f "$outname$compresstype") {
-	print "  creating ${outname}$compresstype\n    ";
+	print "  creating ${outname}\n    ";
 	mkdirpart($outname);
 	open(OUTFILE,">$outname-new")
 	    or die "Unable to open $outname-new for write: $!";
@@ -262,26 +269,18 @@ sub updateEventFile {
 	close(OUTFILE) or die "close failed";
 	if ($new_count == 0) {
 	    unlink("$outname-new") or die "unlink($outname-new) failed: $!";
+	    delete $pending_compresses{$outname};
 	    print "unchanged.\n";
 	    return;
 	}
     }
 
-    if ($compresstype eq '.gz') {
-	die "HuH?";
-	print "compressing...";
-	system("gzip -9 $outname-new") == 0
-	    or die "gzip failed";
-    } elsif ($compresstype eq '.bz2') {
-	print "compressing...";
-	system("bzip2 -9 $outname-new") == 0
-	    or die "bzip2 failed";
-    } 
     if (-f "$outname$compresstype") {
 	unlink("$outname$compresstype")
 	    or die "unable to unlink: $!";
     }
-    rename("$outname-new$compresstype","$outname$compresstype")
+
+    rename("$outname-new",$outname)
 	or die "rename failed: $!";
 
     print "done.\n";
