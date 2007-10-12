@@ -41,6 +41,7 @@ my $min_pending_compress = 0;
 my %pending_compresses;
 
 foreach my $file (@files) {
+    next if $file =~ /\.tgz$/o;
     warn "relative path for $file, tracking processed files may not work right"
 	unless $file =~ m!^/!o;
     my ($dev,$ino,$mode,$nlink,$uid,$gid,$rdev,$size,
