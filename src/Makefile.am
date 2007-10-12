@@ -146,7 +146,7 @@ endif
 ##### WITH_PCRE
 if WITH_PCRE
 bin_PROGRAMS += bacct2ds
-bin_SCRIPTS += process/lsflog-timesplit
+bin_SCRIPTS += raw-collection/lsf/lsflog-timesplit
 
 bacct2ds_SOURCES = process/bacct2ds.C
 bacct2ds_LDADD = @PCRE_LIBS@ libDataSeries.la
