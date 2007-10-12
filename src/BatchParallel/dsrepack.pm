@@ -178,10 +178,11 @@ sub transform {
     return $_;
 }
 
-sub determine_things_to_build {
-    my($this, $possibles) = @_;
+sub find_things_to_build {
+    my($this, @dirs) = @_;
 
-    my @possibles = @$possibles;
+    my @possibles = $this->find_possibles(@dirs);
+
     if (defined $this->{require_re}) {
 	my $re = qr/$this->{require_re}/o;
 	@possibles = grep($_->[1] =~ $re, @possibles);
@@ -192,21 +193,23 @@ sub determine_things_to_build {
     # Ignore any file which is a destination file of another file we're processing.
     my %dest2sources;
 
-    for (@$possibles) {
+    for (@possibles) {
 	my $out = $this->transform($_->[1]);
 	die "both $dest2sources{$out} and $_->[1] map to the same output"
 	    if defined $dest2sources{$out} && $this->{mode} ne 'miso';
 	push(@{$dest2sources{$out}}, $_->[1]);
     }
 
+    my $source_count = 0;
     my @ret;
 
     if ($this->{mode} eq 'siso' || $this->{mode} eq 'simo') {
-	for (@$possibles) {
+	for (@possibles) {
 	    my $srcpath = $_->[1];
 	    # skip sources which are the destination for something else
 	    next if defined $dest2sources{$srcpath}; 
 
+	    ++$source_count;
 	    my $destpath = $this->transform($srcpath);
 	    if ($this->file_older($destpath, $srcpath)) {
 		if ($this->{mode} eq 'siso') {
@@ -260,18 +263,20 @@ sub determine_things_to_build {
 		    my $start = $source2order{$chunk[0]};
 		    my $end = $source2order{$chunk[@chunk - 1]};
 		    my $chunkdest = "${destbase}.${start}-${end}.ds";
+		    ++$source_count;
 		    if ($this->file_older($chunkdest, @chunk)) {
 			push(@ret, DSRepackMISO->new($this, \@chunk, $chunkdest));
 		    }
 		}
 	    } else {	
+		++$source_count;
 		if ($this->file_older($destpath, @$sources)) {
 		    push(@ret, DSRepackMISO->new($this, \@sources, $destpath));
 		}
 	    }
 	}
     }
-    return @ret;
+    return ($source_count, @ret);
 }
 
 sub file_is_source {
