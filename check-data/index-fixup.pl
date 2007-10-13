@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 
-die "??" unless $0 =~ m!^(/.*)/check-data/index-fixup.pl!;
+die "?? $0" unless $0 =~ m!^(.*)/check-data/index-fixup.pl!;
 
 my $topdir = $1;
 

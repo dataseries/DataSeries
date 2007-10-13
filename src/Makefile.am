@@ -237,7 +237,7 @@ ran.check-lsfdsanalysis: lsfdsanalysis
 	touch $@
 
 ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
-	LINTEL_REGRESSION_TEST_INC_DIR=$(top_srcdir)/src/perl-modules perl ./analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547
+	LINTEL_REGRESSION_TEST_INC_DIR=$(top_srcdir)/src/perl-modules perl ./analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=$(top_builddir)/src/lsfdsanalysis
 	grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
 	cmp check-lsfdsplots/all/all.ps-nodate $(top_srcdir)/check-data/lsfdsplots.ps.ref
 	touch $@
