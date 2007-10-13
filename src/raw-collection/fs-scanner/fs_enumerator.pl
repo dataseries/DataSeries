@@ -50,6 +50,8 @@ my $baseDirectory;
 my $totalSize = 0;
 my $totalCount = 0;
 my $curSize = 0;
+my $curCount = 0;
+my $oldTime = 0;
 
 while (@pending > 0) {
     my $thing = shift @pending;
@@ -72,14 +74,16 @@ while (@pending > 0) {
 	$outFileSpecComplete = $logname;
 	die "??" if -e "$logname-done";
 
-	print "logging to $outFileSpecComplete\n";
+	my $curTime = localtime(time);
+	print "$curTime - logging to $outFileSpecComplete\n";
 	$outFileCurCount = 0;
 	rotateLogs();
 
-	$totalSize = $totalCount = $curSize = $outFileEntryCount = 0;
+	$totalSize = $totalCount = $curCount = $curSize = $outFileEntryCount = oldTime = 0;
 	$baseDirectory = $thing;
 	find(\&wanted, $thing);
-	print STDERR "done with \#$processed_dir_count: $thing\n";
+	$curTime = localtime(time);
+	print STDERR "$curTime - done with \#$processed_dir_count: $thing\n";
 	++$processed_dir_count;
 	close(OUTFILE);
 	open(FOO, ">$outFileSpecComplete-done")
@@ -134,14 +138,21 @@ sub wanted {
     print OUTFILE "$printString\n";
     #print "$File::Find::dir $_ $dev $ino $mode $nlink $uid $gid $rdev $size $atime $mtime $ctime $blksize $blocks\n";
     ++$totalCount;
+    ++$curCount;
     if (-f $_) {
 	$curSize += $size;
-	if ($curSize > (500*1024*1024)) {
-	    $totalSize += $curSize;
-	    $curSize = 0;
-	    my $printCount = $totalSize/(1024*1024*1024);
-	    printf STDERR "%.3f GiB, %.3f Mfiles; $File::Find::name\n",
-	       $totalSize/(1024*1024*1024), $totalCount/(1000*1000);
+	if ($curCount >= 500) {
+	    my $time = time;
+	    $curCount = 0;
+	    if ($time - $oldTime > 60) {
+		$oldTime = $time;
+		$totalSize += $curSize;
+		$curSize = 0;
+		my $prettyTime = localtime(time);
+		my $printCount = $totalSize/(1024*1024*1024);
+		printf STDERR "$prettyTime, %.3f GiB, %.3f Mfiles; $File::Find::name\n",
+		$totalSize/(1024*1024*1024), $totalCount/(1000*1000);
+	    }
 	}
     }
     $outFileEntryCount++;
