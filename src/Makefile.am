@@ -94,19 +94,30 @@ indexnfscommon_SOURCES = process/indexnfscommon.C
 
 # Type specific analysis
 bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis 
-bin_SCRIPTS += analysis/lsfdsplots analysis/dsdecrypt
+bin_SCRIPTS += analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
 lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis 
+
+### Conditional things
+
+if HAS_DATE_PARSE
+bin_SCRIPTS += analysis/lsfdsplots 
 
 # Dunno why autoconf doesn't do this for us, it works only if lsfdsplots
 # isn't in a subdir.
 analysis/lsfdsplots: $(top_builddir)/config.status $(srcdir)/analysis/lsfdsplots.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 
+CHECK_TARGETS += ran.check-lsfdsplots
+endif
+
 analysis/dsdecrypt: $(top_builddir)/config.status $(srcdir)/analysis/dsdecrypt.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+
 
 ##### WITH_PCAP
 if WITH_PCAP
@@ -120,8 +131,6 @@ nettrace2ds_SOURCES = process/nettrace2ds.C
 nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 endif
-
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis ran.check-lsfdsplots
 
 ##### WITH_SRT
 if WITH_SRT
@@ -236,11 +245,13 @@ ran.check-lsfdsanalysis: lsfdsanalysis
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
 	touch $@
 
+if HAS_DATE_PARSE
 ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
 	LINTEL_REGRESSION_TEST_INC_DIR=$(top_srcdir)/src/perl-modules perl ./analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=$(top_builddir)/src/lsfdsanalysis
 	grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
 	cmp check-lsfdsplots/all/all.ps-nodate $(top_srcdir)/check-data/lsfdsplots.ps.ref
 	touch $@
+endif
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat
