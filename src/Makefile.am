@@ -35,10 +35,10 @@ bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
-AM_LDFLAGS = @OPTMODE_LDFLAGS@
+AM_LDFLAGS = @OPTMODE_LDFLAGS@ @DMALLOC_LIBS@
 
 lib_LTLIBRARIES = libDataSeries.la
-bin_SCRIPTS = dataseries-config 
+bin_SCRIPTS = dataseries-config dstypes2cxx
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
 libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ @DMALLOC_LIBS@ @CRYPTO_LIBS@ -lrt 
@@ -100,7 +100,9 @@ ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C
 lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
 
-CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect ran.check-dsextentindex ran.check-dsstatgroupby ran.check-lsfdsanalysis 
+CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
+	ran.check-dsextentindex ran.check-dsstatgroupby \
+	ran.check-lsfdsanalysis ran.check-dstypes2cxx
 
 ### Conditional things
 
@@ -243,6 +245,11 @@ ran.check-dsstatgroupby: dsstatgroupby
 ran.check-lsfdsanalysis: lsfdsanalysis
 	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	touch $@
+
+ran.check-dstypes2cxx: dstypes2cxx
+	perl ./dstypes2cxx $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
+	cmp check.dstypes2cxx.txt $(top_srcdir)/check-data/check.dstypes2cxx.ref
 	touch $@
 
 if HAS_DATE_PARSE
