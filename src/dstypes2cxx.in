@@ -1,0 +1,151 @@
+#!@PERL_BINARY@ -w
+# -*- Perl -*-
+#
+#  (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+use strict;
+use FileHandle;
+use XML::Parser;
+use Data::Dumper;
+use Getopt::Long;
+use Fcntl ':seek';
+
+my %prefixes;
+
+my $ret = GetOptions("prefix=s" => \%prefixes);
+die "??" unless $ret;
+
+my %type2field = ( 'bool' => 'BoolField',
+		   'byte' => 'ByteField',
+		   'int32' => 'Int32Field',
+		   'int64' => 'Int64Field',
+		   'double' => 'DoubleField',
+		   'variable32' => 'Variable32Field' );
+
+if (@ARGV == 0) {
+    print STDERR "reading from stdin, expecting C++ or text\n";
+    readFH(*STDIN);
+} else {
+    # TODO make it run ds2txt on dataseries files.
+    foreach my $file (@ARGV) {
+	my $fh = new FileHandle $file
+	    or die "can't open $file for read: $!";
+	my $tmp;
+	sysread($fh, $tmp, 4);
+	if ($tmp eq 'DSv1') {
+	    $fh->close();
+	    $fh = new FileHandle "@expanded_bindir@/ds2txt $file |"
+		or die "Unable to run @expanded_bindir@/dstxt $file: $!";
+	} else {
+	    seek($fh, 0, SEEK_SET);
+	}
+	readFH($fh);
+	$fh->close();
+    }
+}
+
+sub readFH {
+    my($fh) = @_;
+
+    while(<$fh>) {
+	next unless /\<ExtentType/o;
+	if (/\"\<ExtentType/o) {
+	    parseFHCxx($_, $fh);
+	} else {
+	    last if /^extent offset  ExtentType$/o;
+	    parseFHText($_, $fh);
+	}
+    }
+}
+
+sub parseFHCxx {
+    my($firstline, $fh) = @_;
+
+    my @data = cxxToString($firstline);
+    while(my $line = <$fh>) {
+	push(@data, cxxToString($line));
+	last if /\<\/ExtentType\>/o;
+    }
+    xml2Cxx(join('',@data));
+}
+
+sub cxxToString {
+    $_ = $_[0];
+
+    chomp;
+    return '' if m,^\s*//.*,o;
+    die "can't interpret cxx '$_'"
+	unless /^\s*\"(.+)\"\s*$/o;
+    $_ = $1;
+    s/\\n/\n/go;
+    s/\\(.)/$1/go;
+    return $_;
+}
+
+sub parseFHText {
+    my($firstline, $fh) = @_;
+
+    my @data = ($firstline);
+    while(<$fh>) {
+	push(@data, $_);
+	last if m!</ExtentType>!o;
+    }
+    xml2Cxx(join('', @data));
+}
+
+sub xml2Cxx {
+    my($data) = @_;
+
+    my $parser = new XML::Parser(Style => 'Objects',
+				 Pkg => 'ExtentType');
+
+    $_ = eval { $parser->parse($data); };
+    die "$data\nfailed to parse above: $@"
+	if $@;
+    my $tree = $_->[0];
+    my $typename = $tree->{name};
+    my $ns = $tree->{namespace} || '';
+    my $version = $tree->{version} || '';
+
+    print "    // fields for $typename (ns = $ns, version = $version)\n";
+    my @fields = $tree->get_fields();
+    my $prefix = $prefixes{$typename} || '';
+    foreach my $field (@fields) {
+	my $name = $field->{name};
+	my $type = $field->{type};
+	my $field = $type2field{$type};
+	die "don't recognize type $type" 
+	    unless defined $field;
+	print "    $field $prefix$name;\n";
+    }
+    
+    print "    // initializers\n";
+    foreach my $field (@fields) {
+	my $name = $field->{name};
+	my $type = $field->{type};
+	my $field = $type2field{$type};
+	die "don't recognize type $type" 
+	    unless defined $field;
+	print "    $prefix$name(${prefix}series, \"$name\"),\n";
+    }
+    print Dumper @fields 
+	if 0;
+    print "\n";
+}
+
+package ExtentType::ExtentType;
+
+sub get_fields {
+    my($this) = @_;
+
+    my @ret;
+
+    foreach $_ (@{$this->{Kids}}) {
+	push(@ret, $_) if $_->isa('ExtentType::field');
+    }
+    return @ret;
+}
+
+

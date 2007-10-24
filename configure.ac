@@ -53,6 +53,7 @@ HPL_WITHLIB_SRT
 
 AC_LANG(C)
 HPL_WITHLIB_PCRE
+HPL_WITHLIB_DMALLOC
 
 AM_CONDITIONAL(WITH_LZF, true)
 HPL_WITHLIB_LZO
@@ -118,7 +119,7 @@ else
 fi
 AM_CONDITIONAL(HAS_DATE_PARSE, test "$HAS_DATE_PARSE" = yes)
 
-AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/perl-modules/Makefile src/dataseries-config src/analysis/lsfdsplots src/analysis/dsdecrypt])
+AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/perl-modules/Makefile src/dataseries-config src/dstypes2cxx src/analysis/lsfdsplots src/analysis/dsdecrypt])
 
 AC_OUTPUT
 

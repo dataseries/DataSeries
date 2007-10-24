@@ -34,6 +34,7 @@ public:
 
     void addSource(const std::string &filename);
     bool haveSources() { return !inputFiles.empty(); }
+	
 protected:
     std::string type_prefix, second_type_prefix;
     ExtentSeries indexSeries;
