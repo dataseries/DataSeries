@@ -691,7 +691,7 @@ void
 test_nullsupport()
 {
     printf("test_nullsupport - start\n");
-    const int nents = 20000000;
+    const int nents = 10000000;
     char *array = new char[16*nents];
     char *endofarray = array + 16 * nents;
 
@@ -835,6 +835,7 @@ test_nullsupport()
 	printf("  get2(def0): %.6g seconds (%.3f)\n",elapsed(start,end),sum);
     }
     printf("test_nullsupport - done\n");
+    delete [] array;
 }
 
 bool
