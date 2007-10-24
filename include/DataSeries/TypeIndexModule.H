@@ -34,6 +34,10 @@ public:
 
     void addSource(const std::string &filename);
     bool haveSources() { return !inputFiles.empty(); }
+
+    void sameInputFiles(TypeIndexModule &from) {
+	inputFiles = from.inputFiles;
+    }
 protected:
     std::string type_prefix, second_type_prefix;
     ExtentSeries indexSeries;

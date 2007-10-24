@@ -104,25 +104,25 @@ const string indexinfo_xml =
 void
 updateNamespaceVersions(Extent &e)
 {
-    if (e.type->getNamespace().empty()) {
+    if (e.type.getNamespace().empty()) {
 	INVARIANT(type_namespace == NULL, "invalid to index some extents with a namespace and some without");
     } else {
 	if (type_namespace == NULL) {
-	    type_namespace = new string(e.type->getNamespace());
-	    major_version = e.type->majorVersion();
-	    minor_version = e.type->minorVersion();
+	    type_namespace = new string(e.type.getNamespace());
+	    major_version = e.type.majorVersion();
+	    minor_version = e.type.minorVersion();
 	    if (false) {
 		cout << "Using namespace " << *type_namespace << ", major version " << major_version << "\n";
 	    }
 	}
-	INVARIANT(*type_namespace == e.type->getNamespace(),
+	INVARIANT(*type_namespace == e.type.getNamespace(),
 		  boost::format("conflicting namespaces, found both '%s' and '%s'")
-		  % *type_namespace % e.type->getNamespace());
-	INVARIANT(major_version == e.type->majorVersion(),
+		  % *type_namespace % e.type.getNamespace());
+	INVARIANT(major_version == e.type.majorVersion(),
 		  boost::format("conflicting major versions, found both %d and %d")
 		  % major_version % minor_version);
-	if (e.type->minorVersion() < minor_version) {
-	    minor_version = e.type->minorVersion();
+	if (e.type.minorVersion() < minor_version) {
+	    minor_version = e.type.minorVersion();
 	}
     } 
 }

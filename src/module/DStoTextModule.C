@@ -127,7 +127,7 @@ DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
 	return;
     }
     state.print_specs = state.override_print_specs;
-    xmlDocPtr doc = ExtentTypeLibrary::sharedDocPtr(state.series.type->xmldesc);
+    const xmlDocPtr doc = state.series.type->getXmlDescriptionDoc();
     xmlNodePtr cur = xmlDocGetRootElement(doc);
     cur = cur->xmlChildrenNode;
     while (cur != NULL) {
@@ -219,15 +219,16 @@ DStoTextModule::getExtent()
     Extent *e = source.getExtent();
     if (e == NULL) 
 	return NULL;
-    if (e->type->name == "DataSeries: XmlType") {
+    if (e->type.getName() == "DataSeries: XmlType") {
 	return e; // for now, never print these, that was previous behavior of ds2txt because the default source module skips the type extent at the beginning
     }
 
-    if (print_index == false && e->type->name == "DataSeries: ExtentIndex") {
+    if (print_index == false &&
+	e->type.getName() == "DataSeries: ExtentIndex") {
 	return e;
     }
 
-    PerTypeState &state = type_to_state[e->type->name];
+    PerTypeState &state = type_to_state[e->type.getName()];
 
     state.series.setExtent(e);
     getExtentPrintSpecs(state);

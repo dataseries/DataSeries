@@ -49,8 +49,8 @@ readExistingIndex(char *out_filename)
     TypeIndexModule src("NFS trace: common index");
     src.addSource(out_filename);
     Extent *e = src.getExtent();
-    AssertAlways(e->type->name == "NFS trace: common index",
-		 ("whoa, extent type %s bad\n",e->type->name.c_str()));
+    AssertAlways(e->type.getName() == "NFS trace: common index",
+		 ("whoa, extent type %s bad\n",e->type.getName().c_str()));
 
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
@@ -72,7 +72,7 @@ readExistingIndex(char *out_filename)
     delete e;
     
     e = src.getExtent(); 
-    AssertAlways(e->type->name == "DataSeries: ExtentIndex",("bad"));
+    AssertAlways(e->type.getName() == "DataSeries: ExtentIndex",("bad"));
     delete e;
     AssertAlways(src.getExtent() == NULL,("whoa, index had incorrect extents\n"));
 }
@@ -278,7 +278,7 @@ writeIndexMap(char *out_filename)
     ExtentType *indextype = library.registerType(indextype_xml);
     sink.writeExtentLibrary(library);
 
-    Extent *e = new Extent(indextype);
+    Extent *e = new Extent(*indextype);
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
 	start_time(s,"start-time"), end_time(s,"end-time"),

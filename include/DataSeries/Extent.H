@@ -141,15 +141,15 @@ public:
 	byte *beginV, *endV, *maxV;
     };
 
-    const ExtentType *type;
+    const ExtentType &type;
 
     Extent(ExtentTypeLibrary &library, 
 	   Extent::ByteArray &packeddata, 
 	   const bool need_bitflip);
-    Extent(const ExtentType *type,
+    Extent(const ExtentType &type,
 	   Extent::ByteArray &packeddata, 
 	   const bool need_bitflip);
-    Extent(const ExtentType *type);
+    Extent(const ExtentType &type);
     Extent(const std::string &xmltype); 
     // the above constructor will leak the extenttype it creates if
     // you init with a series, and series.extent() == NULL, the Extent
@@ -191,11 +191,8 @@ public:
 
     // Note you can't unpack the same data twice, it may modify the
     // input data
-    void unpackData(ExtentTypeLibrary &library,
-		    Extent::ByteArray &from, bool need_bitflip);
-    void unpackData(const ExtentType *_type,
-		    Extent::ByteArray &from, bool need_bitflip);
-
+    void unpackData(Extent::ByteArray &from, bool need_bitflip);
+		    
     static const std::string getPackedExtentType(Extent::ByteArray &from);
 
     // the various pack routines return false if packing the data with a 
@@ -281,6 +278,9 @@ public:
     // DataSeries/src/test.C
     static void run_flip4bytes(uint32_t *buf, unsigned buflen);
 private:
+    const ExtentType &packedType(ExtentTypeLibrary &library,
+				 Extent::ByteArray &packeddata,
+				 const bool need_bitflip);
     friend class ExtentSeries;
     void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record
     void init();

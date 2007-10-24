@@ -103,26 +103,16 @@ IndexSourceModule::getExtentPrefetch()
 		  prefetch->cur_memory,prefetch->max_memory));
     prefetch->cond.signal();
     prefetch->mutex.unlock();
-    struct rusage rusage_start;
-    AssertAlways(getrusage(RUSAGE_SELF,&rusage_start)==0,
-		 ("getrusage failed: %s\n",strerror(errno)));
-    Extent *ret = new Extent(buf->type,buf->bytes,buf->need_bitflip);
-    struct rusage rusage_end;
-    AssertAlways(getrusage(RUSAGE_SELF,&rusage_end)==0,
-		 ("getrusage failed: %s\n",strerror(errno)));
-    AssertAlways(ret->type->name == buf->uncompressed_type,
-		 ("index error?! %s != %s\n",ret->type->name.c_str(),
-		  buf->uncompressed_type.c_str()));
+
+    Extent *ret = new Extent(*buf->type,buf->bytes,buf->need_bitflip);
+    INVARIANT(ret->type.getName() == buf->uncompressed_type,
+	      boost::format("index error?! %s != %s\n")
+	      % ret->type.getName() % buf->uncompressed_type);
     prefetch->mutex.lock();
     total_compressed_bytes += buf->bytes.size();
     total_uncompressed_bytes += ret->extentsize();
-    decode_time += timediff(rusage_end.ru_utime,rusage_start.ru_utime) +
-	timediff(rusage_end.ru_stime,rusage_start.ru_stime);
     prefetch->mutex.unlock();
-    // could move this check into another virtual function, but it can't be in
-    // the common parent class
-//    AssertAlways(ExtentType::prefixmatch(ret->type->name,type_prefix),
-//		   ("whoa, got wrong extent type?!\n"));
+
     delete buf;
     return ret;
 }

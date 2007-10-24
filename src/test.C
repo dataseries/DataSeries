@@ -385,7 +385,6 @@ test_extentpackunpack()
     ExtentTypeLibrary typelib;
 
     typelib.registerType("<ExtentType name=\"test type\">\n"
-			 "  <field type=\"bool\" name=\"test1\" />\n"
 			 "  <field type=\"int32\" name=\"input1\" pack_relative=\"input1\" />\n"
 			 "  <field type=\"int32\" name=\"input2\" pack_relative=\"input1\" />\n"
 			 "  <field type=\"int64\" name=\"int64-1\" pack_relative=\"int64-1\" />\n"
@@ -448,11 +447,11 @@ test_extentpackunpack()
     Extent::ByteArray packed;
     testextent.packData(packed,Extent::compress_zlib);
     Extent unpackextent(testseries);
-    unpackextent.unpackData(typelib, packed, false);
+    unpackextent.unpackData(packed, false);
 
     testseries.setExtent(unpackextent);
     for(int i=0;i<nrecords;i++) {
-	AssertAlways(int1.val() == i,("?? %d",int1.val()));
+	AssertAlways(int1.val() == i,("?? %d %d",int1.val(),i));
 	AssertAlways(int2.val() == nrecords-i,("??"));;
 	AssertAlways(int64_1.val() == (ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000,("??"));
 	AssertAlways(int64_2.val() == (ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000,("??"));
@@ -967,7 +966,7 @@ test_doublebase_nullable()
     ExtentSeries dbnseries(*dbntype);
     DoubleField f_double(dbnseries,"double",Field::flag_nullable | DoubleField::flag_allownonzerobase);
     
-    Extent *cur_extent = new Extent(dbntype);
+    Extent *cur_extent = new Extent(*dbntype);
     dbnseries.setExtent(cur_extent);
     
     dbnseries.newRecord();

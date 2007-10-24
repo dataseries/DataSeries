@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -18,8 +18,9 @@
 
 #include <libxml/tree.h>
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
+#include <Lintel/LintelAssert.H> // TODO: make this go away
 
 class ExtentType {
 public:
@@ -43,69 +44,65 @@ public:
     // library reserves names starting with a space to name invisible
     // fields.
     bool hasColumn(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	return cnum != -1;
     }
 
     fieldType getFieldType(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getFieldType(cnum);
     }
     int32 getSize(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getSize(cnum);
     }
     int32 getOffset(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getOffset(cnum);
     }
     int getBitPos(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getBitPos(cnum);
     }
     bool getUnique(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getUnique(cnum);
     }
     bool getNullable(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getNullable(cnum);
     }
     double getDoubleBase(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return getDoubleBase(cnum);
     }
 
     const std::string &getFieldName(unsigned int columnnum) const {
-	AssertAlways(columnnum < visible_fields.size(),
-		     ("invalid column num %d\n",columnnum));
-	int i = visible_fields[columnnum];
-	return field_info[i].name;
+	INVARIANT(columnnum < rep.visible_fields.size(),
+		  boost::format("invalid column num %d") % columnnum);
+	int i = rep.visible_fields[columnnum];
+	return rep.field_info[i].name;
     }
-    const unsigned fixedrecordsize() const { return fixed_record_size; }
+    const unsigned fixedrecordsize() const { return rep.fixed_record_size; }
 
-    ExtentType(const std::string &xmldesc);
-    const int getNFields() const { return visible_fields.size(); };
+    const int getNFields() const { return rep.visible_fields.size(); };
 
     static std::string nullableFieldname(const std::string &fieldname);
 
-    std::string name;
-    std::string xmldesc;
-    xmlDocPtr field_desc_doc;
     std::string xmlFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return xmlFieldDesc(cnum);
     }
     xmlNodePtr xmlNodeFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(column);
+	int cnum = getColumnNumber(rep,column);
 	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
 	return xmlNodeFieldDesc(cnum);
     }
@@ -121,11 +118,18 @@ public:
     bool versionCompatible(unsigned app_major, unsigned app_minor) const {
 	return app_major == majorVersion() && app_minor <= minorVersion();
     }
-    unsigned majorVersion() const { return major_version; }
-    unsigned minorVersion() const { return minor_version; }
+    unsigned majorVersion() const { return rep.major_version; }
+    unsigned minorVersion() const { return rep.minor_version; }
 
-    const std::string &getNamespace() const { return type_namespace; }
-protected:
+    const std::string &getName() const { return rep.name; }
+    const std::string &getXmlDescriptionString() const {
+	return rep.xml_description_str;
+    }
+    const xmlDocPtr &getXmlDescriptionDoc() const {
+	return rep.xml_description_doc;
+    }
+    const std::string &getNamespace() const { return rep.type_namespace; }
+private:
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
     // generic programs that operate on anything, such as ds2txt),
@@ -141,7 +145,6 @@ protected:
     bool getNullable(int column) const;
     double getDoubleBase(int column) const;
 
-    int getColumnNumber(const std::string &column) const;
     std::string xmlFieldDesc(int field_num) const;
     xmlNodePtr xmlNodeFieldDesc(int field_num) const;
 
@@ -153,15 +156,10 @@ protected:
 	double doublebase;
 	xmlNodePtr xmldesc;
 	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      unique(false), nullable(false), doublebase(0), xmldesc(NULL)
+		      unique(false), nullable(false), doublebase(0), 
+		      xmldesc(NULL)
 	{ }
     };
-
-    std::vector<int> visible_fields; // mapping from visible fields (defined in the XML)
-    // to the actual field_info (which may have hidden fields)
-    std::vector<fieldInfo> field_info;
-
-    std::vector<int32> variable32_field_columns;
 
     struct pack_scaleT {
 	int field_num;
@@ -169,12 +167,10 @@ protected:
 	pack_scaleT(int a, double b) 
 	    : field_num(a), scale(b), multiplier(1.0/b) {}
     };
-    std::vector<pack_scaleT> pack_scale;
     struct pack_other_relativeT {
 	int field_num, base_field_num;
 	pack_other_relativeT(int a, int b) : field_num(a), base_field_num(b) {}
     };
-    std::vector<pack_other_relativeT> pack_other_relative;
     struct pack_self_relativeT {
 	unsigned field_num;
 	double double_prev_v;
@@ -182,23 +178,63 @@ protected:
 	int32 int32_prev_v;
 	int64 int64_prev_v;
 	pack_self_relativeT(int a) 
-	    : field_num(a), double_prev_v(0), scale(1), multiplier(1), int32_prev_v(0), int64_prev_v(0) {}
+	    : field_num(a), double_prev_v(0), scale(1), multiplier(1), 
+	      int32_prev_v(0), int64_prev_v(0) {}
     };
-    std::vector<pack_self_relativeT> pack_self_relative;
 
-    int fixed_record_size;
+    // All the parsed state is in here so that we can have a const
+    // representation, and have a single parsing function that just
+    // returns the structure rather than having to deal with each
+    // piece separately as C++ only allows initialization of const
+    // values in the constructor.
+    struct ParsedRepresentation {
+	std::string name, xml_description_str;
+	xmlDocPtr xml_description_doc;
+
+	// mapping from visible fields (defined in the XML) to the actual
+	// field_info (which may have hidden fields)
+	std::vector<int> visible_fields; 
+	std::vector<fieldInfo> field_info;
+	
+	std::vector<int32> variable32_field_columns;
+	
+	std::vector<pack_scaleT> pack_scale;
+	std::vector<pack_other_relativeT> pack_other_relative;
+	std::vector<pack_self_relativeT> pack_self_relative;
+
+	int fixed_record_size;
+	unsigned major_version, minor_version;
+	std::string type_namespace;
+    };
+    
+    static int getColumnNumber(const ParsedRepresentation &rep,
+			       const std::string &column);
+    static int getColumnNumber(const ParsedRepresentation &rep,
+			       const xmlChar *column) {
+	return getColumnNumber(rep, reinterpret_cast<const char *>(column));
+    }
+    static ParsedRepresentation parseXML(const std::string &xmldesc);
+    const ParsedRepresentation rep;
 
     friend class Variable32Field;
     friend class Extent;
-private:
-    unsigned major_version, minor_version;
-    std::string type_namespace;
+    friend class ExtentTypeLibrary;
+
+    ExtentType(const std::string &xmldesc);
+    ~ExtentType();
+public:
+    // TODO: switch users of these to getters, then eliminate duplication
+    // with ParsedRepresentation
+    const std::string name;
+    const std::string xmldesc;
+    const xmlDocPtr field_desc_doc;
 };
 
 class ExtentTypeLibrary {
 public:
     ExtentTypeLibrary() {};
 
+    // TODO: make this return a reference (and change all the users)
     ExtentType *registerType(const std::string &xmldesc);
 
     // ExtentType * values returned by these functions survive the
@@ -206,11 +242,11 @@ public:
     // ExtentTypeLibraries based on the actual XML type information
 
     ExtentType *getTypeByName(const std::string &name, bool null_ok = false);
-    ExtentType *getTypeByPrefix(const std::string &prefix, bool null_ok = false);
+    ExtentType *getTypeByPrefix(const std::string &prefix, 
+				bool null_ok = false);
 
     std::map<const std::string, ExtentType *> name_to_type;
-    static ExtentType *sharedExtentType(const std::string &xmldesc);
-    static xmlDocPtr sharedDocPtr(const std::string &xmldesc);
+    static ExtentType &sharedExtentType(const std::string &xmldesc);
 };
 
 #endif

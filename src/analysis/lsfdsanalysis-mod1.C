@@ -1,19 +1,9 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         lsfdsanalysis-mod1.C
-* RCS:          $Header: /mount/cello/cvs/Grizzly/cpp/analysis/lsfdsanalysis-mod1.C,v 1.5 2004/09/21 01:57:23 anderse Exp $
-* Description:  Mostly finished modules
-* Author:       Eric Anderson
-* Created:      Mon Apr 19 14:33:24 2004
-* Modified:     Sat Sep 11 23:29:07 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+   (c) Copyright 2004-2007, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+
+   Description:  Mostly finished modules
 */
 
 #include <Lintel/HashUnique.H>

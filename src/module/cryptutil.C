@@ -1,19 +1,9 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         cryptutil.C
-* RCS:          $Header: /mount/cello/cvs/Grizzly/cpp/new-tcpdump2ds/cryptutil.C,v 1.2 2004/08/28 00:42:35 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Thu Dec  4 14:47:37 2003
-* Modified:     Sat Jun 26 16:24:51 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+
+   Description:  cryptographic utilities for dataseries
 */
 
 #include <inttypes.h>

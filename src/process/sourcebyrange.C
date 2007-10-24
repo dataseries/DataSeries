@@ -43,8 +43,8 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     TypeIndexModule src("NFS trace: common index");
     src.addSource(index_filename);
     Extent *e = src.getExtent();
-    AssertAlways(e->type->name == "NFS trace: common index",
-		 ("whoa, extent type %s bad\n",e->type->name.c_str()));
+    AssertAlways(e->type.getName() == "NFS trace: common index",
+		 ("whoa, extent type %s bad\n",e->type.getName().c_str()));
 
     char *start_add = (char *)sbrk(0);
     ExtentSeries s(e);

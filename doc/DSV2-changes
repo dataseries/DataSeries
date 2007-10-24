@@ -10,9 +10,10 @@ Changes under consideration for DSV1:
 
 Changes under consideration for DSV2:
   * Update the checksums that are used.  Current suggestion is to use SHA1
-    for the packed checksum, and adler32/zlib-crc32/bjhash for the unpacked
-    checksum with the modification that unpacked checksums aren't checked
-    by default.
+    for the packed checksum, and inlineable adler32/zlib-crc32/bjhash
+    for the unpacked checksum.  As part of this, may want to seed one or
+    both checksums with the checksum of the xml description to futher verify
+    that we have a match between the type and the data.
   * Change the part of the extent header that stores the type as a string
     to storing the type as a 2-4 byte id this will reduce the overhead for
     having small extents, although it will require us to assign a permanant

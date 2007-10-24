@@ -40,11 +40,9 @@ public:
     ExtentTypeLibrary mylibrary;
     Extent *indexExtent; 
     const bool needBitflip() { return need_bitflip; }
-    const ExtentType *dataseriesType() { return dataseries_type; }
 private:
     const std::string filename;
     typedef ExtentType::byte byte;
-    ExtentType *dataseries_type;
     int fd;
     off64_t cur_offset;
     bool need_bitflip;

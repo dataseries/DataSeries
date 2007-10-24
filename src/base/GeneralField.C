@@ -1139,11 +1139,10 @@ GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
 ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
     : source(_source), dest(_dest)
 {
-    if ((source.getTypeCompat() == ExtentSeries::typeExact ||
-	 source.getTypeCompat() == ExtentSeries::typeXMLIdentical ||
-	 dest.getTypeCompat() == ExtentSeries::typeExact ||
-	 dest.getTypeCompat() == ExtentSeries::typeXMLIdentical) 
+    if (source.getTypeCompat() == ExtentSeries::typeExact 
+	&& dest.getTypeCompat() == ExtentSeries::typeExact
 	&& source.type->xmldesc == dest.type->xmldesc) {
+	// Can do a bitwise copy.
 	fixed_copy_size = source.type->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
 	for(int i=0;i<source.type->getNFields(); ++i) {

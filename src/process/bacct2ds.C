@@ -3808,7 +3808,7 @@ main(int argc,char *argv[])
 			 packing_args.compress_level);
     ExtentTypeLibrary library;
     ExtentType *lsf_grizzly_type = library.registerType(lsf_grizzly_xml);
-    lsf_grizzly_series.setType(lsf_grizzly_type);
+    lsf_grizzly_series.setType(*lsf_grizzly_type);
     lsf_grizzly_outmodule = new OutputModule(outds,lsf_grizzly_series,
 					     lsf_grizzly_type,
 					     packing_args.extent_size);

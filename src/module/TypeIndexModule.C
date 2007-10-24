@@ -15,7 +15,7 @@ TypeIndexModule::TypeIndexModule(const string &_type_prefix)
     : IndexSourceModule(), 
       type_prefix(_type_prefix), 
       second_type_prefix(""),
-      indexSeries(ExtentSeries::typeXMLIdentical),
+      indexSeries(ExtentSeries::typeExact),
       extentOffset(indexSeries,"offset"), 
       extentType(indexSeries,"extenttype"),
       cur_file(0),

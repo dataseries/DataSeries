@@ -63,7 +63,7 @@ FilterModule::getExtent()
 	Extent *e = from.getExtent();
 	if (e == NULL)
 	    return NULL;
-	if (ExtentType::prefixmatch(e->type->name,type_prefix))
+	if (ExtentType::prefixmatch(e->type.getName(), type_prefix))
 	    return e;
 	delete e;
     }
@@ -78,7 +78,7 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
     INVARIANT(outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");
-    cur_extent = new Extent(outputtype);
+    cur_extent = new Extent(*outputtype);
     series.setExtent(cur_extent);
 }
 

@@ -354,35 +354,41 @@ Extent::init()
 Extent::Extent(ExtentTypeLibrary &library, 
 	       Extent::ByteArray &packeddata,
 	       const bool need_bitflip)
-    : type(NULL)
+    : type(*library.getTypeByName(getPackedExtentType(packeddata)))
 {
     init();
-    unpackData(library,packeddata,need_bitflip);
+    unpackData(packeddata, need_bitflip);
 }
 
-Extent::Extent(const ExtentType *_type,
+Extent::Extent(const ExtentType &_type,
 	       Extent::ByteArray &packeddata,
 	       const bool need_bitflip)
     : type(_type)
 {
     init();
-    unpackData(type,packeddata,need_bitflip);
+    unpackData(packeddata, need_bitflip);
 }
 
-Extent::Extent(const ExtentType *_type)
+Extent::Extent(const ExtentType &_type)
     : type(_type)
 {
     init();
 }
 
 Extent::Extent(const string &xmltype)
-    : type(new ExtentType(xmltype))
+    : type(ExtentTypeLibrary::sharedExtentType(xmltype))
 {
     init();
 }
 
+static const ExtentType &toReference(const ExtentType *from)
+{
+    INVARIANT(from != NULL, "bad cast to reference");
+    return *from;
+}
+
 Extent::Extent(ExtentSeries &myseries)
-    : type(myseries.type)
+    : type(toReference(myseries.type))
 {
     init();
     if (myseries.extent() == NULL) {
@@ -393,7 +399,7 @@ Extent::Extent(ExtentSeries &myseries)
 void
 Extent::swap(Extent &with)
 { 
-    INVARIANT(with.type == type, "can't swap between incompatible types");
+    INVARIANT(&with.type == &type, "can't swap between incompatible types");
     fixeddata.swap(with.fixeddata);
     variabledata.swap(with.variabledata);
 }
@@ -401,7 +407,7 @@ Extent::swap(Extent &with)
 void
 Extent::createRecords(unsigned int nrecords)
 {
-    fixeddata.resize(fixeddata.size() + nrecords * type->fixed_record_size);
+    fixeddata.resize(fixeddata.size() + nrecords * type.rep.fixed_record_size);
 }    
 
 struct variableDuplicateEliminate {
@@ -452,29 +458,32 @@ Extent::packData(Extent::ByteArray &into,
 
     memcpy(fixed_coded.begin(), fixeddata.begin(), fixeddata.size());
     vector<bool> warnings;
-    warnings.resize(type->field_info.size(),false);
+    warnings.resize(type.rep.field_info.size(),false);
     // copy so that packing is thread safe
-    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
-    for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
-	INVARIANT(psr_copy[j].field_num < type->field_info.size(), "whoa");
+    vector<ExtentType::pack_self_relativeT> psr_copy 
+	= type.rep.pack_self_relative;
+    for(unsigned int j=0; j<type.rep.pack_self_relative.size(); ++j) {
+	INVARIANT(psr_copy[j].field_num < type.rep.field_info.size(), "whoa");
 	psr_copy[j].double_prev_v = 0; // shouldn't be necessary
 	psr_copy[j].int32_prev_v = 0;
 	psr_copy[j].int64_prev_v = 0;
     }
-    int32 nrecords = 0;
+    uint32_t nrecords = 0;
     byte *variable_data_pos = variable_coded.begin();
     *(int32 *)variable_data_pos = 0;
     variable_data_pos += 4;
     for(Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
 	fixed_record != fixed_coded.end(); 
-	fixed_record += type->fixed_record_size) {
-	AssertAlways(fixed_record < fixed_coded.end(),("internal error\n"));
+	fixed_record += type.rep.fixed_record_size) {
+	INVARIANT(fixed_record < fixed_coded.end(),"internal error");
 	++nrecords;
 	
 	// pack variable sized fields ...
-	for(unsigned int j=0;j<type->variable32_field_columns.size();j++) {
-	    int field = type->variable32_field_columns[j];
-	    int offset = type->field_info[field].offset;
+	for(unsigned int j=0; 
+	    j<type.rep.variable32_field_columns.size(); 
+	    j++) {
+	    int field = type.rep.variable32_field_columns[j];
+	    int offset = type.rep.field_info[field].offset;
 	    int varoffset = Variable32Field::getVarOffset(&(*fixed_record),
 							  offset);
 	    Variable32Field::selfcheck(variabledata,varoffset);
@@ -486,7 +495,7 @@ Extent::packData(Extent::ByteArray &into,
 		memcpy(variable_data_pos, variabledata.begin() + varoffset,
 		       4 + roundup);
 		int32 packed_varoffset = variable_data_pos - variable_coded.begin();
-		if (type->field_info[field].unique) {
+		if (type.rep.field_info[field].unique) {
 		    variableDuplicateEliminate v(variable_data_pos);
 		    variableDuplicateEliminate *dup = vardupelim.lookup(v);
 		    if (dup == NULL) {
@@ -508,28 +517,34 @@ Extent::packData(Extent::ByteArray &into,
 	// pack other relative fields ...  do the packing in reverse
 	// order so that the base field in each packing is still in
 	// unpacked form
-	for(int j=type->pack_other_relative.size()-1;j>=0;--j) {
-	    int field = type->pack_other_relative[j].field_num;
-	    int base_field = type->pack_other_relative[j].base_field_num;
-	    int field_offset = type->field_info[field].offset;
-	    DEBUG_INVARIANT(field_offset < type->fixed_record_size, "bad");
-	    switch(type->field_info[field].type)
+	for(int j=type.rep.pack_other_relative.size()-1;j>=0;--j) {
+	    int field = type.rep.pack_other_relative[j].field_num;
+	    int base_field = type.rep.pack_other_relative[j].base_field_num;
+	    int field_offset = type.rep.field_info[field].offset;
+	    DEBUG_INVARIANT(field_offset < type.rep.fixed_record_size, "bad");
+	    switch(type.rep.field_info[field].type)
 		{
 		case ExtentType::ft_double: {
 		    double v = *(double *)(fixed_record + field_offset);
-		    double base_v = *(double *)(fixed_record + type->field_info[base_field].offset);
+		    double base_v = 
+			*(double *)(fixed_record + 
+				    type.rep.field_info[base_field].offset);
 		    *(double *)(fixed_record + field_offset) = v - base_v;
 		}
 		break;
 		case ExtentType::ft_int32: { 
 		    int32 v = *(int32 *)(fixed_record + field_offset);
-		    int32 base_v = *(int32 *)(fixed_record + type->field_info[base_field].offset);
+		    int32 base_v = 
+			*(int32 *)(fixed_record + 
+				   type.rep.field_info[base_field].offset);
 		    *(int32 *)(fixed_record + field_offset) = v - base_v;
 		}
 		break;
 		case ExtentType::ft_int64: {
 		    int64 v = *(int64 *)(fixed_record + field_offset);
-		    int64 base_v = *(int64 *)(fixed_record + type->field_info[base_field].offset);
+		    int64 base_v = 
+			*(int64 *)(fixed_record + 
+				   type.rep.field_info[base_field].offset);
 		    *(int64 *)(fixed_record + field_offset) = v - base_v;
 		}
 		break;
@@ -541,9 +556,9 @@ Extent::packData(Extent::ByteArray &into,
 	// pack self relative ...
 	for(unsigned int j=0;j<psr_copy.size();++j) {
 	    unsigned field = psr_copy[j].field_num;
-	    int offset = type->field_info[field].offset;
-	    DEBUG_INVARIANT(offset < type->fixed_record_size, "bad");
-	    switch(type->field_info[field].type) 
+	    int offset = type.rep.field_info[field].offset;
+	    DEBUG_INVARIANT(offset < type.rep.fixed_record_size, "bad");
+	    switch(type.rep.field_info[field].type) 
 		{
 		case ExtentType::ft_double: {
 		    double v = *(double *)(fixed_record + offset);
@@ -564,29 +579,29 @@ Extent::packData(Extent::ByteArray &into,
 		}
 		break;
 		default:
-		    INVARIANT(field < type->field_info.size(), 
-			      boost::format("bad field number %d > %d record %d") % field % type->field_info.size() % nrecords);
+		    INVARIANT(field < type.rep.field_info.size(), 
+			      boost::format("bad field number %d > %d record %d") % field % type.rep.field_info.size() % nrecords);
 
 		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
-				% type->field_info[field].type 
-				% type->field_info[field].name
-				% field % offset % type->name);
+				% type.rep.field_info[field].type 
+				% type.rep.field_info[field].name
+				% field % offset % type.rep.name);
 		}
 	}
 	// pack scaled fields ...
-	for(unsigned int j=0;j<type->pack_scale.size();++j) {
-	    int field = type->pack_scale[j].field_num;
-	    AssertAlways(type->field_info[field].type == ExtentType::ft_double,
-			 ("internal error, scaled only supported for ft_double\n"));
-	    int offset = type->field_info[field].offset;
-	    double multiplier = type->pack_scale[j].multiplier;
+	for(unsigned int j=0;j<type.rep.pack_scale.size();++j) {
+	    int field = type.rep.pack_scale[j].field_num;
+	    INVARIANT(type.rep.field_info[field].type == ExtentType::ft_double,
+		      "internal error, scaled only supported for ft_double");
+	    int offset = type.rep.field_info[field].offset;
+	    double multiplier = type.rep.pack_scale[j].multiplier;
 	    double v = *(double *)(fixed_record + offset);
 	    double scaled = v * multiplier;
 	    double rounded = round(scaled);
 	    if (fabs(scaled - rounded) > 0.1 && warnings[field] == false) {
-		fprintf(stderr,"Warning, while packing field %s of record %d, error was > 10%%:\n  (%.10g / %.10g = %.2f, round() = %.0f)\n",
-			type->field_info[field].name.c_str(),nrecords,
-			v, 1.0/multiplier, scaled, rounded);
+		cerr << boost::format("Warning, while packing field %s of record %d, error was > 10%%:\n  (%.10g / %.10g = %.2f, round() = %.0f)\n")
+		    % type.rep.field_info[field].name % nrecords
+		    % v % (1.0/multiplier) % scaled % rounded;
 		warnings[field] = true;
 	    }
 	    *(double *)(fixed_record + offset) = rounded;
@@ -596,11 +611,13 @@ Extent::packData(Extent::ByteArray &into,
     // sundry conversions, as the conversions are not perfectly
     // reversable, especially the scaling conversion which is
     // deliberately not precisely reversable
-    AssertAlways((int)fixed_coded.size() == type->fixed_record_size * nrecords,
-		 ("internal error\n"));
-    uint32_t bjhash = BobJenkinsHash(1972,fixed_coded.begin(),type->fixed_record_size * nrecords);
-    AssertAlways(variable_data_pos - variable_coded.begin() <= (int)variable_coded.size(),
-		 ("Internal error\n"));
+    INVARIANT(fixed_coded.size() == type.rep.fixed_record_size * nrecords,
+	      "internal error");
+    uint32_t bjhash = BobJenkinsHash(1972, fixed_coded.begin(),
+				     type.rep.fixed_record_size * nrecords);
+    INVARIANT(static_cast<size_t>(variable_data_pos - variable_coded.begin()) 
+	      <= variable_coded.size(),
+	      "Internal error");
     variable_coded.resize(variable_data_pos - variable_coded.begin());
 
     bjhash = BobJenkinsHash(bjhash,variable_coded.begin(),variable_coded.size());
@@ -635,7 +652,7 @@ Extent::packData(Extent::ByteArray &into,
 				  compression_level,
 				  &compressed_variable_mode);
 
-    int headersize = 6*4+4*1+type->name.size();
+    int headersize = 6*4+4*1+type.name.size();
     headersize += (4 - headersize % 4) % 4;
     int extentsize = headersize;
     extentsize += compressed_fixed->size();
@@ -653,9 +670,9 @@ Extent::packData(Extent::ByteArray &into,
     *(int32 *)l = bjhash; l += 4;
     *l = compressed_fixed_mode; l += 1;
     *l = compressed_variable_mode; l += 1;
-    *l = (byte)type->name.size(); l += 1;
+    *l = (byte)type.name.size(); l += 1;
     *l = 0; l += 1;
-    memcpy(l,type->name.data(),type->name.size()); l += type->name.size();
+    memcpy(l,type.name.data(),type.name.size()); l += type.name.size();
     int align = (4 - ((l - into.begin()) % 4)) % 4;
     memset(l,0,align); l += align;
     memcpy(l,compressed_fixed->begin(),compressed_fixed->size()); l += compressed_fixed->size();
@@ -946,23 +963,15 @@ Extent::getPackedExtentType(Extent::ByteArray &from)
 }
 
 void
-Extent::unpackData(ExtentTypeLibrary &library,
-		   Extent::ByteArray &from,
-		   bool fix_endianness)
-{
-    return unpackData(library.getTypeByName(getPackedExtentType(from)),
-		      from,fix_endianness);
-}
-
-
-void
-Extent::unpackData(const ExtentType *_type,
-		   Extent::ByteArray &from,
+Extent::unpackData(Extent::ByteArray &from,
 		   bool fix_endianness)
 {
     if (!did_checks_init) {
 	setReadChecksFromEnv();
     }
+    INVARIANT(type.name == getPackedExtentType(from), 
+	      "Internal: type mismatch") ;
+
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
     AssertAlways(from.size() > (6*4+2),
 		 ("Invalid extent data, too small.\n"));
@@ -994,7 +1003,6 @@ Extent::unpackData(const ExtentType *_type,
     header_len += (4 - (header_len % 4))%4;
     AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
 
-    type = _type;
     byte *compressed_fixed_begin = from.begin() + header_len;
     int32 rounded_fixed = compressed_fixed_size;
     rounded_fixed += (4- (rounded_fixed %4))%4;
@@ -1005,10 +1013,10 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(header_len + rounded_fixed + rounded_variable == from.size(),
 		 ("Invalid extent data\n"));
 
-    fixeddata.resize(nrecords * type->fixed_record_size, false);
+    fixeddata.resize(nrecords * type.rep.fixed_record_size, false);
     unpackAny(fixeddata.begin(),compressed_fixed_begin,
 	      compressed_fixed_mode,
-	      nrecords * type->fixed_record_size,
+	      nrecords * type.rep.fixed_record_size,
 	      compressed_fixed_size);
     variabledata.resize(variable_size, false);
     AssertAlways(variable_size >= 4,("error unpacking, invalid variable size\n"));
@@ -1048,9 +1056,10 @@ Extent::unpackData(const ExtentType *_type,
     AssertAlways(postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
 		 ("final partially unpacked hash check failed\n"));
     
-    vector<ExtentType::pack_self_relativeT> psr_copy = type->pack_self_relative;
-    for(unsigned int j=0;j<type->pack_self_relative.size();++j) {
-	INVARIANT(psr_copy[j].field_num < type->field_info.size(), "whoa");
+    vector<ExtentType::pack_self_relativeT> psr_copy 
+	= type.rep.pack_self_relative;
+    for(unsigned int j=0;j<type.rep.pack_self_relative.size();++j) {
+	INVARIANT(psr_copy[j].field_num < type.rep.field_info.size(), "whoa");
 	
 	AssertAlways(psr_copy[j].double_prev_v == 0 &&
 		     psr_copy[j].int32_prev_v == 0 &&
@@ -1062,29 +1071,33 @@ Extent::unpackData(const ExtentType *_type,
     // or so I'd guess, while not inherently worth it, the fix was
     // made when profiling accidentally with the debugging library, 
     // and there is no point in removing the fix.
-    const unsigned type_variable32_field_columns_size = type->variable32_field_columns.size();
-    const unsigned type_pack_scale_size = type->pack_scale.size();
-    const unsigned type_pack_self_relative_size = psr_copy.size();
-    const unsigned type_pack_other_relative_size = type->pack_other_relative.size();
-    for(ExtentSeries::iterator pos(this);pos.morerecords();++pos) {
+    const size_t type_variable32_field_columns_size 
+	= type.rep.variable32_field_columns.size();
+    const size_t type_pack_scale_size = type.rep.pack_scale.size();
+    const size_t type_pack_self_relative_size = psr_copy.size();
+    const size_t type_pack_other_relative_size 
+	= type.rep.pack_other_relative.size();
+    for(ExtentSeries::iterator pos(this); pos.morerecords(); ++pos) {
 	++record_count;
 	if (fix_endianness) {
-	    for(unsigned int j=0;j<type->field_info.size();j++) {
-		switch(type->field_info[j].type)
+	    for(unsigned int j=0; j<type.rep.field_info.size(); j++) {
+		switch(type.rep.field_info[j].type)
 		    {
 		    case ExtentType::ft_bool: 
 		    case ExtentType::ft_byte:
 			break;
 		    case ExtentType::ft_int32:
 		    case ExtentType::ft_variable32:
-			Extent::flip4bytes(pos.record_start() + type->field_info[j].offset);
+			Extent::flip4bytes(pos.record_start() 
+					   + type.rep.field_info[j].offset);
 			break;
 		    case ExtentType::ft_int64:
 		    case ExtentType::ft_double:
-			Extent::flip8bytes(pos.record_start() + type->field_info[j].offset);
+			Extent::flip8bytes(pos.record_start() 
+					   + type.rep.field_info[j].offset);
 			break;
 		    default:
-			AssertFatal(("unknown field type %d for fix_endianness\n",type->field_info[j].type));
+			FATAL_ERROR(boost::format("unknown field type %d for fix_endianness") % type.rep.field_info[j].type);
 			break;
 		    }
 	    }
@@ -1092,10 +1105,11 @@ Extent::unpackData(const ExtentType *_type,
 	// check variable sized fields ...
 	if (unpack_variable32_check) {
 	    for(unsigned int j=0;j<type_variable32_field_columns_size;j++) {
-		int field = type->variable32_field_columns[j];
-		int32 offset = type->field_info[field].offset;
-		int32 varoffset = Variable32Field::getVarOffset(pos.record_start(),
-								offset);
+		int field = type.rep.variable32_field_columns[j];
+		int32 offset = type.rep.field_info[field].offset;
+		int32 varoffset 
+		    = Variable32Field::getVarOffset(pos.record_start(), 
+						    offset);
 		// now check with the standard verification routine
 		Variable32Field::selfcheck(variabledata,varoffset);
 	    }
@@ -1104,11 +1118,11 @@ Extent::unpackData(const ExtentType *_type,
 
 	// unpack scaled fields ...
 	for(unsigned int j=0;j<type_pack_scale_size;++j) {
-	    int field = type->pack_scale[j].field_num;
-	    AssertAlways(type->field_info[field].type == ExtentType::ft_double,
-			 ("internal error, scaled only supported for ft_double\n"));
-	    int offset = type->field_info[field].offset;
-	    double scale = type->pack_scale[j].scale;
+	    int field = type.rep.pack_scale[j].field_num;
+	    INVARIANT(type.rep.field_info[field].type == ExtentType::ft_double,
+		      "internal error, scaled only supported for ft_double");
+	    int offset = type.rep.field_info[field].offset;
+	    double scale = type.rep.pack_scale[j].scale;
 	    double v = *(double *)(pos.record_start() + offset);
 	    *(double *)(pos.record_start() + offset) = v * scale;
 	}
@@ -1116,8 +1130,8 @@ Extent::unpackData(const ExtentType *_type,
 	// unpack self-relative fields ...
 	for(unsigned int j=0;j<type_pack_self_relative_size;++j) {
 	    unsigned field = psr_copy[j].field_num;
-	    int offset = type->field_info[field].offset;
-	    switch(type->field_info[field].type) 
+	    int offset = type.rep.field_info[field].offset;
+	    switch(type.rep.field_info[field].type) 
 		{
 		case ExtentType::ft_double: {
 		    double v = *(double *)(pos.record_start() + offset) + psr_copy[j].double_prev_v;
@@ -1141,39 +1155,43 @@ Extent::unpackData(const ExtentType *_type,
 		}		    
 		break;
 		default:
-		    INVARIANT(field < type->field_info.size(), 
-			      boost::format("bad field number %d > %d") % field % type->field_info.size());
+		    INVARIANT(field < type.rep.field_info.size(), 
+			      boost::format("bad field number %d > %d") 
+			      % field % type.rep.field_info.size());
 
 		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
-				% type->field_info[field].type 
-				% type->field_info[field].name
-				% field % offset % type->name);
+				% type.rep.field_info[field].type 
+				% type.rep.field_info[field].name
+				% field % offset % type.rep.name);
 		}
 	}
 	// unpack other-relative fields ...
 	for(unsigned int j=0;j<type_pack_other_relative_size;++j) {
 	    // 2004-09-26 I cannot believe this is worth a 1% speedup (pulling out v).
-	    const ExtentType::pack_other_relativeT &v = type->pack_other_relative[j];
+	    const ExtentType::pack_other_relativeT &v 
+		= type.rep.pack_other_relative[j];
 	    int field = v.field_num;
 	    int base_field = v.base_field_num;
-	    int field_offset = type->field_info[field].offset;
-	    switch(type->field_info[field].type)
+	    int field_offset = type.rep.field_info[field].offset;
+	    byte *base_ptr = pos.record_start()
+		+ type.rep.field_info[base_field].offset;
+	    switch(type.rep.field_info[field].type)
 		{
 		case ExtentType::ft_double: {
 		    double v = *(double *)(pos.record_start() + field_offset);
-		    double base_v = *(double *)(pos.record_start() + type->field_info[base_field].offset);
+		    double base_v = *reinterpret_cast<double *>(base_ptr);
 		    *(double *)(pos.record_start() + field_offset) = v + base_v;
 		}
 		break;
 		case ExtentType::ft_int32: {
 		    int32 v = *(int32 *)(pos.record_start() + field_offset);
-		    int32 base_v = *(int32 *)(pos.record_start() + type->field_info[base_field].offset);
+		    int32 base_v = *reinterpret_cast<int32 *>(base_ptr);
 		    *(int32 *)(pos.record_start() + field_offset) = v + base_v;
 		}
 		break;
 		case ExtentType::ft_int64: {
 		    int64 v = *(int64 *)(pos.record_start() + field_offset);
-		    int64 base_v = *(int64 *)(pos.record_start() + type->field_info[base_field].offset);
+		    int64 base_v = *reinterpret_cast<int64 *>(base_ptr);
 		    *(int64 *)(pos.record_start() + field_offset) = v + base_v;
 		}
 		break;

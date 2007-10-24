@@ -21,78 +21,39 @@ using namespace std;
 
 #include <DataSeries/ExtentType.H>
 
-struct xmlDecodeInfo {
-    string xmldesc;
-    xmlDocPtr field_desc_doc;
-    ExtentType *extenttype;
-};
-
-struct xmlDecodeInfoHash {
-    unsigned operator()(const xmlDecodeInfo *k) {
-	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
-    }
-};
-
-struct xmlDecodeInfoEqual {
-    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) {
-	return a->xmldesc == b->xmldesc;
-    }
-};
-
-struct xmlDecode {
-    HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> table;
-    PThreadMutex mutex;
-};
-
-static xmlDecode &decodeInfo()
-{
-    // C++ semantics say this will be initialized the first time we
-    // pass through this call
-    static xmlDecode decode_info;
-    return decode_info;
-}
-
-static const string &
-getSharedDecodeString(const string &xmldesc)
-{
-    xmlDecodeInfo k;
-    k.xmldesc = xmldesc;
-    decodeInfo().mutex.lock();
-    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
-    if (d == NULL) {
-	xmlDecodeInfo *f = new xmlDecodeInfo;
-	f->xmldesc = xmldesc;
-	// can't create it here, ExtentType needs the shared xmldesc
-	f->extenttype = NULL; 
-	LIBXML_TEST_VERSION;
-	xmlKeepBlanksDefault(0);
-	f->field_desc_doc = xmlParseMemory((char *)xmldesc.data(),xmldesc.size());
-	AssertAlways(f->field_desc_doc != NULL,
-		     ("Error: parsing ExtentType description failed\n"));
-	d = decodeInfo().table.add(f);
-    }
-    decodeInfo().mutex.unlock();
-    return (**d).xmldesc;
-}
-
 static const bool debug_getcolnum = false;
 static const bool debug_xml_decode = false;
 static const bool debug_packing = false;
 
-ExtentType::ExtentType(const string &_xmldesc)
-    : xmldesc(getSharedDecodeString(_xmldesc)) // assuming the STL string implementation shares the underlying string when possible, this is a huge memory win.
+ExtentType::ParsedRepresentation
+ExtentType::parseXML(const string &xmldesc)
 {
-    AssertAlways(sizeof(byte) == 1 && sizeof(int32) == 4 &&
-		 sizeof(uint32) == 4 && sizeof(int64) == 8,
-		 ("sizeof check bad\n"));
-    field_desc_doc = ExtentTypeLibrary::sharedDocPtr(xmldesc);
-    xmlNodePtr cur = xmlDocGetRootElement(field_desc_doc);
-    AssertAlways(cur != NULL,("Error: ExtentType description missing document\n"));
-    AssertAlways(xmlStrcmp(cur->name, (const xmlChar *) "ExtentType") == 0,
-		 ("Error: ExtentType description has wrong type, '%s' != '%s'\n",
-		  cur->name, "ExtentType"));
+    ParsedRepresentation ret;
+
+    INVARIANT(sizeof(byte) == 1 && sizeof(int32) == 4 &&
+	      sizeof(uint32) == 4 && sizeof(int64) == 8,
+	      "sizeof check bad");
+    ret.xml_description_str = xmldesc;
+
+    LIBXML_TEST_VERSION;
+    xmlKeepBlanksDefault(0);
+    ret.xml_description_doc 
+	= xmlParseMemory(xmldesc.c_str(),xmldesc.size());
+    INVARIANT(ret.xml_description_doc != NULL,
+	      "Error: parsing ExtentType description failed");
+
+    xmlNodePtr cur = xmlDocGetRootElement(ret.xml_description_doc);
+    INVARIANT(cur != NULL, "Error: ExtentType description missing document");
+    INVARIANT(xmlStrcmp(cur->name, (const xmlChar *) "ExtentType") == 0,
+	      boost::format("Error: ExtentType description has wrong type, '%s' != '%s'") 
+	      % cur->name % "ExtentType");
+
     xmlChar *extentname = xmlGetProp(cur, (const xmlChar *)"name");
-    AssertAlways(extentname != NULL,("Error, ExtentType missing name\n"));
+    INVARIANT(extentname != NULL,"Error, ExtentType missing name");
+
+    ret.name = reinterpret_cast<char *>(extentname);
+    INVARIANT(ret.name.length() <= 255,
+	      "invalid extent type name, max of 255 characters allowed");
 
     for(xmlAttr *prop = cur->properties; prop != NULL; prop = prop->next) {
 	AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
@@ -100,27 +61,30 @@ ExtentType::ExtentType(const string &_xmldesc)
 	AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"opt_",5)!=0,
 		     ("Unrecognized global option %s\n",prop->name));
     }
-    name = (char *)extentname;
-    AssertAlways(name.length() <= 255,
-		 ("invalid extent type name, max of 255 characters allowed\n"));
 
-    if (debug_xml_decode) printf("ExtentType '%s'\n",name.c_str());
+    if (debug_xml_decode) {
+	cout << boost::format("ExtentType '%s'\n") % ret.name;
+    }
 
     char *extentversion = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"version"));
     if (extentversion == NULL) {
-        major_version = 0;
-	minor_version = 0;
+        ret.major_version = 0;
+	ret.minor_version = 0;
     } else {
 	vector<string> bits;
 	split(extentversion, ".", bits);
-	INVARIANT(bits.size() == 2, boost::format("bad version '%s' should be #.#") % extentversion);
-	major_version = static_cast<unsigned>(stringToLong(bits[0]));
-	minor_version = static_cast<unsigned>(stringToLong(bits[1]));
+	INVARIANT(bits.size() == 2, 
+		  boost::format("bad version '%s' should be #.#") 
+		  % extentversion);
+	ret.major_version = static_cast<unsigned>(stringToLong(bits[0]));
+	ret.minor_version = static_cast<unsigned>(stringToLong(bits[1]));
     }
 
-    char *namespace_charptr = reinterpret_cast<char *>(xmlGetProp(cur, (const xmlChar *)"namespace"));
+    char *namespace_charptr = 
+	reinterpret_cast<char *>(xmlGetProp(cur, 
+					    (const xmlChar *)"namespace"));
     if (namespace_charptr != NULL) {
-	type_namespace = namespace_charptr;
+	ret.type_namespace = namespace_charptr;
     }
 
     cur = cur->xmlChildrenNode;
@@ -163,10 +127,11 @@ ExtentType::ExtentType(const string &_xmldesc)
 	fieldInfo info;
 	info.xmldesc = cur;
 	info.name.assign((char *)fieldname);
-	AssertAlways(info.name.size() <= 255,("type name '%s' is too long.\n",info.name.c_str()));
-	AssertAlways(getColumnNumber(info.name) == -1,
-		     ("Error: ExtentType '%s', duplicate field '%s'\n",
-		      extentname, fieldname));
+	INVARIANT(info.name.size() <= 255,
+		  boost::format("type name '%s' is too long.") % info.name);
+	INVARIANT(getColumnNumber(ret, info.name) == -1,
+		  boost::format("Error: ExtentType '%s', duplicate field '%s'")
+		  % extentname % fieldname);
 	
 	xmlChar *type_str = xmlGetProp(cur, (const xmlChar *)"type");
 	AssertAlways(type_str != NULL,("Error: ExtentType field missing type attribute\n"));
@@ -196,7 +161,7 @@ ExtentType::ExtentType(const string &_xmldesc)
 
 	xmlChar *pack_unique = xmlGetProp(cur, (const xmlChar *)"pack_unique");
 	if (info.type == ft_variable32) {
-	    variable32_field_columns.push_back(field_info.size());
+	    ret.variable32_field_columns.push_back(ret.field_info.size());
 	    if (pack_unique != NULL) {
 		AssertAlways(xmlStrcmp(pack_unique,(xmlChar *)"yes") == 0 ||
 			     xmlStrcmp(pack_unique,(xmlChar *)"no") == 0,
@@ -235,10 +200,10 @@ ExtentType::ExtentType(const string &_xmldesc)
 			 ("pack_scale only valid for double fields\n"));
 	    double scale = atof((char *)pack_scale_v);
 	    AssertAlways(scale != 0,("pack_scale=0 invalid\n"));
-	    pack_scale.push_back(pack_scaleT(field_info.size(),scale));
+	    ret.pack_scale.push_back(pack_scaleT(ret.field_info.size(),scale));
 	    if (debug_xml_decode) {
 		cout << boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
-		    % field_info.size() % (1.0/scale) % scale;
+		    % ret.field_info.size() % (1.0/scale) % scale;
 	    }
 	}
 	xmlChar *pack_relative = xmlGetProp(cur, (const xmlChar *)"pack_relative");
@@ -247,30 +212,36 @@ ExtentType::ExtentType(const string &_xmldesc)
 			 info.type == ft_int64 ||
 			 info.type == ft_int32,
 			 ("Only double, int32, int64 fields currently supported for relative packing\n"));
-	    int field_num = field_info.size();
+	    unsigned field_num = ret.field_info.size();
 	    if (xmlStrcmp(pack_relative,fieldname) == 0) {
-		pack_self_relative.push_back(pack_self_relativeT(field_num));
+		ret.pack_self_relative.push_back(pack_self_relativeT(field_num));
 		if (info.type == ft_double) {
-		    AssertAlways(pack_scale_v != NULL,
-				 ("for self-relative packing of a double, scaling is required -- otherwise errors in unpacking accumulate\n"));
-		    pack_self_relative.back().scale = pack_scale.back().scale;
-		    pack_self_relative.back().multiplier = pack_scale.back().multiplier;
+		    INVARIANT(pack_scale_v != NULL,
+			      "for self-relative packing of a double, scaling is required -- otherwise errors in unpacking accumulate");
+		    ret.pack_self_relative.back().scale 
+			= ret.pack_scale.back().scale;
+		    ret.pack_self_relative.back().multiplier 
+			= ret.pack_scale.back().multiplier;
 		}
 		if (debug_xml_decode) printf("pack_self_relative field %d\n",field_num);
 	    } else {
-		int base_field_num = getColumnNumber((char *)pack_relative);
-		AssertAlways(base_field_num != -1,
-			     ("Unrecognized field %s to use as base field for relative packing of %s\n",pack_relative,fieldname));
-		AssertAlways(info.type == field_info[base_field_num].type,
-			     ("Both fields for relative packing must have same type type(%s) != type(%s)\n",fieldname,pack_relative));
-		pack_other_relative.push_back(pack_other_relativeT(field_num, base_field_num));
-		if (debug_xml_decode) printf("pack_relative_other field %d based on field %d\n",
-					     field_num, base_field_num);
+		int base_field_num = getColumnNumber(ret, pack_relative);
+		INVARIANT(base_field_num != -1,
+			  boost::format("Unrecognized field %s to use as base field for relative packing of %s")
+			  % pack_relative % fieldname);
+		INVARIANT(info.type == ret.field_info[base_field_num].type,
+			  boost::format("Both fields for relative packing must have same type type(%s) != type(%s)")
+			  % fieldname % pack_relative);
+		ret.pack_other_relative.push_back(pack_other_relativeT(field_num, base_field_num));
+		if (debug_xml_decode) {
+		    cout << boost::format("pack_relative_other field %d based on field %d\n")
+			% field_num % base_field_num;
+		}
 	    }
 	}
 	cur = cur->next;
-	field_info.push_back(info);
-	visible_fields.push_back(field_info.size()-1);
+	ret.field_info.push_back(info);
+	ret.visible_fields.push_back(ret.field_info.size()-1);
 	if (info.nullable) {
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
@@ -281,7 +252,7 @@ ExtentType::ExtentType(const string &_xmldesc)
 	    info.unique = false;
 	    info.nullable = false;
 	    info.doublebase = 0;
-	    field_info.push_back(info);
+	    ret.field_info.push_back(info);
 	}
     }
 
@@ -290,12 +261,15 @@ ExtentType::ExtentType(const string &_xmldesc)
     if (debug_packing) printf("packing bool fields...\n");
     int32 bit_pos = 0;
     int32 byte_pos = 0;
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].type == ft_bool) {
-	    field_info[i].size = 1;
-	    field_info[i].offset = byte_pos;
-	    field_info[i].bitpos = bit_pos;
-	    if (debug_packing) printf("  field %s at position %d:%d\n",field_info[i].name.c_str(),byte_pos,bit_pos);
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_bool) {
+	    ret.field_info[i].size = 1;
+	    ret.field_info[i].offset = byte_pos;
+	    ret.field_info[i].bitpos = bit_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d:%d\n")
+		    % ret.field_info[i].name % byte_pos % bit_pos;
+	    }
 	    ++bit_pos;
 	    if (bit_pos == 8) {
 		byte_pos += 1;
@@ -307,11 +281,14 @@ ExtentType::ExtentType(const string &_xmldesc)
 	byte_pos += 1;
     }
     if (debug_packing) printf("packing byte fields...\n");
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].type == ft_byte) {
-	    field_info[i].size = 1;
-	    field_info[i].offset = byte_pos;
-	    if (debug_packing) printf("  field %s at position %d\n",field_info[i].name.c_str(),byte_pos);
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_byte) {
+	    ret.field_info[i].size = 1;
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d\n")
+		    % ret.field_info[i].name % byte_pos;
+	    }
 	    byte_pos += 1;
 	}
     }
@@ -319,11 +296,14 @@ ExtentType::ExtentType(const string &_xmldesc)
     if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
     byte_pos += zero_pad;
     if (debug_packing) printf("packing int32 fields...\n");
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].type == ft_int32) {
-	    field_info[i].size = 4;
-	    field_info[i].offset = byte_pos;
-	    if (debug_packing) printf("  field %s (#%d) at position %d\n",field_info[i].name.c_str(),i,byte_pos);
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_int32) {
+	    ret.field_info[i].size = 4;
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s (#%d) at position %d\n")
+		    % ret.field_info[i].name % i % byte_pos;
+	    }
 	    byte_pos += 4;
 	}
     }
@@ -331,10 +311,13 @@ ExtentType::ExtentType(const string &_xmldesc)
     // worse, so we pack them after the other int32 fields, but to
     // avoid alignment glitches before the 8 byte fields
     if (debug_packing) printf("packing variable32 fields...\n");
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].type == ft_variable32) {
-	    field_info[i].offset = byte_pos;
-	    if (debug_packing) printf("  field %s (#%d) at position %d\n",field_info[i].name.c_str(),i,byte_pos);
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_variable32) {
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s (#%d) at position %d\n")
+		    % ret.field_info[i].name % i % byte_pos;
+	    }
 	    byte_pos += 4;
 	}
     }
@@ -342,26 +325,45 @@ ExtentType::ExtentType(const string &_xmldesc)
     if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
     byte_pos += zero_pad;
     if (debug_packing) printf("packing int64 and double fields...\n");
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].type == ft_int64 || field_info[i].type == ft_double) {
-	    field_info[i].size = 8;
-	    field_info[i].offset = byte_pos;
-	    if (debug_packing) printf("  field %s at position %d\n",field_info[i].name.c_str(),byte_pos);
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_int64 
+	    || ret.field_info[i].type == ft_double) {
+	    ret.field_info[i].size = 8;
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d\n")
+		    % ret.field_info[i].name % byte_pos;
+	    }
 	    byte_pos += 8;
 	}
     }
     
-    fixed_record_size = byte_pos;
+    ret.fixed_record_size = byte_pos;
+
+    return ret;
+}
+
+ExtentType::ExtentType(const string &_xmldesc)
+    : rep(parseXML(_xmldesc)), name(rep.name), 
+      xmldesc(rep.xml_description_str), 
+      field_desc_doc(rep.xml_description_doc)
+{
 }
 
 int 
-ExtentType::getColumnNumber(const string &column) const
+ExtentType::getColumnNumber(const ParsedRepresentation &rep,
+			    const string &column) 
 {
-    for(unsigned int i=0;i<field_info.size();i++) {
-	if (field_info[i].name == column) {
-	    if (debug_getcolnum) printf("column %s -> %d\n",column.c_str(),i);
+    for(unsigned int i=0; i<rep.field_info.size(); i++) {
+	if (rep.field_info[i].name == column) {
+	    if (debug_getcolnum) {
+		cout << boost::format("column %s -> %d\n") % column % i;
+	    }
 	    return i;
 	}
+    }
+    if (debug_getcolnum) {
+	cout << boost::format("column %s -> -1\n") % column;
     }
     return -1;
 }
@@ -369,73 +371,73 @@ ExtentType::getColumnNumber(const string &column) const
 ExtentType::int32
 ExtentType::getSize(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    INVARIANT(field_info[column].size > 0,
+	      % column % (rep.field_info.size()-1));
+    INVARIANT(rep.field_info[column].size > 0,
 	      "internal error, getSize() on variable sized field doesn't make sense\n");
-    return field_info[column].size;
+    return rep.field_info[column].size;
 }
 
 ExtentType::int32
 ExtentType::getOffset(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    INVARIANT(field_info[column].offset >= 0,
+	      % column % (rep.field_info.size()-1));
+    INVARIANT(rep.field_info[column].offset >= 0,
 	      boost::format("internal error, getOffset() on variable sized field (%s, #%d) doesn't make sense\n")
-	      % field_info[column].name % column);
-    return field_info[column].offset;
+	      % rep.field_info[column].name % column);
+    return rep.field_info[column].offset;
 }
 
 int
 ExtentType::getBitPos(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    INVARIANT(field_info[column].bitpos >= 0,
+	      % column % (rep.field_info.size()-1));
+    INVARIANT(rep.field_info[column].bitpos >= 0,
 	      boost::format("internal error, getBitPos() on non-bool field (%s, #%d) doesn't make sense\n")
-	      % field_info[column].name % column);
-    return field_info[column].bitpos;
+	      % rep.field_info[column].name % column);
+    return rep.field_info[column].bitpos;
 }
 
 
 ExtentType::fieldType
 ExtentType::getFieldType(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    return field_info[column].type;
+	      % column % (rep.field_info.size()-1));
+    return rep.field_info[column].type;
 }
 
 bool
 ExtentType::getUnique(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    return field_info[column].unique;
+	      % column % (rep.field_info.size()-1));
+    return rep.field_info[column].unique;
 }
 
 bool
 ExtentType::getNullable(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    return field_info[column].nullable;
+	      % column % (rep.field_info.size()-1));
+    return rep.field_info[column].nullable;
 }
 
 double
 ExtentType::getDoubleBase(int column) const
 {
-    INVARIANT(column >= 0 && column < (int)field_info.size(),
+    INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
-	      % column % (field_info.size()-1));
-    return field_info[column].doublebase;
+	      % column % (rep.field_info.size()-1));
+    return rep.field_info[column].doublebase;
 }
 
 string
@@ -450,11 +452,11 @@ ExtentType::nullableFieldname(const string &fieldname)
 string
 ExtentType::xmlFieldDesc(int field_num) const
 {
-    AssertAlways(field_num >= 0 && field_num < (int)field_info.size(),
+    AssertAlways(field_num >= 0 && field_num < (int)rep.field_info.size(),
 		 ("bad field num\n"));
     xmlBufferPtr buf = xmlBufferCreate();
     xmlBufferSetAllocationScheme(buf,XML_BUFFER_ALLOC_DOUBLEIT);
-    xmlNodeDump(buf,field_desc_doc,field_info[field_num].xmldesc,2,1);
+    xmlNodeDump(buf, field_desc_doc, rep.field_info[field_num].xmldesc, 2, 1);
     string ret((char *)xmlBufferContent(buf));
     xmlBufferFree(buf);
     return ret;
@@ -463,9 +465,9 @@ ExtentType::xmlFieldDesc(int field_num) const
 xmlNodePtr
 ExtentType::xmlNodeFieldDesc(int field_num) const
 {
-    AssertAlways(field_num >= 0 && field_num < (int)field_info.size(),
-		 ("bad field num\n"));
-    return field_info[field_num].xmldesc;
+    INVARIANT(field_num >= 0 && field_num < (int)rep.field_info.size(),
+	      "bad field num");
+    return rep.field_info[field_num].xmldesc;
 }
 
 static const string fieldtypes[] = {
@@ -499,13 +501,14 @@ ExtentType::prefixmatch(const string &a, const string &prefix)
 ExtentType *
 ExtentTypeLibrary::registerType(const string &xmldesc)
 {
-    ExtentType *type = sharedExtentType(xmldesc);
+    ExtentType &type(sharedExtentType(xmldesc));
     
-    AssertAlways(name_to_type.find(type->name) == name_to_type.end(),
-                 ("Type %s already registered\n", type->name.c_str()));
+    INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
+	      boost::format("Type %s already registered")
+	      % type.name);
 
-    name_to_type[type->name] = type;
-    return type;
+    name_to_type[type.name] = &type;
+    return &type;
 }    
 
 ExtentType *
@@ -539,50 +542,57 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
     return f;
 }
 
-ExtentType *
+// This optimization to only have one extent type object for each xml
+// description is here for when you are handling a whole lot of small
+// files.
+
+struct xmlDecodeInfo {
+    string xmldesc;
+    ExtentType *extenttype;
+};
+
+struct xmlDecodeInfoHash {
+    unsigned operator()(const xmlDecodeInfo *k) {
+	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
+    }
+};
+
+struct xmlDecodeInfoEqual {
+    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) {
+	return a->xmldesc == b->xmldesc;
+    }
+};
+
+struct xmlDecode {
+    HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> table;
+    PThreadMutex mutex;
+};
+
+static xmlDecode &decodeInfo()
+{
+    // C++ semantics say this will be initialized the first time we
+    // pass through this call
+    static xmlDecode decode_info;
+    return decode_info;
+}
+
+ExtentType &
 ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
 {
     xmlDecodeInfo k;
     k.xmldesc = xmldesc;
-    decodeInfo().mutex.lock();
+    PThreadAutoLocker lock(decodeInfo().mutex);
+
     xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
-    decodeInfo().mutex.unlock();
-    if (d != NULL && (**d).extenttype != NULL) {
+    if (d != NULL) {
+	INVARIANT((**d).extenttype != NULL, "internal");
 	// should be common case, just return the value
-	return (**d).extenttype;
+	return *(**d).extenttype;
     }
-    if (d == NULL) {
-	getSharedDecodeString(xmldesc); // force pointer to exist.
-	decodeInfo().mutex.lock();
-	d = decodeInfo().table.lookup(&k);
-	decodeInfo().mutex.unlock();
-    }
-    AssertAlways(d != NULL,("internal error\n"));
-    if ((**d).extenttype == NULL) {
-	// now safe to create, as constructor will be able to look up string
-	ExtentType *f = new ExtentType(xmldesc); 
-	decodeInfo().mutex.lock();
-	if ((**d).extenttype == NULL) {
-	    // normal case
-	    (**d).extenttype = f;
-	} else {
-	    // someone else must have created it in the mean time, delete it.
-	    delete f;
-	}
-	decodeInfo().mutex.unlock();
-    }
-    return (**d).extenttype;
-}
 
-xmlDocPtr 
-ExtentTypeLibrary::sharedDocPtr(const string &xmldesc)
-{
-    xmlDecodeInfo k;
-    k.xmldesc = xmldesc;
-    decodeInfo().mutex.lock();
-    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
-    decodeInfo().mutex.unlock();
-    AssertAlways(d != NULL,("internal error\n"));
-    return (**d).field_desc_doc;
+    xmlDecodeInfo *tmp = new xmlDecodeInfo();
+    tmp->xmldesc = xmldesc;
+    tmp->extenttype = new ExtentType(xmldesc);
+    decodeInfo().table.add(tmp);
+    return *tmp->extenttype;
 }
-

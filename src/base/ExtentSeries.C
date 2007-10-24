@@ -17,31 +17,25 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 	type = NULL;
 	my_extent = NULL;
     } else {
-	type = e->type;
-	AssertAlways(type != NULL,("bad initialization\n"));
+	type = &e->type;
+	INVARIANT(type != NULL,"bad initialization");
 	my_extent = e;
 	pos.reset(e);
     }
 }
 
 void
-ExtentSeries::setType(const ExtentType *_type)
+ExtentSeries::setType(const ExtentType &_type)
 {
-    AssertAlways(_type != NULL,("NULL type not allowed in setSeriesType!\n"));
+    INVARIANT(&_type != NULL,"you made a NULL reference grr");
     switch(typeCompatibility)
 	{
 	case typeExact: 
-	    AssertAlways(type == NULL,
-			 ("Unable to change type with typeExact compatibility\nType 1:\n%s\nType 2:\n%s\n",
-			  type->xmldesc.c_str(),_type->xmldesc.c_str()));
-	    break;
-	case typeXMLIdentical:
-	    AssertAlways(type == NULL || type->xmldesc == _type->xmldesc,
-			 ("Mismatch on XML descriptions with typeXMLIdentical compatibility; xml descriptions below\n%s\n%s",
-			  type->xmldesc.c_str(),_type->xmldesc.c_str()));
-	    break;
-	case typeFieldMatch:
-	    AssertFatal(("Unimplemented\n"));
+	    INVARIANT(type == NULL || type->xmldesc != _type.xmldesc, 
+		      "internal -- same xmldesc should get same type");
+	    INVARIANT(type == NULL,
+		      boost::format("Unable to change type with typeExact compatibility\nType 1:\n%s\nType 2:\n%s\n")
+		      % type->xmldesc % _type.xmldesc);
 	    break;
 	case typeLoose:
 	    break;
@@ -49,7 +43,7 @@ ExtentSeries::setType(const ExtentType *_type)
 	    AssertFatal(("internal error\n"));
 	}
 
-    type = _type;
+    type = &_type;
     for(std::vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end();++i) {
 	AssertAlways(&(**i).dataseries == this,
@@ -63,7 +57,7 @@ ExtentSeries::setExtent(Extent *e)
 {
     AssertAlways(e != NULL,("setExtent(NULL) invalid\n"));
     pos.reset(e);
-    bool newtype = e->type != type;
+    bool newtype = &e->type != type;
     my_extent = e;
     if (newtype) {
 	setType(e->type);
@@ -106,7 +100,7 @@ ExtentSeries::iterator::setpos(byte *new_pos)
 void
 ExtentSeries::iterator::update(Extent *e)
 {
-    if (e->type->fixedrecordsize() == recordsize) {
+    if (e->type.fixedrecordsize() == recordsize) {
 	int offset = cur_pos - cur_extent->fixeddata.begin();
 	byte *begin_pos = cur_extent->fixeddata.begin();
 	cur_pos = begin_pos + offset;
@@ -115,7 +109,7 @@ ExtentSeries::iterator::update(Extent *e)
 	size_t offset = cur_pos - cur_extent->fixeddata.begin();
 	INVARIANT(recnum * recordsize == offset,
 		  ("whoa, pointer not on a record boundary?!\n"));
-	recordsize = e->type->fixedrecordsize();
+	recordsize = e->type.fixedrecordsize();
 	byte *begin_pos = cur_extent->fixeddata.begin();
 	cur_pos = begin_pos + recnum * recordsize;
     }

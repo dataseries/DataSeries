@@ -77,7 +77,8 @@ main(int argc, char *argv[])
     string xmloutdesc("<ExtentType name=\"");
     xmloutdesc.append(type_prefix);
     xmloutdesc.append("\">\n");
-    inputseries.setType(intype);
+    INVARIANT(intype != NULL, "bad");
+    inputseries.setType(*intype);
     for(vector<string>::iterator i = fields.begin();
 	i != fields.end();++i) {
 	xmloutdesc.append("  ");
@@ -92,7 +93,8 @@ main(int argc, char *argv[])
     ExtentTypeLibrary library;
     ExtentType *outputtype = library.registerType(xmloutdesc);
     output.writeExtentLibrary(library);
-    outputseries.setType(outputtype);
+    INVARIANT(outputtype != NULL, "bad");
+    outputseries.setType(*outputtype);
     for(vector<string>::iterator i = fields.begin();
 	i != fields.end();++i) {
 	outfields.push_back(GeneralField::create(NULL,outputseries,*i));

@@ -26,7 +26,7 @@ public:
 			const std::string &_groupby,
 			const std::string &_stattype = "basic",
 			const std::string &_whereexpr = "",
-			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeXMLIdentical);
+			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeExact);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;
 

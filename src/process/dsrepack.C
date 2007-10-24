@@ -324,17 +324,16 @@ main(int argc, char *argv[])
 	if (inextent == NULL)
 	    break;
 	
-	if (inextent->type->name == "DataSeries: ExtentIndex" ||
-	    inextent->type->name == "DataSeries: XmlType") {
+	if (inextent->type.getName() == "DataSeries: ExtentIndex" ||
+	    inextent->type.getName() == "DataSeries: XmlType") {
 	    continue;
 	}
 	++extent_num;
 	if (show_progress) {
-	    cout << boost::format("Processing extent #%d/%d of type %s")
-		 % extent_num % extent_count % inextent->type->name
-		 << endl;
+	    cout << boost::format("Processing extent #%d/%d of type %s\n")
+		% extent_num % extent_count % inextent->type.getName();
 	}
-	PerTypeWork *ptw = per_type_work[inextent->type->name];
+	PerTypeWork *ptw = per_type_work[inextent->type.getName()];
 	INVARIANT(ptw != NULL, "internal");
 	for(ptw->inputseries.setExtent(inextent);
 	    ptw->inputseries.pos.morerecords();

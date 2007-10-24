@@ -43,7 +43,7 @@ static const string dataseries_type_xml =
   "  <field type=\"variable32\" name=\"xmltype\" />\n"
   "</ExtentType>\n";
 
-static ExtentType global_dataseries_type(dataseries_type_xml);
+static ExtentType &global_dataseries_type(ExtentTypeLibrary::sharedExtentType(dataseries_type_xml));
 
 const string dataseries_type_index =
   "<ExtentType name=\"DataSeries: ExtentIndex\">\n"
@@ -74,7 +74,7 @@ const string dataseries_type_index_v2 =
   "  <field type=\"int32\" name=\"variable_compressed_size\" />\n"
   "</ExtentType>\n";
 
-static ExtentType global_dataseries_indextype(dataseries_type_index);
+static ExtentType &global_dataseries_indextype(ExtentTypeLibrary::sharedExtentType(dataseries_type_index));
 
 DataSeriesSource::DataSeriesSource(const string &_filename)
     : filename(_filename), fd(-1), cur_offset(0)
@@ -82,7 +82,7 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     reopenfile();
     mylibrary.registerType(dataseries_type_xml);
     mylibrary.registerType(dataseries_type_index);
-    dataseries_type = mylibrary.getTypeByName("DataSeries: XmlType");
+    INVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") == &global_dataseries_type, "internal");
     Extent::ByteArray data;
     const int file_header_size = 2*4 + 4*8;
     data.resize(file_header_size);
@@ -122,7 +122,7 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     AssertAlways(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 		 ("Invalid file, must have a first extent\n"));
     Extent *e = new Extent(mylibrary,extentdata,need_bitflip);
-    AssertAlways(e->type == dataseries_type,
+    AssertAlways(&e->type == &global_dataseries_type,
 		 ("Whoa, first extent must be the type defining extent\n"));
 
     ExtentSeries type_extent_series(e);
@@ -190,7 +190,7 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     }
     if (compressedSize) *compressedSize = extentdata.size();
     Extent *ret = new Extent(mylibrary,extentdata,need_bitflip);
-    AssertAlways(ret->type != dataseries_type,
+    AssertAlways(&ret->type != &global_dataseries_type,
 		 ("Invalid to have a type extent after the first extent!\n"));
     return ret;
 }
@@ -321,7 +321,7 @@ DataSeriesSink::close()
     // until after we've already compressed the data.
     index_series.newRecord(); 
     field_extentOffset.set(cur_offset);
-    field_extentType.set(index_extent.type->name);
+    field_extentType.set(index_extent.type.name);
 
     pending_work.push_back(new toCompress(index_extent, NULL));
     pending_work.front()->in_progress = true;
@@ -374,9 +374,9 @@ DataSeriesSink::writeExtent(Extent &e, Stats *stats)
 {
     INVARIANT(wrote_library,
 	      "must write extent type library before writing extents!\n");
-    INVARIANT(valid_types[e.type],
+    INVARIANT(valid_types[&e.type],
 	      boost::format("type %s (%p) wasn't in your type library")
-	      % e.type->name.c_str() % e.type);
+	      % e.type.name % &e.type);
     INVARIANT(!shutdown_workers,
 	      "must not call writeExtent after calling close()");
     queueWriteExtent(e, stats);
@@ -526,7 +526,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
 	index_series.newRecord();
 	field_extentOffset.set(cur_offset);
-	field_extentType.set(tc->extent.type->name);
+	field_extentType.set(tc->extent.type.name);
 	
 	checkedWrite(tc->compressed.begin(), tc->compressed.size());
 	cur_offset += tc->compressed.size();

@@ -21,11 +21,12 @@ class Extent;
 class ExtentSeries {
 public:
     // the types for the extents must match:
-    //   typeExact: same ExtentLibrary, same type
-    //   typeXMLIdentical: identical XML type descriptions
-    //   typeFieldMatch: all fields must occur in the same order with the same type (including base for Doubles?)
-    //   typeLoose: possibly reordered fields must match types (just the signature) for used fields
-    enum typeCompatibilityT { typeExact, typeXMLIdentical, typeFieldMatch, typeLoose };
+    //   typeExact: identical XML type descriptions
+    //   TODO: typeMajorVersion: major version matches, may want to have
+    //         a required major and a minimal minor specified also
+    //   typeLoose: possibly reordered fields must match types (just
+    //              the signature) for used fields
+    enum typeCompatibilityT { typeExact, typeLoose };
 
     ExtentSeries(typeCompatibilityT _tc = typeExact) 
 	: type(NULL), my_extent(NULL), typeCompatibility(_tc) {
@@ -48,10 +49,10 @@ public:
 		 typeCompatibilityT _tc = typeExact);
     ExtentSeries(const std::string &xmltype,
 		 typeCompatibilityT _tc = typeExact)
-	: type(ExtentTypeLibrary::sharedExtentType(xmltype)),
+	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
 	  my_extent(NULL), typeCompatibility(_tc) { 
     }
-    void setType(const ExtentType *type);
+    void setType(const ExtentType &type);
     // setExtent will automatically reset the pos iterator to the
     // beginning of the extent.
     void setExtent(Extent *e);
@@ -102,7 +103,7 @@ public:
 	    } else {
 		cur_extent = e;
 		cur_pos = e->fixeddata.begin();
-		recordsize = e->type->fixedrecordsize();
+		recordsize = e->type.fixedrecordsize();
 	    }
 	}
 	void setpos(byte *new_pos);

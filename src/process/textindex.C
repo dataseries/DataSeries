@@ -82,7 +82,7 @@ public:
 				    packing_args.compress_level);
 	output->writeExtentLibrary(library);
 
-	word_series.setType(word_index_type);
+	word_series.setType(*word_index_type);
 	word_module = new OutputModule(*output, word_series, word_index_type,
 				       packing_args.extent_size);
     }

@@ -298,12 +298,12 @@ public:
 	lvoffset(io_series,"lv_offset", Field::flag_nullable), output_lvoffset(output_series,"lv_offset", Field::flag_nullable),
 	command(ps_series,"command"), output_command(output_series,"command"),
 	username(ps_series,"username"), output_username(output_series,"username"),
+	output_type(ExtentTypeLibrary::sharedExtentType(merge_type)),
 	all_done(false),
 	cur_ps_time(-Double::Inf), prev_ps_time(-Double::Inf), 
 	time_base(Double::NaN), first_io_time(Double::Inf),
 	last_io_time(-Double::Inf)
     {
-        output_type = new ExtentType(merge_type);
 	output_series.setType(output_type);
     }
 
@@ -560,7 +560,7 @@ private:
     Int64Field diskoffset, output_diskoffset, lvoffset, output_lvoffset;
     Variable32Field command, output_command, username, output_username;
 
-    ExtentType *output_type;
+    const ExtentType &output_type;
     bool all_done;
     double cur_ps_time, prev_ps_time, prev_prev_ps_time, time_base, first_io_time, last_io_time;
     HashTable<psinfo,psinfo_hashpid,psinfo_comparepid> pid_to_psinfo;
