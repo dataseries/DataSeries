@@ -57,7 +57,7 @@ main(int argc, char *argv[])
 	      boost::format("can not find a type matching prefix %s")
 	      % type_prefix);
 
-    TypeIndexModule source(intype->name);
+    TypeIndexModule source(intype->getName());
     for(int i=3;i<(argc-1);++i) {
 	source.addSource(argv[i]);
     }
@@ -116,6 +116,7 @@ main(int argc, char *argv[])
 	delete inextent;
     }
     outmodule.flushExtent();
+    outmodule.close();
     return 0;
 }
 

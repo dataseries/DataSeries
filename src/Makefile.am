@@ -93,12 +93,15 @@ textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis 
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis
 bin_SCRIPTS += analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
 lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 	analysis/lsfdsanalysis-common.C analysis/lsfdsanalysis-mod1.C 
+nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
+  analysis/nfs/mod2.cpp analysis/nfs/mod3.cpp analysis/nfs/mod4.cpp \
+  analysis/nfs/nfsdsanalysis.cpp process/sourcebyrange.C
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
@@ -194,7 +197,7 @@ ran.check-srt2ds: srt2ds cmpsrtds
 # the index may change as data will compress differently on big/little
 # endian machines, so we can't compare with it in the text output
 ran.check-pssimple: pssimple2ds ds2txt
-	./pssimple2ds $(top_srcdir)/check-data/pssimple.5.bz2 pss5.ds
+	./pssimple2ds --extent-size=10485760 $(top_srcdir)/check-data/pssimple.5.bz2 pss5.ds
 	./ds2txt --skip-index pss5.ds >pss5.txt
 	./ds2txt --skip-index $(top_srcdir)/check-data/pss5.ds-littleend >pss5-little.txt
 	./ds2txt --skip-index $(top_srcdir)/check-data/pss5.ds-bigend >pss5-big.txt
@@ -216,7 +219,7 @@ ran.check-test: test ds2txt
 
 ran.check-dsselect: dsselect ds2txt
 	@-rm dsselect.test.1
-	./dsselect --compress-gz I/O enter_driver,bytes,machine_id,driver_type,disk_offset ~/projects/DataSeries/check-data/h03126.ds-littleend dsselect.test.1 >/dev/null
+	./dsselect --compress-gz --extent-size=524288 I/O enter_driver,bytes,machine_id,driver_type,disk_offset ~/projects/DataSeries/check-data/h03126.ds-littleend dsselect.test.1 >/dev/null
 	gunzip < $(top_srcdir)/check-data/dsselect.test.1.gz >dsselect.test.1.ref
 	./ds2txt --skip-index dsselect.test.1 >dsselect.test.1.txt
 	cmp dsselect.test.1.ref dsselect.test.1.txt

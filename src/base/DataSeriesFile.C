@@ -309,7 +309,7 @@ DataSeriesSink::close()
     }
     writer->join();
 
-    writeOutPending(true);
+    writeOutPending();
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");
     ExtentType::int64 index_offset = cur_offset;
     
