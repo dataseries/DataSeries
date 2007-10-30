@@ -13,9 +13,12 @@ use Getopt::Long;
 use Fcntl ':seek';
 
 my %prefixes;
+my $ds2txt = "@expanded_bindir@/ds2txt";
 
-my $ret = GetOptions("prefix=s" => \%prefixes);
-die "??" unless $ret;
+my $ret = GetOptions("prefix=s" => \%prefixes,
+		     "ds2txt=s" => \$ds2txt);
+die "Usage: $0 [--prefix <typename>=<varprefix>] [--ds2txt=executable]" 
+    unless $ret;
 
 my %type2field = ( 'bool' => 'BoolField',
 		   'byte' => 'ByteField',
@@ -36,8 +39,8 @@ if (@ARGV == 0) {
 	sysread($fh, $tmp, 4);
 	if ($tmp eq 'DSv1') {
 	    $fh->close();
-	    $fh = new FileHandle "@expanded_bindir@/ds2txt $file |"
-		or die "Unable to run @expanded_bindir@/dstxt $file: $!";
+	    $fh = new FileHandle "$ds2txt $file |"
+		or die "Unable to run $ds2txt $file: $!";
 	} else {
 	    seek($fh, 0, SEEK_SET);
 	}

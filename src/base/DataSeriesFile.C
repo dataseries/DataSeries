@@ -236,7 +236,7 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       compression_modes(_compression_modes),
       compression_level(_compression_level),
       chained_checksum(0), 
-      writes_in_progress_count(0),
+      bytes_in_progress(0), max_bytes_in_progress(256*1024*1024),
       shutdown_workers(false)
 {
     stats.packed_size += 2*4 + 4*8;
@@ -309,10 +309,10 @@ DataSeriesSink::close()
     }
     writer->join();
 
-    writeOutPending();
-    INVARIANT(pending_work.empty(), "bad");
+    writeOutPending(true);
+    INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");
     ExtentType::int64 index_offset = cur_offset;
-
+    
     // TODO: make a warning and/or test case for this?
 
     // Special case handling of record for index series; this will
@@ -323,17 +323,23 @@ DataSeriesSink::close()
     field_extentOffset.set(cur_offset);
     field_extentType.set(index_extent.type.name);
 
+    mutex.lock();
+    bytes_in_progress += index_extent.size();
     pending_work.push_back(new toCompress(index_extent, NULL));
     pending_work.front()->in_progress = true;
-    processToCompress(pending_work.front());
-    mutex.lock();
+    lockedProcessToCompress(pending_work.front());
+
+    INVARIANT(bytes_in_progress == pending_work.front()->compressed.size(), "bad");
     INVARIANT(pending_work.size() == 1, "bad");
+    INVARIANT(pending_work.front()->readyToWrite(), "bad");
     uint32_t packed_size = pending_work.front()->compressed.size();
     mutex.unlock();
     writeOutPending();
 
     mutex.lock();
-    INVARIANT(pending_work.empty(), "bad");
+    INVARIANT(pending_work.empty() && bytes_in_progress == 0, 
+	      boost::format("bad %d %d") % pending_work.empty()
+	      % bytes_in_progress);
 
     char *tail = new char[7*4];
     AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
@@ -472,20 +478,24 @@ DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
     mutex.lock();
     INVARIANT(!shutdown_workers, "got to qWE after call to close()??");
     INVARIANT(cur_offset > 0, "queueWriteExtent on closed file");
+    bytes_in_progress += e.size(); // putting this into toCompress erases e
     pending_work.push_back(new toCompress(e, to_update));
 
     if (compressors.empty()) {
-	INVARIANT(pending_work.size() == 1, "bad");
+	INVARIANT(pending_work.size() == 1 && bytes_in_progress == 0, "internal");
 	pending_work.front()->in_progress = true;
+	bytes_in_progress += e.size();
+	lockedProcessToCompress(pending_work.front());
+	pending_work.front()->in_progress = false;
 	mutex.unlock();
-	processToCompress(pending_work.front());
 	writeOutPending();
+	INVARIANT(bytes_in_progress == 0, "internal");
 	return;
     } 
 	
     available_work_cond.signal();
-    while((writes_in_progress_count + pending_work.size()) 
-	  > 2 * compressors.size()) {
+    if (false) cout << boost::format("qwe wait? %d %d\n") % bytes_in_progress % pending_work.size();
+    while(!canQueueWork()) {
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
@@ -496,7 +506,7 @@ void
 DataSeriesSink::flushPending()
 {
     mutex.lock();
-    while((writes_in_progress_count + pending_work.size()) > 0) {
+    while(bytes_in_progress > 0) {
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
@@ -508,18 +518,16 @@ DataSeriesSink::writeOutPending(bool have_lock)
     if (!have_lock) {
 	mutex.lock();
     }
-    INVARIANT(writes_in_progress_count == 0, "bad");
     Deque<toCompress *> to_write;
     while(!pending_work.empty() 
-	  && pending_work.front()->compressed.size() > 0
-	  && !pending_work.front()->in_progress) {
+	  && pending_work.front()->readyToWrite()) {
 	pending_work.front()->wipeExtent();
 	to_write.push_back(pending_work.front());
 	pending_work.pop_front();
     }
-    writes_in_progress_count = to_write.size();
     mutex.unlock();
 
+    size_t bytes_written = 0;
     while(!to_write.empty()) {
 	toCompress *tc = to_write.front();
 	to_write.pop_front();
@@ -532,13 +540,20 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	cur_offset += tc->compressed.size();
 	chained_checksum 
 	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
+	bytes_written += tc->compressed.size();
 	delete tc;
     }
 
     mutex.lock();
-    writes_in_progress_count = 0;
-    // Don't say there is free space until we actually finished writing.
-    available_queue_cond.broadcast();
+    INVARIANT(bytes_in_progress >= bytes_written, 
+	      boost::format("internal %d %d") 
+	      % bytes_in_progress % bytes_written);
+    bytes_in_progress -= bytes_written;
+    if (false) cout << boost::format("qwe broadcast wop? %d %d\n") % bytes_in_progress % pending_work.size();
+    if (canQueueWork()) {
+	// Don't say there is free space until we actually finished writing.
+	available_queue_cond.broadcast();
+    }
     mutex.unlock();
 }
 
@@ -561,11 +576,21 @@ static void get_thread_cputime(struct timespec &ts)
 //    return ts.tv_sec + ts.tv_nsec*1.0e-9;
 }
 
+// This function assumes that bytes_in_progress was updated to the
+// uncompressed size prior to calling the function.
 void
-DataSeriesSink::processToCompress(toCompress *work)
+DataSeriesSink::lockedProcessToCompress(toCompress *work)
 {
+    // TODO: consider switching all of the size updates over to
+    // looking at the reserved space rather than the used space.
+    INVARIANT(bytes_in_progress >= work->extent.size(), "internal");
+    size_t uncompressed_size = work->extent.size();
+    bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
+
     INVARIANT(work->in_progress, "??");
     INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
+
+    mutex.unlock();
 
     struct timespec pack_start, pack_end;
     get_thread_cputime(pack_start);
@@ -606,16 +631,16 @@ DataSeriesSink::processToCompress(toCompress *work)
 	    work->to_update = NULL;
 	}
     }
-
-    { 
-	PThreadAutoLocker lock(mutex);
-
-	work->in_progress = false; 
-	INVARIANT(!pending_work.empty(), "bad");
-	if (pending_work.front()->readyToWrite()) {
-	    available_write_cond.signal();
-	}
-    }
+    INVARIANT(work->extent.size() == uncompressed_size, "internal");
+    work->extent.clear();
+    mutex.lock();
+    work->in_progress = false; 
+    INVARIANT(!pending_work.empty(), "bad");
+    
+    INVARIANT(bytes_in_progress >= 2 * uncompressed_size, "internal");
+    // subtract the temporary from above and the cleared extent.
+    bytes_in_progress -= 2*uncompressed_size; 
+    bytes_in_progress += work->compressed.size(); // add in the compressed bits
 }
 
 void 
@@ -655,9 +680,15 @@ DataSeriesSink::compressorThread()
 	    }
 	    available_work_cond.wait(mutex);
 	} else {
-	    mutex.unlock();
-	    processToCompress(work);
-	    mutex.lock();
+	    lockedProcessToCompress(work);
+	    if (false) cout << boost::format("qwe broadcast compr? %d %d\n") % bytes_in_progress % pending_work.size();
+    
+	    if (canQueueWork()) { // may be able to queue work since we just freed up space.
+		available_queue_cond.broadcast();
+	    }
+	    if (pending_work.front()->readyToWrite()) {
+		available_write_cond.signal();
+	    }
 	}
     }
     mutex.unlock();

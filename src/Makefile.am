@@ -35,7 +35,7 @@ bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/ds2txt.pm BatchParallel/dsrepack.pm BatchParallel/nonmod/gpgkeys.pm
 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/liblzf-1.6 @SRT_CFLAGS@ @LINTEL_CFLAGS@ @XML2_CFLAGS@ @PCRE_CFLAGS@ -DDATASERIES_ENABLE_LZF=$(DATASERIES_ENABLE_LZF) -DDATASERIES_ENABLE_LZO=$(DATASERIES_ENABLE_LZO) -DDATASERIES_ENABLE_ZLIB=$(DATASERIES_ENABLE_ZLIB) -DDATASERIES_ENABLE_BZ2=$(DATASERIES_ENABLE_BZ2) 
-AM_LDFLAGS = @OPTMODE_LDFLAGS@ @DMALLOC_LIBS@
+AM_LDFLAGS = @OPTMODE_LDFLAGS@ @DMALLOC_THR_LIBS@
 
 lib_LTLIBRARIES = libDataSeries.la
 bin_SCRIPTS = dataseries-config dstypes2cxx
@@ -248,7 +248,7 @@ ran.check-lsfdsanalysis: lsfdsanalysis
 	touch $@
 
 ran.check-dstypes2cxx: dstypes2cxx
-	perl ./dstypes2cxx $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
+	perl ./dstypes2cxx --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
 	cmp check.dstypes2cxx.txt $(top_srcdir)/check-data/check.dstypes2cxx.ref
 	touch $@
 

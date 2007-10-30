@@ -63,13 +63,21 @@ getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)
 	for(int i=cur_arg+1;i< *argc;i++) {
 	    argv[i-1] = argv[i];
 	}
-	-- *argc;
+	--*argc;
 	--cur_arg;
     }
     if (commonArgs->extent_size < 0) {
-	commonArgs->extent_size = 512*1024;
+	// the analysis work in the paper shows that 64-96k is the
+	// peak decompression rate, with a sacrifice of a slight
+	// amount from the maximum compression ratio.  Compression
+	// ratio flattens out somewhere around 512k, but if we are not
+	// using bz2, then the goal is likely speed rather than
+	// compression, so default to a smaller extent size.  For bz2,
+	// we are going for maximal compression, which is flat past
+	// 8MB.
+	commonArgs->extent_size = 64*1024;
 	if (commonArgs->compress_modes & Extent::compress_bz2) {
-	    commonArgs->extent_size = 10*1024*1024;
+	    commonArgs->extent_size = 16*1024*1024;
 	}
     }
 }
@@ -77,7 +85,7 @@ getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)
 static const std::string packing_opts = 
   "    --{disable,compress,enable}-{lzf,lzo,gz,bz2} (default --enable-*)\n"
   "    --compress-none --compress-level=[0-9] (default 9)\n"
-  "    --extent-size=[>=1024] (default 10*1024*1024 if bz2 is enabled, 512*1024 otherwise)\n";
+  "    --extent-size=[>=1024] (default 16*1024*1024 if bz2 is enabled, 64*1024 otherwise)\n";
 
 const std::string &packingOptions() 
 {

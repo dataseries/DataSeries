@@ -193,13 +193,17 @@ private:
     const int compression_level;
     uint32_t chained_checksum; 
 
+    bool canQueueWork() {
+	return bytes_in_progress < max_bytes_in_progress &&
+	    pending_work.size() < 2 * compressors.size();
+    }
     void queueWriteExtent(Extent &e, Stats *to_update);
-    void processToCompress(toCompress *work);
+    void lockedProcessToCompress(toCompress *work);
     void writeOutPending(bool have_lock = false); // always exits without lock held.
     static int compressor_count;
     std::vector<PThread *> compressors;
     PThread *writer;
-    uint32_t writes_in_progress_count;
+    size_t bytes_in_progress, max_bytes_in_progress;
     bool shutdown_workers;
     Deque<toCompress *> pending_work;
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.

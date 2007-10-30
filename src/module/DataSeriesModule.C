@@ -97,7 +97,17 @@ OutputModule::newRecord()
 	      "usage error, someone else changed the series extent");
     INVARIANT(cur_extent != NULL, "called newRecord() after close()");
     if ((int)(cur_extent->extentsize() + outputtype->fixedrecordsize()) > target_extent_size) {
+	double fixedsize = cur_extent->fixeddata.size();
+	double variablesize = cur_extent->variabledata.size();
+	double sumsize = fixedsize + variablesize;
+	double fixedfrac = fixedsize / sumsize;
+	double variablefrac = variablesize / sumsize;
 	flushExtent();
+	double inflate_size = 1.1 * target_extent_size; // a little extra
+	size_t fixed = static_cast<size_t>(inflate_size * fixedfrac);
+	cur_extent->fixeddata.reserve(fixed);
+	size_t variable = static_cast<size_t>(inflate_size * variablefrac);
+	cur_extent->variabledata.reserve(variable);
     }
     series.newRecord();
 }

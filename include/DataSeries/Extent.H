@@ -58,7 +58,8 @@ public:
     // and using them to get to the byte array is now more difficult,
     // we implement our own to guarentee the assumption that we are
     // really representing a variable sized array of bytes, which is
-    // what we want.
+    // what we want.  Later change to the C++ spec clarified that 
+    // arrays have to be contiguous, so we could switch back at some point.
     class ByteArray { 
     public:
 	ByteArray() { beginV = endV = maxV = NULL; }
@@ -78,6 +79,8 @@ public:
 		copyResize(newsize, zero_it);
 	    } 
 	}
+	void clear();
+	void reserve(size_t reserve_bytes);
 	byte *begin() { return beginV; };
 	byte *begin(size_t offset) { return beginV + offset; }
 	byte *end() { return endV; };
@@ -91,53 +94,23 @@ public:
 
 	typedef byte * iterator;
 
-	// glibc malloc takes all malloc chunks above some threshold
-	// (default 64k), and allocates them using mmap.
-	// Unfortunately, it doesn't retain any of the large
-	// allocations, so when we are reading through a dataseries
-	// file, we are constantly mmapping and unmapping large
-	// extents.  The following works around this by retaining some
-	// amount of allocated chunks without freeing them.  Efforts
-	// to use the mallopt settings that should have controlled
-	// things like this were not successful, only entirely disabling
-	// the mmap feature had any effect.
-
-	static void setMaxRetainedBytes(size_t bytes);
-	// what is the smallest allocation we retain, default 64k
-	static void setMinRetainSize(size_t bytes);
-	// for autotuning, how many byte arrays should we be trying to be
-	// able to allocate; default 16, so 4-8 extents; clamp_minimum,
-	// clamp_maximum set the range of what we will keep around regardless
-	// of what else happens.  Set target_arrays to 0 to disable
-	// retaining.
-	static void setRetainedAutotuning(uint32_t target_arrays,
-					  size_t clamp_minimum = 32*1024*1024,
-					  size_t clamp_maximum = 512*1024*1024);
-
-	// purge all of the retained allocations.
-	static void flushRetainedAllocations();
-	struct RetainedStats {
-	    uint64_t small_alloc_count, small_alloc_bytes;
-	    uint64_t system_malloc_count, system_malloc_bytes;
-	    uint64_t system_malloc_nothing_retained_count;
-	    uint64_t recycle_malloc_count, recycle_malloc_bytes;
-	    uint64_t forced_free_count, forced_free_bytes;
-	    uint64_t freeup_free_count, freeup_free_bytes;
-	};
-	static const RetainedStats &getRetainedStats();
+	// glibc prefers to use mmap to allocate large memory chunks; we 
+	// allocate and de-allocate those fairly regularly; so we increase
+	// the threshold.  This function is automatically called once when
+	// we have to resize a bytearray, if you disagree with the defaults,
+	// you can call this manually and set the options yourself.
+	// if you want to look at the retaining space code again, version 
+	// d5bb884b572b07590a8131710f01513577e24813, prior to 2007-10-25
+	// will have a copy of the old code.
+	static void initMallocTuning();
     private:
 	void swap(byte * &a, byte * &b) {
 	    byte *tmp = a;
 	    a = b;
 	    b = tmp;
 	}
-	// for re-calculating after changing target retained arrays,
-	// or after changing the max bytearray size
-	static void recalcMaxRetainedBytes();
 
 	void copyResize(size_t newsize, bool zero_it);
-	static byte *retainedAllocate(size_t bytes);
-	static void retainedFree(byte *data, size_t size);
 	byte *beginV, *endV, *maxV;
     };
 
@@ -159,12 +132,16 @@ public:
     void swap(Extent &with);
 
     void clear() {
-	fixeddata.resize(0);
-	variabledata.resize(0);
+	fixeddata.clear();
+	variabledata.clear();
 	init();
     }
-    unsigned int extentsize() { 
-	return fixeddata.size() + variabledata.size(); 
+    size_t size() {
+	return fixeddata.size() + variabledata.size();
+    }
+
+    unsigned int extentsize() { // TODO deprecate this function
+	return size();
     }
 
     // The following are defined by the file format and can't be changed.

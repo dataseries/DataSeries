@@ -399,7 +399,6 @@ main(int argc, char *argv[])
 	% source.decode_time % source.total_uncompressed_bytes;
 
     all_stats.printText(cout);
-    Extent::ByteArray::flushRetainedAllocations();
     return 0;
 }
 
