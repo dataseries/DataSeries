@@ -52,6 +52,10 @@ public:
         the actual module doesn't, or is unable to calculate the
         statistic */
     long long total_uncompressed_bytes, total_compressed_bytes;
+    // TODO: deprecate decode_time, it's pretty much useless given that
+    // all the ways that I can find to get resource usage work poorly.
+    // getrusage is per-process, /proc is slow, clock_gettime can go
+    // backwards on RHEL4.
     double decode_time;
 };
 
