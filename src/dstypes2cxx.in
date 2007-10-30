@@ -14,11 +14,20 @@ use Fcntl ':seek';
 
 my %prefixes;
 my $ds2txt = "@expanded_bindir@/ds2txt";
+my @outputs = qw(basic rowanalysismodule dsmodule);
+my $output_form = 'basic';
 
-my $ret = GetOptions("prefix=s" => \%prefixes,
-		     "ds2txt=s" => \$ds2txt);
-die "Usage: $0 [--prefix <typename>=<varprefix>] [--ds2txt=executable]" 
+my $ret = GetOptions("p|prefix=s" => \%prefixes,
+		     "ds2txt=s" => \$ds2txt,
+		     "o|output-form=s" => \$output_form);
+die "Usage: $0 [-p | --prefix <typename>=<varprefix>] [--ds2txt=executable]
+   [-o | --output-form={basic,rowanalysismodule,dsmodule}]
+# For output-form argument, unique prefix is sufficient.
+# prefix is not relevant for row analysis module output.
+# for dsmodule output, only types with a prefix specified are included." 
     unless $ret;
+
+expandOutputForm();
 
 my %type2field = ( 'bool' => 'BoolField',
 		   'byte' => 'ByteField',
@@ -30,8 +39,8 @@ my %type2field = ( 'bool' => 'BoolField',
 if (@ARGV == 0) {
     print STDERR "reading from stdin, expecting C++ or text\n";
     readFH(*STDIN);
+    finishOutput();
 } else {
-    # TODO make it run ds2txt on dataseries files.
     foreach my $file (@ARGV) {
 	my $fh = new FileHandle $file
 	    or die "can't open $file for read: $!";
@@ -39,7 +48,7 @@ if (@ARGV == 0) {
 	sysread($fh, $tmp, 4);
 	if ($tmp eq 'DSv1') {
 	    $fh->close();
-	    $fh = new FileHandle "$ds2txt $file |"
+	    $fh = new FileHandle "$ds2txt --skip-index --select 'DataSeries: Xml' aa $file |"
 		or die "Unable to run $ds2txt $file: $!";
 	} else {
 	    seek($fh, 0, SEEK_SET);
@@ -47,6 +56,7 @@ if (@ARGV == 0) {
 	readFH($fh);
 	$fh->close();
     }
+    finishOutput();
 }
 
 sub readFH {
@@ -98,6 +108,15 @@ sub parseFHText {
     xml2Cxx(join('', @data));
 }
 
+sub startOutput {
+}
+
+sub finishOutput {
+    if ($output_form eq 'dsmodule') {
+	finishDSModuleOutput();
+    }
+}
+
 sub xml2Cxx {
     my($data) = @_;
 
@@ -112,30 +131,167 @@ sub xml2Cxx {
     my $ns = $tree->{namespace} || '';
     my $version = $tree->{version} || '';
 
-    print "    // fields for $typename (ns = $ns, version = $version)\n";
     my @fields = $tree->get_fields();
-    my $prefix = $prefixes{$typename} || '';
+    if ($output_form eq 'basic') {
+	basicOutput($typename, $ns, $version, @fields);
+    } elsif ($output_form eq 'rowanalysismodule') {
+	rowAnalysisModuleOutput($typename, $ns, $version, @fields);
+    } elsif ($output_form eq 'dsmodule') {
+	dsModuleOutput($typename, $ns, $version, @fields);
+    } else {
+	die "internal error '$output_form'";
+    }
+    print Dumper @fields 
+	if 0;
+}
+
+sub basicOutput {
+    my ($typename,$ns,$version,@fields) = @_;
+
+    print "    // fields for $typename (ns = $ns, version = $version)\n";
+    my $prefix = '';
+    $prefix = "$prefixes{$typename}_" if defined $prefixes{$typename};
     foreach my $field (@fields) {
-	my $name = $field->{name};
-	my $type = $field->{type};
-	my $field = $type2field{$type};
-	die "don't recognize type $type" 
-	    unless defined $field;
-	print "    $field $prefix$name;\n";
+	my $cxxtype = $type2field{$field->{type}};
+	my $name = cxxSafeName($field->{name});
+	die "don't recognize type $field->{type}" 
+	    unless defined $cxxtype;
+	print "    $cxxtype ${prefix}$name;\n";
     }
     
     print "    // initializers\n";
     foreach my $field (@fields) {
-	my $name = $field->{name};
-	my $type = $field->{type};
-	my $field = $type2field{$type};
-	die "don't recognize type $type" 
-	    unless defined $field;
-	print "    $prefix$name(${prefix}series, \"$name\"),\n";
+	my $name = cxxSafeName($field->{name});
+	print "    ${prefix}$name(${prefix}series, \"$field->{name}\"),\n";
     }
-    print Dumper @fields 
-	if 0;
     print "\n";
+}
+
+sub rowAnalysisModuleOutput {
+    my ($typename,$ns,$version,@fields) = @_;
+
+    $typename = cxxSafeName($typename);
+
+    print "class ${typename}Analysis : public RowAnalysisModule {
+public:
+    ${typename}Analysis(DataSeriesModule &source)
+        : RowAnalysisModule(source)";
+    foreach my $field (@fields) {
+	my $name = cxxSafeName($field->{name});
+	print qq{,\n        $name(series, "$field->{name}")};
+    }
+    print "
+    {
+    }
+
+    virtual ~${typename}Analysis() { }
+
+    virtual void processRow() {
+        // Here you put your code for dealing with each row, using the fields
+        // declared below.
+    }
+
+    virtual void printResult() {
+        // Here you put your code to print out your result, if so desired.
+    }
+
+private:
+";
+    foreach my $field (@fields) {
+	my $cxxtype = $type2field{$field->{type}};
+	die "don't recognize type $field->{type}" 
+	    unless defined $cxxtype;
+	my $name = cxxSafeName($field->{name});
+	print "    $cxxtype $name;\n";
+    }
+    print "};\n\n";
+}
+
+sub dsModuleOutput {
+    my ($typename,$ns,$version,@fields) = @_;
+
+    push(@DSModule::possible_types, $typename);
+    return unless defined $prefixes{$typename};
+    my $prefix = $prefixes{$typename};
+
+    push(@DSModule::prefixes,$prefix);
+
+    foreach my $field (@fields) {
+	my $name = cxxSafeName($field->{name});
+	my $cxxtype = $type2field{$field->{type}};
+	die "don't recognize type $field->{type}" 
+	    unless defined $cxxtype;
+
+	push(@DSModule::init_fields,
+	     qq!${prefix}_$name(${prefix}_series, "$field->{name}")!);
+	push(@DSModule::declare_fields,
+	     qq!$cxxtype ${prefix}_$name;!);
+    }
+}
+
+sub finishDSModuleOutput {
+    @DSModule::prefixes = sort @DSModule::prefixes;
+
+    die "No prefixes were declared? Possible types include: "
+	. join(", ", @DSModule::possible_types)
+	unless @DSModule::prefixes;
+	
+    my $arg_sources = join(",\n             ",
+			   map { "DataSeriesSource &_source_$_" }
+			   @DSModule::prefixes);
+    my $init_sources = join(",\n         ",
+			   map { "source_$_(_source_$_)" } 
+			   @DSModule::prefixes);
+    my $init_fields = join(",\n         ", @DSModule::init_fields);
+    my $declare_sources = join("\n    ",
+			       map { "DataSeriesModule &source_$_;" } 
+			           @DSModule::prefixes);
+    my $declare_series = join("\n    ",
+			      map { "ExtentSeries ${_}_series;" } 
+			          @DSModule::prefixes);
+    my $declare_fields = join("\n    ", @DSModule::declare_fields);
+			   
+    print "class DSModule : public DataSeriesModule {
+public:
+    DSModule($arg_sources)
+       : $init_sources,
+         $init_fields
+    { }
+ 
+    ~DSModule() { }
+
+    virtual Extent *getExtent() {
+        // Code to process extent(s) and return an extent when called
+    }
+
+    $declare_sources
+    $declare_series
+    $declare_fields
+};
+
+";
+}
+
+sub cxxSafeName {
+    local $_ = $_[0];
+
+    s/[^\w]/_/go;
+    $_ = "_$_" if /^[0-9]/o;
+    return $_;
+}
+
+sub expandOutputForm {
+    my $out;
+
+    foreach my $output (@outputs) {
+	next unless substr($output, 0, length $output_form) eq $output_form;
+	die "both $output and $out match $output_form"
+	    if defined $out;
+	$out = $output;
+    }
+    die "no output form matches $output_form"
+	unless defined $out;
+    $output_form = $out;
 }
 
 package ExtentType::ExtentType;
@@ -150,5 +306,3 @@ sub get_fields {
     }
     return @ret;
 }
-
-

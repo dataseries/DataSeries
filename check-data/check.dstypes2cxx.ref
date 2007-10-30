@@ -105,3 +105,184 @@
     // initializers
     xmltype(series, "xmltype"),
 
+class Batch__LSF__GrizzlyAnalysis : public RowAnalysisModule {
+public:
+    Batch__LSF__GrizzlyAnalysis(DataSeriesModule &source)
+        : RowAnalysisModule(source),
+        cluster_name(series, "cluster_name"),
+        job_name_unpacked(series, "job_name_unpacked"),
+        directory_path_unpacked(series, "directory_path_unpacked"),
+        directory_name_info_matched(series, "directory_name_info_matched"),
+        meta_id(series, "meta_id"),
+        production(series, "production"),
+        sequence(series, "sequence"),
+        shot(series, "shot"),
+        task(series, "task"),
+        object(series, "object"),
+        subtask(series, "subtask"),
+        jobname_username(series, "jobname_username"),
+        frames(series, "frames"),
+        start_frame(series, "start_frame"),
+        end_frame(series, "end_frame"),
+        nframes(series, "nframes"),
+        frame_step(series, "frame_step"),
+        job_parallel_limit(series, "job_parallel_limit"),
+        command(series, "command"),
+        command_path(series, "command_path"),
+        command_name(series, "command_name"),
+        job_resolution(series, "job_resolution"),
+        job_frame(series, "job_frame"),
+        created(series, "created"),
+        job_id(series, "job_id"),
+        job_idx(series, "job_idx"),
+        username(series, "username"),
+        user_id(series, "user_id"),
+        event_time(series, "event_time"),
+        submit_time(series, "submit_time"),
+        req_start_time(series, "req_start_time"),
+        start_time(series, "start_time"),
+        end_time(series, "end_time"),
+        queue(series, "queue"),
+        email(series, "email"),
+        status(series, "status"),
+        status_int(series, "status_int"),
+        team(series, "team"),
+        exit_code(series, "exit_code"),
+        user_time(series, "user_time"),
+        system_time(series, "system_time"),
+        cpu_time(series, "cpu_time"),
+        max_memory(series, "max_memory"),
+        max_swap(series, "max_swap"),
+        exec_host(series, "exec_host"),
+        exec_host_group(series, "exec_host_group")
+    {
+    }
+
+    virtual ~Batch__LSF__GrizzlyAnalysis() { }
+
+    virtual void processRow() {
+        // Here you put your code for dealing with each row, using the fields
+        // declared below.
+    }
+
+    virtual void printResult() {
+        // Here you put your code to print out your result, if so desired.
+    }
+
+private:
+    Variable32Field cluster_name;
+    BoolField job_name_unpacked;
+    BoolField directory_path_unpacked;
+    BoolField directory_name_info_matched;
+    Int32Field meta_id;
+    Variable32Field production;
+    Variable32Field sequence;
+    Variable32Field shot;
+    Variable32Field task;
+    Variable32Field object;
+    Variable32Field subtask;
+    Variable32Field jobname_username;
+    Variable32Field frames;
+    Int32Field start_frame;
+    Int32Field end_frame;
+    Int32Field nframes;
+    Int32Field frame_step;
+    Int32Field job_parallel_limit;
+    Variable32Field command;
+    Variable32Field command_path;
+    Variable32Field command_name;
+    DoubleField job_resolution;
+    Int32Field job_frame;
+    Int32Field created;
+    Int32Field job_id;
+    Int32Field job_idx;
+    Variable32Field username;
+    Int32Field user_id;
+    Int32Field event_time;
+    Int32Field submit_time;
+    Int32Field req_start_time;
+    Int32Field start_time;
+    Int32Field end_time;
+    Variable32Field queue;
+    Variable32Field email;
+    Variable32Field status;
+    Int32Field status_int;
+    Variable32Field team;
+    Int32Field exit_code;
+    DoubleField user_time;
+    DoubleField system_time;
+    DoubleField cpu_time;
+    Int64Field max_memory;
+    Int64Field max_swap;
+    Variable32Field exec_host;
+    Variable32Field exec_host_group;
+};
+
+class DataSeries__ExtentIndexAnalysis : public RowAnalysisModule {
+public:
+    DataSeries__ExtentIndexAnalysis(DataSeriesModule &source)
+        : RowAnalysisModule(source),
+        offset(series, "offset"),
+        extenttype(series, "extenttype")
+    {
+    }
+
+    virtual ~DataSeries__ExtentIndexAnalysis() { }
+
+    virtual void processRow() {
+        // Here you put your code for dealing with each row, using the fields
+        // declared below.
+    }
+
+    virtual void printResult() {
+        // Here you put your code to print out your result, if so desired.
+    }
+
+private:
+    Int64Field offset;
+    Variable32Field extenttype;
+};
+
+class DataSeries__XmlTypeAnalysis : public RowAnalysisModule {
+public:
+    DataSeries__XmlTypeAnalysis(DataSeriesModule &source)
+        : RowAnalysisModule(source),
+        xmltype(series, "xmltype")
+    {
+    }
+
+    virtual ~DataSeries__XmlTypeAnalysis() { }
+
+    virtual void processRow() {
+        // Here you put your code for dealing with each row, using the fields
+        // declared below.
+    }
+
+    virtual void printResult() {
+        // Here you put your code to print out your result, if so desired.
+    }
+
+private:
+    Variable32Field xmltype;
+};
+
+class DSModule : public DataSeriesModule {
+public:
+    DSModule(DataSeriesSource &_source_dsextent)
+       : source_dsextent(_source_dsextent),
+         dsextent_offset(dsextent_series, "offset"),
+         dsextent_extenttype(dsextent_series, "extenttype")
+    { }
+ 
+    ~DSModule() { }
+
+    virtual Extent *getExtent() {
+        // Code to process extent(s) and return an extent when called
+    }
+
+    DataSeriesModule &source_dsextent;
+    ExtentSeries dsextent_series;
+    Int64Field dsextent_offset;
+    Variable32Field dsextent_extenttype;
+};
+
