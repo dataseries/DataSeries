@@ -531,7 +531,8 @@ public:
 
     struct fhHash {
 	unsigned operator()(const hteData &k) {
-	    return reinterpret_cast<unsigned>(k.filehandle.data()) ^ k.server;
+	    size_t dataaddr = reinterpret_cast<size_t>(k.filehandle.data());
+	    return static_cast<unsigned>(dataaddr) ^ k.server;
 	}
     };
 
