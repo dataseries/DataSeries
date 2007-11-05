@@ -1,0 +1,5 @@
+2007-11-05:
+  * nfsdsanalysis program added, only one of the analysis has been tested,
+    so it is the only one enabled.
+  * NEWS file created
+
