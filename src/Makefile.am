@@ -88,9 +88,10 @@ pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
 
 # Type-specific processing
-bin_PROGRAMS += textindex indexnfscommon
+bin_PROGRAMS += textindex indexnfscommon nfssubset
 textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
+nfssubset_SOURCES = analysis/nfs/nfssubset.cpp
 
 # Type specific analysis
 bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis
@@ -105,7 +106,8 @@ nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
-	ran.check-lsfdsanalysis ran.check-dstypes2cxx
+	ran.check-lsfdsanalysis ran.check-dstypes2cxx \
+	ran.check-nfsdsanalysis
 
 ### Conditional things
 
@@ -254,8 +256,12 @@ ran.check-dstypes2cxx: dstypes2cxx
 	perl ./dstypes2cxx --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
 	perl ./dstypes2cxx -o r --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >>check.dstypes2cxx.txt
 	perl ./dstypes2cxx -o d -p 'DataSeries: ExtentIndex'=dsextent --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >>check.dstypes2cxx.txt
-	
 	cmp check.dstypes2cxx.txt $(top_srcdir)/check-data/check.dstypes2cxx.ref
+	touch $@
+
+ran.check-nfsdsanalysis: nfsdsanalysis
+	./nfsdsanalysis -a $(top_srcdir)/check-data/nfs.set6.20k.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.nfsdsanalysis.txt
+	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
 	touch $@
 
 if HAS_DATE_PARSE

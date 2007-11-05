@@ -53,6 +53,7 @@ public:
 	  my_extent(NULL), typeCompatibility(_tc) { 
     }
     void setType(const ExtentType &type);
+    const ExtentType *getType() { return type; }
     // setExtent will automatically reset the pos iterator to the
     // beginning of the extent.
     void setExtent(Extent *e);

@@ -350,9 +350,11 @@ public:
 class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
+    void prep();
     ~ExtentRecordCopy();
-    void copyrecord();
+    void copyRecord();
 private:
+    bool did_prep;
     int fixed_copy_size;
     ExtentSeries &source, &dest;
     std::vector<GeneralField *> sourcefields, destfields; // all fields here if f_c_s == 0

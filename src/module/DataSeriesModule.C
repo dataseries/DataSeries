@@ -20,10 +20,10 @@ DataSeriesModule::~DataSeriesModule()
 }
 
 void
-DataSeriesModule::getAndDelete(DataSeriesModule &from)
+DataSeriesModule::getAndDelete()
 {
     while(true) {
-	Extent *e = from.getExtent();
+	Extent *e = getExtent();
 	if (e == NULL) return;
 	delete e;
     }
@@ -84,10 +84,10 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 
 OutputModule::~OutputModule()
 {
-    sink.removeStatsUpdate(&stats);
     if (cur_extent != NULL) {
 	close();
     }
+    sink.removeStatsUpdate(&stats);
 }
 
 void

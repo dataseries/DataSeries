@@ -1137,8 +1137,14 @@ GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
 }
 
 ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
-    : source(_source), dest(_dest)
+    : fixed_copy_size(-1), source(_source), dest(_dest)
 {
+}
+
+void 
+ExtentRecordCopy::prep()
+{
+    INVARIANT(fixed_copy_size == -1, "internal");
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
 	&& source.type->xmldesc == dest.type->xmldesc) {
@@ -1176,8 +1182,11 @@ ExtentRecordCopy::~ExtentRecordCopy()
 }
 
 void
-ExtentRecordCopy::copyrecord()
+ExtentRecordCopy::copyRecord()
 {
+    if (fixed_copy_size == -1) {
+	prep();
+    }
     if (fixed_copy_size > 0) {
 	dest.pos.checkOffset(fixed_copy_size-1);
 	memcpy(dest.pos.record_start(),source.pos.record_start(),fixed_copy_size);

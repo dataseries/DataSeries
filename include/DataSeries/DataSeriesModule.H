@@ -27,7 +27,12 @@
 class DataSeriesModule {
 public:
     virtual Extent *getExtent() = 0;
-    static void getAndDelete(DataSeriesModule &from); // get all the extents from module and delete them.
+    // get all the extents from module and delete them.
+    void getAndDelete();
+    // TODO: deprecate static getAndDelete.
+    static void getAndDelete(DataSeriesModule &from) {
+	from.getAndDelete();
+    }
     virtual ~DataSeriesModule();
 };
 
@@ -75,6 +80,11 @@ private:
 
 class OutputModule {
 public:
+    // TODO: Replace constructor with OutputModule(DataSeriesSink
+    // &sink, const ExtentType &outputtype, uint32_t
+    // target_extent_size = 0) auto-infer tes if it is 0 same as with
+    // commonargs, then make the extentseries a real class member.
+
     // you are still responsible for closing the sink if necessary;
     // this module just helps with making records of close the the
     // right size.  If you use pack_unique for your variable data and
@@ -102,6 +112,10 @@ public:
 
     size_t curExtentSize() {
 	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();
+    }
+
+    ExtentSeries &getSeries() {
+	return series;
     }
 private:
     DataSeriesSink::Stats stats;

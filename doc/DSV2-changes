@@ -9,6 +9,15 @@ Changes under consideration for DSV1:
     index; see DataSeriesFile.C for the current proposal.
 
 Changes under consideration for DSV2:
+  * Consider allowing extent-type extents to occur anywhere in a file and using
+    the index in order to find the type extents.  This would simplify writing
+    dataseries files because it would mean we could automatically determine
+    the types that should go into a file.  If we do this, it may be
+    worth duplicating everything in the header to the trailer, and recording
+    a type index offset also in the trailer so that we can do a single
+    sequential read to pull in the two short bits, right now we have to read
+    the front and the back.  Probably worth leaving the bits at the front as
+    that would allow us to write dsrecover at some point.
   * Update the checksums that are used.  Current suggestion is to use SHA1
     for the packed checksum, and inlineable adler32/zlib-crc32/bjhash
     for the unpacked checksum.  As part of this, may want to seed one or

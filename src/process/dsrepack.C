@@ -9,6 +9,9 @@
     Select subset of fields from a collection of traces, generate a new trace
 */
 
+// TODO: use GeneralField/ExtentRecordCopy, we aren't changing the type so
+// it should be much faster.
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -63,8 +66,7 @@ struct PerTypeWork {
     // special casing for int32's.  That file has lots of booleans
     // somewhat fewer int32s, and then some doubles.
 
-    // TODO: special case the remaining types, but leave in the
-    // general field fallback.
+    // TODO: remove special case, use ExtentRecordCopy
     vector<GeneralField *> infields, outfields, all_fields;
     vector<GF_Bool *> in_boolfields, out_boolfields;
     vector<GF_Int32 *> in_int32fields, out_int32fields;

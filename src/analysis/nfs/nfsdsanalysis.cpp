@@ -16,6 +16,7 @@ using namespace std;
 #include <ostream>
 #include <algorithm>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/ConstantString.H>
 #include <Lintel/HashTable.H>
 #include <Lintel/HashUnique.H>
@@ -515,6 +516,22 @@ public:
 	void zero() { opcount = 0; payload_sum = 0; latency_sum = 0; }
     };
 
+    struct byServerFhOp {
+	bool operator() (const HashTable_hte<hteData> &a, 
+			 const HashTable_hte<hteData> &b) {
+	    if (a.data.server != b.data.server) {
+		return a.data.server < b.data.server;
+	    }
+	    if (a.data.filehandle != b.data.filehandle) {
+		return a.data.filehandle < b.data.filehandle;
+	    }
+	    if (a.data.operation != b.data.operation) {
+		return a.data.operation < b.data.operation;
+	    }
+	    return false;
+	}
+    };
+
     struct fhOpHash {
 	unsigned operator()(const hteData &k) {
 	    unsigned ret = HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
@@ -596,19 +613,80 @@ public:
 	    v->payload_sum += payload_len.val();
 	    v->latency_sum += reply_at.val() - request_at.val();
 
-//	    if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
-//		k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
-//		v = fsRollup.lookup(k);
-//		if (v == NULL) {
-//		    k.zero();
-//		    v = fsRollup.add(k);
-//		}
-//		++v->opcount;
-//		v->payload_sum += payload_len.val();
-//		v->latency_sum += reply_at.val() - request_at.val();
-//	    }
+	    if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
+		k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
+		v = fsRollup.lookup(k);
+		if (v == NULL) {
+		    k.zero();
+		    v = fsRollup.add(k);
+		}
+		++v->opcount;
+		v->payload_sum += payload_len.val();
+		v->latency_sum += reply_at.val() - request_at.val();
+	    }
 	}	    
 	return e;
+    }
+
+    // sorting so the regression tests give stable results.
+
+    void printFSRollup() {
+	printf("FileSystem Rollup:\n");
+	if (fsRollup.size() >= NFSDSAnalysisMod::max_mount_points_expected) {
+	    printf("Too many filesystems (>= %d) filesystems found, assuming that fh->fs mapping is wrong\n", NFSDSAnalysisMod::max_mount_points_expected);
+	} else {
+	    fhRollupT::hte_vectorT &raw = fsRollup.unsafeGetRawDataVector();
+	    sort(raw.begin(), raw.end(), byServerFhOp());
+	    for(fhRollupT::hte_vectorT::iterator i = raw.begin();
+		i != raw.end(); ++i) {
+		hteData &d(i->data);
+		double avglat = d.latency_sum / (1.0e3 * d.opcount);
+		fh2mountData fhdata(d.filehandle);
+		fh2mountData *v = fh2mount.lookup(fhdata);
+		string pathname;
+		if (v == NULL) {
+		    pathname = "unknown:";
+		    pathname.append(maybehexstring(d.filehandle));
+		} else {
+		    pathname = maybehexstring(v->pathname);
+		}
+		printf("fsrollup: server %s, fs %s: %d ops %.3f MB, %.3f us avg lat\n",
+		       ipv4tostring(d.server).c_str(),pathname.c_str(),
+		       d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+	    }
+	}
+    }
+
+    void printFHRollup() {
+	printf("\nFH Rollup (%d,%d):\n", fhRollup.size(), unique_fhs.size());
+	fhRollupT::hte_vectorT &raw = fhRollup.unsafeGetRawDataVector();
+	sort(raw.begin(), raw.end(), byServerFhOp());
+	for(fhRollupT::hte_vectorT::iterator i = raw.begin();
+	    i != raw.end(); ++i) {
+	    hteData &d(i->data);
+	    double avglat = d.latency_sum / (1.0e3 * d.opcount);
+	    printf("fhrollup: server %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
+		   ipv4tostring(d.server).c_str(),
+		   maybehexstring(d.filehandle).c_str(),
+		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+	}
+
+    }
+
+    void printFHOpRollup() {
+	printf("\nFH/Op Rollup:\n");
+
+	fhOpRollupT::hte_vectorT &raw = fhOpRollup.unsafeGetRawDataVector();
+	sort(raw.begin(), raw.end(), byServerFhOp());
+	for(fhOpRollupT::hte_vectorT::iterator i = raw.begin();
+	    i != raw.end(); ++i) {
+	    hteData &d(i->data);
+	    double avglat = d.latency_sum / (1.0e3 * d.opcount);
+	    printf("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
+		   ipv4tostring(d.server).c_str(),d.operation.c_str(),
+		   maybehexstring(d.filehandle).c_str(),
+		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+	}
     }
 
     virtual void printResult() {
@@ -616,45 +694,11 @@ public:
 
 	printf("Time range: %.3f .. %.3f\n", (double)min_time/1.0e9,
 	       (double)max_time/1.0e9);
-	printf("FileSystem Rollup:\n");
-	if (fsRollup.size() >= NFSDSAnalysisMod::max_mount_points_expected) {
-	    printf("Too many filesystems (>= %d) filesystems found, assuming that fh->fs mapping is wrong\n", NFSDSAnalysisMod::max_mount_points_expected);
-	} else {
-	    for(fhRollupT::iterator i = fsRollup.begin();i != fsRollup.end();++i) {
-		double avglat = i->latency_sum / (1.0e3 * i->opcount);
-		fh2mountData d(i->filehandle);
-		fh2mountData *v = fh2mount.lookup(d);
-		string pathname;
-		if (v == NULL) {
-		    pathname = "unknown:";
-		    pathname.append(maybehexstring(i->filehandle));
-		} else {
-		    pathname = maybehexstring(v->pathname);
-		}
-		printf("fsrollup: server %s, fs %s: %d ops %.3f MB, %.3f us avg lat\n",
-		       ipv4tostring(i->server).c_str(),pathname.c_str(),
-		       i->opcount,i->payload_sum/(1024.0*1024.0),avglat);
-	    }
-	}
 
-	printf("\nFH Rollup (%d,%d):\n", fhRollup.size(), unique_fhs.size());
-	for(fhRollupT::iterator i = fhRollup.begin();i != fhRollup.end();++i) {
-	    double avglat = i->latency_sum / (1.0e3 * i->opcount);
-	    printf("fhrollup: server %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
-		   ipv4tostring(i->server).c_str(),
-		   maybehexstring(i->filehandle).c_str(),
-		   i->opcount,i->payload_sum/(1024.0*1024.0),avglat);
-	}
+	printFSRollup();
+	printFHRollup();
+	printFHOpRollup();
 
-	printf("\nFH/Op Rollup:\n");
-
-	for(fhOpRollupT::iterator i = fhOpRollup.begin();i != fhOpRollup.end();++i) {
-	    double avglat = i->latency_sum / (1.0e3 * i->opcount);
-	    printf("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
-		   ipv4tostring(i->server).c_str(),i->operation.c_str(),
-		   maybehexstring(i->filehandle).c_str(),
-		   i->opcount,i->payload_sum/(1024.0*1024.0),avglat);
-	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
@@ -841,7 +885,7 @@ public:
 	    } else {
 		++kept_records;
 		dest_series->newRecord();
-		copier->copyrecord();
+		copier->copyRecord();
 	    }
 	}
 
@@ -995,7 +1039,7 @@ parseopts(int argc, char *argv[])
 {
     bool any_selected;
 
-    FATAL_ERROR("need to write regression tests");
+    
     any_selected = false;
     while (1) {
 	int opt = getopt(argc, argv, "abc:defghijklmnop:q:r:stu:v:wxy:z:");
@@ -1006,65 +1050,65 @@ parseopts(int argc, char *argv[])
 	case 'a': options[optOperationByFileHandle] = 1;
 	    need_mount_by_filehandle = 1;
 	    break;
-	case 'b': options[Unique] = 1; break;
-	case 'c': {
+	case 'b': FATAL_ERROR("untested");options[Unique] = 1; break;
+	case 'c': FATAL_ERROR("untested");{
 	    options[optFileageByFilehandle] = 1;
 	    int tmp = atoi(optarg);
 	    AssertAlways(tmp > 0,("invalid -c %d\n",tmp));
 	    FileageByFilehandle_recent_secs.push_back(tmp);
 	    break;
 	}
-	case 'd': options[Largewrite_Handle] = 1; break;
-	case 'e': options[Largewrite_Name] = 1;
+	case 'd': FATAL_ERROR("untested");options[Largewrite_Handle] = 1; break;
+	case 'e': FATAL_ERROR("untested");options[Largewrite_Name] = 1;
 	          need_filename_by_filehandle = true;
 		  late_filename_by_filehandle_ok = false;
 		  break;
-	case 'f': options[Largefile_Handle] = 1; break;
-	case 'g': options[Largefile_Name] = 1;
+	case 'f': FATAL_ERROR("untested");options[Largefile_Handle] = 1; break;
+	case 'g': FATAL_ERROR("untested");options[Largefile_Name] = 1;
 	          need_filename_by_filehandle = true;
 		  late_filename_by_filehandle_ok = false;
 		  break;
 	case 'h': usage(argv[0]); break;
-	case 'i': options[optNFSOpPayload] = 1; break;
-	case 'j': options[optServerLatency] = 1; break;
-	case 'k': options[optClientServerPairInfo] = 1; break;
-	case 'l': options[optHostInfo] = 1; break;
-	case 'm': options[optPayloadInfo] = 1; break;
-	case 'n': options[optFileSizeByType] = 1; break;
-	case 'o': options[optUnbalancedOps] = 1; break;
-	case 'p': options[optNFSTimeGaps] = 1; 
+	case 'i': FATAL_ERROR("untested");options[optNFSOpPayload] = 1; break;
+	case 'j': FATAL_ERROR("untested");options[optServerLatency] = 1; break;
+	case 'k': FATAL_ERROR("untested");options[optClientServerPairInfo] = 1; break;
+	case 'l': FATAL_ERROR("untested");options[optHostInfo] = 1; break;
+	case 'm': FATAL_ERROR("untested");options[optPayloadInfo] = 1; break;
+	case 'n': FATAL_ERROR("untested");options[optFileSizeByType] = 1; break;
+	case 'o': FATAL_ERROR("untested");options[optUnbalancedOps] = 1; break;
+	case 'p': FATAL_ERROR("untested");options[optNFSTimeGaps] = 1; 
 	    NFSDSAnalysisMod::gap_parm = atof(optarg); 
 	    break;
-	case 'q': options[File_Read] = 1; 
+	case 'q': FATAL_ERROR("untested");options[File_Read] = 1; 
 	    NFSDSAnalysisMod::read_sampling = atof(optarg); 
 	    break;
-	case 'r': options[Commonbytes] = 1;
+	case 'r': FATAL_ERROR("untested");options[Commonbytes] = 1;
 	      	  need_mount_by_filehandle = true;
 		  need_filename_by_filehandle = true;
 		  late_filename_by_filehandle_ok = false;
 	      	  break;
-	case 's': options[optSequentialWholeAccess] = 1;
+	case 's': FATAL_ERROR("untested");options[optSequentialWholeAccess] = 1;
 	    need_filename_by_filehandle = true;
 	    need_mount_by_filehandle = true;
 	    break;
-	case 't': options[strangeWriteSearch] = 1;
+	case 't': FATAL_ERROR("untested");options[strangeWriteSearch] = 1;
 	    if (sws_filehandle) {
 		need_mount_by_filehandle = true;
 	    }
 	    break;
-	case 'u': options[fileHandleLookup] = 1;
+	case 'u': FATAL_ERROR("untested");options[fileHandleLookup] = 1;
 	    FHL_inputfilename = optarg;
 	    break;
 	case 'v': print_input_series = atoi(optarg);
 	    AssertAlways(print_input_series >= 1 && print_input_series <= 5,
 			 ("invalid print input series '%s'\n",optarg));
 	    break;
-	case 'w': options[optServersPerFilehandle] = 1; break;
-	case 'x': options[optTransactions] = 1; break;
-	case 'y': options[optOutstandingRequests] = 1; 
+	case 'w': FATAL_ERROR("untested");options[optServersPerFilehandle] = 1; break;
+	case 'x': FATAL_ERROR("untested");options[optTransactions] = 1; break;
+	case 'y': FATAL_ERROR("untested");options[optOutstandingRequests] = 1; 
 	  latency_offset = atoi(optarg);
 	  break;
-	case 'z': options[optTmpFilehandleLookup] = 1;
+	case 'z': FATAL_ERROR("untested");options[optTmpFilehandleLookup] = 1;
 	    TFHL_inputfilename = optarg;
 	    break;
 

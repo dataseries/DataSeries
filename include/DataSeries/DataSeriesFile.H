@@ -37,6 +37,8 @@ public:
     void closefile(); // release the file descriptor
     void reopenfile(); // leaves offset unchanged; completely messy if the underlying file is being changed
 
+    ExtentTypeLibrary &getLibrary() { return mylibrary; }
+
     ExtentTypeLibrary mylibrary;
     Extent *indexExtent; 
     const bool needBitflip() { return need_bitflip; }
