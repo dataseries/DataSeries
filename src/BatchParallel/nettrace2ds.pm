@@ -241,25 +241,39 @@ sub rebuild_thing_do {
 		$files, $ffree, $favail, $flag, $namemax) 
 		= statvfs($this->{dsdir});
 	    my $avail_gib = $bavail * 1.0 * $bsize / (1024.0*1024.0*1024.0);
-	    while ($avail_gib < 10) { # 10e9 might not be enough
+	    while ($avail_gib < 10) { # 10e9 might not be enough, but seems to be working so far
 		print "Waiting for more space to free up ($avail_gib GiB available)...\n";
 		sleep(60);
 		($bsize, $frsize, $blocks, $bfree, $bavail,
 		 $files, $ffree, $favail, $flag, $namemax) 
 		    = statvfs($this->{dsdir});
-		$avail_gib = $bavail * 512.0 / (1024.0*1024.0*1024.0)
+		$avail_gib = $bavail * 1.0 * $bsize / (1024.0*1024.0*1024.0)
 	    } 
 	    my $ratio_available = $bavail / $blocks;
 	    print "(debug) ratio: $ratio_available\n"
 		if 0;
-	    if ($ratio_available > 0.9) {
-		$compress = "--compress-lzf --compress-level=1 --extent-size=65536";
+	    # Always use huge extent size because that gives bigger writes to
+	    # disk, and hence better write throughput; the penalty for huge
+	    # extents in compression is there, but not clearly as much of 
+	    # a factor.
+	    
+	    if ($ratio_available > 0.95 && rand() < 0.5) {
+		# lzf generates at ~5MB/s/CPU on the DL585; so we only want
+		# to use it if we're just getting going; if there's stuff
+		# already to transfer, then why bother getting less
+		# compression out of it.
+		$compress = "--compress-lzf --compress-level=1 --extent-size=67108864";
 		$comment = 'via lzf';
-	    } elsif ($ratio_available > 0.5) {
-		$compress = "--compress-gz --compress-level=6 --extent-size=131072";
+	    } elsif ($ratio_available > 0.5 && rand() < 0.875) {
+		# gz6 runs at ~2MB/s/CPU on the DL585, so let 1 in 8 or so
+		# go off and get better compression.
+		$compress = "--compress-gz  --compress-level=6 --extent-size=67108864";
 		$comment = 'via gzip';
 	    } else {
-		$compress = "--compress-bz2 --compress-level=9 --extent-size=67108864";
+		# if we are below 50%, then either a) we're not transferring
+	        # stuff off, or b) we're very behind.  Either way, compress
+	        # as much as possible.
+		$compress = "--compress-bz2 --compress-level=9 --extent-size=134217728";
 		$comment = 'via bz2';
 	    }
 	}
@@ -292,6 +306,7 @@ sub rebuild_thing_do {
     die "??" unless defined $cmd;
     my $ret = system($cmd);
     exit(1) unless $ret == 0;
+    system("sync &"); # force it out to disk in the background
     exit(0);
 }
 
