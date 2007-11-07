@@ -274,6 +274,12 @@ public:
 	if (false) printf("touch (%s)...\n", filename.c_str());
 
 	unsigned int defeat_opt = 0;
+	int readbufsize = 262144;
+	char readbuf[readbufsize];
+	while(read(fd, readbuf, readbufsize) > 0) {
+	    // just force it into memory
+	}
+	// Now make sure it's there.
 	for(unsigned i = 0; i < datasize; i += 2048) {
 	    defeat_opt += *(reinterpret_cast<unsigned char *>(data)+i);
 	}
@@ -530,6 +536,8 @@ public:
 	FATAL_ERROR("no");
     }
 
+    // TODO: convert this to prefetching ahead by amount of memory of
+    // something like that.
     static const unsigned prefetch_ahead_amount = 3;
 
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
@@ -594,6 +602,8 @@ vector<network_error_listT> known_bad_list;
   ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, "", __FILE__, __LINE__) )
 #define RPCParseAssertMsg(condition,message) \
   ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
+#define RPCParseAssertBoost(condition,message) \
+  ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, (message).str(), __FILE__, __LINE__) )
 
 class RPC {
 public:
@@ -1909,15 +1919,18 @@ public:
 	    return 2;
 	} else {
 	    if (xdr[0]) { // have pre-op attr
-		INVARIANT(xdr[1+3*2],
-			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
-	    //                       flag pre_op flag post_op  count committed writeverf
-		ShortDataAssertMsg(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
-				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
-		return 1 + 1 + 3*2 + 1;
+		if (xdr[1+3*2]) { // post-op attr
+	             //                       flag pre_op flag post_op  count committed writeverf
+		    ShortDataAssertMsg(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
+				       ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		    return 1 + 1 + 3*2 + 1;
+		} else {
+		    // missing post-op fattr3; for write this means we have no useful attributes.
+		    ShortDataAssertMsg(actual_len == 4 + 4 + 4*3*2 + 4, "NFSV3WriteReply", 
+				       ("bad in %s size is %d", tracename.c_str(), actual_len));
+		    return -1;
+		}
 	    } else if (xdr[1]) { // missing pre-op attr, have post-op
-		INVARIANT(xdr[1], 
-			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
 		ShortDataAssertMsg(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
 				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
 		return 1 + 1 + 1;
@@ -2146,7 +2159,8 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		if (false) printf("got a READDIRPLUS\n");
 		int fhlen = ntohl(xdr[0]);
-		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
+		RPCParseAssertBoost(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
+				    boost::format("bad fhlen %d") % fhlen);
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 
