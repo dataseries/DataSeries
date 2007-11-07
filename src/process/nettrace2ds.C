@@ -284,6 +284,12 @@ public:
 	if (false) printf("touch (%s)...\n", filename.c_str());
 
 	unsigned int defeat_opt = 0;
+	int readbufsize = 262144;
+	char readbuf[readbufsize];
+	while(read(fd, readbuf, readbufsize) > 0) {
+	    // just force it into memory
+	}
+	// Now make sure it's there.
 	for(unsigned i = 0; i < datasize; i += 2048) {
 	    defeat_opt += *(reinterpret_cast<unsigned char *>(data)+i);
 	}
@@ -447,13 +453,54 @@ public:
     bool eof;
 };
 
+// struct pcap_pkthdr uses struct timeval, which can be 16 bytes in size
+// as the sub parts can be longs.
+
+struct correct_pcap_pkthdr {
+    uint32_t tv_sec, tv_usec, caplen, len;
+};
+
 class PCAPReader: public NettraceReader {
 public:
+    static const bool debug = false;
+
     PCAPReader(const string &filename) : NettraceReader(filename), 
-                                         fd(-1), 
+                                         fp(NULL), 
                                          packet_buf(NULL), 
-                                         eof(false) { }
+                                         eof(false), popened(false) 
+    { }
     virtual void prefetch() { } // unimplemented yet
+
+    ssize_t readBytes(void *into, size_t bytes) {
+	ssize_t ret = fread(into, 1, bytes, fp);
+
+	if (ferror(fp)) {
+	    ret = -1;
+	}
+	if (ret == 0) {
+	    INVARIANT(feof(fp), "nothing read but not eof??");
+	}
+	if (ret < 0 || static_cast<size_t>(ret) != bytes) {
+	    if (popened) {
+		pclose(fp);
+		fp = NULL;
+	    } else {
+		fclose(fp);
+		fp = NULL;
+	    }
+	}
+	if (debug) {
+	    if (ret >= 0) {
+		cout << boost::format("read(%d) -> %d: %s\n")
+		    % bytes % ret % hexstring(string((char *)into, ret));
+	    } else {
+		cout << boost::format("read(%d) -> error")
+		    % bytes;
+	    }		
+
+	}
+	return ret;
+    }
 
     virtual bool nextPacket(unsigned char **packet_ptr, 
                             uint32_t *capture_size,
@@ -465,14 +512,23 @@ public:
 	// PCAP file either unopened or being read
 
 	if (packet_buf == NULL) { // open the PCAP file
-	    fd = open(filename.c_str(), O_RDONLY);
-	    INVARIANT(fd > 0, boost::format("cannot open PCAP file %s: %s")
+	    if (suffixequal(filename, ".bz2")) {
+		popened = true;
+		string cmd = (boost::format("bunzip2 -c < %s") % filename).str();
+		cout << boost::format("read via cmd %s\n") % cmd;
+		fp = popen(cmd.c_str(), "r");
+	    } else {
+		cout << boost::format("read file %s\n") % filename;
+		fp = fopen(filename.c_str(), "r");
+	    }
+	    INVARIANT(fp != NULL, boost::format("cannot open PCAP file %s: %s")
 		      % filename % strerror(errno));
 	    cur_file_packet_num = 0;
 	    // read in the PCAP file header first
-	    ssize_t ret = read(fd, &file_header, sizeof(pcap_file_header));
-	    INVARIANT(ret >= 0, boost::format("error when reading %s PCAP file header (errno=%d)")
-		      % filename % strerror(errno));
+
+	    ssize_t ret = readBytes(&file_header, sizeof(pcap_file_header));
+	    INVARIANT(ret >= 0, boost::format("error when reading PCAP file header from %s: %s")
+		      % filename % strerror(errno));	
 	    if (ret == 0) { // this file has no PCAP file header (empty file)
 		eof = true;
 		return false;
@@ -480,12 +536,20 @@ public:
 		INVARIANT(ret == sizeof(pcap_file_header), 
 			  boost::format("short read when reading PCAP file header in %s; only got %d bytes not %d")
 			  % filename % ret % sizeof(pcap_file_header));
+		INVARIANT(file_header.magic == 0xa1b2c3d4, "??");
+		INVARIANT(file_header.version_major == 2 && 
+			  file_header.version_minor == 4, "??");
+		if (debug) {
+		    cout << boost::format("zone %d sigfigs %u snaplen %d linktype %d\n")
+			% file_header.thiszone % file_header.sigfigs
+			% file_header.snaplen % file_header.linktype;
+		}
 		packet_buf = new unsigned char[file_header.snaplen];
 	    }
 	}   
 	// read the next packet header
-	pcap_pkthdr ph; 
-	ssize_t ret = read(fd, &ph, sizeof(pcap_pkthdr));
+	correct_pcap_pkthdr ph; 
+	ssize_t ret = readBytes(&ph, sizeof(correct_pcap_pkthdr));
 	INVARIANT(ret >= 0, boost::format("error reading packet header (%s, errno=%d)")
 		  % filename % strerror(errno));
 	if (ret == 0) { // no more packets
@@ -497,7 +561,7 @@ public:
 	    INVARIANT(ph.caplen <= file_header.snaplen, 
 		      boost::format("captured more than specified snapshot length %d > %d")
 		      % ph.caplen % file_header.snaplen);
-	    ret = read(fd, packet_buf, ph.caplen);
+	    ret = readBytes(packet_buf, ph.caplen);
 	    INVARIANT(ret >= 0 && static_cast<uint32_t>(ret) == ph.caplen, 
 		      boost::format("error reading packet from %s, got %d/%d bytes: %s")
 		      % filename % ret % ph.caplen % strerror(errno));
@@ -508,22 +572,23 @@ public:
 		cout << "packet: " << cur_file_packet_num << endl;
 		cout << "capture length: " << ph.caplen << endl;
 		cout << "length: " << ph.len << endl;
-		cout << "time: " << ctime((const time_t*)&ph.ts.tv_sec) << endl; 
+		time_t tmp = ph.tv_sec;
+		cout << "time: " << ctime(&tmp) << endl; 
 	    }
 	    
 	    *packet_ptr = packet_buf;
 	    *capture_size = ph.caplen;
 	    *wire_length = ph.len;
-	    *time = Clock::secMicroToTfrac(ph.ts.tv_sec, ph.ts.tv_usec);
+	    *time = Clock::secMicroToTfrac(ph.tv_sec, ph.tv_usec);
 	    return true;
 	}
     }
 
 private:
     pcap_file_header file_header;
-    int fd;
+    FILE *fp;
     unsigned char *packet_buf; 
-    bool eof;
+    bool eof, popened;
 };
 
 class MultiFileReader : public NettraceReader {
@@ -540,6 +605,8 @@ public:
 	FATAL_ERROR("no");
     }
 
+    // TODO: convert this to prefetching ahead by amount of memory of
+    // something like that.
     static const unsigned prefetch_ahead_amount = 3;
 
     virtual bool nextPacket(unsigned char **packet_ptr, uint32_t *capture_size,
@@ -604,6 +671,8 @@ vector<network_error_listT> known_bad_list;
   ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, "", __FILE__, __LINE__) )
 #define RPCParseAssertMsg(condition,message) \
   ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
+#define RPCParseAssertBoost(condition,message) \
+  ( (condition) ? (void)0 : throw RPC::parse_exception(#condition, (message).str(), __FILE__, __LINE__) )
 
 class RPC {
 public:
@@ -1919,15 +1988,18 @@ public:
 	    return 2;
 	} else {
 	    if (xdr[0]) { // have pre-op attr
-		INVARIANT(xdr[1+3*2],
-			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
-	    //                       flag pre_op flag post_op  count committed writeverf
-		ShortDataAssertMsg(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
-				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
-		return 1 + 1 + 3*2 + 1;
+		if (xdr[1+3*2]) { // post-op attr
+	             //                       flag pre_op flag post_op  count committed writeverf
+		    ShortDataAssertMsg(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
+				       ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		    return 1 + 1 + 3*2 + 1;
+		} else {
+		    // missing post-op fattr3; for write this means we have no useful attributes.
+		    ShortDataAssertMsg(actual_len == 4 + 4 + 4*3*2 + 4, "NFSV3WriteReply", 
+				       ("bad in %s size is %d", tracename.c_str(), actual_len));
+		    return -1;
+		}
 	    } else if (xdr[1]) { // missing pre-op attr, have post-op
-		INVARIANT(xdr[1], 
-			  boost::format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
 		ShortDataAssertMsg(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, "NFSV3WriteReply",
 				   ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
 		return 1 + 1 + 1;
@@ -2156,7 +2228,8 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		if (false) printf("got a READDIRPLUS\n");
 		int fhlen = ntohl(xdr[0]);
-		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
+		RPCParseAssertBoost(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
+				    boost::format("bad fhlen %d") % fhlen);
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 
@@ -2574,22 +2647,29 @@ handleUDPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	printf("short packet?!\n");
 	return; // can't be RPC, short (error) reply is at least this long
     }
-    if (rpcmsg[1] == 0) {
-	handleRPCRequest(time,ip_hdr,ntohs(udp_hdr->source),
-			 ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
-			 ntohs(udp_hdr->len) - 8,
-			 p,pend);
-	++counts[udp_rpc_message];
-    } else if (rpcmsg[1] == RPC::net_reply) {
-	handleRPCReply(time,ip_hdr,ntohs(udp_hdr->source),
-		       ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
-		       ntohs(udp_hdr->len) - 8,
-		       p,pend);
-	++counts[udp_rpc_message];
-    } else {
-	if (false) printf("unknown\n");
-	return; // can't be RPC
+    try { 
+	if (rpcmsg[1] == 0) {
+	    handleRPCRequest(time,ip_hdr,ntohs(udp_hdr->source),
+			     ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
+			     ntohs(udp_hdr->len) - 8,
+			     p,pend);
+	    ++counts[udp_rpc_message];
+	} else if (rpcmsg[1] == RPC::net_reply) {
+	    handleRPCReply(time,ip_hdr,ntohs(udp_hdr->source),
+			   ntohs(udp_hdr->dest),ntohs(udp_hdr->check),
+			   ntohs(udp_hdr->len) - 8,
+			   p,pend);
+	    ++counts[udp_rpc_message];
+	} else {
+	    if (false) printf("unknown\n");
+	    return; // can't be RPC
+	}
+    } catch (ShortDataInRPCException &err) {
+	INVARIANT(ntohs(udp_hdr->len) > pend - p, 
+		  "unexpected short message, had everything in one udp packet");
+	return;
     }
+	
 }
 
 void 
@@ -2781,7 +2861,8 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	printf("parse failed on request at %s:%d (%s) was false: %s\n",
 	       err.filename,err.lineno,err.condition.c_str(),
 	       err.message.c_str()); // ignore
-	AssertAlways(false,("got Short Data Error unexpectedly"));
+	FATAL_ERROR(boost::format("got Short Data Error unexpectedly in %s packet")
+		    % (tcp_hdr != NULL ? "tcp" : "udp") );
     } catch (RPC::parse_exception &err) {
         bool print_failure = warn_parse_failures;
 	if (print_failure && err.condition.find(" == net_rpc_version") < err.condition.size()) {
