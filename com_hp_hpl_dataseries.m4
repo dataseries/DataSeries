@@ -141,3 +141,47 @@ AC_SUBST(SRT_LIBS)
 AM_CONDITIONAL(WITH_SRT, test $with_srt = yes)
 ])
 
+# TODO: make these generic and move them into Lintel (or switch to cmake
+# and do things that way)
+
+AC_DEFUN([WITH_PERL_XML_PARSER],
+[
+AC_ARG_WITH(perl-xml-parser,
+  [  --without-perl-xml-parser       disable use of perl XML::Parser],
+  [with_perl_xml_parser=$withval],
+  [with_perl_xml_parser='yes'])
+if test ! "$with_perl_xml_parser" = 'no'; then
+   AC_MSG_CHECKING(for perl XML::Parser)
+   if perl -e 'use XML::Parser;' 2>/dev/null; then
+	with_perl_xml_parser=yes
+	AC_MSG_RESULT(success)
+   else
+	with_perl_xml_parser=no
+	AC_MSG_RESULT(failed)
+   fi
+fi
+
+AM_CONDITIONAL([WITH_PERL_XML_PARSER], test $with_perl_xml_parser = yes)
+])
+
+AC_DEFUN([WITH_PERL_DATE_PARSE],
+[
+AC_ARG_WITH(perl-date-parse,
+  [  --without-perl-date-parse       disable use of perl Date::Parse],
+  [with_perl_date_parse=$withval],
+  [with_perl_date_parse='yes'])
+
+if test ! "$with_perl_date_parse" = 'no'; then
+   AC_MSG_CHECKING(for perl Date::Parse)
+   if perl -e 'use Date::Parse;' 2>/dev/null; then
+	with_perl_date_parse=yes
+	AC_MSG_RESULT(success)
+   else
+	with_perl_date_parse=no
+	AC_MSG_RESULT(failed)
+   fi
+fi
+
+AM_CONDITIONAL([WITH_PERL_DATE_PARSE], test $with_perl_date_parse = yes)
+])
+

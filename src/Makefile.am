@@ -38,7 +38,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -I$(top_srcdir)/src/li
 AM_LDFLAGS = @OPTMODE_LDFLAGS@ @DMALLOC_THR_LIBS@
 
 lib_LTLIBRARIES = libDataSeries.la
-bin_SCRIPTS = dataseries-config dstypes2cxx
+bin_SCRIPTS = dataseries-config 
 
 libDataSeries_la_LDFLAGS = -version-info @LIBDATASERIES_VERSION@ 
 libDataSeries_la_LIBADD = @LINTEL_LIBTOOL@ @LINTELPTHREAD_LIBTOOL@ @XML2_LIBTOOL@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@ @DMALLOC_LIBS@ @CRYPTO_LIBS@ -lrt 
@@ -106,12 +106,17 @@ nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
-	ran.check-lsfdsanalysis ran.check-dstypes2cxx \
-	ran.check-nfsdsanalysis
+	ran.check-lsfdsanalysis ran.check-nfsdsanalysis
 
 ### Conditional things
 
-if HAS_DATE_PARSE
+if WITH_PERL_XML_PARSER
+bin_SCRIPTS += dstypes2cxx
+
+CHECK_TARGETS += ran.check-dstypes2cxx
+endif
+
+if WITH_PERL_DATE_PARSE
 bin_SCRIPTS += analysis/lsfdsplots 
 
 # Dunno why autoconf doesn't do this for us, it works only if lsfdsplots
@@ -264,13 +269,11 @@ ran.check-nfsdsanalysis: nfsdsanalysis
 	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
 	touch $@
 
-if HAS_DATE_PARSE
 ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
 	LINTEL_REGRESSION_TEST_INC_DIR=$(top_srcdir)/src/perl-modules perl ./analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=$(top_builddir)/src/lsfdsanalysis
 	grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
 	cmp check-lsfdsplots/all/all.ps-nodate $(top_srcdir)/check-data/lsfdsplots.ps.ref
 	touch $@
-endif
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

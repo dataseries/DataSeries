@@ -109,15 +109,8 @@ test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
 expanded_bindir=`expand_variable $bindir`
 AC_SUBST(expanded_bindir)
 
-AC_MSG_CHECKING(for perl Date::Parse)
-if perl -e 'use Date::Parse;' >/dev/null 2>&1; then
-   AC_MSG_RESULT(yes)
-   HAS_DATE_PARSE=yes
-else
-   AC_MSG_RESULT(no)
-   HAS_DATE_PARSE=no
-fi
-AM_CONDITIONAL(HAS_DATE_PARSE, test "$HAS_DATE_PARSE" = yes)
+WITH_PERL_XML_PARSER
+WITH_PERL_DATE_PARSE
 
 AC_CONFIG_FILES([Makefile include/Makefile src/Makefile src/perl-modules/Makefile src/dataseries-config src/dstypes2cxx src/analysis/lsfdsplots src/analysis/dsdecrypt])
 
