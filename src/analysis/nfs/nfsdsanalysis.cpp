@@ -1005,6 +1005,14 @@ usage(char *progname)
 {
     cerr << "Usage: " << progname << " flags... (file...)|(index.ds start-time end-time)\n";
     cerr << " flags\n";
+    cerr << "    Note, most of the options are disabled because they haven't been tested.\n";
+    cerr << "    However, it is trivial to change the source to re-enable them, but people\n";
+    cerr << "    doing so should make an effort to verify the code and results.\n";
+    cerr << "    It's probably also worth cleaning up the code at the same time, e.g.\n";
+    cerr << "    replacing printfs with boost::format, int with [u]int{32,64}_t as\n";
+    cerr << "    appropriate, and any other cleanups that seem appropriate.\n";
+    cerr << "    please send in patches (software@cello.hpl.hp.com) if you do this.\n";
+	
     cerr << "    -h # display this help\n";
     cerr << "    -a # Operation count by filehandle\n";
     cerr << "    -b # Unique bytes in file handles analysis\n";
@@ -1070,7 +1078,7 @@ parseopts(int argc, char *argv[])
 		  break;
 	case 'h': usage(argv[0]); break;
 	case 'i': FATAL_ERROR("untested");options[optNFSOpPayload] = 1; break;
-	case 'j': FATAL_ERROR("untested");options[optServerLatency] = 1; break;
+	case 'j': options[optServerLatency] = 1; break;
 	case 'k': FATAL_ERROR("untested");options[optClientServerPairInfo] = 1; break;
 	case 'l': FATAL_ERROR("untested");options[optHostInfo] = 1; break;
 	case 'm': FATAL_ERROR("untested");options[optPayloadInfo] = 1; break;

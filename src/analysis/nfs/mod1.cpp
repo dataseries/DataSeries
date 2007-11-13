@@ -7,14 +7,17 @@
 #include <string>
 #include <list>
 
+#include <boost/format.hpp>
+
 #include <Lintel/ConstantString.H>
-#include <Lintel/HashTable.H>
+#include <Lintel/HashMap.H>
 #include <Lintel/StatsQuantile.H>
 #include <Lintel/StringUtil.H>
 
 #include "analysis/nfs/mod1.hpp"
 
 using namespace std;
+using boost::format;
 
 class NFSOpPayload : public NFSDSModule {
 public:
@@ -420,24 +423,33 @@ class ServerLatency : public NFSDSModule {
 public:
     ServerLatency(DataSeriesModule &_source) 
 	: source(_source), 
-	s(ExtentSeries::typeExact),
-	reqtime(s,"packet-at"),
-	sourceip(s,"source"),destip(s,"dest"),	  
-	is_request(s,"is-request"),
-	transaction_id(s, "transaction-id"),
-	op_id(s,"op-id",Field::flag_nullable),
-	operation(s,"operation"),
-	pending1(NULL), pending2(NULL),
-      	duplicate_request_delay(0.001),
-	missing_request_count(0),
-	duplicate_reply_count(0),
-	min_packet_time(1ULL<<63),
-	max_packet_time(0)
+	  s(ExtentSeries::typeExact),
+	  reqtime(s,"packet-at"),
+	  sourceip(s,"source"), 
+	  destip(s,"dest"),	  
+	  is_request(s,"is-request"),
+	  transaction_id(s, "transaction-id"),
+	  op_id(s,"op-id",Field::flag_nullable),
+	  operation(s,"operation"),
+	  pending1(NULL), pending2(NULL),
+	  duplicate_request_delay(0.001),
+	  missing_request_count(0),
+	  duplicate_reply_count(0),
+	  min_packet_time(1ULL<<63), // TODO: replace with appropriate max thing
+	  max_packet_time(0)
     {
 	pending1 = new pendingT;
 	pending2 = new pendingT;
     }
 
+    // TODO: maek this options and configurable.
+    static const bool enable_first_latency_stat = true; // Estimate the latency seen by client
+    static const bool enable_last_latency_stat = false; // Estimate the latency for the reply by the server
+
+    static const bool enable_server_rollup = true;
+    static const bool enable_operation_rollup = true;
+    static const bool enable_overall_rollup = true;
+    
     virtual ~ServerLatency() { }
 
     DataSeriesModule &source;
@@ -450,79 +462,213 @@ public:
     Variable32Field operation;
 
     // data structure for keeping statistics per request type and server
-    struct hteData {
-        int serverip;
+    struct StatsData {
+        uint32_t serverip;
 	ConstantString operation;
-	hteData(int a, const string &b) 
-	    : serverip(a), operation(b), first_latency_ms(NULL), 
-	    last_latency_ms(NULL), duplicates(NULL), 
-	    missing_reply_count(0), missing_request_count(0), duplicate_reply_count(0), 
-	    missing_reply_firstlat(0), missing_reply_lastlat(0) { }
+	StatsData() : serverip(0) { initCommon(); }
+	StatsData(uint32_t a, const string &b) 
+	    : serverip(a), operation(b)
+	{ initCommon(); }
+	void initCommon() {
+	    first_latency_ms = NULL; 
+	    last_latency_ms = NULL;
+	    duplicates = NULL; 
+	    missing_reply_count = 0; 
+	    missing_request_count = 0; 
+	    duplicate_reply_count = 0; 
+	    missing_reply_firstlat = 0;
+	    missing_reply_lastlat = 0;
+	}
         StatsQuantile *first_latency_ms, *last_latency_ms;
 	Stats *duplicates;
-	int missing_reply_count, missing_request_count, duplicate_reply_count;
+	uint64_t missing_reply_count, missing_request_count, 
+	    duplicate_reply_count;
 	double missing_reply_firstlat, missing_reply_lastlat;
+	void initStats(bool enable_first, bool enable_last) {
+	    INVARIANT(first_latency_ms == NULL && last_latency_ms == NULL && duplicates == NULL, "bad");
+	    double error = 0.005;
+	    uint64_t nvals = (uint64_t)10*1000*1000*1000;
+	    if (enable_first) {
+		first_latency_ms = new StatsQuantile(error, nvals);
+	    }
+	    if (enable_last) {
+		last_latency_ms = new StatsQuantile(error, nvals);
+	    }
+	    duplicates = new Stats;
+	};
+	void add(StatsData &d, bool enable_first, bool enable_last) {
+	    if (first_latency_ms == NULL) {
+		initStats(enable_first, enable_last);
+	    }
+	    if (first_latency_ms) {
+		first_latency_ms->add(*d.first_latency_ms);
+	    }
+	    if (last_latency_ms) {
+		last_latency_ms->add(*d.last_latency_ms);
+	    }
+	    duplicates->add(*d.duplicates);
+	}
+	void add(double delay_first_ms, double delay_last_ms) {
+	    if (first_latency_ms) {
+		first_latency_ms->add(delay_first_ms);
+	    }
+	    if (last_latency_ms) {
+		last_latency_ms->add(delay_last_ms);
+	    }
+	}	    
+	int64_t nops() {
+	    if (first_latency_ms) {
+		return first_latency_ms->countll();
+	    } else if (last_latency_ms) {
+		return last_latency_ms->countll();
+	    } else {
+		return -1; // didn't calculate ;)
+	    }
+	}
     };
 
-    class hteHash {
-    public: unsigned int operator()(const hteData &k) {
-	  return BobJenkinsHash(k.serverip,k.operation.c_str(),
-				k.operation.size());
+    class StatsHash {
+    public: uint32_t operator()(const StatsData &k) {
+	    return k.serverip ^ k.operation.hash();
     }};
 
-    class hteEqual {
-    public: bool operator()(const hteData &a, const hteData &b) {
+    class StatsEqual {
+    public: bool operator()(const StatsData &a, const StatsData &b) {
 	return a.serverip == b.serverip && a.operation == b.operation;
     }};
 
-    
-    // data structure to keep requests that do not yet have a matching response
-    struct tidData {
-	unsigned tid, server, client, duplicate_count;
-	long long first_reqtime, last_reqtime;
+    // data structure to keep transactions that do not yet have a
+    // matching response
+    struct TidData {
+	uint32_t tid, server, client, duplicate_count;
+	int64_t first_reqtime, last_reqtime;
 	bool seen_reply;
-	tidData(unsigned tid_in, unsigned server_in, unsigned client_in)
+	TidData(uint32_t tid_in, uint32_t server_in, uint32_t client_in)
 	    : tid(tid_in), server(server_in), client(client_in), 
 	      duplicate_count(0), first_reqtime(0), last_reqtime(0), 
 	      seen_reply(false) {}
     };
 
-    class tidHash {
-    public: unsigned int operator()(const tidData &t) {
-	return BobJenkinsHashMix3(t.tid,t.client,1972);
+    class TidHash {
+    public: uint32_t operator()(const TidData &t) {
+	return t.tid ^ t.client;
     }};
 
-    class tidEqual {
-    public: bool operator()(const tidData &t1, const tidData &t2) {
+    class TidEqual {
+    public: bool operator()(const TidData &t1, const TidData &t2) {
 	return t1.tid == t2.tid && t1.client == t2.client;
     }};
 
-    HashTable<hteData, hteHash, hteEqual> stats_table;
-    typedef HashTable<tidData, tidHash, tidEqual> pendingT;
+    typedef HashTable<StatsData, StatsHash, StatsEqual> statsT;
+    statsT stats_table;
+
+    typedef HashTable<TidData, TidHash, TidEqual> pendingT;
     pendingT *pending1,*pending2;
 
-    void updateDuplicateRequest(tidData *t) {
+    void updateDuplicateRequest(TidData *t) {
 	// this check is here in case we are somehow getting duplicate
 	// packets delivered by the monitoring process, and we want to
 	// catch this and not think that we have realy lots of
 	// duplicate requests.  Tried 50ms, but found a case about 5ms
 	// apart, so dropped to 2ms
-	const unsigned min_retry_ns = 2*1000*1000;
-	if ((reqtime.val() - t->last_reqtime) < min_retry_ns) {
-	    fprintf(stderr,"warning: duplicate requests unexpectedly close together %lld - %lld = %lld >= %d\n",
-		    reqtime.val(),t->last_reqtime,reqtime.val() - t->last_reqtime, min_retry_ns);
+	const uint32_t min_retry_ns = 2*1000*1000;
+	// inter arrival time
+	int64_t request_iat = reqtime.val() - t->last_reqtime; 
+	if (request_iat < min_retry_ns) {
+	    cerr << format("warning: duplicate requests unexpectedly close together %lld - %lld = %lld >= %d\n")
+		% reqtime.val() % request_iat % min_retry_ns;
 	}
 	++t->duplicate_count;
-	duplicate_request_delay.add((reqtime.val() - t->last_reqtime)/(1000.0*1000.0));
+	duplicate_request_delay.add(request_iat/(1000.0*1000.0));
 	t->last_reqtime = reqtime.val();
+    }
+
+    void handleRequest() {
+	// address of server = destip
+	TidData dummy(transaction_id.val(), destip.val(), 
+		      sourceip.val()); 
+	TidData *t = pending1->lookup(dummy);
+	if (t == NULL) {
+	    t = pending2->lookup(dummy);
+	    if (t == NULL) {
+		// add request to list of pending requests (requests without a response yet)
+		dummy.first_reqtime = dummy.last_reqtime = reqtime.val();
+		t = pending1->add(dummy);
+	    } else {
+		// wow, long enough delay that we've rotated the entry; add it to pending1, 
+		// delete from pending2
+		pending1->add(*t);
+		pending2->remove(*t);
+		updateDuplicateRequest(t);
+	    }
+	} else {
+	    updateDuplicateRequest(t);
+	}
+    }
+    
+    void handleResponse() {
+	// row is a response, so address of server = sourceip
+	TidData dummy(transaction_id.val(), sourceip.val(), destip.val());
+	TidData *t = pending1->lookup(dummy);
+	bool in_pending2 = false;
+	if (t == NULL) {
+	    t = pending2->lookup(dummy);
+	    if (t != NULL) {
+		in_pending2 = true;
+	    }
+	}
+
+	if (t == NULL) {
+	    ++missing_request_count;
+	} else {
+	    // we now have both request and response, so we can add latency to statistics
+	    double delay_first_ms = (double)(reqtime.val() - t->first_reqtime) / 1000000.0;
+	    double delay_last_ms = (double)(reqtime.val() - t->last_reqtime) / 1000000.0;
+	    StatsData hdummy(sourceip.val(), operation.stringval());
+	    StatsData *d = stats_table.lookup(hdummy);
+
+	    // add to statistics per request type and server
+	    if (d == NULL) { // create new entry
+		hdummy.initStats(enable_first_latency_stat, enable_last_latency_stat);
+		d = stats_table.add(hdummy);
+	    }
+	    d->add(delay_first_ms, delay_last_ms);
+	    // remove request from pending hashtable only if
+	    // we haven't seen a duplicate request.  If we
+	    // have seen a duplicate request, then there might
+	    // be a duplicate reply coming
+	    if (t->duplicate_count > 0) {
+		d->duplicates->add(t->duplicate_count);
+		if (t->seen_reply) {
+		    ++duplicate_reply_count;
+		} else {
+		    t->seen_reply = true;
+		}
+	    } else {
+		if (in_pending2) {
+		    pending2->remove(*t);
+		} else {
+		    pending1->remove(*t);
+		}
+	    }
+	}
     }
 
     virtual Extent *getExtent() {
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	if (e->type.getName() != "NFS trace: common")
-	    return e;
+	INVARIANT(e->type.getName() == "NFS trace: common", "??");
+	s.setExtent(e);
+
+	// TODO: check to see if enough time has passed that we should
+	// switch pending1 and pending2, e.g. wait for 5 minutes or
+	// something like that, or wait until 5 minutes, the latter is
+	// probably safer, i.e. more likely to catch really late
+	// replies, it might be worth counting them in this case.  if
+	// we do this, some of the code in printResult that tracks
+	// missing replies needs to get moved here so it runs on rotation.
+
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (op_id.isNull())
 		continue;
@@ -533,92 +679,82 @@ public:
 		max_packet_time = reqtime.val();
 	    }
 	    if (is_request.val()) {
-		// address of server = destip
-		tidData dummy(transaction_id.val(), destip.val(), sourceip.val()); 
-		tidData *t = pending1->lookup(dummy);
-		if (t == NULL) {
-		    t = pending2->lookup(dummy);
-		    if (t == NULL) {
-			// add request to list of pending requests (requests without a response yet)
-			dummy.first_reqtime = dummy.last_reqtime = reqtime.val();
-			t = pending1->add(dummy);
-		    } else {
-			// wow, long enough delay that we've rotated the entry; add it to pending1, 
-			// delete from pending2
-			pending1->add(*t);
-			pending2->remove(*t);
-			updateDuplicateRequest(t);
-		    }
-		} else {
-		    updateDuplicateRequest(t);
-		}
+		handleRequest();
 	    } else { 
-		// row is a response, so address of server = sourceip
-		tidData dummy(transaction_id.val(), sourceip.val(), destip.val());
-		tidData *t = pending1->lookup(dummy);
-		bool in_pending2 = false;
-		if (t == NULL) {
-		    t = pending2->lookup(dummy);
-		    if (t != NULL) {
-			in_pending2 = true;
-		    }
-		}
-
-		if (t == NULL) {
-		    ++missing_request_count;
-		} else {
-		    // we now have both request and response, so we can add latency to statistics
-		    double delay_first_ms = (double)(reqtime.val() - t->first_reqtime) / 1000000.0;
-		    double delay_last_ms = (double)(reqtime.val() - t->last_reqtime) / 1000000.0;
-		    hteData hdummy(sourceip.val(), operation.stringval());
-		    hteData *d = stats_table.lookup(hdummy);
-
-		    // add to statistics per request type and server
-		    if (d == NULL) { // create new entry
-			hdummy.first_latency_ms = new StatsQuantile(0.001,100*1000*1000);
-			hdummy.last_latency_ms = new StatsQuantile(0.001,100*1000*1000);
-			hdummy.duplicates = new Stats;
-			d = stats_table.add(hdummy);
-		    }
-		    d->first_latency_ms->add(delay_first_ms);
-		    d->last_latency_ms->add(delay_last_ms);
-		    // remove request from pending hashtable only if
-		    // we haven't seen a duplicate request.  If we
-		    // have seen a duplicate request, then there might
-		    // be a duplicate reply coming
-		    if (t->duplicate_count > 0) {
-			d->duplicates->add(t->duplicate_count);
-			if (t->seen_reply) {
-			    ++duplicate_reply_count;
-			} else {
-			    t->seen_reply = true;
-			}
-		    } else {
-			if (in_pending2) {
-			    pending2->remove(*t);
-			} else {
-			    pending1->remove(*t);
-			}
-		    }
-		}
+		handleResponse();
 	    }
 	}
 	return e;
     }
 
     class sortByServerOp {
-    public: bool operator()(hteData *a, hteData *b) {
+    public: bool operator()(StatsData *a, StatsData *b) {
 	if (a->serverip != b->serverip)
 	    return a->serverip < b->serverip;
 	return a->operation < b->operation;
     }};
 
+    class sortByNOpsReverse {
+    public: bool operator()(StatsData *a, StatsData *b) {
+	uint64_t nops_a = a->nops();
+	uint64_t nops_b = b->nops();
+	return nops_a > nops_b;
+    }};
+
+    void printOneQuant(StatsQuantile *v) {
+	if (v) {
+	    cout << format("; %7.3f %6.2f %6.2f ") 
+		% v->mean() % v->getQuantile(0.5)
+		% v->getQuantile(0.9);
+	}
+    }
+
+    void printVector(vector<StatsData *> &vals, 
+		     HashMap<uint32_t, uint32_t> serverip_to_shortid,
+		     const string &header) {
+	cout << format("\n%s:\n") % header;
+	cout << "server operation   #ops  #dups mean ";
+	if (enable_first_latency_stat) {
+	    cout << "; firstlat mean 50% 90% ";
+	}
+	if (enable_last_latency_stat) {
+	    cout << "; lastlat mean 50% 90%";
+	}
+	cout << "\n";
+
+	sort(vals.begin(),vals.end(),sortByServerOp());
+	for(vector<StatsData *>::iterator i = vals.begin();
+	    i != vals.end();++i) {
+	    StatsData *j = *i;
+	    int64_t noperations = j->nops();
+	    if (j->serverip == 0) {
+		cout << " *  ";
+	    } else {
+		cout << format("%03d ") % serverip_to_shortid[j->serverip];
+	    }
+	    cout << format("%9s %9lld %6lld %4.2f ")
+		% j->operation % noperations
+		% j->duplicates->countll()
+		% j->duplicates->mean();
+	    printOneQuant(j->first_latency_ms);
+	    printOneQuant(j->last_latency_ms);
+	    cout << "\n";
+	}
+    }
+
     virtual void printResult() {
-	int missing_reply_count = 0;
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+
+	uint64_t missing_reply_count = 0;
 	double missing_reply_firstlat = 0;
 	double missing_reply_lastlat = 0;
-	ExtentType::int64 max_noretransmit_ns = 1000*1000*1000; // 1s -- measured peak retransmit in tiger-set-4/5xxx was 420ms with 95% <= 80ms
-	for(pendingT::iterator i = pending1->begin(); i != pending1->end(); ++i) {
+
+	// 1s -- measured peak retransmit in one dataset was
+	// 420ms with 95% <= 80ms
+
+	int64_t max_noretransmit_ns = 1000*1000*1000; 
+	for(pendingT::iterator i = pending1->begin(); 
+	    i != pending1->end(); ++i) {
 	    // the check against noretransmit handles the fact that we
 	    // could just accidentally miss the reply and/or we could
 	    // miss the reply due to the processing issue of not
@@ -626,61 +762,115 @@ public:
 	    if (!i->seen_reply && 
 		(max_packet_time - i->last_reqtime) < max_noretransmit_ns) {
 		++missing_reply_count;
-		missing_reply_firstlat += (double)(max_packet_time - i->first_reqtime)/(1000.0*1000.0);
-		missing_reply_lastlat += (double)(max_packet_time - i->last_reqtime)/(1000.0*1000.0);
+		missing_reply_firstlat += 
+		    (max_packet_time - i->first_reqtime)/(1000.0*1000.0);
+		missing_reply_lastlat += 
+		    (max_packet_time - i->last_reqtime)/(1000.0*1000.0);
 	    }
 	}
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	vector<hteData *> vals;
-	for(HashTable<hteData, hteHash, hteEqual>::iterator i =
-                                               stats_table.begin();
-	    i != stats_table.end();
-	    ++i)
-	{
-	    vals.push_back(&(*i));
-	}
-	sort(vals.begin(),vals.end(),sortByServerOp());
-	printf("server operation: #ops #dups dup-mean ; firstreqlat mean 50%% 90%% ; lastreqlat mean 50%% 90%%\n");
 
+	HashMap<uint32_t, uint32_t> serverip_to_shortid;
+
+	// TODO: consider replacing this with the unsafeGetRawDataVector
+	// trick of using the underlying hash table structure to perform
+	// the sort.
+	vector<StatsData *> all_vals;
+	vector<uint32_t> server_ips;
+	for(statsT::iterator i = stats_table.begin(); 
+	    i != stats_table.end(); ++i) {
+	    if (!serverip_to_shortid.exists(i->serverip)) {
+		server_ips.push_back(i->serverip);
+		serverip_to_shortid[i->serverip] = serverip_to_shortid.size() + 1;
+	    }
+	    all_vals.push_back(&(*i));
+	}
+	
+	// Speeds up quantile merging since we special case the add
+	// into empty operation, so this makes the longest add go fast.
+	sort(all_vals.begin(), all_vals.end(), sortByNOpsReverse());
+	
+	HashMap<uint32_t, StatsData> server_rollup;
+	HashMap<ConstantString, StatsData> operation_rollup;
+	StatsData overall(0, "*");
+	for(vector<StatsData *>::iterator i = all_vals.begin();
+	    i != all_vals.end(); ++i) {
+	    StatsData &d(**i);
+	    
+	    if (enable_server_rollup) {
+		server_rollup[d.serverip].add(d, enable_first_latency_stat, 
+					      enable_last_latency_stat);
+	    }
+	    if (enable_operation_rollup) {
+		operation_rollup[d.operation].add(d, enable_first_latency_stat,
+						  enable_last_latency_stat);
+	    }
+	    if (enable_overall_rollup) {
+		overall.add(d, enable_first_latency_stat, 
+			    enable_last_latency_stat);
+	    }
+	}
+
+	vector<StatsData *> server_vals;
+	for(HashMap<uint32_t, StatsData>::iterator i = server_rollup.begin();
+	    i != server_rollup.end(); ++i) {
+	    StatsData *tmp = &i->second;
+	    tmp->serverip = i->first;
+	    tmp->operation = "*";
+	    server_vals.push_back(tmp);
+	}
+
+	vector<StatsData *> operation_vals;
+	for(HashMap<ConstantString, StatsData>::iterator i = operation_rollup.begin();
+	    i != operation_rollup.end(); ++i) {
+	    StatsData *tmp = &i->second;
+	    tmp->serverip = 0;
+	    tmp->operation = i->first;
+	    operation_vals.push_back(tmp);
+	}
+
+	vector<StatsData *> overall_vals;
+	overall_vals.push_back(&overall);
+
+	sort(server_ips.begin(), server_ips.end());
+	cout << " id: server ip\n";
+	for(vector<uint32_t>::iterator i = server_ips.begin();
+	    i != server_ips.end(); ++i) {
+	    serverip_to_shortid[*i] = (i - server_ips.begin()) + 1;
+	    cout << boost::format("%03d: %s\n")
+		% serverip_to_shortid[*i]
+		% ipv4tostring(*i);
+	}
 	double missing_reply_mean_est_firstlat = 0;
 	double missing_reply_mean_est_lastlat = 0;
 	if (missing_reply_count > 0) {
 	    missing_reply_mean_est_firstlat = (double)missing_reply_firstlat/(double)missing_reply_count;
 	    missing_reply_mean_est_lastlat = (double)missing_reply_lastlat/(double)missing_reply_count;
 	}
-	printf("%d missing requests, %d missing replies; %.2fms mean est firstlat, %.2fms mean est lastlat\n",
-	       missing_request_count, missing_reply_count,
-	       missing_reply_mean_est_firstlat, missing_reply_mean_est_lastlat);
+	cout << format("%d missing requests, %d missing replies; %.2fms mean est firstlat, %.2fms mean est lastlat\n")
+	    % missing_request_count % missing_reply_count 
+	    % missing_reply_mean_est_firstlat % missing_reply_mean_est_lastlat;
 	       
-        cout << boost::format("duplicates: %d replies, %d requests; delays min=%.4fms\n")
+        cout << format("duplicates: %d replies, %d requests; delays min=%.4fms\n")
 	    % duplicate_reply_count % duplicate_request_delay.count() 
 	    % duplicate_request_delay.min();
 	duplicate_request_delay.printFile(stdout,20);
-	for(vector<hteData *>::iterator i = vals.begin();
-	    i != vals.end();++i) {
-	    hteData *j = *i;
-	    printf("%-14s %11s: %8lld %6lld %4.2f ; %7.3f %6.2f %6.2f ; %7.3f %6.2f %6.2f\n",
-		   ipv4tostring(j->serverip).c_str(),
-		   j->operation.c_str(),
-		   j->first_latency_ms->countll(),
-		   j->duplicates->countll(),
-		   j->duplicates->mean(),
 
-		   j->first_latency_ms->mean(),
-		   j->first_latency_ms->getQuantile(0.5),
-		   j->first_latency_ms->getQuantile(0.9),
+	printVector(all_vals, serverip_to_shortid, 
+		    "Grouped by (Server,Operation) pair");
+	printVector(server_vals, serverip_to_shortid,
+		    "Grouped by Server");
+	printVector(operation_vals, serverip_to_shortid,
+		    "Grouped by Operation");
+	printVector(overall_vals, serverip_to_shortid,
+		    "Complete rollup");
 
-		   j->last_latency_ms->mean(),
-		   j->last_latency_ms->getQuantile(0.5),
-		   j->last_latency_ms->getQuantile(0.9));
-	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
     
     StatsQuantile duplicate_request_delay;
-    int missing_request_count;
-    int duplicate_reply_count;
-    ExtentType::int64 min_packet_time, max_packet_time;
+    uint64_t missing_request_count;
+    uint64_t duplicate_reply_count;
+    int64_t min_packet_time, max_packet_time;
 };
 
 NFSDSModule *

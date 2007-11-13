@@ -148,17 +148,46 @@ Example Output:
 This analysis is useful for determining the number of operations and
 latency for each of the various servers in the trace.  In particular,
 for each request/response pair, it accumulates the latency of the
-operation for each server, operation, and TCP/UDP transport choice.
+operation for each server and operation.  It rolls the results up into
+by server, by operation, and overall.  The data under the duplicates
+line tells you quantiles for the delay between duplicates if any
+existed.  The code currently calculates the latency from the first
+request to each reply.  This emulates the delay seen by the client.
+The code has support for calculating the latency from the last
+request, which provides more information on how the server generating
+latency, but that code is currently disabled.
 
 Example Output:
 
-	ServerLatency::printResult()
-	prot          server    operation  mean    max   #ops
-	---- --------------- ------------ ----- ------ ------
-	 TCP     10.11.192.3      getattr  0.67   7605 3553101
-	 TCP     10.11.192.3      setattr  2.34     20    203
-	 TCP     10.11.192.3       lookup  0.87    744 290544
-	 TCP     10.11.192.3       access  0.75   4646 913189
+Begin-virtual void ServerLatency::printResult()
+ id: server ip
+001: 10.11.8.37
+002: 10.11.9.21
+
+0 missing requests, 0 missing replies; 0.00ms mean est firstlat, 0.00ms mean est lastlat
+duplicates: 0 replies, 0 requests; delays min=infms
+0 data points, mean 0 +- 0 [inf,-inf]
+
+Grouped by (Server,Operation) pair:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+001   getattr         2      0 0.00 ;   1.208   1.21   1.21 
+001    statfs         7      0 0.00 ;   0.349   0.23   1.25 
+002    statfs         3      0 0.00 ;   0.989   1.35   1.35 
+
+Grouped by Server:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+001         *         9      0 0.00 ;   0.540   0.27   1.25 
+002         *         3      0 0.00 ;   0.989   1.35   1.35 
+
+Grouped by Operation:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+ *    getattr      3358      0 0.00 ;   0.064   0.06   0.09 
+ *     lookup      1124      0 0.00 ;   0.165   0.15   0.22 
+
+Complete rollup:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+ *          *     10000      0 0.00 ;   0.135   0.10   0.20 
+End-virtual void ServerLatency::printResult()
 
 =head2 -k # classname ClientServerPairInfo
 
