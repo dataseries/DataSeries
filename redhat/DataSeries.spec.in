@@ -58,29 +58,46 @@ cp ../Changelog.mtn $RPM_BUILD_ROOT/usr/share/doc/DataSeries/Changelog.mtn
 rm -rf $RPM_BUILD_ROOT
 
 %files
+/usr/bin/bacct2ds
 /usr/bin/dataseries-config
 /usr/bin/ds2txt
+/usr/bin/dsdecrypt
 /usr/bin/dsextentindex
 /usr/bin/dsrepack
 /usr/bin/dsselect
 /usr/bin/dsstatgroupby
+/usr/bin/dstypes2cxx
 /usr/bin/indexnfscommon
 /usr/bin/ipdsanalysis
+/usr/bin/iphost2ds
+/usr/bin/lsfdsanalysis
+/usr/bin/lsflog-timesplit
 /usr/bin/lvpvprocessusage
 /usr/bin/nettrace2ds
 /usr/bin/network-driverdump
+/usr/bin/nfsdsanalysis
+/usr/bin/nfssubset
 /usr/bin/pssimple2ds
 /usr/bin/textindex
+/usr/share/bp_modules/BatchParallel/bacct2ds.pm
 /usr/share/bp_modules/BatchParallel/ds2txt.pm
+/usr/share/bp_modules/BatchParallel/dsrepack.pm
 /usr/share/bp_modules/BatchParallel/nettrace2ds.pm
+/usr/share/bp_modules/BatchParallel/nonmod/gpgkeys.pm
 /usr/share/doc/DataSeries/Changelog.mtn
 /usr/share/doc/DataSeries/Release.info
+/usr/share/perl5/DataSeries/Crypt.pm
+/usr/share/perl5/DataSeries/LSFPlots/AllCpu.pm
+/usr/share/perl5/DataSeries/LSFPlots/Default.pm
+/usr/share/perl5/DataSeries/LSFPlots/Productions.pm
+/usr/share/perl5/DataSeries/LSFcommon.pm
 
 %files devel
 /usr/share/cmake-modules/FindDataSeries.cmake
 /usr/include/DataSeries/DStoTextModule.H
 /usr/include/DataSeries/DataSeriesFile.H
 /usr/include/DataSeries/DataSeriesModule.H
+/usr/include/DataSeries/DSExpr.hpp
 /usr/include/DataSeries/Extent.H
 /usr/include/DataSeries/ExtentField.H
 /usr/include/DataSeries/ExtentSeries.H
