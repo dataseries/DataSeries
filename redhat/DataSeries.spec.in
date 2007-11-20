@@ -43,68 +43,89 @@ DataSeries header files
 autoreconf --install
 mkdir build
 cd build
-../configure --prefix=/usr --enable-optmode=optimize 
+../configure --prefix=/usr --enable-optmode=optimize --libdir=%{_libdir}
 make
 
 %install
 cd build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries/
-cp ../Release.info $RPM_BUILD_ROOT/usr/share/doc/DataSeries/Release.info
-cp ../Changelog.mtn $RPM_BUILD_ROOT/usr/share/doc/DataSeries/Changelog.mtn
+mkdir -p $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/
+cp ../Release.info $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/Release.info
+cp ../Changelog.mtn $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/Changelog.mtn
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
-/usr/bin/dataseries-config
-/usr/bin/ds2txt
-/usr/bin/dsextentindex
-/usr/bin/dsrepack
-/usr/bin/dsselect
-/usr/bin/dsstatgroupby
-/usr/bin/indexnfscommon
-/usr/bin/ipdsanalysis
-/usr/bin/lvpvprocessusage
-/usr/bin/nettrace2ds
-/usr/bin/network-driverdump
-/usr/bin/pssimple2ds
-/usr/bin/textindex
+%{_bindir}/bacct2ds
+%{_bindir}/dataseries-config
+%{_bindir}/ds2txt
+%{_bindir}/dsdecrypt
+%{_bindir}/dsextentindex
+%{_bindir}/dsrepack
+%{_bindir}/dsselect
+%{_bindir}/dsstatgroupby
+%{_bindir}/dstypes2cxx
+%{_bindir}/indexnfscommon
+%{_bindir}/ipdsanalysis
+%{_bindir}/iphost2ds
+%{_bindir}/lsfdsanalysis
+%{_bindir}/lsfdsplots
+%{_bindir}/lsflog-timesplit
+%{_bindir}/lvpvprocessusage
+%{_bindir}/nettrace2ds
+%{_bindir}/network-driverdump
+%{_bindir}/nfsdsanalysis
+%{_bindir}/nfssubset
+%{_bindir}/pssimple2ds
+%{_bindir}/textindex
+/usr/share/bp_modules/BatchParallel/bacct2ds.pm
 /usr/share/bp_modules/BatchParallel/ds2txt.pm
+/usr/share/bp_modules/BatchParallel/dsrepack.pm
 /usr/share/bp_modules/BatchParallel/nettrace2ds.pm
-/usr/share/doc/DataSeries/Changelog.mtn
-/usr/share/doc/DataSeries/Release.info
+/usr/share/bp_modules/BatchParallel/nonmod/gpgkeys.pm
+%{_docdir}/DataSeries-%{version}/Changelog.mtn
+%{_docdir}/DataSeries-%{version}/Release.info
+/usr/share/perl5/DataSeries/Crypt.pm
+/usr/share/perl5/DataSeries/LSFPlots/AllCpu.pm
+/usr/share/perl5/DataSeries/LSFPlots/Default.pm
+/usr/share/perl5/DataSeries/LSFPlots/Productions.pm
+/usr/share/perl5/DataSeries/LSFcommon.pm
 
 %files devel
 /usr/share/cmake-modules/FindDataSeries.cmake
-/usr/include/DataSeries/DStoTextModule.H
-/usr/include/DataSeries/DataSeriesFile.H
-/usr/include/DataSeries/DataSeriesModule.H
-/usr/include/DataSeries/Extent.H
-/usr/include/DataSeries/ExtentField.H
-/usr/include/DataSeries/ExtentSeries.H
-/usr/include/DataSeries/ExtentType.H
-/usr/include/DataSeries/GeneralField.H
-/usr/include/DataSeries/GroupByModule.H
-/usr/include/DataSeries/IndexSourceModule.H
-/usr/include/DataSeries/MinMaxIndexModule.H
-/usr/include/DataSeries/PrefetchBufferModule.H
-/usr/include/DataSeries/RowAnalysisModule.H
-/usr/include/DataSeries/SequenceModule.H
-/usr/include/DataSeries/TypeIndexModule.H
-/usr/include/DataSeries/commonargs.H
-/usr/include/DataSeries/cryptutil.H
-/usr/lib/libDataSeries.a
+%{_includedir}/DataSeries/DStoTextModule.H
+%{_includedir}/DataSeries/DataSeriesFile.H
+%{_includedir}/DataSeries/DataSeriesModule.H
+%{_includedir}/DataSeries/DSExpr.hpp
+%{_includedir}/DataSeries/Extent.H
+%{_includedir}/DataSeries/ExtentField.H
+%{_includedir}/DataSeries/ExtentSeries.H
+%{_includedir}/DataSeries/ExtentType.H
+%{_includedir}/DataSeries/GeneralField.H
+%{_includedir}/DataSeries/GroupByModule.H
+%{_includedir}/DataSeries/IndexSourceModule.H
+%{_includedir}/DataSeries/MinMaxIndexModule.H
+%{_includedir}/DataSeries/PrefetchBufferModule.H
+%{_includedir}/DataSeries/RowAnalysisModule.H
+%{_includedir}/DataSeries/SequenceModule.H
+%{_includedir}/DataSeries/TypeIndexModule.H
+%{_includedir}/DataSeries/commonargs.H
+%{_includedir}/DataSeries/cryptutil.H
+%{_libdir}/libDataSeries.a
 /usr/share/aclocal/com_hp_hpl_dataseries.m4
 
 %files libs
-/usr/lib/libDataSeries.la
-/usr/lib/libDataSeries.so.0.0.0
-/usr/lib/libDataSeries.so.0
-/usr/lib/libDataSeries.so
+%{_libdir}/libDataSeries.la
+%{_libdir}/libDataSeries.so.0.0.0
+%{_libdir}/libDataSeries.so.0
+%{_libdir}/libDataSeries.so
 
 %changelog
+
+* Thu Nov 15 2007 software@cello.hpl.hp.com
+- fix up relocatable bits
 
 * Tue Mar 27 2007 software@cello.hpl.hp.com
 - Initial RPM release.
