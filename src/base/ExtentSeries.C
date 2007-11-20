@@ -55,22 +55,11 @@ ExtentSeries::setType(const ExtentType &_type)
 void
 ExtentSeries::setExtent(Extent *e)
 {
-    AssertAlways(e != NULL,("setExtent(NULL) invalid\n"));
-    pos.reset(e);
-    bool newtype = &e->type != type;
     my_extent = e;
-    if (newtype) {
+    pos.reset(my_extent);
+    if (e != NULL && &e->type != type) {
 	setType(e->type);
     }
-}
-
-void
-ExtentSeries::clearExtent()
-{
-    my_extent = NULL;
-    pos.cur_extent = NULL;
-    pos.cur_pos = NULL;
-    pos.recordsize = 0;
 }
 
 void
