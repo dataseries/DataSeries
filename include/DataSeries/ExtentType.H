@@ -18,11 +18,13 @@
 
 #include <libxml/tree.h>
 
+#include <boost/utility.hpp>
+
 #include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H> // TODO: make this go away
 
-class ExtentType {
+class ExtentType : boost::noncopyable {
 public:
     typedef unsigned char byte;
     typedef int int32;
@@ -92,7 +94,7 @@ public:
     }
     const unsigned fixedrecordsize() const { return rep.fixed_record_size; }
 
-    const int getNFields() const { return rep.visible_fields.size(); };
+    const uint32_t getNFields() const { return rep.visible_fields.size(); };
 
     static std::string nullableFieldname(const std::string &fieldname);
 

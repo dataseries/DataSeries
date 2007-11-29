@@ -83,7 +83,7 @@ main(int argc, char *argv[])
 	    
     AssertAlways(argc >= 2 && strcmp(argv[1],"-h") != 0,
 		 ("Usage: %s [--csv] [--separator=...] [--printSpec=...] [--header=...]\n"
-		  "  [--select '*'|'extent-type' 'field,field,field']\n"
+		  "  [--select '*'|'extent-type' '*'|'field,field,field']\n"
 		  "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 		  "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
 		  "  [--skip-extent-fieldnames] <file...>\n",argv[0]));
@@ -117,10 +117,19 @@ main(int argc, char *argv[])
 	string xmlspec("<fields type=\"");
 	xmlspec.append(match_extent_type);
 	xmlspec.append("\">");
-	for(unsigned i=0;i<fields.size();++i) {
-	    xmlspec.append("<field name=\"");
-	    xmlspec.append(fields[i]);
-	    xmlspec.append("\"/>");
+	if (select_fields == "*") {
+	    ExtentType *t = 
+		first_source->mylibrary.getTypeByPrefix(match_extent_type);
+	    INVARIANT(t != NULL, "internal");
+	    for(unsigned i = 0; i < t->getNFields(); ++i) {
+		xmlspec.append((boost::format("<field name=\"%s\"/>")
+				% t->getFieldName(i)).str());
+	    }
+	} else {
+	    for(unsigned i=0;i<fields.size();++i) {
+		xmlspec.append((boost::format("<field name=\"%s\"/>")
+				% fields[i]).str());
+	    }
 	}
 	xmlspec.append("</fields>");
 	//	    printf("XXY %s\n",xmlspec.c_str());

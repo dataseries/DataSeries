@@ -28,6 +28,9 @@ void
 ExtentSeries::setType(const ExtentType &_type)
 {
     INVARIANT(&_type != NULL,"you made a NULL reference grr");
+    if (type == &_type) {
+	return; // nothing to do, a valid but useless call
+    }
     switch(typeCompatibility)
 	{
 	case typeExact: 

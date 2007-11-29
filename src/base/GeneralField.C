@@ -1187,6 +1187,8 @@ ExtentRecordCopy::copyRecord()
     if (fixed_copy_size == -1) {
 	prep();
     }
+    INVARIANT(dest.morerecords(), "you forgot to create the destination record");
+    INVARIANT(source.morerecords(), "you forgot to set the source record");
     if (fixed_copy_size > 0) {
 	dest.pos.checkOffset(fixed_copy_size-1);
 	memcpy(dest.pos.record_start(),source.pos.record_start(),fixed_copy_size);
