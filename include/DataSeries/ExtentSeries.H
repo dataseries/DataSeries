@@ -66,6 +66,9 @@ public:
     Extent *extent() { 
 	return my_extent;
     }
+    Extent *getExtent() {
+	return my_extent;
+    }
     const ExtentType *type;
     void addField(Field &field);
 

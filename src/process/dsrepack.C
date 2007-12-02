@@ -77,7 +77,7 @@ struct PerTypeWork {
 	: inputseries(t), outputseries(t), 
 	  sum_unpacked_size(0), sum_packed_size(0) 
     {
-	for(int i = 0; i < t->getNFields(); ++i) {
+	for(unsigned i = 0; i < t->getNFields(); ++i) {
 	    const string &s = t->getFieldName(i);
 	    GeneralField *in = GeneralField::create(NULL, inputseries, s);
 	    GeneralField *out = GeneralField::create(NULL, outputseries, s);

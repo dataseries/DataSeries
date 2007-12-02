@@ -4,8 +4,8 @@
 
 =head1 SYNOPSIS
 
-   nfsdsanalysis-{optimize,debug,profile} [OPTION]... FILE...
-   nfsdsanalysis-{optimize,debug,profile} [OPTION]... index.ds start-time end-time
+   nfsdsanalysis [OPTION]... FILE...
+   nfsdsanalysis [OPTION]... index.ds start-time end-time
 
 =head1 DESCRIPTION
 

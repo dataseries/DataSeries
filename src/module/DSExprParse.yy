@@ -152,6 +152,7 @@ namespace DSExprImpl {
 	    return left->valDouble() + right->valDouble(); 
 	}
 	virtual int64_t valInt64() { 
+	    // TODO: add check for overflow?
 	    return left->valInt64() + right->valInt64(); 
 	}
 	virtual bool valBool() {

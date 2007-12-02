@@ -1151,7 +1151,7 @@ ExtentRecordCopy::prep()
 	// Can do a bitwise copy.
 	fixed_copy_size = source.type->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
-	for(int i=0;i<source.type->getNFields(); ++i) {
+	for(unsigned i=0;i<source.type->getNFields(); ++i) {
 	    const std::string &fieldname = source.type->getFieldName(i);
 	    if (source.type->getFieldType(fieldname) == ExtentType::ft_variable32) {
 		sourcevarfields.push_back(new GF_Variable32(NULL,source,fieldname));
@@ -1160,7 +1160,7 @@ ExtentRecordCopy::prep()
 	}
     } else {
 	fixed_copy_size = 0;
-	for(int i=0;i<source.type->getNFields(); ++i) {
+	for(unsigned i=0;i<source.type->getNFields(); ++i) {
 	    const std::string &fieldname = source.type->getFieldName(i);
 	    sourcefields.push_back(GeneralField::create(NULL,source,fieldname));
 	    destfields.push_back(GeneralField::create(NULL,dest,fieldname));
