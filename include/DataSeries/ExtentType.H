@@ -23,6 +23,7 @@
 #include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H> // TODO: make this go away
+#include <Lintel/StringUtil.H>
 
 class ExtentType : boost::noncopyable {
 public:
@@ -110,7 +111,10 @@ public:
     }
 
     static const std::string &fieldTypeString(fieldType ft);
-    static bool prefixmatch(const std::string &a, const std::string &prefix);
+    static bool prefixmatch(const std::string &a, const std::string &prefix) {
+	// TODO: deprecate this
+	return prefixequal(a, prefix);
+    }
 
     /// compatible if app_major == majorVersion() and app_minor <=
     /// minorVersion() the former because major version changes allow
@@ -246,6 +250,12 @@ public:
     ExtentType *getTypeByName(const std::string &name, bool null_ok = false);
     ExtentType *getTypeByPrefix(const std::string &prefix, 
 				bool null_ok = false);
+    ExtentType *getTypeBySubstring(const std::string &substr,
+				   bool null_ok = false);
+    // tries ByName, ByPrefix and BySubstring in that order.
+    // selects a single unique non-dataseries type if match is "*"
+    ExtentType *getTypeMatch(const std::string &match,
+			     bool null_ok = false);
 
     std::map<const std::string, ExtentType *> name_to_type;
     static ExtentType &sharedExtentType(const std::string &xmldesc);

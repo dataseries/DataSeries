@@ -490,14 +490,6 @@ ExtentType::fieldTypeString(fieldType ft)
     return fieldtypes[ft];
 }
 
-bool
-ExtentType::prefixmatch(const string &a, const string &prefix)
-{
-    if (a.size() < prefix.size())
-	return false;
-    return a.substr(0,prefix.size()) == prefix;
-}
-
 ExtentType *
 ExtentTypeLibrary::registerType(const string &xmldesc)
 {
@@ -530,16 +522,66 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
     ExtentType *f = NULL;
     for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
-	if (strncmp(i->first.c_str(),prefix.c_str(),prefix.size()) == 0) {
-	    AssertAlways(f == NULL,
-			 ("Invalid getTypeByPrefix, two types match prefix %s: %s and %s\n",
-			  prefix.c_str(),f->name.c_str(),i->first.c_str()));
+	if (prefixequal(i->first, prefix)) {
+	    INVARIANT(f == NULL,
+		      boost::format("Invalid getTypeByPrefix, two types match prefix '%s': %s and %s\n")
+		      % prefix % f->name % i->first);
 	    f = i->second;
 	}
     }
-    AssertAlways(null_ok || f != NULL,("No type matching prefix %s found?!\n",
-				       prefix.c_str()));
+    INVARIANT(null_ok || f != NULL,
+	      boost::format("No type matching prefix %s found?!\n")
+	      % prefix);
     return f;
+}
+
+ExtentType *
+ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
+{
+    ExtentType *f = NULL;
+    for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
+	i != name_to_type.end();++i) {
+	if (i->first.find(substr) != string::npos) {
+	    INVARIANT(f == NULL,
+		      boost::format("Invalid getTypeBySubstring, two types match substring %s: %s and %s\n")
+		      % substr % f->name % i->first);
+	    f = i->second;
+	}
+    }
+    INVARIANT(null_ok || f != NULL,
+	      boost::format("No type matching substring %s found?!\n")
+	      % substr);
+    return f;
+}
+
+ExtentType *
+ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
+{
+    ExtentType *t = NULL;
+
+    static string str_DataSeries("DataSeries:");
+    if (match == "*") {
+	for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
+	    i != name_to_type.end();++i) {
+	    if (prefixequal(i->first,str_DataSeries)) {
+		continue;
+	    }
+	    INVARIANT(t != NULL, 
+		      boost::format("Invalid getTypeMatch, '*' matches both '%s' and '%s'")
+		      % t->getName() % i->first);
+	    t = i->second;
+	}
+    } else {
+	t = getTypeByName(match, true);
+	if (t != NULL) return t;
+	t = getTypeByPrefix(match, true);
+	if (t != NULL) return t;
+	t = getTypeBySubstring(match, true);
+    }
+    INVARIANT(null_ok || t != NULL,
+	      boost::format("No type matching %s found; try '*' if you only have one type.\n")
+	      % match);
+    return t;
 }
 
 // This optimization to only have one extent type object for each xml
@@ -596,3 +638,4 @@ ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
     decodeInfo().table.add(tmp);
     return *tmp->extenttype;
 }
+

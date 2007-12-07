@@ -60,18 +60,19 @@ main(int argc, char *argv[])
 	    toText.skipExtentFieldnames();
 	    skip_types = true;
 	} else if (strncmp(argv[1],"--type=",7)==0) {
-	    source.setPrefix(argv[1]+7);
+	    source.setMatch(argv[1]+7);
 	} else if (strcmp(argv[1],"--select")==0) {
-	    AssertAlways(argc > 4,("--select needs two arguments"));
+	    INVARIANT(argc > 4, "--select needs two arguments");
 	    select_extent_type = argv[2];
-	    AssertAlways(select_extent_type != "",("--select type needs to be non-empty"));
+	    INVARIANT(select_extent_type != "",
+		      "--select type needs to be non-empty");
 	    select_fields = argv[3];
 	    for(int i=3;i<argc;i++) {
 		argv[i-2] = argv[i];
 	    }
 	    argc -= 2;
 	} else if (strncmp(argv[1],"-",1)==0) {
-	    AssertFatal(("Unknown argument %s\n",argv[1]));
+	    FATAL_ERROR(boost::format("Unknown argument %s\n") % argv[1]);
 	} else {
 	    break;
 	}
@@ -81,12 +82,13 @@ main(int argc, char *argv[])
 	--argc;
     }
 	    
-    AssertAlways(argc >= 2 && strcmp(argv[1],"-h") != 0,
-		 ("Usage: %s [--csv] [--separator=...] [--printSpec=...] [--header=...]\n"
-		  "  [--select '*'|'extent-type' '*'|'field,field,field']\n"
-		  "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
-		  "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
-		  "  [--skip-extent-fieldnames] <file...>\n",argv[0]));
+    INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
+	      boost::format("Usage: %s [--csv] [--separator=...] [--printSpec=...] [--header=...]\n"
+			    "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
+			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
+			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
+			    "  [--skip-extent-fieldnames] <file...>\n")
+	      % argv[0]);
     for(int i=1;i<argc;++i) {
 	source.addSource(argv[i]);
     }
@@ -95,23 +97,10 @@ main(int argc, char *argv[])
 
     if (select_extent_type != "") {
 	string match_extent_type;
-	for(std::map<const std::string, ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
-	    i != first_source->mylibrary.name_to_type.end(); ++i) {
-	    if ((select_extent_type == "*" && // ignore DS types when selecting "*"
-		 !ExtentType::prefixmatch(i->first,str_DataSeries)) ||
-		ExtentType::prefixmatch(i->first,select_extent_type)) {
-		AssertAlways(match_extent_type == "",
-			     ("select type '%s' matches both '%s' and '%s'",
-			      select_extent_type.c_str(), i->first.c_str(),
-			      match_extent_type.c_str()));
-		match_extent_type = i->first;
-	    } else {
-		// skip, doesn't match select type
-	    }
-	}
-	AssertAlways(match_extent_type != "",
-		     ("select type '%s' doesn't match anything, try '*'",
-		      select_extent_type.c_str()));
+	ExtentType *match_type 
+	    = first_source->mylibrary.getTypeMatch(select_extent_type);
+
+	match_extent_type = match_type->getName();
 	vector<string> fields;
 	split(select_fields,",",fields);
 	string xmlspec("<fields type=\"");
@@ -134,7 +123,7 @@ main(int argc, char *argv[])
 	xmlspec.append("</fields>");
 	//	    printf("XXY %s\n",xmlspec.c_str());
 	if (select_extent_type != "*") {
-	    source.setPrefix(select_extent_type);
+	    source.setMatch(select_extent_type);
 	}
 	toText.setFields(xmlspec.c_str());
     }

@@ -24,7 +24,7 @@ usage(const std::string &program_name, const std::string &error)
     // TODO: should we make the usage ... from <prefix> in <file...>?
     cerr << error << "\n"
 	 << "Usage: " << program_name 
-	 << " <extent-type-prefix> (<stat-type> <expr> [where <expr>] group by <group-by>)*\n"
+	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] group by <group-by>)*\n"
 	 << "  from file...\n"
 	 << "  supported stat-types: basic, quantile\n"
 	 << "  expressions include field names, numeric (double) constants, functions, +,-,*,/,()\n"
@@ -47,9 +47,9 @@ main(int argc, char *_argv[])
     }
     if (argc <= 8) usage(argv[0], "insufficient arguments");
 
-    string extent_type_prefix(argv[1]);
+    string extent_type_match(argv[1]);
     
-    TypeIndexModule source(extent_type_prefix);
+    TypeIndexModule source(extent_type_match);
     PrefetchBufferModule *prefetch = new PrefetchBufferModule(source, 64*1024*1024);
 
     SequenceModule seq(prefetch);
