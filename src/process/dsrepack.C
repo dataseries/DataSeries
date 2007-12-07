@@ -125,7 +125,8 @@ struct PerTypeWork {
 	sum_packed_size += stats.packed_size;
 
 	output_module = new OutputModule(output, outputseries, 
-					 old->outputtype, old->target_extent_size);
+					 old->outputtype, 
+					 old->getTargetExtentSize());
 	delete old;
     }
 

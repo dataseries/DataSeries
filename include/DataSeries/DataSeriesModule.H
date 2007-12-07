@@ -106,8 +106,17 @@ public:
 	return ret;
     }
 
+    uint32_t getTargetExtentSize() {
+	return target_extent_size;
+    }
+
+    void setTargetExtentSize(uint32_t bytes) {
+	// setting this will only have an effect after the next call to
+	// newRecord.
+	target_extent_size = bytes;
+    }
+
     void printStats(std::ostream &to);
-    const int target_extent_size;
     const ExtentType *outputtype;
 
     size_t curExtentSize() {
@@ -118,6 +127,8 @@ public:
 	return series;
     }
 private:
+    uint32_t target_extent_size; 
+
     DataSeriesSink::Stats stats;
     
     DataSeriesSink &sink;
