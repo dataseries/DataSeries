@@ -25,6 +25,11 @@
  * which have the same type.
 
  */
+#if __GNUC__
+#define ATTRIBUTE_DEPRECATED __attribute__ ((deprecated))
+#else
+#define ATTRIBUTE_DEPRECATED 
+#endif
 
 class TypeIndexModule : public IndexSourceModule {
 public:
@@ -32,9 +37,15 @@ public:
 
     virtual ~TypeIndexModule();
     void setMatch(const std::string &type_match);
+    void setPrefix(const std::string &type_match) ATTRIBUTE_DEPRECATED {
+	setMatch(type_match);
+    }
+
     /// Ugly temporary hack until the larger rewrite to handle name rewriting
     void setSecondMatch(const std::string &type_match);
-
+    void setSecondPrefix(const std::string &type_match) ATTRIBUTE_DEPRECATED {
+	setSecondMatch(type_match);
+    }
     void addSource(const std::string &filename);
     bool haveSources() { return !inputFiles.empty(); }
 
