@@ -258,6 +258,10 @@ private:
     const ExtentType &packedType(ExtentTypeLibrary &library,
 				 Extent::ByteArray &packeddata,
 				 const bool need_bitflip);
+
+    bool compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f);
+    void compactNulls(Extent::ByteArray &fixed_coded);
+
     friend class ExtentSeries;
     void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record
     void init();

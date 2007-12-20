@@ -82,10 +82,11 @@ dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
 
 # Converters
-bin_PROGRAMS += ds2txt pssimple2ds iphost2ds
+bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
+ellardnfs2ds_SOURCES = process/ellardnfs2ds.C
 
 # Type-specific processing
 bin_PROGRAMS += textindex indexnfscommon nfssubset

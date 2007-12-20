@@ -23,6 +23,10 @@
 // accessors could be built which only handle non-null fields.
 // Measurements in test.C indicate that this isn't such a big deal.
 
+// TODO: make a private function in the various fields that accesses
+// a field directly; then use it in Extent::packData rather than
+// duplicating the code there to convert raw to real data.
+
 class Field {
 public:
     Field(ExtentSeries &_dataseries, const std::string &_fieldname, 

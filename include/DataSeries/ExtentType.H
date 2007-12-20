@@ -40,6 +40,11 @@ public:
     enum fieldType { ft_unknown = 0, ft_bool, ft_byte, ft_int32, ft_int64, 
 		     ft_double, ft_variable32 };
 
+    // Might want CompactAll, so don't want a boolean here
+    enum PackNullCompact { 
+	CompactNonBool, CompactNo
+    };
+
     // we have visible and invisible fields; visible fields are
     // counted by getnfields and accessible through getfieldname;
     // invisible fields can be retrieved through getColumnNumber (and
@@ -126,7 +131,9 @@ public:
     }
     unsigned majorVersion() const { return rep.major_version; }
     unsigned minorVersion() const { return rep.minor_version; }
-
+    PackNullCompact getPackNullCompact() const { 
+	return rep.pack_null_compact; 
+    }
     const std::string &getName() const { return rep.name; }
     const std::string &getXmlDescriptionString() const {
 	return rep.xml_description_str;
@@ -135,6 +142,21 @@ public:
 	return rep.xml_description_doc;
     }
     const std::string &getNamespace() const { return rep.type_namespace; }
+
+    struct fieldInfo {
+	std::string name;
+	fieldType type;
+	int32 size, offset, bitpos;
+	bool unique;
+	int null_fieldnum;
+	double doublebase;
+	xmlNodePtr xmldesc;
+	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
+		      unique(false), null_fieldnum(-1), doublebase(0), 
+		      xmldesc(NULL)
+	{ }
+    };
+
 private:
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
@@ -153,19 +175,6 @@ private:
 
     std::string xmlFieldDesc(int field_num) const;
     xmlNodePtr xmlNodeFieldDesc(int field_num) const;
-
-    struct fieldInfo {
-	std::string name;
-	fieldType type;
-	int32 size, offset, bitpos;
-	bool unique, nullable;
-	double doublebase;
-	xmlNodePtr xmldesc;
-	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      unique(false), nullable(false), doublebase(0), 
-		      xmldesc(NULL)
-	{ }
-    };
 
     struct pack_scaleT {
 	int field_num;
@@ -201,7 +210,8 @@ private:
 	// field_info (which may have hidden fields)
 	std::vector<int> visible_fields; 
 	std::vector<fieldInfo> field_info;
-	
+	std::vector<fieldInfo *> sorted_nonbool_field_info; 
+	int bool_bytes;
 	std::vector<int32> variable32_field_columns;
 	
 	std::vector<pack_scaleT> pack_scale;
@@ -211,6 +221,7 @@ private:
 	int fixed_record_size;
 	unsigned major_version, minor_version;
 	std::string type_namespace;
+	PackNullCompact pack_null_compact;
     };
     
     static int getColumnNumber(const ParsedRepresentation &rep,

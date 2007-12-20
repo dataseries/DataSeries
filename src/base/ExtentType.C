@@ -11,9 +11,9 @@
 
 #include <vector>
 
-using namespace std;
 #include <libxml/parser.h>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/PThread.H>
 #include <Lintel/HashTable.H>
@@ -21,9 +21,39 @@ using namespace std;
 
 #include <DataSeries/ExtentType.H>
 
+using namespace std;
+using boost::format;
+
 static const bool debug_getcolnum = false;
 static const bool debug_xml_decode = false;
 static const bool debug_packing = false;
+
+static bool
+parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
+{
+    xmlChar *option = xmlGetProp(cur, (const xmlChar *)option_name.c_str());
+    
+    if (option == NULL) {
+	return default_val;
+    }
+    if (xmlStrcmp(option, (xmlChar *)"yes") == 0) {
+	return true;
+    } else if (xmlStrcmp(option, (xmlChar *)"no") == 0) {
+	return false;
+    } else {
+	FATAL_ERROR(format("%s should be either 'yes' or 'no', not '%s'")
+		    % option_name % reinterpret_cast<char *>(option));
+	return false;
+    }
+}
+
+struct FieldInfoByPosition {
+    bool operator()(const ExtentType::fieldInfo *a, 
+		    const ExtentType::fieldInfo *b) {
+	return a->offset < b->offset 
+	    || (a->offset == b->offset && a->bitpos < b->bitpos);
+    }
+};
 
 ExtentType::ParsedRepresentation
 ExtentType::parseXML(const string &xmldesc)
@@ -55,11 +85,30 @@ ExtentType::parseXML(const string &xmldesc)
     INVARIANT(ret.name.length() <= 255,
 	      "invalid extent type name, max of 255 characters allowed");
 
+    ret.pack_null_compact = CompactNo;
+    xmlChar *pack_option = xmlGetProp(cur, (xmlChar *)"pack_null_compact");
+    if (pack_option != NULL) {
+	cerr << "Warning, pack_null_compact under testing, not safe for use.\n";
+	if (xmlStrcmp(pack_option, (xmlChar *)"non_bool") == 0) {
+	    ret.pack_null_compact = CompactNonBool;
+	} else if (xmlStrcmp(pack_option, (xmlChar *)"no") == 0) {
+	    ret.pack_null_compact = CompactNo;
+	} else {
+	    FATAL_ERROR(format("Unknown pack_null_compact value '%s'")
+			% (char *)pack_option);
+	}
+    }
+
     for(xmlAttr *prop = cur->properties; prop != NULL; prop = prop->next) {
-	AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
-		     ("Unrecognized global packing option %s\n",prop->name));
-	AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"opt_",5)!=0,
-		     ("Unrecognized global option %s\n",prop->name));
+	if (xmlStrcmp(prop->name, (const xmlChar *)"pack_null_compact") == 0) {
+	    // ok
+	} else {
+	    INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
+		      format("Unrecognized global packing option %s")
+		      % prop->name);
+	    INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"opt_",5)!=0,
+		      format("Unrecognized global option %s") % prop->name);
+	}
     }
 
     if (debug_xml_decode) {
@@ -162,24 +211,15 @@ ExtentType::parseXML(const string &xmldesc)
 	xmlChar *pack_unique = xmlGetProp(cur, (const xmlChar *)"pack_unique");
 	if (info.type == ft_variable32) {
 	    ret.variable32_field_columns.push_back(ret.field_info.size());
-	    if (pack_unique != NULL) {
-		AssertAlways(xmlStrcmp(pack_unique,(xmlChar *)"yes") == 0 ||
-			     xmlStrcmp(pack_unique,(xmlChar *)"no") == 0,
-			     ("pack_unique should be either 'yes' or 'no', not '%s'\n",pack_unique));
-		info.unique = xmlStrcmp(pack_unique,(xmlChar *)"yes") == 0;
-	    }
+	    info.unique = parseYesNo(cur, "pack_unique", false);
 	} else {
 	    AssertAlways(pack_unique == NULL,
 			 ("pack_unique only allowed for variable32 fields\n"));
 	}
 	
-	xmlChar *opt_nullable = xmlGetProp(cur, (const xmlChar *)"opt_nullable");
-	if (opt_nullable != NULL) {
-	    AssertAlways(xmlStrcmp(opt_nullable,(xmlChar *)"yes") == 0 ||
-			 xmlStrcmp(opt_nullable,(xmlChar *)"no") == 0,
-			 ("opt_nullable should be either 'yes' or 'no', not '%s'\n",opt_nullable));
-	    info.nullable = xmlStrcmp(opt_nullable,(xmlChar *)"yes") == 0;
-	}	    
+	bool nullable = parseYesNo(cur, "opt_nullable", false);
+	// Real field will go into size-1, so null field into size.
+	info.null_fieldnum = nullable ? ret.field_info.size() : -1;
 
 	xmlChar *opt_doublebase = xmlGetProp(cur, (const xmlChar *)"opt_doublebase");
 	if (opt_doublebase != NULL) {
@@ -242,7 +282,8 @@ ExtentType::parseXML(const string &xmldesc)
 	cur = cur->next;
 	ret.field_info.push_back(info);
 	ret.visible_fields.push_back(ret.field_info.size()-1);
-	if (info.nullable) {
+	if (nullable) {
+	    DEBUG_INVARIANT(info.null_fieldnum == ret.field_info.size(), "bad");
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
 	    info.type = ft_bool;
@@ -250,8 +291,9 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.offset = -1;
 	    info.bitpos = -1;
 	    info.unique = false;
-	    info.nullable = false;
+	    info.null_fieldnum = -1;
 	    info.doublebase = 0;
+	    info.xmldesc = NULL;
 	    ret.field_info.push_back(info);
 	}
     }
@@ -340,6 +382,22 @@ ExtentType::parseXML(const string &xmldesc)
     
     ret.fixed_record_size = byte_pos;
 
+    ret.bool_bytes = 0;
+    for(unsigned i = 0; i < ret.field_info.size(); ++i) {
+	fieldInfo *j = &ret.field_info[i];
+	if (j->type == ft_bool) {
+	    if (j->offset + 1 > ret.bool_bytes) {
+		ret.bool_bytes = j->offset + 1;
+	    }
+	} else {
+	    ret.sorted_nonbool_field_info.push_back(j);
+	}
+    }
+    INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
+	      "should not enable null compaction with no nullable fields");
+    sort(ret.sorted_nonbool_field_info.begin(), 
+	 ret.sorted_nonbool_field_info.end(), 
+	 FieldInfoByPosition());
     return ret;
 }
 
@@ -428,7 +486,7 @@ ExtentType::getNullable(int column) const
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
-    return rep.field_info[column].nullable;
+    return rep.field_info[column].null_fieldnum >= 0;
 }
 
 double

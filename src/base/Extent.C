@@ -278,7 +278,94 @@ public:
     }
 };
 
+bool
+Extent::compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f)
+{
+    if (f->null_fieldnum == -1)
+	return false;
+    DEBUG_INVARIANT(f->null_fieldnum >= 0 && f->null_fieldnum < type.rep.fields.size(), "?");
+    const ExtentType::fieldInfo &f_null(type.rep.field_info[f->null_fieldnum]);
+    DEBUG_INVARIANT(f_null.null_fieldnum == -1 
+		    && f_null.type == ExtentType::ft_bool, "?");
+    fixed_record += f_null.offset;
+    if (*fixed_record & (1 << f_null.bitpos)) {
+	return true;
+    } else {
+	return false;
+    }
+}
+
+void
+Extent::compactNulls(Extent::ByteArray &fixed_coded)
+{
+    INVARIANT(type.getPackNullCompact() == ExtentType::CompactNonBool, "bad");
+    Extent::ByteArray into;
+    into.resize(fixed_coded.size(), false); // no need to fill in
+
+    // Dense packing the booleans is only really a win if we manage to
+    // save a character; it's also going to cost a lot of cpu time, so
+    // we choose to not do it.  I guess if we found something that had
+    // lots of nullable booleans it could become worth it.
+
+    byte *cur = into.begin();
+    INVARIANT(type.rep.bool_bytes > 0, "?");
+    for(byte *fixed_record = fixed_coded.begin();
+	fixed_record != fixed_coded.end(); 
+	fixed_record += type.rep.fixed_record_size) {
+
+	INVARIANT(cur + type.rep.fixed_record_size <= into.end(), "bad");
+	memcpy(cur, fixed_record, type.rep.bool_bytes);
+	cur += type.rep.bool_bytes;
+	vector<ExtentType::fieldInfo *>::const_iterator i = type.rep.sorted_nonbool_field_info.begin();
+	vector<ExtentType::fieldInfo *>::const_iterator end = type.rep.sorted_nonbool_field_info.end();
+	// copy the bytes...
+	for(; i != end && (**i).size == 1; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_byte, "bad");
+	    if (compactIsNull(fixed_record, *i)) {
+		continue;
+	    }
+	    *cur = *(fixed_record + (**i).offset);
+	    ++cur;
+	}
+	// pad to 4 byte boundary
+	for(; reinterpret_cast<size_t>(cur) % 4 != 0; ++cur) {
+	    *cur = '\0';
+	}
+	// copy the 4 byte things
+	for(; i != end && (**i).size == 4; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
+			    (**i).type == ExtentType::ft_variable32, "bad");
+	    if (compactIsNull(fixed_record, *i)) {
+		continue;
+	    }
+	    *reinterpret_cast<uint32_t *>(cur) = 
+		*reinterpret_cast<uint32_t *>(fixed_record + (**i).offset);
+	    cur += 4;
+	}
+	DEBUG_INVARIANT(reinterpret_cast<size_t>(cur) % 4 == 0, "?");
+	// pad to 8 byte boundary
+	for(; reinterpret_cast<size_t>(cur) % 8 != 0; cur += 4) {
+	    *reinterpret_cast<int32_t *>(cur) = 0;
+	}
+	// copy the 8 byte things
+	for(; i != end && (**i).size == 4; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
+			    (**i).type == ExtentType::ft_variable32, "bad");
+	    if (compactIsNull(fixed_record, *i)) {
+		continue;
+	    }
+	    *reinterpret_cast<uint64_t *>(cur) = 
+		*reinterpret_cast<uint64_t *>(fixed_record + (**i).offset);
+	    cur += 8;
+	}
+	INVARIANT(i == end, "internal");
+    }
+}
+
 static const unsigned variable_sizes_batch_size = 1024;
+
+// Note: Can't split this into pack fixed and pack variable because 
+// packing the variable data can involve updating the fixed dat
 
 uint32_t
 Extent::packData(Extent::ByteArray &into,
@@ -320,6 +407,42 @@ Extent::packData(Extent::ByteArray &into,
 	INVARIANT(fixed_record < fixed_coded.end(),"internal error");
 	++nrecords;
 	
+	if (false && type.getPackNullCompact() != ExtentType::CompactNo) {
+	    // Might want to always do this -- except it seems unlikely people
+	    // would commonly fill in a value and then null it.
+	    //
+	    // Need to zero fill these as when we do null compaction,
+	    // we will stuff zeros in to all null fields, and if
+	    // someone did relative packing we need it to unpack
+	    // properly.
+
+	    for(vector<ExtentType::fieldInfo>::const_iterator j = type.rep.field_info.begin();
+		j != type.rep.field_info.end(); ++j) {
+		if (j->null_fieldnum >= 0) {
+		    ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+		    switch(j->type) 
+			{
+			case ExtentType::ft_bool:
+			    *raw = *raw & static_cast<ExtentType::byte>(~(1<<j->bitpos));
+			    break;
+			case ExtentType::ft_byte:
+			    *raw = 0;
+			    break;
+			case ExtentType::ft_int32:
+			case ExtentType::ft_variable32:
+			    *reinterpret_cast<int32_t *>(raw) = 0;
+			    break;
+			case ExtentType::ft_int64:
+			case ExtentType::ft_double:
+			    *reinterpret_cast<int64_t *>(raw) = 0;
+			    break;
+			default:
+			    FATAL_ERROR("internal error");
+			}
+		}
+	    }
+	}
+
 	// pack variable sized fields ...
 	for(unsigned int j=0; 
 	    j<type.rep.variable32_field_columns.size(); 
@@ -457,6 +580,14 @@ Extent::packData(Extent::ByteArray &into,
 	      "internal error");
     uint32_t bjhash = BobJenkinsHash(1972, fixed_coded.begin(),
 				     type.rep.fixed_record_size * nrecords);
+
+    if (type.getPackNullCompact() != ExtentType::CompactNo) {
+	// do this after we do the fixed hash, so the checksum will
+	// verify this is reversable.
+
+	compactNulls(fixed_coded);
+    }
+
     INVARIANT(static_cast<size_t>(variable_data_pos - variable_coded.begin()) 
 	      <= variable_coded.size(),
 	      "Internal error");
