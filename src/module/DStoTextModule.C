@@ -172,7 +172,7 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     }
 
     if (state.field_names.empty()) {
-	for(int i=0;i<state.series.type->getNFields();++i) {
+	for(unsigned i=0;i<state.series.type->getNFields();++i) {
 	    state.field_names.push_back(state.series.type->getFieldName(i));
 	}
     }

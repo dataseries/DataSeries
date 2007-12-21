@@ -218,8 +218,8 @@ ExtentType::parseXML(const string &xmldesc)
 	}
 	
 	bool nullable = parseYesNo(cur, "opt_nullable", false);
-	// Real field will go into size-1, so null field into size.
-	info.null_fieldnum = nullable ? ret.field_info.size() : -1;
+	// Real field will go into size, so null field into size+1.
+	info.null_fieldnum = nullable ? ret.field_info.size() + 1 : -1;
 
 	xmlChar *opt_doublebase = xmlGetProp(cur, (const xmlChar *)"opt_doublebase");
 	if (opt_doublebase != NULL) {
@@ -283,7 +283,8 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.field_info.push_back(info);
 	ret.visible_fields.push_back(ret.field_info.size()-1);
 	if (nullable) {
-	    DEBUG_INVARIANT(info.null_fieldnum == ret.field_info.size(), "bad");
+	    DEBUG_INVARIANT(info.null_fieldnum == ret.field_info.size(), "?");
+			    
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
 	    info.type = ft_bool;
@@ -355,6 +356,7 @@ ExtentType::parseXML(const string &xmldesc)
     if (debug_packing) printf("packing variable32 fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_variable32) {
+	    ret.field_info[i].size = 4;
 	    ret.field_info[i].offset = byte_pos;
 	    if (debug_packing) {
 		cout << boost::format("  field %s (#%d) at position %d\n")

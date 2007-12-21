@@ -28,9 +28,8 @@
 #include <DataSeries/ExtentField.H>
 #include <DataSeries/DataSeriesModule.H>
 
-#ifndef HPUX_ACC
 using namespace std;
-#endif
+using boost::format;
 
 const string pslist[] = 
 {
@@ -1001,10 +1000,85 @@ test_doublebase_nullable()
     delete cur_extent;
 }    
 
+void
+test_compactnull()
+{
+    MersenneTwisterRandom rand;
+    cout << format("test_compactnull - start seed=%d\n") % rand.seed_used;
+    ExtentTypeLibrary typelib;
+
+    // One real bool, 6 hidden ones
+    typelib.registerType("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
+			 "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+			 "</ExtentType>\n");
+
+    ExtentSeries series1(typelib,"Test::CompactNulls");
+    Extent extent1(series1);
+    series1.setExtent(extent1);
+
+    int nrecords = 100 + rand.randInt(1000);
+    series1.createRecords(nrecords);
+
+    BoolField f_bool(series1, "bool", Field::flag_nullable);
+    ByteField f_byte(series1, "byte", Field::flag_nullable);
+    Int32Field f_int32(series1, "int32", Field::flag_nullable);
+    Int64Field f_int64(series1, "int64", Field::flag_nullable);
+    DoubleField f_double(series1, "double", Field::flag_nullable);
+    Variable32Field f_variable32(series1, "variable32", Field::flag_nullable);
+
+    Extent::ByteArray variablestuff;
+    variablestuff.resize(nrecords * 4 + 5);
+    for(int i=0;i<nrecords * 2 + 5;i++) {
+	variablestuff[i] = (char)(i&0xFF);
+    }
+    // Test filling in a value and then nulling.
+    for(int i=0;i<nrecords;i++) {
+	f_bool.set(true);
+	f_bool.setNull();
+	f_byte.set(i & 0xFF);
+	f_byte.setNull();
+	f_int32.set(i);
+	f_int32.setNull();
+	f_int64.set(i*7731);
+	f_int64.setNull();
+	f_double.set(i+10000);
+	f_double.setNull();
+	//	f_variable32.set(variablestuff.begin()+i,i+1);
+	f_variable32.setNull();
+	++series1.pos;
+    }
+
+    Extent::ByteArray packed;
+    extent1.packData(packed,Extent::compress_none);
+
+    cout << format("%d rows, original bytes %d, packed %d\n")
+	% nrecords % extent1.extentsize() % packed.size();
+
+    ExtentSeries series2(typelib, "Test::CompactNulls");
+    Extent unpack1(series2);
+    unpack1.unpackData(packed, false);
+
+    series1.setExtent(unpack1);
+    for(int i=0;i<nrecords;i++) {
+	INVARIANT(f_bool.isNull() && f_byte.isNull() && f_int32.isNull()
+		  && f_int64.isNull() && f_double.isNull() && f_variable32.isNull(), "??");
+	++series1.pos;
+    }
+
+    cout << "test_compactnull - end\n";
+}
+
 int
 main(int argc, char *argv[])
 {
     Extent::setReadChecksFromEnv(true);
+    //    test_compactnull();
+
     runCryptUtilChecks();
     test_byteflip();
     test_primitives();

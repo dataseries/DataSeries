@@ -146,7 +146,9 @@ public:
     struct fieldInfo {
 	std::string name;
 	fieldType type;
-	int32 size, offset, bitpos;
+	// size is byte size used in the fixed record, offset is only
+	// valid for bool fields.
+	int32 size, offset, bitpos; 
 	bool unique;
 	int null_fieldnum;
 	double doublebase;

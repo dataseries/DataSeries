@@ -151,6 +151,7 @@ public:
     static const Extent::byte compress_mode_bz2 = 3;
     static const Extent::byte compress_mode_lzf = 4;
 
+    static const int compress_none = 0;
     static const int compress_lzo = 1;
     static const int compress_zlib = 2;
     static const int compress_bz2 = 4;
@@ -220,14 +221,6 @@ public:
     static bool checkedPread(int fd, off64_t offset, byte *into, int amount, 
 			    bool eof_ok = false);
 
-    // you are responsible for deleting the return buffer
-    static Extent::ByteArray *packAny(byte *input, int32 input_size,
-				 int compression_modes,
-				 int compression_level, byte *mode);
-    static void unpackAny(byte *into, byte *from,
-			  byte compression_mode, int32 intosize,
-			  int32 fromsize);
-
     // The verification checks are the dataseries internal checksums
     // that verify that the files were read correctly.  The
     // pre_uncompress check verifies the checksum over the compressed
@@ -255,6 +248,14 @@ public:
     // DataSeries/src/test.C
     static void run_flip4bytes(uint32_t *buf, unsigned buflen);
 private:
+    // you are responsible for deleting the return buffer
+    static Extent::ByteArray *compressBytes(byte *input, int32 input_size,
+					    int compression_modes,
+					    int compression_level, byte *mode);
+    static int32 uncompressBytes(byte *into, byte *from,
+				byte compression_mode, int32 intosize,
+				int32 fromsize);
+
     const ExtentType &packedType(ExtentTypeLibrary &library,
 				 Extent::ByteArray &packeddata,
 				 const bool need_bitflip);

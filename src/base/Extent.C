@@ -63,6 +63,7 @@ extern "C" {
 #include <DataSeries/DataSeriesFile.H>
 
 using namespace std;
+using boost::format;
 
 extern "C" {
     char *dataseriesVersion() {
@@ -283,7 +284,8 @@ Extent::compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f)
 {
     if (f->null_fieldnum == -1)
 	return false;
-    DEBUG_INVARIANT(f->null_fieldnum >= 0 && f->null_fieldnum < type.rep.fields.size(), "?");
+    DEBUG_INVARIANT(f->null_fieldnum >= 0 
+		    && static_cast<size_t>(f->null_fieldnum) < type.rep.field_info.size(), "?");
     const ExtentType::fieldInfo &f_null(type.rep.field_info[f->null_fieldnum]);
     DEBUG_INVARIANT(f_null.null_fieldnum == -1 
 		    && f_null.type == ExtentType::ft_bool, "?");
@@ -313,6 +315,9 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	fixed_record != fixed_coded.end(); 
 	fixed_record += type.rep.fixed_record_size) {
 
+	DEBUG_INVARIANT(cur - into.begin() <= static_cast<size_t>(fixed_coded.size()), 
+			format("internal %d > %d") % (cur - into.begin()) % fixed_coded.size());
+
 	INVARIANT(cur + type.rep.fixed_record_size <= into.end(), "bad");
 	memcpy(cur, fixed_record, type.rep.bool_bytes);
 	cur += type.rep.bool_bytes;
@@ -327,10 +332,6 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	    *cur = *(fixed_record + (**i).offset);
 	    ++cur;
 	}
-	// pad to 4 byte boundary
-	for(; reinterpret_cast<size_t>(cur) % 4 != 0; ++cur) {
-	    *cur = '\0';
-	}
 	// copy the 4 byte things
 	for(; i != end && (**i).size == 4; ++i) {
 	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
@@ -338,21 +339,25 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	    if (compactIsNull(fixed_record, *i)) {
 		continue;
 	    }
+	    // pad to 4 byte boundary; do it here so we only pad if we 
+	    // have to
+	    for(; reinterpret_cast<size_t>(cur) % 4 != 0; ++cur) {
+		*cur = '\0';
+	    }
 	    *reinterpret_cast<uint32_t *>(cur) = 
 		*reinterpret_cast<uint32_t *>(fixed_record + (**i).offset);
 	    cur += 4;
 	}
-	DEBUG_INVARIANT(reinterpret_cast<size_t>(cur) % 4 == 0, "?");
-	// pad to 8 byte boundary
-	for(; reinterpret_cast<size_t>(cur) % 8 != 0; cur += 4) {
-	    *reinterpret_cast<int32_t *>(cur) = 0;
-	}
 	// copy the 8 byte things
-	for(; i != end && (**i).size == 4; ++i) {
-	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
-			    (**i).type == ExtentType::ft_variable32, "bad");
+	for(; i != end && (**i).size == 8; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int64 ||
+			    (**i).type == ExtentType::ft_double, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
 		continue;
+	    }
+	    // pad to 8 byte boundary, do it here so we only pad if needed
+	    for(; reinterpret_cast<size_t>(cur) % 8 != 0; cur += 4) {
+		*reinterpret_cast<int32_t *>(cur) = 0;
 	    }
 	    *reinterpret_cast<uint64_t *>(cur) = 
 		*reinterpret_cast<uint64_t *>(fixed_record + (**i).offset);
@@ -360,6 +365,10 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	}
 	INVARIANT(i == end, "internal");
     }
+    size_t new_size = cur - into.begin();
+    INVARIANT(new_size <= fixed_coded.size(), format("internal %d > %d") % new_size % fixed_coded.size());
+    into.resize(new_size);
+    fixed_coded.swap(into);
 }
 
 static const unsigned variable_sizes_batch_size = 1024;
@@ -611,19 +620,19 @@ Extent::packData(Extent::ByteArray &into,
     variable_sizes.resize(0);
 
     byte compressed_fixed_mode;
-    Extent::ByteArray *compressed_fixed = packAny(fixed_coded.begin(),fixed_coded.size(),
-					     compression_modes,
-					     compression_level,
-					     &compressed_fixed_mode);
+    Extent::ByteArray *compressed_fixed 
+	= compressBytes(fixed_coded.begin(),fixed_coded.size(),
+			compression_modes, compression_level,
+			&compressed_fixed_mode);
     byte compressed_variable_mode;
     Extent::ByteArray *compressed_variable;
     // +4, -4 avoids packing the 0 bytes at the beginning of the
     // variable coded stuff since that is fixed
-    compressed_variable = packAny(variable_coded.begin() + 4,
-				  variable_coded.size() - 4,
-				  compression_modes,
-				  compression_level,
-				  &compressed_variable_mode);
+    compressed_variable 
+	= compressBytes(variable_coded.begin() + 4,
+			variable_coded.size() - 4,
+			compression_modes, compression_level,
+			&compressed_variable_mode);
 
     int headersize = 6*4+4*1+type.name.size();
     headersize += (4 - headersize % 4) % 4;
@@ -780,9 +789,9 @@ Extent::packLZF(byte *input, int32 inputsize,
 // they can't compress into the smaller amount of space.
 
 Extent::ByteArray *
-Extent::packAny(byte *input, int32 input_size,
-		int compression_modes,
-		int compression_level, byte *mode)
+Extent::compressBytes(byte *input, int32 input_size,
+		      int compression_modes,
+		      int compression_level, byte *mode)
 {
     Extent::ByteArray *best_packed = NULL;
     *mode = 0;
@@ -860,14 +869,15 @@ Extent::packAny(byte *input, int32 input_size,
     return best_packed;
 }
 
-void 
-Extent::unpackAny(byte *into, byte *from, 
+int32_t
+Extent::uncompressBytes(byte *into, byte *from, 
 		  byte compression_mode, int32 intosize,
 		  int32 fromsize)
 {
+    int32 outsize = -1;
     if (compression_mode == compress_mode_none) {
-	AssertAlways(intosize == fromsize,("bad unpack any\n"));
-	memcpy(into,from,intosize);
+	outsize = fromsize;
+	memcpy(into, from, intosize);
 #if DATASERIES_ENABLE_LZO
     } else if (compression_mode == compress_mode_lzo) {
 	lzo_uint orig_len = intosize;
@@ -875,9 +885,10 @@ Extent::unpackAny(byte *into, byte *from,
 					fromsize,
 					(lzo_byte *)into,
 					&orig_len, NULL);
-	AssertAlways(ret == LZO_E_OK && (int)orig_len == intosize,
-		     ("Error decompressing extent (%d,%d =? %d)!\n",
-		      ret,orig_len,intosize));
+	INVARIANT(ret == LZO_E_OK,
+		  format("Error decompressing extent (%d,%d =? %d)!")
+		  % ret % orig_len % intosize);
+	outsize = orig_len;
 #endif
 #if DATASERIES_ENABLE_ZLIB
     } else if (compression_mode == compress_mode_zlib) {
@@ -885,8 +896,8 @@ Extent::unpackAny(byte *into, byte *from,
 	int ret = uncompress((Bytef *)into,
 			     &destlen,(const Bytef *)from,
 			     fromsize);
-	AssertAlways(ret == Z_OK && (int)destlen == intosize,
-		     ("Error decompressing extent!\n"));
+	INVARIANT(ret == Z_OK, "Error decompressing extent!");
+	outsize = destlen;
 #endif
 #if DATASERIES_ENABLE_BZ2
     } else if (compression_mode == compress_mode_bz2) {
@@ -896,30 +907,32 @@ Extent::unpackAny(byte *into, byte *from,
 					     (char *)from,
 					     fromsize,
 					     0,0);
-	AssertAlways(ret == BZ_OK && (int)destlen == intosize,
-		     ("Error decompressing extent!\n"));
+	INVARIANT(ret == BZ_OK, "Error decompressing extent!");
+	outsize = destlen;
 #endif
 #if DATASERIES_ENABLE_LZF
     } else if (compression_mode == compress_mode_lzf) {
 	unsigned int destlen = lzf_decompress((void *)from, fromsize,
 					       (void *)into, intosize);
-	AssertAlways((int)destlen == intosize,
-		     ("Error decompressing extent!\n"));
+	outsize = destlen;
 #endif
     } else {
-	char *mode_name = (char *)"unknown";
+	string mode_name("unknown");
 	if (compression_mode == compress_mode_lzo) {
-	    mode_name = (char *)"lzo";
+	    mode_name = "lzo";
 	} else if (compression_mode == compress_mode_zlib) {
-	    mode_name = (char *)"zlib";
+	    mode_name = "zlib";
 	} else if (compression_mode == compress_mode_bz2) {
-	    mode_name = (char *)"bz2";
+	    mode_name = "bz2";
 	} else if (compression_mode == compress_mode_lzf) {
-	    mode_name = (char *)"lzf";
+	    mode_name = "lzf";
 	} 
-	AssertFatal(("Unknown/disabled compression method %s (#%d)\n",
-		     mode_name, (int)compression_mode));
+	FATAL_ERROR(format("Unknown/disabled compression method %s (#%d)")
+		    % mode_name % static_cast<int>(compression_mode));
     }
+    INVARIANT(outsize >= 0 && outsize <= intosize, 
+	      format("bad uncompressbytes %d/%d") % intosize % fromsize);
+    return outsize;
 }
 
 #define TIME_UNPACKING(x)
@@ -992,16 +1005,21 @@ Extent::unpackData(Extent::ByteArray &from,
 		 ("Invalid extent data\n"));
 
     fixeddata.resize(nrecords * type.rep.fixed_record_size, false);
-    unpackAny(fixeddata.begin(),compressed_fixed_begin,
-	      compressed_fixed_mode,
-	      nrecords * type.rep.fixed_record_size,
-	      compressed_fixed_size);
+    int32 fixed_uncompressed_size
+	= uncompressBytes(fixeddata.begin(),compressed_fixed_begin,
+			  compressed_fixed_mode,
+			  nrecords * type.rep.fixed_record_size,
+			  compressed_fixed_size);
+    INVARIANT(fixed_uncompressed_size == nrecords * type.rep.fixed_record_size, "internal");
+    
     variabledata.resize(variable_size, false);
     AssertAlways(variable_size >= 4,("error unpacking, invalid variable size\n"));
     *(int32 *)variabledata.begin() = 0;
-    unpackAny(variabledata.begin()+4, compressed_variable_begin,
-	      compressed_variable_mode,
-	      variable_size-4, compressed_variable_size);
+    int32 variable_uncompressed_size
+	= uncompressBytes(variabledata.begin()+4, compressed_variable_begin,
+			  compressed_variable_mode,
+			  variable_size-4, compressed_variable_size);
+    INVARIANT(variable_uncompressed_size == variable_size - 4, "internal");
     uint32_t bjhash = 0;
     if (postuncompress_check) {
 	bjhash = BobJenkinsHash(1972,fixeddata.begin(),fixeddata.size());
