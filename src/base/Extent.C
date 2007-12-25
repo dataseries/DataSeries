@@ -279,11 +279,19 @@ public:
     }
 };
 
+static const bool debug_compact_is_null = false;
 bool
 Extent::compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f)
 {
-    if (f->null_fieldnum == -1)
+    if (debug_compact_is_null) {
+	cout << format("compactIsNull(%s, %s) --> ") 
+	    % f->name 
+	    % hexstring(string((char *)(fixed_record + f->offset), f->size));
+    }
+    if (f->null_fieldnum == -1) {
+	if (debug_compact_is_null) cout << "not nullable\n";
 	return false;
+    }
     DEBUG_INVARIANT(f->null_fieldnum >= 0 
 		    && static_cast<size_t>(f->null_fieldnum) < type.rep.field_info.size(), "?");
     const ExtentType::fieldInfo &f_null(type.rep.field_info[f->null_fieldnum]);
@@ -291,15 +299,22 @@ Extent::compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f)
 		    && f_null.type == ExtentType::ft_bool, "?");
     fixed_record += f_null.offset;
     if (*fixed_record & (1 << f_null.bitpos)) {
+	if (debug_compact_is_null) cout << "true\n";
 	return true;
     } else {
+	if (debug_compact_is_null) cout << "false\n";
 	return false;
     }
 }
 
+static const bool debug_compact = false;
 void
 Extent::compactNulls(Extent::ByteArray &fixed_coded)
 {
+    if (debug_compact) {
+	cout << format("compacting %s\n")
+	    % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
+    }
     INVARIANT(type.getPackNullCompact() == ExtentType::CompactNonBool, "bad");
     Extent::ByteArray into;
     into.resize(fixed_coded.size(), false); // no need to fill in
@@ -315,8 +330,18 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	fixed_record != fixed_coded.end(); 
 	fixed_record += type.rep.fixed_record_size) {
 
-	DEBUG_INVARIANT(cur - into.begin() <= static_cast<size_t>(fixed_coded.size()), 
-			format("internal %d > %d") % (cur - into.begin()) % fixed_coded.size());
+	if (debug_compact) {
+	    cout << format("compact from@%d/%d row %d/%d to@%d\n")
+		% (fixed_record - fixed_coded.begin()) 
+		% (fixed_coded.size())
+		% ((fixed_record - fixed_coded.begin())/type.rep.fixed_record_size)
+		% (fixed_coded.size() / type.rep.fixed_record_size)
+		% (cur - into.begin());
+	}
+	DEBUG_INVARIANT(static_cast<size_t>(cur - into.begin()) 
+			<= static_cast<size_t>(fixed_coded.size()), 
+			format("internal %d > %d") % (cur - into.begin()) 
+			% fixed_coded.size());
 
 	INVARIANT(cur + type.rep.fixed_record_size <= into.end(), "bad");
 	memcpy(cur, fixed_record, type.rep.bool_bytes);
@@ -327,16 +352,18 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	for(; i != end && (**i).size == 1; ++i) {
 	    DEBUG_INVARIANT((**i).type == ExtentType::ft_byte, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
+		DEBUG_INVARIANT(*(fixed_record + (**i).offset) == 0, "?");
 		continue;
 	    }
 	    *cur = *(fixed_record + (**i).offset);
-	    ++cur;
+	    cur += 1;
 	}
 	// copy the 4 byte things
 	for(; i != end && (**i).size == 4; ++i) {
 	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
 			    (**i).type == ExtentType::ft_variable32, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
+		DEBUG_INVARIANT(*reinterpret_cast<int32_t *>(fixed_record + (**i).offset) == 0, "?");
 		continue;
 	    }
 	    // pad to 4 byte boundary; do it here so we only pad if we 
@@ -353,10 +380,11 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int64 ||
 			    (**i).type == ExtentType::ft_double, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
+		DEBUG_INVARIANT(*reinterpret_cast<int64_t *>(fixed_record + (**i).offset) == 0, "?");
 		continue;
 	    }
 	    // pad to 8 byte boundary, do it here so we only pad if needed
-	    for(; reinterpret_cast<size_t>(cur) % 8 != 0; cur += 4) {
+	    for(; reinterpret_cast<size_t>(cur) % 8 != 0; ++cur) {
 		*reinterpret_cast<int32_t *>(cur) = 0;
 	    }
 	    *reinterpret_cast<uint64_t *>(cur) = 
@@ -367,8 +395,102 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
     }
     size_t new_size = cur - into.begin();
     INVARIANT(new_size <= fixed_coded.size(), format("internal %d > %d") % new_size % fixed_coded.size());
+    if (debug_compact) {
+	cout << format("compacted nulls %d -> %d\n")
+	    % fixed_coded.size() % new_size;
+	cout << format("compacted to %s\n")
+	    % hexstring(string((char *)into.begin(), new_size));
+    }
     into.resize(new_size);
     fixed_coded.swap(into);
+}
+
+void
+Extent::uncompactNulls(Extent::ByteArray &fixed_coded, 
+		       int32_t &size)
+{
+    INVARIANT(type.getPackNullCompact() == ExtentType::CompactNonBool, "bad");
+    Extent::ByteArray into;
+    INVARIANT(static_cast<size_t>(size) <= fixed_coded.size(), "internal"); 
+    into.resize(fixed_coded.size(), true); // need to zero fill padding
+    // TODO: benchmark doing the partial zero fills during the copy
+    // loop; may or may not be faster especially given we have to
+    // zero fill null values.
+
+    // Dense packing the booleans is only really a win if we manage to
+    // save a character; it's also going to cost a lot of cpu time, so
+    // we choose to not do it.  I guess if we found something that had
+    // lots of nullable booleans it could become worth it.
+
+    byte *from = fixed_coded.begin();
+    byte *from_end = fixed_coded.begin() + size;
+    byte *to = into.begin();
+    size = into.size(); 
+    INVARIANT(type.rep.bool_bytes > 0, "?");
+    while(from < from_end) {
+	if (debug_compact) {
+	    cout << format("uncompact from@%d/%d to@%d row %d/%d\n")
+		% (from - fixed_coded.begin()) % (from_end - fixed_coded.begin())
+		% (to - into.begin())
+		% ((to - into.begin())/type.rep.fixed_record_size)
+		% (size / type.rep.fixed_record_size);
+	}
+	INVARIANT(to + type.rep.fixed_record_size <= into.end(), "internal");
+	INVARIANT(from + type.rep.bool_bytes <= from_end, "internal");
+	memcpy(to, from, type.rep.bool_bytes);
+	from += type.rep.bool_bytes;
+
+	vector<ExtentType::fieldInfo *>::const_iterator i = type.rep.sorted_nonbool_field_info.begin();
+	vector<ExtentType::fieldInfo *>::const_iterator end = type.rep.sorted_nonbool_field_info.end();
+	// copy the bytes...
+	for(; i != end && (**i).size == 1; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_byte, "bad");
+	    if (compactIsNull(to, *i)) {
+		continue;
+	    }
+	    *(to + (**i).offset) = *from;
+	    from += 1;
+	}
+	// copy the 4 byte things
+	for(; i != end && (**i).size == 4; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int32 ||
+			    (**i).type == ExtentType::ft_variable32, "bad");
+	    if (compactIsNull(to, *i)) {
+		continue;
+	    }
+	    for(; reinterpret_cast<size_t>(from) % 4 != 0; ++from) {
+		// align to 4 byte boundary
+	    }
+	    INVARIANT(from + 4 <= from_end, "internal");
+	    *reinterpret_cast<uint32_t *>(to + (**i).offset) = 
+		*reinterpret_cast<uint32_t *>(from);
+	    from += 4;
+	}
+	// copy the 8 byte things
+	for(; i != end && (**i).size == 8; ++i) {
+	    DEBUG_INVARIANT((**i).type == ExtentType::ft_int64 ||
+			    (**i).type == ExtentType::ft_double, "bad");
+	    if (compactIsNull(to, *i)) {
+		continue;
+	    }
+	    for(; reinterpret_cast<size_t>(from) % 8 != 0; ++from) {
+		// align to 8 byte boundary
+	    }
+	    INVARIANT(from + 8 <= from_end, "internal");
+	    *reinterpret_cast<uint64_t *>(to + (**i).offset) =
+		*reinterpret_cast<uint64_t *>(from);
+		
+	    from += 8;
+	}
+	INVARIANT(i == end, "internal");
+	to += type.rep.fixed_record_size;
+    }
+    INVARIANT(from == from_end && to == into.end(), "internal");
+    fixed_coded.swap(into);
+    if (debug_compact) {
+	cout << format("recovered %s\n")
+	    % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
+    }
 }
 
 static const unsigned variable_sizes_batch_size = 1024;
@@ -410,13 +532,14 @@ Extent::packData(Extent::ByteArray &into,
     byte *variable_data_pos = variable_coded.begin();
     *(int32 *)variable_data_pos = 0;
     variable_data_pos += 4;
+    bool null_compact = type.getPackNullCompact() != ExtentType::CompactNo;
     for(Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
 	fixed_record != fixed_coded.end(); 
 	fixed_record += type.rep.fixed_record_size) {
 	INVARIANT(fixed_record < fixed_coded.end(),"internal error");
 	++nrecords;
 	
-	if (false && type.getPackNullCompact() != ExtentType::CompactNo) {
+	if (null_compact) {
 	    // Might want to always do this -- except it seems unlikely people
 	    // would commonly fill in a value and then null it.
 	    //
@@ -427,28 +550,29 @@ Extent::packData(Extent::ByteArray &into,
 
 	    for(vector<ExtentType::fieldInfo>::const_iterator j = type.rep.field_info.begin();
 		j != type.rep.field_info.end(); ++j) {
-		if (j->null_fieldnum >= 0) {
-		    ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
-		    switch(j->type) 
-			{
-			case ExtentType::ft_bool:
-			    *raw = *raw & static_cast<ExtentType::byte>(~(1<<j->bitpos));
-			    break;
-			case ExtentType::ft_byte:
-			    *raw = 0;
-			    break;
-			case ExtentType::ft_int32:
-			case ExtentType::ft_variable32:
-			    *reinterpret_cast<int32_t *>(raw) = 0;
-			    break;
-			case ExtentType::ft_int64:
-			case ExtentType::ft_double:
-			    *reinterpret_cast<int64_t *>(raw) = 0;
-			    break;
-			default:
-			    FATAL_ERROR("internal error");
-			}
-		}
+		if (!compactIsNull(fixed_record, &*j)) 
+		    continue;
+
+		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+		switch(j->type) 
+		    {
+		    case ExtentType::ft_bool:
+			*raw = *raw & static_cast<ExtentType::byte>(~(1<<j->bitpos));
+			break;
+		    case ExtentType::ft_byte:
+			*raw = 0;
+			break;
+		    case ExtentType::ft_int32:
+		    case ExtentType::ft_variable32:
+			*reinterpret_cast<int32_t *>(raw) = 0;
+			break;
+		    case ExtentType::ft_int64:
+		    case ExtentType::ft_double:
+			*reinterpret_cast<int64_t *>(raw) = 0;
+			break;
+		    default:
+			FATAL_ERROR("internal error");
+		    }
 	    }
 	}
 
@@ -493,6 +617,11 @@ Extent::packData(Extent::ByteArray &into,
 	// unpacked form
 	for(int j=type.rep.pack_other_relative.size()-1;j>=0;--j) {
 	    int field = type.rep.pack_other_relative[j].field_num;
+	    if (null_compact && compactIsNull(fixed_record, 
+					      &type.rep.field_info[field])) {
+		// Don't overwrite nulls, must remain 0.
+		continue;
+	    }
 	    int base_field = type.rep.pack_other_relative[j].base_field_num;
 	    int field_offset = type.rep.field_info[field].offset;
 	    DEBUG_INVARIANT(field_offset < type.rep.fixed_record_size, "bad");
@@ -530,6 +659,11 @@ Extent::packData(Extent::ByteArray &into,
 	// pack self relative ...
 	for(unsigned int j=0;j<psr_copy.size();++j) {
 	    unsigned field = psr_copy[j].field_num;
+	    if (null_compact && compactIsNull(fixed_record, 
+					      &type.rep.field_info[field])) {
+		// Don't overwrite nulls, must remain 0.
+		continue;
+	    }
 	    int offset = type.rep.field_info[field].offset;
 	    DEBUG_INVARIANT(offset < type.rep.fixed_record_size, "bad");
 	    switch(type.rep.field_info[field].type) 
@@ -655,6 +789,9 @@ Extent::packData(Extent::ByteArray &into,
     *l = (byte)type.name.size(); l += 1;
     *l = 0; l += 1;
     memcpy(l,type.name.data(),type.name.size()); l += type.name.size();
+    // TODO: verify that aligning speeds up the copy, I'm 90% sure
+    // that's why it was done here since we will always copy out the
+    // two parts when we read the extent back in.
     int align = (4 - ((l - into.begin()) % 4)) % 4;
     memset(l,0,align); l += align;
     memcpy(l,compressed_fixed->begin(),compressed_fixed->size()); l += compressed_fixed->size();
@@ -877,11 +1014,11 @@ Extent::uncompressBytes(byte *into, byte *from,
     int32 outsize = -1;
     if (compression_mode == compress_mode_none) {
 	outsize = fromsize;
-	memcpy(into, from, intosize);
+	memcpy(into, from, fromsize);
 #if DATASERIES_ENABLE_LZO
     } else if (compression_mode == compress_mode_lzo) {
 	lzo_uint orig_len = intosize;
-	int ret = lzo1x_decompress_safe((lzo_byte *)from,
+	int ret = lzo1x_decompress_safe((const lzo_byte *)from,
 					fromsize,
 					(lzo_byte *)into,
 					&orig_len, NULL);
@@ -893,9 +1030,8 @@ Extent::uncompressBytes(byte *into, byte *from,
 #if DATASERIES_ENABLE_ZLIB
     } else if (compression_mode == compress_mode_zlib) {
 	uLongf destlen = intosize;
-	int ret = uncompress((Bytef *)into,
-			     &destlen,(const Bytef *)from,
-			     fromsize);
+	int ret = uncompress((Bytef *)into, &destlen,
+			     (const Bytef *)from, fromsize);
 	INVARIANT(ret == Z_OK, "Error decompressing extent!");
 	outsize = destlen;
 #endif
@@ -912,7 +1048,7 @@ Extent::uncompressBytes(byte *into, byte *from,
 #endif
 #if DATASERIES_ENABLE_LZF
     } else if (compression_mode == compress_mode_lzf) {
-	unsigned int destlen = lzf_decompress((void *)from, fromsize,
+	unsigned int destlen = lzf_decompress((const void *)from, fromsize,
 					       (void *)into, intosize);
 	outsize = destlen;
 #endif
@@ -1010,6 +1146,9 @@ Extent::unpackData(Extent::ByteArray &from,
 			  compressed_fixed_mode,
 			  nrecords * type.rep.fixed_record_size,
 			  compressed_fixed_size);
+    if (type.getPackNullCompact() != ExtentType::CompactNo) {
+	uncompactNulls(fixeddata, fixed_uncompressed_size);
+    }
     INVARIANT(fixed_uncompressed_size == nrecords * type.rep.fixed_record_size, "internal");
     
     variabledata.resize(variable_size, false);

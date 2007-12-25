@@ -1007,12 +1007,13 @@ test_compactnull()
     cout << format("test_compactnull - start seed=%d\n") % rand.seed_used;
     ExtentTypeLibrary typelib;
 
-    // One real bool, 6 hidden ones
+    // One real bool, 7 hidden ones
     typelib.registerType("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
 			 "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
 			 "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
 			 "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" />\n"
-			 "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
+			 "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
 			 "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
 			 "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
 			 "</ExtentType>\n");
@@ -1021,12 +1022,13 @@ test_compactnull()
     Extent extent1(series1);
     series1.setExtent(extent1);
 
-    int nrecords = 100 + rand.randInt(1000);
+    int nrecords = 1000 + rand.randInt(10000);
     series1.createRecords(nrecords);
 
     BoolField f_bool(series1, "bool", Field::flag_nullable);
     ByteField f_byte(series1, "byte", Field::flag_nullable);
     Int32Field f_int32(series1, "int32", Field::flag_nullable);
+    Int32Field f_int32b(series1, "int32b", Field::flag_nullable);
     Int64Field f_int64(series1, "int64", Field::flag_nullable);
     DoubleField f_double(series1, "double", Field::flag_nullable);
     Variable32Field f_variable32(series1, "variable32", Field::flag_nullable);
@@ -1036,28 +1038,35 @@ test_compactnull()
     for(int i=0;i<nrecords * 2 + 5;i++) {
 	variablestuff[i] = (char)(i&0xFF);
     }
+    /// Test 1: all null
+    
     // Test filling in a value and then nulling.
-    for(int i=0;i<nrecords;i++) {
+    for(int i=1;i<=nrecords;i++) {
 	f_bool.set(true);
 	f_bool.setNull();
 	f_byte.set(i & 0xFF);
 	f_byte.setNull();
 	f_int32.set(i);
 	f_int32.setNull();
+	f_int32b.set(i*10);
+	f_int32b.setNull();
 	f_int64.set(i*7731);
 	f_int64.setNull();
 	f_double.set(i+10000);
 	f_double.setNull();
-	//	f_variable32.set(variablestuff.begin()+i,i+1);
+	f_variable32.set(variablestuff.begin()+i,i+1);
 	f_variable32.setNull();
 	++series1.pos;
-    }
+    }    
 
     Extent::ByteArray packed;
-    extent1.packData(packed,Extent::compress_none);
+    extent1.packData(packed, Extent::compress_none);
 
-    cout << format("%d rows, original bytes %d, packed %d\n")
+    cout << format("all null: %d rows, original bytes %d, packed %d\n")
 	% nrecords % extent1.extentsize() % packed.size();
+    uint32_t overhead = 48 + (4 - (nrecords % 4)) % 4;
+    INVARIANT(packed.size() == static_cast<size_t>(overhead + nrecords), 
+	      "size check failed");
 
     ExtentSeries series2(typelib, "Test::CompactNulls");
     Extent unpack1(series2);
@@ -1066,10 +1075,77 @@ test_compactnull()
     series1.setExtent(unpack1);
     for(int i=0;i<nrecords;i++) {
 	INVARIANT(f_bool.isNull() && f_byte.isNull() && f_int32.isNull()
-		  && f_int64.isNull() && f_double.isNull() && f_variable32.isNull(), "??");
+		  && f_int32b.isNull() && f_int64.isNull() 
+		  && f_double.isNull() && f_variable32.isNull(), "??");
+	++series1.pos;
+    }
+    
+    /// Test 2: random nulls
+
+    cout << "all null uncompact passed\n";
+
+    series1.setExtent(extent1);
+    // Fill at random...
+    for(int i=1;i<=nrecords;i++) {
+	f_bool.set(true);
+	if (rand.randInt(2)) f_bool.setNull();
+	f_byte.set(i & 0xFF);
+	if (rand.randInt(2)) f_byte.setNull();
+	f_int32.set(i);
+	if (rand.randInt(2)) f_int32.setNull();
+	f_int32b.set(rand.randInt());
+	if (rand.randInt(2)) f_int32b.setNull();
+	f_int64.set(i*7731);
+	if (rand.randInt(2)) f_int64.setNull();
+	f_double.set(i+10000);
+	if (rand.randInt(2)) f_double.setNull();
+	f_variable32.set(variablestuff.begin()+i,i+1);
+	if (rand.randInt(2)) f_variable32.setNull();
 	++series1.pos;
     }
 
+    packed.clear();
+    extent1.packData(packed, Extent::compress_lzf);
+    cout << format("random null: %d rows, original bytes %d, packed %d\n")
+	% nrecords % extent1.extentsize() % packed.size();
+
+    BoolField g_bool(series2, "bool", Field::flag_nullable);
+    ByteField g_byte(series2, "byte", Field::flag_nullable);
+    Int32Field g_int32(series2, "int32", Field::flag_nullable);
+    Int32Field g_int32b(series2, "int32b", Field::flag_nullable);
+    Int64Field g_int64(series2, "int64", Field::flag_nullable);
+    DoubleField g_double(series2, "double", Field::flag_nullable);
+    Variable32Field g_variable32(series2, "variable32", Field::flag_nullable);
+    unpack1.unpackData(packed, false);
+    series1.setExtent(extent1);
+    series2.setExtent(unpack1);
+    for(int i=0;i<nrecords;i++) {
+	INVARIANT((f_bool.isNull() && g_bool.isNull())
+		  || (!f_bool.isNull() && !g_bool.isNull() &&
+		      f_bool.val() == g_bool.val()), "bad");
+	INVARIANT((f_byte.isNull() && g_byte.isNull())
+		  || (!f_byte.isNull() && !g_byte.isNull() &&
+		      f_byte.val() == g_byte.val()), "bad");
+	INVARIANT((f_int32.isNull() && g_int32.isNull())
+		  || (!f_int32.isNull() && !g_int32.isNull() &&
+		      f_int32.val() == g_int32.val()), "bad");
+	INVARIANT((f_int32b.isNull() && g_int32b.isNull())
+		  || (!f_int32b.isNull() && !g_int32b.isNull() &&
+		      f_int32b.val() == g_int32b.val()), "bad");
+	INVARIANT((f_int64.isNull() && g_int64.isNull())
+		  || (!f_int64.isNull() && !g_int64.isNull() &&
+		      f_int64.val() == g_int64.val()), "bad");
+	INVARIANT((f_double.isNull() && g_double.isNull())
+		  || (!f_double.isNull() && !g_double.isNull() &&
+		      f_double.val() == g_double.val()), "bad");
+	INVARIANT((f_variable32.isNull() && g_variable32.isNull())
+		  || (!f_variable32.isNull() && !g_variable32.isNull() &&
+		      f_variable32.stringval() == g_variable32.stringval()), "bad");
+	++series1.pos;
+	++series2.pos;
+    }
+    cout << "random null passed\n";
+    
     cout << "test_compactnull - end\n";
 }
 
@@ -1077,7 +1153,6 @@ int
 main(int argc, char *argv[])
 {
     Extent::setReadChecksFromEnv(true);
-    //    test_compactnull();
 
     runCryptUtilChecks();
     test_byteflip();
@@ -1087,4 +1162,5 @@ main(int argc, char *argv[])
     test_nullsupport();
     test_varcompress();
     test_doublebase_nullable();
+    test_compactnull();
 }

@@ -38,3 +38,8 @@ Changes under consideration for DSV2:
     will set all nullable extents to null, which is a more sane
     default.  Tricky as the Field accessor would have to change or track
     the underlying version.
+  * Don't bother to pad to 8 bytes (or 4 bytes) unless we have a thing that
+    needs that alignment.  Right now if we had a column of all single
+    characters and bools, we'd still pad to an 8 byte boundary for each
+    row.
+

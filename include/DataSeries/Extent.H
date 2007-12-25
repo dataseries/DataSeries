@@ -262,7 +262,7 @@ private:
 
     bool compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f);
     void compactNulls(Extent::ByteArray &fixed_coded);
-
+    void uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size);
     friend class ExtentSeries;
     void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record
     void init();

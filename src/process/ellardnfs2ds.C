@@ -20,8 +20,24 @@
 using namespace std;
 using boost::format;
 
+/*
+Sizing experiments, turning on options is cumulative; the big win is
+  pack_unique, then relative time, then non-bool null compaction; options
+  turned on and off by changing pack into xack
+
+3990407 anon-home04-011119-2345.txt.gz -- original text file size
+
+5393860 anon-home04-011119-2345.txt.gz.ds -- basic
+3699644 anon-home04-011119-2345.txt.unique.gz.ds -- turn on pack_unique
+3511828 anon-home04-011119-2345.txt.unique.nonbool.gz.ds -- turn on non-bool null compaction
+3189196 anon-home04-011119-2345.txt.unique.nonbool.relt.gz.ds -- turn on self-relative packing of the time field
+3137304 anon-home04-011119-2345.txt.unique.nonbool.relt,mc.gz.ds -- turn on packing of ctime relative to mtime
+2914988 anon-home04-011119-2345.txt.unique.nonbool.relt,mc,rela.gz.ds -- turn on self-relative packing of atime
+2912424 anon-home04-011119-2345.txt.unique.nonbool.relt,mc,rela,relm.gz.ds -- turn on self-relative packing of mtime
+*/
+
 const string ellard_nfs_expanded_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\">\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" >\n"
   "  <field type=\"int64\" name=\"time\" units=\"microseconds\" epoch=\"unix\" pack_relative=\"time\" />\n"
   "  <field type=\"int32\" name=\"source_ip\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"
@@ -32,11 +48,11 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"byte\" name=\"nfs_version\" />\n"
   "  <field type=\"int32\" name=\"rpc_transaction_id\" />\n"
   "  <field type=\"byte\" name=\"rpc_function_id\" />\n"
-  "  <field type=\"variable32\" name=\"rpc_function\" />\n"
+  "  <field type=\"variable32\" name=\"rpc_function\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"return_value\" opt_nullable=\"yes\" comment=\"null for calls, 0 = ok\" />\n"
-  "  <field type=\"variable32\" name=\"fh\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"fh\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
   "  <field type=\"int32\" name=\"mode\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"name\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"name\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
   "  <field type=\"byte\" name=\"ftype\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"nlink\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"uid\" opt_nullable=\"yes\" />\n"
@@ -47,20 +63,23 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int32\" name=\"rdev2\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int64\" name=\"fsid\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int64\" name=\"fileid\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int64\" name=\"mtime\" opt_nullable=\"yes\" comment=\"-1 means set to server\" />\n"
-  "  <field type=\"int64\" name=\"atime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
+  // mtime and ctime are useful relative to each other, in a few simple tests,
+  // it doesn't matter which way they are relative.
+  "  <field type=\"int64\" name=\"mtime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
   "  <field type=\"int64\" name=\"ctime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
+  // packing this relative to either mtime or ctime makes things larger in a few simple tests.
+  "  <field type=\"int64\" name=\"atime\" opt_nullable=\"yes\" pack_relative=\"atime\" comment=\"-1 means set to server\" />\n"
   "  <field type=\"byte\" name=\"acc\" opt_nullable=\"yes\" comment=\"bitmas, bit 0 = read, bit 1 = lookup, bit 2 = modify, bit 3 = extend, bit 4 = delete, bit 5 = execute; ellard traces also have U, traslating that as bit 6\" />\n"
   "  <field type=\"int64\" name=\"off\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"count\" opt_nullable=\"yes\" />\n"
   "  <field type=\"bool\" name=\"eof\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"how\" opt_nullable=\"yes\" comment=\"for create, U = unchecked, G = guarded, X = exclusive; for stable U = unstable, D = data_sync, F = file_sync\" />\n"
-  "  <field type=\"variable32\" name=\"fh2\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"fh2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
   "  <field type=\"int64\" name=\"cookie\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"maxcnt\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"stable\" opt_nullable=\"yes\" comment=\"for create, U = unchecked, G = guarded, X = exclusive; for stable U = unstable, D = data_sync, F = file_sync\" />\n"
-  "  <field type=\"variable32\" name=\"file\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"name2\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"file\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"name2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
   "</ExtentType>\n"
   );
 
