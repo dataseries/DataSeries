@@ -69,6 +69,24 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int64\" name=\"ctime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
   // packing this relative to either mtime or ctime makes things larger in a few simple tests.
   "  <field type=\"int64\" name=\"atime\" opt_nullable=\"yes\" pack_relative=\"atime\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"byte\" name=\"ftype_dup\" opt_nullable=\"yes\" comment=\"all of the dup fields are the second occurance of an identically named field\" />\n"
+  "  <field type=\"int32\" name=\"mode_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"nlink_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"uid_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"gid_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"size_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"used_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"rdev_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"rdev2_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"fsid_dup\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"fileid_dup\" opt_nullable=\"yes\" />\n"
+
+  "  <field type=\"int64\" name=\"mtime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"int64\" name=\"ctime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" />\n"
+  // packing this relative to either mtime or ctime makes things larger in a few simple tests.
+  "  <field type=\"int64\" name=\"atime_dup\" opt_nullable=\"yes\" pack_relative=\"atime_dup\" comment=\"-1 means set to server\" />\n"
+
+
   "  <field type=\"byte\" name=\"acc\" opt_nullable=\"yes\" comment=\"bitmas, bit 0 = read, bit 1 = lookup, bit 2 = modify, bit 3 = extend, bit 4 = delete, bit 5 = execute; ellard traces also have U, traslating that as bit 6\" />\n"
   "  <field type=\"int64\" name=\"off\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"count\" opt_nullable=\"yes\" />\n"
@@ -134,6 +152,7 @@ public:
     virtual ~KVParserFH() { }
 
     virtual void parse(const string &val) {
+	INVARIANT(field.isNull(), "?");
 	field.set(hex2raw(val));
     }
     
@@ -153,7 +172,11 @@ public:
     virtual ~KVParserString() { }
 
     virtual void parse(const string &val) {
-	field.set(val);
+	INVARIANT(val.size() > 2, "?");
+	INVARIANT(val[0] == '"' && val[val.size()-1] == '"', "?");
+	
+	INVARIANT(field.isNull(), "?");
+	field.set(val.substr(1,val.size()-2));
     }
     
     virtual void setNull() {
@@ -165,103 +188,124 @@ public:
 
 class KVParserByte : public KVParser {
 public:
-    KVParserByte(const string &fieldname)
-	: field(series, fieldname, Field::flag_nullable)
+    KVParserByte(const string &fieldname, KVParserByte *_dup = NULL)
+	: field(series, fieldname, Field::flag_nullable), dup(_dup)
     { }
 
     virtual ~KVParserByte() { }
 
     virtual void parse(const string &val) {
-	uint32_t v = stringToUInt32(val);
-	INVARIANT(v < 256, "bad");
-	field.set(v);
-    }
-    
-    virtual void setNull() {
-	field.setNull();
-    }
-    
-    ByteField field;
-};
-
-class KVParserInt32 : public KVParser {
-public:
-    KVParserInt32(const string &fieldname)
-	: field(series, fieldname, Field::flag_nullable)
-    { }
-
-    virtual ~KVParserInt32() { }
-
-    virtual void parse(const string &val) {
-	field.set(stringToUInt32(val));
-    }
-    
-    virtual void setNull() {
-	field.setNull();
-    }
-    
-    Int32Field field;
-};
-
-class KVParserHexInt32 : public KVParser {
-public:
-    KVParserHexInt32(const string &fieldname)
-	: field(series, fieldname, Field::flag_nullable)
-    { }
-
-    virtual ~KVParserHexInt32() { }
-
-    virtual void parse(const string &val) {
-	field.set(stringToUInt32(val, 16));
-    }
-    
-    virtual void setNull() {
-	field.setNull();
-    }
-    
-    Int32Field field;
-};
-
-class KVParserHexInt64 : public KVParser {
-public:
-    KVParserHexInt64(const string &fieldname)
-	: field(series, fieldname, Field::flag_nullable)
-    { }
-
-    virtual ~KVParserHexInt64() { }
-
-    virtual void parse(const string &val) {
-	field.set(stringToUInt64(val, 16));
-    }
-    
-    virtual void setNull() {
-	field.setNull();
-    }
-    
-    Int64Field field;
-};
-
-class KVParserTime : public KVParser {
-public:
-    KVParserTime(const string &fieldname)
-	: field(series, fieldname, Field::flag_nullable)
-    { }
-
-    virtual ~KVParserTime() { }
-
-    virtual void parse(const string &val) {
-	if (val == "SERVER") {
-	    field.set(-1);
+	if (field.isNull()) {
+	    uint32_t v = stringToUInt32(val);
+	    INVARIANT(v < 256, "bad");
+	    field.set(v);
 	} else {
-	    field.set(parseTime(val));
+	    INVARIANT(dup != NULL, 
+		      format("? %d %s") % nlines % field.getName());
+	    dup->parse(val);
 	}
     }
     
     virtual void setNull() {
 	field.setNull();
+	if (dup) {
+	    dup->setNull();
+	}
+    }
+    
+    ByteField field;
+    KVParserByte *dup;
+};
+
+class KVParserHexInt32 : public KVParser {
+public:
+    KVParserHexInt32(const string &fieldname, KVParserHexInt32 *_dup = NULL)
+	: field(series, fieldname, Field::flag_nullable), dup(_dup)
+    { }
+
+    virtual ~KVParserHexInt32() { }
+
+    virtual void parse(const string &val) {
+	if (field.isNull()) {
+	    field.set(stringToUInt32(val, 16));
+	} else {
+	    INVARIANT(dup != NULL, 
+		      format("? %d %s") % nlines % field.getName());
+	    dup->parse(val);
+	}
+    }
+    
+    virtual void setNull() {
+	field.setNull();
+	if (dup) {
+	    dup->setNull();
+	}
+    }
+    
+    Int32Field field;
+    KVParserHexInt32 *dup;
+};
+
+class KVParserHexInt64 : public KVParser {
+public:
+    KVParserHexInt64(const string &fieldname, KVParserHexInt64 *_dup = NULL)
+	: field(series, fieldname, Field::flag_nullable), dup(_dup)
+    { }
+
+    virtual ~KVParserHexInt64() { }
+
+    virtual void parse(const string &val) {
+	if (field.isNull()) {
+	    field.set(stringToUInt64(val, 16));
+	} else {
+	    INVARIANT(dup != NULL, 
+		      format("? %d %s") % nlines % field.getName());
+	    dup->parse(val);
+	}
+    }
+    
+    virtual void setNull() {
+	field.setNull();
+	if (dup) {
+	    dup->setNull();
+	}
     }
     
     Int64Field field;
+    KVParserHexInt64 *dup;
+};
+
+class KVParserTime : public KVParser {
+public:
+    KVParserTime(const string &fieldname, KVParserTime *_dup = NULL)
+	: field(series, fieldname, Field::flag_nullable), dup(_dup)
+    { }
+
+    virtual ~KVParserTime() { }
+
+    virtual void parse(const string &val) {
+	if (field.isNull()) {
+	    if (val == "SERVER") {
+		field.set(-1);
+	    } else {
+		field.set(parseTime(val));
+	    }
+	} else {
+	    INVARIANT(dup != NULL, 
+		      format("? %d %s") % nlines % field.getName());
+	    dup->parse(val);
+	}
+    }
+    
+    virtual void setNull() {
+	field.setNull();
+	if (dup) {
+	    dup->setNull();
+	}
+    }
+    
+    Int64Field field;
+    KVParserTime *dup;
 };
 
 class KVParserACC : public KVParser {
@@ -273,6 +317,7 @@ public:
     virtual ~KVParserACC() { }
 
     virtual void parse(const string &val) {
+	INVARIANT(field.isNull(), "?");
 	if (val == "L") {
 	    field.set(1 << 1);
 	} else if (val == "R") {
@@ -306,6 +351,7 @@ public:
     virtual ~KVParserBool() { }
 
     virtual void parse(const string &val) {
+	INVARIANT(field.isNull(), "?");
 	INVARIANT(val.size() == 1, "bad");
 	if (val[0] == '0') {
 	    field.set(false);
@@ -332,6 +378,7 @@ public:
     virtual ~KVParserHow() { }
 
     virtual void parse(const string &val) {
+	INVARIANT(field.isNull(), "?");
 	INVARIANT(val.size() == 1, "bad");
 	INVARIANT(val[0] == 'U' || val[0] == 'G' || val[0] == 'X' ||
 		  val[0] == 'D' || val[0] == 'F', "bad");
@@ -406,7 +453,7 @@ parseCommon(vector<string> &fields)
     parseCallReplyVersion(fields[4]);
 
     rpc_transaction_id.set(stringToUInt32(fields[5], 16));
-    rpc_function_id.set(stringToUInt32(fields[6]));
+    rpc_function_id.set(stringToUInt32(fields[6], 16));
     rpc_function.set(fields[7]);
 }
 
@@ -475,7 +522,7 @@ processLine(const string &buf)
 	if (fields[8] == "OK") {
 	    return_value.set(0);
 	} else {
-	    return_value.set(stringToInt32(fields[8]));
+	    return_value.set(stringToInt32(fields[8],16));
 	}
 	kvpairs = 9;
     }
@@ -509,21 +556,35 @@ void
 setupKVParsers()
 {
     kv_parsers["fh"] = new KVParserFH("fh");
-    kv_parsers["mode"] = new KVParserHexInt32("mode");
+    kv_parsers["mode"] = 
+	new KVParserHexInt32("mode", new KVParserHexInt32("mode_dup"));
     kv_parsers["name"] = new KVParserString("name");
-    kv_parsers["ftype"] = new KVParserByte("ftype");
-    kv_parsers["nlink"] = new KVParserInt32("nlink");
-    kv_parsers["uid"] = new KVParserHexInt32("uid");
-    kv_parsers["gid"] = new KVParserHexInt32("gid");
-    kv_parsers["size"] = new KVParserHexInt64("size");
-    kv_parsers["used"] = new KVParserHexInt64("used");
-    kv_parsers["rdev"] = new KVParserHexInt32("rdev");
-    kv_parsers["rdev2"] = new KVParserHexInt32("rdev2");
-    kv_parsers["fsid"] = new KVParserHexInt64("fsid");
-    kv_parsers["fileid"] = new KVParserHexInt64("fileid");
-    kv_parsers["atime"] = new KVParserTime("atime");
-    kv_parsers["mtime"] = new KVParserTime("mtime");
-    kv_parsers["ctime"] = new KVParserTime("ctime");
+    kv_parsers["ftype"] = new KVParserByte("ftype", 
+					   new KVParserByte("ftype_dup"));
+    kv_parsers["nlink"] = 
+	new KVParserHexInt32("nlink", new KVParserHexInt32("nlink_dup"));
+    kv_parsers["uid"] = 
+	new KVParserHexInt32("uid", new KVParserHexInt32("uid_dup"));
+    kv_parsers["gid"] = 
+	new KVParserHexInt32("gid", new KVParserHexInt32("gid_dup"));
+    kv_parsers["size"] = 
+	new KVParserHexInt64("size", new KVParserHexInt64("size_dup"));
+    kv_parsers["used"] = 
+	new KVParserHexInt64("used", new KVParserHexInt64("used_dup"));
+    kv_parsers["rdev"] = 
+	new KVParserHexInt32("rdev", new KVParserHexInt32("rdev_dup"));
+    kv_parsers["rdev2"] = 
+	new KVParserHexInt32("rdev2", new KVParserHexInt32("rdev2_dup"));
+    kv_parsers["fsid"] = 
+	new KVParserHexInt64("fsid", new KVParserHexInt64("fsid_dup"));
+    kv_parsers["fileid"] = 
+	new KVParserHexInt64("fileid", new KVParserHexInt64("fileid_dup"));
+    kv_parsers["atime"] = 
+	new KVParserTime("atime", new KVParserTime("atime_dup"));
+    kv_parsers["mtime"] = 
+	new KVParserTime("mtime", new KVParserTime("mtime_dup"));
+    kv_parsers["ctime"] = 
+	new KVParserTime("ctime", new KVParserTime("ctime_dup"));
     kv_parsers["acc"] = new KVParserACC("acc");
     kv_parsers["off"] = new KVParserHexInt64("off");
     kv_parsers["count"] = new KVParserHexInt32("count");

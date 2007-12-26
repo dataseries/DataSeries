@@ -1212,6 +1212,7 @@ Extent::unpackData(Extent::ByteArray &from,
     const size_t type_pack_self_relative_size = psr_copy.size();
     const size_t type_pack_other_relative_size 
 	= type.rep.pack_other_relative.size();
+    const bool null_compact = type.getPackNullCompact() != ExtentType::CompactNo;
     for(ExtentSeries::iterator pos(this); pos.morerecords(); ++pos) {
 	++record_count;
 	if (fix_endianness) {
@@ -1265,6 +1266,11 @@ Extent::unpackData(Extent::ByteArray &from,
 	// unpack self-relative fields ...
 	for(unsigned int j=0;j<type_pack_self_relative_size;++j) {
 	    unsigned field = psr_copy[j].field_num;
+	    if (null_compact && compactIsNull(pos.record_start(),
+					      &type.rep.field_info[field])) {
+		// Don't overwrite nulls, must remain 0 to unpack properly.
+		continue;
+	    }
 	    int offset = type.rep.field_info[field].offset;
 	    switch(type.rep.field_info[field].type) 
 		{
@@ -1306,6 +1312,11 @@ Extent::unpackData(Extent::ByteArray &from,
 	    const ExtentType::pack_other_relativeT &v 
 		= type.rep.pack_other_relative[j];
 	    int field = v.field_num;
+	    if (null_compact && compactIsNull(pos.record_start(), 
+					      &type.rep.field_info[field])) {
+		// Don't overwrite nulls, must remain 0 to unpack properly.
+		continue;
+	    }
 	    int base_field = v.base_field_num;
 	    int field_offset = type.rep.field_info[field].offset;
 	    byte *base_ptr = pos.record_start()

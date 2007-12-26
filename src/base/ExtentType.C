@@ -283,7 +283,7 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.field_info.push_back(info);
 	ret.visible_fields.push_back(ret.field_info.size()-1);
 	if (nullable) {
-	    DEBUG_INVARIANT(info.null_fieldnum == ret.field_info.size(), "?");
+	    DEBUG_INVARIANT(info.null_fieldnum == static_cast<int>(ret.field_info.size()), "?");
 			    
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
@@ -626,7 +626,7 @@ ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
 	    if (prefixequal(i->first,str_DataSeries)) {
 		continue;
 	    }
-	    INVARIANT(t != NULL, 
+	    INVARIANT(t == NULL, 
 		      boost::format("Invalid getTypeMatch, '*' matches both '%s' and '%s'")
 		      % t->getName() % i->first);
 	    t = i->second;

@@ -29,6 +29,9 @@ die "Usage: $0 [-p | --prefix <typename>=<varprefix>] [--ds2txt=executable]
 
 expandOutputForm();
 
+my $class = "form_${output_form}";
+my $obj = new $class();
+
 my %type2field = ( 'bool' => 'BoolField',
 		   'byte' => 'ByteField',
 		   'int32' => 'Int32Field',
@@ -36,10 +39,10 @@ my %type2field = ( 'bool' => 'BoolField',
 		   'double' => 'DoubleField',
 		   'variable32' => 'Variable32Field' );
 
+$obj->start();
 if (@ARGV == 0) {
     print STDERR "reading from stdin, expecting C++ or text\n";
     readFH(*STDIN);
-    finishOutput();
 } else {
     foreach my $file (@ARGV) {
 	my $fh = new FileHandle $file
@@ -56,8 +59,8 @@ if (@ARGV == 0) {
 	readFH($fh);
 	$fh->close();
     }
-    finishOutput();
 }
+$obj->finish();
 
 sub readFH {
     my($fh) = @_;
@@ -108,15 +111,6 @@ sub parseFHText {
     xml2Cxx(join('', @data));
 }
 
-sub startOutput {
-}
-
-sub finishOutput {
-    if ($output_form eq 'dsmodule') {
-	finishDSModuleOutput();
-    }
-}
-
 sub xml2Cxx {
     my($data) = @_;
 
@@ -132,28 +126,80 @@ sub xml2Cxx {
     my $version = $tree->{version} || '';
 
     my @fields = $tree->get_fields();
-    if ($output_form eq 'basic') {
-	basicOutput($typename, $ns, $version, @fields);
-    } elsif ($output_form eq 'rowanalysismodule') {
-	rowAnalysisModuleOutput($typename, $ns, $version, @fields);
-    } elsif ($output_form eq 'dsmodule') {
-	dsModuleOutput($typename, $ns, $version, @fields);
-    } else {
-	die "internal error '$output_form'";
-    }
+    $obj->output($typename, $ns, $version, @fields);
+
     print Dumper @fields 
 	if 0;
 }
 
-sub basicOutput {
-    my ($typename,$ns,$version,@fields) = @_;
+sub cxxSafeName {
+    local $_ = $_[0];
+
+    s/[^\w]/_/go;
+    $_ = "_$_" if /^[0-9]/o;
+    return $_;
+}
+
+sub fieldArgs {
+    my($field) = @_;
+
+    my @ret = qq{"$field->{name}"};
+    if (defined $field->{opt_nullable} && $field->{opt_nullable} eq 'yes') {
+	push(@ret, "Field::flag_nullable");
+    }
+    return join(", ", @ret);
+}
+
+sub expandOutputForm {
+    my $out;
+
+    foreach my $output (@outputs) {
+	next unless substr($output, 0, length $output_form) eq $output_form;
+	die "both $output and $out match $output_form"
+	    if defined $out;
+	$out = $output;
+    }
+    die "no output form matches $output_form; available forms: " . join(", ", @outputs)
+	unless defined $out;
+    $output_form = $out;
+}
+
+package ExtentType::ExtentType;
+use strict;
+
+sub get_fields {
+    my($this) = @_;
+
+    my @ret;
+
+    foreach $_ (@{$this->{Kids}}) {
+	push(@ret, $_) if $_->isa('ExtentType::field');
+    }
+    return @ret;
+}
+
+package form_basic;
+use strict;
+
+sub new {
+    return bless {}, $_[0];
+}
+
+sub start {
+}
+
+sub finish {
+}
+
+sub output {
+    my ($this, $typename, $ns, $version, @fields) = @_;
 
     print "    // fields for $typename (ns = $ns, version = $version)\n";
     my $prefix = '';
     $prefix = "$prefixes{$typename}_" if defined $prefixes{$typename};
     foreach my $field (@fields) {
 	my $cxxtype = $type2field{$field->{type}};
-	my $name = cxxSafeName($field->{name});
+	my $name = ::cxxSafeName($field->{name});
 	die "don't recognize type $field->{type}" 
 	    unless defined $cxxtype;
 	print "    $cxxtype ${prefix}$name;\n";
@@ -161,30 +207,51 @@ sub basicOutput {
     
     print "    // initializers\n";
     foreach my $field (@fields) {
-	my $name = cxxSafeName($field->{name});
-	print "    ${prefix}$name(${prefix}series, \"$field->{name}\"),\n";
+	my $name = ::cxxSafeName($field->{name});
+	my $args = ::fieldArgs($field);
+	print "    ${prefix}$name(${prefix}series, $args),\n";
     }
     print "\n";
 }
 
-sub rowAnalysisModuleOutput {
-    my ($typename,$ns,$version,@fields) = @_;
+package form_rowanalysismodule;
+use strict;
 
-    $typename = cxxSafeName($typename);
+sub new {
+    return bless {}, $_[0];
+}
 
-    print "class ${typename}Analysis : public RowAnalysisModule {
+sub start {
+}
+
+sub finish {
+}
+
+sub output {
+    my ($this, $typename, $ns, $version, @fields) = @_;
+
+    my $safe_typename = ::cxxSafeName($typename);
+
+    print "/// analysis module/program for $typename (ns = $ns, version = $version)
+#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/SequenceModule.H>
+#include <DataSeries/TypeIndexModule.H>
+
+class ${safe_typename}Analysis : public RowAnalysisModule {
 public:
-    ${typename}Analysis(DataSeriesModule &source)
+    ${safe_typename}Analysis(DataSeriesModule &source)
         : RowAnalysisModule(source)";
     foreach my $field (@fields) {
-	my $name = cxxSafeName($field->{name});
-	print qq{,\n        $name(series, "$field->{name}")};
+	my $name = ::cxxSafeName($field->{name});
+	my $args = ::fieldArgs($field);
+	print qq{,\n        $name(series, $args)};
     }
     print "
     {
     }
 
-    virtual ~${typename}Analysis() { }
+    virtual ~${safe_typename}Analysis() { }
 
     virtual void processRow() {
         // Here you put your code for dealing with each row, using the fields
@@ -201,35 +268,50 @@ private:
 	my $cxxtype = $type2field{$field->{type}};
 	die "don't recognize type $field->{type}" 
 	    unless defined $cxxtype;
-	my $name = cxxSafeName($field->{name});
+	my $name = ::cxxSafeName($field->{name});
 	print "    $cxxtype $name;\n";
     }
-    print "};\n\n";
-}
+    print "};\n";
+    print <<"END_OF_MAIN";
 
-sub dsModuleOutput {
-    my ($typename,$ns,$version,@fields) = @_;
+int
+main(int argc, char *argv[]) 
+{
+    TypeIndexModule source("$typename");
+    PrefetchBufferModule *prefetch
+	= new PrefetchBufferModule(source, 64*1024*1024);
 
-    push(@DSModule::possible_types, $typename);
-    return unless defined $prefixes{$typename};
-    my $prefix = $prefixes{$typename};
+    INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
+	      boost::format("Usage: %s <file...>\\n") % argv[0]);
 
-    push(@DSModule::prefixes,$prefix);
-
-    foreach my $field (@fields) {
-	my $name = cxxSafeName($field->{name});
-	my $cxxtype = $type2field{$field->{type}};
-	die "don't recognize type $field->{type}" 
-	    unless defined $cxxtype;
-
-	push(@DSModule::init_fields,
-	     qq!${prefix}_$name(${prefix}_series, "$field->{name}")!);
-	push(@DSModule::declare_fields,
-	     qq!$cxxtype ${prefix}_$name;!);
+    for(int i = 1; i < argc; ++i) {
+	source.addSource(argv[i]);
     }
+
+    SequenceModule seq(prefetch);
+    
+    seq.addModule(new ${safe_typename}Analysis(seq.tail()));
+    
+    seq.getAndDelete();
+    RowAnalysisModule::printAllResults(seq);
+    return 0;
 }
 
-sub finishDSModuleOutput {
+
+END_OF_MAIN
+}
+
+package form_dsmodule;
+use strict;
+
+sub new {
+    return bless {}, $_[0];
+}
+
+sub start {
+}
+
+sub finish {
     @DSModule::prefixes = sort @DSModule::prefixes;
 
     die "No prefixes were declared? Possible types include: "
@@ -272,37 +354,26 @@ public:
 ";
 }
 
-sub cxxSafeName {
-    local $_ = $_[0];
+sub output {
+    my ($this, $typename, $ns, $version, @fields) = @_;
 
-    s/[^\w]/_/go;
-    $_ = "_$_" if /^[0-9]/o;
-    return $_;
-}
+    push(@DSModule::possible_types, $typename);
+    return unless defined $prefixes{$typename};
+    my $prefix = $prefixes{$typename};
 
-sub expandOutputForm {
-    my $out;
+    push(@DSModule::prefixes,$prefix);
 
-    foreach my $output (@outputs) {
-	next unless substr($output, 0, length $output_form) eq $output_form;
-	die "both $output and $out match $output_form"
-	    if defined $out;
-	$out = $output;
+    foreach my $field (@fields) {
+	my $name = ::cxxSafeName($field->{name});
+	my $cxxtype = $type2field{$field->{type}};
+	die "don't recognize type $field->{type}" 
+	    unless defined $cxxtype;
+
+	my $args = ::fieldArgs($field);
+	push(@DSModule::init_fields,
+	     qq!${prefix}_$name(${prefix}_series, $args)!);
+	push(@DSModule::declare_fields,
+	     qq!$cxxtype ${prefix}_$name;!);
     }
-    die "no output form matches $output_form"
-	unless defined $out;
-    $output_form = $out;
 }
 
-package ExtentType::ExtentType;
-
-sub get_fields {
-    my($this) = @_;
-
-    my @ret;
-
-    foreach $_ (@{$this->{Kids}}) {
-	push(@ret, $_) if $_->isa('ExtentType::field');
-    }
-    return @ret;
-}

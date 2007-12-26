@@ -1011,7 +1011,7 @@ test_compactnull()
     typelib.registerType("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
 			 "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
 			 "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
-			 "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" />\n"
+			 "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
 			 "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
 			 "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
 			 "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
