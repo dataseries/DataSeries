@@ -49,38 +49,38 @@
     cluster_name(series, "cluster_name"),
     job_name_unpacked(series, "job_name_unpacked"),
     directory_path_unpacked(series, "directory_path_unpacked"),
-    directory_name_info_matched(series, "directory_name_info_matched"),
-    meta_id(series, "meta_id"),
-    production(series, "production"),
-    sequence(series, "sequence"),
-    shot(series, "shot"),
-    task(series, "task"),
-    object(series, "object"),
-    subtask(series, "subtask"),
-    jobname_username(series, "jobname_username"),
-    frames(series, "frames"),
-    start_frame(series, "start_frame"),
-    end_frame(series, "end_frame"),
-    nframes(series, "nframes"),
-    frame_step(series, "frame_step"),
-    job_parallel_limit(series, "job_parallel_limit"),
+    directory_name_info_matched(series, "directory_name_info_matched", Field::flag_nullable),
+    meta_id(series, "meta_id", Field::flag_nullable),
+    production(series, "production", Field::flag_nullable),
+    sequence(series, "sequence", Field::flag_nullable),
+    shot(series, "shot", Field::flag_nullable),
+    task(series, "task", Field::flag_nullable),
+    object(series, "object", Field::flag_nullable),
+    subtask(series, "subtask", Field::flag_nullable),
+    jobname_username(series, "jobname_username", Field::flag_nullable),
+    frames(series, "frames", Field::flag_nullable),
+    start_frame(series, "start_frame", Field::flag_nullable),
+    end_frame(series, "end_frame", Field::flag_nullable),
+    nframes(series, "nframes", Field::flag_nullable),
+    frame_step(series, "frame_step", Field::flag_nullable),
+    job_parallel_limit(series, "job_parallel_limit", Field::flag_nullable),
     command(series, "command"),
     command_path(series, "command_path"),
     command_name(series, "command_name"),
-    job_resolution(series, "job_resolution"),
-    job_frame(series, "job_frame"),
+    job_resolution(series, "job_resolution", Field::flag_nullable),
+    job_frame(series, "job_frame", Field::flag_nullable),
     created(series, "created"),
     job_id(series, "job_id"),
-    job_idx(series, "job_idx"),
+    job_idx(series, "job_idx", Field::flag_nullable),
     username(series, "username"),
     user_id(series, "user_id"),
     event_time(series, "event_time"),
     submit_time(series, "submit_time"),
-    req_start_time(series, "req_start_time"),
-    start_time(series, "start_time"),
-    end_time(series, "end_time"),
+    req_start_time(series, "req_start_time", Field::flag_nullable),
+    start_time(series, "start_time", Field::flag_nullable),
+    end_time(series, "end_time", Field::flag_nullable),
     queue(series, "queue"),
-    email(series, "email"),
+    email(series, "email", Field::flag_nullable),
     status(series, "status"),
     status_int(series, "status_int"),
     team(series, "team"),
@@ -88,10 +88,10 @@
     user_time(series, "user_time"),
     system_time(series, "system_time"),
     cpu_time(series, "cpu_time"),
-    max_memory(series, "max_memory"),
-    max_swap(series, "max_swap"),
-    exec_host(series, "exec_host"),
-    exec_host_group(series, "exec_host_group"),
+    max_memory(series, "max_memory", Field::flag_nullable),
+    max_swap(series, "max_swap", Field::flag_nullable),
+    exec_host(series, "exec_host", Field::flag_nullable),
+    exec_host_group(series, "exec_host_group", Field::flag_nullable),
 
     // fields for DataSeries: ExtentIndex (ns = , version = )
     Int64Field offset;
@@ -105,6 +105,12 @@
     // initializers
     xmltype(series, "xmltype"),
 
+/// analysis module/program for Batch::LSF::Grizzly (ns = ssd.hpl.hp.com, version = 1.0)
+#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/SequenceModule.H>
+#include <DataSeries/TypeIndexModule.H>
+
 class Batch__LSF__GrizzlyAnalysis : public RowAnalysisModule {
 public:
     Batch__LSF__GrizzlyAnalysis(DataSeriesModule &source)
@@ -112,38 +118,38 @@ public:
         cluster_name(series, "cluster_name"),
         job_name_unpacked(series, "job_name_unpacked"),
         directory_path_unpacked(series, "directory_path_unpacked"),
-        directory_name_info_matched(series, "directory_name_info_matched"),
-        meta_id(series, "meta_id"),
-        production(series, "production"),
-        sequence(series, "sequence"),
-        shot(series, "shot"),
-        task(series, "task"),
-        object(series, "object"),
-        subtask(series, "subtask"),
-        jobname_username(series, "jobname_username"),
-        frames(series, "frames"),
-        start_frame(series, "start_frame"),
-        end_frame(series, "end_frame"),
-        nframes(series, "nframes"),
-        frame_step(series, "frame_step"),
-        job_parallel_limit(series, "job_parallel_limit"),
+        directory_name_info_matched(series, "directory_name_info_matched", Field::flag_nullable),
+        meta_id(series, "meta_id", Field::flag_nullable),
+        production(series, "production", Field::flag_nullable),
+        sequence(series, "sequence", Field::flag_nullable),
+        shot(series, "shot", Field::flag_nullable),
+        task(series, "task", Field::flag_nullable),
+        object(series, "object", Field::flag_nullable),
+        subtask(series, "subtask", Field::flag_nullable),
+        jobname_username(series, "jobname_username", Field::flag_nullable),
+        frames(series, "frames", Field::flag_nullable),
+        start_frame(series, "start_frame", Field::flag_nullable),
+        end_frame(series, "end_frame", Field::flag_nullable),
+        nframes(series, "nframes", Field::flag_nullable),
+        frame_step(series, "frame_step", Field::flag_nullable),
+        job_parallel_limit(series, "job_parallel_limit", Field::flag_nullable),
         command(series, "command"),
         command_path(series, "command_path"),
         command_name(series, "command_name"),
-        job_resolution(series, "job_resolution"),
-        job_frame(series, "job_frame"),
+        job_resolution(series, "job_resolution", Field::flag_nullable),
+        job_frame(series, "job_frame", Field::flag_nullable),
         created(series, "created"),
         job_id(series, "job_id"),
-        job_idx(series, "job_idx"),
+        job_idx(series, "job_idx", Field::flag_nullable),
         username(series, "username"),
         user_id(series, "user_id"),
         event_time(series, "event_time"),
         submit_time(series, "submit_time"),
-        req_start_time(series, "req_start_time"),
-        start_time(series, "start_time"),
-        end_time(series, "end_time"),
+        req_start_time(series, "req_start_time", Field::flag_nullable),
+        start_time(series, "start_time", Field::flag_nullable),
+        end_time(series, "end_time", Field::flag_nullable),
         queue(series, "queue"),
-        email(series, "email"),
+        email(series, "email", Field::flag_nullable),
         status(series, "status"),
         status_int(series, "status_int"),
         team(series, "team"),
@@ -151,10 +157,10 @@ public:
         user_time(series, "user_time"),
         system_time(series, "system_time"),
         cpu_time(series, "cpu_time"),
-        max_memory(series, "max_memory"),
-        max_swap(series, "max_swap"),
-        exec_host(series, "exec_host"),
-        exec_host_group(series, "exec_host_group")
+        max_memory(series, "max_memory", Field::flag_nullable),
+        max_swap(series, "max_swap", Field::flag_nullable),
+        exec_host(series, "exec_host", Field::flag_nullable),
+        exec_host_group(series, "exec_host_group", Field::flag_nullable)
     {
     }
 
@@ -218,6 +224,36 @@ private:
     Variable32Field exec_host_group;
 };
 
+int
+main(int argc, char *argv[]) 
+{
+    TypeIndexModule source("Batch::LSF::Grizzly");
+    PrefetchBufferModule *prefetch
+	= new PrefetchBufferModule(source, 64*1024*1024);
+
+    INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
+	      boost::format("Usage: %s <file...>\n") % argv[0]);
+
+    for(int i = 1; i < argc; ++i) {
+	source.addSource(argv[i]);
+    }
+
+    SequenceModule seq(prefetch);
+    
+    seq.addModule(new Batch__LSF__GrizzlyAnalysis(seq.tail()));
+    
+    seq.getAndDelete();
+    RowAnalysisModule::printAllResults(seq);
+    return 0;
+}
+
+
+/// analysis module/program for DataSeries: ExtentIndex (ns = , version = )
+#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/SequenceModule.H>
+#include <DataSeries/TypeIndexModule.H>
+
 class DataSeries__ExtentIndexAnalysis : public RowAnalysisModule {
 public:
     DataSeries__ExtentIndexAnalysis(DataSeriesModule &source)
@@ -243,6 +279,36 @@ private:
     Variable32Field extenttype;
 };
 
+int
+main(int argc, char *argv[]) 
+{
+    TypeIndexModule source("DataSeries: ExtentIndex");
+    PrefetchBufferModule *prefetch
+	= new PrefetchBufferModule(source, 64*1024*1024);
+
+    INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
+	      boost::format("Usage: %s <file...>\n") % argv[0]);
+
+    for(int i = 1; i < argc; ++i) {
+	source.addSource(argv[i]);
+    }
+
+    SequenceModule seq(prefetch);
+    
+    seq.addModule(new DataSeries__ExtentIndexAnalysis(seq.tail()));
+    
+    seq.getAndDelete();
+    RowAnalysisModule::printAllResults(seq);
+    return 0;
+}
+
+
+/// analysis module/program for DataSeries: XmlType (ns = , version = )
+#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/SequenceModule.H>
+#include <DataSeries/TypeIndexModule.H>
+
 class DataSeries__XmlTypeAnalysis : public RowAnalysisModule {
 public:
     DataSeries__XmlTypeAnalysis(DataSeriesModule &source)
@@ -265,6 +331,30 @@ public:
 private:
     Variable32Field xmltype;
 };
+
+int
+main(int argc, char *argv[]) 
+{
+    TypeIndexModule source("DataSeries: XmlType");
+    PrefetchBufferModule *prefetch
+	= new PrefetchBufferModule(source, 64*1024*1024);
+
+    INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
+	      boost::format("Usage: %s <file...>\n") % argv[0]);
+
+    for(int i = 1; i < argc; ++i) {
+	source.addSource(argv[i]);
+    }
+
+    SequenceModule seq(prefetch);
+    
+    seq.addModule(new DataSeries__XmlTypeAnalysis(seq.tail()));
+    
+    seq.getAndDelete();
+    RowAnalysisModule::printAllResults(seq);
+    return 0;
+}
+
 
 class DSModule : public DataSeriesModule {
 public:
