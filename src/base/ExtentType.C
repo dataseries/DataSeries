@@ -309,6 +309,8 @@ ExtentType::parseXML(const string &xmldesc)
 	    ret.field_info[i].size = 1;
 	    ret.field_info[i].offset = byte_pos;
 	    ret.field_info[i].bitpos = bit_pos;
+	    DEBUG_INVARIANT(bit_pos < 8, "?");
+	    ret.field_info[i].bitmask = 1 << bit_pos;
 	    if (debug_packing) {
 		cout << boost::format("  field %s at position %d:%d\n")
 		    % ret.field_info[i].name % byte_pos % bit_pos;

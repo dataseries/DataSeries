@@ -149,13 +149,14 @@ public:
 	// size is byte size used in the fixed record, offset is only
 	// valid for bool fields.
 	int32 size, offset, bitpos; 
+	int bitmask; // (1 << bitpos)
 	bool unique;
 	int null_fieldnum;
 	double doublebase;
 	xmlNodePtr xmldesc;
 	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      unique(false), null_fieldnum(-1), doublebase(0), 
-		      xmldesc(NULL)
+		      bitmask(0), unique(false), null_fieldnum(-1), 
+		      doublebase(0), xmldesc(NULL)
 	{ }
     };
 

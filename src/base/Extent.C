@@ -279,34 +279,6 @@ public:
     }
 };
 
-static const bool debug_compact_is_null = false;
-bool
-Extent::compactIsNull(const byte *fixed_record, const ExtentType::fieldInfo *f)
-{
-    if (debug_compact_is_null) {
-	cout << format("compactIsNull(%s, %s) --> ") 
-	    % f->name 
-	    % hexstring(string((char *)(fixed_record + f->offset), f->size));
-    }
-    if (f->null_fieldnum == -1) {
-	if (debug_compact_is_null) cout << "not nullable\n";
-	return false;
-    }
-    DEBUG_INVARIANT(f->null_fieldnum >= 0 
-		    && static_cast<size_t>(f->null_fieldnum) < type.rep.field_info.size(), "?");
-    const ExtentType::fieldInfo &f_null(type.rep.field_info[f->null_fieldnum]);
-    DEBUG_INVARIANT(f_null.null_fieldnum == -1 
-		    && f_null.type == ExtentType::ft_bool, "?");
-    fixed_record += f_null.offset;
-    if (*fixed_record & (1 << f_null.bitpos)) {
-	if (debug_compact_is_null) cout << "true\n";
-	return true;
-    } else {
-	if (debug_compact_is_null) cout << "false\n";
-	return false;
-    }
-}
-
 static const bool debug_compact = false;
 void
 Extent::compactNulls(Extent::ByteArray &fixed_coded)
@@ -394,7 +366,8 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	INVARIANT(i == end, "internal");
     }
     size_t new_size = cur - into.begin();
-    INVARIANT(new_size <= fixed_coded.size(), format("internal %d > %d") % new_size % fixed_coded.size());
+    INVARIANT(new_size <= into.size(), 
+	      format("internal %d > %d") % new_size % into.size());
     if (debug_compact) {
 	cout << format("compacted nulls %d -> %d\n")
 	    % fixed_coded.size() % new_size;
@@ -427,6 +400,7 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
     byte *to = into.begin();
     size = into.size(); 
     INVARIANT(type.rep.bool_bytes > 0, "?");
+    vector<ExtentType::fieldInfo *>::const_iterator end = type.rep.sorted_nonbool_field_info.end();
     while(from < from_end) {
 	if (debug_compact) {
 	    cout << format("uncompact from@%d/%d to@%d row %d/%d\n")
@@ -441,7 +415,6 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 	from += type.rep.bool_bytes;
 
 	vector<ExtentType::fieldInfo *>::const_iterator i = type.rep.sorted_nonbool_field_info.begin();
-	vector<ExtentType::fieldInfo *>::const_iterator end = type.rep.sorted_nonbool_field_info.end();
 	// copy the bytes...
 	for(; i != end && (**i).size == 1; ++i) {
 	    DEBUG_INVARIANT((**i).type == ExtentType::ft_byte, "bad");

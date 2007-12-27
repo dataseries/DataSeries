@@ -261,7 +261,7 @@ ran.check-lsfdsanalysis: lsfdsanalysis
 	touch $@
 
 ran.check-dstypes2cxx: dstypes2cxx
-	perl ./dstypes2cxx --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
+	perl ./dstypes2cxx -o b --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >check.dstypes2cxx.txt
 	perl ./dstypes2cxx -o r --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >>check.dstypes2cxx.txt
 	perl ./dstypes2cxx -o d -p 'DataSeries: ExtentIndex'=dsextent --ds2txt=$(top_builddir)/src/ds2txt $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds >>check.dstypes2cxx.txt
 	cmp check.dstypes2cxx.txt $(top_srcdir)/check-data/check.dstypes2cxx.ref
