@@ -15,7 +15,7 @@ use Fcntl ':seek';
 my %prefixes;
 my $ds2txt = "@expanded_bindir@/ds2txt";
 my @outputs = qw(basic rowanalysismodule dsmodule);
-my $output_form = 'basic';
+my $output_form = 'rowanalysismodule';
 
 my $ret = GetOptions("p|prefix=s" => \%prefixes,
 		     "ds2txt=s" => \$ds2txt,

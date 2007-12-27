@@ -401,7 +401,7 @@ parseIPPort(const string &field, Int32Field &ip_field, Int32Field &port_field)
     INVARIANT(parts.size() == 2 && parts[1].size() == 4,
 	      format("error parsing line %d") % nlines);
 
-    ip_field.set(stringToUInt32(parts[0]));
+    ip_field.set(stringToUInt32(parts[0], 16));
     port_field.set(stringToUInt32(parts[1], 16));
 }
 

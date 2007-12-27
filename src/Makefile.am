@@ -82,7 +82,7 @@ dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
 
 # Converters
-bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs
+bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs 
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
@@ -90,10 +90,11 @@ ellardnfs2ds_SOURCES = process/ellardnfs2ds.C
 ds2ellardnfs_SOURCES = process/ds2ellardnfs.cpp
 
 # Type-specific processing
-bin_PROGRAMS += textindex indexnfscommon nfssubset
+bin_PROGRAMS += textindex indexnfscommon nfssubset ellardanalysis
 textindex_SOURCES = process/textindex.C
 indexnfscommon_SOURCES = process/indexnfscommon.C
 nfssubset_SOURCES = analysis/nfs/nfssubset.cpp
+ellardanalysis_SOURCES = process/ellardanalysis.cpp
 
 # Type specific analysis
 bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis
