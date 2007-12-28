@@ -298,8 +298,6 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 
     byte *cur = into.begin();
     INVARIANT(type.rep.bool_bytes > 0, "?");
-    vector<ExtentType::nullCompactInfo>::const_iterator end 
-	= type.rep.nonbool_compact_info.end();
     for(byte *fixed_record = fixed_coded.begin();
 	fixed_record != fixed_coded.end(); 
 	fixed_record += type.rep.fixed_record_size) {
@@ -320,10 +318,12 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	INVARIANT(cur + type.rep.fixed_record_size <= into.end(), "bad");
 	memcpy(cur, fixed_record, type.rep.bool_bytes);
 	cur += type.rep.bool_bytes;
-	vector<ExtentType::nullCompactInfo>::const_iterator i 
-	    = type.rep.nonbool_compact_info.begin();
+
+	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+	
 	// copy the bytes...
-	for(; i != end && i->size == 1; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size1.begin(); 
+	    i != type.rep.nonbool_compact_info_size1.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_byte, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
 		DEBUG_INVARIANT(*(fixed_record + i->offset) == 0, "?");
@@ -333,7 +333,8 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	    cur += 1;
 	}
 	// copy the 4 byte things
-	for(; i != end && i->size == 4; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size4.begin(); 
+	    i != type.rep.nonbool_compact_info_size4.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_int32 ||
 			    i->type == ExtentType::ft_variable32, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
@@ -350,7 +351,8 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 	    cur += 4;
 	}
 	// copy the 8 byte things
-	for(; i != end && i->size == 8; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size8.begin(); 
+	    i != type.rep.nonbool_compact_info_size8.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_int64 ||
 			    i->type == ExtentType::ft_double, "bad");
 	    if (compactIsNull(fixed_record, *i)) {
@@ -365,7 +367,6 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 		*reinterpret_cast<uint64_t *>(fixed_record + i->offset);
 	    cur += 8;
 	}
-	INVARIANT(i == end, "internal");
     }
     size_t new_size = cur - into.begin();
     INVARIANT(new_size <= into.size(), 
@@ -429,9 +430,11 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
     byte *to = into.begin();
     size = into.size(); 
     INVARIANT(type.rep.bool_bytes > 0, "?");
-    vector<ExtentType::nullCompactInfo>::const_iterator end 
-	= type.rep.nonbool_compact_info.end();
-    while(from < from_end) {
+    // If we want to not potentially seg fault on bad input, then we
+    // need to turn the from debug invariants into invariants and
+    // check that we aren't running off the end early.  The invariant
+    // at the end will catch it overall, so we still can't go "wrong"
+    while(from < from_end && to < into.end()) {
 	if (debug_compact) {
 	    cout << format("uncompact from@%d/%d to@%d row %d/%d\n")
 		% (from - fixed_coded.begin()) % (from_end - fixed_coded.begin())
@@ -439,25 +442,28 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 		% ((to - into.begin())/type.rep.fixed_record_size)
 		% (size / type.rep.fixed_record_size);
 	}
-	INVARIANT(to + type.rep.fixed_record_size <= into.end(), "internal");
-	INVARIANT(from + type.rep.bool_bytes <= from_end, "internal");
+	DEBUG_INVARIANT(to + type.rep.fixed_record_size <= into.end(), 
+			"internal");
+	DEBUG_INVARIANT(from + type.rep.bool_bytes <= from_end, "internal");
 	    
 	asm_memcpy(to, from, type.rep.bool_bytes);
 	from += type.rep.bool_bytes;
 
-	vector<ExtentType::nullCompactInfo>::const_iterator i 
-	    = type.rep.nonbool_compact_info.begin();
+	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
 	// copy the bytes...
-	for(; i != end && i->size == 1; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size1.begin(); 
+	    i != type.rep.nonbool_compact_info_size1.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_byte, "bad");
 	    if (compactIsNull(to, *i)) {
 		continue;
 	    }
+	    DEBUG_INVARIANT(from + 1 <= from_end, "internal");
 	    *(to + i->offset) = *from;
 	    from += 1;
 	}
 	// copy the 4 byte things
-	for(; i != end && i->size == 4; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size4.begin(); 
+	    i != type.rep.nonbool_compact_info_size4.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_int32 ||
 			    i->type == ExtentType::ft_variable32, "bad");
 	    if (compactIsNull(to, *i)) {
@@ -466,13 +472,14 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 	    for(; reinterpret_cast<size_t>(from) % 4 != 0; ++from) {
 		// align to 4 byte boundary
 	    }
-	    INVARIANT(from + 4 <= from_end, "internal");
+	    DEBUG_INVARIANT(from + 4 <= from_end, "internal");
 	    *reinterpret_cast<uint32_t *>(to + i->offset) = 
 		*reinterpret_cast<uint32_t *>(from);
 	    from += 4;
 	}
 	// copy the 8 byte things
-	for(; i != end && i->size == 8; ++i) {
+	for(nciiT i = type.rep.nonbool_compact_info_size8.begin(); 
+	    i != type.rep.nonbool_compact_info_size8.end(); ++i) {
 	    DEBUG_INVARIANT(i->type == ExtentType::ft_int64 ||
 			    i->type == ExtentType::ft_double, "bad");
 	    if (compactIsNull(to, *i)) {
@@ -481,13 +488,11 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 	    for(; reinterpret_cast<size_t>(from) % 8 != 0; ++from) {
 		// align to 8 byte boundary
 	    }
-	    INVARIANT(from + 8 <= from_end, "internal");
+	    DEBUG_INVARIANT(from + 8 <= from_end, "internal");
 	    *reinterpret_cast<uint64_t *>(to + i->offset) =
 		*reinterpret_cast<uint64_t *>(from);
-		
 	    from += 8;
 	}
-	INVARIANT(i == end, "internal");
 	to += type.rep.fixed_record_size;
     }
     INVARIANT(from == from_end && to == into.end(), "internal");
@@ -553,31 +558,29 @@ Extent::packData(Extent::ByteArray &into,
 	    // someone did relative packing we need it to unpack
 	    // properly.
 
-	    for(vector<ExtentType::nullCompactInfo>::const_iterator j = type.rep.nonbool_compact_info.begin();
-		j != type.rep.nonbool_compact_info.end(); ++j) {
+	    typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+	    for(nciiT j = type.rep.nonbool_compact_info_size1.begin(); 
+		j != type.rep.nonbool_compact_info_size1.end(); ++j) {
 		if (!compactIsNull(fixed_record, *j)) 
 		    continue;
-
 		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
-		switch(j->type) 
-		    {
-		    case ExtentType::ft_bool:
-			FATAL_ERROR("?");
-			break;
-		    case ExtentType::ft_byte:
-			*raw = 0;
-			break;
-		    case ExtentType::ft_int32:
-		    case ExtentType::ft_variable32:
-			*reinterpret_cast<int32_t *>(raw) = 0;
-			break;
-		    case ExtentType::ft_int64:
-		    case ExtentType::ft_double:
-			*reinterpret_cast<int64_t *>(raw) = 0;
-			break;
-		    default:
-			FATAL_ERROR("internal error");
-		    }
+		*raw = 0;
+	    }
+
+	    for(nciiT j = type.rep.nonbool_compact_info_size4.begin(); 
+		j != type.rep.nonbool_compact_info_size4.end(); ++j) {
+		if (!compactIsNull(fixed_record, *j)) 
+		    continue;
+		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+		*reinterpret_cast<int32_t *>(raw) = 0;
+	    }
+
+	    for(nciiT j = type.rep.nonbool_compact_info_size8.begin(); 
+		j != type.rep.nonbool_compact_info_size8.end(); ++j) {
+		if (!compactIsNull(fixed_record, *j)) 
+		    continue;
+		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+		*reinterpret_cast<int64_t *>(raw) = 0;
 	    }
 	}
 

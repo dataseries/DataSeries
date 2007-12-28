@@ -225,7 +225,8 @@ private:
 	// field_info (which may have hidden fields)
 	std::vector<int> visible_fields; 
 	std::vector<fieldInfo> field_info;
-	std::vector<nullCompactInfo> nonbool_compact_info; 
+	std::vector<nullCompactInfo> nonbool_compact_info_size1,
+	    nonbool_compact_info_size4, nonbool_compact_info_size8; 
 	int bool_bytes;
 	std::vector<int32> variable32_field_columns;
 	
@@ -237,6 +238,7 @@ private:
 	unsigned major_version, minor_version;
 	std::string type_namespace;
 	PackNullCompact pack_null_compact;
+	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
     };
     
     static int getColumnNumber(const ParsedRepresentation &rep,

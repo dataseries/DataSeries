@@ -54,6 +54,18 @@ struct NonBoolCompactByPosition {
     }
 };
 
+void
+ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci)
+{
+    sort(nci.begin(), nci.end(), NonBoolCompactByPosition());
+
+    for(vector<nullCompactInfo>::iterator i = nci.begin();
+	i != nci.end(); ++i) {
+	INVARIANT(i->offset == field_info[i->field_num].offset, "?");
+	field_info[i->field_num].null_compact_info = &*i;
+    }
+}
+
 ExtentType::ParsedRepresentation
 ExtentType::parseXML(const string &xmldesc)
 {
@@ -409,20 +421,27 @@ ExtentType::parseXML(const string &xmldesc)
 	    n.null_offset = null_field.offset;
 	    n.null_bitmask = 1 << null_field.bitpos;
 	}
-	ret.nonbool_compact_info.push_back(n);
+	switch(n.type)
+	    {
+	    case ft_byte:
+		ret.nonbool_compact_info_size1.push_back(n);
+		break;
+	    case ft_int32: case ft_variable32:
+		ret.nonbool_compact_info_size4.push_back(n);
+		break;
+	    case ft_int64: case ft_double:
+		ret.nonbool_compact_info_size8.push_back(n);
+		break;
+	    default: FATAL_ERROR("?");
+	    }
     }
 
     INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
 	      "should not enable null compaction with no nullable fields");
-    sort(ret.nonbool_compact_info.begin(), 
-	 ret.nonbool_compact_info.end(), 
-	 NonBoolCompactByPosition());
 
-    for(vector<nullCompactInfo>::iterator i = ret.nonbool_compact_info.begin();
-	i != ret.nonbool_compact_info.end(); ++i) {
-	INVARIANT(i->offset == ret.field_info[i->field_num].offset, "?");
-	ret.field_info[i->field_num].null_compact_info = &*i;
-    }
+    ret.sortAssignNCI(ret.nonbool_compact_info_size1);
+    ret.sortAssignNCI(ret.nonbool_compact_info_size4);
+    ret.sortAssignNCI(ret.nonbool_compact_info_size8);
 
     return ret;
 }
