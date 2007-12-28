@@ -143,20 +143,32 @@ public:
     }
     const std::string &getNamespace() const { return rep.type_namespace; }
 
+    struct fieldInfo;
+    struct nullCompactInfo {
+	fieldType type;
+	uint32_t field_num;
+	int32 size, offset; // The nullable data
+	int32 null_offset;
+	int null_bitmask;
+	nullCompactInfo() : type(ft_unknown), field_num(0), 
+			    size(0), offset(0), 
+			    null_offset(0), null_bitmask(0) { }
+    };
+
     struct fieldInfo {
 	std::string name;
 	fieldType type;
-	// size is byte size used in the fixed record, offset is only
+	// size is byte size used in the fixed record, bitpos is only
 	// valid for bool fields.
 	int32 size, offset, bitpos; 
-	int bitmask; // (1 << bitpos)
-	bool unique;
 	int null_fieldnum;
+	bool unique;
+	nullCompactInfo *null_compact_info;
 	double doublebase;
 	xmlNodePtr xmldesc;
 	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      bitmask(0), unique(false), null_fieldnum(-1), 
-		      doublebase(0), xmldesc(NULL)
+		      null_fieldnum(-1), unique(false), 
+		      null_compact_info(NULL), doublebase(0), xmldesc(NULL)
 	{ }
     };
 
@@ -213,7 +225,7 @@ private:
 	// field_info (which may have hidden fields)
 	std::vector<int> visible_fields; 
 	std::vector<fieldInfo> field_info;
-	std::vector<fieldInfo *> sorted_nonbool_field_info; 
+	std::vector<nullCompactInfo> nonbool_compact_info; 
 	int bool_bytes;
 	std::vector<int32> variable32_field_columns;
 	

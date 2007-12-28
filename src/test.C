@@ -1122,7 +1122,10 @@ test_compactnull()
     for(int i=0;i<nrecords;i++) {
 	INVARIANT((f_bool.isNull() && g_bool.isNull())
 		  || (!f_bool.isNull() && !g_bool.isNull() &&
-		      f_bool.val() == g_bool.val()), "bad");
+		      f_bool.val() == g_bool.val()), 
+		  format("bad@%d %d %d/%d %d") 
+		  % i % f_bool.isNull() % g_bool.isNull()
+		  % f_bool.val() % g_bool.val());
 	INVARIANT((f_byte.isNull() && g_byte.isNull())
 		  || (!f_byte.isNull() && !g_byte.isNull() &&
 		      f_byte.val() == g_byte.val()), "bad");

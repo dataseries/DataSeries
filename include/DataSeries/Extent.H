@@ -261,19 +261,9 @@ private:
 				 const bool need_bitflip);
 
     bool compactIsNull(const byte *fixed_record, 
-		       const ExtentType::fieldInfo *f) {
-	if (f->null_fieldnum == -1) {
-	    return false;
-	}
-	DEBUG_INVARIANT(f->null_fieldnum >= 0 
-			&& static_cast<size_t>(f->null_fieldnum) 
-			   < type.rep.field_info.size(), "?");
-	const ExtentType::fieldInfo 
-	    &f_null(type.rep.field_info[f->null_fieldnum]);
-	DEBUG_INVARIANT(f_null.null_fieldnum == -1 
-			&& f_null.type == ExtentType::ft_bool, "?");
-	fixed_record += f_null.offset;
-	if (*fixed_record & f_null.bitmask) {
+		       const ExtentType::nullCompactInfo &f) {
+	DEBUG_INVARIANT(f.null_bitmask != 0 || f.null_offset == 0, "?");
+	if (*(fixed_record + f.null_offset) & f.null_bitmask) {
 	    return true;
 	} else {
 	    return false;

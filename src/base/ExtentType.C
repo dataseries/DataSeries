@@ -47,11 +47,10 @@ parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
     }
 }
 
-struct FieldInfoByPosition {
-    bool operator()(const ExtentType::fieldInfo *a, 
-		    const ExtentType::fieldInfo *b) {
-	return a->offset < b->offset 
-	    || (a->offset == b->offset && a->bitpos < b->bitpos);
+struct NonBoolCompactByPosition {
+    bool operator()(const ExtentType::nullCompactInfo &a, 
+		    const ExtentType::nullCompactInfo &b) {
+	return a.offset < b.offset;
     }
 };
 
@@ -293,6 +292,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.bitpos = -1;
 	    info.unique = false;
 	    info.null_fieldnum = -1;
+	    info.null_compact_info = NULL;
 	    info.doublebase = 0;
 	    info.xmldesc = NULL;
 	    ret.field_info.push_back(info);
@@ -310,7 +310,6 @@ ExtentType::parseXML(const string &xmldesc)
 	    ret.field_info[i].offset = byte_pos;
 	    ret.field_info[i].bitpos = bit_pos;
 	    DEBUG_INVARIANT(bit_pos < 8, "?");
-	    ret.field_info[i].bitmask = 1 << bit_pos;
 	    if (debug_packing) {
 		cout << boost::format("  field %s at position %d:%d\n")
 		    % ret.field_info[i].name % byte_pos % bit_pos;
@@ -322,6 +321,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    }
 	} 
     }
+
     if (bit_pos > 0) {
 	byte_pos += 1;
     }
@@ -388,20 +388,42 @@ ExtentType::parseXML(const string &xmldesc)
 
     ret.bool_bytes = 0;
     for(unsigned i = 0; i < ret.field_info.size(); ++i) {
-	fieldInfo *j = &ret.field_info[i];
-	if (j->type == ft_bool) {
-	    if (j->offset + 1 > ret.bool_bytes) {
-		ret.bool_bytes = j->offset + 1;
+	fieldInfo &field(ret.field_info[i]);
+	if (field.type == ft_bool) {
+	    field.null_compact_info = NULL;
+	    if (field.offset + 1 > ret.bool_bytes) {
+		ret.bool_bytes = field.offset + 1;
 	    }
-	} else {
-	    ret.sorted_nonbool_field_info.push_back(j);
+	    continue;
+	} 
+	nullCompactInfo n;
+	n.type = field.type;
+	n.field_num = i;
+	n.size = field.size;
+	n.offset = field.offset;
+
+	if (field.null_fieldnum >= 0) {
+	    INVARIANT(static_cast<unsigned>(field.null_fieldnum) == i+1, "?");
+	    fieldInfo &null_field(ret.field_info[field.null_fieldnum]);
+	    INVARIANT(null_field.type == ft_bool, "?");
+	    n.null_offset = null_field.offset;
+	    n.null_bitmask = 1 << null_field.bitpos;
 	}
+	ret.nonbool_compact_info.push_back(n);
     }
+
     INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
 	      "should not enable null compaction with no nullable fields");
-    sort(ret.sorted_nonbool_field_info.begin(), 
-	 ret.sorted_nonbool_field_info.end(), 
-	 FieldInfoByPosition());
+    sort(ret.nonbool_compact_info.begin(), 
+	 ret.nonbool_compact_info.end(), 
+	 NonBoolCompactByPosition());
+
+    for(vector<nullCompactInfo>::iterator i = ret.nonbool_compact_info.begin();
+	i != ret.nonbool_compact_info.end(); ++i) {
+	INVARIANT(i->offset == ret.field_info[i->field_num].offset, "?");
+	ret.field_info[i->field_num].null_compact_info = &*i;
+    }
+
     return ret;
 }
 
@@ -490,7 +512,7 @@ ExtentType::getNullable(int column) const
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
-    return rep.field_info[column].null_fieldnum >= 0;
+    return rep.field_info[column].null_fieldnum > 0;
 }
 
 double
