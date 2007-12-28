@@ -419,23 +419,48 @@ return (to);
 #endif
 
 template<class T>
-ExtentType::byte *
+const ExtentType::byte *
 uncompactCopy(const vector<ExtentType::nullCompactInfo> &nci, 
-	      ExtentType::byte *to, ExtentType::byte *from)
+	      ExtentType::byte *to, const ExtentType::byte *from, 
+	      const ExtentType::byte *from_end)
 {
+    (void)from_end; // force "use" even in non-debug mode
+
+    // Split the loop so that we only do the alignment portion of the
+    // code at most once.
     typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
     // copy the n byte things
-    for(nciiT i = nci.begin(); i != nci.end(); ++i) {
-	DEBUG_INVARIANT(nci.size == sizeof(T), "internal");
+    nciiT i = nci.begin(); 
+    nciiT end = nci.end();
+    for(; i != end; ++i) {
+	DEBUG_INVARIANT(i->size == sizeof(T), "internal");
+	if (!compactIsNull(to, *i)) {
+	    size_t tmp = reinterpret_cast<size_t>(from);
+	    tmp += sizeof(T) - 1;
+	    tmp = tmp & ~(sizeof(T)-1);
+	    from = reinterpret_cast<const ExtentType::byte *>(tmp);
+
+	    goto copySome;
+	}
+    }
+    return from;
+
+ copySome:
+    
+    DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
+    *reinterpret_cast<T *>(to + i->offset) =
+	*reinterpret_cast<const T *>(from);
+    from += sizeof(T);
+    ++i;
+
+    for(; i != end; ++i) {
+	DEBUG_INVARIANT(i->size == sizeof(T), "internal");
 	if (compactIsNull(to, *i)) {
 	    continue;
 	}
-	for(; reinterpret_cast<size_t>(from) % sizeof(T) != 0; ++from) {
-	    // align to sizeof(T) byte boundary
-	}
 	DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
 	*reinterpret_cast<T *>(to + i->offset) =
-	    *reinterpret_cast<T *>(from);
+	    *reinterpret_cast<const T *>(from);
 	from += sizeof(T);
     }
     return from;
@@ -458,8 +483,8 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
     // we choose to not do it.  I guess if we found something that had
     // lots of nullable booleans it could become worth it.
 
-    byte *from = fixed_coded.begin();
-    byte *from_end = fixed_coded.begin() + size;
+    const byte *from = fixed_coded.begin();
+    const byte *from_end = fixed_coded.begin() + size;
     byte *to = into.begin();
     size = into.size(); 
     INVARIANT(type.rep.bool_bytes > 0, "?");
@@ -485,13 +510,13 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
 	// copy the bytes...
 	from = uncompactCopy<byte>(type.rep.nonbool_compact_info_size1, 
-				   to, from);
+				   to, from, from_end);
 
 	from = uncompactCopy<uint32_t>(type.rep.nonbool_compact_info_size4, 
-				       to, from);
+				       to, from, from_end);
 
 	from = uncompactCopy<uint64_t>(type.rep.nonbool_compact_info_size8, 
-				       to, from);
+				       to, from, from_end);
 
 	to += type.rep.fixed_record_size;
     }

@@ -23,7 +23,10 @@ using boost::format;
 /*
 Sizing experiments, turning on options is cumulative; the big win is
   pack_unique, then relative time, then non-bool null compaction; options
-  turned on and off by changing pack into xack
+  turned on and off by changing pack into xack; these experiments were
+  done before the _dup series of fields were added.  To replicate, remove the
+  _dup fields, remove the code that uses them, and turn off the invariant
+  that checks.
 
 3990407 anon-home04-011119-2345.txt.gz -- original text file size
 
