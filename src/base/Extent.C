@@ -279,6 +279,16 @@ public:
     }
 };
 
+static bool compactIsNull(const ExtentType::byte *fixed_record, 
+			  const ExtentType::nullCompactInfo &f) {
+    DEBUG_INVARIANT(f.null_bitmask != 0 || f.null_offset == 0, "?");
+    if (*(fixed_record + f.null_offset) & f.null_bitmask) {
+	return true;
+    } else {
+	return false;
+    }
+}
+
 static const bool debug_compact = false;
 void
 Extent::compactNulls(Extent::ByteArray &fixed_coded)
@@ -408,6 +418,29 @@ return (to);
 #define asm_memcpy(a,b,c) memcpy((a), (b), (c))
 #endif
 
+template<class T>
+ExtentType::byte *
+uncompactCopy(const vector<ExtentType::nullCompactInfo> &nci, 
+	      ExtentType::byte *to, ExtentType::byte *from)
+{
+    typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+    // copy the n byte things
+    for(nciiT i = nci.begin(); i != nci.end(); ++i) {
+	DEBUG_INVARIANT(nci.size == sizeof(T), "internal");
+	if (compactIsNull(to, *i)) {
+	    continue;
+	}
+	for(; reinterpret_cast<size_t>(from) % sizeof(T) != 0; ++from) {
+	    // align to sizeof(T) byte boundary
+	}
+	DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
+	*reinterpret_cast<T *>(to + i->offset) =
+	    *reinterpret_cast<T *>(from);
+	from += sizeof(T);
+    }
+    return from;
+}
+
 void
 Extent::uncompactNulls(Extent::ByteArray &fixed_coded, 
 		       int32_t &size)
@@ -451,48 +484,15 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
 
 	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
 	// copy the bytes...
-	for(nciiT i = type.rep.nonbool_compact_info_size1.begin(); 
-	    i != type.rep.nonbool_compact_info_size1.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_byte, "bad");
-	    if (compactIsNull(to, *i)) {
-		continue;
-	    }
-	    DEBUG_INVARIANT(from + 1 <= from_end, "internal");
-	    *(to + i->offset) = *from;
-	    from += 1;
-	}
-	// copy the 4 byte things
-	for(nciiT i = type.rep.nonbool_compact_info_size4.begin(); 
-	    i != type.rep.nonbool_compact_info_size4.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_int32 ||
-			    i->type == ExtentType::ft_variable32, "bad");
-	    if (compactIsNull(to, *i)) {
-		continue;
-	    }
-	    for(; reinterpret_cast<size_t>(from) % 4 != 0; ++from) {
-		// align to 4 byte boundary
-	    }
-	    DEBUG_INVARIANT(from + 4 <= from_end, "internal");
-	    *reinterpret_cast<uint32_t *>(to + i->offset) = 
-		*reinterpret_cast<uint32_t *>(from);
-	    from += 4;
-	}
-	// copy the 8 byte things
-	for(nciiT i = type.rep.nonbool_compact_info_size8.begin(); 
-	    i != type.rep.nonbool_compact_info_size8.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_int64 ||
-			    i->type == ExtentType::ft_double, "bad");
-	    if (compactIsNull(to, *i)) {
-		continue;
-	    }
-	    for(; reinterpret_cast<size_t>(from) % 8 != 0; ++from) {
-		// align to 8 byte boundary
-	    }
-	    DEBUG_INVARIANT(from + 8 <= from_end, "internal");
-	    *reinterpret_cast<uint64_t *>(to + i->offset) =
-		*reinterpret_cast<uint64_t *>(from);
-	    from += 8;
-	}
+	from = uncompactCopy<byte>(type.rep.nonbool_compact_info_size1, 
+				   to, from);
+
+	from = uncompactCopy<uint32_t>(type.rep.nonbool_compact_info_size4, 
+				       to, from);
+
+	from = uncompactCopy<uint64_t>(type.rep.nonbool_compact_info_size8, 
+				       to, from);
+
 	to += type.rep.fixed_record_size;
     }
     INVARIANT(from == from_end && to == into.end(), "internal");

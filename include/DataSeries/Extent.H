@@ -260,16 +260,6 @@ private:
 				 Extent::ByteArray &packeddata,
 				 const bool need_bitflip);
 
-    bool compactIsNull(const byte *fixed_record, 
-		       const ExtentType::nullCompactInfo &f) {
-	DEBUG_INVARIANT(f.null_bitmask != 0 || f.null_offset == 0, "?");
-	if (*(fixed_record + f.null_offset) & f.null_bitmask) {
-	    return true;
-	} else {
-	    return false;
-	}
-
-    }
     void compactNulls(Extent::ByteArray &fixed_coded);
     void uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size);
     friend class ExtentSeries;
