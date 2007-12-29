@@ -180,7 +180,7 @@ public:
     }
 
     virtual void processRow() {
-	cout << format("%s %d.%04x %d.%04x %c %c%d %x %x %s")
+	cout << format("%s %x.%04x %x.%04x %c %c%d %x %x %s")
 	    % timeConv(time.val()) % source_ip.val() % source_port.val()
 	    % dest_ip.val() % dest_port.val() 
 	    % (is_udp.val() ? 'U' : 'T')

@@ -18,7 +18,8 @@ sub new {
 	    $this->usage();
 	    exit(0);
 	} elsif (/^compress=(.+)$/o) {
-	    die "Already have a filter" if defined $this->{compress};
+	    die "Already have specified compression" 
+		if defined $this->{compress};
 	    $this->{compress} = $1;
         } elsif (/^minor=(.+)$/o) {
             die "Already have a new minor version" if defined $this->{new_minor};

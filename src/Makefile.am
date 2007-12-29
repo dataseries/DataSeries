@@ -109,7 +109,8 @@ nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
-	ran.check-lsfdsanalysis ran.check-nfsdsanalysis
+	ran.check-lsfdsanalysis ran.check-nfsdsanalysis \
+	ran.check-ellard
 
 ### Conditional things
 
@@ -277,6 +278,16 @@ ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
 	grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
 	cmp check-lsfdsplots/all/all.ps-nodate $(top_srcdir)/check-data/lsfdsplots.ps.ref
 	touch $@
+
+ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis
+	-rm ellard.ds ellard.ds.txt ellard-data.txt ellard-analysis.txt
+	./ellardnfs2ds $(top_srcdir)/check-data/ellard-anon-home04-011119-2345.subset.txt ellard.ds
+	ds2txt --skip-index ellard.ds >ellard.ds.txt
+	cmp ellard.ds.txt $(top_srcdir)/check-data/ellard.ds.txt.ref
+	./ds2ellardnfs ellard.ds >ellard-data.txt
+	cmp ellard-data.txt $(top_srcdir)/check-data/ellard-anon-home04-011119-2345.subset.txt 
+	./ellardanalysis ellard.ds >ellard-analysis.txt
+	cmp ellard-analysis.txt $(top_srcdir)/check-data/ellard-analysis.txt.ref
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat
