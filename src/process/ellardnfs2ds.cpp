@@ -40,7 +40,7 @@ Sizing experiments, turning on options is cumulative; the big win is
 */
 
 const string ellard_nfs_expanded_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" comment=\"see ellardnfs2ds.cpp:processLine for notes on how a few lines containing garbage were translated\" >\n"
   "  <field type=\"int64\" name=\"time\" units=\"microseconds\" epoch=\"unix\" pack_relative=\"time\" />\n"
   "  <field type=\"int32\" name=\"source_ip\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"
@@ -141,8 +141,9 @@ parseTime(const string &field)
     INVARIANT(timeparts.size() == 2 && timeparts[0].size() >= 9 &&
 	      timeparts[0].size() <= 10 
 	      && timeparts[1].size() == 6, 
-	      format("error parsing time '%s' in line %d") 
-	      % field % nlines);
+	      format("error parsing time '%s' (%d,%d,%d) in line %d") 
+	      % field % timeparts.size() % timeparts[0].size() 
+	      % timeparts[1].size() % nlines);
     return
 	static_cast<int64_t>(stringToUInt32(timeparts[0])) * 1000000 
 	+ stringToUInt32(timeparts[1]);
@@ -513,11 +514,21 @@ checkTailReply(vector<string> &fields, unsigned kvpairs)
 void
 processLine(const string &buf)
 {
-    outmodule->newRecord();
     vector<string> fields;
     boost::split(fields, buf, boost::is_any_of(" "));
     
+    if (fields[0] == "1004562602.021187" ||
+	fields[0] == "1004562602.021196") {
+	INVARIANT(fields[5] == "9d66f750", "?");
+	// These lines have garbage in them, the times have 7 digits
+	// in the microsecond field and the stable field is '?'; the
+	// count is also garbage as it is claiming we have written
+	// more than could be carried in a write request.
+	return;
+    }
+    outmodule->newRecord();
     parseCommon(fields);
+	
     unsigned kvpairs;
 
     if (is_call.val()) {
@@ -660,8 +671,3 @@ main(int argc,char *argv[])
     outds.close();
     return 0;
 }
-
-    
-    
-    
-
