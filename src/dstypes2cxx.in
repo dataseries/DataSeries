@@ -202,16 +202,9 @@ sub output {
 	my $name = ::cxxSafeName($field->{name});
 	die "don't recognize type $field->{type}" 
 	    unless defined $cxxtype;
-	print "    $cxxtype ${prefix}$name;\n";
-    }
-    
-    print "    // initializers\n";
-    foreach my $field (@fields) {
-	my $name = ::cxxSafeName($field->{name});
 	my $args = ::fieldArgs($field);
-	print "    ${prefix}$name(${prefix}series, $args),\n";
+	print "    $cxxtype ${prefix}$name(${prefix}series, $args);\n";
     }
-    print "\n";
 }
 
 package form_rowanalysismodule;

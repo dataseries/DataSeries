@@ -38,51 +38,14 @@ using namespace std;
 #error "Must compile with -D_LARGEFILE64_SOURCE"
 #endif
 
-static const string dataseries_type_xml = 
-  "<ExtentType name=\"DataSeries: XmlType\">\n"
-  "  <field type=\"variable32\" name=\"xmltype\" />\n"
-  "</ExtentType>\n";
-
-static ExtentType &global_dataseries_type(ExtentTypeLibrary::sharedExtentType(dataseries_type_xml));
-
-const string dataseries_type_index =
-  "<ExtentType name=\"DataSeries: ExtentIndex\">\n"
-  "  <field type=\"int64\" name=\"offset\" />\n"
-  "  <field type=\"variable32\" name=\"extenttype\" />\n"
-  "</ExtentType>\n";
-
-const string dataseries_type_index_v2 =
-  "<ExtentType name=\"DataSeries::ExtentIndex\" >\n"
-  "  <!-- next fields are necessary/useful for finding the extents that\n"
-  "       a program wants to process without having a separate index file -->\n"
-  "  <field type=\"int64\" name=\"offset\" />\n"
-  "  <field type=\"variable32\" name=\"extenttype\" />\n"
-  "  <field type=\"variable32\" name=\"namespace\" />\n"
-  "  <field type=\"variable32\" name=\"version\" />\n"
-  "  <!-- technically the next bits are in the header for each extent; \n"
-  "       this would allow for the possibility of reading the files without\n"
-  "       reading the index at the end, although this is not currently\n"
-  "       supported.  However, these end up being useful for figuring\n"
-  "       out properties of a given DS file without having to write\n"
-  "       a separate interface that can skitter through a file and extract\n"
-  "       all of this information. -->\n"
-  "  <field type=\"byte\" name=\"fixed_compress_mode\" />\n"
-  "  <field type=\"int32\" name=\"fixed_uncompressed_size\" />\n"
-  "  <field type=\"int32\" name=\"fixed_compressed_size\" />\n"
-  "  <field type=\"byte\" name=\"variable_compress_mode\" />\n"
-  "  <field type=\"int32\" name=\"variable_uncompressed_size\" />\n"
-  "  <field type=\"int32\" name=\"variable_compressed_size\" />\n"
-  "</ExtentType>\n";
-
-static ExtentType &global_dataseries_indextype(ExtentTypeLibrary::sharedExtentType(dataseries_type_index));
-
 DataSeriesSource::DataSeriesSource(const string &_filename)
     : filename(_filename), fd(-1), cur_offset(0)
 {
     reopenfile();
-    mylibrary.registerType(dataseries_type_xml);
-    mylibrary.registerType(dataseries_type_index);
-    INVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") == &global_dataseries_type, "internal");
+    mylibrary.registerType(ExtentType::getDataSeriesXMLType());
+    mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0());
+    INVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") 
+	      == &ExtentType::getDataSeriesXMLType(), "internal");
     Extent::ByteArray data;
     const int file_header_size = 2*4 + 4*8;
     data.resize(file_header_size);
@@ -122,8 +85,8 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     AssertAlways(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 		 ("Invalid file, must have a first extent\n"));
     Extent *e = new Extent(mylibrary,extentdata,need_bitflip);
-    AssertAlways(&e->type == &global_dataseries_type,
-		 ("Whoa, first extent must be the type defining extent\n"));
+    INVARIANT(&e->type == &ExtentType::getDataSeriesXMLType(),
+	      "First extent must be the type defining extent");
 
     ExtentSeries type_extent_series(e);
     Variable32Field typevar(type_extent_series,"xmltype");
@@ -190,8 +153,8 @@ DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     }
     if (compressedSize) *compressedSize = extentdata.size();
     Extent *ret = new Extent(mylibrary,extentdata,need_bitflip);
-    AssertAlways(&ret->type != &global_dataseries_type,
-		 ("Invalid to have a type extent after the first extent!\n"));
+    INVARIANT(&ret->type != &ExtentType::getDataSeriesXMLType(),
+	      "Invalid to have a type extent after the first extent.");
     return ret;
 }
 
@@ -228,7 +191,7 @@ int DataSeriesSink::compressor_count = -1;
 DataSeriesSink::DataSeriesSink(const string &filename,
 			       int _compression_modes,
 			       int _compression_level)
-    : index_series(global_dataseries_indextype),
+    : index_series(ExtentType::getDataSeriesIndexTypeV0()),
       index_extent(index_series),
       field_extentOffset(index_series,"offset"),
       field_extentType(index_series,"extenttype"),
@@ -240,8 +203,7 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       shutdown_workers(false)
 {
     stats.packed_size += 2*4 + 4*8;
-    AssertAlways(global_dataseries_type.name == "DataSeries: XmlType",
-		 ("internal error; c++ initializers didn't run?\n"));
+
     if (filename == "-") {
 	fd = fileno(stdout);
     } else {
@@ -392,7 +354,7 @@ void
 DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 {
     INVARIANT(!wrote_library, "Can only write extent library once");
-    ExtentSeries type_extent_series(global_dataseries_type);
+    ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
     Extent type_extent(type_extent_series);
 
     Variable32Field typevar(type_extent_series,"xmltype");

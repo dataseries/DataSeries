@@ -153,7 +153,10 @@ public:
 
     static const int compress_none = 0;
     static const int compress_lzo = 1;
+    // technically gz and zlib are different -- gz has a header, but
+    // everyone knows it as gz and it's the same compression algorithm
     static const int compress_zlib = 2;
+    static const int compress_gz = 2;
     static const int compress_bz2 = 4;
     static const int compress_lzf = 8;
     static const int compress_all = compress_bz2 | compress_zlib | compress_lzo | compress_lzf;

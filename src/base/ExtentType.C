@@ -28,6 +28,49 @@ static const bool debug_getcolnum = false;
 static const bool debug_xml_decode = false;
 static const bool debug_packing = false;
 
+static const string dataseries_xml_type_xml = 
+  "<ExtentType name=\"DataSeries: XmlType\">\n"
+  "  <field type=\"variable32\" name=\"xmltype\" />\n"
+  "</ExtentType>\n";
+
+const string dataseries_index_type_v0_xml =
+  "<ExtentType name=\"DataSeries: ExtentIndex\">\n"
+  "  <field type=\"int64\" name=\"offset\" />\n"
+  "  <field type=\"variable32\" name=\"extenttype\" />\n"
+  "</ExtentType>\n";
+
+// The following is here as we are working out what the next version
+// of the extent index should look like; I think we will be able to
+// get away with putting it into the xmltype index and hence be able 
+// to update this as we see fit.
+
+const string dataseries_index_type_v1_xml =
+  "<ExtentType name=\"DataSeries::ExtentIndex\" >\n"
+  "  <!-- next fields are necessary/useful for finding the extents that\n"
+  "       a program wants to process without having a separate index file -->\n"
+  "  <field type=\"int64\" name=\"offset\" pack_relative=\"offset\" />\n"
+  "  <field type=\"variable32\" name=\"extenttype\" pack_unique=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"namespace\" pack_unique=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"version\" pack_unique=\"yes\" />\n"
+// Technically the next bits are in the header for each extent; this
+// would allow for the possibility of reading the files without
+// reading the index at the end, although this is not currently
+// supported.  However, these end up being useful for figuring out
+// properties of a given DS file without having to write a separate
+// interface that can skitter through a file and extract all of this
+// information.
+  "  <field type=\"byte\" name=\"fixed_compress_mode\" />\n"
+  "  <field type=\"int32\" name=\"fixed_uncompressed_size\" />\n"
+  "  <field type=\"int32\" name=\"fixed_compressed_size\" />\n"
+  "  <field type=\"byte\" name=\"variable_compress_mode\" />\n"
+  "  <field type=\"int32\" name=\"variable_uncompressed_size\" />\n"
+  "  <field type=\"int32\" name=\"variable_compressed_size\" />\n"
+  "</ExtentType>\n";
+
+
+ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
+ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
+
 static bool
 parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 {
@@ -606,9 +649,24 @@ ExtentTypeLibrary::registerType(const string &xmldesc)
     return &type;
 }    
 
+void
+ExtentTypeLibrary::registerType(ExtentType &type)
+{
+    INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
+	      boost::format("Type %s already registered")
+	      % type.name);
+
+    name_to_type[type.name] = &type;
+}    
+
 ExtentType *
 ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
 {
+    if (name == ExtentType::getDataSeriesXMLType().getName()) {
+	return &ExtentType::getDataSeriesXMLType();
+    } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
+	return &ExtentType::getDataSeriesIndexTypeV0();
+    }
     if (null_ok) {
 	if (name_to_type.find(name) == name_to_type.end()) {
 	    return NULL;

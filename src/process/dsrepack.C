@@ -9,6 +9,60 @@
     Select subset of fields from a collection of traces, generate a new trace
 */
 
+/* 
+TODO: add the Makefile.am bits to turn this into a manpage during installation.
+pod2man dsrepack.C | sed 's/User Contributed Perl/DataSeries/' does the
+right thing.
+
+=pod
+
+=head1 NAME
+
+dsrepack - split or merge DataSeries files and change the compression types
+
+=head1 SYNOPSIS
+
+dsrepack [common-options] [--target-file-size=MiB] input-filename... 
+  output-filename
+
+=head1 DESCRIPTION
+
+In the simplest case, dsrepack takes the input files, and copies them
+to the output filename changing the extent size and compresion level
+as specified in the common options.  If max-file-size is set,
+output-filename is used as a base name, and the actual output names
+will be output-filename.##.ds, starting from 0.
+
+=head1 EXAMPLES
+
+  dsrepack --extent-size=131072 --compress-lzo cello97*ds all-cello97.ds
+
+  dsrepack --extent-size=67108864 --compress-bz2 --target-file-size=100 \
+     nettrace.000000-000499.ds -- nettrace.000000-000499.split
+
+
+=head1 OPTIONS
+
+All of the common options apply, see dataseries(7).
+
+=over 4
+
+=item B<--target-file-size=MiB>
+
+What is the target file size to be generated.  Each of the individual
+files will be about the target file size, but the vagaries of
+compression mean that the files will vary around the target file size.
+The last file may be arbitrarily small.  MiB can be specified as a
+double, so one could say 0.1 MiB, but it's not clear if that is
+useful.
+
+=head1 SEE ALSO
+
+dataseries(7), dsselect(1)
+
+=cut
+*/
+
 // TODO: use GeneralField/ExtentRecordCopy, we aren't changing the type so
 // it should be much faster.
 
@@ -148,60 +202,6 @@ uint64_t fileSize(const string &filename)
     return buf.st_size;
 }
 
-/* 
-TODO: add the Makefile.am bits to turn this into a manpage during installation.
-pod2man dsrepack.C | sed 's/User Contributed Perl/DataSeries/' does the
-right thin.
-
-=pod
-
-=head1 NAME
-
-dsrepack - split or merge DataSeries files and change the compression types
-
-=head1 SYNOPSIS
-
-dsrepack [common-options] [--target-file-size=MiB] input-filename... 
-  output-filename
-
-=head1 DESCRIPTION
-
-In the simplest case, dsrepack takes the input files, and copies them
-to the output filename changing the extent size and compresion level
-as specified in the common options.  If max-file-size is set,
-output-filename is used as a base name, and the actual output names
-will be output-filename.##.ds, starting from 0.
-
-=head1 EXAMPLES
-
-  dsrepack --extent-size=131072 --compress-lzo cello97*ds all-cello97.ds
-
-  dsrepack --extent-size=67108864 --compress-bz2 --target-file-size=100 \
-     nettrace.000000-000499.ds -- nettrace.000000-000499.split
-
-
-=head1 OPTIONS
-
-All of the common options apply, see dataseries(7).
-
-=over 4
-
-=item B<--target-file-size=MiB>
-
-What is the target file size to be generated.  Each of the individual
-files will be about the target file size, but the vagaries of
-compression mean that the files will vary around the target file size.
-The last file may be arbitrarily small.  MiB can be specified as a
-double, so one could say 0.1 MiB, but it's not clear if that is
-useful.
-
-=head1 SEE ALSO
-
-dataseries(7), dsselect(1)
-
-=cut
-*/
-
 void
 checkFileMissing(const std::string &filename)
 {
@@ -209,6 +209,58 @@ checkFileMissing(const std::string &filename)
     INVARIANT(stat(filename.c_str(), &buf) != 0, 
 	      boost::format("Refusing to overwrite existing file %s.\n")
 	      % filename);
+}
+
+const string dsrepack_info_type_xml(
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Info::DSRepack\" version=\"1.0\" >\n"
+  "  <field type=\"bool\" name=\"enable_bz2\" print_true=\"with_bz2\" print_false=\"no_bz2\" />\n"
+  "  <field type=\"bool\" name=\"enable_gz\" print_true=\"with_gz\" print_false=\"no_gz\" />\n"
+  "  <field type=\"bool\" name=\"enable_lzo\" print_true=\"with_lzo\" print_false=\"no_lzo\" />\n"
+  "  <field type=\"bool\" name=\"enable_lzf\" print_true=\"with_lzf\" print_false=\"no_lzf\" />\n"
+  "  <field type=\"int32\" name=\"compress_level\" />\n"
+  "  <field type=\"int32\" name=\"extent_size\" />\n"
+  "  <field type=\"int32\" name=\"part\" opt_nullable=\"yes\" />\n"
+  "</ExtentType>\n"
+  );
+
+ExtentType *dsrepack_info_type;
+
+void
+writeRepackInfo(DataSeriesSink &sink,
+		const commonPackingArgs &cpa, int file_count)
+{
+    ExtentSeries series(*dsrepack_info_type);
+    OutputModule out_module(sink, series, dsrepack_info_type, 
+			    cpa.extent_size);
+    BoolField enable_bz2(series, "enable_bz2");
+    BoolField enable_gz(series, "enable_gz");
+    BoolField enable_lzo(series, "enable_lzo");
+    BoolField enable_lzf(series, "enable_lzf");
+    Int32Field compress_level(series, "compress_level");
+    Int32Field extent_size(series, "extent_size");
+    Int32Field part(series, "part", Field::flag_nullable);
+
+    out_module.newRecord();
+    enable_bz2.set(cpa.compress_modes & Extent::compress_bz2 ? true : false);
+    enable_gz.set(cpa.compress_modes & Extent::compress_gz ? true : false);
+    enable_lzo.set(cpa.compress_modes & Extent::compress_lzo ? true : false);
+    enable_lzf.set(cpa.compress_modes & Extent::compress_lzf ? true : false);
+    compress_level.set(cpa.compress_level);
+    extent_size.set(cpa.extent_size);
+    if (file_count >= 0) {
+	part.set(file_count);
+    } else {
+	part.setNull();
+    }
+}
+
+bool
+skipType(const ExtentType &type)
+{
+    return type.getName() == "DataSeries: ExtentIndex"
+	|| type.getName() == "DataSeries: XmlType"
+	|| (type.getName() == "Info::DSRepack"
+	    && type.getNamespace() == "ssd.hpl.hp.com");
 }
 
 // TODO: Split up main(), it's getting a bit large
@@ -242,6 +294,7 @@ main(int argc, char *argv[])
 
     TypeIndexModule source("");
     ExtentTypeLibrary library;
+    dsrepack_info_type = library.registerType(dsrepack_info_type_xml);
     map<string, PerTypeWork *> per_type_work;
 
     string output_base_path(argv[argc-1]);
@@ -278,8 +331,7 @@ main(int argc, char *argv[])
 
 	for(map<const string, ExtentType *>::iterator j = f.mylibrary.name_to_type.begin();
 	    j != f.mylibrary.name_to_type.end(); ++j) {
-	    if (j->first == "DataSeries: ExtentIndex" ||
-		j->first == "DataSeries: XmlType") {
+	    if (skipType(*j->second)) {
 		continue;
 	    }
 	    if (prefixequal(j->first, "DataSeries:")) {
@@ -304,8 +356,7 @@ main(int argc, char *argv[])
 	Variable32Field extenttype(s,"extenttype");
 
 	for(;s.pos.morerecords();++s.pos) {
-	    if (extenttype.equal("DataSeries: ExtentIndex") ||
-		extenttype.equal("DataSeries: XmlType")) {
+	    if (skipType(*library.getTypeByName(extenttype.stringval()))) {
 		continue;
 	    }
 	    ++extent_count;
@@ -327,8 +378,7 @@ main(int argc, char *argv[])
 	if (inextent == NULL)
 	    break;
 	
-	if (inextent->type.getName() == "DataSeries: ExtentIndex" ||
-	    inextent->type.getName() == "DataSeries: XmlType") {
+	if (skipType(inextent->type)) {
 	    continue;
 	}
 	++extent_num;
@@ -380,6 +430,7 @@ main(int argc, char *argv[])
 			i != per_type_work.end(); ++i) {
 			i->second->rotateOutput(*new_output);
 		    }
+		    writeRepackInfo(*output, packing_args, output_file_count);
 		    output->close();
 		    all_stats += output->getStats();
 		    delete output;
@@ -395,6 +446,8 @@ main(int argc, char *argv[])
 	i != per_type_work.end(); ++i) {
 	i->second->output_module->flushExtent();
     }
+    writeRepackInfo(*output, packing_args, 
+		    target_file_bytes > 0 ? output_file_count : -1);
     output->close();
     all_stats += output->getStats();
 

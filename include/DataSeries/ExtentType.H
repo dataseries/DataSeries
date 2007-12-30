@@ -45,6 +45,12 @@ public:
 	CompactNonBool, CompactNo
     };
 
+    static ExtentType &getDataSeriesXMLType() {
+	return dataseries_xml_type;
+    }
+    static ExtentType &getDataSeriesIndexTypeV0() {
+	return dataseries_index_type_v0;
+    }
     // we have visible and invisible fields; visible fields are
     // counted by getnfields and accessible through getfieldname;
     // invisible fields can be retrieved through getColumnNumber (and
@@ -173,6 +179,9 @@ public:
     };
 
 private:
+    static ExtentType &dataseries_xml_type;
+    static ExtentType &dataseries_index_type_v0;
+
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
     // generic programs that operate on anything, such as ds2txt),
@@ -270,6 +279,7 @@ public:
 
     // TODO: make this return a reference (and change all the users)
     ExtentType *registerType(const std::string &xmldesc);
+    void registerType(ExtentType &type);
 
     // ExtentType * values returned by these functions survive the
     // deletion of the library -- they are shared across all of the
