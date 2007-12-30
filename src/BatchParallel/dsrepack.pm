@@ -26,6 +26,8 @@ sub new {
 	if ($_ eq 'help') {
 	    $this->usage();
 	    exit(0);
+# TODO: pull the following two bits out into a BatchParallel::dscommon 
+# module; re-use it in the various dataseries modules
 	} elsif (/^compress=((lzo)|(gz)|(bz2)|(lzf))$/o) {
 	    push(@{$this->{compress}}, "--enable-$1");
 	} elsif (/^extent-size=(\d+(\.\d+)?)([km])?$/o) {

@@ -101,6 +101,8 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"byte\" name=\"stable\" opt_nullable=\"yes\" comment=\"for create, U = unchecked, G = guarded, X = exclusive; for stable U = unstable, D = data_sync, F = file_sync\" />\n"
   "  <field type=\"variable32\" name=\"file\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"name2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+
+  "  <field type=\"variable32\" name=\"sdata\" opt_nullable=\"yes\" pack_unique=\"yes\" comment=\"symlink data, appears to be the target of the symlink\" />\n"
   "</ExtentType>\n"
   );
 
@@ -325,6 +327,8 @@ public:
 	    field.set(1 << 1);
 	} else if (val == "R") {
 	    field.set(1 << 0);
+	} else if (val == "X") { // assume this is execute as opposed to extend
+	    field.set(1 << 5); 
 	} else if (val == "U") {
 	    // No clue as to what this is.
 	    field.set(1 << 6); 
@@ -599,6 +603,7 @@ setupKVParsers()
     kv_parsers["stable"] = new KVParserHow("stable");
     kv_parsers["file"] = new KVParserFH("file"); // should merge with fh
     kv_parsers["name2"] = new KVParserString("name2");
+    kv_parsers["sdata"] = new KVParserString("sdata");
 }
 
 int

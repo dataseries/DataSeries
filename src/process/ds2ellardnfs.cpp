@@ -23,59 +23,60 @@ class DSToEllardNFS : public RowAnalysisModule {
 public:
     DSToEllardNFS(DataSeriesModule &source)
         : RowAnalysisModule(source),
-        time(series, "time"),
-        source_ip(series, "source_ip"),
-        source_port(series, "source_port"),
-        dest_ip(series, "dest_ip"),
-        dest_port(series, "dest_port"),
-        is_udp(series, "is_udp"),
-        is_call(series, "is_call"),
-        nfs_version(series, "nfs_version"),
-        rpc_transaction_id(series, "rpc_transaction_id"),
-        rpc_function_id(series, "rpc_function_id"),
-        rpc_function(series, "rpc_function"),
-        return_value(series, "return_value", Field::flag_nullable),
-        fh(series, "fh", Field::flag_nullable),
-        mode(series, "mode", Field::flag_nullable),
-        name(series, "name", Field::flag_nullable),
-        ftype(series, "ftype", Field::flag_nullable),
-        nlink(series, "nlink", Field::flag_nullable),
-        uid(series, "uid", Field::flag_nullable),
-        gid(series, "gid", Field::flag_nullable),
-        size(series, "size", Field::flag_nullable),
-        used(series, "used", Field::flag_nullable),
-        rdev(series, "rdev", Field::flag_nullable),
-        rdev2(series, "rdev2", Field::flag_nullable),
-        fsid(series, "fsid", Field::flag_nullable),
-        fileid(series, "fileid", Field::flag_nullable),
-        mtime(series, "mtime", Field::flag_nullable),
-        ctime(series, "ctime", Field::flag_nullable),
-        atime(series, "atime", Field::flag_nullable),
-	ftype_dup(series, "ftype_dup", Field::flag_nullable),
-        mode_dup(series, "mode_dup", Field::flag_nullable),
-        nlink_dup(series, "nlink_dup", Field::flag_nullable),
-        uid_dup(series, "uid_dup", Field::flag_nullable),
-        gid_dup(series, "gid_dup", Field::flag_nullable),
-        size_dup(series, "size_dup", Field::flag_nullable),
-        used_dup(series, "used_dup", Field::flag_nullable),
-        rdev_dup(series, "rdev_dup", Field::flag_nullable),
-        rdev2_dup(series, "rdev2_dup", Field::flag_nullable),
-        fsid_dup(series, "fsid_dup", Field::flag_nullable),
-        fileid_dup(series, "fileid_dup", Field::flag_nullable),
-        mtime_dup(series, "mtime_dup", Field::flag_nullable),
-        ctime_dup(series, "ctime_dup", Field::flag_nullable),
-        atime_dup(series, "atime_dup", Field::flag_nullable),
-        acc(series, "acc", Field::flag_nullable),
-        off(series, "off", Field::flag_nullable),
-        count(series, "count", Field::flag_nullable),
-        eof(series, "eof", Field::flag_nullable),
-        how(series, "how", Field::flag_nullable),
-        fh2(series, "fh2", Field::flag_nullable),
-        cookie(series, "cookie", Field::flag_nullable),
-        maxcnt(series, "maxcnt", Field::flag_nullable),
-        stable(series, "stable", Field::flag_nullable),
-        file(series, "file", Field::flag_nullable),
-        name2(series, "name2", Field::flag_nullable)
+	  time(series, "time"),
+	  source_ip(series, "source_ip"),
+	  source_port(series, "source_port"),
+	  dest_ip(series, "dest_ip"),
+	  dest_port(series, "dest_port"),
+	  is_udp(series, "is_udp"),
+	  is_call(series, "is_call"),
+	  nfs_version(series, "nfs_version"),
+	  rpc_transaction_id(series, "rpc_transaction_id"),
+	  rpc_function_id(series, "rpc_function_id"),
+	  rpc_function(series, "rpc_function"),
+	  return_value(series, "return_value", Field::flag_nullable),
+	  fh(series, "fh", Field::flag_nullable),
+	  mode(series, "mode", Field::flag_nullable),
+	  name(series, "name", Field::flag_nullable),
+	  ftype(series, "ftype", Field::flag_nullable),
+	  nlink(series, "nlink", Field::flag_nullable),
+	  uid(series, "uid", Field::flag_nullable),
+	  gid(series, "gid", Field::flag_nullable),
+	  size(series, "size", Field::flag_nullable),
+	  used(series, "used", Field::flag_nullable),
+	  rdev(series, "rdev", Field::flag_nullable),
+	  rdev2(series, "rdev2", Field::flag_nullable),
+	  fsid(series, "fsid", Field::flag_nullable),
+	  fileid(series, "fileid", Field::flag_nullable),
+	  mtime(series, "mtime", Field::flag_nullable),
+	  ctime(series, "ctime", Field::flag_nullable),
+	  atime(series, "atime", Field::flag_nullable),
+	  ftype_dup(series, "ftype_dup", Field::flag_nullable),
+	  mode_dup(series, "mode_dup", Field::flag_nullable),
+	  nlink_dup(series, "nlink_dup", Field::flag_nullable),
+	  uid_dup(series, "uid_dup", Field::flag_nullable),
+	  gid_dup(series, "gid_dup", Field::flag_nullable),
+	  size_dup(series, "size_dup", Field::flag_nullable),
+	  used_dup(series, "used_dup", Field::flag_nullable),
+	  rdev_dup(series, "rdev_dup", Field::flag_nullable),
+	  rdev2_dup(series, "rdev2_dup", Field::flag_nullable),
+	  fsid_dup(series, "fsid_dup", Field::flag_nullable),
+	  fileid_dup(series, "fileid_dup", Field::flag_nullable),
+	  mtime_dup(series, "mtime_dup", Field::flag_nullable),
+	  ctime_dup(series, "ctime_dup", Field::flag_nullable),
+	  atime_dup(series, "atime_dup", Field::flag_nullable),
+	  acc(series, "acc", Field::flag_nullable),
+	  off(series, "off", Field::flag_nullable),
+	  count(series, "count", Field::flag_nullable),
+	  eof(series, "eof", Field::flag_nullable),
+	  how(series, "how", Field::flag_nullable),
+	  fh2(series, "fh2", Field::flag_nullable),
+	  cookie(series, "cookie", Field::flag_nullable),
+	  maxcnt(series, "maxcnt", Field::flag_nullable),
+	  stable(series, "stable", Field::flag_nullable),
+	  file(series, "file", Field::flag_nullable),
+	  name2(series, "name2", Field::flag_nullable),
+	  sdata(series, "sdata", Field::flag_nullable)
     {
     }
 
@@ -124,6 +125,8 @@ public:
 	    cout << " acc R";
 	} else if (f.val() == 2) {
 	    cout << " acc L";
+	} else if (f.val() == 32) {
+	    cout << " acc X";
 	} else if (f.val() == 64) {
 	    cout << " acc U";
 	} else {
@@ -171,7 +174,7 @@ public:
 	    % f.getName() % hexstring(f.stringval());
     }
 
-    void printMaybeName(Variable32Field &f) {
+    void printMaybeString(Variable32Field &f) {
 	if (f.isNull())
 	    return;
 	printany = true;
@@ -204,14 +207,14 @@ public:
 	printMaybe(fh);
 	if (rpc_function.equal("rename")) { 
 	    // rename prints name between fh and fh2; most print it after
-	    printMaybeName(name);
+	    printMaybeString(name);
 	}
 	printMaybe(fh2);
 
-	if (!rpc_function.equal("rename")) {
-	    printMaybeName(name);
+	if (!rpc_function.equal("rename") && !rpc_function.equal("readlink")) {
+	    printMaybeString(name);
 	}
-	printMaybeName(name2);
+	printMaybeString(name2);
 	printMaybeChar(how);
 
 	printMaybe(ftype);
@@ -228,6 +231,10 @@ public:
 	printMaybeTime(atime);
 	printMaybeTime(mtime);
 	printMaybeTime(ctime);
+	
+	if (rpc_function.equal("readlink")) {
+	    printMaybeString(name);
+	}
 
 	printMaybe(ftype_dup);
 	printMaybe(mode_dup);
@@ -253,6 +260,7 @@ public:
 	printMaybe(maxcnt);
 	printMaybe(eof);
 
+	printMaybeString(sdata);
 	printMaybeChar(stable);
 	if (printany == false) {
 	    cout << " ";
@@ -320,6 +328,7 @@ private:
     ByteField stable;
     Variable32Field file;
     Variable32Field name2;
+    Variable32Field sdata;
 };
 
 int
