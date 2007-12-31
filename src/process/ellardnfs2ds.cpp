@@ -40,7 +40,8 @@ Sizing experiments, turning on options is cumulative; the big win is
 */
 
 const string ellard_nfs_expanded_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" comment=\"see ellardnfs2ds.cpp:processLine for notes on how a few lines containing garbage were translated\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\"\n"
+  " comment=\"see ellardnfs2ds.cpp:processLine for notes on how a few lines containing garbage were translated\" >\n"
   "  <field type=\"int64\" name=\"time\" units=\"microseconds\" epoch=\"unix\" pack_relative=\"time\" />\n"
   "  <field type=\"int32\" name=\"source_ip\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"

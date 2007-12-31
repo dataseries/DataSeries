@@ -86,7 +86,7 @@ public:
 protected:
     virtual void lockedResetModule();
 
-    virtual compressedPrefetch *lockedGetCompressedExtent();
+    virtual PrefetchExtent *lockedGetCompressedExtent();
 
 private:
     void init(const std::string &index_filename,

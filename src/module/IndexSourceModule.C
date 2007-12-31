@@ -23,7 +23,7 @@ static void *
 pthreadfn(void *arg)
 {
     IndexSourceModule *ism = (IndexSourceModule *)arg;
-    ism->prefetchThread();
+    ism->compressedPrefetchThread();
     return NULL;
 }
 
@@ -39,11 +39,11 @@ IndexSourceModule::~IndexSourceModule()
 	prefetch->abort_prefetching = true;
 	prefetch->cond.signal();
 	prefetch->mutex.unlock();
-	AssertAlways(pthread_join(prefetch->prefetch_thread, NULL) == 0,
-		     ("pthread_join failed.\n"));
-	while (prefetch->buffers.empty() == false) {
-	    delete prefetch->buffers.front();
-	    prefetch->buffers.pop_front();
+	INVARIANT(pthread_join(prefetch->prefetch_thread, NULL) == 0,
+		  "pthread_join failed.");
+	while (prefetch->compressed.empty() == false) {
+	    delete prefetch->compressed.front();
+	    prefetch->compressed.pop_front();
 	}
 	delete prefetch;
 	prefetch = NULL;
@@ -51,14 +51,15 @@ IndexSourceModule::~IndexSourceModule()
 }
 
 void
-IndexSourceModule::startPrefetching(unsigned prefetch_max_memory)
+IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
+				    unsigned)
 {
-    AssertAlways(prefetch == NULL,("invalid to start prefetching twice.\n"));
-    AssertAlways(prefetch_max_memory > 0,("pmm == 0"));
-    prefetch = new prefetchInfo(prefetch_max_memory);
-    AssertAlways(pthread_create(&prefetch->prefetch_thread, NULL, 
-				pthreadfn, this)==0,
-		 ("Pthread create failed??"));
+    INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
+    INVARIANT(prefetch_max_compressed > 0,"pmm == 0");
+    prefetch = new PrefetchInfo(prefetch_max_compressed);
+    INVARIANT(pthread_create(&prefetch->prefetch_thread, NULL, 
+			     pthreadfn, this)==0,
+	      "Pthread create failed??");
 }
 
 static inline double 
@@ -70,7 +71,7 @@ timediff(struct timeval &end,struct timeval &start)
 Extent *
 IndexSourceModule::getExtent()
 {
-    AssertAlways(getting_extent == false,("incorrect re-entrancy detected\n"));
+    INVARIANT(getting_extent == false,"incorrect re-entrancy detected");
     getting_extent = true;
     Extent *ret = getExtentPrefetch();
     getting_extent = false;
@@ -83,20 +84,20 @@ IndexSourceModule::getExtentPrefetch()
     if (prefetch == NULL) {
 	startPrefetching();
     }
-    AssertAlways(prefetch != NULL,("internal error"));
+    INVARIANT(prefetch != NULL,"internal error");
     prefetch->mutex.lock();
     while(prefetch->source_done == false &&
-	  prefetch->buffers.empty()) {
+	  prefetch->compressed.empty()) {
 	++prefetch->wait_for_disk;
 	prefetch->cond.wait(prefetch->mutex);
     }
-    if (prefetch->buffers.empty() && prefetch->source_done) {
+    if (prefetch->compressed.empty() && prefetch->source_done) {
 	prefetch->mutex.unlock();
 	return NULL;
     }
     ++prefetch->nextents;
-    compressedPrefetch *buf = prefetch->buffers.front();
-    prefetch->buffers.pop_front();
+    PrefetchExtent *buf = prefetch->compressed.front();
+    prefetch->compressed.pop_front();
     prefetch->cur_memory -= buf->bytes.size();
     AssertAlways(prefetch->cur_memory >= 0,
 		 ("internal %d %d",
@@ -145,11 +146,8 @@ IndexSourceModule::waitFraction()
 }
 
 void
-IndexSourceModule::prefetchThread()
+IndexSourceModule::compressedPrefetchThread()
 {
-    struct rusage rusage_start;
-    AssertAlways(getrusage(RUSAGE_SELF,&rusage_start)==0,
-		 ("getrusage failed: %s\n",strerror(errno)));
     prefetch->mutex.lock();
     while(prefetch->abort_prefetching == false) {
 	if (prefetch->cur_memory >= prefetch->max_memory ||
@@ -160,47 +158,42 @@ IndexSourceModule::prefetchThread()
 	    break;
 	}
 	if (prefetch->reset_flag) {
-	    while(prefetch->buffers.empty() == false) {
+	    while(prefetch->compressed.empty() == false) {
 		prefetch->cur_memory -= 
-		    prefetch->buffers.front()->bytes.size();
-		AssertAlways(prefetch->cur_memory >= 0,("internal"));
-		delete prefetch->buffers.front();
-		prefetch->buffers.pop_front();
+		    prefetch->compressed.front()->bytes.size();
+		INVARIANT(prefetch->cur_memory >= 0,"internal");
+		delete prefetch->compressed.front();
+		prefetch->compressed.pop_front();
 	    }
-	    AssertAlways(prefetch->cur_memory == 0,("internal"));
+	    INVARIANT(prefetch->cur_memory == 0,"internal");
 	    lockedResetModule();
 	    prefetch->source_done = false;
 	    prefetch->reset_flag = false;
 	    prefetch->cond.signal();
 	}
 	if (prefetch->cur_memory < prefetch->max_memory) {
-	    compressedPrefetch *p = lockedGetCompressedExtent();
+	    PrefetchExtent *p = lockedGetCompressedExtent();
 	    if (p == NULL) {
 		prefetch->source_done = true;
 	    } else {
 		prefetch->cur_memory += p->bytes.size();
-		prefetch->buffers.push_back(p);
+		prefetch->compressed.push_back(p);
 	    }
 	    prefetch->cond.signal();
 	}
     }
-    struct rusage rusage_end;
-    AssertAlways(getrusage(RUSAGE_SELF,&rusage_end)==0,
-		 ("getrusage failed: %s\n",strerror(errno)));
-    decode_time += timediff(rusage_end.ru_utime,rusage_start.ru_utime) +
-	timediff(rusage_end.ru_stime,rusage_start.ru_stime);
     prefetch->mutex.unlock();
 }
 
-IndexSourceModule::compressedPrefetch *
-IndexSourceModule::getCompressed(DataSeriesSource *dss,
-				 off64_t offset,
-				 const string &uncompressed_type)
+IndexSourceModule::PrefetchExtent *
+IndexSourceModule::readCompressed(DataSeriesSource *dss,
+				  off64_t offset,
+				  const string &uncompressed_type)
 {
     prefetch->mutex.unlock();
-    compressedPrefetch *p = new compressedPrefetch;
+    PrefetchExtent *p = new PrefetchExtent;
     bool ok = dss->preadCompressed(offset,p->bytes);
-    AssertAlways(ok,("whoa, shouldn't have hit eof!\n"));
+    INVARIANT(ok,"whoa, shouldn't have hit eof!");
     p->type = dss->mylibrary.getTypeByName(Extent::getPackedExtentType(p->bytes));
     p->need_bitflip = dss->needBitflip();
     p->uncompressed_type = uncompressed_type;

@@ -59,7 +59,7 @@ TypeIndexModule::lockedResetModule()
     cur_file = 0;
 }
 
-TypeIndexModule::compressedPrefetch *
+TypeIndexModule::PrefetchExtent *
 TypeIndexModule::lockedGetCompressedExtent()
 {
     while(true) {
@@ -86,8 +86,8 @@ TypeIndexModule::lockedGetCompressedExtent()
 		(my_type != NULL &&
 		 extentType.stringval() == my_type->getName())) {
 		off64_t v = extentOffset.val();
-		compressedPrefetch *ret 
-		    = getCompressed(cur_source, v, extentType.stringval());
+		PrefetchExtent *ret 
+		    = readCompressed(cur_source, v, extentType.stringval());
 		++indexSeries.pos;
 		return ret;
 	    }

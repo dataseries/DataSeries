@@ -59,7 +59,7 @@ protected:
     Variable32Field extentType;
 
     virtual void lockedResetModule();
-    virtual compressedPrefetch *lockedGetCompressedExtent();
+    virtual PrefetchExtent *lockedGetCompressedExtent();
 
 private:
     ExtentType *matchType(); // May return NULL

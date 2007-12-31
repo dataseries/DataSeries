@@ -135,7 +135,7 @@ MinMaxIndexModule::lockedResetModule()
     AssertFatal(("unimplemented"));
 }
 
-IndexSourceModule::compressedPrefetch *
+IndexSourceModule::PrefetchExtent *
 MinMaxIndexModule::lockedGetCompressedExtent()
 {
     if (cur_extent >= kept_extents.size()) {
@@ -148,10 +148,10 @@ MinMaxIndexModule::lockedGetCompressedExtent()
 	delete cur_source;
 	cur_source = new DataSeriesSource(kept_extents[cur_extent].filename);
     }
-    compressedPrefetch *ret = 
-	getCompressed(cur_source,
-		      kept_extents[cur_extent].extent_offset,
-		      index_type);
+    PrefetchExtent *ret = 
+	readCompressed(cur_source,
+		       kept_extents[cur_extent].extent_offset,
+		       index_type);
     ++cur_extent;
     return ret;
 }

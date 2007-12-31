@@ -8,7 +8,8 @@
   <field type="variable32" name="xmltype" />
 </ExtentType>
 
-<ExtentType namespace="ssd.hpl.hp.com" name="Trace::NFS::Ellard" version="1.0" pack_null_compact="non_bool" >
+<ExtentType namespace="ssd.hpl.hp.com" name="Trace::NFS::Ellard" version="1.0" pack_null_compact="non_bool"
+ comment="see ellardnfs2ds.cpp:processLine for notes on how a few lines containing garbage were translated" >
   <field type="int64" name="time" units="microseconds" epoch="unix" pack_relative="time" />
   <field type="int32" name="source_ip" />
   <field type="int32" name="source_port" />

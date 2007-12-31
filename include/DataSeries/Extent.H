@@ -79,7 +79,7 @@ public:
 		copyResize(newsize, zero_it);
 	    } 
 	}
-	void clear();
+	void clear(); // frees allocated memory
 	void reserve(size_t reserve_bytes);
 	byte *begin() { return beginV; };
 	byte *begin(size_t offset) { return beginV + offset; }

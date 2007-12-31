@@ -31,8 +31,9 @@
  * repeatedly scan over files, so can't afford to delete the sources
  * immediately.  */
 
-// TODO: pass back the filename that was being read when doing getExtentPrefetch
-// so that we can give a better error message than just "index error?! %s != %s"
+// TODO: pass back the filename that was being read when doing
+// getExtentPrefetch so that we can give a better error message than
+// just "index error?! %s != %s"
 
 // TODO: have some sort of way of sharing the various possible input
 // files, see dsextentindex.C for a case where this matters, as well
@@ -45,9 +46,13 @@ public:
 
     virtual Extent *getExtent();
 
-    /** call this to start prefetching; if you don't call it, it will be
-	automatically called when you call getExtent */
-    virtual void startPrefetching(unsigned prefetch_max_memory = 8 * 1024 * 1024);
+    /** call this to start prefetching; if you don't call it, it will
+	be automatically called when you call getExtent; it's
+	target_uncompressed because threads will continue to uncompress
+	until the estimated uncompressed will be at least the target, and
+	there is at least a quarter of the target currently available. */
+    virtual void startPrefetching(unsigned prefetch_max_compressed = 8 * 1024 * 1024,
+				  unsigned prefetch_target_uncompressed = 32 * 1024 * 1024);
     /** call this to start the index source module over again from the 
 	beginning */
     virtual void resetPos();
@@ -57,17 +62,19 @@ public:
 
     /** public interface to start the prefetch thread, public only to allow
 	it to be called from a C function */
-    virtual void prefetchThread();
+    virtual void compressedPrefetchThread();
 
-    /** use getCompressed() to create this structure, it will unlock
+    /** use readCompressed() to create this structure, it will unlock
 	the mutex while doing the work to get the compressed data */
-    struct compressedPrefetch {
+    struct PrefetchExtent {
 	Extent::ByteArray bytes;
 	ExtentType *type;
-	bool need_bitflip;
+	Extent *unpacked;
+	bool need_bitflip, being_unpacked;
 	std::string uncompressed_type;
-	compressedPrefetch() : type(NULL), 
-	    need_bitflip(false) { }
+	PrefetchExtent() 
+	    : type(NULL), unpacked(NULL), 
+	      need_bitflip(false), being_unpacked(false) { }
     };
 
 protected:
@@ -75,37 +82,39 @@ protected:
 
     /** utility function to read compressed data, it will unlock and relock
         the mutex associated with prefetching */
-    compressedPrefetch *getCompressed(DataSeriesSource *dss,
-				      off64_t offset, 
-				      const std::string &uncompressed_type);
+    PrefetchExtent *readCompressed(DataSeriesSource *dss,
+				 off64_t offset, 
+				 const std::string &uncompressed_type);
 
     /** function that is called from the prefetch thread to restart; parent
 	will clear out any remaining data */
     virtual void lockedResetModule() = 0;
 
     /** return NULL when no more extents */
-    virtual compressedPrefetch *lockedGetCompressedExtent() = 0;
+    // TODO: consider re-writing this as bool nextOffset(offset, type)
+    virtual PrefetchExtent *lockedGetCompressedExtent() = 0;
 
 private:
     Extent *getExtentPrefetch();
 
     bool getting_extent;
 
-    struct prefetchInfo {
+    struct PrefetchInfo {
 	int max_memory, cur_memory;
 	int wait_for_disk, nextents;
 	pthread_t prefetch_thread;
 	PThreadMutex mutex;
 	PThreadCond cond;
-	Deque<compressedPrefetch *> buffers;
+	Deque<PrefetchExtent *> compressed;
+	Deque<PrefetchExtent *> uncompressed;
 	bool reset_flag; // for when user calls resetpos
 	bool source_done;
 	bool abort_prefetching; 
-	prefetchInfo(int mm) 
+	PrefetchInfo(int mm) 
 	    : max_memory(mm), cur_memory(0), wait_for_disk(0), nextents(0), 
 	    reset_flag(false), source_done(false), abort_prefetching(false) { }
     };
-    prefetchInfo *prefetch;
+    PrefetchInfo *prefetch;
 };
     
 
