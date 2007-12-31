@@ -60,10 +60,6 @@ public:
     /** what fraction of the extents did we wait for? */
     double waitFraction();
 
-    /** public interface to start the prefetch thread, public only to allow
-	it to be called from a C function */
-    virtual void compressedPrefetchThread();
-
     /** use readCompressed() to create this structure, it will unlock
 	the mutex while doing the work to get the compressed data */
     struct PrefetchExtent {
@@ -95,6 +91,11 @@ protected:
     virtual PrefetchExtent *lockedGetCompressedExtent() = 0;
 
 private:
+    friend class IndexSourceModuleCompressedPrefetchThread;
+    friend class IndexSourceModuleUncompressThread;
+    void compressedPrefetchThread();
+    void uncompressThread();
+
     Extent *getExtentPrefetch();
 
     bool getting_extent;
@@ -102,11 +103,11 @@ private:
     struct PrefetchInfo {
 	int max_memory, cur_memory;
 	int wait_for_disk, nextents;
-	pthread_t prefetch_thread;
+	PThread *compressed_prefetch_thread;
 	PThreadMutex mutex;
 	PThreadCond cond;
 	Deque<PrefetchExtent *> compressed;
-	Deque<PrefetchExtent *> uncompressed;
+	Deque<PrefetchExtent *> unpacked;
 	bool reset_flag; // for when user calls resetpos
 	bool source_done;
 	bool abort_prefetching; 

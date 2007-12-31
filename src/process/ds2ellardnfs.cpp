@@ -270,7 +270,8 @@ public:
 	} else {
 	    cout << " status=XXX pl = XXX con = XXX len = XXX\n";
 	}
-	if (time.val() == 1004562602020930LL && rpc_transaction_id.val() == 0x9366f750) {
+	if (time.val() == 1004562602020930LL && 
+	    static_cast<uint32_t>(rpc_transaction_id.val()) == 0x9366f750) {
 	    // These lines are garbage, we reconstruct them here as
 	    // it's not clear how we should choose to translate them.
 	    cout << "1004562602.021187 30.0801 31.03e4 T R3 9d66f750 7 write OK ftype 1 mode 180 nlink 1 uid 18aff gid 18a88 size ee62bc used eec000 rdev 0 rdev2 0 fsid ffffffff8465bccf fileid aa68e03b atime 3427926016.2516582 mtime 2516582400.301989 ctime 1830883825.006319 count 11b10800 stable ? status=XXX pl = XXX con = XXX len = XXX\n";

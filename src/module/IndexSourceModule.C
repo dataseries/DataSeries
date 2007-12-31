@@ -13,19 +13,26 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+#include <Lintel/PThread.H>
 #include <DataSeries/IndexSourceModule.H>
 
 #ifndef __HP_aCC
 using namespace std;
 #endif
 
-static void *
-pthreadfn(void *arg)
-{
-    IndexSourceModule *ism = (IndexSourceModule *)arg;
-    ism->compressedPrefetchThread();
-    return NULL;
-}
+class IndexSourceModuleCompressedPrefetchThread : public PThread {
+public:
+    IndexSourceModuleCompressedPrefetchThread(IndexSourceModule &_ism)
+	: ism(_ism) { }
+
+    virtual ~IndexSourceModuleCompressedPrefetchThread() { }
+
+    virtual void *run() {
+	ism.compressedPrefetchThread();
+	return NULL;
+    }
+    IndexSourceModule &ism;
+};
 
 IndexSourceModule::IndexSourceModule()
     : getting_extent(false), prefetch(NULL)
@@ -39,8 +46,7 @@ IndexSourceModule::~IndexSourceModule()
 	prefetch->abort_prefetching = true;
 	prefetch->cond.signal();
 	prefetch->mutex.unlock();
-	INVARIANT(pthread_join(prefetch->prefetch_thread, NULL) == 0,
-		  "pthread_join failed.");
+	prefetch->compressed_prefetch_thread->join();
 	while (prefetch->compressed.empty() == false) {
 	    delete prefetch->compressed.front();
 	    prefetch->compressed.pop_front();
@@ -57,9 +63,9 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
     INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
     INVARIANT(prefetch_max_compressed > 0,"pmm == 0");
     prefetch = new PrefetchInfo(prefetch_max_compressed);
-    INVARIANT(pthread_create(&prefetch->prefetch_thread, NULL, 
-			     pthreadfn, this)==0,
-	      "Pthread create failed??");
+    prefetch->compressed_prefetch_thread = 
+	new IndexSourceModuleCompressedPrefetchThread(*this);
+    prefetch->compressed_prefetch_thread->start();
 }
 
 static inline double 

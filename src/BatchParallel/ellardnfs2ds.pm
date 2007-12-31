@@ -70,7 +70,7 @@ sub rebuild {
 	push(@cmd, "--compress-$this->{compress}");
     }
     if (defined ($this->{extent_size})) {
-	push(@cmd, "--extent-size=$this->{extent_size}");
+	push(@cmd, $this->{extent_size});
     }
     push(@cmd, '-', $destpath);
 
