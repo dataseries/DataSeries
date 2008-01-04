@@ -129,13 +129,7 @@ public:
     // wait forever.
     void flushPending();
 
-    // Removed as this is no longer a good idea when writes don't 
-    // complete immediately.
-//    const off64_t cur_position() {
-//	return cur_offset;
-//    }
-
-    // You are only guarenteeed to have all the statistics for writing
+    // You are only guaranteed to have all the statistics for writing
     // this file after you call close().
     Stats getStats() {
 	// Make a copy so it's thread safe.
@@ -156,6 +150,9 @@ public:
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
     
+    /// compressor_count == -1 ==> use # cpus. 0 ==> no threading;
+    // needs to be called before you create a sink to have any effect.
+    static void setCompressorCount(int compressor_count = -1);
 private:
     struct toCompress {
 	Extent extent;

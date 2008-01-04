@@ -1,3 +1,25 @@
+2007-12-31: 
+  * Three programs for working with the Daniel Ellard Harvard NFS traces have
+    been implemented and tested on the home04 set of traces.  ellardnfs2ds
+    converts the data from the Ellard text format to dataseries format.
+    ds2ellardnfs converts the data from dataseries back to the Ellard
+    text format.  ellardanalysis implements the first three example questions
+    in nfsscan-v0.16-040509/EXAMPLES.  There is also a batch-parallel
+    module for converting the Ellard traces, it will convert the traces to
+    dataseries and check that the conversion was correct by converting back.
+    When both formats are compressed using gzip, the DataSeries files are
+    approximately 1.41x smaller than the text onces.  When compressed with lzo,
+    analysis runs in about 30x less cpu-time using DataSeries.
+
+2007-12-28: 
+  * Null compacting has been implemented.  This performs a transform on the
+    fixed data that removes all of the null data and only leaves the boolean
+    to indicate the value is null.  It is used as part of the Ellard nfs
+    traces.  Null compaction is enabled by putting 
+    pack_null_compact="non_bool" in as an option for the extent type.  Use of
+    it currently generates a warning; the warning will be removed once null
+    compaction is tried with a second data type.
+
 2007-11-05:
   * nfsdsanalysis program added, only one of the analysis has been tested,
     so it is the only one enabled.

@@ -1200,13 +1200,16 @@ main(int argc, char *argv[])
 	}
     }
 
-    sourcea->startPrefetching();
+    // Don't start prefetching, will cause us to read some things we
+    // may not have to read.
+
+    //    sourcea->startPrefetching();
     sourceb->sameInputFiles(*sourcea);
-    sourceb->startPrefetching();
+    //    sourceb->startPrefetching();
     sourcec->sameInputFiles(*sourcea);
-    sourcec->startPrefetching();
+    //    sourcec->startPrefetching();
     sourced->sameInputFiles(*sourcea);
-    sourced->startPrefetching();
+    //    sourced->startPrefetching();
 
     PrefetchBufferModule *prefetcha = 
 	new PrefetchBufferModule(*sourcea,32*1024*1024);

@@ -364,6 +364,7 @@ main(int argc, char *argv[])
     }
 
     DataSeriesModule *from = &source;
+    source.startPrefetching(16*1024*1024, 112*1024*1024); // 128MiB total
     if (getenv("DISABLE_PREFETCHING") == NULL) {
 	from = new PrefetchBufferModule(source, 64*1024*1024);
     }

@@ -81,6 +81,7 @@ public:
 	}
 	void clear(); // frees allocated memory
 	void reserve(size_t reserve_bytes);
+	bool empty() { return endV == beginV; }
 	byte *begin() { return beginV; };
 	byte *begin(size_t offset) { return beginV + offset; }
 	byte *end() { return endV; };
@@ -173,6 +174,8 @@ public:
     // Note you can't unpack the same data twice, it may modify the
     // input data
     void unpackData(Extent::ByteArray &from, bool need_bitflip);
+    static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
+				 ExtentType &type);
 		    
     static const std::string getPackedExtentType(Extent::ByteArray &from);
 

@@ -21,6 +21,9 @@ using namespace std;
 using boost::format;
 
 /*
+Compression ratio:
+  home04, compressed with gz, 8Mextent size: ds/txt.gz = 1.40945108
+
 Sizing experiments, turning on options is cumulative; the big win is
   pack_unique, then relative time, then non-bool null compaction;
   options turned on and off by changing pack into xack; these

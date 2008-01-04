@@ -49,6 +49,7 @@ const string dataseries_index_type_v1_xml =
   "  <!-- next fields are necessary/useful for finding the extents that\n"
   "       a program wants to process without having a separate index file -->\n"
   "  <field type=\"int64\" name=\"offset\" pack_relative=\"offset\" />\n"
+  "  <field type=\"int32\" name=\"size\" comment=\"header+data+padding\" />\n"
   "  <field type=\"variable32\" name=\"extenttype\" pack_unique=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"namespace\" pack_unique=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"version\" pack_unique=\"yes\" />\n"
@@ -142,7 +143,8 @@ ExtentType::parseXML(const string &xmldesc)
     ret.pack_null_compact = CompactNo;
     xmlChar *pack_option = xmlGetProp(cur, (xmlChar *)"pack_null_compact");
     if (pack_option != NULL) {
-	cerr << "Warning, pack_null_compact under testing, not safe for use.\n";
+	// TODO: remove the warning once we try this with a second data set.
+	cerr << "Warning, pack_null_compact under testing, may not be safe for use.\n";
 	if (xmlStrcmp(pack_option, (xmlChar *)"non_bool") == 0) {
 	    ret.pack_null_compact = CompactNonBool;
 	} else if (xmlStrcmp(pack_option, (xmlChar *)"no") == 0) {

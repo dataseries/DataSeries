@@ -47,17 +47,17 @@ public:
     virtual Extent *getExtent();
 
     /** call this to start prefetching; if you don't call it, it will
-	be automatically called when you call getExtent; it's
-	target_uncompressed because threads will continue to uncompress
-	until the estimated uncompressed will be at least the target, and
-	there is at least a quarter of the target currently available. */
+	be automatically called when you call getExtent; Max compressed
+        may slightly overrun because we don't know the size of compressed
+	extents until we read them. */
     virtual void startPrefetching(unsigned prefetch_max_compressed = 8 * 1024 * 1024,
-				  unsigned prefetch_target_uncompressed = 32 * 1024 * 1024);
+				  unsigned prefetch_max_unpacked = 32 * 1024 * 1024);
     /** call this to start the index source module over again from the 
 	beginning */
     virtual void resetPos();
 
-    /** what fraction of the extents did we wait for? */
+    /** what fraction of the extents did we wait for, either disk or
+	unpacking? */
     double waitFraction();
 
     /** use readCompressed() to create this structure, it will unlock
@@ -66,11 +66,10 @@ public:
 	Extent::ByteArray bytes;
 	ExtentType *type;
 	Extent *unpacked;
-	bool need_bitflip, being_unpacked;
+	bool need_bitflip;
 	std::string uncompressed_type;
 	PrefetchExtent() 
-	    : type(NULL), unpacked(NULL), 
-	      need_bitflip(false), being_unpacked(false) { }
+	    : type(NULL), unpacked(NULL), need_bitflip(false) { }
     };
 
 protected:
@@ -87,33 +86,79 @@ protected:
     virtual void lockedResetModule() = 0;
 
     /** return NULL when no more extents */
-    // TODO: consider re-writing this as bool nextOffset(offset, type)
+    // TODO: consider re-writing this as bool nextOffset(offset, type,
+    // size?)  size would be nice so that we could be more accurate
+    // about memory usage, but isn't possible for the type index
+    // module without extending the extent type index, and the min/max
+    // index module without extending the indexer.
     virtual PrefetchExtent *lockedGetCompressedExtent() = 0;
 
 private:
     friend class IndexSourceModuleCompressedPrefetchThread;
-    friend class IndexSourceModuleUncompressThread;
+    friend class IndexSourceModuleUnpackThread;
     void compressedPrefetchThread();
-    void uncompressThread();
-
-    Extent *getExtentPrefetch();
+    void unpackThread();
 
     bool getting_extent;
 
+    struct Queue {
+	Queue(unsigned _limit) : cur(0), limit(_limit) { }
+	unsigned cur, limit; // limit is max or target
+	Deque<PrefetchExtent *> data;
+	bool can_add(uint32_t amount) {
+	    return cur == 0 || cur + amount < limit;
+	}
+	bool can_add(int amount) {
+	    SINVARIANT(amount >= 0);
+	    return can_add(static_cast<uint32_t>(amount));
+	}
+	bool can_add(PrefetchExtent *pe) {
+	    return can_add(Extent::unpackedSize(pe->bytes, pe->need_bitflip,
+						*pe->type));
+	}
+	bool empty() { 
+	    return data.empty();
+	}
+	void add(PrefetchExtent *pe, unsigned size) {
+	    cur += size;
+	    data.push_back(pe);
+	}
+	void subtract(unsigned size) {
+	    SINVARIANT(cur >= size);
+	    cur -= size;
+	}
+	PrefetchExtent *front() {
+	    return data.front();
+	}
+	PrefetchExtent *getFront() {
+	    PrefetchExtent *ret = data.front();
+	    data.pop_front();
+	    return ret;
+	}
+    };
+
     struct PrefetchInfo {
-	int max_memory, cur_memory;
-	int wait_for_disk, nextents;
+	Queue compressed, unpacked;
+	int wait_for_extent, nextents;
 	PThread *compressed_prefetch_thread;
+	std::vector<PThread *> unpack_threads;
 	PThreadMutex mutex;
-	PThreadCond cond;
-	Deque<PrefetchExtent *> compressed;
-	Deque<PrefetchExtent *> unpacked;
+	PThreadCond compressed_cond, unpack_cond, ready_cond;
 	bool reset_flag; // for when user calls resetpos
 	bool source_done;
 	bool abort_prefetching; 
-	PrefetchInfo(int mm) 
-	    : max_memory(mm), cur_memory(0), wait_for_disk(0), nextents(0), 
-	    reset_flag(false), source_done(false), abort_prefetching(false) { }
+	PrefetchInfo(unsigned cmm, unsigned tum) 
+	    : compressed(cmm), unpacked(tum), wait_for_extent(0), nextents(0), 
+	      reset_flag(false), source_done(false), 
+	      abort_prefetching(false) { }
+	bool allDone() {
+	    return source_done &&
+		compressed.empty() && unpacked.empty();
+	}
+	bool unpackedReady() {
+	    return unpacked.empty() == false
+		&& unpacked.front()->unpacked != NULL;
+	}
     };
     PrefetchInfo *prefetch;
 };

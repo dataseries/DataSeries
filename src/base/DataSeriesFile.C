@@ -431,6 +431,13 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 }
 
 void
+DataSeriesSink::setCompressorCount(int count)
+{
+    INVARIANT(count >= -1, "?");
+    compressor_count = count;
+}
+
+void
 DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
 {
     if (to_update) {

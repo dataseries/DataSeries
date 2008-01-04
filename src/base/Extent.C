@@ -1391,6 +1391,21 @@ Extent::unpackData(Extent::ByteArray &from,
 	   time_done - time_postuc));
 }
 
+uint32_t
+Extent::unpackedSize(Extent::ByteArray &from,
+		     bool fix_endianness,
+		     ExtentType &type)
+{
+    SINVARIANT(from.size() > 16);
+    uint32_t nrecords = *reinterpret_cast<uint32_t *>(from.begin() + 8);
+    uint32_t variable_size = *reinterpret_cast<uint32_t *>(from.begin() + 12);
+    if (fix_endianness) {
+	nrecords = flip4bytes(nrecords);
+	variable_size = flip4bytes(variable_size);
+    }
+    return nrecords * type.fixedrecordsize() + variable_size;
+}
+
 bool
 Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok)
 {
