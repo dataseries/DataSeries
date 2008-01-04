@@ -229,103 +229,118 @@ NFSDSAnalysisMod::newClientServerPairInfo(DataSeriesModule &prev)
     return new ClientServerPairInfo(prev);
 }
 
-class HostInfo : public NFSDSModule {
+class HostInfo : public RowAnalysisModule {
 public:
-    HostInfo(DataSeriesModule &_source) 
-	: source(_source), s(ExtentSeries::typeExact),
-	  payload_length(s,"payload-length"),
-	  op_id(s,"op-id",Field::flag_nullable),
-	  sourceip(s,"source"),destip(s,"dest")
-    {}
+    HostInfo(DataSeriesModule &_source, const std::string &arg) 
+	: RowAnalysisModule(source),
+	  packet_at(series, "packet-at"),
+	  payload_length(series, "payload-length"),
+	  op_id(series, "op-id", Field::flag_nullable),
+	  nfs_version(series, "nfs-version"),
+	  source_ip(series,"source"), 
+	  dest_ip(series, "dest")
+    {
+	group_seconds = stringToUInt32(arg);
+    }
     virtual ~HostInfo() { }
-    struct hteData {
-	ExtentType::int32 host;
-	hteData(ExtentType::int32 b) 
-	    : host(b), payload_length(NULL) {}
-	Stats *payload_length;
-    };
 
-    class hteHash {
-    public:
-	unsigned int operator()(const hteData &k) {
-	    return k.host;
+    struct PerDirectionData {
+	vector<Stats *> data;
+	void add(unsigned char raw_op_id, unsigned char nfs_version, 
+		 uint32_t bytes) {
+	    unsigned op_id = opIdToUnifiedId(raw_op_id, nfs_version);
+	    if (data.size() < op_id) {
+		data.resize(op_id+1);
+	    }
+	    if (data[op_id] == NULL) {
+		data[op_id] = new Stats;
+	    }
+	    data[op_id]->add(bytes);
+	}
+	void print(uint32_t host_id, uint32_t seconds, 
+		   const std::string &direction) {
+	    for(unsigned i = 0; i < data.size(); ++i) {
+		if (data[i] == NULL) {
+		    continue;
+		}
+		cout << format("%08x %10d %s %12s %lld %8.2f\n")
+		    % host_id % seconds % direction
+		    % unifiedIdToName(i) % data[i]->countll()
+		    % data[i]->mean();
+	    }
 	}
     };
 
-    class hteEqual {
-    public:
-	bool operator()(const hteData &a, const hteData &b) {
-	    return a.host == b.host;
+    struct PerTimeData {
+	PerDirectionData send, recv;
+    };
+
+    struct PerHostData {
+	PerHostData() 
+	    : first_time_seconds(0) {}
+	vector<PerTimeData *> time_entries;
+	uint32_t first_time_seconds; 
+	PerTimeData &getPerTimeData(uint32_t seconds, uint32_t group_seconds) {
+	    seconds -= seconds % group_seconds;
+	    if (time_entries.empty()) {
+		first_time_seconds = seconds;
+	    }
+	    SINVARIANT(seconds >= first_time_seconds);
+	    uint32_t entry = (seconds - first_time_seconds) / group_seconds;
+	    INVARIANT(entry < 100000, format("time range of %d..%d seconds grouped every %d seconds leads to more than 100,000 entries; this is probably not what you want") % first_time_seconds % seconds % group_seconds);
+	    if (entry >= time_entries.size()) {
+		time_entries.resize(entry+1);
+	    }
+	    DEBUG_SINVARIANT(entry < time_entries.size());
+	    if (time_entries[entry] == NULL) {
+		time_entries[entry] = new PerTimeData();
+	    }
+	    return *time_entries[entry];
+	}
+
+	void print(uint32_t host_id, uint32_t group_seconds) {
+	    uint32_t start_seconds = first_time_seconds;
+	    for(vector<PerTimeData *>::iterator i = time_entries.begin();
+		i != time_entries.end(); ++i, start_seconds += group_seconds) {
+		(**i).send.print(host_id, start_seconds, "send");
+		(**i).recv.print(host_id, start_seconds, "recv");
+	    }
+
 	}
     };
-    HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    void doRec(ExtentType::int32 host) {
-	hteData *d = stats_table.lookup(hteData(host));
-	if (d == NULL) {
-	    hteData newd(host);
-	    newd.payload_length = new Stats;
-	    stats_table.add(newd);
-	    d = stats_table.lookup(newd);
-	}
-	d->payload_length->add(payload_length.val());
+    HashMap<uint32_t, PerHostData> host_to_data;
+
+    virtual void processRow() {
+	uint32_t seconds = packet_at.val() / 1000000000;
+	host_to_data[source_ip.val()]
+	    .getPerTimeData(seconds, group_seconds)
+	    .send.add(op_id.val(), nfs_version.val(), payload_length.val());
+	host_to_data[dest_ip.val()]
+	    .getPerTimeData(seconds, group_seconds)
+	    .recv.add(op_id.val(), nfs_version.val(), payload_length.val());
+
     }
-
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) 
-	    return NULL;
-	if (e->type.getName() != "NFS trace: common")
-	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
-	    if (op_id.isNull())
-		continue;
-	    doRec(sourceip.val());
-	    doRec(destip.val());
-	}
-	return e;
-    }
-
-    class sortByTotal {
-    public:
-	bool operator()(hteData *a, hteData *b) {
-	    return a->payload_length->total() > b->payload_length->total();
-	}
-    };
 
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	vector<hteData *> vals;
-	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
-	    i != stats_table.end();++i) {
-	    vals.push_back(&(*i));
-	}
-	sort(vals.begin(),vals.end(),sortByTotal());
-	// int count = 0;
-	for(vector<hteData *>::iterator i = vals.begin();
-	    i != vals.end();++i) {
-	    hteData *j = *i;
-	    printf("%12s: %.3f MB, %.2f bytes/op, %.0f max bytes/op, %.3f million ops\n",
-		   ipv4tostring(j->host).c_str(),
-		   j->payload_length->total()/(1024.0*1024.0),
-		   j->payload_length->mean(),
-		   j->payload_length->max(),
-		   (double)j->payload_length->count()/1000000.0);
-	    //	    if (++count > 100) { printf("remaining entries pruned\n"); break; }
+	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
+	    i != host_to_data.end(); ++i) {
+	    i->second.print(i->first, group_seconds);
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
-    DataSeriesModule &source;
-    ExtentSeries s;
+    Int64Field packet_at;
     Int32Field payload_length;
-    ByteField op_id;
-    Int32Field sourceip, destip;
+    ByteField op_id, nfs_version;
+    Int32Field source_ip, dest_ip;
+    uint32_t group_seconds;
 };
 
-NFSDSModule *
-NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev)
+RowAnalysisModule *
+NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg)
 {
-    return new HostInfo(prev);
+    return new HostInfo(prev, arg);
 }
 
 class PayloadInfo : public NFSDSModule {

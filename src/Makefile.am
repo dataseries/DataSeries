@@ -307,3 +307,6 @@ bin_PROGRAMS += merge-example
 
 merge_example_SOURCES = example/merge-example.cpp
 endif
+
+clean::
+	-rm ran.check-*

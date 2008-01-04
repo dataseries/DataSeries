@@ -12,9 +12,11 @@
 #include <Lintel/HashTable.H>
 
 #include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/RowAnalysisModule.H>
 
 class NFSDSModule : public DataSeriesModule {
 public:
+    virtual ~NFSDSModule();
     virtual void printResult() = 0;
 };
 
@@ -81,5 +83,11 @@ std::string *fnByFileHandle(const ConstantString &fh);
 inline std::string *fnByFileHandle(const std::string &fh) {
     return fnByFileHandle(ConstantString(fh));
 }
+
+unsigned char opIdToUnifiedId(unsigned nfs_version, unsigned char op_id);
+const std::string &unifiedIdToName(unsigned char unified_id);
+bool validateUnifiedId(unsigned nfs_version, unsigned char op_id, 
+		       const std::string &op_name);
+unsigned getMaxUnifiedId();
 
 #endif

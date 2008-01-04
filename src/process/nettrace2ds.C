@@ -924,7 +924,8 @@ DoubleField ip_bwrolling_quantile(ip_bwrolling_series, "quantile");
 DoubleField ip_bwrolling_mbps(ip_bwrolling_series, "mbps");
 
 const string nfs_common_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"2.0\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::common\" version=\"2.1\"\n"
+  "  changes2_1=\"op_id is not null; it was always set in the converter\" >\n"
   "  <field type=\"int64\" name=\"packet_at\" comment=\"time in units of 2^-32 seconds since UNIX epoch, printed in close to microseconds\" pack_relative=\"packet_at\" print_divisor=\"4295\" />\n"
   "  <field type=\"int32\" name=\"source\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"
@@ -934,9 +935,9 @@ const string nfs_common_xml(
   "  <field type=\"bool\" name=\"is_request\" print_true=\"request\" print_false=\"response\" />\n"
   "  <field type=\"byte\" name=\"nfs_version\" print_format=\"V%d\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"transaction_id\" print_format=\"%08x\" />\n"
-  "  <field type=\"byte\" name=\"op_id\" opt_nullable=\"yes\" note=\"op_id is nfs-version dependent\" />\n"
+  "  <field type=\"byte\" name=\"op_id\" note=\"op_id is nfs-version dependent\" />\n"
   "  <field type=\"variable32\" name=\"operation\" pack_unique=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"rpc_status\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"rpc_status\" opt_nullable=\"yes\" comment=\"null on requests\" />\n"
   "  <field type=\"int32\" name=\"payload_length\" />\n"
   "  <field type=\"int64\" name=\"record_id\" comment=\"for correlating with the records in other extent types\" pack_relative=\"record_id\" />\n"
   "</ExtentType>\n"

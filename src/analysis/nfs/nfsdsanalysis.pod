@@ -296,6 +296,22 @@ file handle lookup
 print series: 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5
 = common/attr/rw join
 
+=head2 -w
+
+servers per filehandle
+
+=head2 -x 
+
+transactions
+
+=head2 -y
+
+outstanding requests
+
+=head2 -z I<fh-list filename>
+
+tmp file handle lookup
+
 =head1 COPYRIGHT
 
 (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP

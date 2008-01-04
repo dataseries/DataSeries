@@ -1042,15 +1042,18 @@ usage(char *progname)
     exit(1);
 }
 
+static char *host_info_arg;
 int
 parseopts(int argc, char *argv[])
 {
     bool any_selected;
 
-    
+    // TODO: redo this so it gets passed the sequences and just stuffs
+    // things into them.
+
     any_selected = false;
     while (1) {
-	int opt = getopt(argc, argv, "abc:defghijklmnop:q:r:stu:v:wxy:z:");
+	int opt = getopt(argc, argv, "abc:defghijkl:mnop:q:r:stu:v:wxy:z:");
 	if (opt == -1) break;
 	if (opt != '_')
 	    any_selected = true;
@@ -1080,7 +1083,7 @@ parseopts(int argc, char *argv[])
 	case 'i': FATAL_ERROR("untested");options[optNFSOpPayload] = 1; break;
 	case 'j': options[optServerLatency] = 1; break;
 	case 'k': FATAL_ERROR("untested");options[optClientServerPairInfo] = 1; break;
-	case 'l': FATAL_ERROR("untested");options[optHostInfo] = 1; break;
+	case 'l': options[optHostInfo] = 1; host_info_arg = optarg; break;
 	case 'm': FATAL_ERROR("untested");options[optPayloadInfo] = 1; break;
 	case 'n': FATAL_ERROR("untested");options[optFileSizeByType] = 1; break;
 	case 'o': FATAL_ERROR("untested");options[optUnbalancedOps] = 1; break;
@@ -1272,7 +1275,7 @@ main(int argc, char *argv[])
     }
 
     if (options[optHostInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newHostInfo(commonSequence.tail()));
+	commonSequence.addModule(NFSDSAnalysisMod::newHostInfo(commonSequence.tail(), host_info_arg));
     }
 
     if (options[optPayloadInfo]) {

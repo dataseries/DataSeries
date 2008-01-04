@@ -12,6 +12,9 @@
 
 using namespace std;
 
+NFSDSModule::~NFSDSModule()
+{ }
+
 void
 fh2mountData::pruneToMountPart(string &adjust)
 {
@@ -195,4 +198,125 @@ NFSDSModule *
 NFSDSAnalysisMod::newFillMount_HashTable(DataSeriesModule &source)
 {
     return new FillMount_HashTable(source);
+}
+
+struct opinfo {
+    const string name;
+    unsigned unified_id;
+};
+
+// TODO: re-sort this by which ones are most common, which will mean
+// that vectors of these will tend to stay shorter.
+
+static const string unified_ops[] = {
+    "null",        // 0
+    "getattr",     // 1
+    "setattr",     // 2
+    "root",        // 3
+    "lookup",      // 4
+    "readlink",	   // 5
+    "read",	   // 6
+    "writecache",  // 7
+    "write",	   // 8
+    "create",	   // 9
+    "remove",	   // 10
+    "rename",	   // 11
+    "link",	   // 12
+    "symlink",	   // 13
+    "mkdir",	   // 14
+    "rmdir",	   // 15
+    "readdir",	   // 16
+    "fsstat",	   // 17 -- use V3 naming, V2 called this statfs
+    "access",      // 18
+    "mknod",       // 19
+    "readdirplus", // 20 
+    "fsinfo",      // 21
+    "pathconf",    // 22
+    "commit",      // 23
+};
+
+static unsigned n_unified = sizeof(unified_ops) / sizeof(string);
+
+static const opinfo nfsv2ops[] = {
+    { "null", 0 },
+    { "getattr", 1 },
+    { "setattr", 2 },
+    { "root", 3 },
+    { "lookup", 4 },
+    { "readlink", 5 },
+    { "read", 6 },
+    { "writecache", 7 },
+    { "write", 8 },
+    { "create", 9 },
+    { "remove", 10 },
+    { "rename", 11 },
+    { "link", 12 },
+    { "symlink", 13 },
+    { "mkdir", 14 },
+    { "rmdir", 15 },
+    { "readdir", 16 },
+    { "statfs", 17 }
+};
+
+static unsigned n_nfsv2ops = sizeof(nfsv2ops) / sizeof(opinfo);
+
+static const opinfo nfsv3ops[] = {
+    { "null", 0 },
+    { "getattr", 1 },
+    { "setattr", 2 },
+    { "lookup", 4 },
+    { "access", 18 },
+    { "readlink", 5 },
+    { "read", 6 },
+    { "write", 8 },
+    { "create", 9 },
+    { "mkdir", 14 },
+    { "symlink", 13 },
+    { "mknod", 19 },
+    { "remove", 10 },
+    { "rmdir", 15 },
+    { "rename", 11 },
+    { "link", 12 },
+    { "readdir", 16 },
+    { "readdirplus", 20 }, 
+    { "fsstat", 17 },
+    { "fsinfo", 21 },
+    { "pathconf", 22 },
+    { "commit", 23 }
+};
+
+static unsigned n_nfsv3ops = sizeof(nfsv3ops) / sizeof(opinfo);
+
+unsigned char
+opIdToUnifiedId(unsigned nfs_version, unsigned char op_id)
+{
+    if (nfs_version == 2) {
+	SINVARIANT(op_id < n_nfsv2ops);
+	return nfsv2ops[op_id].unified_id;
+    } else if (nfs_version == 3) {
+	SINVARIANT(op_id < n_nfsv3ops);
+	return nfsv3ops[op_id].unified_id;
+    } else {
+	FATAL_ERROR(boost::format("unhandled nfs version %d\n")
+		    % static_cast<unsigned>(nfs_version));
+	return 0;
+    }
+}
+
+const std::string &
+unifiedIdToName(unsigned char unified_id)
+{
+    SINVARIANT(unified_id < n_unified);
+    return unified_ops[unified_id];
+}
+
+bool
+validateUnifiedId(unsigned nfs_version, unsigned char op_id,
+		  const std::string &op_name)
+{
+    unsigned char unified_id = opIdToUnifiedId(nfs_version, op_id);
+    SINVARIANT(op_name == unifiedIdToName(unified_id)
+	       || (nfs_version == 2 && op_id == 17 &&
+		   op_name == nfsv2ops[17].name));
+    return true;
 }

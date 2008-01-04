@@ -76,7 +76,12 @@ TypeIndexModule::lockedGetCompressedExtent()
 		my_type = matchType();
 	    } else {
 		ExtentType *tmp = matchType();
-		INVARIANT(my_type == tmp, "two different types were matched; this is currently invalid"); // TODO: figure out what we should allow, should the series typematching rules be imported here?
+		// TODO: figure out what we should allow, should the series typematching rules be imported here?
+		INVARIANT(my_type == tmp, 
+			  boost::format("two different types were matched; this is currently invalid\nFile with mismatch was %s\nType 1:\n%s\nType 2:\n%s\n")
+			  % inputFiles[cur_file]
+			  % my_type->getXmlDescriptionString()
+			  % tmp->getXmlDescriptionString()); 
 	    }
 
 	    indexSeries.setExtent(cur_source->indexExtent);

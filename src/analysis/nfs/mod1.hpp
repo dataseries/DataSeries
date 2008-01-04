@@ -13,7 +13,7 @@ namespace NFSDSAnalysisMod {
     // in nfsdsanalysis-mod1:
     NFSDSModule *newNFSOpPayload(DataSeriesModule &prev);
     NFSDSModule *newClientServerPairInfo(DataSeriesModule &prev);
-    NFSDSModule *newHostInfo(DataSeriesModule &prev);
+    RowAnalysisModule *newHostInfo(DataSeriesModule &prev, char *arg);
     NFSDSModule *newUnbalancedOps(DataSeriesModule &prev);
     NFSDSModule *newPayloadInfo(DataSeriesModule &prev);
     NFSDSModule *newServerLatency(DataSeriesModule &prev);
