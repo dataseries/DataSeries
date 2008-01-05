@@ -1043,10 +1043,11 @@ public:
 	    vals.push_back(&(*i));
 	}
 	sort(vals.begin(),vals.end(),sortByTime());
-	printf("Summary: %lld/%lld (%.2f%%) requests without responses, %d shown\n",
-	       missing_response_rotated_count + vals.size(),request_count,
-	       (double)(missing_response_rotated_count + vals.size())/(double)request_count,
-	       vals.size());
+	cout << format("Summary: %lld/%lld (%.2f%%) requests without responses, %d shown\n")
+	    % (missing_response_rotated_count + vals.size())
+	    % request_count
+	    % ((double)(missing_response_rotated_count + vals.size())/(double)request_count)
+	    % vals.size();
 	if (print_detail) {
 	    printf("%-13s %-15s %-15s %-4s %-8s %-2s %-12s\n",
 		   "time",
@@ -1075,7 +1076,8 @@ public:
 	    printf("\n");
 	}
 
-	printf("Summary: %d/%lld duplicate requests\n", retransmit.size(), request_count);
+	cout << format("Summary: %d/%lld duplicate requests\n")
+	    % retransmit.size() % request_count;
 	if (print_detail) {
 	    printf("%-13s %-15s %-15s %-4s %-8s %-2s %-12s\n",
 		   "time", "client", "server", "prot", "xid", "op", "operation");

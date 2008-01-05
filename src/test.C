@@ -189,29 +189,33 @@ test_varcompress()
     }
     Clock::Tdbl start_time,end_time;
     Extent::ByteArray compressed;
-    printf("packing %d bytes on non-duplicate strings:\n",
-	   packed.size());
+    cout << format("packing %d bytes on non-duplicate strings:\n")
+	% packed.size();
     start_time = Clock::tod();
     Extent::packBZ2(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  bz2 compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  bz2 compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  zlib compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  zlib compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 #if DATASERIES_ENABLE_LZO
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  lzo compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  lzo compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 #endif
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  lzf compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  lzf compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 
     packed.resize(4);
     *(int32 *)packed.begin() = 0;
@@ -229,35 +233,38 @@ test_varcompress()
 	byte *offset = packed.begin() + pos;
 	*(int32 *)offset = datasize;
 	offset += 4;
-	AssertAlways(((unsigned long)offset % 8) == 0,
-		     ("?!\n"));
+	SINVARIANT(((unsigned long)offset % 8) == 0);
 	memcpy(offset,pslist[psn].data(),datasize);
 	++psn;
     }
-    printf("packing %d bytes of %d repetitions\n",
-	   packed.size(),reps);
+    cout << format("packing %d bytes of %d repetitions\n")
+	% packed.size() % reps;
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packBZ2(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  bz2 compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  bz2 compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  zlib compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  zlib compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 #if DATASERIES_ENABLE_LZO
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  lzo compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  lzo compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 #endif
     compressed.resize(0);
     start_time = Clock::tod();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
     end_time = Clock::tod();
-    printf("  lzf compress -> %d, %.2fus\n",compressed.size(),end_time-start_time);
+    cout << format("  lzf compress -> %d, %.2fus\n")
+	% compressed.size() % (end_time-start_time);
 }
 
 void
@@ -461,7 +468,8 @@ test_extentpackunpack()
 	AssertAlways(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0,("??"));
 	++testseries.pos;
     }
-    printf("unpacked bytes %d, packed %d\n",unpackextent.extentsize(),packed.size());
+    cout << format("unpacked bytes %d, packed %d\n")
+	% unpackextent.extentsize() % packed.size();
     printf("test_extentpackunpack - end\n");
 }
 

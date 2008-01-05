@@ -199,10 +199,11 @@ IndexSourceModule::compressedPrefetchThread()
 	    PrefetchExtent *p = lockedGetCompressedExtent();
 	    if (p == NULL) {
 		prefetch->source_done = true;
+		prefetch->ready_cond.signal();
 	    } else {
 		prefetch->compressed.add(p, p->bytes.size());
+		prefetch->unpack_cond.signal();
 	    }
-	    prefetch->unpack_cond.signal();
 	} else {
 	    prefetch->compressed_cond.wait(prefetch->mutex);
 	}
