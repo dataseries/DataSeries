@@ -43,8 +43,7 @@ Sizing experiments, turning on options is cumulative; the big win is
 */
 
 const string ellard_nfs_expanded_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\"\n"
-  " comment=\"see ellardnfs2ds.cpp:processLine for notes on how a few lines containing garbage were translated\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" >\n"
   "  <field type=\"int64\" name=\"time\" units=\"microseconds\" epoch=\"unix\" pack_relative=\"time\" />\n"
   "  <field type=\"int32\" name=\"source_ip\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"
@@ -121,10 +120,11 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"variable32\" name=\"fn\" opt_nullable=\"yes\" comment=\"name for V2 lookups\" />\n"
   "  <field type=\"int32\" name=\"offset\" opt_nullable=\"yes\" comment=\"off for V2 reads\" />\n"
   "  <field type=\"int32\" name=\"tcount\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"nfsstat\" opt_nullable=\"yes\" comment=\"may be garbage, values don't match legal values for nfsstat from nfs_prot.x\" />"
-  "  <field type=\"bool\" name=\"short_packet\" print_true=\"SHORT_PACKET\" print_false=\"OK_PACKET\" />"
-  "  <field type=\"variable32\" name=\"fn2\" opt_nullable=\"yes\" comment=\"second name for V2 renames\" />"
-  "  <field type=\"int32\" name=\"begoff\" opt_nullable=\"yes\" comment=\"beginning offset for V2 write\" />"
+  "  <field type=\"int32\" name=\"nfsstat\" opt_nullable=\"yes\" comment=\"may be garbage, values don't match legal values for nfsstat from nfs_prot.x\" />\n"
+  "  <field type=\"bool\" name=\"short_packet\" print_true=\"SHORT_PACKET\" print_false=\"OK_PACKET\" />\n"
+  "  <field type=\"variable32\" name=\"fn2\" opt_nullable=\"yes\" comment=\"second name for V2 renames\" />\n"
+  "  <field type=\"int32\" name=\"begoff\" opt_nullable=\"yes\" comment=\"beginning offset for V2 write\" />\n"
+  "  <field type=\"variable32\" name=\"garbage\" opt_nullable=\"yes\" comment=\"a few lines are garbage, we simply pass through the entire contents here\" />\n"
   "</ExtentType>\n"
   );
 
@@ -143,6 +143,7 @@ ByteField rpc_function_id(series, "rpc_function_id");
 Variable32Field rpc_function(series, "rpc_function");
 Int32Field return_value(series, "return_value", Field::flag_nullable);
 BoolField short_packet(series, "short_packet");
+Variable32Field garbage(series, "garbage", Field::flag_nullable);
 
 class KVParser {
 public:
@@ -171,10 +172,13 @@ parseTime(const string &field)
 	      || (nfs_version.val() == 2 && 
 		  timeparts[1].size() >= 1 && timeparts[1].size() <= 6)
 	      || field == "0.000000" || field == "1000000.000000" 
-	      || field == "4288942.000000" || field == "4096.000001", 
-	      format("error parsing time '%s' (%d,%d,%d) in line %d") 
+	      || field == "4288942.000000" || field == "4096.000001"
+	      || field == "18000.000000",
+	      format("error parsing time '%s' (%d,%d,%d) in line %d\n"
+		     "garbage_lines.push_back(GarbageLine(%dLL, \"%x\")); // %s\n") 
 	      % field % timeparts.size() % timeparts[0].size() 
-	      % timeparts[1].size() % nlines);
+	      % timeparts[1].size() % nlines
+	      % time_field.val() % rpc_transaction_id.val() % field);
     return
 	static_cast<int64_t>(stringToUInt32(timeparts[0])) * 1000000 
 	+ stringToUInt32(timeparts[1]);
@@ -496,6 +500,7 @@ parseCommon(vector<string> &fields)
     rpc_function_id.set(stringToUInt32(fields[6], 16));
     rpc_function.set(fields[7]);
     short_packet.set(false);
+    garbage.setNull(true);
 }
 
 void
@@ -544,27 +549,95 @@ checkTailReply(vector<string> &fields, unsigned kvpairs)
 	      format("error parsing line %d") % nlines);
 }
 
+struct GarbageLine {
+    int64_t time_val;
+    string xid;
+    bool short_packet;
+    GarbageLine(int64_t a, const string &b, bool c = false)
+	: time_val(a), xid(b), short_packet(c) {}
+};
+
+vector<GarbageLine> garbage_lines;
+
+void
+initGarbageLines()
+{
+    // Some lines have garbage in them, the times have 7 digits
+    // in the microsecond field and the stable field is '?'; the
+    // count is also garbage as it is claiming we have written
+    // more than could be carried in a write request.
+    garbage_lines.push_back(GarbageLine(1004562602021187LL, "9d66f750"));
+    garbage_lines.push_back(GarbageLine(1004562602021196LL, "9d66f750"));
+    garbage_lines.push_back(GarbageLine(1004391592471374LL, "25e02642"));
+    garbage_lines.push_back(GarbageLine(1004391592471382LL, "25e02642"));
+    garbage_lines.push_back(GarbageLine(1004554395617822LL, "35aeaf4f"));
+    garbage_lines.push_back(GarbageLine(1002660539928279LL, "32136c8"));
+
+    // More 7 digit numbers, not inspecting to figure out if other parts
+    // of line look bad
+    garbage_lines.push_back(GarbageLine(1000221413955706LL, "c7ffbdc6"));
+    garbage_lines.push_back(GarbageLine(1000320518315046LL, "8021d1cc"));
+    garbage_lines.push_back(GarbageLine(1000492652749891LL, "815b14d9"));
+    garbage_lines.push_back(GarbageLine(1000499794952747LL, "4efeb2db"));
+    garbage_lines.push_back(GarbageLine(1000747179024730LL, "12aee5e8"));
+    garbage_lines.push_back(GarbageLine(1001106847789435LL, "a090f16a"));
+    garbage_lines.push_back(GarbageLine(1001377905911480LL, "8284d478"));
+    garbage_lines.push_back(GarbageLine(1001449644132284LL, "8fcba7d"));
+    garbage_lines.push_back(GarbageLine(1000492653024779LL, "46114d9"));
+    garbage_lines.push_back(GarbageLine(1001526976180832LL, "5c6bcf19"));
+    garbage_lines.push_back(GarbageLine(1001526976180840LL, "5c6bcf19"));
+    garbage_lines.push_back(GarbageLine(1001606263249714LL, "9551311f"));
+    garbage_lines.push_back(GarbageLine(1001606263249724LL, "9551311f"));
+
+    // These are missing a key; probably fh, but can't tell for sure      
+    garbage_lines.push_back(GarbageLine(1004486490806623LL, "18e520dc"));
+    garbage_lines.push_back(GarbageLine(1004487246423963LL, "d9d732dc"));
+    // Missing a space?
+    garbage_lines.push_back(GarbageLine(1004487248910780LL, "247744e0"));
+    // filehandles have '.' in them??
+    garbage_lines.push_back(GarbageLine(1004487249188942LL, "ae855e4a"));
+    // missing keys?
+    garbage_lines.push_back(GarbageLine(1004487246432890LL, "ead732dc"));
+    // short packet with con = 126; translate as garbage
+    garbage_lines.push_back(GarbageLine(1000818821199260LL, "f48ab557", true));
+    // short pack with con = 114
+    garbage_lines.push_back(GarbageLine(1037402177970404, "79c477b0", true));
+    garbage_lines.push_back(GarbageLine(1037402177971361, "79c477b1", true));
+    //    garbage_lines.push_back(GarbageLine());
+}
+
 void
 processLine(const string &buf)
 {
     vector<string> fields;
     boost::split(fields, buf, boost::is_any_of(" "));
     
-    if (fields[0] == "1004562602.021187" ||
-	fields[0] == "1004562602.021196") {
-	INVARIANT(fields[5] == "9d66f750", "?");
-	// These lines have garbage in them, the times have 7 digits
-	// in the microsecond field and the stable field is '?'; the
-	// count is also garbage as it is claiming we have written
-	// more than could be carried in a write request.
-	return;
-    }
     outmodule->newRecord();
     parseCommon(fields);
-	
+
     for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
 	i != kv_parsers.end(); ++i) {
 	i->second->setNull();
+    }
+
+    for(vector<GarbageLine>::iterator i = garbage_lines.begin();
+	i != garbage_lines.end(); ++i) {
+	if (time_field.val() == i->time_val) {
+	    SINVARIANT(fields[5] == i->xid);
+	    garbage.set(buf);
+	    short_packet.set(i->short_packet);
+	    return;
+	}
+    }
+
+    if (source_ip.val() == 0x30 && dest_ip.val() == 0x33 
+	&& dest_port.val() == 0x039b && 
+	(rpc_function_id.val() == 4 || rpc_function_id.val() == 6)
+	&& fields.size() > 34 && fields[34] == "1025711813.4075311") {
+	// lair62b traces have many of these all with the same bad
+	// time value.
+	garbage.set(buf);
+	return;
     }
 
     if (rpc_function_id.val() == 0) {
@@ -741,6 +814,7 @@ main(int argc,char *argv[])
     outds.writeExtentLibrary(library);
 
     setupKVParsers();
+    initGarbageLines();
 
     // STL is slow 
     const unsigned bufsize = 1024*1024;
