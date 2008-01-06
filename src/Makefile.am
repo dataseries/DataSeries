@@ -288,6 +288,7 @@ ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis
 	cmp ellard-data.txt $(top_srcdir)/check-data/ellard-anon-home04-011119-2345.subset.txt 
 	./ellardanalysis ellard.ds >ellard-analysis.txt
 	cmp ellard-analysis.txt $(top_srcdir)/check-data/ellard-analysis.txt.ref
+	touch $@
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

@@ -136,3 +136,34 @@
 1004499019.604825 30.0801 34.03d2 T R3 71785ddd 5 readlink OK ftype 5 mode 1c0 nlink 1 uid 18bfc gid 18a91 size 25 used 0 rdev 0 rdev2 0 fsid ffffffff8465bccf fileid 6b916 atime 1004499019.602431 mtime 1004486397.721362 ctime 1004486397.721362 name "17d1.0340.0341.0342.17d2" status=XXX pl = XXX con = XXX len = XXX
 1004486397.743398 34.03d2 30.0801 T C3 ce591edc a symlink fh cfbc65840a0000000c0000001bba0600b88000000c0000000200000001800000 name ".#1694.txt" mode 1c0 sdata "17d1.0340.0341.0342.17d2" con = XXX len = XXX
 1004486397.744842 30.0801 34.03d2 T R3 ce591edc a symlink OK fh cfbc65840a0000000c00000016b906004b8000000c0000000200000001800000 ftype 5 mode 1c0 nlink 1 uid 18bfc gid 18a91 size 25 used 0 rdev 0 rdev2 0 fsid ffffffff8465bccf fileid 6b916 atime 1004486397.721362 mtime 1004486397.721362 ctime 1004486397.721362 status=XXX pl = XXX con = XXX len = XXX
+1045476008.690094 75.9c8b 30.0801 U C3 3e5a1eea 0 null con = 82 len = 97 con = XXX len = XXX
+1045476008.690179 30.0801 75.9c8b U R3 3e5a1eea 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
+1045476090.239038 89.8f32 30.0801 U C3 3e5bbb68 0 null con = 82 len = 97 con = XXX len = XXX
+1045476090.239126 30.0801 89.8f32 U R3 3e5bbb68 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
+1045476317.865747 35.cbbb 30.0801 U C3 3e508300 0 null con = 82 len = 97 con = XXX len = XXX
+1045476317.865832 30.0801 35.cbbb U R3 3e508300 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
+1045476330.242715 89.8f35 30.0801 U C3 3e5bba49 0 null con = 82 len = 97 con = XXX len = XXX
+1045476330.242808 30.0801 89.8f35 U R3 3e5bba49 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
+1045476608.695480 75.9c9b 30.0801 U C3 3e5a095a 0 null con = 82 len = 97 con = XXX len = XXX
+1045476608.695565 30.0801 75.9c9b U R3 3e5a095a 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
+1037240674.976347 116.0320 30.0801 U C3 3892f72d e rename SHORT PACKETcon = 130 len = 400 con = XXX len = XXX
+1037240674.976602 30.0801 116.0320 U R3 3892f72d e rename OK  status=XXX pl = XXX con = XXX len = XXX
+1043914191.505850 30.0801 88.03fe U R2 232c 1 getattr OK ftype 2 mode 47ff nlink 5 uid 0 gid 0 size b000 blksize 2000 rdev 0 blocks 58 fsid 8664 fileid 2f1201 atime 1043880643.104144 mtime 1043914172.130009 ctime 1043914172.130009 status=XXX pl = XXX con = XXX len = XXX
+1043914473.409844 30.0801 88.03fd U R2 232e 1 getattr OK ftype 2 mode 47ff nlink 5 uid 0 gid 0 size b000 blksize 2000 rdev 0 blocks 58 fsid 8664 fileid 2f1201 atime 1043880643.104144 mtime 1043914471.645001 ctime 1043914471.645001 status=XXX pl = XXX con = XXX len = XXX
+1043914477.231539 30.0801 88.03fe U R2 2331 1 getattr OK ftype 2 mode 41ed nlink 8 uid 0 gid 0 size 1000 blksize 2000 rdev 0 blocks 8 fsid 8664 fileid 38c908 atime 1043858215.666002 mtime 1031678542.280000 ctime 1031678542.280000 status=XXX pl = XXX con = XXX len = XXX
+1043914479.217552 30.0801 88.03fe U R2 2335 1 getattr OK ftype 2 mode 45fd nlink f uid 0 gid 18a90 size 1000 blksize 2000 rdev 0 blocks 8 fsid 8664 fileid 38c904 atime 1043906504.979002 mtime 1030116504.330001 ctime 1030116504.330001 status=XXX pl = XXX con = XXX len = XXX
+1043914479.524027 30.0801 88.03fe U R2 2339 1 getattr OK ftype 2 mode 45fd nlink 6 uid 18a90 gid 18a90 size 1000 blksize 2000 rdev 0 blocks 8 fsid 8664 fileid 38c902 atime 1039640898.909002 mtime 911397415.0 ctime 996088922.79027 status=XXX pl = XXX con = XXX len = XXX
+1037866272.976805 30.0801 78.03fe U R2 1ae6 11 statfs OK tsize 2000 bsize 1000 blocks 777ec67 bfree 3c83c11 bavail 3c83c11 status=XXX pl = XXX con = XXX len = XXX
+1037866557.637790 30.0801 78.03fe U R2 1aeb 11 statfs OK tsize 2000 bsize 1000 blocks 777ec67 bfree 3c83c09 bavail 3c83c09 status=XXX pl = XXX con = XXX len = XXX
+1037866559.551507 30.0801 78.03fe U R2 1aef 11 statfs OK tsize 2000 bsize 1000 blocks 777ec67 bfree 3c83c09 bavail 3c83c09 status=XXX pl = XXX con = XXX len = XXX
+1037866559.901401 30.0801 78.03fe U R2 1af3 11 statfs OK tsize 2000 bsize 1000 blocks 777ec67 bfree 3c83c09 bavail 3c83c09 status=XXX pl = XXX con = XXX len = XXX
+1037866575.830677 30.0801 78.03fe U R2 1af8 11 statfs OK tsize 2000 bsize 1000 blocks 777ec67 bfree 3c83c08 bavail 3c83c08 status=XXX pl = XXX con = XXX len = XXX
+1036443759.602199 32.02d2 30.0801 U C2 8200eee7 2 setattr fh 569a2e008bb9e53420000000003b1c82cf8c533564860000a0cf90002e303000 atime 1030395536.0 mtime 1030395535.0 con = XXX len = XXX
+1036443759.602575 30.0801 32.02d2 U R2 8200eee7 2 setattr OK ftype 1 mode 8180 nlink 1 uid 18b3a gid 18ae8 size 22e blksize 2000 rdev 0 blocks 8 fsid 8664 fileid 3b1c82 atime 1030395536.0 mtime 1030395535.0 ctime 1036443759.684014 status=XXX pl = XXX con = XXX len = XXX
+1036443759.564278 32.02d2 30.0801 U C2 8200eec5 6 read fh 569a2e008bb9e53420000000003b1c82cf8c533564860000a0cf90002e303000 offset 0 count 2000 tcount 2000 con = XXX len = XXX
+1036444158.080161 30.0801 32.02d2 U R2 8203a7e8 a remove OK nfsstat fee1c63d status=XXX pl = XXX con = XXX len = XXX
+1036444155.932701 30.0801 32.02d2 U R2 8203a340 1 getattr OK ftype 1 mode 8180 nlink 1 uid 18b3a gid 18ae8 size 22e blksize 2000 rdev 0 blocks 8 fsid 8664 fileid 3b1c82 atime 1030395536.0 mtime 1030395535.0 ctime 1036444156.7002 status=XXX pl = XXX con = XXX len = XXX
+1037137553.067051 40.0338 30.0801 U C2 7954c6da b rename fh 1bbb2400226d7017200000000024bb1b226d701764860000a0cf90002e303000 fn ".pine-debug3" fh2 1bbb2400226d7017200000000024bb1b226d70 fn2 ".pine-debug4" con = XXX len = XXX
+1037649546.002657 33.0370 30.0801 U C2 72cd8ac 8 write fh 00ea5800c6e63c18200000000111d8cf773c870464860000a0cf90002e303000 begoff 0 offset 0 tcount bba con = XXX len = XXX
+1037649551.600408 33.0370 30.0801 U C2 72cdbb6 8 write fh 00ea5800c6e63c18200000000111d8c37666180264860000a0cf90002e303000 begoff 0 offset 0 tcount 1d2b con = XXX len = XXX
+1037649549.374805 33.0370 30.0801 U C2 72cdb99 10 readdir fh 00ea5800c6e63c18200000000058ea00c6e63c1864860000a0cf90002e303000 cookie 00000000 count 418 con = XXX len = XXX

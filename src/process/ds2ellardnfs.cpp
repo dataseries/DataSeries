@@ -76,7 +76,25 @@ public:
 	  stable(series, "stable", Field::flag_nullable),
 	  file(series, "file", Field::flag_nullable),
 	  name2(series, "name2", Field::flag_nullable),
-	  sdata(series, "sdata", Field::flag_nullable)
+	  sdata(series, "sdata", Field::flag_nullable),
+	  pre_size(series, "pre-size", Field::flag_nullable), 
+	  pre_mtime(series, "pre-mtime", Field::flag_nullable),
+	  pre_ctime(series, "pre-ctime", Field::flag_nullable),
+	  euid(series, "euid", Field::flag_nullable),
+	  egid(series, "egid", Field::flag_nullable),
+	  blksize(series, "blksize", Field::flag_nullable),
+	  blocks(series, "blocks", Field::flag_nullable),
+	  tsize(series, "tsize", Field::flag_nullable),
+	  bsize(series, "bsize", Field::flag_nullable),
+	  bfree(series, "bfree", Field::flag_nullable),
+	  bavail(series, "bavail", Field::flag_nullable),
+	  fn(series, "fn", Field::flag_nullable),
+	  offset(series, "offset", Field::flag_nullable),
+	  tcount(series, "tcount", Field::flag_nullable),
+	  nfsstat(series, "nfsstat", Field::flag_nullable),
+	  short_packet(series, "short_packet"),
+	  fn2(series, "fn2", Field::flag_nullable),
+	  begoff(series, "begoff", Field::flag_nullable)
     {
     }
 
@@ -90,13 +108,17 @@ public:
 	}
     }
 
-    string timeConv(int64_t time) {
+    string timeConv(int64_t time, bool proper_conv) {
 	if (time == -1) {
 	    return "SERVER";
 	}
 	uint32_t seconds = time / 1000000;
 	uint32_t useconds = time % 1000000;
-	return (format("%d.%06d") % seconds % useconds).str();
+	if (nfs_version.val() == 3 || proper_conv) {
+	    return (format("%d.%06d") % seconds % useconds).str();
+	} else {
+	    return (format("%d.%d") % seconds % useconds).str();
+	}
     }
     
     void printMaybe(BoolField &f) {
@@ -119,7 +141,8 @@ public:
 	if (f.isNull())
 	    return;
 	printany = true;
-	if (rpc_function.equal("access") && !is_call.val()) {
+	if (rpc_function.equal("access") && 
+	    (!is_call.val() || time.val() >= 1043880000000000LL)) {
 	    cout << format(" acc %x") % static_cast<int>(f.val());
 	} else if (f.val() == 1) {
 	    cout << " acc R";
@@ -154,8 +177,13 @@ public:
 	if (f.isNull())
 	    return;
 	printany = true;
-	cout << format(" %s %x")
-	    % stripDup(f.getName()) % f.val();
+	if (nfs_version.val() == 2 && rpc_function_id.val() == 16
+	    && f.getName() == "cookie") {
+	    cout << format(" cookie %08x") % f.val();
+	} else {
+	    cout << format(" %s %x")
+		% stripDup(f.getName()) % f.val();
+	}
     }
 
     void printMaybeTime(Int64Field &f) {
@@ -163,7 +191,7 @@ public:
 	    return;
 	printany = true;
 	cout << format(" %s %s")
-	    % stripDup(f.getName()) % timeConv(f.val());
+	    % stripDup(f.getName()) % timeConv(f.val(), false);
     }
 	
     void printMaybe(Variable32Field &f) {
@@ -184,7 +212,8 @@ public:
 
     virtual void processRow() {
 	cout << format("%s %x.%04x %x.%04x %c %c%d %x %x %s")
-	    % timeConv(time.val()) % source_ip.val() % source_port.val()
+	    % timeConv(time.val(), true) 
+	    % source_ip.val() % source_port.val()
 	    % dest_ip.val() % dest_port.val() 
 	    % (is_udp.val() ? 'U' : 'T')
 	    % (is_call.val() ? 'C' : 'R') 
@@ -196,12 +225,16 @@ public:
 	if (!is_call.val()) {
 	    INVARIANT(!return_value.isNull(), "?");
 	    if (return_value.val() == 0) {
-		cout << " OK";
+		if (nfs_version.val() == 3 && rpc_function_id.val() == 0) {
+		    // do nothing, nulls don't print out OK
+		} else {
+		    cout << " OK";
+		}
 	    } else {
 		cout << format(" %x") % return_value.val();
 	    }
 	}
-
+	
 	printany = false;
 
 	printMaybe(fh);
@@ -209,7 +242,20 @@ public:
 	    // rename prints name between fh and fh2; most print it after
 	    printMaybeString(name);
 	}
+
+	if (nfs_version.val() == 2 && rpc_function_id.val() == 11) {
+	    printMaybeString(fn);
+	}
+
 	printMaybe(fh2);
+
+	if (nfs_version.val() == 2 && rpc_function_id.val() != 11) {
+	    printMaybeString(fn);
+	}
+
+	printMaybe(pre_size);
+	printMaybeTime(pre_mtime);
+	printMaybeTime(pre_ctime);
 
 	if (!rpc_function.equal("rename") && !rpc_function.equal("readlink")) {
 	    printMaybeString(name);
@@ -217,14 +263,19 @@ public:
 	printMaybeString(name2);
 	printMaybeChar(how);
 
+	printMaybe(tsize);
+	printMaybe(bsize);
+
 	printMaybe(ftype);
 	printMaybe(mode);
 	printMaybe(nlink);
 	printMaybe(uid);
 	printMaybe(gid);
 	printMaybe(size);
+	printMaybe(blksize);
 	printMaybe(used);
 	printMaybe(rdev);
+	printMaybe(blocks);
 	printMaybe(rdev2);
 	printMaybe(fsid);
 	printMaybe(fileid);
@@ -232,6 +283,9 @@ public:
 	printMaybeTime(mtime);
 	printMaybeTime(ctime);
 	
+	printMaybe(bfree);
+	printMaybe(bavail);
+
 	if (rpc_function.equal("readlink")) {
 	    printMaybeString(name);
 	}
@@ -255,15 +309,35 @@ public:
 
 	printMaybe(file);
 	printMaybe(off);
+	printMaybe(begoff);
+	printMaybe(offset);
 	printMaybe(cookie);
 	printMaybe(count);
+	printMaybe(tcount);
 	printMaybe(maxcnt);
 	printMaybe(eof);
 
 	printMaybeString(sdata);
 	printMaybeChar(stable);
+	printMaybe(euid);
+	printMaybe(egid);
+
+	printMaybe(nfsstat);
+	printMaybeString(fn2);
+
+	if (rpc_function_id.val() == 0) {
+	    printany = true;
+	    if (is_call.val()) {
+		cout << " con = 82 len = 97";
+	    } else {
+		cout << " status=0 pl = 0 con = 70 len = 70";
+	    }
+	}
 	if (printany == false) {
 	    cout << " ";
+	}
+	if (short_packet.val()) {
+	    cout << "SHORT PACKETcon = 130 len = 400";
 	}
 	if (is_call.val()) {
 	    cout << " con = XXX len = XXX\n";
@@ -336,6 +410,24 @@ private:
     Variable32Field file;
     Variable32Field name2;
     Variable32Field sdata;
+    Int64Field pre_size;
+    Int64Field pre_mtime;
+    Int64Field pre_ctime;
+    Int32Field euid;
+    Int32Field egid;
+    Int64Field blksize;
+    Int32Field blocks;
+    Int32Field tsize;
+    Int32Field bsize;
+    Int32Field bfree;
+    Int32Field bavail;
+    Variable32Field fn;
+    Int32Field offset;
+    Int32Field tcount;
+    Int32Field nfsstat;
+    BoolField short_packet;
+    Variable32Field fn2;
+    Int32Field begoff;
 };
 
 int

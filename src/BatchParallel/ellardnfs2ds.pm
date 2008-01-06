@@ -45,7 +45,7 @@ sub new {
 }
 
 sub usage {
-    print "batch-parallel ellardnfs2ds [compress={bz2,lzf,gz,lzo}] [extent-size-#.#km] [nocheck] -- file/directory...\n";
+    print "batch-parallel ellardnfs2ds [compress={bz2,lzf,gz,lzo}] [extent-size=#.#[km]] [nocheck] -- file/directory...\n";
 }
 
 sub file_is_source {

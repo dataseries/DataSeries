@@ -72,10 +72,10 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int64\" name=\"fileid\" opt_nullable=\"yes\" />\n"
   // mtime and ctime are useful relative to each other, in a few simple tests,
   // it doesn't matter which way they are relative.
-  "  <field type=\"int64\" name=\"mtime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
-  "  <field type=\"int64\" name=\"ctime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"int64\" name=\"mtime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
+  "  <field type=\"int64\" name=\"ctime\" opt_nullable=\"yes\" pack_relative=\"mtime\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
   // packing this relative to either mtime or ctime makes things larger in a few simple tests.
-  "  <field type=\"int64\" name=\"atime\" opt_nullable=\"yes\" pack_relative=\"atime\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"int64\" name=\"atime\" opt_nullable=\"yes\" pack_relative=\"atime\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
   "  <field type=\"byte\" name=\"ftype_dup\" opt_nullable=\"yes\" comment=\"all of the dup fields are the second occurance of an identically named field\" />\n"
   "  <field type=\"int32\" name=\"mode_dup\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"nlink_dup\" opt_nullable=\"yes\" />\n"
@@ -88,10 +88,10 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int64\" name=\"fsid_dup\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int64\" name=\"fileid_dup\" opt_nullable=\"yes\" />\n"
 
-  "  <field type=\"int64\" name=\"mtime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" />\n"
-  "  <field type=\"int64\" name=\"ctime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"int64\" name=\"mtime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
+  "  <field type=\"int64\" name=\"ctime_dup\" opt_nullable=\"yes\" pack_relative=\"mtime_dup\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
   // packing this relative to either mtime or ctime makes things larger in a few simple tests.
-  "  <field type=\"int64\" name=\"atime_dup\" opt_nullable=\"yes\" pack_relative=\"atime_dup\" comment=\"-1 means set to server\" />\n"
+  "  <field type=\"int64\" name=\"atime_dup\" opt_nullable=\"yes\" pack_relative=\"atime_dup\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
 
 
   "  <field type=\"byte\" name=\"acc\" opt_nullable=\"yes\" comment=\"bitmas, bit 0 = read, bit 1 = lookup, bit 2 = modify, bit 3 = extend, bit 4 = delete, bit 5 = execute; ellard traces also have U, traslating that as bit 6\" />\n"
@@ -107,6 +107,24 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"variable32\" name=\"name2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
 
   "  <field type=\"variable32\" name=\"sdata\" opt_nullable=\"yes\" pack_unique=\"yes\" comment=\"symlink data, appears to be the target of the symlink\" />\n"
+  "  <field type=\"int64\" name=\"pre-size\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"pre-mtime\" opt_nullable=\"yes\" units=\"microseconds\" epoch=\"unix\" />\n"
+  "  <field type=\"int64\" name=\"pre-ctime\" opt_nullable=\"yes\" units=\"microseconds\" epoch=\"unix\" />\n"
+  "  <field type=\"int32\" name=\"euid\" opt_nullable=\"yes\" pack_relative=\"euid\" />\n"
+  "  <field type=\"int32\" name=\"egid\" opt_nullable=\"yes\" pack_relative=\"egid\" />\n"
+  "  <field type=\"int64\" name=\"blksize\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"blocks\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"tsize\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"bsize\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"bfree\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"bavail\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"fn\" opt_nullable=\"yes\" comment=\"name for V2 lookups\" />\n"
+  "  <field type=\"int32\" name=\"offset\" opt_nullable=\"yes\" comment=\"off for V2 reads\" />\n"
+  "  <field type=\"int32\" name=\"tcount\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"nfsstat\" opt_nullable=\"yes\" comment=\"may be garbage, values don't match legal values for nfsstat from nfs_prot.x\" />"
+  "  <field type=\"bool\" name=\"short_packet\" print_true=\"SHORT_PACKET\" print_false=\"OK_PACKET\" />"
+  "  <field type=\"variable32\" name=\"fn2\" opt_nullable=\"yes\" comment=\"second name for V2 renames\" />"
+  "  <field type=\"int32\" name=\"begoff\" opt_nullable=\"yes\" comment=\"beginning offset for V2 write\" />"
   "</ExtentType>\n"
   );
 
@@ -124,6 +142,7 @@ Int32Field rpc_transaction_id(series, "rpc_transaction_id");
 ByteField rpc_function_id(series, "rpc_function_id");
 Variable32Field rpc_function(series, "rpc_function");
 Int32Field return_value(series, "return_value", Field::flag_nullable);
+BoolField short_packet(series, "short_packet");
 
 class KVParser {
 public:
@@ -142,9 +161,17 @@ parseTime(const string &field)
     boost::split(timeparts, field, boost::is_any_of("."));
     // Check on size of timeparts is to try to make sure that 
     // we have a "sane" time
-    INVARIANT(timeparts.size() == 2 && timeparts[0].size() >= 9 &&
-	      timeparts[0].size() <= 10 
-	      && timeparts[1].size() == 6, 
+    INVARIANT((timeparts.size() == 2 && timeparts[0].size() >= 9 &&
+	       timeparts[0].size() <= 10 
+	       && timeparts[1].size() == 6) 
+	      // V2 times seem to have been printed as %d.%d; 
+	      // examination of anon-deasna-021104-1600.txt.gz shows some
+	      // values that are going up at about the same rate as actual
+	      // time, and progress from .9004 to .10007
+	      || (nfs_version.val() == 2 && 
+		  timeparts[1].size() >= 1 && timeparts[1].size() <= 6)
+	      || field == "0.000000" || field == "1000000.000000" 
+	      || field == "4288942.000000" || field == "4096.000001", 
 	      format("error parsing time '%s' (%d,%d,%d) in line %d") 
 	      % field % timeparts.size() % timeparts[0].size() 
 	      % timeparts[1].size() % nlines);
@@ -182,7 +209,8 @@ public:
     virtual ~KVParserString() { }
 
     virtual void parse(const string &val) {
-	INVARIANT(val.size() > 2, "?");
+	INVARIANT(val.size() > 2, format("? %s '%s'")
+		  % field.getName() % val);
 	INVARIANT(val[0] == '"' && val[val.size()-1] == '"', "?");
 	
 	INVARIANT(field.isNull(), "?");
@@ -467,6 +495,7 @@ parseCommon(vector<string> &fields)
     rpc_transaction_id.set(stringToUInt32(fields[5], 16));
     rpc_function_id.set(stringToUInt32(fields[6], 16));
     rpc_function.set(fields[7]);
+    short_packet.set(false);
 }
 
 void
@@ -533,6 +562,38 @@ processLine(const string &buf)
     outmodule->newRecord();
     parseCommon(fields);
 	
+    for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
+	i != kv_parsers.end(); ++i) {
+	i->second->setNull();
+    }
+
+    if (rpc_function_id.val() == 0) {
+	// special case null; the cleanup of the con = ## len = ## didn't
+	// go right for that one.
+	if (is_call.val()) {
+	    SINVARIANT(fields.size() == 20);
+	    SINVARIANT(fields[8] == "con" && fields[9] == "=");
+	    SINVARIANT(fields[10] == "82" && fields[11] == "len");
+	    SINVARIANT(fields[12] == "=" && fields[13] == "97");
+	    SINVARIANT(fields[14] == "con" && fields[15] == "=");
+	    SINVARIANT(fields[16] == "XXX" && fields[17] == "len");
+	    SINVARIANT(fields[18] == "=" && fields[19] == "XXX\n");
+	} else {
+	    SINVARIANT(fields.size() == 28 &&
+		       fields[8] == "status=0" && fields[9] == "pl" &&
+		       fields[10] == "=" && fields[11] == "0" && 
+		       fields[12] == "con" && fields[13] == "=" &&
+		       fields[14] == "70" && fields[15] == "len" &&
+		       fields[16] == "=" && fields[17] == "70" &&
+		       fields[18] == "status=XXX" && fields[19] == "pl" &&
+		       fields[20] == "=" && fields[21] == "XXX" &&
+		       fields[22] == "con" && fields[23] == "=" &&
+		       fields[24] == "XXX" && fields[25] == "len" &&
+		       fields[26] == "=" && fields[27] == "XXX\n");
+	}
+	return;
+    }
+	    
     unsigned kvpairs;
 
     if (is_call.val()) {
@@ -549,9 +610,21 @@ processLine(const string &buf)
 	kvpairs = 9;
     }
     
-    for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
-	i != kv_parsers.end(); ++i) {
-	i->second->setNull();
+    if (fields[kvpairs] == "SHORT") {
+	SINVARIANT(fields[kvpairs+1] == "PACKETcon");
+	SINVARIANT(fields[kvpairs+2] == "=");
+	SINVARIANT(fields[kvpairs+3] == "130");
+	SINVARIANT(fields[kvpairs+4] == "len");
+	SINVARIANT(fields[kvpairs+5] == "=");
+	SINVARIANT(fields[kvpairs+6] == "400");
+	SINVARIANT(fields[kvpairs+7] == "con");
+	SINVARIANT(fields[kvpairs+8] == "=");
+	SINVARIANT(fields[kvpairs+9] == "XXX");
+	SINVARIANT(fields[kvpairs+10] == "len");
+	SINVARIANT(fields[kvpairs+11] == "=");
+	SINVARIANT(fields[kvpairs+12] == "XXX\n");
+	short_packet.set(true);
+	return;
     }
 
     unsigned end_at = fields.size() - (is_call.val() ? 6 : 10);
@@ -619,6 +692,23 @@ setupKVParsers()
     kv_parsers["file"] = new KVParserFH("file"); // should merge with fh
     kv_parsers["name2"] = new KVParserString("name2");
     kv_parsers["sdata"] = new KVParserString("sdata");
+    kv_parsers["pre-size"] = new KVParserHexInt64("pre-size");
+    kv_parsers["pre-mtime"] = new KVParserTime("pre-mtime");
+    kv_parsers["pre-ctime"] = new KVParserTime("pre-ctime");
+    kv_parsers["euid"] = new KVParserHexInt32("euid");
+    kv_parsers["egid"] = new KVParserHexInt32("egid");
+    kv_parsers["blksize"] = new KVParserHexInt64("blksize");
+    kv_parsers["blocks"] = new KVParserHexInt32("blocks");
+    kv_parsers["tsize"] = new KVParserHexInt32("tsize");
+    kv_parsers["bsize"] = new KVParserHexInt32("bsize");
+    kv_parsers["bfree"] = new KVParserHexInt32("bfree");
+    kv_parsers["bavail"] = new KVParserHexInt32("bavail");
+    kv_parsers["fn"] = new KVParserString("fn");
+    kv_parsers["offset"] = new KVParserHexInt32("offset");
+    kv_parsers["tcount"] = new KVParserHexInt32("tcount");
+    kv_parsers["nfsstat"] = new KVParserHexInt32("nfsstat");
+    kv_parsers["fn2"] = new KVParserString("fn2");
+    kv_parsers["begoff"] = new KVParserHexInt32("begoff");
 }
 
 int
