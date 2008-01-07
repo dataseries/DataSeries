@@ -1245,6 +1245,7 @@ getNFS2Time(uint32_t *xdr_time)
 {
     ExtentType::int64 seconds = ntohl(xdr_time[0]);
     ExtentType::int64 useconds = ntohl(xdr_time[1]);
+    SINVARIANT(seconds >= 0 && useconds < 1000*1000);
     return seconds * 1000 * 1000 * 1000 + useconds * 1000;
 }
 
@@ -1253,6 +1254,7 @@ getNFS3Time(const uint32_t *xdr_time)
 {
     ExtentType::int64 seconds = ntohl(xdr_time[0]);
     ExtentType::int64 nseconds = ntohl(xdr_time[1]);
+    SINVARIANT(seconds >= 0 && nseconds < 1000*1000*1000);
     return seconds * 1000 * 1000 * 1000 + nseconds;
 }
 
