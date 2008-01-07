@@ -13,12 +13,23 @@
 
 #include <Lintel/HashMap.H>
 #include <Lintel/StringUtil.H>
+#include <Lintel/HashUnique.H>
 
 #include <DataSeries/DataSeriesModule.H>
 #include <DataSeries/commonargs.H>
 
 using namespace std;
 using boost::format;
+
+// Our copy of a number of the files include a large block of nulls,
+// these files therefore can't be easily converted.  The code gets
+// confused because a null is normally a end of string terminator.
+//
+// The files are: anon-lair62-010903-1600.txt.gz,
+// anon-lair62-010904-1600.txt.gz, anon-lair62b-030222-0900.txt.gz,
+// anon-lair62-010911-1600.txt.gz, anon-lair62b-030208-0900.txt.gz, 
+// anon-lair62b-030215-0900.txt.gz, anon-lair62-010918-1600.txt.gz
+// anon-lair62-011110-0600.txt.gz, anon-lair62-011109-0600.txt.gz
 
 /*
 Compression ratio:
@@ -171,9 +182,17 @@ parseTime(const string &field)
 	      // time, and progress from .9004 to .10007
 	      || (nfs_version.val() == 2 && 
 		  timeparts[1].size() >= 1 && timeparts[1].size() <= 6)
+	      // A collection of misc times that don't make a lot of
+	      // sense, but occurred in the traces; might want to make
+	      // a warning flag or something like that.
 	      || field == "0.000000" || field == "1000000.000000" 
 	      || field == "4288942.000000" || field == "4096.000001"
-	      || field == "18000.000000",
+	      || field == "18000.000000" || field == "2671200.000000"
+	      || field == "125.000000" || field == "17999.000000"
+	      || field == "21655309.000000" || field == "3600.000000"
+	      || field == "11873905.000000" || field == "37026228.000000"
+	      || field == "12458006.000000" || field == "1.000024"
+	      || field == "800.000000" || field == "7139658.000000",
 	      format("error parsing time '%s' (%d,%d,%d) in line %d\n"
 		     "garbage_lines.push_back(GarbageLine(%dLL, \"%x\")); // %s\n") 
 	      % field % timeparts.size() % timeparts[0].size() 
@@ -396,7 +415,7 @@ public:
 
     virtual void parse(const string &val) {
 	INVARIANT(field.isNull(), "?");
-	INVARIANT(val.size() == 1, "bad");
+	INVARIANT(val.size() == 1, format("bad boolean on line %d") % nlines);
 	if (val[0] == '0') {
 	    field.set(false);
 	} else if (val[0] == '1') {
@@ -425,7 +444,8 @@ public:
 	INVARIANT(field.isNull(), "?");
 	INVARIANT(val.size() == 1, "bad");
 	INVARIANT(val[0] == 'U' || val[0] == 'G' || val[0] == 'X' ||
-		  val[0] == 'D' || val[0] == 'F', "bad");
+		  val[0] == 'D' || val[0] == 'F', 
+		  format("bad how '%s' on line %d") % val % nlines);
 	field.set(val[0]);
     }
     
@@ -558,6 +578,7 @@ struct GarbageLine {
 };
 
 vector<GarbageLine> garbage_lines;
+HashUnique<uint64_t> garbage_times;
 
 void
 initGarbageLines()
@@ -588,6 +609,179 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1001526976180840LL, "5c6bcf19"));
     garbage_lines.push_back(GarbageLine(1001606263249714LL, "9551311f"));
     garbage_lines.push_back(GarbageLine(1001606263249724LL, "9551311f"));
+    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
+    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
+    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
+    garbage_lines.push_back(GarbageLine(998927241309488LL, "1141c948")); // 4122477568.2516582
+    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
+    garbage_lines.push_back(GarbageLine(1004639115274740LL, "3febbc18")); // 1004639115.2341724
+    garbage_lines.push_back(GarbageLine(1004639955607259LL, "7ce7e518")); // 301989984.1830883
+    garbage_lines.push_back(GarbageLine(1004636299176050LL, "63aa0ee")); // 301989984.1830881
+    garbage_lines.push_back(GarbageLine(1004636299176063LL, "63aa0ee")); // 301989984.1830884
+    garbage_lines.push_back(GarbageLine(1004639955607268LL, "7ce7e518")); // 301989984.1830892
+    garbage_lines.push_back(GarbageLine(1004639115274755LL, "3febbc18")); // 1004639115.2341724
+    garbage_lines.push_back(GarbageLine(1004642066119750LL, "ec9c3119")); // 301989984.1830883
+    garbage_lines.push_back(GarbageLine(1005691932540232LL, "aa5601e0")); // 840828928.1157628
+    garbage_lines.push_back(GarbageLine(1005256554580105LL, "1d67f794")); // 980310523.1795156
+    garbage_lines.push_back(GarbageLine(1004642066119759LL, "ec9c3119")); // 301989984.1830892
+    garbage_lines.push_back(GarbageLine(1005256554580119LL, "1d67f794")); // 980310523.1005256
+    garbage_lines.push_back(GarbageLine(1005691932540243LL, "aa5601e0")); // 126814208.1157628
+    garbage_lines.push_back(GarbageLine(1004639119489430LL, "9b08bd18")); // 3849783040.2516582
+    garbage_lines.push_back(GarbageLine(1004639119489445LL, "9b08bd18")); // 3750496000.2415984
+    garbage_lines.push_back(GarbageLine(1004639121697534LL, "a611bd18")); // 1004638846.2442387
+    garbage_lines.push_back(GarbageLine(1045587326380320LL, "4a3e3dec")); // 1025711813.4075311
+    garbage_lines.push_back(GarbageLine(1004639121697543LL, "a611bd18")); // 1004638846.2442387
+    garbage_lines.push_back(GarbageLine(1044597353223926LL, "43a8a24d")); // 1022432832.2168971
+    garbage_lines.push_back(GarbageLine(1044663900617111LL, "5bfea6f3")); // 1022432832.2168971
+    garbage_lines.push_back(GarbageLine(1047096382697179LL, "56fafe75")); // 1022432832.2168971
+    garbage_lines.push_back(GarbageLine(1044676504592523LL, "5c5ec461")); // 1022432832.2168971
+    garbage_lines.push_back(GarbageLine(1044597353224513LL, "43a8a24f")); // 1028736550.1441504
+    garbage_lines.push_back(GarbageLine(1047096382697568LL, "56fafe76")); // 1025711813.4075311
+    garbage_lines.push_back(GarbageLine(1044663900617495LL, "5bfea6f4")); // 1025711813.4075311
+    garbage_lines.push_back(GarbageLine(1044676504593001LL, "5c5ec462")); // 1025711813.4075311
+    garbage_lines.push_back(GarbageLine(1047096382697936LL, "56fafe77")); // 1028736550.1441504
+    garbage_lines.push_back(GarbageLine(1044663900617889LL, "5bfea6f5")); // 1028736550.1441504
+    garbage_lines.push_back(GarbageLine(1044676504593454LL, "5c5ec463")); // 1028736550.1441504
+    garbage_lines.push_back(GarbageLine(1045602743234634LL, "4a6d9a43")); // 1025710163.2383279
+    garbage_lines.push_back(GarbageLine(1003853108865607LL, "53cc718d")); // 1002829854.55001
+    garbage_lines.push_back(GarbageLine(1001822700334307LL, "d37bd187")); // 860
+    garbage_lines.push_back(GarbageLine(1004634002979962LL, "6d9d17ee")); // 301989984.1830892
+    garbage_lines.push_back(GarbageLine(1004636062591124LL, "24994a18")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004637703366018LL, "bec68618")); // 3499427072.2583691
+    garbage_lines.push_back(GarbageLine(1004638697449998LL, "555aae18")); // 1004638697.3918651
+    garbage_lines.push_back(GarbageLine(1004633989564904LL, "c0ba16ee")); // 1004633989.2239750
+    garbage_lines.push_back(GarbageLine(1004635764200030LL, "582e4218")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1004632983289302LL, "d9dedced")); // 1004632983.2541478
+    garbage_lines.push_back(GarbageLine(1004639599693412LL, "687fd818")); // 1872093499.2979269
+    garbage_lines.push_back(GarbageLine(1004980755403486LL, "1fe72531")); // 656934400.2516582
+    garbage_lines.push_back(GarbageLine(1004641127513862LL, "a8161119")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1005114020821985LL, "958e7f3e")); // 3816081390.3841096
+    garbage_lines.push_back(GarbageLine(1005111716574701LL, "b7f27f3f")); // 1343261696.3897360
+    garbage_lines.push_back(GarbageLine(1005155473926803LL, "aca7f041")); // 4258712770.2496907
+    garbage_lines.push_back(GarbageLine(1005156407814002LL, "887b1d42")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1005169739133894LL, "4a0fed44")); // 301989984.1830886
+    garbage_lines.push_back(GarbageLine(1005164746141439LL, "8d78cf43")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1005168186832752LL, "6b959644")); // 1152715776.2516582
+    garbage_lines.push_back(GarbageLine(1005252726693616LL, "3d6fd0ab")); // 1995500091.2140473
+    garbage_lines.push_back(GarbageLine(1005942761463257LL, "d76d63de")); // 301989984.1830886
+    garbage_lines.push_back(GarbageLine(1005192675075567LL, "6cc2de8e")); // 3808815675.4096196
+    garbage_lines.push_back(GarbageLine(1006283821421384LL, "b48042e8")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1006207545390700LL, "49a80ced")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1006895260317066LL, "d9a26c23")); // 1343253376.2490171
+    garbage_lines.push_back(GarbageLine(1007046422477924LL, "659fac18")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1006878434624527LL, "41bc5021")); // 2255772962.3891935
+    garbage_lines.push_back(GarbageLine(1004634003028689LL, "2e9f17ee")); // 1343261696.3764977
+    garbage_lines.push_back(GarbageLine(1004636062591208LL, "24994a18")); // 301008896.1157636
+    garbage_lines.push_back(GarbageLine(1004637703366032LL, "bec68618")); // 2157315328.2919235
+    garbage_lines.push_back(GarbageLine(1004638697450010LL, "555aae18")); // 1004638697.3918651
+    garbage_lines.push_back(GarbageLine(1004633989564992LL, "c0ba16ee")); // 1004633989.2239750
+    garbage_lines.push_back(GarbageLine(1004635764200114LL, "582e4218")); // 2919235584.2919235
+    garbage_lines.push_back(GarbageLine(1004639599693425LL, "687fd818")); // 1872093499.4287891
+    garbage_lines.push_back(GarbageLine(1004980755403495LL, "1fe72531")); // 824706560.1006632
+    garbage_lines.push_back(GarbageLine(1004641127513875LL, "a8161119")); // 301008896.1157636
+    garbage_lines.push_back(GarbageLine(1005114020822001LL, "958e7f3e")); // 3841096890.3816081
+    garbage_lines.push_back(GarbageLine(1005111716574712LL, "b7f27f3f")); // 488306253.1658448
+    garbage_lines.push_back(GarbageLine(1005155473926886LL, "aca7f041")); // 2122779393.4075619
+    garbage_lines.push_back(GarbageLine(1005156407814013LL, "887b1d42")); // 2415984640.3055550
+    garbage_lines.push_back(GarbageLine(1005169739133902LL, "4a0fed44")); // 301989984.1830884
+    garbage_lines.push_back(GarbageLine(1005164746141453LL, "8d78cf43")); // 126814208.1157636
+    garbage_lines.push_back(GarbageLine(1005168186832836LL, "6b959644")); // 2645888000.2919235
+    garbage_lines.push_back(GarbageLine(1005192675075764LL, "6cc2de8e")); // 3808815675.1026228
+    garbage_lines.push_back(GarbageLine(1005252726693631LL, "3d6fd0ab")); // 1995500091.3549760
+    garbage_lines.push_back(GarbageLine(1006207545390715LL, "49a80ced")); // 443680768.1157636
+    garbage_lines.push_back(GarbageLine(1006283821421394LL, "b48042e8")); // 126814208.1157628
+    garbage_lines.push_back(GarbageLine(1006895260317075LL, "d9a26c23")); // 564424699.1515901
+    garbage_lines.push_back(GarbageLine(1006878434624538LL, "41bc5021")); // 3891943979.2255773
+    garbage_lines.push_back(GarbageLine(1004634003028702LL, "2e9f17ee")); // 2821336744.4283649
+    garbage_lines.push_back(GarbageLine(1004637703906764LL, "75cc8618")); // 301989984.1830883
+    garbage_lines.push_back(GarbageLine(1004636062665674LL, "77994a18")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004638697523916LL, "ec5fae18")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004639874848416LL, "75a3e218")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004635764457072LL, "3d314218")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004641173415319LL, "f98b1219")); // 1004641173.2510020
+    garbage_lines.push_back(GarbageLine(1005164746516335LL, "457bcf43")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1005169739474018LL, "7713ed44")); // 1005169739.1269623
+    garbage_lines.push_back(GarbageLine(1006207545433097LL, "b9a80ced")); // 964884795.3550152
+    garbage_lines.push_back(GarbageLine(1004634003050562LL, "e99f17ee")); // 2919235584.2919235
+    garbage_lines.push_back(GarbageLine(1004637703906786LL, "75cc8618")); // 301989984.1830892
+    garbage_lines.push_back(GarbageLine(1004636062665682LL, "77994a18")); // 301008896.1157628
+    garbage_lines.push_back(GarbageLine(1004638698055049LL, "f26aae18")); // 301989984.1830883
+    garbage_lines.push_back(GarbageLine(1004639874848424LL, "75a3e218")); // 301008896.1157636
+    garbage_lines.push_back(GarbageLine(1004635764457081LL, "3d314218")); // 126814208.1157628
+    garbage_lines.push_back(GarbageLine(1004641173415339LL, "f98b1219")); // 1004641173.2510020
+    garbage_lines.push_back(GarbageLine(1005169739474028LL, "7713ed44")); // 1005169739.1269623
+    garbage_lines.push_back(GarbageLine(1006207545433107LL, "b9a80ced")); // 964884795.3080521
+    garbage_lines.push_back(GarbageLine(1005164746516344LL, "457bcf43")); // 443680768.1157628
+    garbage_lines.push_back(GarbageLine(1005084752361209LL, "fd3dbd35")); // 3915368706.2145773
+    garbage_lines.push_back(GarbageLine(1004634012282584LL, "f63a18ee")); // 1004634012.2625626
+    garbage_lines.push_back(GarbageLine(1004638005940914LL, "750d9018")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1004638698055119LL, "f26aae18")); // 301989984.1830884
+    garbage_lines.push_back(GarbageLine(1004636236262019LL, "e0865218")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004641173467065LL, "358c1219")); // 1004641173.2510020
+    garbage_lines.push_back(GarbageLine(1005169739496716LL, "ec13ed44")); // 1269623099.1452541
+    garbage_lines.push_back(GarbageLine(1004634012282596LL, "f63a18ee")); // 1004634012.2625626
+    garbage_lines.push_back(GarbageLine(1004638698415598LL, "8375ae18")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004638005940990LL, "750d9018")); // 2415984640.3122659
+    garbage_lines.push_back(GarbageLine(1004636236262027LL, "e0865218")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004641929647224LL, "11cd2b19")); // 2308890939.4108978
+    garbage_lines.push_back(GarbageLine(1004641173996144LL, "a58e1219")); // 993201920.2516582
+    garbage_lines.push_back(GarbageLine(1004638698415612LL, "8375ae18")); // 301008896.1157628
+    garbage_lines.push_back(GarbageLine(1004638006336467LL, "f9109018")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1004634359407966LL, "e3692eee")); // 1343261696.1724055
+    garbage_lines.push_back(GarbageLine(1005170265114034LL, "d47f0b45")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004641173996155LL, "a58e1219")); // 2318667520.2415984
+    garbage_lines.push_back(GarbageLine(1004638006336475LL, "f9109018")); // 2919235584.2919235
+    garbage_lines.push_back(GarbageLine(1004638872971444LL, "be3db418")); // 2559762747.3234991
+    garbage_lines.push_back(GarbageLine(1005170265114043LL, "d47f0b45")); // 313067520.1157636
+
+    // Automatically made short lines
+    garbage_lines.push_back(GarbageLine(1003429220137370LL, "d3cebfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1005230236836724LL, "63bec1f0", true)); // SHORT - 150
+    garbage_lines.push_back(GarbageLine(1003434217988156LL, "f6e0bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1005232431794051LL, "7f80caf0", true)); // SHORT - 150
+    garbage_lines.push_back(GarbageLine(1006977186643486LL, "4dd89106", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001610469341859LL, "dc9e4025", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001535583919140LL, "ffe67123", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1006977186663031LL, "6cd89106", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1005234074613256LL, "6498d1f0", true)); // SHORT - 150
+    garbage_lines.push_back(GarbageLine(1006977274174174LL, "7e09106", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434218043283LL, "fde0bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001535892069287LL, "28f07123", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003429220139550LL, "d6cebfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001610469528550LL, "fa9e4025", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434218813525LL, "16e1bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003429220139550LL, "d6cebfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001610471767838LL, "409f4025", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003429273373328LL, "a9d0bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434286425485LL, "dfe6bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1001535944925478LL, "6ef17123", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434306536012LL, "39e8bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434306538940LL, "3be8bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434306717767LL, "67e8bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1003434306742061LL, "6be8bfdd", true)); // SHORT - 134
+    garbage_lines.push_back(GarbageLine(1005148078456740LL, "bb1ae741", true)); // SHORT - 126
+    garbage_lines.push_back(GarbageLine(1005756441953199LL, "818989c3", true)); // SHORT - 126
+
+    // missing fields?
+    garbage_lines.push_back(GarbageLine(1001819098701115LL, "4920d087")); 
+    garbage_lines.push_back(GarbageLine(1004641929647217LL, "11cd2b19"));
+
+    // stable ?
+    garbage_lines.push_back(GarbageLine(1005163315478874LL, "f6bc8043"));
+    garbage_lines.push_back(GarbageLine(1004636875995561LL, "5e276518"));
+    garbage_lines.push_back(GarbageLine(1005164772998660LL, "7270d143"));
+    garbage_lines.push_back(GarbageLine(1005169739496726LL, "ec13ed44"));
+
+    // "...ok... fsid ze 368184 ..ok...
+    garbage_lines.push_back(GarbageLine(999551098438206LL, "5f877f83"));
+
+    // Got mangled missing a bunch in the middle
+    garbage_lines.push_back(GarbageLine(999464715460608LL, "30b76883"));
+
+    // Garbage packet, stable ?, mode, nlink, size insane
+    garbage_lines.push_back(GarbageLine(1005720202993479LL, "436ec1cb")); 
+    // Looks kinda ok, but count and stable are garbage
+    garbage_lines.push_back(GarbageLine(1004639118500428LL, "1704bd18"));
 
     // These are missing a key; probably fh, but can't tell for sure      
     garbage_lines.push_back(GarbageLine(1004486490806623LL, "18e520dc"));
@@ -600,40 +794,61 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1004487246432890LL, "ead732dc"));
     // short packet with con = 126; translate as garbage
     garbage_lines.push_back(GarbageLine(1000818821199260LL, "f48ab557", true));
+    garbage_lines.push_back(GarbageLine(1005232945781235LL, "be686a9e", true));
     // short pack with con = 114
-    garbage_lines.push_back(GarbageLine(1037402177970404, "79c477b0", true));
-    garbage_lines.push_back(GarbageLine(1037402177971361, "79c477b1", true));
+    garbage_lines.push_back(GarbageLine(1037402177970404LL, "79c477b0", true));
+    garbage_lines.push_back(GarbageLine(1037402177971361LL, "79c477b1", true));
+    // short con == 150
+    garbage_lines.push_back(GarbageLine(1005240784958398LL, "682ffff0", true));
+    // "...ok... write O  ...endstuff...
+    garbage_lines.push_back(GarbageLine(1001455501691682LL, "630d5f7b"));
     //    garbage_lines.push_back(GarbageLine());
+
+    for(vector<GarbageLine>::iterator i = garbage_lines.begin();
+	i != garbage_lines.end(); ++i) {
+	garbage_times.add(i->time_val);
+    }
 }
 
 void
 processLine(const string &buf)
 {
+    INVARIANT(buf[buf.size()-1] == '\n',
+	      format("line %d doesn't end with a newline\n") % nlines);
     vector<string> fields;
     boost::split(fields, buf, boost::is_any_of(" "));
     
     outmodule->newRecord();
-    parseCommon(fields);
-
     for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
 	i != kv_parsers.end(); ++i) {
 	i->second->setNull();
     }
+    if (buf[0] == 'X' && buf[1] == 'X' && buf[2] == ' ') {
+	// XX Funny line (#)
+	garbage.set(buf);
+	return;
+    }
+    parseCommon(fields);
 
-    for(vector<GarbageLine>::iterator i = garbage_lines.begin();
-	i != garbage_lines.end(); ++i) {
-	if (time_field.val() == i->time_val) {
-	    SINVARIANT(fields[5] == i->xid);
-	    garbage.set(buf);
-	    short_packet.set(i->short_packet);
-	    return;
+
+    if (garbage_times.exists(time_field.val())) {
+	for(vector<GarbageLine>::iterator i = garbage_lines.begin();
+	    i != garbage_lines.end(); ++i) {
+	    if (time_field.val() == i->time_val) {
+		SINVARIANT(fields[5] == i->xid);
+		garbage.set(buf);
+		short_packet.set(i->short_packet);
+		return;
+	    }
 	}
     }
 
     if (source_ip.val() == 0x30 && dest_ip.val() == 0x33 
 	&& dest_port.val() == 0x039b && 
 	(rpc_function_id.val() == 4 || rpc_function_id.val() == 6)
-	&& fields.size() > 34 && fields[34] == "1025711813.4075311") {
+	&& fields.size() > 34 && 
+	(fields[34] == "1025711813.4075311" 
+	 || fields[34] == "1025710163.2383279")) {
 	// lair62b traces have many of these all with the same bad
 	// time value.
 	garbage.set(buf);
@@ -686,7 +901,10 @@ processLine(const string &buf)
     if (fields[kvpairs] == "SHORT") {
 	SINVARIANT(fields[kvpairs+1] == "PACKETcon");
 	SINVARIANT(fields[kvpairs+2] == "=");
-	SINVARIANT(fields[kvpairs+3] == "130");
+	INVARIANT(fields[kvpairs+3] == "130",
+		  format("Got %s instead of 130 for the short packet value, need to just pass through\n"
+			 "garbage_lines.push_back(GarbageLine(%dLL, \"%x\", true)); // SHORT - %s\n") % fields[kvpairs+3] % time_field.val() % rpc_transaction_id.val() % fields[kvpairs+3]);
+
 	SINVARIANT(fields[kvpairs+4] == "len");
 	SINVARIANT(fields[kvpairs+5] == "=");
 	SINVARIANT(fields[kvpairs+6] == "400");
