@@ -192,7 +192,8 @@ parseTime(const string &field)
 	      || field == "21655309.000000" || field == "3600.000000"
 	      || field == "11873905.000000" || field == "37026228.000000"
 	      || field == "12458006.000000" || field == "1.000024"
-	      || field == "800.000000" || field == "7139658.000000",
+	      || field == "800.000000" || field == "7139658.000000" 
+	      || field == "2696400.000000",
 	      format("error parsing time '%s' (%d,%d,%d) in line %d\n"
 		     "garbage_lines.push_back(GarbageLine(%dLL, \"%x\")); // %s\n") 
 	      % field % timeparts.size() % timeparts[0].size() 
@@ -232,12 +233,15 @@ public:
     virtual ~KVParserString() { }
 
     virtual void parse(const string &val) {
-	INVARIANT(val.size() > 2, format("? %s '%s'")
+	// tolearate empty strings, even though that seems unlikely to
+	// be correct.
+	INVARIANT(val.size() >= 2, format("? %s '%s'")
 		  % field.getName() % val);
-	INVARIANT(val[0] == '"' && val[val.size()-1] == '"', "?");
+	SINVARIANT(val[0] == '"' && val[val.size()-1] == '"');
 	
-	INVARIANT(field.isNull(), "?");
+	SINVARIANT(field.isNull());
 	field.set(val.substr(1,val.size()-2));
+	SINVARIANT(!field.isNull());
     }
     
     virtual void setNull() {
@@ -503,13 +507,27 @@ parseCallReplyVersion(const string &field)
     }
 }
 
-void
+struct GarbageLine {
+    int64_t time_val;
+    string xid;
+    bool short_packet;
+    GarbageLine(int64_t a, const string &b, bool c = false)
+	: time_val(a), xid(b), short_packet(c) {}
+};
+
+vector<GarbageLine> garbage_lines;
+HashUnique<uint64_t> garbage_times;
+
+bool
 parseCommon(vector<string> &fields)
 {
     INVARIANT(fields.size() >= 8, format("error parsing line %d") % nlines);
 
     time_field.set(parseTime(fields[0]));
     
+    if (garbage_times.exists(time_field.val())) {
+	return false;
+    }
     parseIPPort(fields[1], source_ip, source_port);
     parseIPPort(fields[2], dest_ip, dest_port);
     
@@ -521,6 +539,7 @@ parseCommon(vector<string> &fields)
     rpc_function.set(fields[7]);
     short_packet.set(false);
     garbage.setNull(true);
+    return true;
 }
 
 void
@@ -569,20 +588,17 @@ checkTailReply(vector<string> &fields, unsigned kvpairs)
 	      format("error parsing line %d") % nlines);
 }
 
-struct GarbageLine {
-    int64_t time_val;
-    string xid;
-    bool short_packet;
-    GarbageLine(int64_t a, const string &b, bool c = false)
-	: time_val(a), xid(b), short_packet(c) {}
-};
-
-vector<GarbageLine> garbage_lines;
-HashUnique<uint64_t> garbage_times;
-
 void
 initGarbageLines()
 {
+    // If I'd known there would be this many garbage lines, I probably
+    // would have modified the code to throw an exception anytime
+    // there is a parsing error and in those cases, stuff the data
+    // into the garbage field.  We're close enough to the end now that
+    // it's not worth going back though.  This also lets us see some
+    // patterns in the errors, although I have no idea why those
+    // patterns exist.
+
     // Some lines have garbage in them, the times have 7 digits
     // in the microsecond field and the stable field is '?'; the
     // count is also garbage as it is claiming we have written
@@ -609,8 +625,6 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1001526976180840LL, "5c6bcf19"));
     garbage_lines.push_back(GarbageLine(1001606263249714LL, "9551311f"));
     garbage_lines.push_back(GarbageLine(1001606263249724LL, "9551311f"));
-    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
-    garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
     garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
     garbage_lines.push_back(GarbageLine(998927241309488LL, "1141c948")); // 4122477568.2516582
     garbage_lines.push_back(GarbageLine(998927238429938LL, "3e26c948")); // 2255194683.3448702
@@ -733,6 +747,46 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1004638006336475LL, "f9109018")); // 2919235584.2919235
     garbage_lines.push_back(GarbageLine(1004638872971444LL, "be3db418")); // 2559762747.3234991
     garbage_lines.push_back(GarbageLine(1005170265114043LL, "d47f0b45")); // 313067520.1157636
+    garbage_lines.push_back(GarbageLine(1002033023312806LL, "afaac037")); // 2144319803.1069941
+    garbage_lines.push_back(GarbageLine(1003785530915153LL, "6a9c8eac")); // 301989984.1830881
+    garbage_lines.push_back(GarbageLine(1003334888806384LL, "2cf19988")); // 4216130560.2516582
+    garbage_lines.push_back(GarbageLine(1003516789410431LL, "9350fb96")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1003932925709369LL, "7c3fbeb2")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1004564743565665LL, "f0516e3")); // 3013675008.2449473
+    garbage_lines.push_back(GarbageLine(1003882239929972LL, "6e6378b4")); // 4187477657.2262930
+    garbage_lines.push_back(GarbageLine(1003892223700745LL, "832037b1")); // 2449473536.2449473
+    garbage_lines.push_back(GarbageLine(1004555497930382LL, "9b3ccbe5")); // 301989984.1830883
+    garbage_lines.push_back(GarbageLine(1002033023312895LL, "afaac037")); // 2415984640.3055550
+    garbage_lines.push_back(GarbageLine(1003334888806395LL, "2cf19988")); // 2803567616.3254779
+    garbage_lines.push_back(GarbageLine(1003516789410440LL, "9350fb96")); // 2919235584.2919235
+    garbage_lines.push_back(GarbageLine(1003785530915189LL, "6a9c8eac")); // 301989984.1830884
+    garbage_lines.push_back(GarbageLine(1003932925709382LL, "7c3fbeb2")); // 2415984640.3055550
+    garbage_lines.push_back(GarbageLine(1004564743565683LL, "f0516e3")); // 849479680.2852126
+    garbage_lines.push_back(GarbageLine(1003882239929980LL, "6e6378b4")); // 671040139.1142022
+    garbage_lines.push_back(GarbageLine(1003892223700839LL, "832037b1")); // 2919235584.2919235
+    garbage_lines.push_back(GarbageLine(1004555497930473LL, "9b3ccbe5")); // 301989984.1830892
+    garbage_lines.push_back(GarbageLine(1004555498025027LL, "9b3dcbe5")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004555498025038LL, "9b3dcbe5")); // 840828928.1157636
+    garbage_lines.push_back(GarbageLine(1004487254047915LL, "561033dc")); // 1002898469.000999ctime
+    garbage_lines.push_back(GarbageLine(1004555498121793LL, "ed3ecbe5")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004555498121887LL, "ed3ecbe5")); // 840828928.1157636
+    garbage_lines.push_back(GarbageLine(1004638996326081LL, "1e51b918")); // 3505980416.2650800
+    garbage_lines.push_back(GarbageLine(1004636916872941LL, "7e576618")); // 1004636746.4102742
+    garbage_lines.push_back(GarbageLine(1004639287162818LL, "8e2856ef")); // 1585185280.2516582
+    garbage_lines.push_back(GarbageLine(1004636916872948LL, "7e576618")); // 1004636746.4102742
+    garbage_lines.push_back(GarbageLine(1004639287162910LL, "8e2856ef")); // 813498880.2415984
+    garbage_lines.push_back(GarbageLine(1004636941265995LL, "f62f6718")); // 337183744.2415984
+    garbage_lines.push_back(GarbageLine(1004636941265981LL, "f62f6718")); // 185533440.2516582
+    garbage_lines.push_back(GarbageLine(1004637070232212LL, "ccf66b18")); // 2717908992.2717908
+    garbage_lines.push_back(GarbageLine(1004637070232225LL, "ccf66b18")); // 2391531835.3751084
+    garbage_lines.push_back(GarbageLine(1004637071401490LL, "b8fc6b18")); // 1004637071.2408309
+    garbage_lines.push_back(GarbageLine(1004637071401503LL, "b8fc6b18")); // 1004637071.2408309
+    garbage_lines.push_back(GarbageLine(1004637277119652LL, "6e207618")); // 1825767680.2516582
+    garbage_lines.push_back(GarbageLine(1004637277119660LL, "6e207618")); // 1960116480.2415984
+    garbage_lines.push_back(GarbageLine(1004637310016378LL, "b84a7818")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004637310016388LL, "b84a7818")); // 126814208.1157628
+    garbage_lines.push_back(GarbageLine(1004637399256053LL, "96b7c18")); // 313067520.1157628
+    garbage_lines.push_back(GarbageLine(1004637399256067LL, "96b7c18")); // 126814208.1157628
 
     // Automatically made short lines
     garbage_lines.push_back(GarbageLine(1003429220137370LL, "d3cebfdd", true)); // SHORT - 134
@@ -761,6 +815,7 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1003434306742061LL, "6be8bfdd", true)); // SHORT - 134
     garbage_lines.push_back(GarbageLine(1005148078456740LL, "bb1ae741", true)); // SHORT - 126
     garbage_lines.push_back(GarbageLine(1005756441953199LL, "818989c3", true)); // SHORT - 126
+    garbage_lines.push_back(GarbageLine(1002828437658521LL, "90e4b967", true)); // SHORT - 126
 
     // missing fields?
     garbage_lines.push_back(GarbageLine(1001819098701115LL, "4920d087")); 
@@ -771,6 +826,11 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1004636875995561LL, "5e276518"));
     garbage_lines.push_back(GarbageLine(1005164772998660LL, "7270d143"));
     garbage_lines.push_back(GarbageLine(1005169739496726LL, "ec13ed44"));
+    garbage_lines.push_back(GarbageLine(1004028529705656LL, "bc4479bf"));
+    garbage_lines.push_back(GarbageLine(1004636876032719LL, "59276518"));
+    garbage_lines.push_back(GarbageLine(1005164772998676LL, "7270d143"));
+    garbage_lines.push_back(GarbageLine(1004636916815233LL, "1c566618"));
+    garbage_lines.push_back(GarbageLine(1004638996326096LL, "1e51b918"));
 
     // "...ok... fsid ze 368184 ..ok...
     garbage_lines.push_back(GarbageLine(999551098438206LL, "5f877f83"));
@@ -802,8 +862,35 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1005240784958398LL, "682ffff0", true));
     // "...ok... write O  ...endstuff...
     garbage_lines.push_back(GarbageLine(1001455501691682LL, "630d5f7b"));
+    // rdev2 shows up 3 times on this line
+    garbage_lines.push_back(GarbageLine(1004487254072837LL, "921033dc"));
+    // rdev2 shows up twice in a row in this line
+    garbage_lines.push_back(GarbageLine(1004487254461187LL, "59e44e0"));
+    // 11con
+    garbage_lines.push_back(GarbageLine(1004487253737494LL, "ec9744e0"));
+    // fh 2fb392840a00000con
+    garbage_lines.push_back(GarbageLine(1004487253666126LL, "6e9744e0"));
+    // missing fields
+    garbage_lines.push_back(GarbageLine(1004487252515372LL, "7d8d44e0"));
+    garbage_lines.push_back(GarbageLine(1004487252169500LL, "44945e4a"));
+    garbage_lines.push_back(GarbageLine(1004487250492633LL, "568444e0"));
+    // 1b6mtime
+    garbage_lines.push_back(GarbageLine(1004487250653436LL, "b2e732dc"));
+    // c4db32d1004487248.727481
+    garbage_lines.push_back(GarbageLine(1004487248709749LL, "c4db32d1004487248.727481"));
+    // fh 2fb392840a0000000c0000006blookup
+    garbage_lines.push_back(GarbageLine(1004487250533621LL, "cc8444e0"));
+    // status=0 pl = 212
+    garbage_lines.push_back(GarbageLine(1004487248736569LL, "f7db32dc"));
+    // R3C3
+    garbage_lines.push_back(GarbageLine(1004487248607712LL, "5ceb99db"));
+    // eof 0access
+    garbage_lines.push_back(GarbageLine(1004487246743842LL, "31d832dc"));
+    // R3 bcd732dc 4 acc.03ce
+    garbage_lines.push_back(GarbageLine(1004487246378698LL, "bcd732dc"));
     //    garbage_lines.push_back(GarbageLine());
-
+    
+    
     for(vector<GarbageLine>::iterator i = garbage_lines.begin();
 	i != garbage_lines.end(); ++i) {
 	garbage_times.add(i->time_val);
@@ -828,8 +915,7 @@ processLine(const string &buf)
 	garbage.set(buf);
 	return;
     }
-    parseCommon(fields);
-
+    bool ok = parseCommon(fields);
 
     if (garbage_times.exists(time_field.val())) {
 	for(vector<GarbageLine>::iterator i = garbage_lines.begin();
@@ -842,6 +928,7 @@ processLine(const string &buf)
 	    }
 	}
     }
+    SINVARIANT(ok);
 
     if (source_ip.val() == 0x30 && dest_ip.val() == 0x33 
 	&& dest_port.val() == 0x039b && 

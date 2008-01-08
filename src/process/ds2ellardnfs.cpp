@@ -143,7 +143,7 @@ public:
 	    return;
 	printany = true;
 	if (rpc_function.equal("access") && 
-	    (!is_call.val() || time.val() >= 1043880000000000LL)) {
+	    (!is_call.val() || time.val() >= 1043870000000000LL)) {
 	    cout << format(" acc %x") % static_cast<int>(f.val());
 	} else if (f.val() == 1) {
 	    cout << " acc R";
@@ -231,7 +231,7 @@ public:
 	if (!is_call.val()) {
 	    INVARIANT(!return_value.isNull(), "?");
 	    if (return_value.val() == 0) {
-		if (nfs_version.val() == 3 && rpc_function_id.val() == 0) {
+		if (rpc_function_id.val() == 0) {
 		    // do nothing, nulls don't print out OK
 		} else {
 		    cout << " OK";
