@@ -54,7 +54,13 @@ Sizing experiments, turning on options is cumulative; the big win is
 */
 
 const string ellard_nfs_expanded_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::NFS::Ellard\" version=\"1.0\" pack_null_compact=\"non_bool\"\n"
+  " comment=\"note, if !garbage.isNull() then only the time field is valid.\" >\n"
+  // Possible we should make all the fixed fields nullable so that
+  // when we have garbage we can properly mark it; probably the better
+  // choice would be to remove the garbage entries, but that would
+  // mean we don't have a 1 to 1 mapping between the ellard text files
+  // and the dataseries ones.
   "  <field type=\"int64\" name=\"time\" units=\"microseconds\" epoch=\"unix\" pack_relative=\"time\" />\n"
   "  <field type=\"int32\" name=\"source_ip\" />\n"
   "  <field type=\"int32\" name=\"source_port\" />\n"
@@ -526,6 +532,8 @@ parseCommon(vector<string> &fields)
     time_field.set(parseTime(fields[0]));
     
     if (garbage_times.exists(time_field.val())) {
+	// Have to return early since a few of the garbage lines don't parse through the 
+	// remainder.
 	return false;
     }
     parseIPPort(fields[1], source_ip, source_port);
