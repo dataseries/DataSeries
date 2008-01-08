@@ -885,7 +885,7 @@ test_makecomplexfile()
 "  <field type=\"variable32\" name=\"null_variable32\" opt_nullable=\"yes\"/>\n"
 "</ExtentType>");
     ExtentTypeLibrary library;
-    ExtentType *outputtype = library.registerType(complextype);
+    const ExtentType *outputtype = library.registerType(complextype);
     DataSeriesSink output("test.ds");
     output.writeExtentLibrary(library);
     ExtentSeries outputseries(*outputtype);
@@ -970,7 +970,7 @@ test_doublebase_nullable()
 "</ExtentType>");
 
     ExtentTypeLibrary library;
-    ExtentType *dbntype = library.registerType(dbntype_xml);
+    const ExtentType *dbntype = library.registerType(dbntype_xml);
     ExtentSeries dbnseries(*dbntype);
     DoubleField f_double(dbnseries,"double",Field::flag_nullable | DoubleField::flag_allownonzerobase);
     

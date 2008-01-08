@@ -464,9 +464,9 @@ main(int argc, char *argv[])
     if (false) printf("XX\n%s\n",minmaxtype_xml.c_str());
 
     ExtentTypeLibrary library;
-    ExtentType *infotype = library.registerType(indexinfo_xml);
-    ExtentType *minmaxtype = library.registerType(minmaxtype_xml);
-    ExtentType *modifytype = library.registerType(modifytype_xml);
+    const ExtentType *infotype = library.registerType(indexinfo_xml);
+    const ExtentType *minmaxtype = library.registerType(minmaxtype_xml);
+    const ExtentType *modifytype = library.registerType(modifytype_xml);
 
     DataSeriesSink output(index_filename,packing_args.compress_modes,
 			  packing_args.compress_level);

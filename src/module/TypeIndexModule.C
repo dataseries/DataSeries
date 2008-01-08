@@ -75,7 +75,7 @@ TypeIndexModule::lockedGetCompressedExtent()
 	    } else if (my_type == NULL) {
 		my_type = matchType();
 	    } else {
-		ExtentType *tmp = matchType();
+		const ExtentType *tmp = matchType();
 		// TODO: figure out what we should allow, should the series typematching rules be imported here?
 		INVARIANT(my_type == tmp, 
 			  boost::format("two different types were matched; this is currently invalid\nFile with mismatch was %s\nType 1:\n%s\nType 2:\n%s\n")
@@ -106,12 +106,13 @@ TypeIndexModule::lockedGetCompressedExtent()
     }
 }
 
-ExtentType *
+const ExtentType *
 TypeIndexModule::matchType()
 {
     INVARIANT(cur_source != NULL, "bad");
-    ExtentType *t = cur_source->getLibrary().getTypeMatch(type_match, true);
-    ExtentType *u = NULL;
+    const ExtentType *t 
+	= cur_source->getLibrary().getTypeMatch(type_match, true);
+    const ExtentType *u = NULL;
     if (!second_type_match.empty()) {
 	u = cur_source->getLibrary().getTypeMatch(second_type_match, true);
     }

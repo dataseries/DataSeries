@@ -62,12 +62,12 @@ protected:
     virtual PrefetchExtent *lockedGetCompressedExtent();
 
 private:
-    ExtentType *matchType(); // May return NULL
+    const ExtentType *matchType(); // May return NULL
 
     unsigned int cur_file;
     DataSeriesSource *cur_source;
     std::vector<std::string> inputFiles;
-    ExtentType *my_type;
+    const ExtentType *my_type;
 };
 
 #endif

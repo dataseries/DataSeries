@@ -2907,44 +2907,44 @@ doConvert(NettraceReader *from, const char *ds_output_name,
 						  packing_args.compress_level);
     ExtentTypeLibrary library;
 
-    ExtentType *nfs_convert_stats_type = 
+    const ExtentType *nfs_convert_stats_type = 
 	library.registerType(nfs_convert_stats_xml);
     nfs_convert_stats_series.setType(*nfs_convert_stats_type);
     nfs_convert_stats_outmodule = 
 	new OutputModule(*nfsdsout, nfs_convert_stats_series,
 			 nfs_convert_stats_type, packing_args.extent_size);
 
-    ExtentType *ip_bwrolling_type = library.registerType(ip_bwrolling_xml);
+    const ExtentType *ip_bwrolling_type = library.registerType(ip_bwrolling_xml);
     ip_bwrolling_series.setType(*ip_bwrolling_type);
     ip_bwrolling_outmodule 
 	= new OutputModule(*nfsdsout, ip_bwrolling_series,
 			   ip_bwrolling_type, packing_args.extent_size);
 
-    ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
+    const ExtentType *nfs_common_type = library.registerType(nfs_common_xml);
     nfs_common_series.setType(*nfs_common_type);
     nfs_common_outmodule 
 	= new OutputModule(*nfsdsout,nfs_common_series,
 			   nfs_common_type,packing_args.extent_size);
 
-    ExtentType *nfs_attrops_type = library.registerType(nfs_attrops_xml);
+    const ExtentType *nfs_attrops_type = library.registerType(nfs_attrops_xml);
     nfs_attrops_series.setType(*nfs_attrops_type);
     nfs_attrops_outmodule 
 	= new OutputModule(*nfsdsout, nfs_attrops_series,
 			   nfs_attrops_type,packing_args.extent_size);
 
-    ExtentType *nfs_readwrite_type = library.registerType(nfs_readwrite_xml);
+    const ExtentType *nfs_readwrite_type = library.registerType(nfs_readwrite_xml);
     nfs_readwrite_series.setType(*nfs_readwrite_type);
     nfs_readwrite_outmodule 
 	= new OutputModule(*nfsdsout, nfs_readwrite_series,
 			   nfs_readwrite_type,packing_args.extent_size);
 
-    ExtentType *ippacket_type = library.registerType(ippacket_xml);
+    const ExtentType *ippacket_type = library.registerType(ippacket_xml);
     ippacket_series.setType(*ippacket_type);
     ippacket_outmodule 
 	= new OutputModule(*nfsdsout, ippacket_series,
 			   ippacket_type, packing_args.extent_size);
 
-    ExtentType *nfs_mount_type = library.registerType(nfs_mount_xml);
+    const ExtentType *nfs_mount_type = library.registerType(nfs_mount_xml);
     nfs_mount_series.setType(*nfs_mount_type);
     nfs_mount_outmodule 
 	= new OutputModule(*nfsdsout, nfs_mount_series,

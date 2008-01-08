@@ -129,7 +129,7 @@ public:
 
 protected:
     ExtentTypeLibrary library;
-    ExtentType *word_index_type;
+    const ExtentType *word_index_type;
     DataSeriesSink *output;
 
     ExtentSeries word_series;
@@ -304,7 +304,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
     check_file_missing(entries_filename);
 
     ExtentTypeLibrary library;
-    ExtentType *entries_type = library.registerType(text_entries_xml);
+    const ExtentType *entries_type = library.registerType(text_entries_xml);
 
     DataSeriesSink output(entries_filename, packing_args.compress_modes,
 			  packing_args.compress_level);

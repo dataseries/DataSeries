@@ -1055,8 +1055,6 @@ parseopts(int argc, char *argv[])
     while (1) {
 	int opt = getopt(argc, argv, "abc:defghijkl:mnop:q:r:stu:v:wxy:z:");
 	if (opt == -1) break;
-	if (opt != '_')
-	    any_selected = true;
 	switch(opt){
 	case 'a': options[optOperationByFileHandle] = 1;
 	    need_mount_by_filehandle = 1;

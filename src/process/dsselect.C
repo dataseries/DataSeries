@@ -51,7 +51,7 @@ main(int argc, char *argv[])
 
     // to get the complete typename and type information...
     DataSeriesSource first_file(argv[3]);
-    ExtentType *intype = first_file.mylibrary.getTypeByPrefix(type_prefix);
+    const ExtentType *intype = first_file.mylibrary.getTypeByPrefix(type_prefix);
     first_file.closefile();
     INVARIANT(intype != NULL,
 	      boost::format("can not find a type matching prefix %s")
@@ -91,7 +91,7 @@ main(int argc, char *argv[])
     printf("%s\n",xmloutdesc.c_str());
 
     ExtentTypeLibrary library;
-    ExtentType *outputtype = library.registerType(xmloutdesc);
+    const ExtentType *outputtype = library.registerType(xmloutdesc);
     output.writeExtentLibrary(library);
     INVARIANT(outputtype != NULL, "bad");
     outputseries.setType(*outputtype);

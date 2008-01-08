@@ -1394,7 +1394,7 @@ Extent::unpackData(Extent::ByteArray &from,
 uint32_t
 Extent::unpackedSize(Extent::ByteArray &from,
 		     bool fix_endianness,
-		     ExtentType &type)
+		     const ExtentType &type)
 {
     SINVARIANT(from.size() > 16);
     uint32_t nrecords = *reinterpret_cast<uint32_t *>(from.begin() + 8);

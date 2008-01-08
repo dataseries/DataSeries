@@ -358,9 +358,9 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
     Extent type_extent(type_extent_series);
 
     Variable32Field typevar(type_extent_series,"xmltype");
-    for(map<const string,ExtentType *>::iterator i = lib.name_to_type.begin();
+    for(map<const string, const ExtentType *>::iterator i = lib.name_to_type.begin();
 	i != lib.name_to_type.end();++i) {
-	ExtentType *et = i->second;
+	const ExtentType *et = i->second;
 	if (et->name == "DataSeries: XmlType") {
 	    continue; // no point of writing this out; can't use it.
 	}

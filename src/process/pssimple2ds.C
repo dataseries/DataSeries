@@ -129,7 +129,7 @@ main(int argc, char *argv[])
     
     DataSeriesSink psdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
     ExtentTypeLibrary library;
-    ExtentType *pstype = library.registerType(pstrace_xml);
+    const ExtentType *pstype = library.registerType(pstrace_xml);
     ExtentSeries psseries(*pstype);
     psdsout.writeExtentLibrary(library);
     DoubleField curtime(psseries,"sampletime");

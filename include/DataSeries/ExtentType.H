@@ -278,24 +278,25 @@ public:
     ExtentTypeLibrary() {};
 
     // TODO: make this return a reference (and change all the users)
-    ExtentType *registerType(const std::string &xmldesc);
-    void registerType(ExtentType &type);
+    const ExtentType *registerType(const std::string &xmldesc);
+    void registerType(const ExtentType &type);
 
     // ExtentType * values returned by these functions survive the
     // deletion of the library -- they are shared across all of the
     // ExtentTypeLibraries based on the actual XML type information
 
-    ExtentType *getTypeByName(const std::string &name, bool null_ok = false);
-    ExtentType *getTypeByPrefix(const std::string &prefix, 
-				bool null_ok = false);
-    ExtentType *getTypeBySubstring(const std::string &substr,
-				   bool null_ok = false);
+    const ExtentType *getTypeByName(const std::string &name, 
+				    bool null_ok = false);
+    const ExtentType *getTypeByPrefix(const std::string &prefix, 
+				      bool null_ok = false);
+    const ExtentType *getTypeBySubstring(const std::string &substr,
+					 bool null_ok = false);
     // tries ByName, ByPrefix and BySubstring in that order.
     // selects a single unique non-dataseries type if match is "*"
-    ExtentType *getTypeMatch(const std::string &match,
-			     bool null_ok = false);
+    const ExtentType *getTypeMatch(const std::string &match,
+				   bool null_ok = false);
 
-    std::map<const std::string, ExtentType *> name_to_type;
+    std::map<const std::string, const ExtentType *> name_to_type;
     static ExtentType &sharedExtentType(const std::string &xmldesc);
 };
 

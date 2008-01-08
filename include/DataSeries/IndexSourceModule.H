@@ -64,7 +64,7 @@ public:
 	the mutex while doing the work to get the compressed data */
     struct PrefetchExtent {
 	Extent::ByteArray bytes;
-	ExtentType *type;
+	const ExtentType *type;
 	Extent *unpacked;
 	bool need_bitflip;
 	std::string uncompressed_type;

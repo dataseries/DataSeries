@@ -97,7 +97,7 @@ main(int argc, char *argv[])
 
     if (select_extent_type != "") {
 	string match_extent_type;
-	ExtentType *match_type 
+	const ExtentType *match_type 
 	    = first_source->mylibrary.getTypeMatch(select_extent_type);
 
 	match_extent_type = match_type->getName();
@@ -107,7 +107,7 @@ main(int argc, char *argv[])
 	xmlspec.append(match_extent_type);
 	xmlspec.append("\">");
 	if (select_fields == "*") {
-	    ExtentType *t = 
+	    const ExtentType *t = 
 		first_source->mylibrary.getTypeByPrefix(match_extent_type);
 	    INVARIANT(t != NULL, "internal");
 	    for(unsigned i = 0; i < t->getNFields(); ++i) {
@@ -135,7 +135,7 @@ main(int argc, char *argv[])
 
     if (skip_types == false) {
 	std::cout << "# Extent Types ...\n";
-	for(std::map<const std::string, ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
+	for(std::map<const std::string, const ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
 	    i != first_source->mylibrary.name_to_type.end(); ++i) {
 	    std::cout << i->second->xmldesc << "\n";
 	}

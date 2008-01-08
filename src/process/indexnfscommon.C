@@ -275,7 +275,7 @@ writeIndexMap(char *out_filename)
 {
     DataSeriesSink sink(out_filename);
     ExtentTypeLibrary library;
-    ExtentType *indextype = library.registerType(indextype_xml);
+    const ExtentType *indextype = library.registerType(indextype_xml);
     sink.writeExtentLibrary(library);
 
     Extent *e = new Extent(*indextype);

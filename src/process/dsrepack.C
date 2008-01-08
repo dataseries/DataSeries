@@ -127,7 +127,8 @@ struct PerTypeWork {
     vector<GF_Variable32 *> in_var32fields, out_var32fields;
 
     double sum_unpacked_size, sum_packed_size;
-    PerTypeWork(DataSeriesSink &output, unsigned extent_size, ExtentType *t) 
+    PerTypeWork(DataSeriesSink &output, unsigned extent_size, 
+		const ExtentType *t) 
 	: inputseries(t), outputseries(t), 
 	  sum_unpacked_size(0), sum_packed_size(0) 
     {
@@ -223,7 +224,7 @@ const string dsrepack_info_type_xml(
   "</ExtentType>\n"
   );
 
-ExtentType *dsrepack_info_type;
+const ExtentType *dsrepack_info_type;
 
 void
 writeRepackInfo(DataSeriesSink &sink,
@@ -329,7 +330,7 @@ main(int argc, char *argv[])
 
 	DataSeriesSource f(argv[i]);
 
-	for(map<const string, ExtentType *>::iterator j = f.mylibrary.name_to_type.begin();
+	for(map<const string, const ExtentType *>::iterator j = f.mylibrary.name_to_type.begin();
 	    j != f.mylibrary.name_to_type.end(); ++j) {
 	    if (skipType(*j->second)) {
 		continue;
@@ -337,7 +338,7 @@ main(int argc, char *argv[])
 	    if (prefixequal(j->first, "DataSeries:")) {
 		cerr << boost::format("Warning, found extent type of name '%s'; probably should skip it") % j->first << endl;
 	    }
-	    ExtentType *tmp = library.getTypeByName(j->first, true);
+	    const ExtentType *tmp = library.getTypeByName(j->first, true);
 	    INVARIANT(tmp == NULL || tmp == j->second,
 		      boost::format("XML types for type '%s' differ between file %s and an earlier file")
 		      % j->first % argv[i]);
@@ -345,7 +346,7 @@ main(int argc, char *argv[])
 		if (debug) {
 		    cout << "Registering type of name " << j->first << endl;
 		}
-		ExtentType *t = library.registerType(j->second->xmldesc);
+		const ExtentType *t = library.registerType(j->second->xmldesc);
 		per_type_work[j->first] = 
 		    new PerTypeWork(*output, packing_args.extent_size, t);
 	    }

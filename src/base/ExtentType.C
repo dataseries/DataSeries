@@ -638,7 +638,7 @@ ExtentType::fieldTypeString(fieldType ft)
     return fieldtypes[ft];
 }
 
-ExtentType *
+const ExtentType *
 ExtentTypeLibrary::registerType(const string &xmldesc)
 {
     ExtentType &type(sharedExtentType(xmldesc));
@@ -652,7 +652,7 @@ ExtentTypeLibrary::registerType(const string &xmldesc)
 }    
 
 void
-ExtentTypeLibrary::registerType(ExtentType &type)
+ExtentTypeLibrary::registerType(const ExtentType &type)
 {
     INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
 	      boost::format("Type %s already registered")
@@ -661,7 +661,7 @@ ExtentTypeLibrary::registerType(ExtentType &type)
     name_to_type[type.name] = &type;
 }    
 
-ExtentType *
+const ExtentType *
 ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
 {
     if (name == ExtentType::getDataSeriesXMLType().getName()) {
@@ -674,16 +674,16 @@ ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
 	    return NULL;
 	}
     }
-    ExtentType *f = name_to_type[name];
-    AssertAlways(f != NULL, ("No type named %s registered\n", name.c_str()));
+    const ExtentType *f = name_to_type[name];
+    INVARIANT(f != NULL, format("No type named %s registered") % name);
     return f;
 }
 
-ExtentType *
+const ExtentType *
 ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
 {
-    ExtentType *f = NULL;
-    for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
+    const ExtentType *f = NULL;
+    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
@@ -698,11 +698,11 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
     return f;
 }
 
-ExtentType *
+const ExtentType *
 ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
 {
-    ExtentType *f = NULL;
-    for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
+    const ExtentType *f = NULL;
+    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,
@@ -717,14 +717,14 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
     return f;
 }
 
-ExtentType *
+const ExtentType *
 ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
 {
-    ExtentType *t = NULL;
+    const ExtentType *t = NULL;
 
     static string str_DataSeries("DataSeries:");
     if (match == "*") {
-	for(map<const string, ExtentType *>::iterator i = name_to_type.begin();
+	for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
 	    i != name_to_type.end();++i) {
 	    if (prefixequal(i->first,str_DataSeries)) {
 		continue;

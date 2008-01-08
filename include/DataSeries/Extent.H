@@ -175,7 +175,7 @@ public:
     // input data
     void unpackData(Extent::ByteArray &from, bool need_bitflip);
     static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
-				 ExtentType &type);
+				 const ExtentType &type);
 		    
     static const std::string getPackedExtentType(Extent::ByteArray &from);
 
