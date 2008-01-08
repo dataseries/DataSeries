@@ -175,6 +175,7 @@ Variable32Field::set(const void *data, int32 datasize)
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = 0;
 	AssertAlways(*(int32 *)dataseries.extent()->variabledata.begin() == 0,
 		     ("internal error\n"));
+	setNull(false);
 	return;
     }
     int32 roundup = roundupSize(datasize);

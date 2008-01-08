@@ -171,3 +171,6 @@
 1044190620.488462 30.0801 33.039b U R3 41752980 4 access OK ftype 1 mode 1fd nlink 1 uid 18aa4 gid 18a98 size 29ceb used 2b000 rdev 0 rdev2 0 fsid 44d2 fileid 656ec9 atime 1044177176.020001 mtime 1025711813.4075311 ctime 1025711814.825007 acc 2d status=XXX pl = XXX con = XXX len = XXX
 1002117896.251957 55.031f 30.0801 U C2 21355b49 d symlink fh 6189010057570100200000000020cf81aed5e40bd24400006189010057570100 fn ".#919c.cc" fn2 "a05f.0005.0006.0007.48ab0" mode a1ff con = XXX len = XXX
 1037402177.971361 40.03fe 30.0801 U C3 79c477b1 3 lookup SHORT PACKETcon = 114 len = 400 con = XXX len = XXX
+1046898420.816625 30.0801 37.03ff U R3 85e81a0 5 readlink OK ftype 5 mode 1ff nlink 1 uid 18b2f gid 18a9c size 0 used 0 rdev 0 rdev2 0 fsid 8683 fileid 7736a9 atime 1046754009.936204 mtime 996101804.151002 ctime 996101804.152002 name "" status=XXX pl = XXX con = XXX len = XXX
+1043877601.123283 37.03ff 30.0801 U C3 72a66dc 4 access fh 07930f0012e1310120000000000f930712e1310164860000a0cf90002e303000 acc 2 euid 18a8f egid 18a90 con = XXX len = XXX
+1046296072.607001 30.0801 89.b6f4 U R2 3e561dd4 0 null status=0 pl = 0 con = 70 len = 70 status=XXX pl = XXX con = XXX len = XXX
