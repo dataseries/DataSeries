@@ -275,7 +275,8 @@ ExtentType::parseXML(const string &xmldesc)
 	
 	bool nullable = parseYesNo(cur, "opt_nullable", false);
 	// Real field will go into size, so null field into size+1.
-	info.null_fieldnum = nullable ? ret.field_info.size() + 1 : -1;
+	info.null_fieldnum 
+	    = nullable ? static_cast<int>(ret.field_info.size()) + 1 : -1;
 
 	xmlChar *opt_doublebase = xmlGetProp(cur, (const xmlChar *)"opt_doublebase");
 	if (opt_doublebase != NULL) {

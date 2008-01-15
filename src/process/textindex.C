@@ -125,7 +125,7 @@ public:
 	delete e;
     }
 
-    virtual void indexRow(const string &filename, ExtentType::int64 offset) = 0;
+    virtual void indexRow(const string &filename, int64_t offset) = 0;
 
 protected:
     ExtentTypeLibrary library;
@@ -197,7 +197,7 @@ public:
 	return true;
     }
 	    
-    virtual void indexRow(const string &filename, ExtentType::int64 file_offset) {
+    virtual void indexRow(const string &filename, int64_t file_offset) {
 	string msg = text_in.stringval();
 	
 	string headerline;
@@ -347,7 +347,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
 
 void
 indexEmailExtent(DataSeriesSource &source, const string &filename,
-		 ExtentType::int64 offset);
+		 int64_t offset);
 
 void
 email_index(vector<string> &args, commonPackingArgs &packing_args)
@@ -447,7 +447,7 @@ public:
 
     HashMap<string, int> wordMatch_cache;
     HashMap<string, HashMap<int, vector<bool> > > found_list;
-    HashMap<string, HashMap<int, ExtentType::int64> > filename_id_extentoffset;
+    HashMap<string, HashMap<int, int64_t> > filename_id_extentoffset;
 };
 
 void
@@ -481,7 +481,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	SearchWordAndModule search(word_source, substring_types, substrings, case_insensitive);
 	DataSeriesModule::getAndDelete(search);
 	HashMap<string, HashUnique<int> > wanted_ids;
-	HashMap<string, HashUnique<ExtentType::int64> > wanted_extents;
+	HashMap<string, HashUnique<int64_t> > wanted_extents;
 
 	for(HashMap<string, HashMap<int, vector<bool> > >::iterator i = search.found_list.begin();
 	    i != search.found_list.end(); ++i) {
@@ -499,7 +499,7 @@ search_and(vector<string> &args, bool case_insensitive)
 		}
 		if (all_found) {
 		    wanted_ids[i->first].add(j->first);
-		    ExtentType::int64 wanted_offset = search.filename_id_extentoffset[i->first][j->first];
+		    int64_t wanted_offset = search.filename_id_extentoffset[i->first][j->first];
 		    wanted_extents[i->first].add(wanted_offset);
 		}
 	    }
@@ -517,9 +517,9 @@ search_and(vector<string> &args, bool case_insensitive)
 		    printf("  want id %d\n",*j);
 		}
 	    }
-	    HashUnique<ExtentType::int64> &extents = wanted_extents[i->first];
-	    vector<ExtentType::int64> extent_offset_list;
-	    for(HashUnique<ExtentType::int64>::iterator j = extents.begin();
+	    HashUnique<int64_t> &extents = wanted_extents[i->first];
+	    vector<int64_t> extent_offset_list;
+	    for(HashUnique<int64_t>::iterator j = extents.begin();
 		j != extents.end(); ++j) {
 		extent_offset_list.push_back(*j);
 		if (debug_search_found) {
@@ -528,7 +528,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	    }
 	    sort(extent_offset_list.begin(), extent_offset_list.end());
 	    DataSeriesSource source(i->first);
-	    for(vector<ExtentType::int64>::iterator j = extent_offset_list.begin();
+	    for(vector<int64_t>::iterator j = extent_offset_list.begin();
 		j != extent_offset_list.end(); ++j) {
 		off64_t offset = *j;
 		Extent *e = source.preadExtent(offset);
