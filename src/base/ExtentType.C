@@ -339,7 +339,7 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.field_info.push_back(info);
 	ret.visible_fields.push_back(ret.field_info.size()-1);
 	if (nullable) {
-	    DEBUG_INVARIANT(info.null_fieldnum == static_cast<int>(ret.field_info.size()), "?");
+	    DEBUG_SINVARIANT(info.null_fieldnum == static_cast<int>(ret.field_info.size()));
 			    
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
@@ -459,8 +459,9 @@ ExtentType::parseXML(const string &xmldesc)
 	n.size = field.size;
 	n.offset = field.offset;
 
-	if (field.null_fieldnum >= 0) {
-	    INVARIANT(static_cast<unsigned>(field.null_fieldnum) == i+1, "?");
+	if (field.null_fieldnum > 0) {
+	    INVARIANT(static_cast<unsigned>(field.null_fieldnum) == i+1, 
+		      format("? %d != %d") % field.null_fieldnum % (i+1));
 	    fieldInfo &null_field(ret.field_info[field.null_fieldnum]);
 	    INVARIANT(null_field.type == ft_bool, "?");
 	    n.null_offset = null_field.offset;

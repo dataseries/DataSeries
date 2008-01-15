@@ -282,7 +282,7 @@ ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
 ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis $(top_srcdir)/check-data/ellard-raw-data.txt
 	-rm ellard.ds ellard.ds.txt ellard-data.txt ellard-analysis.txt
 	./ellardnfs2ds $(top_srcdir)/check-data/ellard-raw-data.txt ellard.ds
-	ds2txt --skip-index ellard.ds >ellard.ds.txt
+	./ds2txt --skip-index ellard.ds >ellard.ds.txt
 	cmp ellard.ds.txt $(top_srcdir)/check-data/ellard.ds.txt.ref
 	./ds2ellardnfs ellard.ds >ellard-data.txt
 	cmp ellard-data.txt $(top_srcdir)/check-data/ellard-raw-data.txt 

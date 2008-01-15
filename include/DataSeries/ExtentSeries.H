@@ -128,7 +128,7 @@ public:
 	    return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
 	}
 	void checkOffset(long offset) {
-#ifdef COMPILE_DEBUG
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
 	    forceCheckOffset(offset);
 #else
 	    (void)offset; // eliminate compilation warning
