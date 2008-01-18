@@ -795,6 +795,10 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1004637310016388LL, "b84a7818")); // 126814208.1157628
     garbage_lines.push_back(GarbageLine(1004637399256053LL, "96b7c18")); // 313067520.1157628
     garbage_lines.push_back(GarbageLine(1004637399256067LL, "96b7c18")); // 126814208.1157628
+    garbage_lines.push_back(GarbageLine(1044597353223574LL, "43a8a24c")); // 1025710163.2383279
+    garbage_lines.push_back(GarbageLine(1047096382696791LL, "56fafe74")); // 1025710163.2383279
+    garbage_lines.push_back(GarbageLine(1044663900616725LL, "5bfea6f2")); // 1025710163.2383279
+    garbage_lines.push_back(GarbageLine(1044676504592083LL, "5c5ec460")); // 1025710163.2383279
 
     // Automatically made short lines
     garbage_lines.push_back(GarbageLine(1003429220137370LL, "d3cebfdd", true)); // SHORT - 134
