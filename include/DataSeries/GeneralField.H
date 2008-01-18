@@ -347,12 +347,14 @@ public:
     Variable32Field myfield;
 };
 
+// TODO: add an output module as an optional argument; if it exists, 
+// automatically do the newRecord stuff.
 class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
     void prep();
     ~ExtentRecordCopy();
-    void copyRecord();
+    void copyRecord(); // you need to create the record first.
 private:
     bool did_prep;
     int fixed_copy_size;

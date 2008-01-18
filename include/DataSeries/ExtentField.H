@@ -327,7 +327,7 @@ protected:
 	dataseries.pos.checkOffset(offset_pos);
 	int32 varoffset = getVarOffset(dataseries.pos.record_start(),
 				       offset_pos);
-#ifdef COMPILE_DEBUG
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
 	selfcheck(varoffset);
 #endif
 	return varoffset;
