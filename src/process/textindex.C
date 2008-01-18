@@ -32,6 +32,7 @@ static const bool debug_word_find = false;
 static const bool debug_search_found = false;
 
 using namespace std;
+using boost::format;
 
 const string text_entries_xml = 
 "<ExtentType name=\"TextIndex::Entries\">\n"
