@@ -523,7 +523,7 @@ search_and(vector<string> &args, bool case_insensitive)
 		j != extents.end(); ++j) {
 		extent_offset_list.push_back(*j);
 		if (debug_search_found) {
-		    printf("  want extent at offset %lld\n",*j);
+		    cout << format("  want extent at offset %d\n") % *j;
 		}
 	    }
 	    sort(extent_offset_list.begin(), extent_offset_list.end());
