@@ -101,7 +101,7 @@ sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
     return 1 if $filename =~ /^endace\.\d+\.128MiB\.((lzf)|(zlib\d)|(bz2))$/o;
-    return 1 if $filename =~ /^\w+\.pcap\d+$/o; 
+    return 1 if $filename =~ /^\w+\.pcap\d*(\.(bz2))?$/o; 
     return 0;
 }
 
@@ -123,27 +123,30 @@ sub find_things_to_build {
     die "internal" 
 	unless $this->{mode} eq 'info' || $this->{mode} eq 'convert';
 
-    die "No sources??" 
+    die "No sources, expected files named endace.#.128MiB.{lzf,zlib#,bz2}
+or \\w+.pcap#{,.bz2}" 
 	unless @file_list > 0;
     # auto-detect file type; naming convention above file_is_source
 
     print "Mapping numbers to files...\n";
     my %num_to_file;
     map { 
-	if (/\bendace\.(\d+)\.128MiB.\w+$/o) {
+	if (/\bendace\.(\d+)\.128MiB\.\w+$/o) {
 	    die "Inputs contain both erf and pcap files??"
 		if defined $this->{file_type} && $this->{file_type} ne 'erf';
 	    $this->{file_type} = 'erf';
 	    die "Duplicate number $1 from $_ and $num_to_file{$1}"
 		if defined $num_to_file{$1};
 	    $num_to_file{$1} = $_;
-	} elsif (/\b\w+\.pcap(\d+)$/o) {
+	} elsif (/\b\w+\.pcap(\d*)(\.\w+)?$/o) {
 	    die "Inputs contain both erf and pcap files??"
 		if defined $this->{file_type} && $this->{file_type} ne 'pcap';
 	    $this->{file_type} = 'pcap';
-	    die "Duplicate number $1 from $_ and $num_to_file{$1}"
-		if defined $num_to_file{$1};
-	    $num_to_file{$1} = $_;
+	    my $num = $1;
+	    $num = 0 if !defined $num || $num eq '';
+	    die "Duplicate number $num from $_ and $num_to_file{$num}"
+		if defined $num_to_file{$num};
+	    $num_to_file{$num} = $_;
 	} else {
 	    die "Unrecognized file type $_";
 	}
