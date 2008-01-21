@@ -14,6 +14,7 @@
 
 #include <Lintel/PThread.H>
 #include <Lintel/Deque.H>
+#include <Lintel/Stats.H>
 
 #include <DataSeries/DataSeriesModule.H>
 
@@ -59,6 +60,28 @@ public:
     /** what fraction of the extents did we wait for, either disk or
 	unpacking? */
     double waitFraction();
+
+    struct WaitStats {
+	uint64_t nextents, consumer, compressed_downstream_full;
+	uint64_t unpack_no_upstream, unpack_downstream_full;
+	uint64_t unpack_yield_front, unpack_yield_ready;
+	uint64_t skip_unpack_signal;
+
+	Stats active_unpack_stats;
+	int active_unpackers;
+	void lockedUpdateActive() {
+	    active_unpack_stats.add(active_unpackers);
+	}
+	WaitStats()
+	    : nextents(0), consumer(0), compressed_downstream_full(0),
+	      unpack_no_upstream(0), unpack_downstream_full(0),
+	      unpack_yield_front(0), unpack_yield_ready(0),
+	      skip_unpack_signal(0)
+	{ }
+    };
+
+    /*** returns true if there were wait statistics, false otherwise */
+    bool getWaitStats(WaitStats &stats);
 
     /** use readCompressed() to create this structure, it will unlock
 	the mutex while doing the work to get the compressed data */
@@ -139,7 +162,7 @@ private:
 
     struct PrefetchInfo {
 	Queue compressed, unpacked;
-	int wait_for_extent, nextents;
+	WaitStats stats;
 	PThread *compressed_prefetch_thread;
 	std::vector<PThread *> unpack_threads;
 	PThreadMutex mutex;
@@ -148,7 +171,7 @@ private:
 	bool source_done;
 	bool abort_prefetching; 
 	PrefetchInfo(unsigned cmm, unsigned tum) 
-	    : compressed(cmm), unpacked(tum), wait_for_extent(0), nextents(0), 
+	    : compressed(cmm), unpacked(tum), 
 	      reset_flag(false), source_done(false), 
 	      abort_prefetching(false) { }
 	bool allDone() {

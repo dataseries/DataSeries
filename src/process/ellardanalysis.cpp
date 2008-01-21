@@ -250,18 +250,18 @@ private:
 int
 main(int argc, char *argv[])
 {
-    TypeIndexModule source("Trace::NFS::Ellard");
-    PrefetchBufferModule *prefetch
-	= new PrefetchBufferModule(source, 64*1024*1024);
-
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
 
+    TypeIndexModule *source
+	= new TypeIndexModule("Trace::NFS::Ellard");
+
     for(int i = 1; i < argc; ++i) {
-	source.addSource(argv[i]);
+	source->addSource(argv[i]);
     }
 
-    SequenceModule seq(prefetch);
+    source->startPrefetching(32*1024*1024, 256*1024*1024); 
+    SequenceModule seq(source);
 
     vector<string> interesting;
     interesting.push_back("read");
@@ -278,6 +278,26 @@ main(int argc, char *argv[])
 
     seq.getAndDelete();
     RowAnalysisModule::printAllResults(seq);
+    IndexSourceModule::WaitStats wait_stats;
+    CHECKED(source->getWaitStats(wait_stats), "prefetching didn't happen??");
+
+    if (wait_stats.nextents == 0) {
+	cerr << "# 0 extents\n";
+    } else {
+	cerr << format("# %d extents: %.2f%% compressed downstream full\n")
+	    % wait_stats.nextents 
+	    % (100.0 * wait_stats.compressed_downstream_full / wait_stats.nextents);
+	cerr << format("# %.2f%% unpack no upstream, %.2f%% unpack downstream full\n")
+	    % (100.0 * wait_stats.unpack_no_upstream / wait_stats.nextents)
+	    % (100.0 * wait_stats.unpack_downstream_full / wait_stats.nextents);
+	cerr << format("# %d unpack yield ready, %d unpack yield front, %d skip unpack signal\n")
+	    % wait_stats.unpack_yield_ready
+	    % wait_stats.unpack_yield_front
+	    % wait_stats.skip_unpack_signal;
+	cerr << format("# %.2f mean active unpackers, %.2f%% consumer wait\n")
+	    % wait_stats.active_unpack_stats.mean()
+	    % (100.0 * wait_stats.consumer / wait_stats.nextents);
+    }
     return 0;
 }
 
