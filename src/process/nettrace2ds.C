@@ -119,6 +119,7 @@ enum CountTypes {
     rpc_tcp_request_len,
     rpc_tcp_reply_len,
     wire_len,
+    readdir_continuations_ignored,
     last_count // marker: maximum count of types
 };
 
@@ -156,6 +157,7 @@ string count_names[] = {
     "rpc_tcp_request_len",
     "rpc_tcp_reply_len",
     "wire_len",
+    "readdir_continuations_ignored",
 };
 
 vector<int64_t> counts;
@@ -1836,8 +1838,11 @@ public:
 				       ("(1 + %d) * 4  <= %d",curPos,reply.getrpcresultslen()));
 
 		    if (ntohl(xdr[curPos]) != 1) {
-			printf("not the end of the directory entry.\n");
-			printf("We're going to lose data if we don't do readdirplus3 continuation parsing.\n");
+			++counts[readdir_continuations_ignored];
+			if (false) {
+			    printf("not the end of the directory entry.\n");
+			    printf("We're going to lose data if we don't do readdirplus3 continuation parsing.\n");
+			}
 		    }
 		    if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
 		    break;
