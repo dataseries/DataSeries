@@ -1,3 +1,6 @@
+\documentclass{article}
+\begin{document}
+
 \subsection{Ellard Traces}
 
 In an effort to experiment with using DataSeries to represent and
@@ -334,7 +337,7 @@ as specified.  CPU and wall time are both relative to ellard-gz.}
 
 Next, Table~\ref{tab:nfsscan} presents the detailed measurements for
 the Ellard \texttt{nfsscan} program.  Which was executed by running
-\texttt{zcat (or bzcat) \| nfsscan -t0 -BC -}, so we get separate
+\texttt{zcat (or bzcat) $|$ nfsscan -t0 -BC -}, so we get separate
 times for the decompression and nfsscan execution, but a single
 elapsed time.
 
@@ -431,3 +434,4 @@ sizes because they were less stable in the performance.}
 
 \end{table}
 
+\end{document}
