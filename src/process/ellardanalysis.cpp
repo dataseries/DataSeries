@@ -247,11 +247,52 @@ private:
     double first_seconds;
 };
 
+class EllardAnalysisFindGarbage : public RowAnalysisModule {
+public:
+    EllardAnalysisFindGarbage(DataSeriesModule &source,
+			      const string &_filename)
+	: RowAnalysisModule(source), filename(_filename),
+	  garbage(series, "garbage", Field::flag_nullable),
+	  short_packet(series, "short_packet"),
+	  time(series, "time")
+    { }
+
+    virtual void processRow() {
+	if (!short_packet.val() && garbage.isNull())
+	    return;
+	if (garbage.isNull()) {
+	    SINVARIANT(short_packet.val());
+	    cout << format("%s: %d.%06d short packet (con/len 130/400)\n")
+		% filename % (time.val() / 1000000) % (time.val() % 1000000);
+	} else {
+	    cout << format("%s: %d.%06d garbage: %s")
+		% filename % (time.val() / 1000000) % (time.val() % 1000000)
+		% garbage.stringval();
+	}
+    }
+private:
+    string filename;
+    Variable32Field garbage;
+    BoolField short_packet;
+    Int64Field time;
+};
+
 int
 main(int argc, char *argv[])
 {
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
+
+    if (false) {
+	for(int i = 1; i < argc; ++i) {
+	    TypeIndexModule source("Trace::NFS::Ellard");
+	    source.addSource(argv[i]);
+	    source.startPrefetching(32*1024*1024, 256*1024*1024);
+	    EllardAnalysisFindGarbage finder(source, argv[i]);
+	    finder.getAndDelete();
+	}
+	exit(0);
+    }
 
     TypeIndexModule *source
 	= new TypeIndexModule("Trace::NFS::Ellard");
