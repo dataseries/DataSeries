@@ -1,0 +1,29 @@
+\begin{table*}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|} \hline
+            & mean     & mean       & mean     & CPU     & mean     & Wall time \\
+algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
+ellard-gz   & 537.58    &  7.80     & 545.38   &  1.0x   & 545.71   &   1.0x   \\
+ellard-bz2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
+\hline
+ds-gz-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
+ds-gz-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
+ds-gz-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+\hline
+ds-bz2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
+ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
+ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
+\end{tabular}
+
+\caption{Summary of performance results for the two analysis programs
+operating on a variety of input files.  The analysis was run over the
+anon-home04-011118-* files.  For the ellard \texttt{nfsscan} program
+the text files were compressed with either gz or bz2.  For the
+DataSeries \texttt{ellardanalysis} program, the dataseries files were
+compressed with either gz, bz2, or lzo, and used various extent sizes
+as specified.  CPU and wall time are both relative to ellard-gz.}
+
+\label{tab:summary}
+\end{table*}
+
