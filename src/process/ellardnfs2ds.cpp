@@ -119,7 +119,7 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int64\" name=\"cookie\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"maxcnt\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"stable\" opt_nullable=\"yes\" comment=\"for create, U = unchecked, G = guarded, X = exclusive; for stable U = unstable, D = data_sync, F = file_sync\" />\n"
-  "  <field type=\"variable32\" name=\"file\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+  "  <field type=\"variable32\" name=\"file\" opt_nullable=\"yes\" pack_unique=\"yes\" comment=\"fh for NFSv3 commits\" />\n"
   "  <field type=\"variable32\" name=\"name2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
 
   "  <field type=\"variable32\" name=\"sdata\" opt_nullable=\"yes\" pack_unique=\"yes\" comment=\"symlink data, appears to be the target of the symlink\" />\n"
@@ -138,7 +138,7 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int32\" name=\"offset\" opt_nullable=\"yes\" comment=\"off for V2 reads\" />\n"
   "  <field type=\"int32\" name=\"tcount\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"nfsstat\" opt_nullable=\"yes\" comment=\"may be garbage, values don't match legal values for nfsstat from nfs_prot.x\" />\n"
-  "  <field type=\"bool\" name=\"short_packet\" print_true=\"SHORT_PACKET\" print_false=\"OK_PACKET\" />\n"
+  "  <field type=\"bool\" name=\"short_packet\" print_true=\"SHORT_PACKET\" print_false=\"OK_PACKET\" comment=\"may have an entry in garbage if con/len weren't 130/400\" />\n"
   "  <field type=\"variable32\" name=\"fn2\" opt_nullable=\"yes\" comment=\"second name for V2 renames\" />\n"
   "  <field type=\"int32\" name=\"begoff\" opt_nullable=\"yes\" comment=\"beginning offset for V2 write\" />\n"
   "  <field type=\"variable32\" name=\"garbage\" opt_nullable=\"yes\" comment=\"a few lines are garbage, we simply pass through the entire contents here\" />\n"
@@ -829,6 +829,15 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1005756441953199LL, "818989c3", true)); // SHORT - 126
     garbage_lines.push_back(GarbageLine(1002828437658521LL, "90e4b967", true)); // SHORT - 126
 
+    // short packet with con = 126; translate as garbage
+    garbage_lines.push_back(GarbageLine(1000818821199260LL, "f48ab557", true));
+    garbage_lines.push_back(GarbageLine(1005232945781235LL, "be686a9e", true));
+    // short pack with con = 114
+    garbage_lines.push_back(GarbageLine(1037402177970404LL, "79c477b0", true));
+    garbage_lines.push_back(GarbageLine(1037402177971361LL, "79c477b1", true));
+    // short con == 150
+    garbage_lines.push_back(GarbageLine(1005240784958398LL, "682ffff0", true));
+
     // missing fields?
     garbage_lines.push_back(GarbageLine(1001819098701115LL, "4920d087")); 
     garbage_lines.push_back(GarbageLine(1004641929647217LL, "11cd2b19"));
@@ -864,14 +873,7 @@ initGarbageLines()
     garbage_lines.push_back(GarbageLine(1004487249188942LL, "ae855e4a"));
     // missing keys?
     garbage_lines.push_back(GarbageLine(1004487246432890LL, "ead732dc"));
-    // short packet with con = 126; translate as garbage
-    garbage_lines.push_back(GarbageLine(1000818821199260LL, "f48ab557", true));
-    garbage_lines.push_back(GarbageLine(1005232945781235LL, "be686a9e", true));
-    // short pack with con = 114
-    garbage_lines.push_back(GarbageLine(1037402177970404LL, "79c477b0", true));
-    garbage_lines.push_back(GarbageLine(1037402177971361LL, "79c477b1", true));
-    // short con == 150
-    garbage_lines.push_back(GarbageLine(1005240784958398LL, "682ffff0", true));
+
     // "...ok... write O  ...endstuff...
     garbage_lines.push_back(GarbageLine(1001455501691682LL, "630d5f7b"));
     // rdev2 shows up 3 times on this line

@@ -60,6 +60,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %{_bindir}/bacct2ds
 %{_bindir}/dataseries-config
+%{_bindir}/ds2ellardnfs
 %{_bindir}/ds2txt
 %{_bindir}/dsdecrypt
 %{_bindir}/dsextentindex
@@ -67,6 +68,8 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/dsselect
 %{_bindir}/dsstatgroupby
 %{_bindir}/dstypes2cxx
+%{_bindir}/ellardanalysis
+%{_bindir}/ellardnfs2ds
 %{_bindir}/indexnfscommon
 %{_bindir}/ipdsanalysis
 %{_bindir}/iphost2ds
@@ -83,6 +86,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/bp_modules/BatchParallel/bacct2ds.pm
 /usr/share/bp_modules/BatchParallel/ds2txt.pm
 /usr/share/bp_modules/BatchParallel/dsrepack.pm
+/usr/share/bp_modules/BatchParallel/ellardnfs2ds.pm
 /usr/share/bp_modules/BatchParallel/nettrace2ds.pm
 /usr/share/bp_modules/BatchParallel/nonmod/gpgkeys.pm
 %{_docdir}/DataSeries-%{version}/Changelog.mtn

@@ -1,0 +1,85 @@
+\begin{table*}
+\begin{tabular}{|c|c|c|c|c|c|} \hline
+& \multicolumn{2}{c|}{zcat|bzcat} & \multicolumn{3}{c|}{\texttt{nfsscan}} \\ \hline
+ dataset & user (s) & system (s) & user (s)& system (s)& elapsed (s)\\ \hline
+
+anon-home04-011118-*gz  & 19.15  & 3.16 & 518.38 & 4.70 & 546.71 \\
+anon-home04-011118-*gz  & 19.23  & 3.25 & 518.45 & 4.47 & 544.98 \\
+anon-home04-011118-*gz  & 18.92  & 2.97 & 518.62 & 4.85 & 545.45 \\
+
+anon-home04-011118-*bz2 & 126.01 & 6.88 & 512.23 & 6.17 & 572.43 \\
+anon-home04-011118-*bz2 & 125.91 & 6.47 & 512.95 & 5.80 & 571.21 \\
+anon-home04-011118-*bz2 & 125.91 & 6.63 & 512.44 & 6.08 & 570.82 \\ \hline
+\end{tabular}
+
+\caption{Detailed Performance Results for \texttt{nfsscan}.  Only
+three runs were performed because the experiments took so long and
+because the various was relatively small across the runs.  Only one
+elapsed time is included because the elapsed time for the two stages
+of the pipeline differed by at most 0.01s.}
+
+\label{tab:nfsscan}
+\end{table*}
+
+\begin{table*}[tbh]
+\begin{tabular}{|c|c|c|c|c|c|} \hline
+dataset & user (s) & system (s)& elapsed (s) \\ \hline
+% mean wall time 5.809, 94x faster
+gz-64k/anon-home04-011118-*.ds & 21.29 & 1.13 & 5.795 \\ 
+gz-64k/anon-home04-011118-*.ds & 21.41 & 1.12 & 5.779 \\ 
+gz-64k/anon-home04-011118-*.ds & 21.85 & 1.15 & 5.885 \\ 
+gz-64k/anon-home04-011118-*.ds & 21.31 & 1.23 & 5.813 \\ 
+gz-64k/anon-home04-011118-*.ds & 21.38 & 1.06 & 5.772 \\
+
+gz-128k/anon-home04-011118-*.ds & 23.34 & 1.04 & 6.265 \\
+gz-128k/anon-home04-011118-*.ds & 23.17 & 1.25 & 6.308 \\
+gz-128k/anon-home04-011118-*.ds & 23.51 & 1.23 & 6.370 \\
+gz-128k/anon-home04-011118-*.ds & 23.13 & 1.10 & 6.206 \\
+gz-128k/anon-home04-011118-*.ds & 23.35 & 1.34 & 6.357 \\
+
+% mean wall time 7.163, 76x faster
+gz-512k/anon-home04-011118-*.ds & 23.16 & 3.72 & 7.255 \\
+gz-512k/anon-home04-011118-*.ds & 23.17 & 2.79 & 6.818 \\
+gz-512k/anon-home04-011118-*.ds & 22.59 & 3.06 & 6.802 \\
+gz-512k/anon-home04-011118-*.ds & 23.09 & 3.39 & 6.943 \\
+gz-512k/anon-home04-011118-*.ds & 22.55 & 4.36 & 7.431 \\
+gz-512k/anon-home04-011118-*.ds & 22.94 & 4.92 & 7.827 \\
+gz-512k/anon-home04-011118-*.ds & 22.85 & 3.12 & 7.064 \\
+
+% mean wall time 5.105, 107x faster
+lzo-64k/anon-home04-011118-*.ds & 19.16 & 1.21 & 5.275 \\
+lzo-64k/anon-home04-011118-*.ds & 18.19 & 1.12 & 4.965 \\
+lzo-64k/anon-home04-011118-*.ds & 18.79 & 1.22 & 5.134 \\
+lzo-64k/anon-home04-011118-*.ds & 18.73 & 1.09 & 5.093 \\
+lzo-64k/anon-home04-011118-*.ds & 18.70 & 1.05 & 5.058 \\
+
+lzo-128k/anon-home04-011118-*.ds & 20.92 & 1.05 & 5.674 \\
+lzo-128k/anon-home04-011118-*.ds & 21.18 & 0.99 & 5.714 \\
+lzo-128k/anon-home04-011118-*.ds & 21.34 & 1.07 & 5.781 \\
+lzo-128k/anon-home04-011118-*.ds & 21.20 & 1.25 & 5.788 \\
+lzo-128k/anon-home04-011118-*.ds & 21.10 & 1.14 & 5.758 \\
+
+lzo-512k/anon-home04-011118-*.ds & 24.05 & 3.66 & 7.226 \\
+lzo-512k/anon-home04-011118-*.ds & 24.13 & 5.16 & 7.716 \\
+lzo-512k/anon-home04-011118-*.ds & 23.97 & 3.15 & 7.087 \\
+lzo-512k/anon-home04-011118-*.ds & 24.26 & 4.32 & 7.489 \\
+lzo-512k/anon-home04-011118-*.ds & 24.01 & 3.62 & 7.351 \\
+lzo-512k/anon-home04-011118-*.ds & 23.97 & 4.58 & 7.512 \\
+lzo-512k/anon-home04-011118-*.ds & 24.12 & 3.97 & 7.407 \\
+
+bz2-16M/anon-home04-011118-*.ds & 94.63 & 11.61 & 27.633 \\
+bz2-16M/anon-home04-011118-*.ds & 93.97 & 11.77 & 27.547 \\
+bz2-16M/anon-home04-011118-*.ds & 94.08 & 12.11 & 27.679 \\
+bz2-16M/anon-home04-011118-*.ds & 94.68 & 12.12 & 27.805 \\
+bz2-16M/anon-home04-011118-*.ds & 94.52 & 11.50 & 27.614 \\ 
+\hline
+\end{tabular}
+
+\caption{Detailed Performance Results for DataSeries
+\texttt{ellardanalysis} program.  Algorithm and extent size are as
+specified for each run.  More runs were performed for the 512k extent
+sizes because they were less stable in the performance.}
+\label{tab:dataseries}
+
+\end{table*}
+
