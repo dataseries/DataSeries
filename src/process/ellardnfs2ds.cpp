@@ -80,7 +80,7 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int32\" name=\"nlink\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"uid\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"gid\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int64\" name=\"size\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"size\" opt_nullable=\"yes\" comment=\"file size for reads\" />\n"
   "  <field type=\"int64\" name=\"used\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"rdev\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int32\" name=\"rdev2\" opt_nullable=\"yes\" />\n"
@@ -110,9 +110,9 @@ const string ellard_nfs_expanded_xml(
   "  <field type=\"int64\" name=\"atime_dup\" opt_nullable=\"yes\" pack_relative=\"atime_dup\" comment=\"-1 means set to server\" units=\"microseconds\" epoch=\"unix\" />\n"
 
 
-  "  <field type=\"byte\" name=\"acc\" opt_nullable=\"yes\" comment=\"bitmas, bit 0 = read, bit 1 = lookup, bit 2 = modify, bit 3 = extend, bit 4 = delete, bit 5 = execute; ellard traces also have U, traslating that as bit 6\" />\n"
+  "  <field type=\"byte\" name=\"acc\" opt_nullable=\"yes\" comment=\"bitmask, bit 0 = read, bit 1 = lookup, bit 2 = modify, bit 3 = extend, bit 4 = delete, bit 5 = execute; ellard traces also have U, translating that as bit 6; acc values for times before 1043870000000000LL should not be trusted, they were inaccurately translated from the raw packet captures.\" />\n"
   "  <field type=\"int64\" name=\"off\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"count\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int32\" name=\"count\" opt_nullable=\"yes\" comment=\"for reads, bytes read\" />\n"
   "  <field type=\"bool\" name=\"eof\" opt_nullable=\"yes\" />\n"
   "  <field type=\"byte\" name=\"how\" opt_nullable=\"yes\" comment=\"for create, U = unchecked, G = guarded, X = exclusive; for stable U = unstable, D = data_sync, F = file_sync\" />\n"
   "  <field type=\"variable32\" name=\"fh2\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
