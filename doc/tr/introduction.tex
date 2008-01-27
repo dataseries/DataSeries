@@ -1,0 +1,200 @@
+\section{Introduction}\label{sec:introduction}
+
+Traces, recordings and measurements taken from computer systems,
+networks and scientific infrastructure are vitally important
+for a large variety of 
+tasks. In every area of computer system design, traces from existing
+systems have been used to validate hypotheses, test assumptions and
+estimate performance. This is true of I/O subsystems~\cite{IORef,Ji03,Uysal03},
+processor systems~\cite{ProcRef}, network systems~\cite{NetRef} and
+memory systems~\cite{MemRef}, among others. Traces and logs are also
+extremely useful for fault-finding, auditing and debugging purposes
+~\cite{DebugRef}. Traces composed of failure data have been used to
+determine system reliability~\cite{ReliabilityRef, Schroeder07,
+Pinheiro07}. Trend analyses of performance information is a core
+operation of various management tools~\cite{MgmtRef}. Specific to the
+area of I/O and storage systems alone, we found that almost 60\% of
+papers published in the File and Storage Technologies (FAST) conferences
+have used traces of one sort or another. 
+Scientific and
+medical instrumentation can also generate large amounts of
+data~\cite{SciRef}, which also needs to be stored, filtered and analyzed.
+
+The data stored in each of these diverse
+uses is {\it structured serial data}, which we
+define as a series of records, each record having a specified
+structure (i.e., containing the same set of variables). Structured serial data
+has four defining characteristics: its structure is record-oriented;
+it is typically written only once,
+not modified afterward, and is read many times; it is usually
+ordered in some manner, e.g., chronologically; and it is
+typically read in a sequential manner.  Traditionally, researchers and
+developers have accomplished the tasks of collecting, storing, and
+analyzing this type of data using formats, libraries and software
+which are customized to the particular task at hand.  Unfortunately,
+such approaches significantly limit both flexibility and reusability, 
+and often performance.  For instance, if a
+binary format is used, it may be difficult to add new items of
+information or remove obsolete information.
+%; additionally, binary
+%formats may suffer ``bitrot'' as time goes on, as they are typically
+%not self-describing, and new computer
+%architectures and compilers are developed. 
+More flexible formats
+(e.g., text or XML)
+%, which can ameliorate some of these concerns,
+are not amenable to efficient analysis or storage. 
+Traditional databases
+generally store data without compression, requiring large amounts of
+disk space for storage, and are typically not optimized for the
+specific types of processing used on structured serial data. 
+%Additionally, SQL may
+%not support all the desired types of analysis. 
+One of the key contributions
+of this work is the specific storage format and optimizations that make
+it possible to very efficiently store and analyze this type of data, 
+without requiring
+excessive amounts of disk storage or computational resources.
+
+Another, often overlooked advantage of having a one-size-fits-all
+trace format is the ease of use provided in data analysis. In our own
+work, we have combined disparate trace types (block level I/O, process
+accounting, system
+call, NFS, batch scheduler, and system performance 
+%(Unix \texttt{sar}) 
+traces)
+in various combinations. Having a single software system and trace
+format that can work with each of these trace types through merge and
+analysis operations greatly facilitates the ease of analysis. A
+related advantage is scientific; reproducibility is enhanced and 
+interpretation is simplified.
+The authors have experienced, both personally and
+anecdotally, the difficulty of reproducing results with ``old'' trace
+files and software (often just finding software and getting it to compile
+can be extremely problematic). We observe that of the 101 papers
+published in the history of FAST, 57 used traces in some way; 
+the traces used in these papers were of at least 45 different formats. 
+Several
+papers even used 4-5 different types (e.g.,~\cite{arc03, ellard03}).
+
+There are five key properties that are required of a data format
+and analysis system for structured serial data:
+\begin{enumerate}
+\item \textbf{Storage efficiency}: the data
+should be stored in as few bytes as possible.
+% We have observed that for
+%large amounts of information, I/O bandwidth is often the primary 
+%consideration in
+%processing speed, and efficient storage use is the key in minimizing
+%the time to read (or write) data.  Moreover, high compression 
+%is desirable for transferring the data to other organizations and for
+%archiving it while not in active use.
+%\item The second property is
+%efficiency of accessing, interpreting and encoding trace data when
+% so as not to consume CPU and memory resources with
+%tasks such as (for example) converting text into numerical values. 
+\item \textbf{Access efficiency}:
+accessing, interpreting and encoding trace data, whether
+reading or writing,
+should make efficient use of CPU and memory resources.
+%\item The
+%third property is that of flexibility, in that it should be possible
+\item \textbf{Flexibility}:
+adding additional fields should not affect users of the trace data.
+Removing or modifying data fields should only affect users who use those
+fields and the system should support catching incorrect usage.
+%% it should be possible
+%% to easily add or remove data fields without affecting the
+%% developer or user of trace systems.
+% (e.g., by requiring a recompile, software
+%rewrite or trace transcoding). 
+Further, the format should not constrain the
+type of data being stored, and should allow multiple
+record types in a single file.
+% i.e., it should
+%enable very different record types to be stored, potentially in a single file.
+% One implication is
+% that the format must contain internal metadata describing the data.
+\item \textbf{Self-describing}:  the data set should contain the
+metadata that describes the data.
+% rather than keeping the metadata in a separate location.
+\item \textbf{(Re)Usability}: the data format should have an associated
+programming interface that is both expressive and easy to use.
+\end{enumerate}
+Although numerous tracing and measurement systems have been developed 
+over the last 20-30
+years, 
+%to the best of our knowledge none of them meet all of these 
+we are not aware of any that meet all of these
+requirements. We analyze some of these in our description of related 
+work (section~\ref{sec:related}).
+
+%In this paper, we present \DataSeries{}, a data format and associated
+%library, which meets all of the requirements described previously. The
+%library, which was specifically designed to meet all of these requirements.
+%The
+%primary contributions are the specification of a space-efficient
+%on-disk format that enables storage and access efficiency and flexibility, and the
+%specification of the API through which \DataSeries{} files are
+%manipulated.
+
+%\DataSeries{} has been used to store a wide variety of data types, from
+%I/O traces (disk block and NFS), batch cluster logs, system call traces to
+%performance measurements and email content. We evaluate
+%\DataSeries{} using these data sets, which cover a gamut of uses. We
+%show that \DataSeries{} can easily accommodate traces with over 100
+%billion records, offers high compression ratios on raw data
+%(compression factors can be up to 100:1), and provides extremely high
+%throughput for analysis tasks. We demonstrate this by comparisons with
+%alternative trace formats and database systems.
+
+%\DataSeries{} software is publicly available (BSD software license), and
+%should, we believe, be used in any application that wants to store
+%large amounts of structured serial data.
+
+We provide four primary contributions in this paper.  First, we
+introduce \DataSeries{}, a data format and associated library, which was
+specifically designed to meet the five key properties discussed above.
+Second, we discuss how \DataSeries{} can support
+very large datasets (e.g., hundreds of billions of records) on modest
+systems.
+%end server with a small number of disks, whereas databases or database-like
+%systems typically require high-end SMPs or large clusters and large
+%numbers of disks to support such datasets.  
+Third, we describe how we
+have used \DataSeries{} in practice to store a wide variety of data
+types.
+%, including I/O traces (disk block and NFS), batch cluster logs,
+%system call traces, performance measurements, and email content.
+Fourth, we demonstrate the performance and storage efficiency of 
+\DataSeries{} in a set of
+controlled experiments, using empirical data sets. We show that the
+performance of \DataSeries{} exceeds the performance of common trace
+formats and databases by at least a factor of two, and in some cases up to an
+order of magnitude. \DataSeries{} also requires far less disk space (factors
+vary from 4X to 8X in test workloads).
+
+Since \DataSeries{} software is publicly available
+(under a BSD software license), and given the benefits of \DataSeries{} that we demonstrate, we argue that \DataSeries{} should be considered
+for use by any application that needs to store large amounts of structured
+serial data. Indeed, a storage industry group\footnote{name withheld for blinding purposes} has chosen
+\DataSeries{} as a standard format for I/O trace data, and is currently
+specifying the semantics of the fields.
+% IO Tracing working group of SNIA\cite{SNIA-IOTTA} has chosen \DataSeries{} as its standard format for trace data.
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:related} describes the strengths
+and weaknesses of existing storage technologies relative to \DataSeries{}. 
+Section~\ref{sec:design} describes the design of \DataSeries{}, 
+including on-disk and in-memory formats.
+%, and its API. 
+Section~\ref{sec:programming} describes the programming interface for \DataSeries{}.
+Section~\ref{sec:results} 
+%discusses the types of analyses we performed, 
+%and illustrates the benefits of \DataSeries{}.
+presents empirical and benchmark results from our use of \DataSeries{}
+to illustrate and quantify the benefits of
+\DataSeries{}.
+Section~\ref{sec:discussion} describes our experiences with using \DataSeries{}, and
+Section~\ref{sec:conclusions} concludes the paper with a
+summary of our work and a list of future directions.

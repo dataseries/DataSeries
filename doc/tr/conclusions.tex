@@ -1,0 +1,71 @@
+\section{Conclusions}\label{sec:conclusions}
+
+We have described \DataSeries{}, a data format that enables the efficient
+and flexible storage of structured serial data. This type of data is
+used in numerous applications in all areas of computing
+and science, and researchers have developed almost as many ways to
+store and process it as there are applications. Unfortunately, there are
+many limitations to these formats. In contrast, \DataSeries{} offers five major
+advantages:
+\begin{enumerate}
+\item \DataSeries{} improves \textit{storage efficiency}, by
+ incorporating compression algorithms and related techniques.  Using
+ \DataSeries{}, we have been able to store and analyze large datasets on
+ a significantly smaller server and storage system than is typically
+ used with databases.
+
+\item \DataSeries{} provides much better \textit{access efficiency} than
+other formats.  This enables the timely analysis of very large datasets.
+
+\item \DataSeries{} is \textit{flexible}, in that it can handle a wide variety of
+different types of data, multiple types of data in the same file, and
+is easily extensible to handle new data types without changing the
+format. In fact, in almost four years of use, and an increasing number of
+data types, including I/O traces (disk block and NFS), batch cluster logs, 
+system call traces, performance measurements and email content, we have 
+not had to update the format once.
+
+\item \DataSeries{} is \textit{self-describing}; that is, relevant metadata is retained with the data.
+
+\item \DataSeries{} has an API to improve the \textit{usability} of the format by others.
+\end{enumerate}
+
+We have demonstrated these advantages by describing our experiences
+using \DataSeries{} in a variety of situations and through a series of
+experiments designed to show how \DataSeries{} compares to other types of
+solutions. Based on these results,
+we believe that \DataSeries{} will be useful to other researchers
+who collect and analyze structured serial data.
+We also think that \DataSeries{} has the potential to be
+used for more than just traces and measurements of computer systems.
+For example, data retention is becoming an increasingly important topic.
+Legislation such as the ``Internet Stopping Adults Facilitating
+the Exploitation of Today's Youth (SAFETY) Act of 2007''~\cite{SAFETY} seeks
+to require ISPs to retain information on their subscribers for
+extended periods of time.
+% Second, in the United States the Sarbanes-Oxley (SOX) Act of 2002~\cite{SOX}
+% imposed stringent new accounting and reporting practices on public
+% companies.  While SOX may not directly impose data retention requirements,
+% we anticipate a greater demand for the long-term archiving of structured
+% serial data as a side effect.
+In addition, many businesses are realizing a competitive advantage from
+collecting and analyzing a wide range of data~\cite{HURD}.
+The number of businesses utilizing data for such purposes
+will increase over time, as others try to narrow the gap.
+\DataSeries{} can potentially assist with these emerging trends.
+
+There are a number of ways that \DataSeries{} could be enhanced in the future.
+The first method would be to increase the functionality \DataSeries{} provides.
+A SQL interface would allow for the easy expression (without
+program development) of some types of queries and analysis.
+Similarly, extending the set of generic operations that are supported
+(e.g., sort-merge join) would make \DataSeries{} more appealing to some.
+Several further performance enhancements are possible.
+For example, different hash algorithms could be used for compressed
+and uncompressed data.  Similarly, fewer sanity checks could be applied
+(e.g., disable checksumming of uncompressed data except when repacking).
+In other words, \DataSeries{} could provide more options to the user to
+tune it to their particular performance and coherence needs.
+
+\DataSeries{} is open source that can be downloaded from {\tt
+http://blinded\_url}.

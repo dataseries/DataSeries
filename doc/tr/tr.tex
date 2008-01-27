@@ -1,0 +1,76 @@
+% TEMPLATE for Usenix papers, specifically to meet requirements of
+%  USENIX '05
+% originally a template for producing IEEE-format articles using LaTeX.
+%   written by Matthew Ward, CS Department, Worcester Polytechnic Institute.
+% adapted by David Beazley for his excellent SWIG paper in Proceedings,
+%   Tcl 96
+% turned into a smartass generic template by De Clarke, with thanks to
+%   both the above pioneers
+% use at your own risk.  Complaints to /dev/null.
+% make it two column with no page numbering, default is 10 point
+
+% Munged by Fred Douglis <douglis@research.att.com> 10/97 to separate
+% the .sty file from the LaTeX source template, so that people can
+% more easily include the .sty file into an existing document.  Also
+% changed to more closely follow the style guidelines as represented
+% by the Word sample file. 
+% This version uses the latex2e styles, not the very ancient 2.09 stuff.
+\documentclass[twocolumn, 10pt]{article} 
+\setlength{\columnsep}{0.15in}
+\usepackage{graphicx,fullpage,epsf,epsfig,endnotes}
+\usepackage[T1]{fontenc}
+\usepackage{pslatex}
+\usepackage{times}
+\begin{document}
+
+% replace the name to unblind
+\newcommand{\DataSeries}{DataSeries}
+\newcommand{\DS}{DS}
+%\date{}
+
+%make title bold and 14 pt font (Latex default is non-bold, 16 pt)
+\title{\Large \bf \DataSeries{}: An efficient, flexible data format for structured serial data}
+
+\author{
+\begin{tabular}{c}
+DataSeries Technical Documentation \\
+software@cello.hpl.hp.com \\
+\end{tabular}
+}
+
+% TODO: figure out how/where to put this into the documentation
+
+% Major authors: 
+%    Eric Anderson <eric.anderson4@hp.com>
+%    Martin Arlitt <martin.arlitt@hp.com>
+%    Charles B. Morrey III <brad.morrey@hp.com>
+%    Alistair Veitch <alistair.veitch@hp.com>
+
+\maketitle
+
+% Use the following at camera-ready time to suppress page numbers.
+% Comment it out when you first submit the paper for review.
+%\thispagestyle{empty}
+
+\subsection*{Abstract}
+\input{abstract.tex}
+\input{introduction.tex}
+\input{related.tex}
+\input{design.tex}
+\input{programming.tex}
+\input{results.tex}
+% \input{experience.tex}
+\input{lessons.tex}
+%\input{future-work.tex}
+\input{conclusions.tex}
+%\input{acknowledgments.tex}
+\input{references.tex}
+
+\end{document}
+
+
+
+
+
+
+
