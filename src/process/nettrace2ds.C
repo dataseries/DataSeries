@@ -2414,7 +2414,13 @@ handleNFSReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
     }	
     if (mode == Convert) {
 	is_request.set(false);
-	rpc_status.setNull(); // don't know yet
+	if (opid.val() == 0) {
+	    rpc_status.set(0);
+	} else if (reply.getrpcresultslen() >= 4) {
+	    rpc_status.set(ntohl(*reply.getrpcresults()));
+	} else {
+	    rpc_status.setNull(); 
+	}
     }
 }
 
