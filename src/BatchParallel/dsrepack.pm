@@ -357,7 +357,9 @@ sub rebuild_thing_do {
 sub rebuild_thing_success {
     my($this) = @_;
 
-    die "??" unless -e "$this->{dest}-new" && -M "$this->{dest}-new" <= 0;
+    die "?? $this->{dest}-new" unless -e "$this->{dest}-new";
+    die "??2 - $this->{dest}-new - " . (-M "$this->{dest}-new") 
+	unless -M "$this->{dest}-new" <= 1; # Could be 1 second in future because filesystem may only store seconds.
     rename("$this->{dest}-new", $this->{dest})
 	or die "Can't rename $this->{dest}-new to $this->{dest}: $!";
 }
