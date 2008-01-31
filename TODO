@@ -6,6 +6,10 @@
 
 sanitize regression data
 
+- Figure out how to document the minor improvements that happen to some of the
+  converters; not important enough to go into NEWS, but important for people
+  that might use them.
+
 - Rebuild the complex.ds-bigend file without lzo compression to enable checks
   with just gz, lzf, bz2 support.  Might want to move to just lzf support.
 
