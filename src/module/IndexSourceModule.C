@@ -80,7 +80,8 @@ IndexSourceModule::~IndexSourceModule()
 
 void
 IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
-				    unsigned prefetch_max_unpacked)
+				    unsigned prefetch_max_unpacked,
+				    int n_unpack_threads)
 {
     INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
     SINVARIANT(prefetch_max_compressed > 0);
@@ -94,6 +95,13 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
     prefetch->compressed_prefetch_thread->start();
 
     unsigned unpack_count = PThreadMisc::getNCpus();
+    // TODO: Add support (and test) for 0 unpack threads which should
+    // disable all of the prefetching.
+    if (n_unpack_threads != -1) {
+	SINVARIANT(n_unpack_threads > 0);
+	unpack_count = static_cast<unsigned>(n_unpack_threads);
+    }
+
     INVARIANT(unpack_count > 0, "?");
     prefetch->unpack_threads.reserve(unpack_count);
     for(unsigned i = 0; i < unpack_count; ++i) {

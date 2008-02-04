@@ -48,11 +48,13 @@ public:
     virtual Extent *getExtent();
 
     /** call this to start prefetching; if you don't call it, it will
-	be automatically called when you call getExtent; Max compressed
-        may slightly overrun because we don't know the size of compressed
-	extents until we read them. */
+	be automatically called when you call getExtent; Max
+	compressed may slightly overrun because we don't know the size
+	of compressed extents until we read them. nthreads == -1 ==>
+	use # cpus */
     virtual void startPrefetching(unsigned prefetch_max_compressed = 8 * 1024 * 1024,
-				  unsigned prefetch_max_unpacked = 32 * 1024 * 1024);
+				  unsigned prefetch_max_unpacked = 32 * 1024 * 1024,
+				  int n_unpack_threads = -1);
     /** call this to start the index source module over again from the 
 	beginning */
     virtual void resetPos();
