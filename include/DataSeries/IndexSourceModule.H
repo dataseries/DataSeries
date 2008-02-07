@@ -78,7 +78,7 @@ public:
 	    : nextents(0), consumer(0), compressed_downstream_full(0),
 	      unpack_no_upstream(0), unpack_downstream_full(0),
 	      unpack_yield_front(0), unpack_yield_ready(0),
-	      skip_unpack_signal(0)
+	      skip_unpack_signal(0), active_unpackers(0)
 	{ }
     };
 
