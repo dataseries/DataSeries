@@ -24,7 +24,7 @@ class IndexSourceModuleCompressedPrefetchThread : public PThread {
 public:
     IndexSourceModuleCompressedPrefetchThread(IndexSourceModule &_ism)
 	: ism(_ism) { 
-	setStackSize(512*1024); // shouldn't need much
+	setStackSize(256*1024); // shouldn't need much
     }
 
     virtual ~IndexSourceModuleCompressedPrefetchThread() { }
@@ -40,7 +40,7 @@ class IndexSourceModuleUnpackThread : public PThread {
 public:
     IndexSourceModuleUnpackThread(IndexSourceModule &_ism)
 	: ism(_ism) { 
-	setStackSize(1024*1024); // shouldn't need much
+	setStackSize(256*1024); // shouldn't need much
     }
 
     virtual ~IndexSourceModuleUnpackThread() { }
