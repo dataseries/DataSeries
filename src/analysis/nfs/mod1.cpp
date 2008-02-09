@@ -351,7 +351,8 @@ public:
 	  payload_length(s,"payload-length"),
 	  is_udp(s,"is-udp"),
 	  op_id(s,"op-id",Field::flag_nullable),
-	  min_time(ExtentType::int64_max), max_time(ExtentType::int64_min)
+	  min_time(numeric_limits<int64_t>::max()), 
+	  max_time(numeric_limits<int64_t>::min())
     { }
     virtual ~PayloadInfo() {}
 
