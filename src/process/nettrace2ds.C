@@ -73,6 +73,7 @@ extern "C" {
 }
 
 using namespace std;
+using boost::format;
 
 enum ModeT { Info, Convert };
 
@@ -273,7 +274,7 @@ public:
 
 //	printf("madv (%s)...\n", filename.c_str());
 //	madvise(data, datasize, MADV_WILLNEED);
-	if (false) printf("touch (%s)...\n", filename.c_str());
+	if (false) cout << format("touch (%s)...\n") % filename;
 
 	unsigned int defeat_opt = 0;
 	int readbufsize = 262144;
@@ -285,7 +286,7 @@ public:
 	for(unsigned i = 0; i < datasize; i += 2048) {
 	    defeat_opt += *(reinterpret_cast<unsigned char *>(data)+i);
 	}
-	if (false) printf("done (%s)\n", filename.c_str());
+	if (false) cout << format("done (%s)\n") % filename;
 	return reinterpret_cast<void *>(defeat_opt);
     }
 
@@ -609,7 +610,7 @@ public:
 	    INVARIANT(!readers.empty(), "bad");
 	    tracename = (**cur_reader).filename.c_str();
 	    for(unsigned i = 1;i<=prefetch_ahead_amount && i < readers.size(); ++i) {
-		printf("prefetching %d\n", i);
+		cout << format("prefetching %d\n") % i;
 		readers[i]->prefetch();
 	    }
 	}
@@ -804,9 +805,9 @@ public:
 	    unsigned char *f = (unsigned char *)rpcparam;
 	    cout << boost::format("bytes starting @%d: ") % (f-(unsigned char *)rpchdr);
 	    for(unsigned i=0;i<rpcparamlen;++i) {
-		printf("%02x ",f[i]);
+		cout << format("%02x ") % f[i];
 	    }
-	    printf("\n");
+	    cout << "\n";
 	}
     }
 	
@@ -1255,11 +1256,12 @@ summarizeBandwidthInformation()
 
     for(unsigned i = 0;i<bw_info.size();++i) {
 	if (bw_info[i]->mbps.count() > 0) {
-	    printf("mbits for interval len of %lldus with samples every %lldus\n",
-		   bw_info[i]->interval_microseconds, bw_info[i]->update_step);
+	    cout << format("mbits for interval len of %dus with samples every %dus\n")
+		% bw_info[i]->interval_microseconds
+		% bw_info[i]->update_step;
 	    bw_info[i]->mbps.printFile(stdout);
 	    bw_info[i]->mbps.printTail(stdout);
-	    printf("\n");
+	    cout << "\n";
 	    if (mode == Convert) {
 		for(double quant=0.05; quant < 1.0; quant+=0.05) {
 		    ip_bwrolling_row(bw_info[i], quant);
@@ -1675,7 +1677,7 @@ public:
     virtual ~NFSV3ReadDirPlusReplyHandler() { }
 
     void checkOpStatus(uint32_t op_status) {
-	if (false) printf("got a nonzero readdir status %d\n", op_status);
+	if (false) cout << format("got a nonzero readdir status %d\n") % op_status;
 	INVARIANT(op_status == NFS3ERR_NOTDIR ||
 		  op_status == NFS3ERR_ACCES ||
 		  op_status == NFS3ERR_IO ||
@@ -1830,7 +1832,7 @@ public:
 
 		if (ntohl(xdr[curPos]) == 1) { //There is a valid dir entry coming next
 		    curEntry = curPos;
-		    if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+		    if (false) cout << format("done parsing %d of %d\n") % curEntry % reply.getrpcresultslen();
 		} else {
 		    ++curPos;
 		    ShortDataAssertMsg(curPos * 4 <= reply.getrpcresultslen(),
@@ -1840,11 +1842,12 @@ public:
 		    if (ntohl(xdr[curPos]) != 1) {
 			++counts[readdir_continuations_ignored];
 			if (false) {
-			    printf("not the end of the directory entry.\n");
-			    printf("We're going to lose data if we don't do readdirplus3 continuation parsing.\n");
+			    cout << "not the end of the directory entry.\n"
+				 << "We're going to lose data if we don't do readdirplus3 continuation parsing.\n";
 			}
 		    }
-		    if (false) printf("done parsing %d of %d\n",curEntry,reply.getrpcresultslen());
+		    if (false) cout << format("done parsing %d of %d\n") 
+				   % curEntry % reply.getrpcresultslen();
 		    break;
 		}
 	    }
@@ -2116,16 +2119,16 @@ maybeDumpRecord(const uint32_t *xdr, int actual_len)
 {
     if (cur_record_id == hex_dump_id_1 ||
 	cur_record_id == hex_dump_id_2) {
-      printf("hex dump request op = %d; %lld %d:\n",
-	     opid.val(),cur_record_id,actual_len);
-      unsigned char *f = (unsigned char *)xdr;
-      for(int i=0;i<actual_len;++i) {
-	printf("%02x ",f[i]);
-	if ((i % 26) == 25) {
-	  printf("\n");
+	cout << format("hex dump request op = %d; %d %d:\n")
+	    % opid.val() % cur_record_id % actual_len;
+	unsigned char *f = (unsigned char *)xdr;
+	for(int i=0;i<actual_len;++i) {
+	    cout << format("%02x ") % f[i];
+	    if ((i % 26) == 25) {
+		cout << "\n";
+	    }
 	}
-      }
-      printf("\n");
+	cout << "\n";
     }
 }
 
