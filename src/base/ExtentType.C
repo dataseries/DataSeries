@@ -72,7 +72,7 @@ const string dataseries_index_type_v1_xml =
 ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
 ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
 
-string strGetXMLProp(xmlNodePtr cur, const string &option_name)
+string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name)
 {
     xmlChar *option = xmlGetProp(cur, reinterpret_cast<const xmlChar *>(option_name.c_str()));
     if (option == NULL) {
@@ -88,7 +88,7 @@ string strGetXMLProp(xmlNodePtr cur, const string &option_name)
 static bool
 parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 {
-    string option = strGetXMLProp(cur, option_name);
+    string option = ExtentType::strGetXMLProp(cur, option_name);
     
     if (option.empty()) {
 	return default_val;

@@ -52,6 +52,24 @@ public:
 	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
 	  my_extent(NULL), typeCompatibility(_tc) { 
     }
+
+    // Next three are the most common way of using a series; may
+    // eventually decide to deprecate as many of the other options as
+    // possible after investigating to see if they matter.
+    //
+    // Standard loop ends up being: 
+    // for(series.start(e); series.more(); series.next()) { ... }
+
+    void start(Extent *e) {
+	setExtent(e);
+    }
+    bool more() {
+	return pos.morerecords();
+    }
+    void next() {
+	++pos;
+    }
+
     void setType(const ExtentType &type);
     const ExtentType *getType() { return type; }
     // setExtent will automatically reset the pos iterator to the

@@ -206,6 +206,11 @@ public:
     virtual double valDouble() = 0;
 
 protected:
+    // TODO: to go away once this moves from ExtentType to somewhere sane.
+    static std::string strGetXMLProp(xmlNodePtr cur, 
+				     const std::string &option_name) {
+	return ExtentType::strGetXMLProp(cur, option_name);
+    }
     ExtentType::fieldType gftype;
     friend class GeneralValue;
     GeneralField(ExtentType::fieldType _gftype)
@@ -300,7 +305,7 @@ public:
     char *printspec;
     int64_t divisor, offset;
     bool offset_first;
-    
+    std::string units;
 };
 
 class GF_Double : public GeneralField {

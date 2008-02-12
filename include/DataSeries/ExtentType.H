@@ -177,6 +177,9 @@ public:
 	{ }
     };
 
+    // utility function, should go somewhere else.
+    static std::string strGetXMLProp(xmlNodePtr cur, 
+				     const std::string &option_name);
 private:
     static ExtentType &dataseries_xml_type;
     static ExtentType &dataseries_index_type_v0;
