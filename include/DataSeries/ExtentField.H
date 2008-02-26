@@ -18,6 +18,11 @@
 #include <DataSeries/ExtentSeries.H>
 #include <DataSeries/Extent.H>
 
+// Note, right now you have to delete the ExtentSeries and all the
+// fields at the same time.  In the future, you may be able to delete
+// fields well before deleting the series, but you will need to do it
+// in that order.
+
 // Note that if a sufficient case is made that the accessors which
 // handle the null case inline are too slow, then special case
 // accessors could be built which only handle non-null fields.
@@ -31,10 +36,8 @@ class Field {
 public:
     Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
 	  int _flags);
-    // TODO: consider setting ExtentSeries::dead; and/or removing
-    // ourselves from the list in the series.  Potential complications
-    // involve destructor order, so the series might have to mark the
-    // fields that it's dying.
+    // TODO: remove ourselves from the series when the destructor is called.
+    // Disallow destroying a series that still has fields associated with it.
     virtual ~Field() {}
     
     static const int flag_nullable = 1;

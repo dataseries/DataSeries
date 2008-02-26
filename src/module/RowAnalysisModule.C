@@ -17,6 +17,7 @@ RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
     : processed_rows(0), ignored_rows(0), 
       series(_tc), source(_source), prepared(false), where_expr(NULL)
 {
+    SINVARIANT(&source != NULL);
 }
 
 RowAnalysisModule::~RowAnalysisModule()
