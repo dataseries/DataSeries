@@ -122,7 +122,7 @@ sub subdir_transform {
 sub usage {
     print <<'END_OF_USAGE';
 batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [extent-size=#[km]] 
-  [mode=split:#kmg] [mode=merge[:#:regex]]
+  [mode=split:#kmg] [mode=merge[:#:perl-expr]]
   [transform={perl-expr}|subdir] 
   [ignore=regex] [require=regex]
   -- file/directory...
@@ -153,17 +153,25 @@ batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [extent-size=#[km]]
      each merge group.  Both of these will only combine files that map 
      to the same output under the transform.
      a) In mode=merge, this sets the require regex to be /\.part-##.ds\$/, 
-        and the transform strips off the .part-## portion of the name
+        and the transform removes the .part-## portion of the name
      b) In mode=merge:#:regex, this sets the require regex to regex,
-        extracts $1 from each regex, and sorts the files by that value
-        either numerically or alphabetically, the transform is set to
+        extracts $1 from each regex. Then it sorts the files by that value
+        either numerically or alphabetically. Finally the transform is set to
         create files named <transform-output>.$first-$last.ds where
         $first and $last are the first and last $1's of each group.
+
+Examples:
+
+ # Take files named *.###{,.prune}.ds, make groups of 101 files
+ # (eliminated a group of 1 file and a group of 6); rewrite the paths
+ # to put them in an entirely different place, and make them all named 
+ # network.#-#.ds (This is how we prepared the NFS traces for distribution)
+ % batch-parallel --noshuffle -n dsrepack mode=merge:101:'/\.(\d+)(\.prune)?\.ds$/o' compress=bz2 extent-size=16m transform='s,/mnt/fileserver-2/a/(.+)/[^/]+\.\d+(\.prune)?\.ds,/mnt/fileserver-1/b/user/anderse/bz2-pack/$1/network,o' -- set-?
 
 END_OF_USAGE
 
 # Example complex merge
-# batch-parallel --noshuffle dsrepack -n compress=lzf 'mode=merge:7:/lsb.acct.\d+-\d+-(\d+)/' transform='s,/gld-lzf/(\d+)/(\d+)/lsb.acct.*ds,/gld-merge/$1/lsb.acct.$1-$2.ds,' -- gld-lzf/2007/01/
+# 
 
 }
 
@@ -258,8 +266,8 @@ sub find_things_to_build {
 		
 	    if (defined $this->{merge_count}) {
 		my $destbase = $destpath;
-		die "$destpath doesn't end with .ds??"
-		    unless $destbase =~ s/\.ds$//o;
+		warn "$destpath ends with .ds, this probably isn't what you want."
+		    if $destbase =~ /\.ds$/o;
 		while (@sources > 0) {
 		    my @chunk = splice(@sources, 0, $this->{merge_count});
 		    my $start = $source2order{$chunk[0]};
