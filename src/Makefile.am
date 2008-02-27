@@ -269,7 +269,7 @@ ran.check-dstypes2cxx: dstypes2cxx
 	touch $@
 
 ran.check-nfsdsanalysis: nfsdsanalysis
-	./nfsdsanalysis -a -j $(top_srcdir)/check-data/nfs.set6.20k.ds | perl $(top_srcdir)/check-data/clean-timing.pl >check.nfsdsanalysis.txt
+	./nfsdsanalysis -a -j -l 1 $(top_srcdir)/check-data/nfs.set6.20k.ds | perl $(top_srcdir)/check-data/clean-timing.pl >check.nfsdsanalysis.txt
 	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
 	touch $@
 

@@ -233,6 +233,24 @@ NFSDSAnalysisMod::newClientServerPairInfo(DataSeriesModule &prev)
 // program so if we switch to using statsquantile the rollup will
 // still work correctly.
 
+// To graph:
+// create a table like: create table nfs_perf (sec int not null, ops double not null);
+// perl -ane 'next unless $F[0] eq "*" && $F[1] =~ /^\d+$/o && $F[2] eq "send" && $F[3] eq "*" && $F[4] eq "*";print "insert into nfs_perf values ($F[1], $F[5]);\n";' < output of nfsdsanalysis -l ## run. | mysql test
+// use mercury-plot (from Lintel) to graph, for example:
+/*
+unplot
+plotwith * lines
+plot 3600*round((sec - min_sec)/3600,0) as x, avg(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ mean ops/s 
+plot 3600*round((sec - min_sec)/3600,0) as x, max(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ max ops/s
+plot 3600*round((sec - min_sec)/3600,0) as x, min(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ min ops/s
+gnuplot set xlabel "seconds"
+gnuplot set ylabel "operations (#requests+#replies)/2 per second"
+pngplot set-18.png
+*/
+
 class HostInfo : public RowAnalysisModule {
 public:
     HostInfo(DataSeriesModule &_source, const std::string &arg) 

@@ -1,3 +1,8 @@
+2008-02-27:
+  * Fix up nfsds host analysis module, useful for figuring out how many 
+    operations are going in/out of each of the hosts.  Example of how to make
+    a plot is included in src/analysis/nfs/mod1.cpp
+
 2008-01-27:
   * Add in doc/tr; the technical report we've been writing.  Includes the
     writeup of the Ellard work.
