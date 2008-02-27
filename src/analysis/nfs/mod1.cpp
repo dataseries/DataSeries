@@ -300,6 +300,38 @@ public:
 	PerDirectionData send, recv;
     };
 
+    struct TotalTime {
+	vector<Stats *> total;
+	unsigned first_time_seconds;
+
+	void add(Stats &ent, uint32_t seconds, uint32_t group_seconds) {
+	    SINVARIANT(seconds % group_seconds == 0);
+	    SINVARIANT(seconds >= first_time_seconds);
+	    uint32_t offset = (seconds - first_time_seconds)/group_seconds;
+	    if (total.size() <= offset) {
+		total.resize(offset+1);
+	    }
+	    if (total[offset] == NULL) {
+		total[offset] = new Stats();
+	    }
+	    total[offset]->add(ent);
+	}
+
+	void print(uint32_t group_seconds) {
+	    uint32_t cur_seconds = first_time_seconds;
+	    for(vector<Stats *>::iterator i = total.begin(); i != total.end(); ++i) {
+		if (*i != NULL) {
+		    cout << format("       * %10d  n/a           *        * %6lld %8.2f\n")
+			% cur_seconds % (**i).countll() % (**i).mean();
+		}
+		
+		cur_seconds += group_seconds;
+	    }
+	}
+
+	TotalTime(uint32_t a) : first_time_seconds(a) { }
+    };
+
     struct PerHostData {
 	PerHostData() 
 	    : first_time_seconds(0) {}
@@ -340,10 +372,12 @@ public:
 		total_recv_req, total_recv_resp;
 	    for(vector<PerTimeData *>::iterator i = time_entries.begin();
 		i != time_entries.end(); ++i, start_seconds += group_seconds) {
-		(**i).send.print(host_id, start_seconds, "send", 
-				 total_send_req, total_send_resp);
-		(**i).recv.print(host_id, start_seconds, "recv", 
-				 total_recv_req, total_recv_resp);
+		if (*i != NULL) {
+		    (**i).send.print(host_id, start_seconds, "send", 
+				     total_send_req, total_send_resp);
+		    (**i).recv.print(host_id, start_seconds, "recv", 
+				     total_recv_req, total_recv_resp);
+		}
 	    }
 	    printTotal(total_send_req,  host_id, "send", "request");
 	    printTotal(total_send_resp, host_id, "send", "response");
