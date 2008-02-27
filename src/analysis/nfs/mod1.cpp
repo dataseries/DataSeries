@@ -229,6 +229,10 @@ NFSDSAnalysisMod::newClientServerPairInfo(DataSeriesModule &prev)
     return new ClientServerPairInfo(prev);
 }
 
+// We do the rollup internal to this module rather than an external
+// program so if we switch to using statsquantile the rollup will
+// still work correctly.
+
 class HostInfo : public RowAnalysisModule {
 public:
     HostInfo(DataSeriesModule &_source, const std::string &arg) 
@@ -242,8 +246,46 @@ public:
 	  is_request(series, "is-request")
     {
 	group_seconds = stringToUInt32(arg);
+	host_to_data.reserve(5000);
     }
     virtual ~HostInfo() { }
+
+    struct TotalTime {
+	vector<Stats *> total;
+	uint32_t first_time_seconds;
+	uint32_t group_seconds;
+
+	TotalTime(uint32_t a, uint32_t b) : first_time_seconds(a), group_seconds(b) { }
+	
+	void add(Stats &ent, uint32_t seconds) {
+	    SINVARIANT(seconds % group_seconds == 0);
+	    SINVARIANT(seconds >= first_time_seconds);
+	    uint32_t offset = (seconds - first_time_seconds)/group_seconds;
+	    if (total.size() <= offset) {
+		total.resize(offset+1);
+	    }
+	    if (total[offset] == NULL) {
+		total[offset] = new Stats();
+	    }
+	    total[offset]->add(ent);
+	}
+
+	void print() {
+	    uint32_t cur_seconds = first_time_seconds;
+	    Stats complete_total;
+	    for(vector<Stats *>::iterator i = total.begin(); i != total.end(); ++i) {
+		if (*i != NULL) {
+		    cout << format("       * %10d  send           *        * %6lld %8.2f\n")
+			% cur_seconds % (**i).countll() % (**i).mean();
+		    complete_total.add(**i);
+		}
+		
+		cur_seconds += group_seconds;
+	    }
+	    cout << format("       *          *  send           *        * %6lld %8.2f\n")
+		% complete_total.countll() % complete_total.mean();
+	}
+    };
 
     struct PerDirectionData {
 	vector<Stats *> req_data, resp_data;
@@ -253,11 +295,12 @@ public:
 
 	void print(uint32_t host_id, uint32_t seconds,
 		   const std::string &direction,
-		   Stats &total_req, Stats &total_resp) {
+		   Stats &total_req, Stats &total_resp,
+		   TotalTime *total_time) {
 	    doPrint(host_id, seconds, direction, "request", req_data, 
-		    total_req);
+		    total_req, total_time);
 	    doPrint(host_id, seconds, direction, "response", resp_data, 
-		    total_resp);
+		    total_resp, total_time);
 	}
 
     private:
@@ -265,7 +308,7 @@ public:
 		     const std::string &direction, 
 		     const std::string &msgtype,
 		     const vector<Stats *> &data,
-		     Stats &bigger_total) {
+		     Stats &bigger_total, TotalTime *total_time) {
 	    Stats total;
 	    for(unsigned i = 0; i < data.size(); ++i) {
 		if (data[i] == NULL) {
@@ -281,6 +324,9 @@ public:
 		    % host_id % seconds % direction 
 		    % msgtype % total.countll() % total.mean();
 		bigger_total.add(total);
+		if (total_time != NULL) {
+		    total_time->add(total, seconds);
+		}
 	    }
 	}
 
@@ -298,38 +344,6 @@ public:
 
     struct PerTimeData {
 	PerDirectionData send, recv;
-    };
-
-    struct TotalTime {
-	vector<Stats *> total;
-	unsigned first_time_seconds;
-
-	void add(Stats &ent, uint32_t seconds, uint32_t group_seconds) {
-	    SINVARIANT(seconds % group_seconds == 0);
-	    SINVARIANT(seconds >= first_time_seconds);
-	    uint32_t offset = (seconds - first_time_seconds)/group_seconds;
-	    if (total.size() <= offset) {
-		total.resize(offset+1);
-	    }
-	    if (total[offset] == NULL) {
-		total[offset] = new Stats();
-	    }
-	    total[offset]->add(ent);
-	}
-
-	void print(uint32_t group_seconds) {
-	    uint32_t cur_seconds = first_time_seconds;
-	    for(vector<Stats *>::iterator i = total.begin(); i != total.end(); ++i) {
-		if (*i != NULL) {
-		    cout << format("       * %10d  n/a           *        * %6lld %8.2f\n")
-			% cur_seconds % (**i).countll() % (**i).mean();
-		}
-		
-		cur_seconds += group_seconds;
-	    }
-	}
-
-	TotalTime(uint32_t a) : first_time_seconds(a) { }
     };
 
     struct PerHostData {
@@ -365,7 +379,7 @@ public:
 	    }
 	}
 
-	void print(uint32_t host_id, uint32_t group_seconds) {
+	void print(uint32_t host_id, uint32_t group_seconds, TotalTime &total_time) {
 	    uint32_t start_seconds = first_time_seconds;
 	    // Caches act as both senders and recievers.
 	    Stats total_send_req, total_send_resp, 
@@ -374,9 +388,9 @@ public:
 		i != time_entries.end(); ++i, start_seconds += group_seconds) {
 		if (*i != NULL) {
 		    (**i).send.print(host_id, start_seconds, "send", 
-				     total_send_req, total_send_resp);
+				     total_send_req, total_send_resp, &total_time);
 		    (**i).recv.print(host_id, start_seconds, "recv", 
-				     total_recv_req, total_recv_resp);
+				     total_recv_req, total_recv_resp, NULL);
 		}
 	    }
 	    printTotal(total_send_req,  host_id, "send", "request");
@@ -403,10 +417,19 @@ public:
 
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << "host     time        dir          op    op-dir   count mean-payload\n";
+	uint32_t min_first_time = numeric_limits<uint32_t>::max();
 	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
 	    i != host_to_data.end(); ++i) {
-	    i->second.print(i->first, group_seconds);
+	    min_first_time = min(min_first_time, i->second.first_time_seconds);
 	}
+	SINVARIANT(min_first_time < numeric_limits<uint32_t>::max());
+	TotalTime total_time(min_first_time, group_seconds);
+	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
+	    i != host_to_data.end(); ++i) {
+	    i->second.print(i->first, group_seconds, total_time);
+	}
+	total_time.print();
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
     Int64Field packet_at;
@@ -1180,7 +1203,7 @@ public:
 	    printf("\n");
 	}
 
-	printf("Summary: %d duplicate responses\n", duplicateresponse.size());
+	cout << format("Summary: %d duplicate responses\n") % duplicateresponse.size();
 	if (print_detail) {
 	    printf("%-13s %-15s %-15s %-4s %-8s %-2s %-12s\n",
 		   "time", "client", "server", "prot", "xid", "op", "operation");

@@ -1024,7 +1024,7 @@ usage(char *progname)
     cerr << "    #-i # NFS operation/payload analysis\n";
     cerr << "    -j # Server latency analysis\n";
     cerr << "    #-k # Client-server pair payload analysis\n";
-    cerr << "    #-l # Host analysis\n";
+    cerr << "    -l <seconds> # Host analysis\n";
     cerr << "    #-m # Overall payload analysis\n";
     cerr << "    #-n # File size analysis\n";
     cerr << "    #-o # Unbalanced operations analysis\n";
