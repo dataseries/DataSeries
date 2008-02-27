@@ -30,6 +30,8 @@ sub new {
 # module; re-use it in the various dataseries modules
 	} elsif (/^compress=((lzo)|(gz)|(bz2)|(lzf))$/o) {
 	    push(@{$this->{compress}}, "--enable-$1");
+	} elsif (/^compress-level=([1-9])$/o) {
+	    $this->{compress_level} = "--compress-level=$1";
 	} elsif (/^extent-size=(\d+(\.\d+)?)([km])?$/o) {
 	    die "Can't set multiple extent sizes" 
 		if defined $this->{extent_size};
@@ -121,8 +123,8 @@ sub subdir_transform {
 # TODO: move this into Pod::Usage or something
 sub usage {
     print <<'END_OF_USAGE';
-batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [extent-size=#[km]] 
-  [mode=split:#kmg] [mode=merge[:#:perl-expr]]
+batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [compress-level=0-9]
+  [extent-size=#[km]] [mode=split:#kmg] [mode=merge[:#:perl-expr]]
   [transform={perl-expr}|subdir] 
   [ignore=regex] [require=regex]
   -- file/directory...
@@ -354,8 +356,11 @@ sub rebuild_thing_do {
     my($this) = @_;
 
     my $old_modify = -M "$this->{dest}-new" || 1;
-    die "rebuild of $this->{dest} failed"
-	unless $this->rebuild("$this->{dest}-new");
+
+    unless ($this->rebuild("$this->{dest}-new")) {
+	die "rebuild of $this->{dest} failed";
+    }
+
     my $new_modify = -M "$this->{dest}-new";
     die "?? $old_modify $new_modify" 
 	unless -e "$this->{dest}-new" && $old_modify > $new_modify;
@@ -398,7 +403,8 @@ sub rebuild {
     my $base = $this->{base};
     
     $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
-		    $base->{extent_size}, $this->{src}, $dest));
+		    $base->{compress_level}, $base->{extent_size}, 
+		    $this->{src}, $dest));
     return 1;
 };
 
@@ -440,7 +446,8 @@ sub rebuild {
 
     my $base = $this->{base};
     
-    $base->run(grep(defined, "dsrepack", @{$base->{compress}}, $base->{extent_size}, 
+    $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
+		    $base->{compress_level}, $base->{extent_size}, 
 		    $base->{target_file_size}, $this->{src}, $basename));
     
     # Mark (with empty file) we are done
@@ -480,7 +487,8 @@ sub rebuild {
 	unlink($dest) or die "can't unlink $dest: $!";
     }
     $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
-		    $base->{extent_size}, @{$this->{src}}, $dest));
+		    $base->{compress_level}, $base->{extent_size}, 
+		    @{$this->{src}}, $dest));
     return 1;
 }
 

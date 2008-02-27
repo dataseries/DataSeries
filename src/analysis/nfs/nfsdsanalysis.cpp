@@ -1142,14 +1142,16 @@ printResult(DataSeriesModule *mod)
 	return;
     }
     NFSDSModule *nfsdsmod = dynamic_cast<NFSDSModule *>(mod);
-    if (nfsdsmod == NULL && 
-	(dynamic_cast<PrefetchBufferModule *>(mod) != NULL ||
-	 dynamic_cast<DStoTextModule *>(mod) != NULL)) {
-	return; // this is ok
+    RowAnalysisModule *rowmod = dynamic_cast<RowAnalysisModule *>(mod);
+    if (nfsdsmod != NULL) {
+	nfsdsmod->printResult();
+    } else if (rowmod != NULL) {
+	rowmod->printResult();
+    } else {
+	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL,
+		  "Found unexpected module in chain");
     }
-	
-    AssertAlways(nfsdsmod != NULL,("dynamic cast failed?!\n"));
-    nfsdsmod->printResult();
+
     printf("\n");
 }
 
@@ -1205,27 +1207,16 @@ main(int argc, char *argv[])
     // Don't start prefetching, will cause us to read some things we
     // may not have to read.
 
-    //    sourcea->startPrefetching();
     sourceb->sameInputFiles(*sourcea);
-    //    sourceb->startPrefetching();
     sourcec->sameInputFiles(*sourcea);
-    //    sourcec->startPrefetching();
     sourced->sameInputFiles(*sourcea);
-    //    sourced->startPrefetching();
-
-    PrefetchBufferModule *prefetcha = 
-	new PrefetchBufferModule(*sourcea,32*1024*1024);
-    PrefetchBufferModule *prefetchb = 
-	new PrefetchBufferModule(*sourceb,32*1024*1024);
-    PrefetchBufferModule *prefetchc = 
-	new PrefetchBufferModule(*sourcec,32*1024*1024);
 
     // these are the three threads that we will build according to the
     // selected analyses
 
-    SequenceModule commonSequence(prefetcha);
-    SequenceModule attrOpsSequence(prefetchb);
-    SequenceModule rwSequence(prefetchc);
+    SequenceModule commonSequence(sourcea);
+    SequenceModule attrOpsSequence(sourceb);
+    SequenceModule rwSequence(sourcec);
 
     if (timebound_set) {
 	commonSequence.addModule(new TimeBoundPrune(commonSequence.tail(),

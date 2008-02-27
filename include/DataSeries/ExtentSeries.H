@@ -131,7 +131,8 @@ public:
 	}
 	void setpos(byte *new_pos);
 
-	int currecnum() {
+	uint32_t currecnum() {
+	    SINVARIANT(cur_extent != NULL);
 	    int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
 	    checkOffset(cur_pos - cur_extent->fixeddata.begin());
 	    return recnum;
