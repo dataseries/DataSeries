@@ -13,6 +13,11 @@ Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, int _flag
 {
 }
 
+Field::~Field()
+{
+    dataseries.removeField(*this);
+}
+
 void 
 Field::newExtentType()
 {

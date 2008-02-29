@@ -117,6 +117,9 @@ main(int argc, char *argv[])
     }
     outmodule.flushExtent();
     outmodule.close();
+    
+    GeneralField::deleteFields(infields);
+    GeneralField::deleteFields(outfields);
     return 0;
 }
 

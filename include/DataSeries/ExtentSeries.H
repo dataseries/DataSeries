@@ -53,6 +53,7 @@ public:
 	  my_extent(NULL), typeCompatibility(_tc) { 
     }
 
+    ~ExtentSeries();
     // Next three are the most common way of using a series; may
     // eventually decide to deprecate as many of the other options as
     // possible after investigating to see if they matter.
@@ -89,20 +90,21 @@ public:
     }
     const ExtentType *type;
     void addField(Field &field);
+    void removeField(Field &field, bool must_exist = true);
 
     // if you have other iterators, you must! call reset on them 
     // after calling either newRecord() or createRecords()
     void newRecord() { // sets the current position to the new record
-	AssertAlways(my_extent != NULL,
-		     ("must set extent for data series before calling newRecord()\n"));
+	INVARIANT(my_extent != NULL,
+		  "must set extent for data series before calling newRecord()");
 	int offset = my_extent->fixeddata.size();
 	my_extent->createRecords(1);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
     void createRecords(int nrecords) {
 	// leaves the current record position unchanged
-	AssertAlways(my_extent != NULL,
-		     ("must set extent for data series before calling newRecord()\n"));
+	INVARIANT(my_extent != NULL,
+		  "must set extent for data series before calling newRecord()\n");
 	int offset = pos.cur_pos - my_extent->fixeddata.begin();
 	my_extent->createRecords(nrecords);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;

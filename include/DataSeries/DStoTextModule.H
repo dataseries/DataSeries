@@ -28,12 +28,9 @@ public:
     virtual Extent *getExtent(); // will print extent as a side effect.
 
     void setPrintSpec(const char *xmlText);
-    void setPrintSpec(const std::string &extenttype,
-		      const std::string &fieldname,
-		      xmlNodePtr printSpec);
+    /// After a call to this, the module owns the printSpec and will free it
+    /// when done.
     void setHeader(const char *xmlText);
-    void setHeader(const std::string &extenttype,
-		   const std::string &header);
     void setFields(const char *xmlText);
     void addPrintField(const std::string &extenttype, 
 		       const std::string &field);
@@ -57,9 +54,6 @@ public:
     void enableCSV();
     void setSeparator(const std::string &s);    
 
-    // this interface memory leaks the document;
-    static xmlNodePtr parseXML(std::string xml, const std::string &roottype);
-
     // need to keep around state because relative printing should be
     // done relative to the first row of the first extent, not the
     // first row of each extent.
@@ -69,9 +63,18 @@ public:
 	std::string header;
 	std::vector<std::string> field_names;
 	std::vector<GeneralField *> fields;
+	~PerTypeState();
     };
 
 private:
+    static xmlNodePtr parseXML(std::string xml, const std::string &roottype);
+
+    void setPrintSpec(const std::string &extenttype,
+		      const std::string &fieldname,
+		      xmlNodePtr printSpec);
+    void setHeader(const std::string &extenttype,
+		   const std::string &header);
+
     void getExtentPrintSpecs(PerTypeState &state);
 
     // Also initializes state.fields if necessary.

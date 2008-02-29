@@ -146,6 +146,22 @@ DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
     }
 }
 
+DStoTextModule::PerTypeState::~PerTypeState()
+{
+    for(vector<GeneralField *>::iterator i = fields.begin();
+	i != fields.end(); ++i) {
+	delete *i;
+	*i = NULL;
+    }
+    fields.clear();
+    for(map<string, xmlNodePtr>::iterator i = override_print_specs.begin();
+	i != override_print_specs.end(); ++i) {
+	xmlFreeDoc(i->second->doc);
+	i->second = NULL;
+    }
+    override_print_specs.clear();
+}
+
 void
 DStoTextModule::getExtentPrintHeaders(PerTypeState &state) 
 {

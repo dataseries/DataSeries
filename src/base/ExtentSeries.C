@@ -10,6 +10,8 @@
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 
+using namespace std;
+
 ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
     : typeCompatibility(_tc)
 {
@@ -22,6 +24,14 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 	my_extent = e;
 	pos.reset(e);
     }
+}
+
+ExtentSeries::~ExtentSeries()
+{
+    INVARIANT(my_fields.size() == 0, 
+	      boost::format("You still have fields such as %s live on a series over type %s")
+	      % my_fields[0]->getName() 
+	      % (type == NULL ? "unset type" : type->getName()));
 }
 
 void
@@ -43,14 +53,13 @@ ExtentSeries::setType(const ExtentType &_type)
 	case typeLoose:
 	    break;
 	default:
-	    AssertFatal(("internal error\n"));
+	    FATAL_ERROR(boost::format("unrecognized type compatibility option %d") % typeCompatibility);
 	}
 
     type = &_type;
-    for(std::vector<Field *>::iterator i = my_fields.begin();
+    for(vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end();++i) {
-	AssertAlways(&(**i).dataseries == this,
-		     ("Internal error\n"));
+	SINVARIANT(&(**i).dataseries == this)
 	(**i).newExtentType();
     }
 }
@@ -72,6 +81,20 @@ ExtentSeries::addField(Field &field)
 	field.newExtentType();
     }
     my_fields.push_back(&field);
+}
+
+void ExtentSeries::removeField(Field &field, bool must_exist)
+{
+    bool found = false;
+    for(vector<Field *>::iterator i = my_fields.begin(); 
+	i != my_fields.end(); ++i) {
+	if (*i == &field) {
+	    found = true;
+	    my_fields.erase(i);
+	    break;
+	}
+    }
+    SINVARIANT(!must_exist || found);
 }
 
 void
@@ -111,8 +134,8 @@ ExtentSeries::iterator::update(Extent *e)
 void
 ExtentSeries::iterator::forceCheckOffset(long offset)
 {
-    AssertAlways(cur_extent != NULL, 
-		 ("internal error, current extent is NULL"));
+    INVARIANT(cur_extent != NULL, 
+	      "internal error, current extent is NULL");
     INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
 	      cur_pos + offset < cur_extent->fixeddata.end(),
 	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n") 

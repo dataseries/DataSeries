@@ -558,6 +558,14 @@ main(int argc, char *argv[])
     }
 
     modifymodule->flushExtent();
+
+    GeneralField::deleteFields(infields);
+    GeneralField::deleteFields(mins);
+    GeneralField::deleteFields(maxs);
+    for(vector<BoolField *>::iterator i = hasnulls.begin();
+	i != hasnulls.end(); ++i) {
+	delete *i;
+    }
     return 0;
 }
 

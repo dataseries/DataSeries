@@ -36,9 +36,7 @@ class Field {
 public:
     Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
 	  int _flags);
-    // TODO: remove ourselves from the series when the destructor is called.
-    // Disallow destroying a series that still has fields associated with it.
-    virtual ~Field() {}
+    virtual ~Field();
     
     static const int flag_nullable = 1;
 

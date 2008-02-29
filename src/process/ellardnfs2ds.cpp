@@ -263,7 +263,7 @@ public:
 	: field(series, fieldname, Field::flag_nullable), dup(_dup)
     { }
 
-    virtual ~KVParserByte() { }
+    virtual ~KVParserByte() { delete dup; }
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
@@ -294,7 +294,7 @@ public:
 	: field(series, fieldname, Field::flag_nullable), dup(_dup)
     { }
 
-    virtual ~KVParserHexInt32() { }
+    virtual ~KVParserHexInt32() { delete dup; }
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
@@ -323,7 +323,7 @@ public:
 	: field(series, fieldname, Field::flag_nullable), dup(_dup)
     { }
 
-    virtual ~KVParserHexInt64() { }
+    virtual ~KVParserHexInt64() { delete dup; }
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
@@ -352,7 +352,7 @@ public:
 	: field(series, fieldname, Field::flag_nullable), dup(_dup)
     { }
 
-    virtual ~KVParserTime() { }
+    virtual ~KVParserTime() { delete dup; }
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
@@ -1156,5 +1156,13 @@ main(int argc,char *argv[])
 
     delete outmodule;
     outds.close();
+
+    for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
+	i != kv_parsers.end(); ++i) {
+	cout << format("Delete %s\n") % i->first;
+	delete i->second;
+	i->second = NULL;
+    }
+     
     return 0;
 }

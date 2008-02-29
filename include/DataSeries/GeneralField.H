@@ -205,6 +205,8 @@ public:
     GeneralValue val() { return GeneralValue(this); }
     virtual double valDouble() = 0;
 
+    /// Delete all the fields and clear the vector.
+    static void deleteFields(std::vector<GeneralField *> &fields);
 protected:
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 

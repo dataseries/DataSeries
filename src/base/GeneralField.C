@@ -367,6 +367,17 @@ void GeneralField::enableCSV(void){
     csvEnabled = true;
 }
 
+void
+GeneralField::deleteFields(vector<GeneralField *> &fields)
+{
+    for(vector<GeneralField *>::iterator i = fields.begin();
+	i != fields.end(); ++i) {
+	delete *i;
+	*i = NULL;
+    }
+    vector<GeneralField *> tmp;
+    tmp.swap(fields);
+}
 
 static xmlChar *
 myXmlGetProp(xmlNodePtr xml, const xmlChar *prop)
