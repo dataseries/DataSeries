@@ -100,7 +100,7 @@ Extent::ByteArray::clear()
 void 
 Extent::ByteArray::reserve(size_t reserve_bytes)
 {
-    if (reserve_bytes < static_cast<size_t>(maxV - beginV)) {
+    if (reserve_bytes <= static_cast<size_t>(maxV - beginV)) {
 	return; // have enough already;
     }
     if (!did_init_malloc_tuning) {
