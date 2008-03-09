@@ -34,6 +34,9 @@ DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
 DSStatGroupByModule::~DSStatGroupByModule()
 {
     delete expr;
+    expr = NULL;
+    delete groupby;
+    groupby = NULL;
 }
 
 void

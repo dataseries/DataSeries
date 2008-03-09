@@ -1159,7 +1159,6 @@ main(int argc,char *argv[])
 
     for(HashMap<string, KVParser *>::iterator i = kv_parsers.begin();
 	i != kv_parsers.end(); ++i) {
-	cout << format("Delete %s\n") % i->first;
 	delete i->second;
 	i->second = NULL;
     }

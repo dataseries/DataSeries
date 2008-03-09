@@ -194,8 +194,12 @@ test_LDADD =  libDataSeries.la
 
 check-local: $(CHECK_TARGETS)
 
+# TODO: should be able to do so now.
 # can't do a simple dataseries file compare because we put random data 
 # into the extentseries at the end.
+
+# *** WARNING, don't use | in any of the tests; if you do, then the error
+# *** conditions are not checked properly.
 
 ran.check-srt2ds: srt2ds cmpsrtds
 	./srt2ds $(top_srcdir)/check-data/hourly.03126.srt.bz2 h03126.ds 
@@ -239,26 +243,35 @@ ran.check-dsselect: dsselect ds2txt
 ran.check-dsextentindex: dsextentindex ds2txt
 	@-rm test.index.1.ds test.index.2.ds
 	./dsextentindex --compress-lzf --new I/O enter_driver,machine_id,disk_offset,is_read test.index.1.ds $(top_srcdir)/check-data/h03126.ds-littleend
-	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl $(top_srcdir) >test.index.1.ds.txt
+	./ds2txt --skip-index test.index.1.ds >test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl <test.index.tmp >test.index.1.ds.txt
 	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1a.ref
 	./dsextentindex --compress-lzf test.index.1.ds $(top_srcdir)/check-data/h03126.ds-bigend
-	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.1.ds.txt
+	./ds2txt --skip-index test.index.1.ds > test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl < test.index.tmp >test.index.1.ds.txt
 	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1b.ref
 	./dsextentindex --compress-lzf --new Batch::LSF::Grizzly cluster_name,submit_time,end_time test.index.2.ds $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds 
-	./ds2txt --skip-index test.index.2.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.2.ds.txt
+	./ds2txt --skip-index test.index.2.ds > test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl < test.index.tmp >test.index.2.ds.txt
 	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
+	rm test.index.tmp
 	touch $@
 
 ran.check-dsstatgroupby: dsstatgroupby
-	./dsstatgroupby 'I/O' basic '1000*(return_to_driver - leave_driver)' group by 'device_number' basic 'bytes/1024' group by 'machine_id' from ~/projects/DataSeries/check-data/h03126.ds-littleend | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.1
+	./dsstatgroupby 'I/O' basic '1000*(return_to_driver - leave_driver)' group by 'device_number' basic 'bytes/1024' group by 'machine_id' from ~/projects/DataSeries/check-data/h03126.ds-littleend >test.dsstatgroupby-tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl <test.dsstatgroupby-tmp >test.dsstatgroupby.1
 	cmp test.dsstatgroupby.1 $(top_srcdir)/check-data/test.dsstatgroupby.1.ref
-	./dsstatgroupby 'Batch::LSF' basic 'start_time - submit_time' where 'start_time - submit_time > 50000' group by 'production' basic 'cpu_time/(end_time-start_time)' group by production quantile 'start_time - submit_time' where 'start_time - submit_time > 50000' group by production from ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.2
+	./dsstatgroupby 'Batch::LSF' basic 'start_time - submit_time' where 'start_time - submit_time > 50000' group by 'production' basic 'cpu_time/(end_time-start_time)' group by production quantile 'start_time - submit_time' where 'start_time - submit_time > 50000' group by production from ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds >test.dsstatgroupby.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl <test.dsstatgroupby.tmp >test.dsstatgroupby.2
 	cmp test.dsstatgroupby.2 $(top_srcdir)/check-data/test.dsstatgroupby.2.ref
+	rm test.dsstatgroupby.tmp
 	touch $@
 
 ran.check-lsfdsanalysis: lsfdsanalysis
-	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  >check.lsfdsanalysis.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl < check.lsfdsanalysis.tmp >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	rm check.lsfdsanalysis.tmp
 	touch $@
 
 ran.check-dstypes2cxx: dstypes2cxx
@@ -269,8 +282,10 @@ ran.check-dstypes2cxx: dstypes2cxx
 	touch $@
 
 ran.check-nfsdsanalysis: nfsdsanalysis
-	./nfsdsanalysis -a -j -l 1 $(top_srcdir)/check-data/nfs.set6.20k.ds | perl $(top_srcdir)/check-data/clean-timing.pl >check.nfsdsanalysis.txt
+	./nfsdsanalysis -a -j -l 1 $(top_srcdir)/check-data/nfs.set6.20k.ds >check.nfsdsanalysis.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl < check.nfsdsanalysis.tmp >check.nfsdsanalysis.txt
 	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
+	rm check.nfsdsanalysis.tmp
 	touch $@
 
 ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots

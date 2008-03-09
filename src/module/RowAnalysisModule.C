@@ -22,6 +22,8 @@ RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
 
 RowAnalysisModule::~RowAnalysisModule()
 {
+    delete where_expr;
+    where_expr = NULL;
 }
 
 void
