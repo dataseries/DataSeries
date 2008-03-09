@@ -198,6 +198,7 @@ Variable32Field::set(const void *data, int32 datasize)
 	dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = varoffset;
     }
+    SINVARIANT(data != NULL);
     dosetandguard((byte *)vardata(dataseries.extent()->variabledata,varoffset),
 		  data,datasize,roundup);
     selfcheck(dataseries.extent()->variabledata,varoffset);
