@@ -201,7 +201,9 @@ Variable32Field::set(const void *data, int32 datasize)
     SINVARIANT(data != NULL);
     dosetandguard((byte *)vardata(dataseries.extent()->variabledata,varoffset),
 		  data,datasize,roundup);
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
     selfcheck(dataseries.extent()->variabledata,varoffset);
+#endif
     setNull(false);
 }
 
