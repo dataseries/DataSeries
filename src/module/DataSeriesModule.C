@@ -75,6 +75,7 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
       target_extent_size(_target_extent_size),
       sink(_sink), series(_series)
 {
+    SINVARIANT(&series != NULL);
     INVARIANT(outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");

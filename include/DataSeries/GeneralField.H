@@ -14,7 +14,9 @@
 
 #include <stddef.h>
 
-#include <Lintel/streamcompat.H>
+#include <iostream>
+#include <fstream>
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h> 
 #include <boost/static_assert.hpp>

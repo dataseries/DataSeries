@@ -82,12 +82,15 @@ dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
 
 # Converters
-bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs 
+bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs \
+	        wcweb2ds ds2wcweb
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
 ellardnfs2ds_SOURCES = process/ellardnfs2ds.cpp
 ds2ellardnfs_SOURCES = process/ds2ellardnfs.cpp
+wcweb2ds_SOURCES = process/wcweb2ds.cpp
+ds2wcweb_SOURCES = process/ds2wcweb.cpp
 
 # Type-specific processing
 bin_PROGRAMS += textindex indexnfscommon nfssubset ellardanalysis
@@ -110,7 +113,7 @@ nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
 	ran.check-lsfdsanalysis ran.check-nfsdsanalysis \
-	ran.check-ellard
+	ran.check-ellard ran.check-worldcup
 
 ### Conditional things
 
@@ -304,6 +307,12 @@ ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis $(top_srcdir)/check-d
 	./ellardanalysis ellard.ds >ellard-analysis.txt
 	cmp ellard-analysis.txt $(top_srcdir)/check-data/ellard-analysis.txt.ref
 	touch $@
+
+ran.check-worldcup: wcweb2ds ds2wcweb $(top_srcdir)/check-data/wc_day50_4.head
+	-rm wcweb.ds wcweb.raw
+	./wcweb2ds $(top_srcdir)/check-data/wc_day50_4.head wcweb.ds
+	./ds2wcweb wcweb.ds >wcweb.raw
+	cmp $(top_srcdir)/check-data/wc_day50_4.head wcweb.raw
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

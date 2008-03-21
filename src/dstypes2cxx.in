@@ -226,7 +226,6 @@ sub output {
     my $safe_typename = ::cxxSafeName($typename);
 
     print "/// analysis module/program for $typename (ns = $ns, version = $version)
-#include <DataSeries/PrefetchBufferModule.H>
 #include <DataSeries/RowAnalysisModule.H>
 #include <DataSeries/SequenceModule.H>
 #include <DataSeries/TypeIndexModule.H>
@@ -238,7 +237,7 @@ public:
     foreach my $field (@fields) {
 	my $name = ::cxxSafeName($field->{name});
 	my $args = ::fieldArgs($field);
-	print qq{,\n        $name(series, $args)};
+	print qq{,\n          $name(series, $args)};
     }
     print "
     {
@@ -270,18 +269,17 @@ private:
 int
 main(int argc, char *argv[]) 
 {
-    TypeIndexModule source("$typename");
-    PrefetchBufferModule *prefetch
-	= new PrefetchBufferModule(source, 64*1024*1024);
+    TypeIndexModule *source 
+	= new TypeIndexModule("$typename");
 
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\\n") % argv[0]);
 
     for(int i = 1; i < argc; ++i) {
-	source.addSource(argv[i]);
+	source->addSource(argv[i]);
     }
 
-    SequenceModule seq(prefetch);
+    SequenceModule seq(source);
     
     seq.addModule(new ${safe_typename}Analysis(seq.tail()));
     
