@@ -1194,6 +1194,7 @@ test_extentseriescleanup()
 	caught = true;
     }
     SINVARIANT(caught);
+    cout << "Passed extent-series cleanup tests.\n";
 }
 
 int
