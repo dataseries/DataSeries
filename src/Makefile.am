@@ -100,7 +100,8 @@ nfssubset_SOURCES = analysis/nfs/nfssubset.cpp
 ellardanalysis_SOURCES = process/ellardanalysis.cpp
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis \
+	wcanalysis
 bin_SCRIPTS += analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
@@ -109,6 +110,7 @@ lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
   analysis/nfs/mod2.cpp analysis/nfs/mod3.cpp analysis/nfs/mod4.cpp \
   analysis/nfs/nfsdsanalysis.cpp process/sourcebyrange.C
+wcanalysis_SOURCES = analysis/wcanalysis.cpp
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
@@ -308,11 +310,14 @@ ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis $(top_srcdir)/check-d
 	cmp ellard-analysis.txt $(top_srcdir)/check-data/ellard-analysis.txt.ref
 	touch $@
 
-ran.check-worldcup: wcweb2ds ds2wcweb $(top_srcdir)/check-data/wc_day50_4.head
-	-rm wcweb.ds wcweb.raw
+ran.check-worldcup: wcweb2ds ds2wcweb wcanalysis $(top_srcdir)/check-data/wc_day50_4.head
+	-rm wcweb.ds wcweb.raw wcweb.analysis
 	./wcweb2ds $(top_srcdir)/check-data/wc_day50_4.head wcweb.ds
 	./ds2wcweb wcweb.ds >wcweb.raw
 	cmp $(top_srcdir)/check-data/wc_day50_4.head wcweb.raw
+	./wcanalysis wcweb.ds >wcweb.analysis 2>/dev/null
+	cmp wcweb.analysis $(top_srcdir)/check-data/wc_day50_4.analysis
+	touch $@
 
 if ENABLE_PAPER
 bin_PROGRAMS += srtstat srtstat2 srtcsvstat

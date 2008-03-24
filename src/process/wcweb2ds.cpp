@@ -10,6 +10,39 @@
     http://ita.ee.lbl.gov/html/contrib/WorldCup.html
 */
 
+/*
+=pod
+=head1 NAME
+
+wcweb2ds - convert the 1998 world cup traces to dataseries
+
+=head1 SYNOPSIS
+
+  % wcweb2ds [ds-common-args] <input-path or -> <output-ds-path>
+
+=head1 DESCRIPTION
+
+wcweb2ds converts the 1998 world cup traces to dataseries.  The world
+cup traces are a very large, publically available set of web traces.
+They have been published in a special binary record format that was
+designed to reduce space usage.  This converter converts to a
+dataseries version of that record format.
+
+=head1 EXAMPLES
+
+% gunzip -c < wc_day46_3.gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
+% wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
+
+=head1 SEE ALSO
+
+ds2wcweb(1), DataSeries(5), DSCommonArgs(1)
+
+=head1 AUTHOR/CONTACT
+
+Eric Anderson <software@cello.hpl.hp.com>
+=cut
+*/
+
 #include <arpa/inet.h>
 
 #include <DataSeries/DataSeriesModule.H>
@@ -108,35 +141,3 @@ main(int argc,char *argv[])
     return 0;
 }
 
-/*
-=pod
-=head1 NAME
-
-wcweb2ds - convert the 1998 world cup traces to dataseries
-
-=head1 SYNOPSIS
-
-  % wcweb2ds [ds-common-args] <input-path or -> <output-ds-path>
-
-=head1 DESCRIPTION
-
-wcweb2ds converts the 1998 world cup traces to dataseries.  The world
-cup traces are a very large, publically available set of web traces.
-They have been published in a special binary record format that was
-designed to reduce space usage.  This converter converts to a
-dataseries version of that record format.
-
-=head1 EXAMPLES
-
-% gunzip -c < wc_day46_3.gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
-% wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
-
-=head1 SEE ALSO
-
-ds2wcweb(1), DataSeries(5), DSCommonArgs(1)
-
-=head1 AUTHOR/CONTACT
-
-Eric Anderson <software@cello.hpl.hp.com>
-=cut
-*/
