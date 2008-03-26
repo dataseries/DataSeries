@@ -77,6 +77,7 @@ AC_ARG_ENABLE(example,
 
 AM_CONDITIONAL(ENABLE_EXAMPLE, test "$enable_example" = yes)
 
+AM_CONDITIONAL(WITH_LINUX, test "`uname -s`" = Linux)
 ## flags
 AC_SYS_LARGEFILE
 

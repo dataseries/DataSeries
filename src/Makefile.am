@@ -142,15 +142,18 @@ analysis/dsdecrypt: $(top_builddir)/config.status $(srcdir)/analysis/dsdecrypt.i
 
 ##### WITH_PCAP
 if WITH_PCAP
-bin_PROGRAMS += network-driverdump 
-network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
-
-bin_PROGRAMS += nettrace2ds 
-
+bin_PROGRAMS += network-driverdump nettrace2ds 
+network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C 
 nettrace2ds_SOURCES = process/nettrace2ds.C
 
 nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
+
+if WITH_LINUX
+bin_PROGRAMS += lindump-mmap 
+lindump_mmap_SOURCES = raw-collection/lindump-mmap.c
+endif
+
 endif
 
 ##### WITH_SRT

@@ -1,3 +1,8 @@
+2008-03-26:
+  * Added the lindump-mmap raw collection program.  lindump-mmap is
+    roughly twice as efficient at doing packet capture as tcpdump, but
+    is linux specific.
+
 2008-02-27:
   * Fix up nfsds host analysis module, useful for figuring out how many 
     operations are going in/out of each of the hosts.  Example of how to make

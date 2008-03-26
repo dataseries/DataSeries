@@ -67,3 +67,9 @@ lzf_d.c
 
 Copyright for check-data/wc_day50_4.head is included in
 check-data/wc_day50_4.copyright
+
+---------
+
+src/raw-collection/lindump-mmap.c was originally copyrighted under the
+GPL with the extentions copyrighted as above.
+

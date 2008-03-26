@@ -486,6 +486,8 @@ ExtentType::parseXML(const string &xmldesc)
 	    }
     }
 
+    // TODO fix this check so that we are properly verifying we have
+    // nullable fields, not just that we have boolean fields.
     INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
 	      "should not enable null compaction with no nullable fields");
 
