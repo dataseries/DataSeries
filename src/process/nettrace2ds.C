@@ -22,7 +22,7 @@
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
 
-#define enable_encrypt_filenames 0
+#define enable_encrypt_filenames 1
 
 // Do this first to get byteswap things...
 #include <DataSeries/Extent.H>
@@ -73,6 +73,7 @@ extern "C" {
 }
 
 using namespace std;
+using boost::format;
 
 enum ModeT { Info, Convert };
 
@@ -2171,8 +2172,8 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	{
 	case NFSPROC3_GETATTR: 
 	    {
-		if (false) printf("v3GetAttr %lld %8x -> %8x; %d\n",
-				  time,d.client,d.server,actual_len);
+		if (false) cout << format("v3GetAttr %lld %8x -> %8x; %d\n")
+			       % time % d.client % d.server % actual_len;
 		ShortDataAssertMsg(actual_len >= 8,"NFSv3 getattr request",
 				   ("bad getattr in %s request @%lld: %d",
 				    tracename.c_str(), cur_record_id,
@@ -2197,9 +2198,9 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		INVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,"bad");
 		ShortDataAssertMsg(actual_len >= 4+fhlen+4,"NFSv3 lookup request",("bad"));
 		string filename = getLookupFilename(xdr+1+fhlen/4,actual_len - (4+fhlen));
-		if (false) printf("v3Lookup %lld %8x -> %8x; %d; %s\n",
-				  time,d.client,d.server,
-				  actual_len,filename.c_str());
+		if (false) cout << format("v3Lookup %lld %8x -> %8x; %d; %s\n")
+			       % time % d.client % d.server
+			       % actual_len % filename;
 		string lookup_directory_filehandle((char *)(xdr+1),fhlen);
 		d.replyhandler =
 		    new NFSV3LookupReplyHandler(lookup_directory_filehandle,filename);
@@ -2271,9 +2272,9 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 				    ip_hdr->protocol,IPPROTO_UDP));   
 
 		string filehandle((char *)(xdr+1), fhlen);
-		if (false) printf("v2Write %lld %8x -> %8x; %d\n",
-				 time, d.client, d.server,
-				 actual_len);
+		if (false) cout << format("v2Write %lld %8x -> %8x; %d\n")
+			       % time % d.client % d.server
+			       % actual_len;
 		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
 		AssertAlways(len < 65536,("bad"));
 		d.replyhandler = 

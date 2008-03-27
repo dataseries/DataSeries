@@ -143,6 +143,9 @@ or \\w+.pcap#{,.bz2}"
 		if defined $this->{file_type} && $this->{file_type} ne 'pcap';
 	    $this->{file_type} = 'pcap';
 	    my $num = $1;
+	    if ($num =~ /^00+$/o) {
+		$this->{pcap_numlen} = length $num;
+	    }
 	    $num = 0 if !defined $num || $num eq '';
 	    die "Duplicate number $num from $_ and $num_to_file{$num}"
 		if defined $num_to_file{$num};
@@ -170,6 +173,8 @@ or \\w+.pcap#{,.bz2}"
 	    my $k = $j;
 	    $k = sprintf("%06d", $j)
 		if $this->{file_type} eq 'erf';
+	    $k = sprintf("%0$this->{pcap_numlen}d", $j)
+		if defined $this->{pcap_numlen};
 	    die "missing num $k" unless defined $num_to_file{$k};
 	    push(@group, $num_to_file{$k});
 	    delete $num_to_file{$k};
