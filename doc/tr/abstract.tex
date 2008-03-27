@@ -1,0 +1,27 @@
+In this paper we describe
+\DataSeries{}, an on-disk data format and run-time library that is
+optimized for analyzing \textit{structured serial data}, which we
+% This type of data consists of 
+define as a series of records that share a common
+structure. The need to maintain and analyze such data occurs in a
+large number of scientific fields.
+% including most areas of computer design (e.g.,
+%traces of CPU instructions or I/O activity), science (e.g., continuous
+%samples from instruments) and many computer applications (e.g.,
+%email). 
+We discuss how \DataSeries{} has been optimized to be extremely space and CPU
+efficient, while providing the flexibility to accommodate a very wide
+range of record structures. 
+%We describe the \DataSeries{} format, and
+We then validate our claims on a variety of storage trace data. 
+In particular, we show
+data compression rates several times better than existing, specialized
+formats, processing rate improvements of up to an order of
+magnitude, storage of hundreds of billions of records and that
+%We have used \DataSeries{} for over a dozen different record
+%formats and on traces containing hundreds of billions of records. 
+we can store and process these traces on very modest equipment.
+% (e.g., a single rack mount server and small disk array).
+Finally, \DataSeries{} software is open source,
+% (BSD software license),
+enabling others to take advantage of these benefits.

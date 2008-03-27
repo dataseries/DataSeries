@@ -12,6 +12,8 @@
 #ifndef __DATASERIES_EXTENTTYPE_H
 #define __DATASERIES_EXTENTTYPE_H
 
+#include <inttypes.h>
+
 #include <vector>
 #include <string>
 #include <map>
@@ -28,12 +30,9 @@
 class ExtentType : boost::noncopyable {
 public:
     typedef unsigned char byte;
-    typedef int int32;
-    typedef unsigned int uint32;
-    typedef long long int64;
-
-    static const int64 int64_min = LONG_LONG_MIN;
-    static const int64 int64_max = LONG_LONG_MAX;
+    typedef int32_t int32;
+    typedef uint32_t uint32;
+    typedef int64_t int64;
 
     // if you add a new type or type option, you should update
     // test.C:test_makecomplexfile() and the regression test.
@@ -178,6 +177,9 @@ public:
 	{ }
     };
 
+    // utility function, should go somewhere else.
+    static std::string strGetXMLProp(xmlNodePtr cur, 
+				     const std::string &option_name);
 private:
     static ExtentType &dataseries_xml_type;
     static ExtentType &dataseries_index_type_v0;

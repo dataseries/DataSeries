@@ -4,7 +4,9 @@
 #   See the file named COPYING for license details
 #
 # Description: File system directory scanner
-
+# You probably want a tcpdump -s 10000 -C 256 -w trace
+# running at the same time.
+# 
 #This is MESSY CODE Designed to scan a set of directories and store
 #all of the metadata in rotating logfiles defined by $outFileSpec If
 #one of the directories scanned is /, the last function silently
@@ -16,9 +18,11 @@
 #TODO: Make this work with BatchParallel, with configurable
 #compression, and with configurable log rotation size
 
+
 use File::Find;
 use MIME::Base64;
 use strict;
+use Time::HiRes 'time';
 
 $|=1;
 my $maxDepth = 1;
@@ -26,6 +30,8 @@ my $curDepth = 0;
 my $entryRotateCount = 1000000;
 usage() unless @ARGV > 0 || $ARGV[0] =~ /^-h/o;
 usage("outfile-prefix should not exist") if -f $ARGV[0];
+usage("outfile-prefix should be an absolute path") 
+    unless $ARGV[0] =~ m!^/!o;
 
 sub usage {
     print "Usage: $0 outfile-prefix (dir|file)...\n";
@@ -74,16 +80,23 @@ while (@pending > 0) {
 	$outFileSpecComplete = $logname;
 	die "??" if -e "$logname-done";
 
-	my $curTime = localtime(time);
-	print "$curTime - logging to $outFileSpecComplete\n";
+	my $start = time;
+	my $curTime = localtime($start);
+	print "$curTime ($start): scanning $thing, logging to $outFileSpecComplete\n";
 	$outFileCurCount = 0;
 	rotateLogs();
 
-	$totalSize = $totalCount = $curCount = $curSize = $outFileEntryCount = oldTime = 0;
+	$totalSize = $totalCount = $curCount = $curSize = $outFileEntryCount = $oldTime = 0;
 	$baseDirectory = $thing;
 	find(\&wanted, $thing);
-	$curTime = localtime(time);
-	print STDERR "$curTime - done with \#$processed_dir_count: $thing\n";
+	my $finished = time;
+	$curTime = localtime($finished);
+	my $elapsed = $finished - $start;
+	$elapsed = 0.00001 if $elapsed == 0;
+	printf STDOUT "$curTime ($finished): finished scan of $thing (\#$processed_dir_count) in $elapsed seconds:  %.3f GiB %.3f Mfiles, %.3f MiB/s %.3f Kfiles/s\n",
+  	    $totalSize/(1024*1024*1024), $totalCount / (1000*1000),
+	    $totalSize/($elapsed * 1024 * 1024), 
+	    $totalCount / ($elapsed * 1000);
 	++$processed_dir_count;
 	close(OUTFILE);
 	open(FOO, ">$outFileSpecComplete-done")
@@ -114,6 +127,9 @@ sub rotateLogs {
     close(OUTFILE);
     my $compressor = "gzip -1 -c";
     my $outFileName = "| $compressor > $outFileSpecComplete-$outFileCurCount.gz";
+    my $now = time;
+    my $prettytime = localtime($now);
+    print "Rotating logs at $prettytime ($now) via $outFileName\n";
     open(OUTFILE, $outFileName) or die "couldn't open $outFileName ($!)";
     $outFileCurCount++;
 }
@@ -148,9 +164,9 @@ sub wanted {
 		$oldTime = $time;
 		$totalSize += $curSize;
 		$curSize = 0;
-		my $prettyTime = localtime(time);
-		my $printCount = $totalSize/(1024*1024*1024);
-		printf STDERR "$prettyTime, %.3f GiB, %.3f Mfiles; $File::Find::name\n",
+		my $now = time;
+		my $prettyTime = localtime($now);
+		printf STDERR "$prettyTime ($now): %.3f GiB, %.3f Mfiles; $File::Find::name\n",
 		$totalSize/(1024*1024*1024), $totalCount/(1000*1000);
 	    }
 	}

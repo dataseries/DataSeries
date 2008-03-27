@@ -13,13 +13,16 @@
 
 #include <boost/format.hpp>
 
+#include <Lintel/Clock.H>
 #include <Lintel/StringUtil.H>
 
 #include <DataSeries/GeneralField.H>
-#if defined(__HP_aCC) && __HP_aCC < 35000
-#else
+
 using namespace std;
-#endif
+using boost::format;
+
+// TODO: performance time boost::format, and if possible, unify the
+// write(ostream) and write(FILE *) code paths.
 
 void
 GeneralValue::set(const GeneralField &from)
@@ -364,6 +367,17 @@ void GeneralField::enableCSV(void){
     csvEnabled = true;
 }
 
+void
+GeneralField::deleteFields(vector<GeneralField *> &fields)
+{
+    for(vector<GeneralField *>::iterator i = fields.begin();
+	i != fields.end(); ++i) {
+	delete *i;
+	*i = NULL;
+    }
+    vector<GeneralField *> tmp;
+    tmp.swap(fields);
+}
 
 static xmlChar *
 myXmlGetProp(xmlNodePtr xml, const xmlChar *prop)
@@ -685,6 +699,8 @@ atoll(char *str)
 }
 #endif
 
+static string str_sec_nanosec = ("sec.nsec");
+
 GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
     : GeneralField(ExtentType::ft_int64), myfield(series,column,Field::flag_nullable),
       relative_field(NULL), offset_first(false)
@@ -696,6 +712,11 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     printspec = (char *)xmlprintspec;
     if (false) printf("should use printspec %s\n",printspec);
     
+    if (printspec == str_sec_nanosec) {
+	units = strGetXMLProp(fieldxml, "units");
+	SINVARIANT(units == "Lintel::Tfrac");
+    } 
+	       
     xmlChar *xml_divisor = myXmlGetProp(fieldxml, (const xmlChar *)"print_divisor");
     if (xml_divisor == NULL) {
 	divisor = 1;
@@ -734,13 +755,22 @@ GF_Int64::write(FILE *to)
 	} else if (relative_field != NULL) {
 	    offset = relative_field->val();
 	}
-	fprintf(to,printspec,(myfield.val() - offset)/divisor);
+	if (printspec == str_sec_nanosec) {
+	    // TODO: support more units, right now we know it's tfrac.
+	    int64_t v = myfield.val() - offset;
+	    SINVARIANT(v > 0);
+	    fprintf(to, "%d.%09d", Clock::TfracToSec(v), 
+		    Clock::TfracToNanoSec(v));
+	} else {
+	    fprintf(to,printspec,(myfield.val() - offset)/divisor);
+	}
     }
 }
 
 void 
 GF_Int64::write(std::ostream &to) 
 {
+    FATAL_ERROR("broken, inconsistent with FILE * version");
     if (myfield.isNull()) {
 	to << "null";
     } else {

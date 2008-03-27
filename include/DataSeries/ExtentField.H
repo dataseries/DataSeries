@@ -18,6 +18,11 @@
 #include <DataSeries/ExtentSeries.H>
 #include <DataSeries/Extent.H>
 
+// Note, right now you have to delete the ExtentSeries and all the
+// fields at the same time.  In the future, you may be able to delete
+// fields well before deleting the series, but you will need to do it
+// in that order.
+
 // Note that if a sufficient case is made that the accessors which
 // handle the null case inline are too slow, then special case
 // accessors could be built which only handle non-null fields.
@@ -27,15 +32,15 @@
 // a field directly; then use it in Extent::packData rather than
 // duplicating the code there to convert raw to real data.
 
+// I think we might be able to templatize a bunch of this so that we
+// can eliminate the penalty of testing isNull() for fields that can't
+// be null.
+
 class Field {
 public:
     Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
-	  int _flags);
-    // TODO: consider setting ExtentSeries::dead; and/or removing
-    // ourselves from the list in the series.  Potential complications
-    // involve destructor order, so the series might have to mark the
-    // fields that it's dying.
-    virtual ~Field() {}
+	  uint32_t _flags);
+    virtual ~Field();
     
     static const int flag_nullable = 1;
 
@@ -52,6 +57,7 @@ public:
 	    return false;
 	}
     }
+
     void setNull(bool val = true) {
 	DEBUG_INVARIANT(dataseries.extent() != NULL,
 			"internal error; extent not set\n");
@@ -75,13 +81,13 @@ public:
 
 protected:
     bool nullable;
-    long null_offset;
-    int null_bit_mask;
+    int32_t null_offset;
+    uint32_t null_bit_mask;
     virtual void newExtentType();
     friend class ExtentSeries;
     ExtentSeries &dataseries;
     const std::string fieldname;
-    const int flags;
+    const uint32_t flags;
 };
 
 class FixedField : public Field {

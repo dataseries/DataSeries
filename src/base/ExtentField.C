@@ -7,10 +7,16 @@
 #include <Lintel/Double.H>
 #include <DataSeries/ExtentField.H>
 
-Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, int _flags)
+Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
+	     uint32_t _flags)
     : nullable(0),null_offset(0), null_bit_mask(0), 
     dataseries(_dataseries), fieldname(_fieldname), flags(_flags) 
 {
+}
+
+Field::~Field()
+{
+    dataseries.removeField(*this);
 }
 
 void 
@@ -22,7 +28,9 @@ Field::newExtentType()
 	    std::string nullfieldname = ExtentType::nullableFieldname(fieldname);
 	    AssertAlways(dataseries.type->getFieldType(nullfieldname) == ExtentType::ft_bool,("internal error\n"));
 	    null_offset = dataseries.type->getOffset(nullfieldname);
+	    SINVARIANT(null_offset >= 0);
 	    int bitpos = dataseries.type->getBitPos(nullfieldname);
+	    SINVARIANT(bitpos >= 0);
 	    null_bit_mask = 1 << bitpos;
 	} else {
 	    null_offset = 0;
@@ -190,9 +198,12 @@ Variable32Field::set(const void *data, int32 datasize)
 	dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = varoffset;
     }
+    SINVARIANT(data != NULL);
     dosetandguard((byte *)vardata(dataseries.extent()->variabledata,varoffset),
 		  data,datasize,roundup);
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
     selfcheck(dataseries.extent()->variabledata,varoffset);
+#endif
     setNull(false);
 }
 

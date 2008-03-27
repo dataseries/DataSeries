@@ -1,0 +1,19 @@
+\section{Future work}\label{sec:future-work}
+
+\begin{itemize}
+\item convert to using SHA-1/2 for hash of compressed data and adler32 for uncompressed
+\item fix header on each extent to just have a reference to the extent type id
+\item disable checksumming of uncompressed data except during repack?
+\item implement generic pseudo sort-merge join
+\item implement generic 2-pass hash join
+\item extend generic operations
+\item add support for generic compression transforms
+\item move packing options to be per-extent rather than per-type
+\item SQL front-end?
+\item given a sample of data, automatically determine
+ which combination of these many options might give the best compression.
+ I'm guessing this takes some expertise to do well, but a sample of data
+ and an automated search could do pretty well; and lower the knowledge
+ required of users to benefit from DataSeries. -- Needs the more advanced 
+ structure of having packing options specified per-extent.
+\end{itemize}

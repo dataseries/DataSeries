@@ -1,0 +1,765 @@
+\section{Performance Results}\label{sec:results}
+We performed various experiments to measure the effectiveness of
+\DataSeries{}' compression techniques, and then further compared other
+types of data encoding and analysis tools for compression and
+execution speed.  We first describe the experimental setup, then the
+workloads, the benchmarks, and finally our results.
+
+\subsection{Experimental setup}
+
+The test-bed we used to perform most of the quantitative benchmarks for
+this work was a cluster of 18 servers configured for batch processing of single server jobs.  Each server had one
+or two dual core Opteron 280 2.4GHz processors.  Each processor had
+64KB of L1 D-cache and 1024KB of L2 cache.  Additionally, each server
+was configured with 4GB of main memory and could access a 10TB NFS
+filesystem over 1Gb/s Ethernet, the underlying storage being RAID6 in
+the form of HP MSA20 and MSA60 disk arrays.  The cluster was configured with
+RedHat Enterprise Linux 4 and each server was running the 2.6.9 SMP
+x86\_64 kernel version.  
+% Results on a separate Xeon cluster showed
+% similar results so we present only the Opteron cluster results.
+
+%{\Large did we use any of the results from the XC cluster?  EA didn't think so CBM - NO}
+%% We also tested our compression microbenchmarks on a second
+%% cluster of 31 servers, each with four Xeon Pentium 4 2.8GHz
+%% processors connected to the same NFS exported 10TB of storage.  Each
+%% Xeon processor had 16K L1 D-cache and 2048K of L2 cache.  The Xeon
+%% cluster servers were configured with Linux for High Performance
+%% Computing running the 2.6.9 SMP x86\_64 kernel version.
+%% 
+%% Both clusters were managed with the Platform LSF~\cite{PlatformLSF}
+%% batch cluster management software.
+
+Finally, our comparison with C-Store~\cite{Stonebraker05} was performed
+on a single machine with two dual-core Intel Pentium 4
+3.0GHz Xeon processors, each with 16KB L1 D-cache and 2048KB L2 cache.
+This machine was configured with 5 GB of RAM, running Debian Etch 4.0
+with a 2.6.21.3 SMP-Bigmem Linux kernel.  The system also had a single
+160GB Samsung HD160JJ Serial ATA hard drive.
+
+\subsection{Data set descriptions}
+
+Our data sets included the cello disk traces (``disk'') from HP Labs~\cite{SRT},
+which we converted into \DataSeries{} from a custom binary format,
+NFS traces collected from 
+a busy enterprise file server (``NFS''), and file system call data
+from~\cite{Soules05} (``system call''). 
+Having three trace formats
+each with very different extent types and associated data values provides
+an indication of the performance and flexibility of \DataSeries{}
+ in general.  For all
+experiments to have a minimum of 10 extents with an extent size of
+128MB (the largest we measured) all formats were transcoded into 1.2
+GB (when uncompressed) files.  The smallest data set had six of these
+files. 
+
+For most of our experiments, the results from all three data sets were
+similar, so we will only present detailed results and details on the
+disk results. 
+% NFS and system call datasets 
+% were similar in shape to the disk results, so we present only the disk 
+% results as the decisions made would be identical.  
+We discuss our
+use of the NFS traces in more detail in section~\ref{sec:discussion}, as 
+it is by far our largest dataset ($\approx5$TB).
+
+%\subsubsection{\textit{sar} data}
+
+%In 2003-2004, as part of a project to evaluate the plausibility of a
+%remote rendering facility~\cite{DWRemoteRenderingShrek2-blind}, we used \DataSeries{} to store 
+%\textit{sar} (system activity reporter) statistics, collected every second 
+%for a 280 day period on a 500 node cluster.
+%Each observation included 2 four byte integer timestamps and 
+%129 eight byte double metrics. 
+%The size of the raw, uncompressed data for a single node is 23.4 GB;
+%the equivalent data stored in \DataSeries{} is 1.1 GB.
+%
+
+The disk traces contain entries that correspond to operating system
+level read and write requests for blocks in a storage system.  Each
+request contains three time fields (stored as doubles) describing when that request was
+submitted to the device driver (enter\_driver), when the request
+returned from the storage device (return\_to\_driver), and when the
+request was returned to the calling process (leave\_driver).  
+Additionally, the size (number of
+bytes read/written) of each request, the logical volume identifier and
+the device number are recorded as 32 bit integers. 
+There are 28 boolean fields, eight 32-bit fields
+ (including those mentioned above), two 64-bit fields and 
+the three  double time fields.
+ %{\Large EA: mention the other fields, at least the counts?}
+
+The disk trace data set included six data files. For the \DataSeries{} 
+analysis these files were compressed using lzf compression
+to an average size of 320MB.  For the CSV analysis, they were
+converted to CSV format using a \DataSeries{} to CSV converter.  For the
+MySQL analysis, the files were further converted to the MySQL bulk-load
+format and loaded into a single MySQL database table. The six files comprise
+our ``small'' data set, while the combination of all six into a single
+file comprise our ``large'' data set. The final data sizes
+in all cases are shown in Table~\ref{table:dataSizes}. 
+%{TODO: EA: why do we show LZF sizes?  That wouldn't be what someone would use}
+% Used LZF because we were time constrained and LZO conversion is slow. - BM
+
+%% \subsubsection{NFS traces}
+
+%% Other bits about NFS moved into lessons.tex
+
+%% The NFS traces used in the quantitative experiments contain entries
+%% that correspond to NFS requests and replies in a production system
+%% that handles up to 100TB of traffic per week.  Request types included
+%% were attribute operations, mount operations, read-write operations,
+%% and the statistics on packets which contained data.  
+%% For example, the read/write request extent-type
+%% included the the request or reply identifiers, byte offset and size of
+%% the request and an NFS filehandle.  The NFS data set comprised twenty
+%% 1.9GB data files.  The compression and CSV conversion techniques
+%% were identical to those for the disk block traces.
+
+%% \subsubsection{System call traces}
+%% 
+%% The system call data contains entries that correspond to
+%% system call operations.  Several file system operations such as \texttt{link},
+%% \texttt{mkdir}, \texttt{mknod}, \texttt{chmod}, \texttt{chown}, \texttt{open},
+%% \texttt{close}, \texttt{read}, \texttt{write}, \texttt{remove}, and
+%% \texttt{truncate} as well as process operations such as 
+%% \texttt{fork}, \texttt{execve}, and \texttt{exit}
+%% were recorded.  For example, for the \texttt{fork} system call, the
+%% traces record process, user id and group identifiers, the return value of the
+%% system call, the time the system call occurred in seconds and
+%% microseconds, the child process identifier and the flags.  This data set
+%% included twenty 1 GB data files.  The compression, CSV conversion and
+%% database load techniques were identical to those for the disk block
+%% traces.  Table~\ref{table:dataSizes} summarizes the trace data used in
+%% both the compression microbenchmarks and analysis benchmarks.
+
+
+%INSERT A TABLE INDICATING AVERAGE SIZES OF FILES FOR EACH TRACE SET AND
+%FORMAT.
+
+
+\begin{table*}[tbh]
+\centering
+\begin{tabular}{|c|c|c|c|}\hline
+Trace Name & Avg. CSV Size & \DataSeries{} Size & MySQL Table Size\\
+\hline
+small disk trace & 2.3GB & 320MB & 1.5GB\\
+big disk trace & 14GB & 1.9GB & 8.5GB \\
+%% NFS data & 1.9GB & 272MB & untested \\
+%% system call data & 1.2GB & 203MB & untested \\
+\hline
+\end{tabular}
+\caption{ Trace data sizes in CSV, \DataSeries{} and MySQL formats.}
+\label{table:dataSizes}
+\end{table*}
+
+
+%For the \DataSeries{}
+%analysis these files were compressed using LZF compression to an
+%average of 203MB.  For the CSV analysis, they were converted to CSV
+%format using a \DataSeries{} to CSV converter.  For the MySQL analysis,
+%the files were further converted to the MySQL bulk-load format and
+%loaded into the MySQL database.
+
+%For the \DataSeries{} analysis these
+%files were compressed using LZF compression to an average of 272MB.
+%For the CSV analysis, they were converted to CSV format using a
+%\DataSeries{} to CSV converter.  For the MySQL analysis, the files were
+%further converted to the MySQL bulk-load format and loaded into the
+%MySQL database.
+
+\subsection{Benchmarks}\label{sec:perfresults}
+
+\DataSeries{} is optimized for, and performs very well on, queries which
+ operate on scans of data or ranges of data.  We executed several
+ encoding and decoding microbenchmarks to demonstrate the performance
+ and tunability of \DataSeries{} as a trace storage and processing
+ format.
+
+Additionally, to provide a comparative analysis versus other known
+ techniques for data processing, we generated nine related queries to
+ run against a portion of the disk data set.  Unfortunately, C-Store
+ could not perform the set of queries generated, so we performed a
+ single simple query to compare C-Store and \DataSeries{}.
+
+We performed experiments with data sets of two different sizes.  We
+performed warm-cache experiments with the small data set since it
+could fit in main memory.  We performed cold-cache experiments with
+the large data set.
+
+%% The bulk of the performance numbers for the competitive analysis were
+%%  computed using 2.3GB of uncompressed disk data.  Since our clustered
+%%  test machines all had 2GB or 4GB of system memory, all data fit into
+%%  the file system buffer cache of the server.  We also ran a subset of
+%%  queries on a 14GB (uncompressed) disk data set which represents 12
+%%  days of disk traces to test out-of-core performance.
+
+\subsubsection{Compression microbenchmark}
+
+\DataSeries{} currently supports four different compression algorithms
+(bzip2~\cite{BZIP}, gzip~\cite{GZIP}, lzf~\cite{LZF} and lzo~\cite{LZO}),
+and an arbitrary extent size for record data.  Empirical knowledge and
+algorithm author data seem to indicate that the algorithms are
+optimized for different usages.  For example, bzip2 is commonly
+believed to compress better than gzip, albeit more slowly.  Also,
+all compression algorithms in common use today use a compression
+window, giving the impression that compression ratio and perhaps
+compression and decompression rate are optimized for files above a
+certain size (i.e., the window size).  
+We evaluated the compression ratio, compression rate, 
+and decompression rate for each of these algorithms
+using various extent sizes.
+
+%{\Large say something about option for compression level, 9 for lzo, bz2,
+%  6 for gz, na for lzf; need to say something about other choices.  Also
+%should update legends to say lzo-9, gz-6, bz2-9}
+Several of the compression algorithms (bzip2 and gzip)
+have tunable parameters, which trade 
+off compression rate for increased compression ratio.
+We evaluated a range of settings for each of these algorithms.  
+For the remainder of this section, we utilize bzip2 level 9 as
+the representative for bzip2, and gzip level 6 as the representative
+for gzip.  We found these levels provide reasonable tradeoffs
+between the compression rate and ratio for each algorithm respectively.
+
+Extent size determines the maximum window of data a compression
+algorithm can look at.  For very small extent sizes, we expected to
+see poor compression ratios because redundancy that would have been
+within any algorithm's window size was artificially being blocked.
+For very large extent sizes, we expected to see differentiation among
+algorithms based on their window sizes.
+
+The microbenchmark consisted of reading each \DataSeries{} file
+%% in from its gzipped \DataSeries{} archive, 
+and recompressing with the compression
+algorithm under study.  The uncompressed data size was divided by the CPU time for the compression
+operation  to compute {\em
+Compression Rate}.  Next, the same file was decompressed and its
+content thrown away.  The uncompressed data size was divided by the CPU time 
+to compute the {\em Decompression Rate}.  
+Finally, the compressed \DataSeries{} file size was
+divided by the uncompressed \DataSeries{} file size to determine the {\em
+Compression Ratio}.  The decompression and compression operations were
+performed three times for each data file in each dataset.  All microbenchmark 
+measurements were taken with checksum validation enabled.
+
+%% \remark{Note that all \DataSeries{} files contain data transformations that reduce the size of the data.  The entire CMU data set contains 23GB of \DataSeries{} files compressed using GZip, while the raw binary compressed source data set is 45GB.}  
+
+%% Several of the compression algorithms have tunable parameters that
+%% trade off compression rate for increased compression ratio.  We
+%% examine several settings for the bzip2 and gzip algorithms.
+
+%% Figures~\ref{fig:bz2gzCompare}(a, b, c) show sample graphs of some
+%% tradeoffs for different compression levels using the bzip2 algorithm.
+%% There is a small difference in both compression ratio and
+%% decompression rate for bzip2 level 1 versus 6 and 9.  All three data
+%% sets have similar shapes for both decompression rate and compression
+%% ratio, therefore for the remainder of the results bzip2 level 9 will
+%% be presented as representative.  Figures~\ref{fig:bz2gzCompare}(d, e, f)
+%% show similar curves for gzip, with slightly more differentiation in
+%% compression ratio and decompression rate. Similar to bzip2, for all
+%% three data sets, gzip has similar performance across different
+%% compression levels and, due to space constraints, for the remainder of
+%% the results gzip level 6 will be presented as representative of the gzip
+%% algorithm.
+
+%% \begin{figure*}[tbh]
+%% \centering
+%% \begin{tabular}{ccc}
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/bz2-comRatio-srt.ps} &
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/bz2-comRate-cmu.ps} &
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/bz2-decomRate-cmu.ps} \\
+%% (a) & (b) & (c)\\
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/gz-comRatio-srt.ps} &
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/gz-comRate-cmu.ps} &
+%% \epsfig{width=1.5in, angle=270, file=graphs/amd/gz-decomRate-cmu.ps} \\
+%% (d) & (e) & (f)\\
+%% \end{tabular}
+%% \caption{ Comparison of Compression Ratio, Compression Rate and Decompression Rate for bzip2 (a, b, c) and gzip (d, e, f) at compression levels 1,6, and 9: Compression Ratio for disk data; Compression and Decompression Rates for system calltrace 
+%% Data. For this and all other results, error bars show 95\% confidence intervals.}
+%% \label{fig:bz2gzCompare}
+%% \end{figure*}
+
+Next, we examined the performance of each algorithm, one metric at a time.
+%% In some use cases, one metric will clearly be more valuable than others.
+%% For example, 
+For publishing traces or in archival situations the compression ratio will be the dominant
+metric to consider.  Figure~\ref{fig:comRatio} shows the performance
+of the tested compression algorithms on the disk trace data.
+Bzip2 is the clear winner, achieving an average compression
+ratio of about 10:1, for extent sizes 1 MB or larger.  
+gzip and lzo performed similarly, achieving a maximum compression
+ratio of about 6:1, for extent sizes larger than 128 KB.
+lzf had the poorest compression ratio on this data set, achieving a
+maximum compression ratio of about 3:1.
+%% Although the compression ratios varied by data set, the relative ordering
+%% was quite consistent across all of the data sets we tested.  As a result,
+%% the results from the other data sets are not shown.
+
+\begin{figure}[tbh]
+%\centering
+%\begin{tabular}{cc}
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRatio-cmu.ps} &
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRatio-nfs.ps} \\
+%(a) & (b)\\
+\epsfig{width=2in, angle=270, file=graphs/amd/plotComRatio-srt.ps}
+%(c) \\
+%\end{tabular}
+\caption{ Compression ratio versus extent size results for disk trace data.}
+\label{fig:comRatio}
+\end{figure}
+
+
+For online generation of \DataSeries{} files, the compression rate will
+be the dominant metric to consider.  Figure~\ref{fig:comRates} shows the compression rates achieved by
+each of the algorithms for the disk trace data.  
+%% The relative
+%% performance of the algorithms was similar across the datasets, and thus
+%% the results for the other datasets are not shown.
+lzf dominates in terms of compression speed, achieving 
+a peak compression rate of ~90 MB/s, over four times
+that of the next best algorithm (gzip).  The extent size appears to
+have only a marginal effect on the compression rate achieved by the 
+tested algorithms.  The ``no
+compression'' (none) curve indicates the cost imposed
+by the checksumming and data transforms.  The cost increases above 128KB 
+as the data no longer remains in the L2 cache between the transform and
+compression operations.
+%% The overhead is quite significant
+%% when the extent size is less than 128 KB, but less so for larger
+%% extent sizes.
+
+% Magic extent size only needs
+%to be 98K to optimize for decompression rate.  Extent size should be
+%set to approximately 1MB to optimize for compression ratio.  Extent
+%size should be set to 64-98K to optimize for compression rate.
+
+\begin{figure}[tbh]
+%\centering
+%\begin{tabular}{cc}
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRate-cmu.ps} &
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRate-nfs.ps} \\
+%(a) & (b)\\
+\epsfig{width=2in, angle=270, file=graphs/amd/plotComRate-srt.ps}
+%(c) \\
+%\end{tabular}
+\caption{ Compression rate (logarithmic scale) versus extent size results for disk trace data.}
+\label{fig:comRates}
+\end{figure}
+
+%% Figure~\ref{fig:decomRates} shows the decompression rates for the
+%% tested algorithms.  As with the compression ratio and rate metrics,
+%% the relative performance is consistent across the tested datasets,
+%% so only the results from the disk traces are presented.
+For trace analysis, the decompression rate will be the dominant metric to
+consider, followed by compression ratio.
+Figure~\ref{fig:decomRates} shows that the lzo algorithm has the
+highest decompression rate, exceeding lzf while also achieving 
+%$2\times$ 
+2x more compression.  
+
+%% Thus, this would be an excellent algorithm
+%% to use for data which is read frequently (particularly if storage
+%% space is not a major concern).  On our test sytem, lzo achieved
+%% a decompression rate of almost 175 MB/s, for extent sizes between
+%% 16 KB and 128 KB.  In second place is lzf, followed by gzip.  bzip2
+%% achieved the poorest decompression rates, well below the other algorithms.
+
+%For the decompression rate graphs, lzo dominates for decompression
+%rate, but it costs you the worst compression rate of all algorithms.
+%This would be an excellent algorithm to use for data which is read
+%frequently, where space is not an issue.  
+
+\begin{figure}[tbh]
+%\centering
+%\begin{tabular}{cc}
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRate-cmu.ps} &
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRate-nfs.ps} \\
+%(a) & (b)\\
+\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRate-srt.ps}
+%(c) \\
+%\end{tabular}
+\caption{ Decompression rate versus extent size results for disk trace data.}
+\label{fig:decomRates}
+\end{figure}
+
+A different view of the data can clarify these tradeoffs.
+For online creation of \DataSeries{} files we care about the compression
+rate and the compression ratio.
+Figure~\ref{fig:comRateRatios} compares these metrics
+with one point for each extent size.  The compression rate is shown
+in log-scale because the different algorithms have vastly different rates.
+This figure reinforces the previous graph showing that lzf dominates
+with regard to compression rate, but gzip is a good tradeoff between
+compression ratio and rate, sacrificing 10x the rate to get 2x
+the compression.  bzip2 is useful if very high compression
+ratios are desired, while lzo is dominated by all others on this graph.
+Neither bzip2 nor lzo is likely to be suitable for online creation.
+
+%% In some situations, multiple metrics may be important.  For example,
+%% it may be desirable to compress the data reasonably well, but without
+%% spending too much time doing so.  In this case, both the compression
+%% ratio and compression rate metrics should be considered.
+%% Figure~\ref{fig:comRateRatios} compares the four algorithms across
+%% these two metrics, for the disk trace data (each subsequent point on a
+%% line represents a larger extent size).  In this case we see that lzf
+%% can achieve a compression ratio of about 3:1 while compressing the
+%% data at approximately 90 MB/s.  The next best choice is gzip, which
+%% achieves higher compression ratios, but at much slower rates.
+
+\begin{figure}[tbh]
+%\centering
+%\begin{tabular}{cc}
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRateRatio-cmu.ps} &
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotComRateRatio-nfs.ps} \\
+%(a) & (b)\\
+\epsfig{width=2in, angle=270, file=graphs/amd/plotComRateRatio-srt.ps}
+%(c) \\
+%\end{tabular}
+\caption{ Compression rate versus compression ratio results for disk trace data.}
+\label{fig:comRateRatios}
+\end{figure}
+
+Figure~\ref{fig:decomRateRatios} compares the algorithms by the
+compression ratio and decompression rate metrics.  This is important
+for repeated analysis of data, a very common use case for
+\DataSeries{}.  In this case, lzo dominates the other algorithms in
+terms of decompression rate (\~175 MB/s), while still keeping a
+reasonable compression ratio (\~6:1). lzo is strictly superior to lzf.
+bzip2 achieves 
+%$2\times$
+2x increase in compression ratio, but at a 
+%$10\times$
+10x
+reduction in decompression rate.  gzip achieves negligibly higher
+compression ratios at a 
+%$1.3\times$ 
+1.3x reduction in decompression ratio.
+Thus, gzip might only be considered if
+lzo's compression time is too excessive.
+
+\begin{figure}[tbh]
+%\centering
+%\begin{tabular}{cc}
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRateRatio-cmu.ps} &
+%\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRateRatio-nfs.ps} \\
+%(a) & (b)\\
+\epsfig{width=2in, angle=270, file=graphs/amd/plotDecomRateRatio-srt.ps}
+%(c) \\
+%\end{tabular}
+\caption{ Decompression rate versus compression ratio results for disk data.}
+\label{fig:decomRateRatios}
+\end{figure}
+
+\subsubsection{Comparison with CSV, MySQL}\label{sec:compare}
+
+\begin{figure*}[tbh]
+\centering
+\begin{tabular}{cc}
+\epsfig{width=2in, angle=270, file=graphs/mysql-comparison.ps} &
+\epsfig{width=2in, angle=270, file=graphs/mysql-comparison-14gb.ps} \\
+(a) & (b)\\
+\end{tabular}
+\caption{ Query processing times for three sample queries using MySQL, our custom CSV engine, and \DataSeries{}.  Standard deviations for all data are smaller than 5\% of the average value: (a) 2.4GB disk trace File; (b) 14GB disk trace file.}
+\label{fig:csvsqlcomp}
+\end{figure*}
+
+This set of benchmarks compared a hand-coded, type-specific \DataSeries{}
+module (\DS{}-specific), a command line \DataSeries{} interface using \DS{}StatGroupByModule (\DS{}-generic), the
+MySQL database, a custom application for parsing and processing Comma
+Separated Value (CSV) files and C-Store, a research column-store database.  
+These three additional
+analyses give a sense for how well \DataSeries{} performs versus 
+common alternatives. \footnote{These experiments were performed with lzf compressed files.  We plan to re-run the experiments with lzo compressed files and expect to see improved performance.}
+% database
+% software, versus handling data in ASCII text format and versus a state
+% of the art column store.
+%%%% state of the art is a bit strong isn't it? %%%%
+
+While the authors are not database researchers, we felt using MySQL as
+our representative database was a fair comparison because it is open
+source (and thus an option for any researcher), provides the necessary
+SQL parsing engine, is widely used for data analysis tasks, and has
+reasonable performance.  It also provides an easy comparison point for
+others to use when evaluating relative performance of their current
+data analysis setup versus what they would gain by using
+\DataSeries{}.  We believe for our experiments MySQL was suitably
+tuned as the results from the large data set experiment were consistent with
+the run being disk bound, and the results for the small trace file were
+consistent with the run being CPU bound.
+
+The first set of queries compute count, average, standard deviation, minimum and
+maximum over the difference of each of the three time fields,
+selecting for and grouping by each of the three non-time fields.  This
+leads to nine possible queries.%, as shown in Table~\ref{table:queries}.
+% These queries
+%are shown in SQL for clarity.
+
+%If we're keeping table:queries, this should be added to that
+
+%\begin{table*}[tbh]
+%\begin{tabular}{|l|lp{5.5in}|}\hline
+%1 & \texttt{SELECT} & \texttt{device\_number, COUNT(*), AVG(leave\_driver - enter\_driver), STDDEV(leave\_driver - enter\_driver), MIN(leave\_driver - enter\_driver), MAX(leave\_driver - enter\_driver) FROM disk\_data GROUP BY device\_number;}\\ \hline
+%2 & \texttt{SELECT} & \texttt{logical\_volume\_number, COUNT(*), AVG(leave\_driver - enter\_driver), STDDEV(leave\_driver - enter\_driver), MIN(leave\_driver - enter\_driver), MAX(leave\_driver - enter\_driver) FROM disk\_data GROUP BY logical\_volume\_number;}\\ \hline
+%3 & \texttt{SELECT} & \texttt{bytes, COUNT(*), AVG(leave\_driver - enter\_driver), STDDEV(leave\_driver - enter\_driver), MIN(leave\_driver - enter\_driver), MAX(leave\_driver - enter\_driver) FROM disk\_data GROUP BY bytes;}\\ \hline
+%4 & \texttt{SELECT} & \texttt{device\_number, COUNT(*), AVG(return\_to\_driver - enter\_driver), STDDEV(return\_to\_driver - enter\_driver), MIN(return\_to\_driver - enter\_driver), MAX(return\_to\_driver - enter\_driver) FROM disk\_data GROUP BY device\_number;}\\ \hline
+%5 & \texttt{SELECT} & \texttt{logical\_volume\_number, COUNT(*), AVG(return\_to\_driver - enter\_driver), STDDEV(return\_to\_driver - enter\_driver), MIN(return\_to\_driver - enter\_driver), MAX(return\_to\_driver - enter\_driver) FROM disk\_data GROUP BY logical\_volume\_number;}\\ \hline
+%6 & \texttt{SELECT} & \texttt{bytes, COUNT(*), AVG(return\_to\_driver - enter\_driver), STDDEV(return\_to\_driver - enter\_driver), MIN(return\_to\_driver - enter\_driver), MAX(return\_to\_driver - enter\_driver) FROM disk\_data GROUP BY bytes;}\\ \hline
+%7 & \texttt{SELECT} & \texttt{device\_number, COUNT(*), AVG(leave\_driver - return\_to\_driver), STDDEV(leave\_driver - return\_to\_driver), MIN(leave\_driver - return\_to\_driver), MAX(leave\_driver - return\_to\_driver) FROM disk\_data GROUP BY device\_number;}\\ \hline
+%8 & \texttt{SELECT} & \texttt{logical\_volume\_number, COUNT(*), AVG(leave\_driver - return\_to\_driver), STDDEV(leave\_driver - return\_to\_driver), MIN(leave\_driver - return\_to\_driver), MAX(leave\_driver - return\_to\_driver) FROM disk\_data GROUP BY logical\_volume\_number;}\\ \hline
+%9 & \texttt{SELECT} & \texttt{bytes, COUNT(*), AVG(leave\_driver - return\_to\_driver), STDDEV(leave\_driver - return\_to\_driver), MIN(leave\_driver - return\_to\_driver), MAX(leave\_driver - return\_to\_driver) FROM disk\_data GROUP BY bytes;}\\ \hline
+%\end{tabular}
+%\caption{ Queries processed by \DataSeries{}, MySQL, and CSV engines.}
+%\label{table:queries}
+%\end{table*}
+
+The compute time of these queries is relatively small so performance
+should be dominated by the scan time of the data.  Ideally, only a
+single scan of the data should be sufficient to compute the results
+for these queries.  We attempted to optimize \DataSeries{}, MySQL and CSV
+parsing to extract the fastest query response times possible.  
+
+%% %THIS SHOULD BE ELSEWHERE!
+%% \DataSeries{} provides two choices for executing the set of queries.  One
+%% can write a small C++ program collecting the set of queries together
+%% and computing them in a single pass of the data.  This has the
+%% advantage that type checking is done at compile time and arithmetic
+%% operators can directly access the elements of the data while the query
+%% is running, speeding query execution time.  Alternatively, \DataSeries{}
+%% provides for generic operators that provide run time type checking,
+%% requiring a virtual function call on each arithmetic operation.
+%% We used both techniques in our testing.
+%% %END THIS SHOULD BE ELSEWHERE
+
+We optimized \DataSeries{} by creating a type-specific version of the
+queries, thereby eliminating the run-time type checking present
+in the general purpose \DS{}StatGroupByModule.  We also disabled checksum validation to further improve performance.
+
+We optimized SQL by minimizing the number of queries we issued. Instead of
+issuing nine separate queries, we combined the queries when they were 
+grouping by the same field, resulting in only three queries to compute
+nine underlying SQL queries.
+
+%% SQL syntax provides for grouping by a single field in a query.
+%% Because there are three queries that group by each of bytes,
+%% logical\_volume\_number and device\_number, SQL provides a natural
+%% syntax for combining these queries together into groups of three by
+%% each of the above fields.  However, without writing a query aggregator
+%% for MySQL there does not seem to be an easy way to combine all nine
+%% queries together to submit from a single client.  MySQL is a parallel
+%% database however, so running the three triple queries or all nine
+%% individual queries simultaneously using different connections to the
+%% server should return results faster than running the queries
+%% sequentially.
+
+We optimized the CSV parsing by tuning the program, carefully parsing
+the lines, caching conversions from strings to doubles, and only
+converting fields that were being used.  Profiling showed we still spent 80\% of the
+instructions in these operations with the remainder in the statistics
+calculation.
+
+\begin{figure*}[tbh]
+\centering
+\begin{tabular}{cc}
+\epsfig{width=2in, angle=270, file=graphs/cstore-comparison-nohashes-walltime.ps} & 
+\epsfig{width=2in, angle=270, file=graphs/cstore-comparison-nohashes-cputime.ps}  \\
+(a) & (b)\\
+\end{tabular}
+\caption{ Query processing times for one simple query using C-Store and \DataSeries{}.  Standard deviations for all data are smaller than 5\% of the average value: (a) Wall clock time (sec); (b) CPU time (sec).}
+\label{fig:cstorecomp}
+\end{figure*}
+
+%%  from strings to 
+%% integers or doubles, and CSV files contain the data as ASCII text which must be parsed
+%% into binary data before queries can be done on it.  However, all nine
+%% queries can be answered with a single pass of the data once the data
+%% has been parsed.
+
+Each complex query was run seven times with the file system cache warm for the
+2.3GB data set for each system.  The results are plotted in
+Figure~\ref{fig:csvsqlcomp}(a).  The single query takes an average of
+22.1 seconds with MySQL and 28.1 seconds with CSV, while \DataSeries{}
+processes the same query in an average of 9.85 seconds, or 2-3X
+faster.  Data processing rates are 2.3GB/22.1sec = 108MB/sec, 85MB/sec
+and 243MB/sec respectively.  When three queries are combined, the
+MySQL data processing rate drops to 2.3GB/32.1sec = 74.4MB/sec, CSV
+drops to 64.7MB/sec while \DataSeries{} remained relatively unchanged at
+242MB/sec. Per operation overhead with \DS{}-generic is much higher than \DS{}-specific, therefore, when all 9 queries are run, \DS{}-generic statistics computation dominates processing time, while \DS{}-specific runtime continues to be dominated by decompression.
+
+Figure~\ref{fig:csvsqlcomp}(b) demonstrates the benefit of
+the compression in \DataSeries{}. In this experiment the large disk trace is
+used, so the trace must be read from disk rather than from the file 
+system buffer cache.  As a result, the MySQL data processing rate has
+dropped to 41.9MB/sec and CSV is at 40.9MB/sec, as both are disk bound. 
+However, \DataSeries{} continues to process data at 243MB/sec
+(because of the use of compression).  While investment 
+in a faster disk subsystem could improve MySQL and CSV performance, 
+\DataSeries{} is well balanced for modern desktops, compute clusters
+and laptops.  A modern 1U server might have 2 or 4 drives and 8 cores, 
+the number of drives is unlikely to increase, but the number of cores
+continues to go up.
+
+%% To understand {\em why} \DataSeries{} can process data so much faster, we
+%% tried several different test configurations with \DataSeries{}.  First,
+%% we uncompressed the \DataSeries{} files completely and recoded them to
+%% have a very small extent size, 12KB in this case.  From the
+%% decompression rate results, this should result in the highest possible
+%% processing rate because an extent fits completely in L1 cache.  The
+%% file size for this experiment was 6.9GB, and \DataSeries{} is able to
+%% process the data at 45.4MB/sec.  This seems to indicate that disk I/O
+%% is the bottleneck.  Compressing more heavily using lzo results in a
+%% file size of 1.1GB which \DataSeries{} is able to process at 276MB/sec.
+%  Finally, compressing using BZ2 significantly reduces file
+% size on disk, resulting in a file of X.XGB but requires so much CPU
+% time to decode that performance reduced to XXMB/Sec.
+
+%% We conclude that because the system is disk bound, using compression
+%% that does not significantly affect decompression rate improves
+%% throughput significantly.  Another alternative would be to invest in
+%% much faster disk hardware to process the data at whatever rate the CPU
+%% could handle.  However, \DataSeries{} provides a software solution to this
+%% balancing problem.  If the system has significantly faster CPU than
+%% disk, a more CPU intensive compression algorithm can be employed to
+%% achieve good throughput.
+
+%% The CSV implementation was heavily tuned so that it only converts
+%% values that are used and converts them at most once, but even so, 
+%% profiling showed that it
+%% was spending about 80\% of its instructions in the string manipulation
+%% and conversion code.
+
+\subsubsection{Comparison with C-Store}
+
+As discussed in section~\ref{sec:related}, C-Store has recently been 
+developed as a more efficient DBMS for read-mostly data.
+Thus, we wish to compare its performance to \DataSeries{}.
+Unfortunately, 
+the open source C-Store implementation does not support any data type
+except 32-bit integers, does not support expressions, and does not support multiple
+aggregates in a single query.  Therefore, we could not compare C-Store
+in the same manner that we evaluated MySQL and CSV.
+Instead, for the C-Store comparison,
+we chose a simple query that C-Store could support, the average I/O size in bytes grouped
+by device number, on the large disk trace.
+We used the default configuration of C-Store.
+The simple query was run five times for each configuration of
+\DataSeries{} and C-Store, with both a warm and cold file system cache.
+We used the generic \DataSeries{} program and the type specific version
+from the previous comparison. We also created a special case
+type-specific version that only calculated the one statistic used
+in our simple query.
+
+The advantage of C-Store is that it is only reading the columns that
+it needs in order to perform the calculation, whereas \DataSeries{}
+has to read all of the columns.  Indeed,
+Figure~\ref{fig:cstorecomp}(a) shows that when operating on all
+columns, the warmed C-Store has a lower wall clock time
+than any of the \DataSeries{} configurations.
+C-Store's advantage when cold is quite small; this is a result of the
+lack of (functioning) compression in C-Store.\footnote{C-Store is supposed to support
+compression but we were unable to get it to work.}
+However, if we
+prune the \DataSeries{} file to just the 32 bit integer columns supported in
+C-Store, the performance of \DataSeries{} can be better than C-Store.
+In particular, the wall clock times for the type
+specific and the one-statistic versions of the \DataSeries{} programs
+both run faster than the C-Store queries for both the warm and cold
+cases.  The CPU-time results shown in Figure~\ref{fig:cstorecomp}(b)
+indicate that only the one-statistic version
+of \DataSeries{} is using less CPU time; the much better wall clock time
+shows the benefit of overlapping the decompression and statistics
+calculations.  This result is somewhat surprising as
+~\cite{VLDBCstoreTradeoffs} showed a column store needed to access
+70-80\% of the columns in a row to use more CPU or wall clock time
+than a row store, but we are showing that 25\% (2 of 8 int32 columns)
+is sufficient for the row store to be faster.  This shows the
+efficiency of the programming interface in \DataSeries{}.  As a
+final comparison we
+prune the files to just the columns used in the query.
+In this case, the CPU time
+for the one-statistic version of the \DataSeries{} program drops to
+2/3 of the C-Store CPU time.
+
+%% C-Store contains the data in files representing each column of the
+%% data, opening the files when the query interface is bootstrapped.
+%% Thus only columns needed by a query are scanned, potentially improving
+%% performance when only a small subset of columns are needed (as is the
+%% case for our simple query).
+
+%% Three different configurations of \DataSeries{} were compared.  The
+%% generic query engine, which in addition to the overhead to support
+%% generics, also computes min, max, count, sum and sumsquared statistics
+%% to derive mean and standard deviation; the typed query engine with the
+%% same statistics; and the typed query engine computing only count and
+%% sum to derive mean.  Additionally, the \DataSeries{} experiments were
+%% run on three different source files.  One file, labeled 'all columns'
+%% contains all of the disk trace data and is 14GB uncompresssed and
+%% 1.1GB compressed using LZO.  The second file, labeled '32-bit columns'
+%% contains the set of columns that C-Store is able to represent
+%% (The open
+%% source implementation of C-Store can only represent 32-bit fixed data,
+%% no variable sized fields, and no other data sizes.)  
+%% It is
+%% 3.4GB uncompressed and only 129MB compressed using LZO.  
+%% Finally, to
+%% compare the data processing implementations of \DataSeries{} and
+%% C-Store, the final file labeled 'query columns' contains only the two
+%% columns in the query, and is 715MB uncompressed and 69 MB compressed.
+%% C-Store results are repeated with each file for comparison purposes.
+% We believe that '32-bit columns' result is the fairest comparison. 
+% C-Store was compatible with only the 32-bit columns, and so is most
+% comparable with the middle set of \DataSeries{} columns.
+
+%% \DataSeries{} performs more slowly than C-Store when processing the
+%% full set of columns.  Decompression overhead dominates the cost of the
+%% operation in \DataSeries{}.  However, the '32-bit columns' portion of
+%% Figure~\ref{fig:cstorecomp}(a) demonstrates that \DataSeries{} is
+%% competitive over the set of columns C-Store can process, especially if
+%% generic support and extra statistics calculations are removed from
+%% \DataSeries{}.  Finally, the 'query columns' portion of
+%% Figure~\ref{fig:cstorecomp}(a) shows how efficiently \DataSeries{} is
+%% written compared with C-Store, as it computes more
+%% complex statistics over the same two columns C-Store uses in less
+%% time.
+
+%% The open source C-Store implementation we used does not support
+%% expressions, does not handle any data type except 32-bit signed
+%% integers, and appears to be single threaded.  
+
+%% \DataSeries{} can
+%% support expressions, handles multiple data types including
+%% variable-sized data, and is multi-threaded.  The performance of
+%% multi-threaded pipelining is obvious in Figure~\ref{fig:cstorecomp}(b)
+%% which shows wall clock time.  \DataSeries{} warm and cold performance
+%% are very close, and CPU consumption monitoring indicated to us that
+%% \DataSeries{} was computationally bound on two CPUs and could have
+%% multiplexed more decompression to further improve performance.  This
+%% is something we will consider in future work.  C-Store's cold
+%% performance is blocked on I/O, and thus is outperformed in every case
+%% by \DataSeries{} when operating on the '32-bit columns' or 'query
+%% columns' files.  \DataSeries{} completes in 50\% of C-Store's warm
+%% time when computing the same statistics over the same columns.
+
+The limited functionality of the C-Store implementation make it
+unusable for generic trace storage and analysis, but the results show
+that some of the column store techniques to avoid processing un-needed
+columns may benefit \DataSeries{} provided they can be implemented
+without sacrificing the efficiency of the \DataSeries{}
+implementation.  In our experience with \DataSeries{}, we usually run
+multiple queries (different modules) at the same time when analyzing
+data and the combination of those modules often accesses most of the
+columns.  If this usage is common, the advantages of column oriented
+storage would be reduced. 
+%% In cases where only a subset of the columns are used repeatedly,
+%% creating an interim data file that only contains the needed columns could
+%% be done quickly, which would enable \DataSeries{} to achieve performance
+%% similar to or better than C-Store.
+
+%% Because \DataSeries{} provides tools for extracting relevant columns
+%% and creating a new \DataSeries{} file with only those columns, the
+%% advantage of C-Store when operating on a narrow set of columns is
+%% removed.  Additionally, because C-Store cannot handle variable length
+%% fields, or expressions, it is not usable as a reasonable storage or
+%% query processing mechanism.
+
+\input{ellard.tex}

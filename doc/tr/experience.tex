@@ -1,0 +1,148 @@
+%\section{Experience}\label{sec:experience}
+\section{Empirical results}\label{sec:experience}
+In this section we provide empirical evidence of the benefits of \DataSeries{}.
+Section~\ref{sec:experiences} describes our experiences with using
+\DataSeries{} to collect and analyze data over the past four years.
+Section~\ref{sec:perfresults} discusses the performance we observed
+in a number of specific use cases. 
+% Direct comparisons between DataSeries and other trace formats is given 
+%in Section~\ref{sec:results}.
+
+\subsection{Experiences}\label{sec:experiences}
+The original motivation for developing DataSeries was our need to
+store various types of I/O traces. For over a decade we used a
+binary data format for block level traces,
+but found this untenable for two
+reasons. Firstly, various fields in the traces had been added or
+deleted over the years, and worse, some had changed their
+meaning. This resulted in significant software engineering overhead
+to maintain the multiple internal record structures, and confusion on the
+part of those who had to write analyses. Secondly, it was not easily
+extensible to some of the new types of data we wished to store. As a
+consequence, we designed and built DataSeries, completing the first
+release in August of 2003.  
+% INCLUDE IN EXTENDED VERSION
+%Since that time, we have put a number of
+%different data types into DataSeries:
+%\begin{enumerate}
+%\item {\bf disk block} -- HP-UX block I/O traces, from the HP Labs cello server (see~\cite{Ji03,Uysal03} for fuller descriptions of and example uses of this data).
+%\item {\bf process} -- Unix process information converted from running {\tt ps -efl} once a minute.
+%\item {\bf NFS} -- NFS RPC information converted from pcap~\cite{pcap} files or equivalents.
+%\item {\bf IP} -- IP packet information converted from pcap files.
+%\item {\bf LSF} -- Platform Load Sharing Facility (batch cluster) accounting logs.
+%\item {\bf sar} -- System activity (cpu/disk/network utilization) records. 
+%\item {\bf LSF-metadata} -- Customer specific metadata about their LSF jobs.
+%\item {\bf E-mail} -- E-mail messages from the Unix Mailbox format.
+%\item {\bf Filesystem} -- Filesystem system call traces, as used in~\cite{Soules05}.
+%\end{enumerate}
+
+Since that time, we have put a number of different data types into DataSeries,
+including:
+HP-UX block I/O traces (e.g.,~\cite{Ji03,Uysal03});
+Unix process information (e.g., {\tt ps -efl});
+NFS RPC information;
+IP packet information;
+Platform's Load Sharing Facility (batch cluster) accounting logs;
+% as well as customer specific meta-data about their jobs;
+system activity records (e.g., cpu/disk/network utilization);
+E-mail messages;
+and system call traces (e.g.,~\cite{Soules05}).
+
+% INCLUDE IN EXTENDED VERSION
+% Although we have stored many different types of information in DataSeries,
+% very few changes to the initial version have been required.
+% We have not had to add in any additional data
+% types beyond the ones described in section~\ref{sec:design},
+% all of which were in the initial version of DataSeries.
+% We did add the pack\_scale option in a subsequent version of DataSeries,
+% as we determined it was necessary for improving the compression of
+% data stored in doubles.  
+% The pack\_unique option, which was included in the initial version,
+% has proven to be very useful in improving compression rates.
+
+% COULD INCLUDE IN EXTENDED VERSION
+%However, we have had to expand the set of options.  The
+%initial implementation of DataSeries represented values with limited
+%precision as doubles.  However, they compressed poorly because of the
+%effectively random digits at the end of the double.  For this reason,
+%we added the pack\_scale option.  Also, the initial implementation
+%represented time measured in seconds as a double.  However, there was
+%insufficient precision to accurately specify the values as absolute
+%times relative to the Unix epoch.  We discovered this problem because
+%the pack\_scale option was checking that the scaling would be
+%reversible by verifying there was sufficient precision, and the check
+%produced an error.
+%
+%The pack\_unique option has worked surprisingly well.  We initially added it 
+%to handle process information, where it provided a modest
+%improvement over the compression provided by gzip itself.  When we
+%later began tracing NFS data, we found that the protocol had
+%changed the RPC id of the various operations, so we chose to put the
+%name of the operation in the extent as a string.  Because of the
+%pack\_unique option, this choice was essentially free - we have
+%measured greater than 10000:1 compression ratios on the variable part of the
+%extent containing this string because the pack\_unique option is
+%causing DataSeries to collapse all of the occurrences of each string in
+%an extent down to a single one.
+
+%We have also written a number of analyses over the various data types.
+Many of the analyses we have required (and implemented)
+%have been exactly of the form we expected, 
+have been a scan
+over a time range of the data in a single extent type.  We have only
+wanted joins in a few cases; for example,
+to report on the applications with
+the most I/O utilization by joining the block I/O and Unix process
+extents.
+% COULD INCLUDE IN EXTENDED VERSION
+%; and to perform some of the analysis over the NFS data.
+%We chose to represent the NFS data by having multiple extent types for
+%the different type of operations instead of having a single extent
+%type with a large number of nullable fields.  This has worked well as
+%the primary table has one entry for each request or response while the
+%secondary tables have one entry for each request/response pair.  We do
+%this because the secondary data is usually only complete once the
+%response has been seen.  
+%For example for a read request, we don't know
+%how much data was returned until the response is processed. 
+%For example, the amount of data returned for a read request
+%is not known until the response is processed.
+%We assign
+%a unique identifier to each request or response to enable the join.
+
+Because all of the extents are sorted in chronological order, we have been able
+to use a simplified variant of the sort-merge join; we maintain a
+short re-order buffer to allow us to process either based on the
+request time or the response time using a standard priority queue, and
+then we perform the expected merge between the two tables.  The
+pseudo-sortedness of the extents means we can use a single-pass
+priority-queue+merge algorithm rather than a two pass
+\linebreak[4] sort+merge algorithm.
+
+We have implemented fairly few generic operations because we have not
+found them to be useful.  Most of our analysis are more complicated
+than could be easily represented in standard SQL, although they have
+been straightforward to implement as a streaming calculation with some
+amount of buffering using C++, (e.g.,
+ the sort-merge join described above).  The two generic operations we have
+implemented are indexing and statistics over an expression grouped by
+a column.  
+% INCLUDE IN EXTENDED VERSION
+%We implemented indexing because many of our analyses
+%operate over over a subset of the data, and reading all of the extents
+%only to retain 1\% of the data is very wasteful.  We implement a
+%simple indexing algorithm that records for each extent the minimum and maximum
+%values of the specified fields.  A separate module reads in all of the
+%extents that overlap with the ranges given to it.  Usually the range
+%is just a time range, but we have also used it to select out single
+%clusters from the LSF data.
+%
+%The second generic operation we implemented was calculating an
+%expression over various columns in an extent and calculating a
+%statistic grouped by another column.  We can calculate histogram,
+%quantile, exponential moving average and simple statistics over the
+%expression's value.  The implementation of this generic operation
+%required us to extend our generic field classes to support type
+%conversion to double and to support hashing over a field, we already
+%had equality from implementing comparisons for generic indexing.
+

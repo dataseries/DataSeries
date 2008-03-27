@@ -1,0 +1,174 @@
+\section{Related Work}\label{sec:related}
+
+We classify the related work into three categories:
+those that use a customized binary format, those that use a
+text-based format, and relational database systems. 
+
+% \subsection{Custom binary formats}
+
+A large number of serial data formats use a custom binary format, 
+in which the in-memory
+structures or objects representing records are directly written to or
+read from disk. The primary advantage is that access can be very efficient
+(on read, memory structures are typically converted using a
+pointer cast on the raw data read from disk). 
+There are three main disadvantages with this approach.  First, it can be
+difficult to add or remove data fields.
+%%  A typical remedy is to assign
+%% a version number, then a new version can be declared with a different
+%% structure.  This change needs to be coordinated so that all users of
+%% the data agree on what version numbers mean, and the software needs to
+%% be updated to handle the new version.  In some cases this can be
+%% relatively straightforward, e.g., through the use of virtual
+%% functions.  In other cases, programs that use the data need to be
+%% rewritten to handle the new format.  If previous versions must
+%% continue to be supported (a necessity unless all data stored in the
+%% older format is found and converted), then software maintenance can
+%% become a significant issue.
+Second, most of
+these formats are designed for a particular data type; for example
+libpcap~\cite{libpcap} for network packet data, SRT~\cite{SRT} for
+block disk I/O traces and JCAMP for spectroscopy data~\cite{JCAMP}.
+Consequently, there is no easy way to re-use the format, or any
+of its associated software, for another data type.
+%% the customized format means that for each data
+%% type the API to access the data is different. 
+%% Thus, for someone to
+%% analyze the combination of network and block accesses in an
+%% iSCSI~\cite{iSCSI} system, they would need to learn two separate APIs.
+Third, the software to manipulate binary formats may be nonportable
+unless the developer is careful to avoid endian, word size and
+alignment issues.  One semi-general binary format is CDF~\cite{CDF}.
+CDF is designed to support random reads and writes in a portable
+manner on multi-dimensional arrays.  Because of the need to support
+writes within the array, CDF has limited support for compression and
+variable length data.
+
+\DataSeries{} addresses all of these disadvantages. Each \DataSeries{}
+file contains a description of the data structure(s) stored within, which
+enables those structures to be easily changed, without affecting \DataSeries{}
+software or clients using it. \DataSeries{} can easily be used with multiple
+data types, even within a single file, and handles endian and similar
+issues internally, and transparently to the user. These features of
+\DataSeries{} are described in section~\ref{sec:design}.
+A custom binary format may still be appropriate during initial capture if it
+is naturally produced by the system, for example pcap~\cite{libpcap}
+for capturing network packets.
+
+%CDF does not support
+%variable length data values like \DataSeries{}, nor does it have the same
+%range of compression algorithms and methods. CDF also split the notion
+%of data and data attributes, whereas \DataSeries{} allows for describing
+%both using the same structure, which simplifies both the implementation
+%and the API (see section~\ref{sec:design}). CDF uses XDR-encoded
+%values, which substantially limits its performance (due to byte
+%swapping etc.), whereas \DataSeries{} uses native formats.
+
+% One specific binary format that is popular in the physics
+% community is CDF~\cite{CDF}. This format is primarily focused at
+% providing random access to multi-dimensional arrays, where \DataSeries{}
+% provides sequential access to row structures. 
+% CDF has several limitations compared to \DataSeries{}.  For example,
+% CDF has no support for variable length data, it supports fewer compression
+% options, and its performance is reduced by the use of XDR-encoded values rather
+% than native formats.
+
+% \subsection{Text formats}
+
+A common alternative to binary formats is to use text, typically one
+record per line with fields in a record separated by spaces or commas
+(i.e., CSV). Using text has the advantages of being portable across
+platforms and readable by many tools, but introduces three problems.
+First, it consumes more space than the equivalent binary format.
+Second, it takes substantially more time to process.  Third, text
+formats have difficulty storing strings that contain the field
+separator or storing binary data.
+Compressing the text format can reduce its space needs, but it
+generally does not work as well as compression in \DataSeries{} because 
+\DataSeries{} can do type specific transforms (see section ~\ref{sec:design}).
+We find that
+\DataSeries{} typically gets a factor of 2x better compression over the
+equivalent compressed text, and is 7-25x more efficient to decode (see
+section~\ref{sec:results} for experimental results).  A CSV format may be
+appropriate for interchange between systems, or for small datasets.
+%% Depending on the
+%% particular means of encoding used, it may, or may not, be possible to
+%% easily reuse a given text format for another type of data.  
+%% Text formats also tend to have difficulty storing strings that contain
+%% the field separator, or storing binary data.
+%%  Text formats can be
+%% appropriate to use for simple analysis, when the total amount of data
+%% to be stored is small.
+
+One increasingly popular variation on text encoding is to use XML. XML
+provides a large degree of flexibility, coupled with a variety of
+well-implemented parsers.  XML unfortunately takes up even more space than
+CSV and is much slower to process.
+The primary advantage of XML 
+is its self-describing format.
+% , whereas text formats tend not to be.  
+% Unfortunately, a well (self)
+% described XML format will use lengthy tags or large numbers of tags,
+% making it significantly less
+% space efficient than the text formats described above, and even
+% slower to process. 
+\DataSeries{} is both flexible and self-describing 
+but is significantly more
+efficient (for both storage and access) than XML. An XML format may 
+be appropriate for interchange between systems, for small datasets, or for
+cases where the data to be stored requires an arbitrary hierarchical structure.
+\DataSeries{} uses XML internally to describe the types of 
+data that it stores, because those descriptions are small
+and can leverage XML's self-describing format.
+
+Relational databases provide an extremely
+flexible and easy to query system for storing 
+structured serial data, and provide a high-level data manipulation
+language (SQL). 
+Databases have four main limitations.  First, the databases that can
+handle hundreds of billions of rows in their data~\cite{winter2005}
+run only on high-end SMPs~\cite{DaytonaInUse} in large
+clusters~\cite{BigTable}. 
+%% For example, AT\&T stores 1 trillion records on a 64
+%% way SuperDome (\cite{daytonaInuse}).
+Second, databases usually store the data 
+uncompressed, which means it consumes much more storage space than 
+necessary.  Third, while SQL is general, queries that cannot be expressed
+in SQL, such as the stack-distance analysis for caching, require that 
+the application retrieve all of the rows, which is very inefficient.
+Fourth, most database files are not intended to be portable between systems
+in their raw format which means to move data between researchers the
+data has to be exported.  \DataSeries{} has handled hundreds of billions 
+of rows on low end servers and small RAID arrays, it stores its data
+compressed, provides efficient access to all of the rows, and \DataSeries{}
+files are portable between machines.  However, 
+\DataSeries{} currently has very limited support for generic queries, so
+for moderate sized datasets and questions that can be expressed in SQL, 
+a database can be an excellent solution.
+
+Some recent research on column stores~\cite{Stonebraker05} holds the promise
+for more efficient databases operating on structured serial data, although the
+SQL limitations are still present.  We examine the performance of one such
+system (C-Store) in 
+section~\ref{sec:results} and find that \DataSeries{} 
+%performs significantly better.
+can outperform C-Store, and is significantly more flexible.
+
+%  once some of the more complicated
+% features present in \DataSeries{} and not in C-Store are removed.
+
+%\DataSeries{} combines the best aspects of each of these solutions. It
+%stores data in binary form and provides high compression on the the raw
+%data while maintaining the flexibility of database systems, allowing
+%access to fields by name, and the creation of indices on the data. The
+%following section describes the key design features of \DataSeries{} that
+%realize these capabilities.
+% While each of the alternatives has its advantages and can be the right solution
+% for certain problems (e.g. database systems excel if the data is relatively
+% small or is updated frequently, and the analysis can be expressed in SQL),
+% \DataSeries{} combines the best aspects of each of them.
+% It stores data in binary form, and provides high compression on 
+% the raw data in order to store the data efficiently.
+% \DataSeries{} maintains the flexibility of database systems,
+% allowing access to fields by name, and the creation of indices on the data.
+% \DataSeries{} also includes the metadata about the data within the data set.

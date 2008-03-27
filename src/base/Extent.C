@@ -100,7 +100,7 @@ Extent::ByteArray::clear()
 void 
 Extent::ByteArray::reserve(size_t reserve_bytes)
 {
-    if (reserve_bytes < static_cast<size_t>(maxV - beginV)) {
+    if (reserve_bytes <= static_cast<size_t>(maxV - beginV)) {
 	return; // have enough already;
     }
     if (!did_init_malloc_tuning) {
@@ -393,8 +393,10 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 
 #if defined(__i386__) || defined(__i486__)
 #define HAVE_ASM_MEMCPY 
-// from asm/string.h, explicitly marked as public domain
-// might work on x86_64, that implementation is slightly different
+
+// from asm/string.h, explicitly marked as public domain.  Should
+// re-test performance improvement; see below for x86_64 discussion.
+
 static inline void * asm_memcpy(void * to, const void * from, size_t n)
 {
 int d0, d1, d2;
@@ -413,6 +415,18 @@ __asm__ __volatile__(
 return (to);
 }
 #endif
+
+// For x86_64, linux memcpy from asm-x86_64/string.h may improve
+// performance by 0.5% over glibc (RHEL4, 2x Dual Core Opteron 2216
+// HE), but measurements are within stddev.  
+// 
+// small_memcpy_amd64 from
+// http://www.mirror.inter.net.il/pub/NetBSD/NetBSD-current/xsrc/xorg/driver/xf86-video-sis/src/sis_memcpy.c
+// with the rep movsq turned into just a rep movsl also seems to be a
+// little better if slightly less than the linux memcpy.
+//
+// amd's recommended (from their tuning guide) just use rep movsb
+// worse than libc memcpy.
 
 #ifndef HAVE_ASM_MEMCPY
 #define asm_memcpy(a,b,c) memcpy((a), (b), (c))

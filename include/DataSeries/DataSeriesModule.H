@@ -126,6 +126,10 @@ public:
     ExtentSeries &getSeries() {
 	return series;
     }
+
+    const DataSeriesSink &getSink() { 
+	return sink; 
+    }
 private:
     uint32_t target_extent_size; 
 

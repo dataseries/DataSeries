@@ -14,16 +14,20 @@
 #include <sys/resource.h>
 #include <openssl/opensslv.h>
 #include <openssl/evp.h>
-#include <DataSeries/cryptutil.H>
+
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
 #include <lzoconf.h>
 #endif
+
+#include <boost/bind.hpp>
+
 #include <Lintel/HashTable.H>
 #include <Lintel/MersenneTwisterRandom.H>
 #include <Lintel/Clock.H>
 #include <Lintel/Stats.H>
 
+#include <DataSeries/cryptutil.H>
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 #include <DataSeries/DataSeriesModule.H>
@@ -1160,6 +1164,39 @@ test_compactnull()
     cout << "test_compactnull - end\n";
 }
 
+
+void
+test_extentseriescleanup()
+{
+    AssertBoostFnBefore(boost::bind(AssertBoostThrowExceptionFn,
+				    _1,_2,_3,_4));
+
+    bool caught = false;
+    try {
+	FATAL_ERROR("foo");
+    } catch (AssertBoostException &e) {
+	SINVARIANT(e.msg == "foo");
+	caught = true;
+    }
+    SINVARIANT(caught);
+    caught = false;
+    try {
+	{ 
+	    ExtentSeries tmp;
+	    BoolField *tmp2 = new BoolField(tmp, "buz");
+	    tmp2 = NULL;
+	}
+    } catch (AssertBoostException &e) {
+	AssertBoostClearFns();
+
+	SINVARIANT(e.expression == "my_fields.size() == 0");
+	SINVARIANT(e.msg == "You still have fields such as buz live on a series over type unset type");
+	caught = true;
+    }
+    SINVARIANT(caught);
+    cout << "Passed extent-series cleanup tests.\n";
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1174,4 +1211,5 @@ main(int argc, char *argv[])
     test_varcompress();
     test_doublebase_nullable();
     test_compactnull();
+    test_extentseriescleanup();
 }
