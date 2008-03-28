@@ -255,18 +255,42 @@ class HostInfo : public RowAnalysisModule {
 public:
     HostInfo(DataSeriesModule &_source, const std::string &arg) 
 	: RowAnalysisModule(_source),
-	  packet_at(series, "packet-at"),
-	  payload_length(series, "payload-length"),
-	  op_id(series, "op-id", Field::flag_nullable),
-	  nfs_version(series, "nfs-version", Field::flag_nullable),
+	  packet_at(series, ""),
+	  payload_length(series, ""),
+	  op_id(series, "", Field::flag_nullable),
+	  nfs_version(series, "", Field::flag_nullable),
 	  source_ip(series,"source"), 
 	  dest_ip(series, "dest"),
-	  is_request(series, "is-request")
+	  is_request(series, "")
     {
 	group_seconds = stringToUInt32(arg);
 	host_to_data.reserve(5000);
     }
     virtual ~HostInfo() { }
+
+    void prepareForProcessing() {
+	const ExtentType *type = series.getType();
+	SINVARIANT(type != NULL);
+	if (type->getName() == "NFS trace: common") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
+	    packet_at.setFieldName("packet-at");
+	    payload_length.setFieldName("payload-length");
+	    op_id.setFieldName("op-id");
+	    nfs_version.setFieldName("nfs-version");
+	    is_request.setFieldName("is-request");
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(2,0)) {
+	    packet_at.setFieldName("packet_at");
+	    payload_length.setFieldName("payload_length");
+	    op_id.setFieldName("op_id");
+	    nfs_version.setFieldName("nfs_version");
+	    is_request.setFieldName("is_request");
+	} else {
+	    FATAL_ERROR("?");
+	}
+    }
 
     struct TotalTime {
 	vector<Stats *> total;

@@ -1177,6 +1177,7 @@ main(int argc, char *argv[])
 
     TypeIndexModule *sourcea = 
 	new TypeIndexModule("NFS trace: common");
+    sourcea->setSecondMatch("Trace::NFS::common");
     TypeIndexModule *sourceb = 
 	new TypeIndexModule("NFS trace: attr-ops");
     TypeIndexModule *sourcec = 
