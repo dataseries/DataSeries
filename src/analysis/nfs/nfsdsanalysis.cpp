@@ -4,8 +4,6 @@
    See the file named COPYING for license details
 */
 
-using namespace std;
-
 #include <getopt.h>
 #include <ctype.h>
 #include <signal.h>
@@ -35,6 +33,9 @@ using namespace std;
 #include "analysis/nfs/mod3.hpp"
 #include "analysis/nfs/mod4.hpp"
 #include "process/sourcebyrange.H"
+
+using namespace std;
+using boost::format;
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -490,18 +491,19 @@ struct fsKeep {
     fsKeep() {}
 };
 
-class OperationByFileHandle : public NFSDSModule {
+class OperationByFileHandle : public RowAnalysisModule {
 public:
     OperationByFileHandle(DataSeriesModule &_source, int _timebound_start, 
 			  int _timebound_end)
-	: timebound_start((ExtentType::int64)_timebound_start 
+	: RowAnalysisModule(_source),
+	  timebound_start((ExtentType::int64)_timebound_start 
 			  * 1000 * 1000 * 1000), 
 	  timebound_end((ExtentType::int64)_timebound_end 
 			* 1000 * 1000 * 1000),
-	  source(_source), server(s,"server"),
-	  operation(s,"operation"), filehandle(s,"filehandle"),
-	  request_at(s,"request-at"), reply_at(s,"reply-at"),
-	  payload_len(s,"payload-length")
+	  server(series,"server"),
+	  operation(series,"operation"), filehandle(series,"filehandle"),
+	  request_at(series,"request-at"), reply_at(series,"reply-at"),
+	  payload_len(series,"payload-length"), out_of_bounds_count(0)
     {
 	min_time = 0x7FFFFFFFLL << 32;
 	max_time = 0;
@@ -564,68 +566,64 @@ public:
     typedef HashTable<hteData, fhHash, fhEqual> fhRollupT;
     fhRollupT fhRollup, fsRollup;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
-	    unique_fhs.add(filehandle.stringval());
-	    hteData k;
-	    if (request_at.val() < timebound_start ||
-		reply_at.val() > timebound_end) {
-		continue;
-	    }
-	    if (request_at.val() < min_time) {
-		min_time = request_at.val();
-	    } 
-	    if (reply_at.val() > max_time) {
-		max_time = reply_at.val();
-	    }
-	    k.server = server.val();
-	    k.filehandle = filehandle.stringval();
-	    INVARIANT(k.filehandle.compare(filehandle.stringval()) == 0, 
-		      boost::format("bad %s != %s") 
-		      % maybehexstring(k.filehandle) % maybehexstring(filehandle.stringval()));
-	    k.operation = operation.stringval();
-	    hteData *v = fhOpRollup.lookup(k);
-	    if (v == NULL) {
-		k.zero();
-		v = fhOpRollup.add(k);
-	    }
-	    ++v->opcount;
-	    v->payload_sum += payload_len.val();
-	    if (reply_at.val() == request_at.val()) {
-		v->latency_sum += 1;
-	    } else {
-		AssertAlways(reply_at.val() > request_at.val(),
-			     ("no %lld %lld.\n",reply_at.val(),request_at.val()));
-		v->latency_sum += reply_at.val() - request_at.val();
-	    }
+    virtual void processRow() {
+	unique_fhs.add(filehandle.stringval());
+	hteData k;
+	if (request_at.val() < timebound_start ||
+	    reply_at.val() > timebound_end) {
+	    ++out_of_bounds_count;
+	    return;
+	}
+	if (request_at.val() < min_time) {
+	    min_time = request_at.val();
+	} 
+	if (reply_at.val() > max_time) {
+	    max_time = reply_at.val();
+	}
+	k.server = server.val();
+	k.filehandle = filehandle.stringval();
+	INVARIANT(k.filehandle.compare(filehandle.stringval()) == 0, 
+		  boost::format("bad %s != %s") 
+		  % maybehexstring(k.filehandle) % maybehexstring(filehandle.stringval()));
+	k.operation = operation.stringval();
+	hteData *v = fhOpRollup.lookup(k);
+	if (v == NULL) {
+	    k.zero();
+	    v = fhOpRollup.add(k);
+	}
+	++v->opcount;
+	v->payload_sum += payload_len.val();
+	if (reply_at.val() == request_at.val()) {
+	    v->latency_sum += 1;
+	} else {
+	    AssertAlways(reply_at.val() > request_at.val(),
+			 ("no %lld %lld.\n",reply_at.val(),request_at.val()));
+	    v->latency_sum += reply_at.val() - request_at.val();
+	}
 
-	    v = fhRollup.lookup(k);
+	v = fhRollup.lookup(k);
+	if (v == NULL) {
+	    k.zero();
+	    v = fhRollup.add(k);
+	}
+	INVARIANT(v->filehandle.compare(filehandle.stringval()) == 0, 
+		  boost::format("bad %s != %s") 
+		  % maybehexstring(v->filehandle) % maybehexstring(filehandle.stringval()));
+	++v->opcount;
+	v->payload_sum += payload_len.val();
+	v->latency_sum += reply_at.val() - request_at.val();
+
+	if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
+	    k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
+	    v = fsRollup.lookup(k);
 	    if (v == NULL) {
 		k.zero();
-		v = fhRollup.add(k);
+		v = fsRollup.add(k);
 	    }
-	    INVARIANT(v->filehandle.compare(filehandle.stringval()) == 0, 
-		      boost::format("bad %s != %s") 
-		      % maybehexstring(v->filehandle) % maybehexstring(filehandle.stringval()));
 	    ++v->opcount;
 	    v->payload_sum += payload_len.val();
 	    v->latency_sum += reply_at.val() - request_at.val();
-
-	    if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
-		k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
-		v = fsRollup.lookup(k);
-		if (v == NULL) {
-		    k.zero();
-		    v = fsRollup.add(k);
-		}
-		++v->opcount;
-		v->payload_sum += payload_len.val();
-		v->latency_sum += reply_at.val() - request_at.val();
-	    }
-	}	    
-	return e;
+	}
     }
 
     // sorting so the regression tests give stable results.
@@ -690,10 +688,11 @@ public:
     }
 
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 
-	printf("Time range: %.3f .. %.3f\n", (double)min_time/1.0e9,
-	       (double)max_time/1.0e9);
+	cout << format("Time range: %.3f .. %.3f; %d out of bounds\n")
+	    % ((double)min_time/1.0e9) % ((double)max_time/1.0e9)
+	    % out_of_bounds_count;
 
 	printFSRollup();
 	printFHRollup();
@@ -702,15 +701,14 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
-    const ExtentType::int64 timebound_start, timebound_end;
-    DataSeriesModule &source;
-    ExtentSeries s;
+    ExtentType::int64 timebound_start, timebound_end;
     Int32Field server;
     Variable32Field operation, filehandle;
     Int64Field request_at, reply_at;
     Int32Field payload_len;
 
-    ExtentType::int64 min_time, max_time;
+    int64_t min_time, max_time;
+    uint64_t out_of_bounds_count;
     HashUnique<string> unique_fhs;
 };
 
@@ -1180,6 +1178,7 @@ main(int argc, char *argv[])
     sourcea->setSecondMatch("Trace::NFS::common");
     TypeIndexModule *sourceb = 
 	new TypeIndexModule("NFS trace: attr-ops");
+    sourceb->setSecondMatch("Trace::NFS::attr-ops");
     TypeIndexModule *sourcec = 
 	new TypeIndexModule("NFS trace: read-write");
     TypeIndexModule *sourced = 

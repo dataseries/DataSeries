@@ -1622,11 +1622,11 @@ End-virtual void ServerLatency::printResult()
 Begin-virtual void AttrOpsCommonJoin::printResult()
   generated 0.007 million records, 0.95 MB of extent output
   0 records, or 0.0000% forced to 1us turnaround from previous 0 or negative turnaround
-  0 skipped common, 0 skipped attrops, first keep 1063931188.266178966s
+  0 skipped common, 0 skipped attrops, 0 semi-duplicate attrops, first keep 1063931188.266178966s
 End-virtual void AttrOpsCommonJoin::printResult()
 
 Begin-virtual void OperationByFileHandle::printResult()
-Time range: 1063931188.266 .. 1063931192.806
+Time range: 1063931188.266 .. 1063931192.806; 0 out of bounds
 FileSystem Rollup:
 fsrollup: server 10.11.8.37, fs unknown:0100000100080016020000000000000000000000000000000000000000000000: 2 ops 0.000 MB, 1208.500 us avg lat
 fsrollup: server 10.110.1.14, fs unknown:0138c000948119052000000000000000000000000b71002c40000000ffa72e00: 4 ops 0.000 MB, 56.000 us avg lat
