@@ -53,6 +53,7 @@ libDataSeries_la_SOURCES = \
 	base/ExtentSeries.C \
 	base/ExtentType.C \
 	base/GeneralField.C \
+	base/Int64TimeField.cpp \
 	process/commonargs.C \
 	module/DSExpr.cpp \
 	module/DSExprParse.cpp \
@@ -115,7 +116,7 @@ wcanalysis_SOURCES = analysis/wcanalysis.cpp
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
 	ran.check-lsfdsanalysis ran.check-nfsdsanalysis \
-	ran.check-ellard ran.check-worldcup
+	ran.check-ellard ran.check-worldcup ran.check-test-time-field
 
 ### Conditional things
 
@@ -196,9 +197,11 @@ rebuild_DSExpr:
 
 ##### Testing...
 
-check_PROGRAMS = test
+check_PROGRAMS = test test-time-field
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
+test_time_field_SOURCES = tests/time-field.cpp
+test_time_field_LDADD = libDataSeries.la
 
 check-local: $(CHECK_TARGETS)
 
@@ -238,6 +241,10 @@ ran.check-test: test ds2txt
 	cmp $(top_srcdir)/check-data/complex.txt complex-little.txt
 	cmp $(top_srcdir)/check-data/complex.txt complex-big.txt
 	rm test.ds test.txt complex-little.txt complex-big.txt
+	touch $@
+
+ran.check-test-time-field: test-time-field
+	./test-time-field
 	touch $@
 
 ran.check-dsselect: dsselect ds2txt

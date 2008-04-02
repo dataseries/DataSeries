@@ -6,22 +6,14 @@
 */
 
 /** @file
-    accessor classes for fields in an extent
+    accessor classes for fields in an extent; going to become a
+    meta include file for all the field files.
 */
 
 #ifndef __EXTENT_FIELD_H
 #define __EXTENT_FIELD_H
 
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/AssertBoost.H>
-
-#include <DataSeries/ExtentSeries.H>
-#include <DataSeries/Extent.H>
-
-// Note, right now you have to delete the ExtentSeries and all the
-// fields at the same time.  In the future, you may be able to delete
-// fields well before deleting the series, but you will need to do it
-// in that order.
+#include <DataSeries/Field.hpp>
 
 // Note that if a sufficient case is made that the accessors which
 // handle the null case inline are too slow, then special case
@@ -36,100 +28,7 @@
 // can eliminate the penalty of testing isNull() for fields that can't
 // be null.
 
-class Field {
-public:
-    /// The field name can legitimately be empty, in which case this
-    /// field won't actually be activated until you later call
-    /// setFieldName().  Note that you should not call any of the
-    /// field operations (e.g. isNull, val() until you have set the
-    /// field name.  In debugging mode this is checked, in optimized mode
-    /// it may just return wrong values.
-    Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
-	  uint32_t _flags);
-    virtual ~Field();
-    
-    static const int flag_nullable = 1;
-
-    // need to have these defined in here because we can't use a
-    // boolField as the field may come and go as the extent changes,
-    // but this should be supported as a legal change to the type.
-    bool isNull() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL,
-			"internal error; extent not set");
-	if (nullable) {
-	    DEBUG_INVARIANT(null_offset >= 0, 
-			    "internal error; field not ready");
-	    dataseries.pos.checkOffset(null_offset);
-	    return (*(dataseries.pos.record_start() + null_offset) 
-		    & null_bit_mask) ? true : false;
-	} else {
-	    return false;
-	}
-    }
-
-    void setNull(bool val = true) {
-	DEBUG_INVARIANT(dataseries.extent() != NULL && null_offset >= 0,
-			"internal error; extent not set or field not ready");
-	if (nullable) {
-	    dataseries.pos.checkOffset(null_offset);
-	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
-	    if (val) {
-		*v = (ExtentType::byte)(*v | null_bit_mask);
-	    } else {
-		*v = (ExtentType::byte)(*v & ~null_bit_mask);
-	    }
-	} else {
-	    INVARIANT(val == false,
-		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
-	}
-    }
-
-    const std::string &getName() const {
-	return fieldname;
-    }
-
-    /// This function will update the current field name; it is
-    /// intended to let you create field objects yet determine the
-    /// actual field name after seeing the first extent.  The
-    /// alternative to have the field as a pointer means there is an
-    /// un-necessary dereference on every access.
-    void setFieldName(const std::string &new_name);
-protected:
-    bool nullable;
-    int32_t null_offset;
-    uint32_t null_bit_mask;
-    // TODO: think about making this stash away the extent in the case where
-    // the name is still empty and then recover it when the name is set.
-    // this increases the chances we will seg-fault out through a null
-    // dereference if the user has done something bad.
-    virtual void newExtentType();
-    friend class ExtentSeries;
-    ExtentSeries &dataseries;
-    const uint32_t flags;
-private:
-    std::string fieldname;
-};
-
-class FixedField : public Field {
-public:
-    typedef ExtentType::byte byte;
-    
-protected:
-    FixedField(ExtentSeries &_dataseries, const std::string &field, 
-	       ExtentType::fieldType ft, int flags);
-
-    byte *rawval() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL && offset >= 0,
-			"internal error; extent not set or field not ready");
-	dataseries.pos.checkOffset(offset);
-	return dataseries.pos.record_start() + offset;
-    }
-
-    virtual void newExtentType();
-
-    int size, offset;
-    ExtentType::fieldType fieldtype;
-};
+#include <DataSeries/FixedField.hpp>
 
 class BoolField : public FixedField {
 public:
@@ -205,33 +104,8 @@ public:
     int32 default_value;
 };
 
-class Int64Field : public FixedField {
-public:
-    typedef ExtentType::int64 int64;
-    Int64Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-	       int64 default_value = 0);
-
-    int64 val() const { 
-	if (isNull()) {
-	    return default_value;
-	} else {
-	    return *(int64 *)rawval();
-	}
-    }
-    void set(int64 val) {
-	*(int64 *)rawval() = val;
-	setNull(false);
-    }
-    void nset(int64 val, int64 null_val = -1) {
-	if (val == null_val) {
-	    setNull(true);
-	} else {
-	    set(val);
-	}
-    }
-
-    int64 default_value;
-};
+#include <DataSeries/Int64Field.hpp>
+#include <DataSeries/Int64TimeField.hpp>
 
 class DoubleField : public FixedField {
 public:

@@ -68,6 +68,10 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
 	      % field % dataseries.type->name);
 }
 
+FixedField::~FixedField()
+{
+}
+
 void
 FixedField::newExtentType()
 {
@@ -121,6 +125,10 @@ Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, int 
       default_value(_default_value)
 { 
     dataseries.addField(*this); 
+}
+
+Int64Field::~Int64Field()
+{
 }
 
 DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
