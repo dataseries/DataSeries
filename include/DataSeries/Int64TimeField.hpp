@@ -78,6 +78,12 @@ public:
 	return rawToSecNano(valRaw());
     }
 
+    /// Return the seconds.nanoseconds string value for the current
+    /// series position.
+    std::string valStrSecNano() const {
+	return rawToStrSecNano(valRaw());
+    }
+
     /// convert a raw value into tfrac (2^-32s units, unix epoch); an
     /// error if the value would be out of bounds, or if we don't yet
     /// have the epoch
@@ -90,6 +96,8 @@ public:
     SecNano rawToSecNano(Raw raw) const;
     /// Convert seconds and nanoseconds into the Raw format
     Raw secNanoToRaw(int32_t seconds, uint32_t nanoseconds = 0) const;
+    /// Convert a raw value into a seconds.nanoseconds string value
+    std::string rawToStrSecNano(Raw raw) const;
 
     /// Some old files may not include the necessary units and epoch
     /// fields.  This function provides a back-door for specifying
@@ -107,8 +115,12 @@ public:
 
     // TODO: figure out how to make this more general
     enum TimeType { Unknown, UnixFrac32, UnixNanoSec, UnixMicroSec };
+    /// Useful for verifying multiple fields have the same type.
+    TimeType getType() const {
+	return time_type;
+    }
 private:
-    // virtual void newExtentType();
+    virtual void newExtentType();
 
     static void frac32ToSecNano(int64_t tfrac, SecNano &secnano);
     static int64_t secNanoToFrac32(const SecNano &secnano);

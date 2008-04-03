@@ -60,23 +60,23 @@ enum optionsEnum {
 
     // Attribute rollups
     optFileSizeByType,       // file size analysis
-    Commonbytes,           // common bytes in dir/fh analysis
-    Unique,                // unique bytes in file handles analysis
-    fileHandleLookup,      // lookup a bunch of file handles given in a file
+    Commonbytes,             // common bytes in dir/fh analysis
+    Unique,                  // unique bytes in file handles analysis
+    fileHandleLookup,        // lookup a bunch of file handles given in a file
 
     // Common + Attribute rollups
-    optFileageByFilehandle,               // file age by file handle analysis
-    Largewrite_Handle,     // large file write analysis by file handle
-    Largewrite_Name,       // large file write analysis by file name
-    Largefile_Handle,      // large file analysis by file handle
-    Largefile_Name,        // large file analysis by file name
-    strangeWriteSearch,    // search for strange write operations
+    optFileageByFilehandle,   // file age by file handle analysis
+    Largewrite_Handle,        // large file write analysis by file handle
+    Largewrite_Name,          // large file write analysis by file name
+    Largefile_Handle,         // large file analysis by file handle
+    Largefile_Name,           // large file analysis by file name
+    strangeWriteSearch,       // search for strange write operations
     optOperationByFileHandle, // per-operation information grouped by filename (or filehandle if name is unknown)
-    optServersPerFilehandle, //how many servers for each file handle?
+    optServersPerFilehandle,  // how many servers for each file handle?
     // Common + Attribute + RW rollups
-    File_Read,               // files read analysis
+    File_Read,                // files read analysis
     optSequentialWholeAccess, // count files accessed sequentially and completely
-    optTmpFilehandleLookup, // look for info specific to collision search
+    optFileHandleOperationLookup,   // dump records from the common + attr-ops rollup
 
     LastOption
 };
@@ -496,10 +496,8 @@ public:
     OperationByFileHandle(DataSeriesModule &_source, int _timebound_start, 
 			  int _timebound_end)
 	: RowAnalysisModule(_source),
-	  timebound_start((ExtentType::int64)_timebound_start 
-			  * 1000 * 1000 * 1000), 
-	  timebound_end((ExtentType::int64)_timebound_end 
-			* 1000 * 1000 * 1000),
+	  timebound_start(_timebound_start),
+	  timebound_end(_timebound_end),
 	  server(series,"server"),
 	  operation(series,"operation"), filehandle(series,"filehandle"),
 	  request_at(series,"request-at"), reply_at(series,"reply-at"),
@@ -566,19 +564,26 @@ public:
     typedef HashTable<hteData, fhHash, fhEqual> fhRollupT;
     fhRollupT fhRollup, fsRollup;
 
+    virtual void prepareForProcessing() {
+	timebound_start = request_at.secNanoToRaw(timebound_start,0);
+	timebound_end = request_at.secNanoToRaw(timebound_end,0);
+	SINVARIANT(request_at.getType() == reply_at.getType());
+    }
+
     virtual void processRow() {
-	unique_fhs.add(filehandle.stringval());
+	unique_fhs.add(ConstantString(filehandle.val(), filehandle.size()));
+
 	hteData k;
-	if (request_at.val() < timebound_start ||
-	    reply_at.val() > timebound_end) {
+	if (request_at.valRaw() < timebound_start ||
+	    reply_at.valRaw() > timebound_end) {
 	    ++out_of_bounds_count;
 	    return;
 	}
-	if (request_at.val() < min_time) {
-	    min_time = request_at.val();
+	if (request_at.valRaw() < min_time) {
+	    min_time = request_at.valRaw();
 	} 
-	if (reply_at.val() > max_time) {
-	    max_time = reply_at.val();
+	if (reply_at.valRaw() > max_time) {
+	    max_time = reply_at.valRaw();
 	}
 	k.server = server.val();
 	k.filehandle = filehandle.stringval();
@@ -593,12 +598,13 @@ public:
 	}
 	++v->opcount;
 	v->payload_sum += payload_len.val();
-	if (reply_at.val() == request_at.val()) {
+	if (reply_at.valRaw() == request_at.valRaw()) {
 	    v->latency_sum += 1;
 	} else {
-	    AssertAlways(reply_at.val() > request_at.val(),
-			 ("no %lld %lld.\n",reply_at.val(),request_at.val()));
-	    v->latency_sum += reply_at.val() - request_at.val();
+	    AssertAlways(reply_at.valRaw() > request_at.valRaw(),
+			 ("no %lld %lld.\n",reply_at.valRaw(),
+			  request_at.valRaw()));
+	    v->latency_sum += reply_at.valRaw() - request_at.valRaw();
 	}
 
 	v = fhRollup.lookup(k);
@@ -611,7 +617,7 @@ public:
 		  % maybehexstring(v->filehandle) % maybehexstring(filehandle.stringval()));
 	++v->opcount;
 	v->payload_sum += payload_len.val();
-	v->latency_sum += reply_at.val() - request_at.val();
+	v->latency_sum += reply_at.valRaw() - request_at.valRaw();
 
 	if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
 	    k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
@@ -622,7 +628,7 @@ public:
 	    }
 	    ++v->opcount;
 	    v->payload_sum += payload_len.val();
-	    v->latency_sum += reply_at.val() - request_at.val();
+	    v->latency_sum += reply_at.valRaw() - request_at.valRaw();
 	}
     }
 
@@ -698,20 +704,24 @@ public:
 	printFHRollup();
 	printFHOpRollup();
 
+	if (false) ConstantString::dumpInfo();
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
     ExtentType::int64 timebound_start, timebound_end;
     Int32Field server;
     Variable32Field operation, filehandle;
-    Int64Field request_at, reply_at;
+    Int64TimeField request_at, reply_at;
     Int32Field payload_len;
 
     int64_t min_time, max_time;
     uint64_t out_of_bounds_count;
-    HashUnique<string> unique_fhs;
+    HashUnique<ConstantString> unique_fhs;
 };
 
+// TODO: merge with FileHandleOperationLookup?  Alternately modify
+// this one to be the one that tries to trace back to the mount point
+// information and uses a rotating hashmap to bound memory usage.
 static string FHL_inputfilename;
 class FileHandleLookup : public NFSDSModule {
 public:
@@ -916,80 +926,77 @@ public:
 
 };
 
-static string TFHL_inputfilename;
-class TmpFilehandleLookup : public NFSDSModule {
+class FileHandleOperationLookup : public RowAnalysisModule {
 public:
-  TmpFilehandleLookup(DataSeriesModule &_source)
-    : source(_source), 
-    filename(s,"filename", Field::flag_nullable), 
-    filehandle(s,"filehandle"),
-    file_size(s,"file-size"),
-    modify_time(s,"modify-time"),
-    client(s,"client"),
-    server(s,"server"),
-    replyat(s,"reply-at"),
-    operation(s,"operation")
-  {
-	ifstream in(TFHL_inputfilename.c_str());
-	// todo: error on can't open file
-	int nsearch = 0;
-	while(in.good()) {
-	    string foo;
-	    in >> foo;
-	    if (in.eof()) 
-		break;
-	    AssertAlways(in.good(),("internal"));
-	    string fhwant = hex2raw(foo);
-	    mymap[fhwant].file_size = -1;
-	    mymap[fhwant].ID = nsearch;
-	    ++nsearch;
-	}
-	//	printf("fhl: searching for %d filehandles\n",nsearch);
+    FileHandleOperationLookup(DataSeriesModule &_source)
+	: RowAnalysisModule(_source),
+	  filename(series,"filename", Field::flag_nullable), 
+	  filehandle(series,"filehandle"),
+	  file_size(series,"file-size"),
+	  modify_time(series,"modify-time"),
+	  client(series,"client"),
+	  server(series,"server"),
+	  replyat(series,"reply-at"),
+	  operation(series,"operation"),
+	  type(series,"type"),
+	  printed_header(false)
+    {
     }
     
-    virtual ~TmpFilehandleLookup() { }
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
-	    fhinfo *v = mymap.lookup(filehandle.stringval());
-	    if (v != NULL) {
-	      v->operation = operation.stringval();
+    virtual ~FileHandleOperationLookup() { }
 
-	      printf("%d %s %lld %s %s %lld %lld %s\n",
-		     v->ID,
-		     hexstring(filehandle.stringval()).c_str(),
-		     replyat.val(),
-		     ipv4tostring(client.val()).c_str(),
-		     ipv4tostring(server.val()).c_str(),
-		     file_size.val(),
-		     modify_time.val(),
-		     v->operation.c_str());
+    virtual void processRow() {
+	if (wanted.exists(filehandle.stringval())) {
+	    if (!printed_header) {
+		cout << "FHOL: reply-at client server ; operation type filehandle filename ; file-size modify-time\n";
+		printed_header = true;
 	    }
+	    cout << format("FHOL: %s %s %s ; %s %s %s '%s' ; %d %s\n")
+		% replyat.valStrSecNano() % ipv4tostring(client.val()) 
+		% ipv4tostring(server.val()) 
+
+		% operation.stringval() % type.stringval() 
+		% hexstring(filehandle.stringval()) 
+		% maybehexstring(filename.stringval())
+
+		% file_size.val() % modify_time.valStrSecNano();
 	}
-	return e;
     }
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	cout << "  (already printed everything with FHOL prefix)\n";
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
-  DataSeriesModule &source;
-  ExtentSeries s;
-  Variable32Field filename, filehandle;
-  Int64Field file_size, modify_time;
-  Int32Field client, server;
-  Int64Field replyat;
-  Variable32Field operation;
+    static void processArg(const string &arg) {
+	ifstream in(arg.c_str());
+	if (in.good()) {
+	    while(in.good()) {
+		string aline;
+		in >> aline;
+		if (in.eof()) 
+		    break;
+		SINVARIANT(in.good());
+		wanted.add(hex2raw(aline));
+	    }
+	} else {
+	    wanted.add(hex2raw(arg));
+	}
+    }
+	
+    Variable32Field filename, filehandle;
+    Int64Field file_size;
+    Int64TimeField modify_time;
+    Int32Field client, server;
+    Int64TimeField replyat;
+    Variable32Field operation, type;
 
-    struct fhinfo {
-      string filename;
-      ExtentType::int64 file_size, modify_time;
-      int ID;
-      string operation;
-    };
-    HashMap<string, fhinfo> mymap;
+    bool printed_header;
+    static HashUnique<string> wanted;
+    
 };
+
+HashUnique<string> FileHandleOperationLookup::wanted;
 
 static bool need_mount_by_filehandle = false;
 static bool need_filename_by_filehandle = false;
@@ -1036,7 +1043,7 @@ usage(char *progname)
     cerr << "    #-w # servers per filehandle\n";
     cerr << "    #-x # transactions\n";
     cerr << "    #-y # outstanding requests\n";
-    cerr << "    #-z <fh-list filename> # tmp file handle lookup\n";
+    cerr << "    -z <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
     exit(1);
 }
 
@@ -1116,8 +1123,8 @@ parseopts(int argc, char *argv[])
 	case 'y': FATAL_ERROR("untested");options[optOutstandingRequests] = 1; 
 	  latency_offset = atoi(optarg);
 	  break;
-	case 'z': FATAL_ERROR("untested");options[optTmpFilehandleLookup] = 1;
-	    TFHL_inputfilename = optarg;
+	case 'z': options[optFileHandleOperationLookup] = 1;
+	    FileHandleOperationLookup::processArg(optarg);
 	    break;
 
 	case '?': AssertFatal(("invalid option"));
@@ -1348,8 +1355,8 @@ main(int argc, char *argv[])
 	merge12Sequence.addModule(NFSDSAnalysisMod::newServersPerFilehandle(merge12Sequence.tail()));
     }
 
-    if (options[optTmpFilehandleLookup]) {
-	merge12Sequence.addModule(new TmpFilehandleLookup(merge12Sequence.tail()));
+    if (options[optFileHandleOperationLookup]) {
+	merge12Sequence.addModule(new FileHandleOperationLookup(merge12Sequence.tail()));
     }
 
     // merge join with read-write data

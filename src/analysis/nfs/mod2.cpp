@@ -13,28 +13,29 @@ using namespace std;
 using boost::format;
 
 // Two possible implementation of the large size * analysis:
-// 1. Build a hash table over the attr-ops extents, and hash-join with the common
-//    extents in a single pass
-// 2. Do a merge join over the two tables (both are sorted roughly by record-id)
-//    and do the analysis over the merged data
+// 1. Build a hash table over the attr-ops extents, and hash-join with
+//    the common extents in a single pass
+// 2. Do a merge join over the two tables (both are sorted roughly by
+//    record-id) and do the analysis over the merged data
 //
 // We take the second approach because it will take a lot less memory when the
 // attr-ops gets too large
 
-const string attropscommonjoin_xml( // not intended for writing, leaves out packing options
+// not intended for writing, leaves out packing options
+const string attropscommonjoin_xml_in( 
   "<ExtentType name=\"attr-ops-join\">\n"
-  "  <field type=\"int64\" name=\"request-at\" comment=\"time of the request packet\" />\n"
-  "  <field type=\"int64\" name=\"reply-at\" comment=\"time of the reply packet\" />\n"
-  "  <field type=\"int32\" name=\"server\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
-  "  <field type=\"int32\" name=\"client\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
+  "  <field type=\"int64\" name=\"request-at\" %1% comment=\"time of the request packet\" />\n"
+  "  <field type=\"int64\" name=\"reply-at\" %1% comment=\"time of the reply packet\" />\n"
+  "  <field type=\"int32\" name=\"server\" comment=\"32 bit packed IPV4 address\" print_format=\"%%08x\" />\n"
+  "  <field type=\"int32\" name=\"client\" comment=\"32 bit packed IPV4 address\" print_format=\"%%08x\" />\n"
   "  <field type=\"variable32\" name=\"operation\" />\n"
   "  <field type=\"int64\" name=\"record-id\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_maybehex=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"type\" />\n"
   "  <field type=\"int64\" name=\"file-size\" />\n"
-  "  <field type=\"int64\" name=\"modify-time\" />\n"
-  "  <field type=\"int32\" name=\"payload-length\" />\n"
+  "  <field type=\"int64\" name=\"modify-time\" units=\"nanoseconds\" epoch=\"unix\" />\n"
+  "  <field type=\"int32\" name=\"payload-length\" units=\"bytes\" />\n"
   "</ExtentType>\n");
 
 // we cheat here and use the reply packet rather than the request
@@ -47,7 +48,6 @@ public:
     AttrOpsCommonJoin(DataSeriesModule &_nfs_common,
 		      DataSeriesModule &_nfs_attrops)
 	: nfs_common(_nfs_common), nfs_attrops(_nfs_attrops),
-	  output_type(ExtentTypeLibrary::sharedExtentType(attropscommonjoin_xml)),
 	  es_common(ExtentSeries::typeExact),
 	  es_attrops(ExtentSeries::typeExact),
 	  in_packetat(es_common,""),
@@ -86,7 +86,6 @@ public:
 	  skipped_common_count(0), skipped_attrops_count(0), 
 	  skipped_duplicate_attr_count(0), last_reply_id(-1)
     { 
-	es_out.setType(output_type);
 	curreqht = new reqHashTable();
 	prevreqht = new reqHashTable();
 	last_rotate_time = 0;
@@ -155,6 +154,25 @@ public:
 
     typedef HashTable<reqData,reqHash,reqEqual> reqHashTable;
 
+    void initOutType() {
+	SINVARIANT(es_common.getType() != NULL &&
+		   es_attrops.getType() != NULL);
+	
+	string units_epoch;
+	if (es_common.getType()->majorVersion() == 0) {
+	    SINVARIANT(es_attrops.getType()->majorVersion() == 0);
+	    units_epoch = "units=\"nanoseconds\" epoch=\"unix\"";
+	} else if (es_common.getType()->majorVersion() == 2) {
+	    SINVARIANT(es_attrops.getType()->majorVersion() == 2);
+	    units_epoch = "units=\"2^-32 seconds\" epoch=\"unix\"";
+	} else {
+	    FATAL_ERROR("don't know units and epoch");
+	}
+	string tmp = (boost::format(attropscommonjoin_xml_in) 
+		      % units_epoch).str();
+	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
+    }
+
     virtual Extent *getExtent() {
 	if (all_done)
 	    return NULL;
@@ -177,10 +195,15 @@ public:
 	    return NULL;
 	}
 	
-	Extent *outextent = new Extent(output_type);
-	es_out.setExtent(outextent);
-
 	es_attrops.setExtent(attrextent);
+
+	if (es_out.getType() == NULL) {
+	    initOutType();
+	    SINVARIANT(es_out.getType() != NULL);
+	}
+
+	Extent *outextent = new Extent(*es_out.getType());
+	es_out.setExtent(outextent);
 
 	if (in_packetat.getName().empty()) {
 	    prepFields();
@@ -330,7 +353,6 @@ public:
 
 private:
     DataSeriesModule &nfs_common, &nfs_attrops;
-    ExtentType &output_type;
     ExtentSeries es_common, es_attrops, es_out;
     Int64Field in_packetat, out_requestat, out_replyat;
     Int32Field in_source, out_server;
