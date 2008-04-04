@@ -150,7 +150,7 @@ nettrace2ds_SOURCES = process/nettrace2ds.C
 nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
 
-if WITH_LINUX
+if WITH_LINUX_COMPILER_H
 bin_PROGRAMS += lindump-mmap 
 lindump_mmap_SOURCES = raw-collection/lindump-mmap.c
 endif

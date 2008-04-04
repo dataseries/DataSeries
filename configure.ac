@@ -77,7 +77,13 @@ AC_ARG_ENABLE(example,
 
 AM_CONDITIONAL(ENABLE_EXAMPLE, test "$enable_example" = yes)
 
-AM_CONDITIONAL(WITH_LINUX, test "`uname -s`" = Linux)
+if test "`uname -s`" = Linux -a -f /usr/include/linux/compiler.h; then
+   with_linux_compiler_h=yes
+else
+   with_linux_compiler_h=no
+fi
+
+AM_CONDITIONAL(WITH_LINUX_COMPILER_H, test "$with_linux_compiler_h" = yes)
 ## flags
 AC_SYS_LARGEFILE
 
@@ -129,6 +135,12 @@ if test "$with_pcap" = 'yes'; then
     :
 else
     AC_MSG_WARN([skipping building of libpcap related programs, e.g. driverdump])
+fi
+
+if test "$with_linux_compiler_h" = 'yes'; then
+    :
+else
+    AC_MSG_WARN([skipping building of lindump, need linux and /usr/include/linux/compiler.h])
 fi
 
 if test "$with_lzo" = 'yes'; then
