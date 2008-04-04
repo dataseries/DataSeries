@@ -17,7 +17,7 @@ nobase_include_HEADERS = \
 	DataSeries/ExtentSeries.H \
 	DataSeries/ExtentType.H \
 	DataSeries/Field.hpp \
-	DataSeries/FixedField.hpp
+	DataSeries/FixedField.hpp \
 	DataSeries/GeneralField.H \
 	DataSeries/GroupByModule.H \
 	DataSeries/IndexSourceModule.H \
