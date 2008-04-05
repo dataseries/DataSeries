@@ -98,18 +98,20 @@ void ExtentSeries::removeField(Field &field, bool must_exist)
 }
 
 void
-ExtentSeries::iterator::setpos(byte *new_pos)
+ExtentSeries::iterator::setPos(const void *_new_pos)
 {
-    unsigned recnum = (new_pos - cur_extent->fixeddata.begin()) / recordsize;
+    const byte *new_pos = static_cast<const byte *>(_new_pos);
+    byte *cur_begin = cur_extent->fixeddata.begin();
+    unsigned recnum = (new_pos - cur_begin) / recordsize;
     INVARIANT(cur_extent != NULL, "no current extent?");
-    INVARIANT(new_pos >= cur_extent->fixeddata.begin(), 
+    INVARIANT(new_pos >= cur_begin, 
 	      "new pos before start");
     INVARIANT(new_pos <= cur_extent->fixeddata.end(),
 	      "new pos after end");
-    size_t offset = new_pos - cur_extent->fixeddata.begin();
+    size_t offset = new_pos - cur_begin;
     INVARIANT(recnum * recordsize == offset,
 	      "new position not aligned to record boundary");
-    cur_pos = new_pos;
+    cur_pos = cur_begin + offset;
 }
 
 void

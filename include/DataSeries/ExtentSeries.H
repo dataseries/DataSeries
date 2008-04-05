@@ -54,12 +54,13 @@ public:
     }
 
     ~ExtentSeries();
-    // Next three are the most common way of using a series; may
-    // eventually decide to deprecate as many of the other options as
-    // possible after investigating to see if they matter.
-    //
-    // Standard loop ends up being: 
-    // for(series.start(e); series.more(); series.next()) { ... }
+
+    /// Next three are the most common way of using a series; may
+    /// eventually decide to deprecate as many of the other options as
+    /// possible after investigating to see if they matter.
+    ///
+    /// Standard loop ends up being: 
+    /// for(series.start(e); series.more(); series.next()) { ... }
 
     void start(Extent *e) {
 	setExtent(e);
@@ -70,7 +71,16 @@ public:
     void next() {
 	++pos;
     }
-
+    /// For saving and restoring the current position of an extent in a series
+    const void *getCurPos() {
+	return pos.getPos();
+    }
+    /// For saving and restoring the current position of an extent in a series;
+    /// this function may be slow.
+    void setCurPos(const void *position) {
+	pos.setPos(position);
+    }
+    
     void setType(const ExtentType &type);
     const ExtentType *getType() { return type; }
     // setExtent will automatically reset the pos iterator to the
@@ -119,7 +129,6 @@ public:
 	iterator(Extent *e) { reset(e); }
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }
-	byte *record_start() { return cur_pos; }
 	void reset(Extent *e) { 
 	    if (e == NULL) {
 		cur_extent = NULL;
@@ -131,8 +140,18 @@ public:
 		recordsize = e->type.fixedrecordsize();
 	    }
 	}
-	void setpos(byte *new_pos);
+	
+	/// old api
+	void setpos(byte *new_pos) {
+	    setPos(new_pos);
+	}
+	/// old api
+	byte *record_start() { return cur_pos; }
 
+	void setPos(const void *new_pos);
+	const void *getPos() {
+	    return cur_pos;
+	}
 	uint32_t currecnum() {
 	    SINVARIANT(cur_extent != NULL);
 	    int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
