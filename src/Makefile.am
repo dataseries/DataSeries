@@ -116,7 +116,8 @@ wcanalysis_SOURCES = analysis/wcanalysis.cpp
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
 	ran.check-lsfdsanalysis ran.check-nfsdsanalysis \
-	ran.check-ellard ran.check-worldcup ran.check-test-time-field
+	ran.check-ellard ran.check-worldcup ran.check-test-time-field \
+	ran.check-pack-pad-record ran.check-pack-field-ordering
 
 ### Conditional things
 
@@ -197,11 +198,15 @@ rebuild_DSExpr:
 
 ##### Testing...
 
-check_PROGRAMS = test test-time-field
+check_PROGRAMS = test test-time-field test-pack-pad-record test-pack-field-ordering
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
 test_time_field_SOURCES = tests/time-field.cpp
 test_time_field_LDADD = libDataSeries.la
+test_pack_pad_record_SOURCES = tests/pack-pad-record.cpp
+test_pack_pad_record_LDADD = libDataSeries.la
+test_pack_field_ordering_SOURCES = tests/pack-field-ordering.cpp
+test_pack_field_ordering_LDADD = libDataSeries.la
 
 check-local: $(CHECK_TARGETS)
 
@@ -245,6 +250,14 @@ ran.check-test: test ds2txt
 
 ran.check-test-time-field: test-time-field
 	./test-time-field
+	touch $@
+
+ran.check-pack-pad-record: test-pack-pad-record
+	./test-pack-pad-record
+	touch $@
+
+ran.check-pack-field-ordering: test-pack-field-ordering
+	./test-pack-field-ordering
 	touch $@
 
 ran.check-dsselect: dsselect ds2txt

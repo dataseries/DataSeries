@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -42,6 +42,31 @@ public:
     // Might want CompactAll, so don't want a boolean here
     enum PackNullCompact { 
 	CompactNonBool, CompactNo
+    };
+
+    /// Original padding was a mistake, it padded to 8 bytes
+    /// always. Future extent types may as well always set
+    /// pack_pad_record="max_column_size"; there is no down side,
+    /// although it is irrelevant (and wastes a few bytes of space to
+    /// record the option in the type) if there are any 8 byte fields,
+    /// or if the record size would otherwise be a multiple of 8
+    /// bytes.
+    ///
+    /// If we want to enable use of SSE style extensions, may need an
+    /// option to pad differently.  Could also do a PadTight, although
+    /// that would require different fields or would fail on machines that
+    /// can't do unaliged accesses.
+    enum PackPadRecord {
+	PadRecordOriginal, PadRecordMaxColumnSize
+    };
+
+    /// Options for ordering the fields within a record; big to small
+    /// happens to compress slightly better (2-4%) for the world cup
+    /// traces.  May be slightly better overall as it puts all the
+    /// padding together, but further testing is required to determine
+    /// if one ordering dominates the other.
+    enum PackFieldOrdering {
+	FieldOrderingSmallToBigSepVar32, FieldOrderingBigToSmallSepVar32,
     };
 
     static ExtentType &getDataSeriesXMLType() {
@@ -249,6 +274,8 @@ private:
 	unsigned major_version, minor_version;
 	std::string type_namespace;
 	PackNullCompact pack_null_compact;
+	PackPadRecord pad_record;
+	PackFieldOrdering field_ordering;
 	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
     };
     
@@ -273,6 +300,17 @@ public:
     const std::string name;
     const std::string xmldesc;
     const xmlDocPtr field_desc_doc;
+private:
+    static void parsePackBitFields(ParsedRepresentation &ret, 
+				   int32 &byte_pos);
+    static void parsePackByteFields(ParsedRepresentation &ret, 
+				    int32 &byte_pos);
+    static void parsePackInt32Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
+    static void parsePackVar32Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
+    static void parsePackSize8Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
 };
 
 class ExtentTypeLibrary {

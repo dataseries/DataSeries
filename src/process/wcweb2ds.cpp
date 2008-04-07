@@ -56,7 +56,7 @@ using boost::format;
 // site (www.france98.com).  
 
 const string web_wc_custom_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Log::Web::WorldCup::Custom\" version=\"1.0\" comment=\"field descriptions taken from the tools README; http://ita.ee.lbl.gov/html/contrib/WorldCup.html\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Log::Web::WorldCup::Custom\" version=\"1.0\" pack_pad_record=\"max_column_size\" pack_field_ordering=\"big_to_small_sep_var32\" comment=\"field descriptions taken from the tools README; http://ita.ee.lbl.gov/html/contrib/WorldCup.html\" >\n"
   "  <field type=\"int32\" name=\"timestamp\" epoch=\"unix\" units=\"seconds\" pack_relative=\"timestamp\" comment=\"the time of the request, stored as the number of seconds since the Epoch.  The timestamp has been converted to GMT to allow for portability.  During the World Cup the local time was 2 hours ahead of GMT (+0200).  In order to determine the local time, each timestamp must be adjusted by this amount.\" />\n"
   "  <field type=\"int32\" name=\"clientID\" comment=\"a unique integer identifier for the client that issued the request (this may be a proxy); due to privacy concerns these mappings cannot be released; note that each clientID maps to exactly one IP address, and the mappings are preserved across the entire data set - that is if IP address 0.0.0.0 mapped to clientID X on day Y then any request in any of the data sets containing clientID X also came from IP address 0.0.0.0\" />\n"
   "  <field type=\"int32\" name=\"objectID\" comment=\"a unique integer identifier for the requested URL; these mappings are also 1-to-1 and are preserved across the entire data set.\" />\n"

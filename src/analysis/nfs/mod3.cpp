@@ -432,7 +432,7 @@ public:
     // > 2000 needed by set-2/045
     // > 3000 needed by set-2/046
     // > 4000 needed by set-2/047
-    static const int max_out_of_order = 10000;
+    static const unsigned max_out_of_order = 10000;
     virtual Extent *getExtent() { 
 	// have to do the full re-ordering join because we have
 	// duplicates in the entries, so that doing the simple
@@ -449,7 +449,8 @@ public:
 	    while (rw_done == false && rw_reorder.size() < max_out_of_order) {
 		fillRWReorder();
 	    } 
-	    while (common_done == false && commonattr_reorder.size() < max_out_of_order) {
+	    while (common_done == false 
+		   && commonattr_reorder.size() < max_out_of_order) {
 		fillCommonAttrReorder();
 	    }
 	    AssertAlways(commonattr_reorder.empty() == false,

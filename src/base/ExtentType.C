@@ -123,6 +123,108 @@ ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci)
     }
 }
 
+void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
+{
+    if (debug_packing) printf("packing bool fields...\n");
+    int32 bit_pos = 0;
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_bool) {
+	    ret.field_info[i].size = 1;
+	    ret.field_info[i].offset = byte_pos;
+	    ret.field_info[i].bitpos = bit_pos;
+	    DEBUG_INVARIANT(bit_pos < 8, "?");
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d:%d\n")
+		    % ret.field_info[i].name % byte_pos % bit_pos;
+	    }
+	    ++bit_pos;
+	    if (bit_pos == 8) {
+		byte_pos += 1;
+		bit_pos = 0;
+	    }
+	} 
+    }
+
+    if (bit_pos > 0) {
+	byte_pos += 1;
+    }
+}
+
+void 
+ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
+{
+    if (debug_packing) printf("packing byte fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_byte) {
+	    ret.field_info[i].size = 1;
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d\n")
+		    % ret.field_info[i].name % byte_pos;
+	    }
+	    byte_pos += 1;
+	}
+    }
+}
+
+void
+ExtentType::parsePackInt32Fields(ParsedRepresentation &ret, int32 &byte_pos)
+{
+    if (debug_packing) printf("packing int32 fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_int32) {
+	    ret.field_info[i].size = 4;
+	    ret.field_info[i].offset = byte_pos;
+	    SINVARIANT((byte_pos % 4) == 0);
+	    if (debug_packing) {
+		cout << boost::format("  field %s (#%d) at position %d\n")
+		    % ret.field_info[i].name % i % byte_pos;
+	    }
+	    byte_pos += 4;
+	}
+    }
+}
+
+void
+ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos)
+{
+    // these tend to have lots of different values making compression
+    // worse, so we pack them after the other int32 fields, but to
+    // avoid alignment glitches before the 8 byte fields
+    if (debug_packing) printf("packing variable32 fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_variable32) {
+	    ret.field_info[i].size = 4;
+	    ret.field_info[i].offset = byte_pos;
+	    SINVARIANT((byte_pos % 4) == 0);
+	    if (debug_packing) {
+		cout << boost::format("  field %s (#%d) at position %d\n")
+		    % ret.field_info[i].name % i % byte_pos;
+	    }
+	    byte_pos += 4;
+	}
+    }
+}
+
+void
+ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos)
+{
+    if (debug_packing) printf("packing int64 and double fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+	if (ret.field_info[i].type == ft_int64 
+	    || ret.field_info[i].type == ft_double) {
+	    ret.field_info[i].size = 8;
+	    ret.field_info[i].offset = byte_pos;
+	    SINVARIANT((byte_pos % 8) == 0);
+	    if (debug_packing) {
+		cout << boost::format("  field %s at position %d\n")
+		    % ret.field_info[i].name % byte_pos;
+	    }
+	    byte_pos += 8;
+	}
+    }
+}
+
 ExtentType::ParsedRepresentation
 ExtentType::parseXML(const string &xmldesc)
 {
@@ -153,29 +255,60 @@ ExtentType::parseXML(const string &xmldesc)
 	      "invalid extent type name, max of 255 characters allowed");
 
     ret.pack_null_compact = CompactNo;
-    string pack_option = strGetXMLProp(cur, "pack_null_compact");
-    if (!pack_option.empty()) {
-	// TODO: remove the warning once we try this with a second data set.
-	cerr << "Warning, pack_null_compact under testing, may not be safe for use.\n";
-	if (pack_option == "non_bool") {
-	    ret.pack_null_compact = CompactNonBool;
-	} else if (pack_option == "no") {
-	    ret.pack_null_compact = CompactNo;
-	} else {
-	    FATAL_ERROR(format("Unknown pack_null_compact value '%s', expected non_bool or no")
-			% pack_option);
+    {
+	string pack_option = strGetXMLProp(cur, "pack_null_compact");
+	if (!pack_option.empty()) {
+	    // TODO: remove the warning once we try this with a second data set.
+	    cerr << "Warning, pack_null_compact under testing, may not be safe for use.\n";
+	    if (pack_option == "non_bool") {
+		ret.pack_null_compact = CompactNonBool;
+	    } else if (pack_option == "no") {
+		ret.pack_null_compact = CompactNo;
+	    } else {
+		FATAL_ERROR(format("Unknown pack_null_compact value '%s', expected non_bool or no")
+			    % pack_option);
+	    }
+	}
+    }
+    ret.pad_record = PadRecordOriginal;
+    {
+	string pad_record_option = strGetXMLProp(cur, "pack_pad_record");
+	if (!pad_record_option.empty()) {
+	    cerr << "Warning, pack_pad_record under testing, may not be safe for use.\n";
+	    if (pad_record_option == "original") {
+		ret.pad_record = PadRecordOriginal;
+	    } else if (pad_record_option == "max_column_size") {
+		ret.pad_record = PadRecordMaxColumnSize;
+	    } else {
+		FATAL_ERROR(format("Unknown pack_pad_record value '%s', expect original or max_column_size") % pad_record_option);
+	    }
+	}
+    }
+    ret.field_ordering = FieldOrderingSmallToBigSepVar32;
+    {
+	string field_ordering_opt = strGetXMLProp(cur, "pack_field_ordering");
+	if (!field_ordering_opt.empty()) {
+	    cerr << "Warning, pack_field_ordering under testing, may not be safe for use.\n";
+	    if (field_ordering_opt == "small_to_big_sep_var32") {
+		ret.field_ordering = FieldOrderingSmallToBigSepVar32;
+	    } else if (field_ordering_opt == "big_to_small_sep_var32") {
+		ret.field_ordering = FieldOrderingBigToSmallSepVar32;
+	    } else {
+		FATAL_ERROR(format("Unknown pack_field_ordering value '%s', expect small_to_big_sep_var32 or big_to_small_sep_var32") % field_ordering_opt);
+	    }
 	}
     }
 
     for(xmlAttr *prop = cur->properties; prop != NULL; prop = prop->next) {
-	if (xmlStrcmp(prop->name, (const xmlChar *)"pack_null_compact") == 0) {
+	string opt(reinterpret_cast<const char *>(prop->name));
+	if (opt == "pack_null_compact" || opt == "pack_pad_record"
+	    || opt == "pack_field_ordering") {
 	    // ok
 	} else {
-	    INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
-		      format("Unrecognized global packing option %s")
-		      % prop->name);
-	    INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"opt_",5)!=0,
-		      format("Unrecognized global option %s") % prop->name);
+	    INVARIANT(!prefixequal(opt, "pack_"),
+		      format("Unrecognized global packing option %s") % opt);
+	    INVARIANT(!prefixequal(opt, "opt_"),
+		      format("Unrecognized global option %s") % opt);
 	}
     }
 
@@ -200,8 +333,8 @@ ExtentType::parseXML(const string &xmldesc)
     ret.type_namespace = strGetXMLProp(cur, "namespace");
 
     cur = cur->xmlChildrenNode;
-    int bool_fields = 0, byte_fields = 0, int32_fields = 0, eight_fields = 0, 
-	variable_fields = 0;
+    unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0, 
+	eight_fields = 0, variable_fields = 0;
     while (true) {
 	while (cur != NULL && xmlIsBlankNode(cur)) {
 	    cur = cur->next;
@@ -362,89 +495,46 @@ ExtentType::parseXML(const string &xmldesc)
 
     // need to put in the variable sized special fields here!
 
-    if (debug_packing) printf("packing bool fields...\n");
-    int32 bit_pos = 0;
-    int32 byte_pos = 0;
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_bool) {
-	    ret.field_info[i].size = 1;
-	    ret.field_info[i].offset = byte_pos;
-	    ret.field_info[i].bitpos = bit_pos;
-	    DEBUG_INVARIANT(bit_pos < 8, "?");
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d:%d\n")
-		    % ret.field_info[i].name % byte_pos % bit_pos;
-	    }
-	    ++bit_pos;
-	    if (bit_pos == 8) {
-		byte_pos += 1;
-		bit_pos = 0;
-	    }
-	} 
+    int32 byte_pos = 0; // TODO: make this uint32_t
+
+    if (ret.field_ordering == FieldOrderingSmallToBigSepVar32) {
+	parsePackBitFields(ret, byte_pos);
+	parsePackByteFields(ret, byte_pos);
+	if (ret.pad_record == PadRecordOriginal || 
+	    int32_fields > 0 || variable_fields > 0) {
+	    unsigned zero_pad = (4 - (byte_pos % 4)) % 4;
+	    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
+	    byte_pos += zero_pad;
+	}
+	parsePackInt32Fields(ret, byte_pos);
+	parsePackVar32Fields(ret, byte_pos);
+	if (ret.pad_record == PadRecordOriginal || eight_fields > 0) {
+	    unsigned zero_pad = (8 - (byte_pos % 8)) % 8;
+	    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
+	    byte_pos += zero_pad;
+	}
+	parsePackSize8Fields(ret, byte_pos);
+    } else if (ret.field_ordering == FieldOrderingBigToSmallSepVar32) {
+	parsePackSize8Fields(ret, byte_pos);
+	parsePackInt32Fields(ret, byte_pos);
+	parsePackVar32Fields(ret, byte_pos);
+	parsePackByteFields(ret, byte_pos);
+	parsePackBitFields(ret, byte_pos);
+	uint32_t align_size = 1;
+	if (int32_fields > 0 || variable_fields > 0) {
+	    align_size = 4;
+	}
+	if (eight_fields > 0 || ret.pad_record == PadRecordOriginal) {
+	    align_size = 8;
+	}
+	unsigned zero_pad = (align_size - (byte_pos % align_size)) 
+	    % align_size;
+	byte_pos += zero_pad;
+	SINVARIANT((byte_pos % align_size) == 0);
+    } else {
+	FATAL_ERROR("?");
     }
 
-    if (bit_pos > 0) {
-	byte_pos += 1;
-    }
-    if (debug_packing) printf("packing byte fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_byte) {
-	    ret.field_info[i].size = 1;
-	    ret.field_info[i].offset = byte_pos;
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d\n")
-		    % ret.field_info[i].name % byte_pos;
-	    }
-	    byte_pos += 1;
-	}
-    }
-    int zero_pad = (4 - (byte_pos % 4)) % 4;
-    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
-    byte_pos += zero_pad;
-    if (debug_packing) printf("packing int32 fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_int32) {
-	    ret.field_info[i].size = 4;
-	    ret.field_info[i].offset = byte_pos;
-	    if (debug_packing) {
-		cout << boost::format("  field %s (#%d) at position %d\n")
-		    % ret.field_info[i].name % i % byte_pos;
-	    }
-	    byte_pos += 4;
-	}
-    }
-    // these tend to have lots of different values making compression
-    // worse, so we pack them after the other int32 fields, but to
-    // avoid alignment glitches before the 8 byte fields
-    if (debug_packing) printf("packing variable32 fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_variable32) {
-	    ret.field_info[i].size = 4;
-	    ret.field_info[i].offset = byte_pos;
-	    if (debug_packing) {
-		cout << boost::format("  field %s (#%d) at position %d\n")
-		    % ret.field_info[i].name % i % byte_pos;
-	    }
-	    byte_pos += 4;
-	}
-    }
-    zero_pad = (8 - (byte_pos % 8)) % 8;
-    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
-    byte_pos += zero_pad;
-    if (debug_packing) printf("packing int64 and double fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_int64 
-	    || ret.field_info[i].type == ft_double) {
-	    ret.field_info[i].size = 8;
-	    ret.field_info[i].offset = byte_pos;
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d\n")
-		    % ret.field_info[i].name % byte_pos;
-	    }
-	    byte_pos += 8;
-	}
-    }
-    
     ret.fixed_record_size = byte_pos;
 
     ret.bool_bytes = 0;
@@ -487,7 +577,10 @@ ExtentType::parseXML(const string &xmldesc)
     }
 
     // TODO fix this check so that we are properly verifying we have
-    // nullable fields, not just that we have boolean fields.
+    // nullable fields, not just that we have boolean fields; or
+    // decide to just allow compaction in all cases, even if we don't
+    // have nulls, which could save a little bit of space, e.g. 7
+    // bytes with 1 byte of bools|byte and then a double or int64.
     INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
 	      "should not enable null compaction with no nullable fields");
 
