@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -11,6 +11,8 @@
 
 #ifndef __DATASERIES_EXTENTTYPE_H
 #define __DATASERIES_EXTENTTYPE_H
+
+#include <inttypes.h>
 
 #include <vector>
 #include <string>
@@ -28,12 +30,9 @@
 class ExtentType : boost::noncopyable {
 public:
     typedef unsigned char byte;
-    typedef int int32;
-    typedef unsigned int uint32;
-    typedef long long int64;
-
-    static const int64 int64_min = LONG_LONG_MIN;
-    static const int64 int64_max = LONG_LONG_MAX;
+    typedef int32_t int32;
+    typedef uint32_t uint32;
+    typedef int64_t int64;
 
     // if you add a new type or type option, you should update
     // test.C:test_makecomplexfile() and the regression test.
@@ -43,6 +42,31 @@ public:
     // Might want CompactAll, so don't want a boolean here
     enum PackNullCompact { 
 	CompactNonBool, CompactNo
+    };
+
+    /// Original padding was a mistake, it padded to 8 bytes
+    /// always. Future extent types may as well always set
+    /// pack_pad_record="max_column_size"; there is no down side,
+    /// although it is irrelevant (and wastes a few bytes of space to
+    /// record the option in the type) if there are any 8 byte fields,
+    /// or if the record size would otherwise be a multiple of 8
+    /// bytes.
+    ///
+    /// If we want to enable use of SSE style extensions, may need an
+    /// option to pad differently.  Could also do a PadTight, although
+    /// that would require different fields or would fail on machines that
+    /// can't do unaliged accesses.
+    enum PackPadRecord {
+	PadRecordOriginal, PadRecordMaxColumnSize
+    };
+
+    /// Options for ordering the fields within a record; big to small
+    /// happens to compress slightly better (2-4%) for the world cup
+    /// traces.  May be slightly better overall as it puts all the
+    /// padding together, but further testing is required to determine
+    /// if one ordering dominates the other.
+    enum PackFieldOrdering {
+	FieldOrderingSmallToBigSepVar32, FieldOrderingBigToSmallSepVar32,
     };
 
     static ExtentType &getDataSeriesXMLType() {
@@ -178,6 +202,9 @@ public:
 	{ }
     };
 
+    // utility function, should go somewhere else.
+    static std::string strGetXMLProp(xmlNodePtr cur, 
+				     const std::string &option_name);
 private:
     static ExtentType &dataseries_xml_type;
     static ExtentType &dataseries_index_type_v0;
@@ -247,6 +274,8 @@ private:
 	unsigned major_version, minor_version;
 	std::string type_namespace;
 	PackNullCompact pack_null_compact;
+	PackPadRecord pad_record;
+	PackFieldOrdering field_ordering;
 	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
     };
     
@@ -271,6 +300,17 @@ public:
     const std::string name;
     const std::string xmldesc;
     const xmlDocPtr field_desc_doc;
+private:
+    static void parsePackBitFields(ParsedRepresentation &ret, 
+				   int32 &byte_pos);
+    static void parsePackByteFields(ParsedRepresentation &ret, 
+				    int32 &byte_pos);
+    static void parsePackInt32Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
+    static void parsePackVar32Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
+    static void parsePackSize8Fields(ParsedRepresentation &ret, 
+				     int32 &byte_pos);
 };
 
 class ExtentTypeLibrary {

@@ -6,17 +6,14 @@
 */
 
 /** @file
-    accessor classes for fields in an extent
+    accessor classes for fields in an extent; going to become a
+    meta include file for all the field files.
 */
 
 #ifndef __EXTENT_FIELD_H
 #define __EXTENT_FIELD_H
 
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/AssertBoost.H>
-
-#include <DataSeries/ExtentSeries.H>
-#include <DataSeries/Extent.H>
+#include <DataSeries/Field.hpp>
 
 // Note that if a sufficient case is made that the accessors which
 // handle the null case inline are too slow, then special case
@@ -27,83 +24,11 @@
 // a field directly; then use it in Extent::packData rather than
 // duplicating the code there to convert raw to real data.
 
-class Field {
-public:
-    Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
-	  int _flags);
-    // TODO: consider setting ExtentSeries::dead; and/or removing
-    // ourselves from the list in the series.  Potential complications
-    // involve destructor order, so the series might have to mark the
-    // fields that it's dying.
-    virtual ~Field() {}
-    
-    static const int flag_nullable = 1;
+// I think we might be able to templatize a bunch of this so that we
+// can eliminate the penalty of testing isNull() for fields that can't
+// be null.
 
-    // need to have these defined in here because we can't use a
-    // boolField as the field may come and go as the extent changes,
-    // but this should be supported as a legal change to the type.
-    bool isNull() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL,
-			"internal error; extent not set\n");
-	if (nullable) {
-	    dataseries.pos.checkOffset(null_offset);
-	    return (*(dataseries.pos.record_start() + null_offset) & null_bit_mask) ? true : false;
-	} else {
-	    return false;
-	}
-    }
-    void setNull(bool val = true) {
-	DEBUG_INVARIANT(dataseries.extent() != NULL,
-			"internal error; extent not set\n");
-	if (nullable) {
-	    dataseries.pos.checkOffset(null_offset);
-	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
-	    if (val) {
-		*v = (ExtentType::byte)(*v | null_bit_mask);
-	    } else {
-		*v = (ExtentType::byte)(*v & ~null_bit_mask);
-	    }
-	} else {
-	    INVARIANT(val == false,
-		      boost::format("tried to set a non-nullable field %s to null?!\n") % fieldname);
-	}
-    }
-
-    const std::string &getName() {
-	return fieldname;
-    }
-
-protected:
-    bool nullable;
-    long null_offset;
-    int null_bit_mask;
-    virtual void newExtentType();
-    friend class ExtentSeries;
-    ExtentSeries &dataseries;
-    const std::string fieldname;
-    const int flags;
-};
-
-class FixedField : public Field {
-public:
-    typedef ExtentType::byte byte;
-    
-protected:
-    FixedField(ExtentSeries &_dataseries, const std::string &field, 
-	       ExtentType::fieldType ft, int flags);
-
-    byte *rawval() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL,
-			"internal error; extent not set\n");
-	dataseries.pos.checkOffset(offset);
-	return dataseries.pos.record_start() + offset;
-    }
-
-    virtual void newExtentType();
-
-    int size, offset;
-    ExtentType::fieldType fieldtype;
-};
+#include <DataSeries/FixedField.hpp>
 
 class BoolField : public FixedField {
 public:
@@ -179,33 +104,8 @@ public:
     int32 default_value;
 };
 
-class Int64Field : public FixedField {
-public:
-    typedef ExtentType::int64 int64;
-    Int64Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-	       int64 default_value = 0);
-
-    int64 val() const { 
-	if (isNull()) {
-	    return default_value;
-	} else {
-	    return *(int64 *)rawval();
-	}
-    }
-    void set(int64 val) {
-	*(int64 *)rawval() = val;
-	setNull(false);
-    }
-    void nset(int64 val, int64 null_val = -1) {
-	if (val == null_val) {
-	    setNull(true);
-	} else {
-	    set(val);
-	}
-    }
-
-    int64 default_value;
-};
+#include <DataSeries/Int64Field.hpp>
+#include <DataSeries/Int64TimeField.hpp>
 
 class DoubleField : public FixedField {
 public:
@@ -259,6 +159,8 @@ public:
 		    const std::string &default_value = empty_string);
 
     const byte *val() const {
+	DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
+			"internal error; extent not set or field not ready");
 	if (isNull()) {
 	    return (const byte *)default_value.c_str();
 	} else {
@@ -266,6 +168,8 @@ public:
 	}
     }
     const int32 size() const {
+	DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
+			"internal error; extent not set or field not ready");
 	if (isNull()) {
 	    return default_value.size();
 	} else {

@@ -53,6 +53,7 @@ libDataSeries_la_SOURCES = \
 	base/ExtentSeries.C \
 	base/ExtentType.C \
 	base/GeneralField.C \
+	base/Int64TimeField.cpp \
 	process/commonargs.C \
 	module/DSExpr.cpp \
 	module/DSExprParse.cpp \
@@ -82,12 +83,15 @@ dsrepack_SOURCES = process/dsrepack.C
 dsstatgroupby_SOURCES = process/dsstatgroupby.C
 
 # Converters
-bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs 
+bin_PROGRAMS += ds2txt pssimple2ds iphost2ds ellardnfs2ds ds2ellardnfs \
+	        wcweb2ds ds2wcweb
 ds2txt_SOURCES = process/ds2txt.C
 pssimple2ds_SOURCES = process/pssimple2ds.C
 iphost2ds_SOURCES = process/iphost2ds.C
 ellardnfs2ds_SOURCES = process/ellardnfs2ds.cpp
 ds2ellardnfs_SOURCES = process/ds2ellardnfs.cpp
+wcweb2ds_SOURCES = process/wcweb2ds.cpp
+ds2wcweb_SOURCES = process/ds2wcweb.cpp
 
 # Type-specific processing
 bin_PROGRAMS += textindex indexnfscommon nfssubset ellardanalysis
@@ -97,7 +101,8 @@ nfssubset_SOURCES = analysis/nfs/nfssubset.cpp
 ellardanalysis_SOURCES = process/ellardanalysis.cpp
 
 # Type specific analysis
-bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis
+bin_PROGRAMS += lvpvprocessusage ipdsanalysis lsfdsanalysis nfsdsanalysis \
+	wcanalysis
 bin_SCRIPTS += analysis/dsdecrypt
 lvpvprocessusage_SOURCES = process/lvpvprocessusage.C
 ipdsanalysis_SOURCES = process/ipdsanalysis.C process/sourcebyrange.C 
@@ -106,11 +111,13 @@ lsfdsanalysis_SOURCES = analysis/lsfdsanalysis.C \
 nfsdsanalysis_SOURCES = analysis/nfs/common.cpp analysis/nfs/mod1.cpp \
   analysis/nfs/mod2.cpp analysis/nfs/mod3.cpp analysis/nfs/mod4.cpp \
   analysis/nfs/nfsdsanalysis.cpp process/sourcebyrange.C
+wcanalysis_SOURCES = analysis/wcanalysis.cpp
 
 CHECK_TARGETS = ran.check-pssimple ran.check-test ran.check-dsselect \
 	ran.check-dsextentindex ran.check-dsstatgroupby \
 	ran.check-lsfdsanalysis ran.check-nfsdsanalysis \
-	ran.check-ellard
+	ran.check-ellard ran.check-worldcup ran.check-test-time-field \
+	ran.check-pack-pad-record ran.check-pack-field-ordering
 
 ### Conditional things
 
@@ -137,15 +144,18 @@ analysis/dsdecrypt: $(top_builddir)/config.status $(srcdir)/analysis/dsdecrypt.i
 
 ##### WITH_PCAP
 if WITH_PCAP
-bin_PROGRAMS += network-driverdump 
-network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C
-
-bin_PROGRAMS += nettrace2ds 
-
+bin_PROGRAMS += network-driverdump nettrace2ds 
+network_driverdump_SOURCES = raw-collection/network-driverdump/driverdump.C 
 nettrace2ds_SOURCES = process/nettrace2ds.C
 
 nettrace2ds_LDADD = libDataSeries.la -lpcap
 nobase_bpmodules_DATA += BatchParallel/nettrace2ds.pm 
+
+if WITH_LINUX_COMPILER_H
+bin_PROGRAMS += lindump-mmap 
+lindump_mmap_SOURCES = raw-collection/lindump-mmap.c
+endif
+
 endif
 
 ##### WITH_SRT
@@ -188,14 +198,24 @@ rebuild_DSExpr:
 
 ##### Testing...
 
-check_PROGRAMS = test
+check_PROGRAMS = test test-time-field test-pack-pad-record test-pack-field-ordering
 test_SOURCES = test.C 
 test_LDADD =  libDataSeries.la 
+test_time_field_SOURCES = tests/time-field.cpp
+test_time_field_LDADD = libDataSeries.la
+test_pack_pad_record_SOURCES = tests/pack-pad-record.cpp
+test_pack_pad_record_LDADD = libDataSeries.la
+test_pack_field_ordering_SOURCES = tests/pack-field-ordering.cpp
+test_pack_field_ordering_LDADD = libDataSeries.la
 
 check-local: $(CHECK_TARGETS)
 
+# TODO: should be able to do so now.
 # can't do a simple dataseries file compare because we put random data 
 # into the extentseries at the end.
+
+# *** WARNING, don't use | in any of the tests; if you do, then the error
+# *** conditions are not checked properly.
 
 ran.check-srt2ds: srt2ds cmpsrtds
 	./srt2ds $(top_srcdir)/check-data/hourly.03126.srt.bz2 h03126.ds 
@@ -228,6 +248,18 @@ ran.check-test: test ds2txt
 	rm test.ds test.txt complex-little.txt complex-big.txt
 	touch $@
 
+ran.check-test-time-field: test-time-field
+	./test-time-field
+	touch $@
+
+ran.check-pack-pad-record: test-pack-pad-record
+	./test-pack-pad-record
+	touch $@
+
+ran.check-pack-field-ordering: test-pack-field-ordering
+	./test-pack-field-ordering
+	touch $@
+
 ran.check-dsselect: dsselect ds2txt
 	@-rm dsselect.test.1
 	./dsselect --compress-gz --extent-size=524288 I/O enter_driver,bytes,machine_id,driver_type,disk_offset ~/projects/DataSeries/check-data/h03126.ds-littleend dsselect.test.1 >/dev/null
@@ -239,26 +271,35 @@ ran.check-dsselect: dsselect ds2txt
 ran.check-dsextentindex: dsextentindex ds2txt
 	@-rm test.index.1.ds test.index.2.ds
 	./dsextentindex --compress-lzf --new I/O enter_driver,machine_id,disk_offset,is_read test.index.1.ds $(top_srcdir)/check-data/h03126.ds-littleend
-	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl $(top_srcdir) >test.index.1.ds.txt
+	./ds2txt --skip-index test.index.1.ds >test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl <test.index.tmp >test.index.1.ds.txt
 	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1a.ref
 	./dsextentindex --compress-lzf test.index.1.ds $(top_srcdir)/check-data/h03126.ds-bigend
-	./ds2txt --skip-index test.index.1.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.1.ds.txt
+	./ds2txt --skip-index test.index.1.ds > test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl < test.index.tmp >test.index.1.ds.txt
 	cmp test.index.1.ds.txt $(top_srcdir)/check-data/test.index.1b.ref
 	./dsextentindex --compress-lzf --new Batch::LSF::Grizzly cluster_name,submit_time,end_time test.index.2.ds $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds 
-	./ds2txt --skip-index test.index.2.ds | perl $(top_srcdir)/check-data/index-fixup.pl >test.index.2.ds.txt
+	./ds2txt --skip-index test.index.2.ds > test.index.tmp
+	perl $(top_srcdir)/check-data/index-fixup.pl < test.index.tmp >test.index.2.ds.txt
 	cmp test.index.2.ds.txt $(top_srcdir)/check-data/test.index.2.ref
+	rm test.index.tmp
 	touch $@
 
 ran.check-dsstatgroupby: dsstatgroupby
-	./dsstatgroupby 'I/O' basic '1000*(return_to_driver - leave_driver)' group by 'device_number' basic 'bytes/1024' group by 'machine_id' from ~/projects/DataSeries/check-data/h03126.ds-littleend | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.1
+	./dsstatgroupby 'I/O' basic '1000*(return_to_driver - leave_driver)' group by 'device_number' basic 'bytes/1024' group by 'machine_id' from ~/projects/DataSeries/check-data/h03126.ds-littleend >test.dsstatgroupby-tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl <test.dsstatgroupby-tmp >test.dsstatgroupby.1
 	cmp test.dsstatgroupby.1 $(top_srcdir)/check-data/test.dsstatgroupby.1.ref
-	./dsstatgroupby 'Batch::LSF' basic 'start_time - submit_time' where 'start_time - submit_time > 50000' group by 'production' basic 'cpu_time/(end_time-start_time)' group by production quantile 'start_time - submit_time' where 'start_time - submit_time > 50000' group by production from ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds | perl $(top_srcdir)/check-data/clean-timing.pl >test.dsstatgroupby.2
+	./dsstatgroupby 'Batch::LSF' basic 'start_time - submit_time' where 'start_time - submit_time > 50000' group by 'production' basic 'cpu_time/(end_time-start_time)' group by production quantile 'start_time - submit_time' where 'start_time - submit_time > 50000' group by production from ~/projects/DataSeries/check-data/lsb.acct.2007-01-01-p1.ds >test.dsstatgroupby.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl <test.dsstatgroupby.tmp >test.dsstatgroupby.2
 	cmp test.dsstatgroupby.2 $(top_srcdir)/check-data/test.dsstatgroupby.2.ref
+	rm test.dsstatgroupby.tmp
 	touch $@
 
 ran.check-lsfdsanalysis: lsfdsanalysis
-	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  | perl $(top_srcdir)/check-data/clean-timing.pl >check.lsfdsanalysis.txt
+	./lsfdsanalysis -a 60:1167681240:1167681600:all,production: -a 120:1167681240:1167681600:all,sequence: -a 60:1167681240:1167681600:all,production:'start_time > 1167681360' $(top_srcdir)/check-data/lsb.acct.2007-01-01-p1.ds  >check.lsfdsanalysis.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl < check.lsfdsanalysis.tmp >check.lsfdsanalysis.txt
 	cmp check.lsfdsanalysis.txt $(top_srcdir)/check-data/check.lsfdsanalysis.ref
+	rm check.lsfdsanalysis.tmp
 	touch $@
 
 ran.check-dstypes2cxx: dstypes2cxx
@@ -269,8 +310,10 @@ ran.check-dstypes2cxx: dstypes2cxx
 	touch $@
 
 ran.check-nfsdsanalysis: nfsdsanalysis
-	./nfsdsanalysis -a -j $(top_srcdir)/check-data/nfs.set6.20k.ds | perl $(top_srcdir)/check-data/clean-timing.pl >check.nfsdsanalysis.txt
+	./nfsdsanalysis -a -j -l 1 -z e8535201c2cca3052000000000393dcb82c6fc08d6390035400000006bfc0800 -z $(top_srcdir)/check-data/nfs.set6.20k.testfhs $(top_srcdir)/check-data/nfs.set6.20k.ds >check.nfsdsanalysis.tmp
+	perl $(top_srcdir)/check-data/clean-timing.pl < check.nfsdsanalysis.tmp >check.nfsdsanalysis.txt
 	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
+	rm check.nfsdsanalysis.tmp
 	touch $@
 
 ran.check-lsfdsplots: ran.check-dsextentindex analysis/lsfdsplots
@@ -288,6 +331,15 @@ ran.check-ellard: ellardnfs2ds ds2ellardnfs ellardanalysis $(top_srcdir)/check-d
 	cmp ellard-data.txt $(top_srcdir)/check-data/ellard-raw-data.txt 
 	./ellardanalysis ellard.ds >ellard-analysis.txt
 	cmp ellard-analysis.txt $(top_srcdir)/check-data/ellard-analysis.txt.ref
+	touch $@
+
+ran.check-worldcup: wcweb2ds ds2wcweb wcanalysis $(top_srcdir)/check-data/wc_day50_4.head
+	-rm wcweb.ds wcweb.raw wcweb.analysis
+	./wcweb2ds $(top_srcdir)/check-data/wc_day50_4.head wcweb.ds
+	./ds2wcweb wcweb.ds >wcweb.raw
+	cmp $(top_srcdir)/check-data/wc_day50_4.head wcweb.raw
+	./wcanalysis wcweb.ds >wcweb.analysis 2>/dev/null
+	cmp wcweb.analysis $(top_srcdir)/check-data/wc_day50_4.analysis
 	touch $@
 
 if ENABLE_PAPER

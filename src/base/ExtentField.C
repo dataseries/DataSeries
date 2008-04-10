@@ -7,31 +7,53 @@
 #include <Lintel/Double.H>
 #include <DataSeries/ExtentField.H>
 
-Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, int _flags)
+using namespace std;
+using boost::format;
+
+Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
+	     uint32_t _flags)
     : nullable(0),null_offset(0), null_bit_mask(0), 
-    dataseries(_dataseries), fieldname(_fieldname), flags(_flags) 
+      dataseries(_dataseries), flags(_flags), fieldname(_fieldname) 
 {
+}
+
+Field::~Field()
+{
+    dataseries.removeField(*this);
+}
+
+void
+Field::setFieldName(const string &new_name)
+{
+    INVARIANT(!new_name.empty(), "Can't set field name to empty");
+    fieldname = new_name;
+    if (dataseries.getType() != NULL) {
+	newExtentType();
+    }
 }
 
 void 
 Field::newExtentType()
 {
+    SINVARIANT(!fieldname.empty());
     if (flags & flag_nullable) {
 	nullable = dataseries.type->getNullable(fieldname);
 	if (nullable) {
 	    std::string nullfieldname = ExtentType::nullableFieldname(fieldname);
-	    AssertAlways(dataseries.type->getFieldType(nullfieldname) == ExtentType::ft_bool,("internal error\n"));
+	    SINVARIANT(dataseries.type->getFieldType(nullfieldname) == ExtentType::ft_bool);
 	    null_offset = dataseries.type->getOffset(nullfieldname);
+	    SINVARIANT(null_offset >= 0);
 	    int bitpos = dataseries.type->getBitPos(nullfieldname);
+	    SINVARIANT(bitpos >= 0);
 	    null_bit_mask = 1 << bitpos;
 	} else {
 	    null_offset = 0;
 	    null_bit_mask = 0;
 	}
     } else {
-	AssertAlways(dataseries.type->getNullable(fieldname) == false,
-		     ("field %s accessor doesn't support nullable fields\n",
-		      fieldname.c_str()));
+	INVARIANT(dataseries.type->getNullable(fieldname) == false,
+		  format("field %s accessor doesn't support nullable fields")
+		  % getName());
     }
 }
 
@@ -40,21 +62,27 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
     : Field(_dataseries,field, flags), size(-1), offset(-1),
       fieldtype(ft)
 {
-    AssertAlways(dataseries.type == NULL ||
-		 dataseries.type->getFieldType(field) == ft,
-		 ("mismatch on field types for field %s in type %s\n",
-		  field.c_str(), dataseries.type->name.c_str()));
+    INVARIANT(dataseries.type == NULL || field.empty() || 
+	      dataseries.type->getFieldType(field) == ft,
+	      format("mismatch on field types for field %s in type %s")
+	      % field % dataseries.type->name);
+}
+
+FixedField::~FixedField()
+{
 }
 
 void
 FixedField::newExtentType()
 {
+    if (getName().empty())
+	return; // Don't have a name yet.
     Field::newExtentType();
-    size = dataseries.type->getSize(fieldname);
-    offset = dataseries.type->getOffset(fieldname);
-    AssertAlways(dataseries.type->getFieldType(fieldname) == fieldtype,
-		 ("mismatch on field types for field named %s in type %s\n",
-		  fieldname.c_str(),dataseries.type->name.c_str()));
+    size = dataseries.type->getSize(getName());
+    offset = dataseries.type->getOffset(getName());
+    INVARIANT(dataseries.type->getFieldType(getName()) == fieldtype,
+	      format("mismatch on field types for field named %s in type %s")
+	      % getName() % dataseries.type->getName());
 }
 
 BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field, int flags,
@@ -69,7 +97,9 @@ void
 BoolField::newExtentType()
 {
     FixedField::newExtentType();
-    int bitpos = dataseries.type->getBitPos(fieldname);
+    if (getName().empty())
+	return; // Not ready yet
+    int bitpos = dataseries.type->getBitPos(getName());
     bit_mask = (byte)(1 << bitpos);
 }
 
@@ -97,6 +127,10 @@ Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, int 
     dataseries.addField(*this); 
 }
 
+Int64Field::~Int64Field()
+{
+}
+
 DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
 			 int flags, double _default_value)
     : FixedField(_dataseries,field, ExtentType::ft_double, flags),
@@ -108,11 +142,13 @@ DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
 void 
 DoubleField::newExtentType()
 {
+    if (getName().empty())
+	return;
     FixedField::newExtentType();
-    base_val = dataseries.type->getDoubleBase(fieldname);
-    AssertAlways(flags & flag_allownonzerobase || base_val == 0,
-		 ("accessor for field %s doesn't support non-zero base\n",
-		  fieldname.c_str()));
+    base_val = dataseries.type->getDoubleBase(getName());
+    INVARIANT(flags & flag_allownonzerobase || base_val == 0,
+	      format("accessor for field %s doesn't support non-zero base")
+	      % getName());
 }
 
 const std::string Variable32Field::empty_string("");
@@ -130,11 +166,12 @@ void
 Variable32Field::newExtentType()
 {
     Field::newExtentType();
-    offset_pos = dataseries.type->getOffset(fieldname);
-    unique = dataseries.type->getUnique(fieldname);
-    AssertAlways(dataseries.type->getFieldType(fieldname) == ExtentType::ft_variable32,
-		 ("mismatch on field types for field named %s in type %s\n",
-		  fieldname.c_str(),dataseries.type->name.c_str()));
+    offset_pos = dataseries.type->getOffset(getName());
+    unique = dataseries.type->getUnique(getName());
+    INVARIANT(dataseries.type->getFieldType(getName()) 
+	      == ExtentType::ft_variable32,
+	      format("mismatch on field types for field named %s in type %s")
+	      % getName() % dataseries.type->name);
 }
 
 void
@@ -144,7 +181,7 @@ Variable32Field::dosetandguard(byte *vardatapos,
 {
     *(int32 *)vardatapos = datasize;
     byte *i = vardatapos + 4;
-    AssertAlways((unsigned long)i % 8 == 0,("internal error\n"));
+    SINVARIANT((unsigned long)i % 8 == 0);
     memcpy(i,data,datasize);
     i += datasize;
     switch(roundup - datasize) 
@@ -158,28 +195,29 @@ Variable32Field::dosetandguard(byte *vardatapos,
 	case 1: *i = 0; ++i;
 	case 0: 
 	    break;
-	default: AssertFatal(("internal error\n"));
+	default: FATAL_ERROR("internal error");
 	}
-    AssertAlways((unsigned long)(i + 4) % 8 == 0,
-		 ("internal error %lx %lx %lx\n",(unsigned long)vardatapos,
-		  (unsigned long)(vardatapos + 4 + datasize),
-		  (unsigned long)(vardatapos + 4 + datasize + (roundup - datasize))));
+    INVARIANT((unsigned long)(i + 4) % 8 == 0,
+	      format("internal error %lx %lx %lx\n")
+	      % (unsigned long)vardatapos 
+	      % (unsigned long)(vardatapos + 4 + datasize)
+	      % (unsigned long)(vardatapos + 4 + datasize 
+				+ (roundup - datasize)));
 }
 
 void
 Variable32Field::set(const void *data, int32 datasize)
 {
     int32 varoffset = getVarOffset();
-    AssertAlways(datasize >= 0,("invalid datasize, %d < 0\n",datasize));
+    INVARIANT(datasize >= 0, format("invalid datasize, %d < 0") % datasize);
     if (datasize == 0) {
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = 0;
-	AssertAlways(*(int32 *)dataseries.extent()->variabledata.begin() == 0,
-		     ("internal error\n"));
+	SINVARIANT(*(int32 *)dataseries.extent()->variabledata.begin() == 0)
 	setNull(false);
 	return;
     }
     int32 roundup = roundupSize(datasize);
-    AssertAlways((roundup+4) % 8 == 0,("internal error\n"));
+    SINVARIANT((roundup+4) % 8 == 0);
     int32 old_size = size(dataseries.extent()->variabledata,
 			  varoffset);
     if (old_size != 0 && datasize < roundupSize(old_size) && unique == false) {
@@ -190,34 +228,38 @@ Variable32Field::set(const void *data, int32 datasize)
 	dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
 	*(int32 *)(dataseries.pos.record_start() + offset_pos) = varoffset;
     }
+    SINVARIANT(data != NULL);
     dosetandguard((byte *)vardata(dataseries.extent()->variabledata,varoffset),
 		  data,datasize,roundup);
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
     selfcheck(dataseries.extent()->variabledata,varoffset);
+#endif
     setNull(false);
 }
 
 void
 Variable32Field::selfcheck(Extent::ByteArray &varbytes, int32 varoffset)
 {
-    AssertAlways(varoffset >= 0 && (unsigned int)varoffset <= (varbytes.size() - 4),
-		 ("Internal error, bad variable offset %d\n",varoffset));
+    INVARIANT(varoffset >= 0 
+	      && (uint32_t)varoffset <= (varbytes.size() - 4),
+	      format("Internal error, bad variable offset %d") % varoffset);
     if (varoffset == 0) {
 	// special case this check, as it is slightly different
-	AssertAlways(*(int32 *)varbytes.begin() == 0,
-		     ("Whoa, zero string got a size\n"));
+	INVARIANT(*(int32 *)varbytes.begin() == 0,
+		  "Whoa, zero string got a size");
 	return;
     }
-    AssertAlways((varoffset % 4) == 0,
-		 ("Internal error, bad variable offset\n"));
-    AssertAlways(varoffset == 0 || ((varoffset + 4) % 8) == 0,
-		 ("Internal error, bad variable offset\n"));
+    INVARIANT((varoffset % 4) == 0,
+	      "Internal error, bad variable offset");
+    INVARIANT(varoffset == 0 || ((varoffset + 4) % 8) == 0,
+	      "Internal error, bad variable offset");
     int32 size = *(int32 *)(vardata(varbytes,varoffset));
-    AssertAlways(size >= 0,("Internal error, bad variable size\n"));
+    INVARIANT(size >= 0,"Internal error, bad variable size");
     int32 roundup = roundupSize(size);
-    AssertAlways((unsigned int)(varoffset + 4 + roundup) <= varbytes.size(),
-		 ("Internal error, bad variable offset\n"));
+    INVARIANT((unsigned int)(varoffset + 4 + roundup) <= varbytes.size(),
+	      "Internal error, bad variable offset");
     for(int32 i=size;i<roundup;++i) {
-	AssertAlways(*(byte *)vardata(varbytes,varoffset + 4 + i) == 0,
-		     ("Internal error, bad padding\n"));
+	INVARIANT(*(byte *)vardata(varbytes,varoffset + 4 + i) == 0,
+		  "Internal error, bad padding");
     }
 }

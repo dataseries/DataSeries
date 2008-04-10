@@ -28,6 +28,10 @@ static HashMap<string,string> raw2encrypted;
 static uint32_t encrypt_memoize_entries = 1000000;
 
 HashMap<string,string> encrypted_to_okstring; 
+static HashMap<string,string> raw2encrypted;
+
+static uint32_t encrypt_memoize_entries = 1000000;
+
 
 string
 shastring(const string &in)
@@ -50,6 +54,7 @@ prepareEncrypt(const std::string &key_a, const std::string &key_b)
 	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     AES_set_encrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&encrypt_key);
     AES_set_decrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&decrypt_key);
+    raw2encrypted.clear();
 }
 
 struct eokent {
@@ -152,6 +157,8 @@ static testlist tests[] = {
 void
 runCryptUtilChecks()
 {
+    uint32_t save_memoize = encrypt_memoize_entries;
+    encrypt_memoize_entries = 0;
     prepareEncrypt("abcdefghijklmnop","0123456789qrstuv");
 
     for(unsigned i = 0;!tests[i].in.empty(); ++i) {
@@ -171,6 +178,7 @@ runCryptUtilChecks()
 	in.append(" ");
     }
     if (false) cout << "CryptUtilChecks passed." << endl;
+    encrypt_memoize_entries = save_memoize;
 }
 
 void
@@ -242,7 +250,6 @@ aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
     }
     AES_decrypt((const unsigned char *)v,(unsigned char *)v, key);
 }
-
 void
 encryptMemoizeMaxents(uint32_t nentries) 
 {

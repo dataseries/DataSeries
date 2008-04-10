@@ -16,9 +16,13 @@ nobase_include_HEADERS = \
 	DataSeries/ExtentField.H \
 	DataSeries/ExtentSeries.H \
 	DataSeries/ExtentType.H \
+	DataSeries/Field.hpp \
+	DataSeries/FixedField.hpp \
 	DataSeries/GeneralField.H \
 	DataSeries/GroupByModule.H \
 	DataSeries/IndexSourceModule.H \
+	DataSeries/Int64Field.hpp \
+	DataSeries/Int64TimeField.hpp \
 	DataSeries/MinMaxIndexModule.H \
 	DataSeries/DataSeriesModule.H \
 	DataSeries/PrefetchBufferModule.H \

@@ -13,6 +13,8 @@
 #include "analysis/nfs/mod4.hpp"
 
 using namespace std;
+using boost::format;
+
 class ServersPerFilehandle : public NFSDSModule {
 public:
   ServersPerFilehandle(DataSeriesModule &_source)
@@ -141,20 +143,18 @@ public:
 	for(vector<hteData *>::iterator i=vals.begin(); i!=vals.end(); ++i) {
 	  hteData *j = *i;
 
-	  printf("%s %d %d",
-		 hexstring(j->filehandle).c_str(),
-		 j->filehandle.size(),
-		 j->servers.size());
+	  cout << format("%s %d %d") % hexstring(j->filehandle)
+	      % j->filehandle.size() % j->servers.size();
 
 	  for(unsigned int k=0; k<j->servers.size(); ++k) {
-	    printf(" %s %.0f %.0f %.0f %.0f",
-		   ipv4tostring(j->servers[k].server).c_str(),
-		   j->servers[k].size->min(),
-		   j->servers[k].size->max(),
-		   j->servers[k].modify->min(),
-		   j->servers[k].modify->max());
+	      cout << format(" %s %.0f %.0f %.0f %.0f")
+		  % ipv4tostring(j->servers[k].server)
+		  % j->servers[k].size->min()
+		  % j->servers[k].size->max()
+		  % j->servers[k].modify->min()
+		  % j->servers[k].modify->max();
 	  }
-	  printf("\n");
+	  cout << "\n";
 	}
 
 	//	printf("End-%s\n",__PRETTY_FUNCTION__);

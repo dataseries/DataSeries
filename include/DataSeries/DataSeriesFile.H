@@ -153,6 +153,10 @@ public:
     /// compressor_count == -1 ==> use # cpus. 0 ==> no threading;
     // needs to be called before you create a sink to have any effect.
     static void setCompressorCount(int compressor_count = -1);
+
+    const std::string &getFilename() const {
+	return filename;
+    }
 private:
     struct toCompress {
 	Extent extent;
@@ -206,7 +210,10 @@ private:
     bool shutdown_workers;
     Deque<toCompress *> pending_work;
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
-    PThreadCond available_queue_cond, available_work_cond, available_write_cond;
+    PThreadCond available_queue_cond, available_work_cond, 
+				   available_write_cond;
+
+    const std::string filename;
     friend class DataSeriesSinkPThreadCompressor;
     void compressorThread();
     friend class DataSeriesSinkPThreadWriter;
@@ -219,5 +226,5 @@ operator-(const DataSeriesSink::Stats &a, const DataSeriesSink::Stats &b) {
     ret -= b;
     return ret;
 }
-    
+
 #endif

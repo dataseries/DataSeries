@@ -10,6 +10,8 @@
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 
+using namespace std;
+
 ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
     : typeCompatibility(_tc)
 {
@@ -22,6 +24,14 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 	my_extent = e;
 	pos.reset(e);
     }
+}
+
+ExtentSeries::~ExtentSeries()
+{
+    INVARIANT(my_fields.size() == 0, 
+	      boost::format("You still have fields such as %s live on a series over type %s")
+	      % my_fields[0]->getName() 
+	      % (type == NULL ? "unset type" : type->getName()));
 }
 
 void
@@ -43,14 +53,13 @@ ExtentSeries::setType(const ExtentType &_type)
 	case typeLoose:
 	    break;
 	default:
-	    AssertFatal(("internal error\n"));
+	    FATAL_ERROR(boost::format("unrecognized type compatibility option %d") % typeCompatibility);
 	}
 
     type = &_type;
-    for(std::vector<Field *>::iterator i = my_fields.begin();
+    for(vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end();++i) {
-	AssertAlways(&(**i).dataseries == this,
-		     ("Internal error\n"));
+	SINVARIANT(&(**i).dataseries == this)
 	(**i).newExtentType();
     }
 }
@@ -74,19 +83,35 @@ ExtentSeries::addField(Field &field)
     my_fields.push_back(&field);
 }
 
-void
-ExtentSeries::iterator::setpos(byte *new_pos)
+void ExtentSeries::removeField(Field &field, bool must_exist)
 {
-    unsigned recnum = (new_pos - cur_extent->fixeddata.begin()) / recordsize;
+    bool found = false;
+    for(vector<Field *>::iterator i = my_fields.begin(); 
+	i != my_fields.end(); ++i) {
+	if (*i == &field) {
+	    found = true;
+	    my_fields.erase(i);
+	    break;
+	}
+    }
+    SINVARIANT(!must_exist || found);
+}
+
+void
+ExtentSeries::iterator::setPos(const void *_new_pos)
+{
+    const byte *new_pos = static_cast<const byte *>(_new_pos);
+    byte *cur_begin = cur_extent->fixeddata.begin();
+    unsigned recnum = (new_pos - cur_begin) / recordsize;
     INVARIANT(cur_extent != NULL, "no current extent?");
-    INVARIANT(new_pos >= cur_extent->fixeddata.begin(), 
+    INVARIANT(new_pos >= cur_begin, 
 	      "new pos before start");
     INVARIANT(new_pos <= cur_extent->fixeddata.end(),
 	      "new pos after end");
-    size_t offset = new_pos - cur_extent->fixeddata.begin();
+    size_t offset = new_pos - cur_begin;
     INVARIANT(recnum * recordsize == offset,
 	      "new position not aligned to record boundary");
-    cur_pos = new_pos;
+    cur_pos = cur_begin + offset;
 }
 
 void
@@ -111,8 +136,8 @@ ExtentSeries::iterator::update(Extent *e)
 void
 ExtentSeries::iterator::forceCheckOffset(long offset)
 {
-    AssertAlways(cur_extent != NULL, 
-		 ("internal error, current extent is NULL"));
+    INVARIANT(cur_extent != NULL, 
+	      "internal error, current extent is NULL");
     INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
 	      cur_pos + offset < cur_extent->fixeddata.end(),
 	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n") 

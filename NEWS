@@ -1,3 +1,28 @@
+2008-03-26:
+  * Added the lindump-mmap raw collection program.  lindump-mmap is
+    roughly twice as efficient at doing packet capture as tcpdump, but
+    is linux specific.
+
+2008-02-27:
+  * Fix up nfsds host analysis module, useful for figuring out how many 
+    operations are going in/out of each of the hosts.  Example of how to make
+    a plot is included in src/analysis/nfs/mod1.cpp
+
+2008-01-27:
+  * Add in doc/tr; the technical report we've been writing.  Includes the
+    writeup of the Ellard work.
+
+2008-01-21: 
+  * Tune parallel reading; potentially more to be done.
+
+2008-01-08:
+  * Make ExtentType const everywhere; this allows us to use it in more places,
+    but requires users to change their code.
+
+2008-01-04:
+  * Add support for parallel reading in the IndexSourceModule's.  Has tuning
+    parameters for size of uncompressed and compressed data to be prefetching.
+
 2007-12-31: 
   * Three programs for working with the Daniel Ellard Harvard NFS traces have
     been implemented and tested on the home04 set of traces.  ellardnfs2ds
@@ -8,8 +33,8 @@
     module for converting the Ellard traces, it will convert the traces to
     dataseries and check that the conversion was correct by converting back.
     When both formats are compressed using gzip, the DataSeries files are
-    approximately 1.41x smaller than the text onces.  When compressed with lzo,
-    analysis runs in about 30x less cpu-time using DataSeries.
+    approximately 0.76x the size of the text ones.  Analysis runs 76-107x
+    faster on a 4 core machine, and uses about 25x less cpu time.
 
 2007-12-28: 
   * Null compacting has been implemented.  This performs a transform on the
@@ -20,8 +45,92 @@
     it currently generates a warning; the warning will be removed once null
     compaction is tried with a second data type.
 
+2007-12-07:
+  * Extent ExtentType matching to be substring so we don't have to remember
+    the entire name for programs like ds2txt and dsstatgroupby.
+
 2007-11-05:
   * nfsdsanalysis program added, only one of the analysis has been tested,
     so it is the only one enabled.
   * NEWS file created
 
+2007-10-30:
+  * dstypes2cxx gets a mode that automatically generates a row analysis 
+    module; this is probably how you want to make an initial program.
+
+2007-10-11:
+  * Add in lsfdsplots -- a program that uses lsfdsanalysis to generate graphs.
+  * Add in dsdecrypt -- a program that can detect and decrypt encrypted strings
+    in DataSeries files.
+
+2007-10-02:
+  * Add in initial where clause support to dsstatgroupby.
+
+2007-09-30:
+  * Add in lsfdsanalysis program for analyzing LSF batch accounting logs
+
+2007-09-27:
+  * Add in filesystem enumerator.  Useful for finding all of the files that
+    are not in use; this can then be combined with tcpdump and
+    nettrace2ds to get ds files
+  * Add in host pinger so we can detect which file servers are local.
+
+2007-09-26:
+  * dsrepack batch-parallel module so we can repack in parallel over a 
+    directory hierarchy
+
+2007-09-15:
+  * Switch license to BSD.
+  * Add support for general expressions to dsstatgroupby.
+
+2007-09-11:
+  * Add support for parallel compression.  As a side effect this means that
+    writing to data series files does not impact latency much because
+    compression happens in a separate thread.
+
+2007-09-01:
+  * Optimize extent reading to avoid zeroing byte arrays when it's unnecessary.
+
+2007-08-30:
+  * Extend dsrepack so that it can split files into multiple pieces.
+
+2007-08-28:
+  * Change defaults on validating checksums so that we only do validation
+    if things are otherwise going to be slow (e.g. dsrepack, ds2txt), or if
+    the user sets the environment variable.
+
+2007-08-07:
+  * iphost2ds.C: new program for converting ip hostnames pairs into
+    dataseries.
+
+2007-08-02:
+  * bacct2ds.C: new program for converting LSF batch accounting logs
+    into dataseries.  Also parses job names and directories to extract out
+    some site-specific features.
+
+2007-04-20:
+  * Use a chained checksum rather than a random value in the tail of the file
+    so cmp will agree files are identical.
+  * Add support for version numbers and namespaces to ExtentType
+  * Add support to process pcap files in nettrace2ds
+
+2007-02-23: 
+  * Add nettrace2ds batch-parallel module so we can do big runs over
+    many files.
+
+2007-01-08:
+  * New dsstatgroupby program and module for calculating statistics over
+    an expression grouped by a column.  Initial expressions very limited.
+
+2007-01-05:
+  * Import liblzf-1.6 into DataSeries so we will always have that compression 
+    algorithm.
+
+2007-01-02:
+  * Rename all the includes to be #include <DataSeries/...>
+
+2006-12-26:
+  * Implement dsrepack that lets you take a dataseries file and repack it 
+    into another file with different extent size and compression options.
+
+---- Updates before here not yet put into NEWS ----

@@ -30,6 +30,8 @@ sub new {
 # module; re-use it in the various dataseries modules
 	} elsif (/^compress=((lzo)|(gz)|(bz2)|(lzf))$/o) {
 	    push(@{$this->{compress}}, "--enable-$1");
+	} elsif (/^compress-level=([1-9])$/o) {
+	    $this->{compress_level} = "--compress-level=$1";
 	} elsif (/^extent-size=(\d+(\.\d+)?)([km])?$/o) {
 	    die "Can't set multiple extent sizes" 
 		if defined $this->{extent_size};
@@ -121,8 +123,8 @@ sub subdir_transform {
 # TODO: move this into Pod::Usage or something
 sub usage {
     print <<'END_OF_USAGE';
-batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [extent-size=#[km]] 
-  [mode=split:#kmg] [mode=merge[:#:regex]]
+batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [compress-level=0-9]
+  [extent-size=#[km]] [mode=split:#kmg] [mode=merge[:#:perl-expr]]
   [transform={perl-expr}|subdir] 
   [ignore=regex] [require=regex]
   -- file/directory...
@@ -153,17 +155,25 @@ batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [extent-size=#[km]]
      each merge group.  Both of these will only combine files that map 
      to the same output under the transform.
      a) In mode=merge, this sets the require regex to be /\.part-##.ds\$/, 
-        and the transform strips off the .part-## portion of the name
+        and the transform removes the .part-## portion of the name
      b) In mode=merge:#:regex, this sets the require regex to regex,
-        extracts $1 from each regex, and sorts the files by that value
-        either numerically or alphabetically, the transform is set to
+        extracts $1 from each regex. Then it sorts the files by that value
+        either numerically or alphabetically. Finally the transform is set to
         create files named <transform-output>.$first-$last.ds where
         $first and $last are the first and last $1's of each group.
+
+Examples:
+
+ # Take files named *.###{,.prune}.ds, make groups of 101 files
+ # (eliminated a group of 1 file and a group of 6); rewrite the paths
+ # to put them in an entirely different place, and make them all named 
+ # network.#-#.ds (This is how we prepared the NFS traces for distribution)
+ % batch-parallel --noshuffle -n dsrepack mode=merge:101:'/\.(\d+)(\.prune)?\.ds$/o' compress=bz2 extent-size=16m transform='s,/mnt/fileserver-2/a/(.+)/[^/]+\.\d+(\.prune)?\.ds,/mnt/fileserver-1/b/user/anderse/bz2-pack/$1/network,o' -- set-?
 
 END_OF_USAGE
 
 # Example complex merge
-# batch-parallel --noshuffle dsrepack -n compress=lzf 'mode=merge:7:/lsb.acct.\d+-\d+-(\d+)/' transform='s,/gld-lzf/(\d+)/(\d+)/lsb.acct.*ds,/gld-merge/$1/lsb.acct.$1-$2.ds,' -- gld-lzf/2007/01/
+# 
 
 }
 
@@ -258,8 +268,8 @@ sub find_things_to_build {
 		
 	    if (defined $this->{merge_count}) {
 		my $destbase = $destpath;
-		die "$destpath doesn't end with .ds??"
-		    unless $destbase =~ s/\.ds$//o;
+		warn "$destpath ends with .ds, this probably isn't what you want."
+		    if $destbase =~ /\.ds$/o;
 		while (@sources > 0) {
 		    my @chunk = splice(@sources, 0, $this->{merge_count});
 		    my $start = $source2order{$chunk[0]};
@@ -346,8 +356,11 @@ sub rebuild_thing_do {
     my($this) = @_;
 
     my $old_modify = -M "$this->{dest}-new" || 1;
-    die "rebuild of $this->{dest} failed"
-	unless $this->rebuild("$this->{dest}-new");
+
+    unless ($this->rebuild("$this->{dest}-new")) {
+	die "rebuild of $this->{dest} failed";
+    }
+
     my $new_modify = -M "$this->{dest}-new";
     die "?? $old_modify $new_modify" 
 	unless -e "$this->{dest}-new" && $old_modify > $new_modify;
@@ -357,7 +370,9 @@ sub rebuild_thing_do {
 sub rebuild_thing_success {
     my($this) = @_;
 
-    die "??" unless -e "$this->{dest}-new" && -M "$this->{dest}-new" <= 0;
+    die "?? $this->{dest}-new" unless -e "$this->{dest}-new";
+    die "??2 - $this->{dest}-new - " . (-M "$this->{dest}-new") 
+	unless -M "$this->{dest}-new" <= 1; # Could be 1 second in future because filesystem may only store seconds.
     rename("$this->{dest}-new", $this->{dest})
 	or die "Can't rename $this->{dest}-new to $this->{dest}: $!";
 }
@@ -388,7 +403,8 @@ sub rebuild {
     my $base = $this->{base};
     
     $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
-		    $base->{extent_size}, $this->{src}, $dest));
+		    $base->{compress_level}, $base->{extent_size}, 
+		    $this->{src}, $dest));
     return 1;
 };
 
@@ -430,7 +446,8 @@ sub rebuild {
 
     my $base = $this->{base};
     
-    $base->run(grep(defined, "dsrepack", @{$base->{compress}}, $base->{extent_size}, 
+    $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
+		    $base->{compress_level}, $base->{extent_size}, 
 		    $base->{target_file_size}, $this->{src}, $basename));
     
     # Mark (with empty file) we are done
@@ -470,7 +487,8 @@ sub rebuild {
 	unlink($dest) or die "can't unlink $dest: $!";
     }
     $base->run(grep(defined, "dsrepack", @{$base->{compress}}, 
-		    $base->{extent_size}, @{$this->{src}}, $dest));
+		    $base->{compress_level}, $base->{extent_size}, 
+		    @{$this->{src}}, $dest));
     return 1;
 }
 

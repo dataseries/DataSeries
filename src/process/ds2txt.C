@@ -83,9 +83,11 @@ main(int argc, char *argv[])
     }
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
-	      boost::format("Usage: %s [--csv] [--separator=...] [--printSpec=...] [--header=...]\n"
+	      boost::format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
 			    "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
-			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
+			    "  [--printSpec='<printSpec type=\"...\" name=\"...\" print_format=\"...\" ...>']\n"
+// fields is mostly obsolete, move to man page eventually
+//			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
 			    "  [--skip-extent-fieldnames] <file...>\n")
 	      % argv[0]);

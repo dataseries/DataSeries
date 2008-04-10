@@ -229,27 +229,151 @@ NFSDSAnalysisMod::newClientServerPairInfo(DataSeriesModule &prev)
     return new ClientServerPairInfo(prev);
 }
 
+// We do the rollup internal to this module rather than an external
+// program so if we switch to using statsquantile the rollup will
+// still work correctly.
+
+// To graph:
+// create a table like: create table nfs_perf (sec int not null, ops double not null);
+// perl -ane 'next unless $F[0] eq "*" && $F[1] =~ /^\d+$/o && $F[2] eq "send" && $F[3] eq "*" && $F[4] eq "*";print "insert into nfs_perf values ($F[1], $F[5]);\n";' < output of nfsdsanalysis -l ## run. | mysql test
+// use mercury-plot (from Lintel) to graph, for example:
+/*
+unplot
+plotwith * lines
+plot 3600*round((sec - min_sec)/3600,0) as x, avg(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ mean ops/s 
+plot 3600*round((sec - min_sec)/3600,0) as x, max(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ max ops/s
+plot 3600*round((sec - min_sec)/3600,0) as x, min(ops/(2*60.0)) as y from nfs_perf, (select min(sec) as min_sec from nfs_perf) as ms group by round((sec - min_sec)/3600,0)
+plottitle _ min ops/s
+gnuplot set xlabel "seconds"
+gnuplot set ylabel "operations (#requests+#replies)/2 per second"
+pngplot set-18.png
+*/
+
 class HostInfo : public RowAnalysisModule {
 public:
     HostInfo(DataSeriesModule &_source, const std::string &arg) 
-	: RowAnalysisModule(source),
-	  packet_at(series, "packet-at"),
-	  payload_length(series, "payload-length"),
-	  op_id(series, "op-id", Field::flag_nullable),
-	  nfs_version(series, "nfs-version"),
+	: RowAnalysisModule(_source),
+	  packet_at(series, ""),
+	  payload_length(series, ""),
+	  op_id(series, "", Field::flag_nullable),
+	  nfs_version(series, "", Field::flag_nullable),
 	  source_ip(series,"source"), 
-	  dest_ip(series, "dest")
+	  dest_ip(series, "dest"),
+	  is_request(series, "")
     {
 	group_seconds = stringToUInt32(arg);
+	host_to_data.reserve(5000);
     }
     virtual ~HostInfo() { }
 
+    void prepareForProcessing() {
+	const ExtentType *type = series.getType();
+	SINVARIANT(type != NULL);
+	if (type->getName() == "NFS trace: common") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
+	    packet_at.setFieldName("packet-at");
+	    payload_length.setFieldName("payload-length");
+	    op_id.setFieldName("op-id");
+	    nfs_version.setFieldName("nfs-version");
+	    is_request.setFieldName("is-request");
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(2,0)) {
+	    packet_at.setFieldName("packet_at");
+	    payload_length.setFieldName("payload_length");
+	    op_id.setFieldName("op_id");
+	    nfs_version.setFieldName("nfs_version");
+	    is_request.setFieldName("is_request");
+	} else {
+	    FATAL_ERROR("?");
+	}
+    }
+
+    struct TotalTime {
+	vector<Stats *> total;
+	uint32_t first_time_seconds;
+	uint32_t group_seconds;
+
+	TotalTime(uint32_t a, uint32_t b) : first_time_seconds(a), group_seconds(b) { }
+	
+	void add(Stats &ent, uint32_t seconds) {
+	    SINVARIANT(seconds % group_seconds == 0);
+	    SINVARIANT(seconds >= first_time_seconds);
+	    uint32_t offset = (seconds - first_time_seconds)/group_seconds;
+	    if (total.size() <= offset) {
+		total.resize(offset+1);
+	    }
+	    if (total[offset] == NULL) {
+		total[offset] = new Stats();
+	    }
+	    total[offset]->add(ent);
+	}
+
+	void print() {
+	    uint32_t cur_seconds = first_time_seconds;
+	    Stats complete_total;
+	    for(vector<Stats *>::iterator i = total.begin(); i != total.end(); ++i) {
+		if (*i != NULL) {
+		    cout << format("       * %10d  send           *        * %6lld %8.2f\n")
+			% cur_seconds % (**i).countll() % (**i).mean();
+		    complete_total.add(**i);
+		}
+		
+		cur_seconds += group_seconds;
+	    }
+	    cout << format("       *          *  send           *        * %6lld %8.2f\n")
+		% complete_total.countll() % complete_total.mean();
+	}
+    };
+
     struct PerDirectionData {
-	vector<Stats *> data;
-	void add(unsigned char raw_op_id, unsigned char nfs_version, 
-		 uint32_t bytes) {
-	    unsigned op_id = opIdToUnifiedId(raw_op_id, nfs_version);
-	    if (data.size() < op_id) {
+	vector<Stats *> req_data, resp_data;
+	void add(unsigned op_id, bool is_request, uint32_t bytes) {
+	    doAdd(op_id, bytes, is_request ? req_data : resp_data);
+	}
+
+	void print(uint32_t host_id, uint32_t seconds,
+		   const std::string &direction,
+		   Stats &total_req, Stats &total_resp,
+		   TotalTime *total_time) {
+	    doPrint(host_id, seconds, direction, "request", req_data, 
+		    total_req, total_time);
+	    doPrint(host_id, seconds, direction, "response", resp_data, 
+		    total_resp, total_time);
+	}
+
+    private:
+	void doPrint(uint32_t host_id, uint32_t seconds, 
+		     const std::string &direction, 
+		     const std::string &msgtype,
+		     const vector<Stats *> &data,
+		     Stats &bigger_total, TotalTime *total_time) {
+	    Stats total;
+	    for(unsigned i = 0; i < data.size(); ++i) {
+		if (data[i] == NULL) {
+		    continue;
+		}
+		total.add(*data[i]);
+		cout << format("%08x %10d %s %12s %8s %6lld %8.2f\n")
+		    % host_id % seconds % direction % unifiedIdToName(i) 
+		    % msgtype % data[i]->countll() % data[i]->mean();
+	    }
+	    if (total.countll() > 0) {
+		cout << format("%08x %10d %s            * %8s %6lld %8.2f\n")
+		    % host_id % seconds % direction 
+		    % msgtype % total.countll() % total.mean();
+		bigger_total.add(total);
+		if (total_time != NULL) {
+		    total_time->add(total, seconds);
+		}
+	    }
+	}
+
+	void doAdd(unsigned op_id, uint32_t bytes, vector<Stats *> &data) {
+	    if (data.size() <= op_id) {
 		data.resize(op_id+1);
 	    }
 	    if (data[op_id] == NULL) {
@@ -257,18 +381,7 @@ public:
 	    }
 	    data[op_id]->add(bytes);
 	}
-	void print(uint32_t host_id, uint32_t seconds, 
-		   const std::string &direction) {
-	    for(unsigned i = 0; i < data.size(); ++i) {
-		if (data[i] == NULL) {
-		    continue;
-		}
-		cout << format("%08x %10d %s %12s %lld %8.2f\n")
-		    % host_id % seconds % direction
-		    % unifiedIdToName(i) % data[i]->countll()
-		    % data[i]->mean();
-	    }
-	}
+
     };
 
     struct PerTimeData {
@@ -298,14 +411,34 @@ public:
 	    return *time_entries[entry];
 	}
 
-	void print(uint32_t host_id, uint32_t group_seconds) {
+	void printTotal(Stats &total, uint32_t host_id,
+			const std::string &direction,
+			const std::string &msgtype) {
+	    if (total.countll() > 0) {
+		cout << format("%08x          * %s            * %8s %6lld %8.2f\n")
+		    % host_id % direction % msgtype % total.countll() 
+		    % total.mean();
+	    }
+	}
+
+	void print(uint32_t host_id, uint32_t group_seconds, TotalTime &total_time) {
 	    uint32_t start_seconds = first_time_seconds;
+	    // Caches act as both senders and recievers.
+	    Stats total_send_req, total_send_resp, 
+		total_recv_req, total_recv_resp;
 	    for(vector<PerTimeData *>::iterator i = time_entries.begin();
 		i != time_entries.end(); ++i, start_seconds += group_seconds) {
-		(**i).send.print(host_id, start_seconds, "send");
-		(**i).recv.print(host_id, start_seconds, "recv");
+		if (*i != NULL) {
+		    (**i).send.print(host_id, start_seconds, "send", 
+				     total_send_req, total_send_resp, &total_time);
+		    (**i).recv.print(host_id, start_seconds, "recv", 
+				     total_recv_req, total_recv_resp, NULL);
+		}
 	    }
-
+	    printTotal(total_send_req,  host_id, "send", "request");
+	    printTotal(total_send_resp, host_id, "send", "response");
+	    printTotal(total_recv_req,  host_id, "recv", "request");
+	    printTotal(total_recv_resp, host_id, "recv", "response");
 	}
     };
 
@@ -313,27 +446,39 @@ public:
 
     virtual void processRow() {
 	uint32_t seconds = packet_at.val() / 1000000000;
+	unsigned unified_op_id = opIdToUnifiedId(nfs_version.val(),
+						op_id.val());
 	host_to_data[source_ip.val()]
 	    .getPerTimeData(seconds, group_seconds)
-	    .send.add(op_id.val(), nfs_version.val(), payload_length.val());
+	    .send.add(unified_op_id, is_request.val(), payload_length.val());
 	host_to_data[dest_ip.val()]
 	    .getPerTimeData(seconds, group_seconds)
-	    .recv.add(op_id.val(), nfs_version.val(), payload_length.val());
+	    .recv.add(unified_op_id, is_request.val(), payload_length.val());
 
     }
 
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << "host     time        dir          op    op-dir   count mean-payload\n";
+	uint32_t min_first_time = numeric_limits<uint32_t>::max();
 	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
 	    i != host_to_data.end(); ++i) {
-	    i->second.print(i->first, group_seconds);
+	    min_first_time = min(min_first_time, i->second.first_time_seconds);
 	}
+	SINVARIANT(min_first_time < numeric_limits<uint32_t>::max());
+	TotalTime total_time(min_first_time, group_seconds);
+	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
+	    i != host_to_data.end(); ++i) {
+	    i->second.print(i->first, group_seconds, total_time);
+	}
+	total_time.print();
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
     Int64Field packet_at;
     Int32Field payload_length;
     ByteField op_id, nfs_version;
     Int32Field source_ip, dest_ip;
+    BoolField is_request;
     uint32_t group_seconds;
 };
 
@@ -351,7 +496,8 @@ public:
 	  payload_length(s,"payload-length"),
 	  is_udp(s,"is-udp"),
 	  op_id(s,"op-id",Field::flag_nullable),
-	  min_time(ExtentType::int64_max), max_time(ExtentType::int64_min)
+	  min_time(numeric_limits<int64_t>::max()), 
+	  max_time(numeric_limits<int64_t>::min())
     { }
     virtual ~PayloadInfo() {}
 
@@ -1099,7 +1245,7 @@ public:
 	    printf("\n");
 	}
 
-	printf("Summary: %d duplicate responses\n", duplicateresponse.size());
+	cout << format("Summary: %d duplicate responses\n") % duplicateresponse.size();
 	if (print_detail) {
 	    printf("%-13s %-15s %-15s %-4s %-8s %-2s %-12s\n",
 		   "time", "client", "server", "prot", "xid", "op", "operation");

@@ -247,21 +247,62 @@ private:
     double first_seconds;
 };
 
+class EllardAnalysisFindGarbage : public RowAnalysisModule {
+public:
+    EllardAnalysisFindGarbage(DataSeriesModule &source,
+			      const string &_filename)
+	: RowAnalysisModule(source), filename(_filename),
+	  garbage(series, "garbage", Field::flag_nullable),
+	  short_packet(series, "short_packet"),
+	  time(series, "time")
+    { }
+
+    virtual void processRow() {
+	if (!short_packet.val() && garbage.isNull())
+	    return;
+	if (garbage.isNull()) {
+	    SINVARIANT(short_packet.val());
+	    cout << format("%s: %d.%06d short packet (con/len 130/400)\n")
+		% filename % (time.val() / 1000000) % (time.val() % 1000000);
+	} else {
+	    cout << format("%s: %d.%06d garbage: %s")
+		% filename % (time.val() / 1000000) % (time.val() % 1000000)
+		% garbage.stringval();
+	}
+    }
+private:
+    string filename;
+    Variable32Field garbage;
+    BoolField short_packet;
+    Int64Field time;
+};
+
 int
 main(int argc, char *argv[])
 {
-    TypeIndexModule source("Trace::NFS::Ellard");
-    PrefetchBufferModule *prefetch
-	= new PrefetchBufferModule(source, 64*1024*1024);
-
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
-	source.addSource(argv[i]);
+    if (false) {
+	for(int i = 1; i < argc; ++i) {
+	    TypeIndexModule source("Trace::NFS::Ellard");
+	    source.addSource(argv[i]);
+	    source.startPrefetching(32*1024*1024, 256*1024*1024);
+	    EllardAnalysisFindGarbage finder(source, argv[i]);
+	    finder.getAndDelete();
+	}
+	exit(0);
     }
 
-    SequenceModule seq(prefetch);
+    TypeIndexModule *source
+	= new TypeIndexModule("Trace::NFS::Ellard");
+
+    for(int i = 1; i < argc; ++i) {
+	source->addSource(argv[i]);
+    }
+
+    source->startPrefetching(32*1024*1024, 256*1024*1024); 
+    SequenceModule seq(source);
 
     vector<string> interesting;
     interesting.push_back("read");
@@ -278,6 +319,26 @@ main(int argc, char *argv[])
 
     seq.getAndDelete();
     RowAnalysisModule::printAllResults(seq);
+    IndexSourceModule::WaitStats wait_stats;
+    CHECKED(source->getWaitStats(wait_stats), "prefetching didn't happen??");
+
+    if (wait_stats.nextents == 0) {
+	cerr << "# 0 extents\n";
+    } else {
+	cerr << format("# %d extents: %.2f%% compressed downstream full\n")
+	    % wait_stats.nextents 
+	    % (100.0 * wait_stats.compressed_downstream_full / wait_stats.nextents);
+	cerr << format("# %.2f%% unpack no upstream, %.2f%% unpack downstream full\n")
+	    % (100.0 * wait_stats.unpack_no_upstream / wait_stats.nextents)
+	    % (100.0 * wait_stats.unpack_downstream_full / wait_stats.nextents);
+	cerr << format("# %d unpack yield ready, %d unpack yield front, %d skip unpack signal\n")
+	    % wait_stats.unpack_yield_ready
+	    % wait_stats.unpack_yield_front
+	    % wait_stats.skip_unpack_signal;
+	cerr << format("# %.2f mean active unpackers, %.2f%% consumer wait\n")
+	    % wait_stats.active_unpack_stats.mean()
+	    % (100.0 * wait_stats.consumer / wait_stats.nextents);
+    }
     return 0;
 }
 

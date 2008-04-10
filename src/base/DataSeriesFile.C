@@ -188,7 +188,7 @@ public:
 
 int DataSeriesSink::compressor_count = -1;
 
-DataSeriesSink::DataSeriesSink(const string &filename,
+DataSeriesSink::DataSeriesSink(const string &_filename,
 			       int _compression_modes,
 			       int _compression_level)
     : index_series(ExtentType::getDataSeriesIndexTypeV0()),
@@ -200,7 +200,7 @@ DataSeriesSink::DataSeriesSink(const string &filename,
       compression_level(_compression_level),
       chained_checksum(0), 
       bytes_in_progress(0), max_bytes_in_progress(256*1024*1024),
-      shutdown_workers(false)
+      shutdown_workers(false), filename(_filename)
 {
     stats.packed_size += 2*4 + 4*8;
 

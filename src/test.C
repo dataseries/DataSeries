@@ -14,16 +14,20 @@
 #include <sys/resource.h>
 #include <openssl/opensslv.h>
 #include <openssl/evp.h>
-#include <DataSeries/cryptutil.H>
+
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
 #include <lzoconf.h>
 #endif
+
+#include <boost/bind.hpp>
+
 #include <Lintel/HashTable.H>
 #include <Lintel/MersenneTwisterRandom.H>
 #include <Lintel/Clock.H>
 #include <Lintel/Stats.H>
 
+#include <DataSeries/cryptutil.H>
 #include <DataSeries/Extent.H>
 #include <DataSeries/ExtentField.H>
 #include <DataSeries/DataSeriesModule.H>
@@ -1117,7 +1121,7 @@ test_compactnull()
     cout << format("random null: %d rows, original bytes %d, packed %d\n")
 	% nrecords % extent1.extentsize() % packed.size();
 
-    BoolField g_bool(series2, "bool", Field::flag_nullable);
+    BoolField g_bool(series2, "", Field::flag_nullable);
     ByteField g_byte(series2, "byte", Field::flag_nullable);
     Int32Field g_int32(series2, "int32", Field::flag_nullable);
     Int32Field g_int32b(series2, "int32b", Field::flag_nullable);
@@ -1128,6 +1132,7 @@ test_compactnull()
     series1.setExtent(extent1);
     series2.setExtent(unpack1);
     for(int i=0;i<nrecords;i++) {
+	g_bool.setFieldName("bool"); // slow and inefficient, but for testing
 	INVARIANT((f_bool.isNull() && g_bool.isNull())
 		  || (!f_bool.isNull() && !g_bool.isNull() &&
 		      f_bool.val() == g_bool.val()), 
@@ -1160,6 +1165,91 @@ test_compactnull()
     cout << "test_compactnull - end\n";
 }
 
+void
+test_empty_field_name()
+{
+    MersenneTwisterRandom rand;
+    cout << format("test_empty_field_name - start seed=%d\n") % rand.seed_used;
+    ExtentTypeLibrary typelib;
+
+    // One real bool, 7 hidden ones
+    typelib.registerType("<ExtentType name=\"Test::EmptyFieldName\" >\n"
+			 "  <field type=\"int32\" name=\"int32a\" />\n"
+			 "  <field type=\"int32\" name=\"int32b\" />\n"
+			 "</ExtentType>\n");
+
+    ExtentSeries series1(typelib,"Test::EmptyFieldName");
+    Extent extent1(series1);
+    series1.setExtent(extent1);
+
+    int nrecords = 1000 + rand.randInt(10000);
+    series1.createRecords(nrecords);
+    Int32Field f_int32a(series1, "int32a");
+    Int32Field f_int32b(series1, "int32b");
+
+    for(int i=0; i < nrecords; ++i) {
+	f_int32a.set(rand.randInt());
+	f_int32b.set(rand.randInt());
+	series1.next();
+	SINVARIANT(series1.more());
+    }
+
+    series1.setExtent(extent1);
+    Int32Field f_switch(series1, "");
+    int counta = 0, countb = 0;
+    for(int i=0; i < nrecords; ++i) {
+	SINVARIANT(series1.more());
+	bool which = rand.randInt(2) == 0;
+	if (which) {
+	    ++counta;
+	    if (f_switch.getName() != "int32a" || rand.randInt(2) == 0) {
+		f_switch.setFieldName("int32a");
+	    }
+	    SINVARIANT(f_switch.val() == f_int32a.val());
+	} else {
+	    ++countb;
+	    if (f_switch.getName() != "int32b" || rand.randInt(2) == 0) {
+		f_switch.setFieldName("int32b");
+	    }
+	    SINVARIANT(f_switch.val() == f_int32b.val());
+	}
+    }
+    SINVARIANT(counta > nrecords / 3 && countb > nrecords / 3);
+    cout << "passed empty_field_name tests\n";
+}
+
+void
+test_extentseriescleanup()
+{
+    AssertBoostFnBefore(boost::bind(AssertBoostThrowExceptionFn,
+				    _1,_2,_3,_4));
+
+    bool caught = false;
+    try {
+	FATAL_ERROR("foo");
+    } catch (AssertBoostException &e) {
+	SINVARIANT(e.msg == "foo");
+	caught = true;
+    }
+    SINVARIANT(caught);
+    caught = false;
+    try {
+	{ 
+	    ExtentSeries tmp;
+	    BoolField *tmp2 = new BoolField(tmp, "buz");
+	    tmp2 = NULL;
+	}
+    } catch (AssertBoostException &e) {
+	AssertBoostClearFns();
+
+	SINVARIANT(e.expression == "my_fields.size() == 0");
+	SINVARIANT(e.msg == "You still have fields such as buz live on a series over type unset type");
+	caught = true;
+    }
+    SINVARIANT(caught);
+    cout << "Passed extent-series cleanup tests.\n";
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1174,4 +1264,5 @@ main(int argc, char *argv[])
     test_varcompress();
     test_doublebase_nullable();
     test_compactnull();
+    test_extentseriescleanup();
 }
