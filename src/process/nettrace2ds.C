@@ -121,6 +121,8 @@ enum CountTypes {
     rpc_tcp_reply_len,
     wire_len,
     readdir_continuations_ignored,
+    long_packets,
+    long_packets_port_2049,
     last_count // marker: maximum count of types
 };
 
@@ -159,6 +161,8 @@ string count_names[] = {
     "rpc_tcp_reply_len",
     "wire_len",
     "readdir_continuations_ignored",
+    "long_packets_ignored",
+    "long_packets_port_2049_ignored",
 };
 
 vector<int64_t> counts;
@@ -213,7 +217,7 @@ struct bandwidth_rolling {
     }
 
     void setStartTime(ExtentType::int64 start_time) {
-	INVARIANT(cur_time == 0 && start_time > 0, boost::format("bad %d %d") % cur_time % start_time);
+	INVARIANT(cur_time == 0 && start_time > 0, format("bad %d %d") % cur_time % start_time);
 	cur_time = start_time;
     }
 
@@ -256,16 +260,16 @@ public:
 
 	int ret = stat(filename.c_str(), &statbuf);
     
-	INVARIANT(ret == 0, boost::format("could not stat source file %s: %s")
+	INVARIANT(ret == 0, format("could not stat source file %s: %s")
 		  % filename % strerror(errno));
 	datasize = statbuf.st_size;
 
 	fd = open(filename.c_str(), O_RDONLY);
-	INVARIANT(fd > 0, boost::format("could not open source file %s: %s")
+	INVARIANT(fd > 0, format("could not open source file %s: %s")
 		  % filename % strerror(errno));
     
 	data = mmap(NULL, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
-	INVARIANT(data != MAP_FAILED, boost::format("could not mmap source file %s: %s")
+	INVARIANT(data != MAP_FAILED, format("could not mmap source file %s: %s")
 		  % filename % strerror(errno));
 	
 	// I don't know what madvise willneed does, but the net effect
@@ -372,7 +376,7 @@ public:
 	    INVARIANT(ret == BZ_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
 	    bufsize = destlen;
 	} else {
-	    FATAL_ERROR(boost::format("Don't know how to unpack %s") % filename);
+	    FATAL_ERROR(format("Don't know how to unpack %s") % filename);
 	}
 	myprefetcher->finish();
     }
@@ -387,7 +391,7 @@ public:
 	    openUncompress();
 	    buffer_cur = buffer;
 	    buffer_end = buffer + bufsize;
-	    cout << boost::format("%s size is %d") % filename % bufsize << endl;
+	    cout << format("%s size is %d") % filename % bufsize << endl;
 	}
 	
     retry:
@@ -412,10 +416,10 @@ public:
 	*time = *reinterpret_cast<uint64_t *>(buffer_cur); // This line is so little-endian specific
 	INVARIANT(buffer_cur[8] == 2, "unimplemented"); // type
 	INVARIANT(buffer_cur[9] == 4, // varying record lengths
-		  boost::format("unimplemented flags 0x%x") % static_cast<int>(buffer_cur[9])); // flags
+		  format("unimplemented flags 0x%x") % static_cast<int>(buffer_cur[9])); // flags
 	if (buffer_cur[12] != 0 || buffer_cur[13] != 0) {
 	    counts[packet_loss] += ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 12));
-	    cerr << boost::format("packet loss, %d packets in %s") 
+	    cerr << format("packet loss, %d packets in %s") 
 		% ntohs(*reinterpret_cast<uint16_t *>(buffer_cur + 12))
 		% tracename
 		 << endl;
@@ -484,10 +488,10 @@ public:
 	}
 	if (debug) {
 	    if (ret >= 0) {
-		cout << boost::format("read(%d) -> %d: %s\n")
+		cout << format("read(%d) -> %d: %s\n")
 		    % bytes % ret % hexstring(string((char *)into, ret));
 	    } else {
-		cout << boost::format("read(%d) -> error")
+		cout << format("read(%d) -> error")
 		    % bytes;
 	    }		
 
@@ -507,33 +511,33 @@ public:
 	if (packet_buf == NULL) { // open the PCAP file
 	    if (suffixequal(filename, ".bz2")) {
 		popened = true;
-		string cmd = (boost::format("bunzip2 -c < %s") % filename).str();
-		cout << boost::format("read via cmd %s\n") % cmd;
+		string cmd = (format("bunzip2 -c < %s") % filename).str();
+		cout << format("read via cmd %s\n") % cmd;
 		fp = popen(cmd.c_str(), "r");
 	    } else {
-		cout << boost::format("read file %s\n") % filename;
+		cout << format("read file %s\n") % filename;
 		fp = fopen(filename.c_str(), "r");
 	    }
-	    INVARIANT(fp != NULL, boost::format("cannot open PCAP file %s: %s")
+	    INVARIANT(fp != NULL, format("cannot open PCAP file %s: %s")
 		      % filename % strerror(errno));
 	    cur_file_packet_num = 0;
 	    // read in the PCAP file header first
 
 	    ssize_t ret = readBytes(&file_header, sizeof(pcap_file_header));
-	    INVARIANT(ret >= 0, boost::format("error when reading PCAP file header from %s: %s")
+	    INVARIANT(ret >= 0, format("error when reading PCAP file header from %s: %s")
 		      % filename % strerror(errno));	
 	    if (ret == 0) { // this file has no PCAP file header (empty file)
 		eof = true;
 		return false;
 	    } else { // this file has a PCAP file header
 		INVARIANT(ret == sizeof(pcap_file_header), 
-			  boost::format("short read when reading PCAP file header in %s; only got %d bytes not %d")
+			  format("short read when reading PCAP file header in %s; only got %d bytes not %d")
 			  % filename % ret % sizeof(pcap_file_header));
 		INVARIANT(file_header.magic == 0xa1b2c3d4, "??");
 		INVARIANT(file_header.version_major == 2 && 
 			  file_header.version_minor == 4, "??");
 		if (debug) {
-		    cout << boost::format("zone %d sigfigs %u snaplen %d linktype %d\n")
+		    cout << format("zone %d sigfigs %u snaplen %d linktype %d\n")
 			% file_header.thiszone % file_header.sigfigs
 			% file_header.snaplen % file_header.linktype;
 		}
@@ -543,7 +547,7 @@ public:
 	// read the next packet header
 	correct_pcap_pkthdr ph; 
 	ssize_t ret = readBytes(&ph, sizeof(correct_pcap_pkthdr));
-	INVARIANT(ret >= 0, boost::format("error reading packet header (%s, errno=%d)")
+	INVARIANT(ret >= 0, format("error reading packet header (%s, errno=%d)")
 		  % filename % strerror(errno));
 	if (ret == 0) { // no more packets
 	    eof = true;
@@ -552,11 +556,11 @@ public:
 	    return false;
 	} else { // read the next packet
 	    INVARIANT(ph.caplen <= file_header.snaplen, 
-		      boost::format("captured more than specified snapshot length %d > %d")
+		      format("captured more than specified snapshot length %d > %d")
 		      % ph.caplen % file_header.snaplen);
 	    ret = readBytes(packet_buf, ph.caplen);
 	    INVARIANT(ret >= 0 && static_cast<uint32_t>(ret) == ph.caplen, 
-		      boost::format("error reading packet from %s, got %d/%d bytes: %s")
+		      format("error reading packet from %s, got %d/%d bytes: %s")
 		      % filename % ret % ph.caplen % strerror(errno));
 	    // book keeping and return values
 	    ++cur_file_packet_num;
@@ -779,9 +783,12 @@ public:
 	    RPCParseAssert(auth_credlen >= 5*4 && len >= 10*4 + auth_credlen);
 	    ++cur_pos; // stamp
 	    unsigned hostname_len = ntohl(*cur_pos);
+	    RPCParseAssert(hostname_len < 1024);
 	    ++cur_pos;
 	    hostname_len = roundup4(hostname_len);
-	    ShortDataAssertMsg(auth_credlen >= 5*4 + hostname_len,"unknown",("auth credentials too small\n"));
+	    ShortDataAssertMsg(auth_credlen >= 5*4 + hostname_len,"unknown",
+			       ("auth credlen %d < 5*4 + %d\n",
+				auth_credlen, hostname_len));
 	    cur_pos += hostname_len / 4;
 	    auth_sys_uid = cur_pos;
 	    cur_pos += 2; // uid, gid
@@ -803,7 +810,7 @@ public:
 	RPCParseAssert(rpcparamlen >= 0);
 	if (false) {
 	    unsigned char *f = (unsigned char *)rpcparam;
-	    cout << boost::format("bytes starting @%d: ") % (f-(unsigned char *)rpchdr);
+	    cout << format("bytes starting @%d: ") % (f-(unsigned char *)rpchdr);
 	    for(unsigned i=0;i<rpcparamlen;++i) {
 		printf("%02x ",f[i]);
 	    }
@@ -1686,7 +1693,7 @@ public:
 		  op_status == NFS3ERR_TOOSMALL ||
 		  op_status == NFS3ERR_BAD_COOKIE ||
 		  op_status == NFS3ERR_STALE,
-		  boost::format("bad op_status %d") % op_status);
+		  format("bad op_status %d") % op_status);
 	// might at some point want to record failed lookups, as per the NFSV2 
 	// decode also
     }
@@ -1699,7 +1706,7 @@ public:
 			   ("(%d + 2) * 4 <= %d",curPos,reply.getrpcresultslen()));
 	int32_t nameSize = ntohl(xdr[curPos]); 
 	INVARIANT(nameSize > 0, 
-		  boost::format("invalid namesize %d in request %lld")
+		  format("invalid namesize %d in request %lld")
 		  % nameSize % request_id);
 	++curPos;
 	ShortDataAssertMsg(curPos * 4 + nameSize <= reply.getrpcresultslen(),
@@ -1710,7 +1717,7 @@ public:
 	if (enable_encrypt_filenames) {
 	    string enc_ret = encryptString(name);
 	    string dec_ret = decryptString(enc_ret);
-	    INVARIANT(dec_ret == name, "bad");
+	    SINVARIANT(dec_ret == name);
 	    INVARIANT(enc_ret != name, "Enc bytes == unencrypted bytes!");
 	    name = enc_ret;
 	}
@@ -1734,7 +1741,7 @@ public:
 
 	uint32_t type = ntohl(xdr[curPos]);
 	INVARIANT(1 <= type && type < 8,
-		  boost::format("NFSv3 dirEntry type not correct, should have 1 <= %d < 8")
+		  format("NFSv3 dirEntry type not correct, should have 1 <= %d < 8")
 		  % type);
 	if (mode == Convert) {
 	    attrops_typeid.set(ntohl(xdr[curPos]));
@@ -2004,7 +2011,7 @@ public:
 		return 1 + 1 + 1;
 	    } else {
 		INVARIANT(actual_len == 4 + 4 + 4 + 4 + 8, 
-			  boost::format("bad in %s size is %d") % tracename % actual_len);
+			  format("bad in %s size is %d") % tracename % actual_len);
 		return -1;
 	    }
 	}
@@ -2078,20 +2085,20 @@ public:
 		uint32_t actual_bytes;
 		if (xdr[0]) { // have pre-op attr
 		    INVARIANT(xdr[1+3*2],
-			      boost::format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
+			      format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
 		    //                       flag pre_op flag post_op  count committed writeverf
 		    AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
 				 ("bad"));
 		    actual_bytes = ntohl(xdr[1+3*2+1+fattr3_len/4]);
 		} else if (xdr[1]) { // missing pre-op attr, have post-op
 		    INVARIANT(xdr[1], 
-			      boost::format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
+			      format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
 		    AssertAlways(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, 
 				 ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
 		    actual_bytes = ntohl(xdr[1+1+fattr3_len/4]);
 		} else {
 		    INVARIANT(actual_len == 4 + 4 + 4 + 4 + 8, 
-			      boost::format("bad in %s size is %d") % tracename % actual_len);
+			      format("bad in %s size is %d") % tracename % actual_len);
 		    actual_bytes = ntohl(xdr[1+1]);
 		}
 
@@ -2228,7 +2235,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		if (false) printf("got a READDIRPLUS\n");
 		int fhlen = ntohl(xdr[0]);
 		RPCParseAssertBoost(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-				    boost::format("bad fhlen %d") % fhlen);
+				    format("bad fhlen %d") % fhlen);
 		//INVARIANT(actual_len == sizeof(struct READDIRPLUS3args), "ReadDirPlus Error. struct not the correct size\n");
 		string access_filehandle(reinterpret_cast<const char *>(xdr+1), fhlen);
 		d.replyhandler = 
@@ -2396,7 +2403,7 @@ handleNFSRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	++counts[nfsv3_request];
 	handleNFSV3Request(time,ip_hdr,ntohs(ip_hdr->check),l4checksum,req,d);
     } else {
-	FATAL_ERROR(boost::format("Huh? NFSV%d") % d.version);
+	FATAL_ERROR(format("Huh? NFSV%d") % d.version);
     }
 }
 
@@ -2504,7 +2511,7 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 //	      (hval->request_id >= first_record_id &&
 //	       hval->request_id <= cur_record_id &&
 //	       d.request_id >= first_record_id),
-//	      boost::format("whoa %d not in [%d .. %d] or %d < %d")
+//	      format("whoa %d not in [%d .. %d] or %d < %d")
 //	      % hval->request_id % first_record_id % cur_record_id % d.request_id % first_record_id);
     if (hval->rpcreqhashval != d.rpcreqhashval) {
 	for(vector<network_error_listT>::iterator i = known_bad_list.begin();
@@ -2580,7 +2587,7 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	d.request_id = -4; // fake
     }
     INVARIANT(d.request_id >= first_record_id || (d.request_id >= -4 && d.request_id <= -1), 
-	      boost::format("bad %d / %d %d on %s") % d.program % d.request_id % first_record_id % tracename);
+	      format("bad %d / %d %d on %s") % d.program % d.request_id % first_record_id % tracename);
     rpcHashTable.add(d); // only add if successful parse...
 }
 
@@ -2620,11 +2627,11 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 
 	++counts[possible_missing_request];
 	INVARIANT(counts[possible_missing_request] < 2000 || counts[possible_missing_request] < counts[ip_packet] * 0.05, 
-		  boost::format("whoa, %d possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s")
+		  format("whoa, %d possible reply packets without the request %ld packets so far; you need to tcpdump -s 256+; on %s")
 		  % counts[possible_missing_request] % counts[ip_packet] % tracename.c_str());
 	if (warn_unmatched_rpc_reply) {
 	    // many of these appear to be spurious, e.g. not really an rpc reply
-	    cout << boost::format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
+	    cout << format("%d.%09d: unmatched rpc reply xid %08x client %08x\n")
 		% Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
 		% ntohl(reply.xid()) % ntohl(ip_hdr->daddr)
 		 << endl;
@@ -2681,7 +2688,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
     struct tcphdr *tcp_hdr = (struct tcphdr *)p;
 
     INVARIANT((int)tcp_hdr->doff * 4 >= (int)sizeof(struct tcphdr),
-	      boost::format("bad doff %d %d")
+	      format("bad doff %d %d")
 	      % (tcp_hdr->doff * 4) % sizeof(struct tcphdr));
     p += tcp_hdr->doff * 4;
     AssertAlways(p <= pend,("short capture? %p %p",p,pend));
@@ -2733,10 +2740,11 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 		return; // not an rpc
 	    }
 	} catch (ShortDataInRPCException &err) {
-	    // TODO: count all the occurences of this based on the file,line,message in err and print out
-	    // a summary at the end of processing
+	    // TODO: count all the occurences of this based on the
+	    // file,line,message in err and print out a summary at the
+	    // end of processing
 	    INVARIANT(thismsgend == pend,
-		      boost::format("Error, got short data error, but not at end of TCP segment (%p != %p; wire=%d cap=%d)\n message was %s at %s:%d")
+		      format("Error, got short data error, but not at end of TCP segment (%p != %p; wire=%d cap=%d)\n message was %s at %s:%d")
 		      % reinterpret_cast<const void *>(thismsgend) % reinterpret_cast<const void *>(pend) 
 		      % wire_length % capture_size 
 		      % err.message % err.filename % err.lineno);
@@ -2744,7 +2752,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	} catch (RPC::parse_exception &err) {
             // TODO: give a warning for now, incomplete;
             ++counts[rpc_parse_error];
-            std::cout << boost::format("RPC parse error: %s %s %s %d\n") % err.condition % err.message % err.filename % err.lineno;
+            std::cout << format("RPC parse error: %s %s %s %d\n") % err.condition % err.message % err.filename % err.lineno;
         }
 	++counts[tcp_rpc_message];
 	if (multiple_rpcs) {
@@ -2773,12 +2781,12 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     }
     const uint32_t capture_remain = capture_size;
     INVARIANT(capture_remain >= min_ethernet_header_length + min_ip_header_length,
-	      boost::format("whoa tiny packet %d") % capture_remain);
+	      format("whoa tiny packet %d") % capture_remain);
     const unsigned char *p = packetdata; 
     const unsigned char *pend = p + capture_size;
 
     if (false) {
-	cout << boost::format("%d.%d: %d/%d bytes: %s") 
+	cout << format("%d.%d: %d/%d bytes: %s") 
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
 	    % capture_size % wire_length
 	    % hexstring(string((const char *)p,32))
@@ -2792,13 +2800,12 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     //TODO Capture file (i.e. TCP) Checksum verification
     //TODO also generate TCP offload warning with high percentage of
     //bad checksums or a packet larger than maximum jumbo frame size.
-    INVARIANT(wire_length <= 1522, boost::format("Found a long packet of length %d.  Support for jumbo frames is unsupported.\nTCP offload may be enabled.\ndisable under Linux with:\tethtool -K eth# tso off") % wire_length);
 
     if (ethtype < 1500) {
         int protonum = (p[20] << 8) | p[21];
 
 	++counts[weird_ethernet_type];
-	cout << boost::format("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo?")
+	cout << format("Weird ethernet type in packet @%ld.%06ld len=%d, wire length %d; proto %d jumbo?")
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) 
 	    % ethtype % wire_length % protonum
 	     << endl;
@@ -2819,7 +2826,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
     }
 
     if (ethtype != 0x800) { // IP type, the only one we care about
-	cout << boost::format("Ignoring packet %d.%d, ethtype %d")
+	cout << format("Ignoring packet %d.%d, ethtype %d")
 	    % Clock::TfracToSec(time) % Clock::TfracToNanoSec(time) % ethtype
 	     << endl;
 	++counts[ignored_nonip];
@@ -2828,7 +2835,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 
     const struct iphdr *ip_hdr = reinterpret_cast<const struct iphdr *>(p);
     INVARIANT(ip_hdr->version == 4,
-	      boost::format("Non IPV4 (was V%d) unimplemented\n") % ip_hdr->version);
+	      format("Non IPV4 (was V%d) unimplemented\n") % ip_hdr->version);
     int ip_hdrlen = ip_hdr->ihl * 4;
     p += ip_hdrlen;
     INVARIANT(p < pend, "short capture?!\n");
@@ -2850,6 +2857,24 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	return; // fragment; no reassembly for now
     }
 
+    if (wire_length > 1522) {
+	static bool warned;
+	if (!warned) {
+	    cout << format("Found a long packet of length %d.  Support for jumbo frames is unsupported.\nTCP offload may be enabled.\ndisable under Linux with:\tethtool -K eth# tso off\n") % wire_length;
+	    warned = true;
+	}
+
+	++counts[long_packets];
+	if (udp_hdr && (ntohs(udp_hdr->source) == 2049 
+			|| ntohs(udp_hdr->dest) == 2049)) {
+	    ++counts[long_packets_port_2049];
+	} else if (tcp_hdr && (ntohs(tcp_hdr->source) == 2049
+			       || ntohs(tcp_hdr->dest) == 2049)) {
+	    ++counts[long_packets_port_2049];
+	}
+	// Might as well try to process the packet.
+    }
+	    
     try {
 	if (tcp_hdr != NULL) {
 	    handleTCPPacket(time, ip_hdr, p, pend, capture_size, wire_length); 
@@ -2860,7 +2885,7 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 	printf("parse failed on request at %s:%d (%s) was false: %s\n",
 	       err.filename,err.lineno,err.condition.c_str(),
 	       err.message.c_str()); // ignore
-	FATAL_ERROR(boost::format("got Short Data Error unexpectedly in %s packet")
+	FATAL_ERROR(format("got Short Data Error unexpectedly in %s packet")
 		    % (tcp_hdr != NULL ? "tcp" : "udp") );
     } catch (RPC::parse_exception &err) {
         bool print_failure = warn_parse_failures;
@@ -2906,7 +2931,7 @@ doProcess(NettraceReader *from, const char *outputname)
             // is rounded to 8 bytes, hence wire_length could be < capture_size
             INVARIANT(wire_length <= capture_size, "bad");
 	    if (wire_length < 64) {
-		cout << boost::format("weird tiny packet length %d") % wire_length
+		cout << format("weird tiny packet length %d") % wire_length
 		     << endl;
 		++counts[tiny_packet];
 		continue;
@@ -2924,7 +2949,7 @@ doProcess(NettraceReader *from, const char *outputname)
 		     << endl;
 		sleep(300);
 	    }
-	    cout << boost::format("Free disk bytes: %d") 
+	    cout << format("Free disk bytes: %d") 
 		% freeDiskBytes(outputname)
 		 << endl;
 	}
@@ -2933,7 +2958,7 @@ doProcess(NettraceReader *from, const char *outputname)
     for(rpcHashTableT::iterator i = rpcHashTable.begin();
 	i != rpcHashTable.end(); ++i) {
 	if (false) {
-	    cout << boost::format("outstanding RPC %x to %x, xid %x") 
+	    cout << format("outstanding RPC %x to %x, xid %x") 
 		% i->client % i->server % i->xid
 		 << endl;
 	}
@@ -3056,7 +3081,7 @@ doConvert(NettraceReader *from, const char *ds_output_name,
     delete nfsdsout;
 
     INVARIANT((cur_record_id + 1 - first_record_id) == expected_records,
-	      boost::format("mismatch on expected # records: %d - %d != %d")
+	      format("mismatch on expected # records: %d - %d != %d")
 	      % cur_record_id % first_record_id % expected_records);
     exit(exitvalue);
 }
@@ -3067,7 +3092,7 @@ check_file_missing(const string &filename)
     struct stat statbuf;
     int ret = stat(filename.c_str(), &statbuf);
     INVARIANT(ret == -1 && errno == ENOENT,
-	      boost::format("refusing to run with existing file %s: %s")
+	      format("refusing to run with existing file %s: %s")
 	      % filename % strerror(errno));
 }
 
@@ -3083,7 +3108,7 @@ uncompressFile(const string &src, const string &dest)
 //    ERFReader::openUncompress(src, &outbuf, &outsize);
 //
 //    int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
-//    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
+//    INVARIANT(outfd > 0, format("can not open %s for write: %s") 
 //	      % dest % strerror(errno));
 //    INVARIANT(outbuf != NULL && outsize > 0, "internal");
 //    ssize_t write_amt = write(outfd, outbuf, outsize);
@@ -3113,7 +3138,7 @@ void recompressFileBZ2(const string &src, const string &dest)
     INVARIANT(outsize <= myerfreader.bufsize, "bad");
 	
     int outfd = open(dest.c_str(), O_WRONLY | O_CREAT, 0664);
-    INVARIANT(outfd > 0, boost::format("can not open %s for write: %s") 
+    INVARIANT(outfd > 0, format("can not open %s for write: %s") 
 	      % dest % strerror(errno));
     INVARIANT(outbuf != NULL && outsize > 0, "internal");
     ssize_t write_amt = write(outfd, outbuf, outsize);
@@ -3199,7 +3224,7 @@ main(int argc, char **argv)
 	    } else if (strcmp(argv[2], "--pcap") == 0) {
 		file_type = PCAP;
 	    } else {
-		FATAL_ERROR(boost::format("expecting --erf or --pcap as second argument, not %s") % argv[2]);
+		FATAL_ERROR(format("expecting --erf or --pcap as second argument, not %s") % argv[2]);
 	    }
 
 	    int startFileArg = INT_MAX;

@@ -21,6 +21,11 @@
 #include <DataSeries/cryptutil.H>
 
 using namespace std;
+using boost::format;
+
+static HashMap<string,string> raw2encrypted;
+
+static uint32_t encrypt_memoize_entries = 1000000;
 
 HashMap<string,string> encrypted_to_okstring; 
 
@@ -38,6 +43,7 @@ static AES_KEY encrypt_key, decrypt_key;
 void
 prepareEncrypt(const std::string &key_a, const std::string &key_b)
 {
+    raw2encrypted.clear();
     hmac_key_1 = key_a;
     hmac_key_2 = key_b;
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
@@ -237,10 +243,6 @@ aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
     AES_decrypt((const unsigned char *)v,(unsigned char *)v, key);
 }
 
-static HashMap<string,string> raw2encrypted;
-
-static uint32_t encrypt_memoize_entries = 1000000;
-
 void
 encryptMemoizeMaxents(uint32_t nentries) 
 {
@@ -297,7 +299,8 @@ decryptString(string in)
 	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     aesDecryptFast(&decrypt_key,(unsigned char *)&*in.begin(),in.size());
     int hmaclen = in[0];
-    AssertAlways(hmaclen >= 7 && hmaclen <= 22,("bad decrypt"));
+    INVARIANT(hmaclen >= 7 && hmaclen <= 22,
+	      format("bad decrypt; hmaclen = %d") % hmaclen);
     AssertAlways((int)in.size() >= (hmaclen + 1),("bad decrypt"));
     string ret = in.substr(hmaclen + 1,in.size() - (hmaclen + 1));
     string tmp = hmac_key_2;

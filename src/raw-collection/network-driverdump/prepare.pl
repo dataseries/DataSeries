@@ -20,6 +20,8 @@ if ($ARGV[0] eq 'partition') {
     umount_drives();
 } elsif ($ARGV[0] eq 'list') {
     list();
+} elsif ($ARGV[0] eq 'zero') {
+    zero_drives($ARGV[1]);
 } else {
     usage("Unknown command '$ARGV[0]'");
 }
@@ -117,7 +119,7 @@ sub add_serial {
 sub partition_drives {
     my @drives = find_drives();
 
-    my %ok = get_ok_partitions(@drives);
+    my %ok = get_ok_partitions();
 
     print "drives partitioned correctly: ";
     my @ok = sort bydriveorder keys %ok;
@@ -138,7 +140,7 @@ sub partition_drives {
     print "\n";
     if ($first == 0) {
 	print "checking...";
-	my %new_ok = get_ok_partitions(@drives);
+	my %new_ok = get_ok_partitions();
 	foreach my $drive (@drives) {
 	    die "$drive isn't ok??" unless $new_ok{$drive};
 	}
@@ -148,7 +150,7 @@ sub partition_drives {
 
 sub format_drives {
     my @drives = find_drives();
-    my %ok = get_ok_partitions(@drives);
+    my %ok = get_ok_partitions();
     my %mounted = get_mounted();
 
     print "formatting (in parallel): ";
@@ -210,6 +212,7 @@ sub format_drives {
     foreach my $drive (@drives) {
 	die "Failed to format $drive" unless $success{$drive};
     }
+    die "Something wasn't ok" unless $ok;
 }
     
 sub mount_drives {
@@ -268,6 +271,73 @@ sub umount_drives {
     print "done.\n";
 }    
 
+sub zero_drives {
+    my ($regex) = @_;
+
+    if (defined $regex) {
+	$regex = qr/$regex/;
+    } else {
+	$regex = qr/./;
+    }
+    my @drives = find_drives();
+    die "no drives??" unless @drives > 0;
+
+    my %mounted = get_mounted();
+
+    die "some drives are still mounted"
+	if keys %mounted > 0;
+
+    my %sizes = get_drive_sizes();
+
+    @drives = grep(/$regex/, @drives);
+    die "no drives remain after applying regex '$regex'"
+	unless @drives > 0;
+
+    map { die "no size info for drive $_" unless defined $sizes{$_} } @drives;
+
+    print "zeroing drives (in parallel): ";
+    my %children;
+    my $ok = 1;
+    foreach my $drive (@drives) {
+	print ", " unless $drive eq $drives[0];
+	print "$drive";
+	my $size = $sizes{$drive};
+	die "??" unless defined $size && $size->{cylinders} > 1000 && $size->{cylinder_bytes} > 1000000;
+	my $pid = fork();
+	unless (defined $pid && $pid >= 0) {
+	    warn "\nfork failed: $!";
+	    $ok = 0;
+	    last;
+	}
+	if ($pid == 0) {
+	    my $ret = system("dd if=/dev/zero of=/dev/${drive} bs=$size->{cylinder_bytes} count=$size->{cylinders} >/tmp/zero.${drive} 2>&1");
+	    die "\ndd failed for /dev/${drive}" 
+		unless $ret == 0;
+	    # TODO: check output to verify we zeroed enough.
+	    exit(0);
+	}
+	$children{$pid} = $drive;
+	select(undef,undef,undef,0.1);
+    }
+    print "\n";
+    print "waiting: ";
+    my $first = 1;
+    my %success;
+    while((my $pid = wait) > 0) {
+	print ", " unless $first;
+	$first = 0;
+	$children{$pid} ||= "UNKNOWN";
+	print "$children{$pid}";
+	$success{$children{$pid}} = 1;
+	delete $children{$pid};
+    }
+    print "\n";
+    foreach my $drive (@drives) {
+	die "Failed to format $drive" unless $success{$drive};
+    }
+    die "Something wasn't ok" unless $ok;
+}
+
 sub get_mounted {
     my %mounted;
     open(MOUNT, "mount |") or die "??";
@@ -282,14 +352,26 @@ sub get_mounted {
 
 
 sub get_ok_partitions {
-    my @drives = @_;
+    my($ok, $sizes) = get_sfdisk_info();
+    return %$ok;
+}
+
+sub get_drive_sizes {
+    my($ok, $sizes) = get_sfdisk_info();
+    return %$sizes;
+}
+
+sub get_sfdisk_info {
     my %ok;
+    my %sizes;
     open(SFDISK, "sfdisk -uS -l 2>&1 |") or die "bad";
     while(<SFDISK>) {
 	die "??1" unless /^\s*$/o;
 	$_ = <SFDISK>;
 	die "?? $_ ??" unless m!^Disk /dev/(\S+): (\d+) cylinders, (\d+) heads, (\d+) sectors/track!o;
-	my ($drive, $cylinders, $sectorspercyl) = ($1,$2, $3*$4);
+	my ($drive, $cylinders, $heads, $sectorspercyl) = ($1,$2, $3, $4);
+	$sizes{$drive} = {'cylinders' => $cylinders, 'heads' => $heads, 'sectors_per_cylinder' => $sectorspercyl, 'sector_bytes' => 512,
+			  'cylinder_bytes' => $heads * $sectorspercyl * 512};
 	$_ = <SFDISK>;
 	if (/^Warning: The partition table/o) {
 	    $_ = <SFDISK>; die "??" unless m!^  for C/H/S=!o;
@@ -330,7 +412,7 @@ sub get_ok_partitions {
 	$_ = <SFDISK>; die "??" unless m!^/dev/${drive}p?4\s+!;
     }
     close(SFDISK);
-    return %ok;
+    return (\%ok, \%sizes);
 }
 
 sub serial_number {

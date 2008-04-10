@@ -42,6 +42,7 @@ sub setup_keys {
     }
 }
 
+#TODO make this parse the setenv style files also
 sub internalParseKeys {
     die "?? $_\n" unless /^NAME_KEY_1=([0-9a-f]+)$/o;
     $ENV{'NAME_KEY_1'} = $1;
