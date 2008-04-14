@@ -23,15 +23,10 @@
 using namespace std;
 using boost::format;
 
-static HashMap<string,string> raw2encrypted;
-
-static uint32_t encrypt_memoize_entries = 1000000;
-
 HashMap<string,string> encrypted_to_okstring; 
 static HashMap<string,string> raw2encrypted;
 
 static uint32_t encrypt_memoize_entries = 1000000;
-
 
 string
 shastring(const string &in)
