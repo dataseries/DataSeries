@@ -1,0 +1,216 @@
+# -*- Perl -*-
+define
+my $create_table = "
+create table wc1998_raw (
+  dataset varchar(32) not null,
+  file varchar(32) not null,
+  size int not null,
+  unique key idx1 (dataset, file)
+);
+
+";
+
+sub derive_tables {
+    return "
+sql drop table if exists wc1998_sum 
+sql create table wc1998_sum select dataset, sum(size) as sum_size, count(*) as nfiles from wc1998_raw group by dataset
+sql drop table if exists wc1998_derived
+sql create table wc1998_derived select dataset, file, size, replace(substr(file, 7,2), '_', '') + 0 as day from wc1998_raw
+";
+}
+
+sub cdf_compare {
+    my($dsa, $dsb, $extrawhere) = @_;
+
+    $extrawhere ||= '1';
+    return "plot round(a.size / b.size,10) as cdf from wc1998_raw as a, wc1998_raw as b where a.dataset = '$dsa' and b.dataset = '$dsb' and a.file = b.file and ($extrawhere)
+plotwith _ linespoints
+plottitle _ $dsa/$dsb
+";
+}
+
+sub size_compare {
+     my($dsa, $dsb, $extrawhere) = @_;
+
+    $extrawhere ||= '1';
+    return "plot a.size as x, round(a.size / b.size,10) as y from wc1998_raw as a, wc1998_raw as b where a.dataset = '$dsa' and b.dataset = '$dsb' and a.file = b.file and ($extrawhere)
+plottitle _ $dsa/$dsb vs $dsa size
+";
+}
+
+sub plot_ds_overhead {
+    return '
+unplot
+cdf_compare("ds-mcs-bts", "le-bts-gz", "a.size > 250000");
+plottitle _ big-to-small ds/gz
+cdf_compare("ds-mcs", "le-stb-gz", "a.size > 250000");
+plottitle _ small-to-big ds/gz
+
+fnplot 1
+plottitle _ ratio of 1
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot ds-overhead
+';
+}
+
+sub plot_reordering_options {
+    return '
+unplot
+cdf_compare("le-stb-gz","le-bts-gz")
+plottitle _ le small-to-big / le big-to-small
+
+cdf_compare("be-stb-gz","be-bts-gz")
+plottitle _ be small-to-big / be big-to-small
+
+cdf_compare("le-stb-gz","be-stb-gz")
+plottitle _ le small-to-big / be small-to-big
+
+cdf_compare("le-bts-gz","be-bts-gz")
+plottitle _ le big-to-small / be big-to-small
+
+fnplot 1
+plottitle _ ratio of 1
+gnuplot set key top left
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot reordering-options
+';
+}
+
+sub plot_ds_opts_1 {
+    return '
+unplot
+cdf_compare("ds-base", "ds-mcs-bts");
+plottitle _ (DS base)/(DS+mcs+bts)
+
+cdf_compare("ds-base", "ds-mcs")
+plottitle _ (DS base)/(DS+mcs)
+
+cdf_compare("ds-base", "ds-bts")
+plottitle _ (DS base)/(DS+bts)
+
+fnplot 1
+plottitle _ ratio of 1
+
+gnuplot set key top left
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot ds-opts-1
+';
+}
+
+sub plot_ds_opts_2 {
+    return '
+unplot
+cdf_compare("ds-base", "ds-mcs-bts-tsr")
+plottitle _ (DS base)/(DS+mcs+bts+tsr)
+
+cdf_compare("ds-base", "ds-mcs-tsr")
+plottitle _ (DS base)/(DS+mcs+tsr)
+
+cdf_compare("ds-base", "ds-bts-tsr")
+plottitle _ (DS base)/(DS+bts+tsr)
+
+cdf_compare("ds-base", "ds-tsr")
+plottitle _ (DS base)/(DS+tsr)
+
+fnplot 1
+plottitle _ ratio of 1
+
+gnuplot set key top left
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot ds-opts-2
+';
+}
+
+sub plot_ds_opts_3 {
+    return '
+unplot
+cdf_compare("ds-tsr", "ds-mcs-tsr")
+plottitle _ (DS+tsr)/(DS+mcs+tsr)
+
+cdf_compare("ds-tsr", "ds-bts-tsr")
+plottitle _ (DS+tsr)/(DS+bts+tsr)
+
+cdf_compare("ds-tsr", "ds-mcs-bts-tsr")
+plottitle _ (DS+tsr)/(DS+mcs+bts+tsr)
+
+fnplot 1
+plottitle _ ratio of 1
+
+gnuplot set key top left
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot ds-opts-3
+';
+}
+
+sub plot_ds_opts_4 {
+    return '
+unplot
+cdf_compare("ds-mcs-tsr", "ds-mcs-bts-tsr")
+plottitle _ (DS+mcs+tsr)/(DS+mcs+bts+tsr)
+
+fnplot 1
+plottitle _ ratio of 1
+
+gnuplot set key top left
+gnuplot set xlabel "percentage of files"
+gnuplot set ylabel "ratio"
+pngpsplot ds-opts-3
+';
+}
+
+sub plot_ds_size_cmp {
+    return '
+unplot
+size_compare("ds-base", "ds-tsr");
+plottitle _ (DS base)/(DS+tsr)
+plotwith _ points
+
+size_compare("ds-base", "ds-mcs")
+plottitle _ (DS base)/(DS+mcs)
+plotwith _ points
+
+size_compare("ds-base", "ds-bts")
+plottitle _ (DS base)/(DS+bts)
+plotwith _ points
+
+fnplot 1
+plottitle _ ratio of 1
+
+gnuplot set key top left
+gnuplot set xlabel "size of file"
+gnuplot set ylabel "ratio"
+pngpsplot ds-size-cmp
+';
+}
+
+sub plot_all {
+    return '
+plot_ds_overhead()
+plot_reordering_options()
+plot_ds_opts_1()
+plot_ds_opts_2()
+plot_ds_opts_3()
+plot_ds_opts_4()
+plot_ds_size_cmp()
+';
+}
+
+
+enddefine
+
+# plot_all()
+default table wc1998_raw
+# select distinct dataset from wc1998_raw
+
+select dataset, round(sum_size/(1024*1024),2) as size_MiB, round(9084630052/sum_size,3) as ratio_ds_base, round(8639378190/sum_size,3) as ratio_gz_orig from wc1998_sum order by size_MiB
+
+# plot a.size / b.size as cdf from wc1998_raw as a, wc1998_raw as b where a.dataset = 'le-bts-gz' and b.dataset = 'ds-mcs-bts' and a.file = b.file
+# plot a.size / b.size as cdf from wc1998_raw as a, wc1998_raw as b where a.dataset = 'be-gz' and b.dataset = 'le-gz' and a.file = b.file
+# fnplot 1
+
+# plot a.size / b.size as y, b.size as x from wc1998_raw as a, wc1998_raw as b where a.dataset = 'le-stb-gz' and b.dataset = 'be-gz' and a.file = b.file  
