@@ -287,9 +287,28 @@ Example output:
 
 Strange write search
 
-=head2 -u
+=head2 -u I<filehandle or path to file of filehandles> # Directory path lookup
 
-file handle lookup
+This analysis attempts to trace from each of the given filehandles up
+to the root of their filesystem.  Each output line consists of an
+original filehandle and as much of the path as could be reconstructed.
+If the analysis does not reach the root, then the first filehandle
+will have a FH:... prefix.  The remaining values on the line will be
+the filenames for that part of the path.  Components in a path are
+separated by /'s.  The analysis keeps a bounded amount of memory for
+storing previously seen filehandle, parent-fh, filename entries.
+Therefore, there is a chance for large datasets that re-running the
+analysis requesting some of the early filehandles will make additional
+progress in reconstructing the entire path.  The base path can only be
+reconstructed if the dataset includes the original mount request.
+
+Example Output:
+
+    Begin-virtual void DirectoryPathLookup::printResult()
+    e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800: FH:e8535201c2cca3052000000001d63ba0074e0209d6390035400000006bfc0800/0f96481c6462479c5d0ec6a8c8ae4de3be167bea59064c541a5fd74f86d0767a
+    a63c6021c20f0300200000000117721df1e3040064000000400000009a871600: FH:a63c6021c20f03002000000000b931882fd9040064000000400000009a871600/a7df16a9a4d78d0fff7370c4db658524/6bd595a355c6e6b695315994eeae03268630d4db3ec297a911950a0542627477
+    64000000c20f0300200000000127ef590364240c4fdf0058400000009a871600: FH:64000000c20f03002000000000a4d165e8e304004fdf0058400000009a871600/bb2531e57d5bc4f1f062ca919177d84c/c73a170c9d445b5f5787cad97e2253b4/3cccf0547171de3fc38438085d40074b62fa9aa11ab6004fb2b6f78b7e9ac130
+    End-virtual void DirectoryPathLookup::printResult()
 
 =head2 -v I<1-5>
 
@@ -308,12 +327,21 @@ transactions
 
 outstanding requests
 
-=head2 -z I<fh-list filename>
+=head2 -z I<filehandle | fh-list filename> # File Handle Operation Lookup
 
-tmp file handle lookup
+This analysis finds all of the operations associated with the specified 
+filehandles and prints out information about each operation.  To eliminate
+buffering, the output is printed out with a FHOL: prefix rather than within
+a Begin-... End-... block.
+
+Example Output:
+
+    FHOL: reply-at client server ; operation type filehandle filename; file-size modify-time
+    FHOL: 1063931188.266179000 10.12.11.75 10.110.1.14 ; getattr file 25cccd0040f47d05200000000160929015f77d0578e4003e1630670064637600 '' ; 325880 1023314262.000000000
+    FHOL: 1063931190.068588000 10.12.11.77 10.110.1.14 ; getattr directory 0138c000948119052000000000c03801948119050b71002c40000000ffa72e00 '' ; 4096 1050428920.444579000
 
 =head1 COPYRIGHT
 
-(c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+(c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
 See the file named COPYING for license details

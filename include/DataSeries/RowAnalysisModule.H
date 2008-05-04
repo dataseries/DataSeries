@@ -36,6 +36,12 @@ public:
     
     virtual Extent *getExtent();
 
+    /** Called right after each extent is retrieved, but before the 
+	extent is set in the series.  Serves two purposes: 1) infrequent
+	statistics/processing; and 2) setting up fields with unknown 
+	field names */
+    virtual void newExtentHook(const Extent &e);
+
     /** this function will be called once after the first extent has been
 	retrieved, but before processRow() has been called; it will not 
 	be called if there were no extents to process */
