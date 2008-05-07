@@ -308,7 +308,7 @@ main(int argc, char *argv[])
     srtheadertype_xml.append(srt_header);
     srtheadertype_xml.append("</ExtentType>\n");
     ExtentTypeLibrary library;
-    ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
+    const ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
     ExtentSeries srtheaderseries(*srtheadertype);
     OutputModule headeroutmodule(srtdsout,srtheaderseries,srtheadertype,packing_args.extent_size);
 
@@ -354,7 +354,7 @@ main(int argc, char *argv[])
     }
     srttype_xml.append(srt_ioflags);
     srttype_xml.append("</ExtentType>\n");
-    ExtentType *srttype = library.registerType(srttype_xml);
+    const ExtentType *srttype = library.registerType(srttype_xml);
     ExtentSeries srtseries(*srttype);
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
@@ -476,7 +476,7 @@ main(int argc, char *argv[])
 	    uint32_t created_sec = (uint32_t)created_double;
 	    printf("sec part %d\n", created_sec);
 	    uint32_t created_usec = (uint32_t)((created_double - created_sec)*1e6);
-	    printf("microsec part %f\n", created_usec);
+	    printf("microsec part %d\n", created_usec);
 	    if (created_double > 2147483648LL) { //1998 traces
 		enter_kernel.set(Clock::secMicroToTfrac((4294967296LL - created_sec), (4294967296LL - created_usec)));
 	    } else {

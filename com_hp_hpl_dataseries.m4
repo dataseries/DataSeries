@@ -96,7 +96,7 @@ if test ! "$with_srt" = 'no'; then
     save_srt_cppflags=$CPPFLAGS
     save_srt_libs=$LIBS
     CPPFLAGS="$CPPFLAGS $LINTEL_CFLAGS"
-    AC_CHECK_HEADER(SRTTrace.H,have_srt_hdr=yes,)
+    AC_CHECK_HEADER(SRT/SRTTrace.H,have_srt_hdr=yes,)
     if test $have_srt_hdr = no; then
     	AC_CHECK_HEADER($prefix/include/SRT/SRTTrace.H,have_srt_hdr=yes;SRT_CFLAGS="-I$prefix/include/SRT",)
     fi
