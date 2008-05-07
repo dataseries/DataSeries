@@ -28,12 +28,10 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 
 ExtentSeries::~ExtentSeries()
 {
-/* Hernan & Brad
     INVARIANT(my_fields.size() == 0, 
 	      boost::format("You still have fields such as %s live on a series over type %s")
 	      % my_fields[0]->getName() 
 	      % (type == NULL ? "unset type" : type->getName()));
-*/
 }
 
 void
