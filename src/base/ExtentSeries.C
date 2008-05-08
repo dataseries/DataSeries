@@ -29,7 +29,7 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 ExtentSeries::~ExtentSeries()
 {
     INVARIANT(my_fields.size() == 0, 
-	      boost::format("You still have fields such as %s live on a series over type %s")
+	      boost::format("You still have fields such as %s live on a series over type %s.  If you dynamically allocated them, delete them before calling the ExtentSeries Destructor.")
 	      % my_fields[0]->getName() 
 	      % (type == NULL ? "unset type" : type->getName()));
 }

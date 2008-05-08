@@ -456,7 +456,9 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
-	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	if (argc != 4) {
+	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	}
 	++nrecords;
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
 	outmodule.newRecord();
@@ -579,6 +581,25 @@ main(int argc, char *argv[])
 	raw_tr = tracestream->record();
     }
     outmodule.flushExtent();
+    if (trace_minor == 0) {
+	//NEED VERSION 0 DESTROY HERE
+    } else if (trace_minor >= 1 && trace_minor < 7) {
+	delete cylinder_number;
+    }
+    if (trace_minor >= 4) {
+	delete queue_length;
+    }
+    if (trace_minor >= 5) {
+	delete pid;
+    }
+    if (trace_minor >= 6) {
+	delete logical_volume_number;
+    }
+    if (trace_minor >= 7) {
+	delete machine_id;
+	delete thread_id;
+	delete lv_offset;
+    }
     DataSeriesSink::Stats srtdsout_stats = srtdsout.getStats();
     fprintf(stderr,"%d records, %d extents; %lld bytes, %lld compressed\n",
 	    nrecords, srtdsout_stats.extents, srtdsout_stats.unpacked_size, srtdsout_stats.packed_size);
