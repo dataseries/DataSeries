@@ -235,7 +235,9 @@ main(int argc, char *argv[])
 	    
 	    AssertAlways(_tr->type() == SRTrecord::IO,
 		    ("Only know how to handle I/O records\n"));
-	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	    if (argc!=4) {
+	    	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	    }
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
 	    if (((SRTio *)_tr)->is_suspect() && (((SRTio *)_tr)->tfrac_created() < oldest_create)) {
 		if (((SRTio *)_tr)->created() > 2147483648LL) { //1998 traces
