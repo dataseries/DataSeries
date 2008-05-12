@@ -586,25 +586,7 @@ main(int argc, char *argv[])
 	raw_tr = tracestream->record();
     }
     outmodule.flushExtent();
-    if (trace_minor == 0) {
-	//NEED VERSION 0 DESTROY HERE
-    } else if (trace_minor >= 1 && trace_minor < 7) {
-	delete cylinder_number;
-    }
-    if (trace_minor >= 4) {
-	delete queue_length;
-    }
-    if (trace_minor >= 5) {
-	delete pid;
-    }
-    if (trace_minor >= 6) {
-	delete logical_volume_number;
-    }
-    if (trace_minor >= 7) {
-	delete machine_id;
-	delete thread_id;
-	delete lv_offset;
-    }
+
     DataSeriesSink::Stats srtdsout_stats = srtdsout.getStats();
     fprintf(stderr,"%d records, %d extents; %lld bytes, %lld compressed\n",
 	    nrecords, srtdsout_stats.extents, srtdsout_stats.unpacked_size, srtdsout_stats.packed_size);

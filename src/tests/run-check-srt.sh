@@ -8,6 +8,8 @@
 
 set -e 
 
+# As of 2008-05-12, this test is known to fail.
+
 ../process/srt2ds --compress-lzf $1/check-data/hourly.03126.srt.bz2 h03126.ds 
 ../process/cmpsrtds $1/check-data/hourly.03126.srt.bz2 h03126.ds 
 ../process/cmpsrtds $1/check-data/hourly.03126.srt.bz2 $1/check-data/h03126.ds-littleend 
