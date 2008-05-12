@@ -66,9 +66,9 @@ const std::string srt_ioflags(
 
 
 const std::string srt_timefields(
-  "  <field type=\"int64\" name=\"enter_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
-  "  <field type=\"int64\" name=\"leave_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
-  "  <field type=\"int64\" name=\"return_to_driver\" comment=\"time in units of 2^-32 seconds since UNIX epoch\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"enter_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"leave_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
   );
 
 
@@ -121,6 +121,7 @@ const std::string srt_v7fields(
   "  <field type=\"int64\" name=\"disk_offset\" pack_relative=\"disk_offset\"/>\n"
   "  <field type=\"int64\" name=\"lv_offset\" pack_relative=\"lv_offset\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"byte\" name=\"buffertype\"/>\n"
+  "  <field type=\"variable32\" name=\"buffertype_text\" pack_unique=\"yes\" />\n"
   );
 
 int32 to_usec(double secs)
@@ -188,6 +189,8 @@ main(int argc, char *argv[])
     AssertAlways(_tr->type() == SRTrecord::IO,
 	    ("Only know how to handle I/O records\n"));
     tr = (SRTio *)_tr;
+    // TODO: separate this out into a separate program, or make it
+    // controlled by an option
     if (info_create) {
 	//Make an info file and exit
 	const char *header = tracestream->header();
@@ -227,6 +230,7 @@ main(int argc, char *argv[])
 		fprintf(info_file_ptr, "\"%lld\"\t", old_finished);
 		printf("oldestcreate %lld\n",oldest_create);
 		fprintf(info_file_ptr, "\"%lld\"\n",oldest_create);
+		fclose(info_file_ptr);
 		exit(0);
 	    }
 	    num_records++;
@@ -405,7 +409,6 @@ main(int argc, char *argv[])
     BoolField act_raw(srtseries,"act_raw");
     BoolField act_flush(srtseries,"act_flush");
     BoolField net_buf(srtseries,"net_buf");
-    
 
     ByteField buffertype(srtseries,"buffertype");
     Variable32Field buffertype_text(srtseries, "buffertype_text");
@@ -615,5 +618,14 @@ main(int argc, char *argv[])
     if (srtdsout_stats.compress_bz2 > 0) fprintf(stderr,"%d bz2, ",srtdsout_stats.compress_bz2);
     fprintf(stderr," packed in %.6gs\n",
 	   srtdsout_stats.pack_time);
+
+    delete cylinder_number;
+    delete queue_length;
+    delete pid;
+    delete logical_volume_number;
+    delete machine_id;
+    delete thread_id;
+    delete lv_offset;
+	
     return 0;
 }

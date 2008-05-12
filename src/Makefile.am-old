@@ -310,7 +310,7 @@ ran.check-dstypes2cxx: dstypes2cxx
 	touch $@
 
 ran.check-nfsdsanalysis: nfsdsanalysis
-	./nfsdsanalysis -a -j -l 1 -z e8535201c2cca3052000000000393dcb82c6fc08d6390035400000006bfc0800 -z $(top_srcdir)/check-data/nfs.set6.20k.testfhs $(top_srcdir)/check-data/nfs.set6.20k.ds >check.nfsdsanalysis.tmp
+	./nfsdsanalysis -a -j -l 1 -u 64000000c20f0300200000000127ef590364240c4fdf0058400000009a871600 -u a63c6021c20f0300200000000117721df1e3040064000000400000009a871600 -u e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800 -z e8535201c2cca3052000000000393dcb82c6fc08d6390035400000006bfc0800 -z $(top_srcdir)/check-data/nfs.set6.20k.testfhs $(top_srcdir)/check-data/nfs.set6.20k.ds >check.nfsdsanalysis.tmp
 	perl $(top_srcdir)/check-data/clean-timing.pl < check.nfsdsanalysis.tmp >check.nfsdsanalysis.txt
 	cmp check.nfsdsanalysis.txt $(top_srcdir)/check-data/check.nfsdsanalysis.ref
 	rm check.nfsdsanalysis.tmp

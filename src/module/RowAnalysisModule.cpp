@@ -27,6 +27,11 @@ RowAnalysisModule::~RowAnalysisModule()
 }
 
 void
+RowAnalysisModule::newExtentHook(const Extent &e)
+{
+}
+
+void
 RowAnalysisModule::prepareForProcessing()
 {
 }
@@ -39,6 +44,7 @@ RowAnalysisModule::getExtent()
 	completeProcessing();
 	return NULL;
     }
+    newExtentHook(*e);
     series.setExtent(e);
     if (!prepared) {
 	prepareForProcessing();
@@ -55,6 +61,7 @@ RowAnalysisModule::getExtent()
 	    ++ignored_rows;
 	}
     }
+    series.setExtent(NULL);
     return e;
 }
 

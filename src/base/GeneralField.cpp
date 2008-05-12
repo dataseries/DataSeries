@@ -714,7 +714,7 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     
     if (printspec == str_sec_nanosec) {
 	units = strGetXMLProp(fieldxml, "units");
-	SINVARIANT(units == "Lintel::Tfrac");
+	SINVARIANT(units == "Lintel::Tfrac" || units == "2^-32 seconds");
     } 
 	       
     xmlChar *xml_divisor = myXmlGetProp(fieldxml, (const xmlChar *)"print_divisor");

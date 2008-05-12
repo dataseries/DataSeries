@@ -69,8 +69,8 @@ const string dataseries_index_type_v1_xml =
   "</ExtentType>\n";
 
 
-ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
-ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
+const ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
+const ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
 
 string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name)
 {
@@ -741,7 +741,7 @@ ExtentType::fieldTypeString(fieldType ft)
 const ExtentType *
 ExtentTypeLibrary::registerType(const string &xmldesc)
 {
-    ExtentType &type(sharedExtentType(xmldesc));
+    const ExtentType &type(sharedExtentType(xmldesc));
     
     INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
 	      boost::format("Type %s already registered")
@@ -881,7 +881,7 @@ static xmlDecode &decodeInfo()
     return decode_info;
 }
 
-ExtentType &
+const ExtentType &
 ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
 {
     xmlDecodeInfo k;

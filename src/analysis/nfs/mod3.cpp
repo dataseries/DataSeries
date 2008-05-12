@@ -529,7 +529,7 @@ public:
     }
 private:
     DataSeriesModule &commonattr, &rw;
-    ExtentType &output_type;
+    const ExtentType &output_type;
     ExtentSeries es_commonattr, es_rw, es_out;
     Int64Field in_packetat, out_packetat;
     Int32Field in_server, out_server;

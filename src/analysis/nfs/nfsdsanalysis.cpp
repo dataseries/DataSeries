@@ -1,5 +1,5 @@
 /*
-   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -14,13 +14,14 @@
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/ConstantString.H>
-#include <Lintel/HashTable.H>
-#include <Lintel/HashUnique.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/Stats.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/ConstantString.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/HashUnique.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/RotatingHashMap.hpp>
+#include <Lintel/Stats.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/DStoTextModule.H>
 #include <DataSeries/GeneralField.H>
@@ -62,7 +63,7 @@ enum optionsEnum {
     optFileSizeByType,       // file size analysis
     Commonbytes,             // common bytes in dir/fh analysis
     Unique,                  // unique bytes in file handles analysis
-    fileHandleLookup,        // lookup a bunch of file handles given in a file
+    optDirectoryPathLookup,  // try to work out the directory path for filehandles
 
     // Common + Attribute rollups
     optFileageByFilehandle,   // file age by file handle analysis
@@ -73,10 +74,11 @@ enum optionsEnum {
     strangeWriteSearch,       // search for strange write operations
     optOperationByFileHandle, // per-operation information grouped by filename (or filehandle if name is unknown)
     optServersPerFilehandle,  // how many servers for each file handle?
+    optFileHandleOperationLookup,   // dump records from the common + attr-ops rollup
+
     // Common + Attribute + RW rollups
     File_Read,                // files read analysis
     optSequentialWholeAccess, // count files accessed sequentially and completely
-    optFileHandleOperationLookup,   // dump records from the common + attr-ops rollup
 
     LastOption
 };
@@ -719,113 +721,150 @@ public:
     HashUnique<ConstantString> unique_fhs;
 };
 
-// TODO: merge with FileHandleOperationLookup?  Alternately modify
-// this one to be the one that tries to trace back to the mount point
-// information and uses a rotating hashmap to bound memory usage.
-static string FHL_inputfilename;
-class FileHandleLookup : public NFSDSModule {
+class DirectoryPathLookup : public RowAnalysisModule {
 public:
-    FileHandleLookup(DataSeriesModule &_source)
-	: source(_source), 
-	filename(s,"filename", Field::flag_nullable), 
-	filehandle(s,"filehandle"),
-	lookup_dir_filehandle(s,"lookup-dir-filehandle", Field::flag_nullable),
-	type(s,"type"),
-	uid(s,"uid"),
-	gid(s,"gid"),
-	file_size(s,"file-size"),
-	modify_time(s,"modify-time")
+    DirectoryPathLookup(DataSeriesModule &_source)
+	: RowAnalysisModule(_source), 
+	  filename(series,"filename", Field::flag_nullable), 
+	  filehandle(series,"filehandle"),
+	  lookup_dir_filehandle(series,"", Field::flag_nullable)
     {
-	ifstream in(FHL_inputfilename.c_str());
-	// todo: error on can't open file
-	int nsearch = 0;
-	while(in.good()) {
-	    string foo;
-	    in >> foo;
-	    if (in.eof()) 
-		break;
-	    AssertAlways(in.good(),("internal"));
-	    string fhwant = hex2raw(foo);
-	    mymap[fhwant].file_size = -1;
-	    ++nsearch;
+	any_wanted = wanted;
+    }
+
+    virtual ~DirectoryPathLookup() { }
+
+    static void processArg(const string &arg) {
+	ifstream in(arg.c_str());
+	if (in.good()) {
+	    while(in.good()) {
+		string aline;
+		in >> aline;
+		if (in.eof()) 
+		    break;
+		SINVARIANT(in.good());
+		wanted.add(hex2raw(aline));
+	    }
+	} else {
+	    wanted.add(hex2raw(arg));
 	}
-	printf("fhl: searching for %d filehandles\n",nsearch);
     }
     
-    virtual ~FileHandleLookup() { }
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
-	    fhinfo *v = mymap.lookup(filehandle.stringval());
-	    if (v != NULL) {
-		if (filename.isNull() == false) {
-		    AssertAlways(v->filename == filename.stringval() || v->filename == "",
-				 ("filehandle changed names?\n"));
-		    v->filename = filename.stringval();
-		}
-		if (lookup_dir_filehandle.isNull() == false) {
-		    AssertAlways(v->lookup_dir_filehandle == lookup_dir_filehandle.stringval() || v->lookup_dir_filehandle == "",
-				 ("filehandle changed names?\n"));
-		    v->lookup_dir_filehandle = lookup_dir_filehandle.stringval();
-		}
-		if (v->file_size == -1) {
-		    v->uid = uid.val();
-		    v->gid = gid.val();
-		    v->type = type.stringval();
-		    v->file_size = file_size.val();
-		    v->modify_time = modify_time.val();
-		} else {
-		    AssertAlways(v->uid == uid.val() && v->gid == gid.val() &&
-				 v->modify_time <= modify_time.val() &&
-				 v->type == type.stringval(),
-				 ("bad %d != %d || %d != %d || %lld > %lld ;; %s",
-				  v->uid,uid.val(),v->gid,gid.val(),
-				  v->modify_time,modify_time.val(),
-				  maybehexstring(v->filename).c_str()));
-		    if (file_size.val() >= v->file_size) {
-			v->file_size = file_size.val();
-		    } else {
-			printf("fhl: warning %s got smaller %lld -> %lld\n",
-			       maybehexstring(v->filename).c_str(),
-			       v->file_size,file_size.val());
-		    }
-		    v->modify_time = modify_time.val();
-		}
-	    }
+    void setBuf(string &buf, Variable32Field &field) {
+	if (buf.capacity() < static_cast<uint32_t>(field.size())) {
+	    buf.resize(field.size());
 	}
-	return e;
+	buf.assign(reinterpret_cast<const char *>(field.val()), field.size());
     }
+
+    // 2*FH 32-64 bytes FN 80 bytes = 200 bytes/entry
+    // at most 1M saved (0.5M recent, 0.5M old) => 200MB cache.
+    // TODO: make it possible to configure this.
+    static const unsigned max_recent_cache_size = 500*1000;
+
+    virtual void newExtentHook(const Extent &e) {
+	if (lookup_dir_filehandle.getName().empty()) {
+	    if (e.getType().hasColumn("lookup_dir_filehandle")) {
+		lookup_dir_filehandle.setFieldName("lookup_dir_filehandle");
+	    } else if (e.getType().hasColumn("lookup-dir-filehandle")) {
+		lookup_dir_filehandle.setFieldName("lookup-dir-filehandle");
+	    } else {
+		FATAL_ERROR("can't figure out lookup dir filehandle field name");
+	    }
+	} 
+
+	if (tmpfh2info.size_recent() >= max_recent_cache_size) {
+	    tmpfh2info.rotate();
+	}
+    }
+
+    virtual void processRow() {
+	if (filename.isNull() && lookup_dir_filehandle.isNull()) {
+	    return; // nothing useful
+	}
+	SINVARIANT(!filehandle.isNull() && !lookup_dir_filehandle.isNull());
+
+	setBuf(fhbuf, filehandle);
+	setBuf(ldfhbuf, lookup_dir_filehandle);
+	setBuf(fnbuf, filename);
+
+	if (any_wanted.exists(fhbuf)) {
+	    fhinfo *v = fh2info.lookup(fhbuf);
+	    if (v == NULL) {
+		fh2info[fhbuf] = fhinfo(fnbuf, ldfhbuf);
+		if (false) {
+		    cout << format("add %s %s %s\n") % hexstring(fhbuf)
+			% hexstring(ldfhbuf) % hexstring(fnbuf);
+		}
+		any_wanted.add(ldfhbuf);
+		while(tmpfh2info.exists(ldfhbuf)) {
+		    fhinfo &w(tmpfh2info[ldfhbuf]);
+		    if (false) {
+			cout << format("chain-add %s %s %s\n") % hexstring(ldfhbuf)
+			    % hexstring(w.lookup_dir_filehandle) 
+			    % hexstring(w.filename);
+		    }
+		    fh2info[ldfhbuf] = w;
+		    any_wanted.add(w.lookup_dir_filehandle);
+		    ldfhbuf = w.lookup_dir_filehandle;
+		}
+	    } else {
+		// INVARIANT(v->filename == fnbuf && v->lookup_dir_filehandle == ldfhbuf);
+	    }
+	} else if (!tmpfh2info.exists(fhbuf)) {
+	    if (false) {
+		cout << format("stash %s %s %s\n") % hexstring(fhbuf)
+		    % hexstring(ldfhbuf) % hexstring(fnbuf);
+	    }
+	    tmpfh2info[fhbuf] = fhinfo(fnbuf, ldfhbuf);
+	}
+	    
+    }
+
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	for(HashMap<string, fhinfo>::iterator i = mymap.begin();
-	    i != mymap.end();++i) {
-	    printf("%s: ",hexstring(i->first).c_str());
-	    if (i->second.file_size == -1) {
-		printf("not found\n");
-	    } else {
-		printf("filename %s, parentfh %s, type %s, uid %d, gid %d, maxsize %lld, modifyns %lld\n",
-		       maybehexstring(i->second.filename).c_str(), 
-		       hexstring(i->second.lookup_dir_filehandle).c_str(),
-		       i->second.type.c_str(),i->second.uid,i->second.gid,
-		       i->second.file_size,i->second.modify_time);
+	for(HashUnique<string>::iterator i = wanted.begin();
+	    i != wanted.end(); ++i) {
+	    string curfh = *i;
+	    vector<string> path;
+	    while(fh2info.exists(curfh)) {
+		fhinfo &fhi(fh2info[curfh]);
+		path.push_back(maybehexstring(fhi.filename));
+		curfh = fhi.lookup_dir_filehandle;
 	    }
+
+	    ConstantString cs_curfh(curfh);
+	    fh2mountData mountkey(cs_curfh);
+	    fh2mountData *mount = fh2mount.lookup(mountkey);
+	    if (mount == NULL) {
+		path.push_back(string("FH:") + hexstring(curfh));
+	    } else {
+		path.push_back(hexstring(mount->pathname));
+	    }
+	    
+	    reverse(path.begin(), path.end());
+	    cout << format("%s: %s\n") % hexstring(*i)
+		% join("/", path);
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
-    DataSeriesModule &source;
-    ExtentSeries s;
-    Variable32Field filename, filehandle, lookup_dir_filehandle, type;
-    Int32Field uid, gid;
-    Int64Field file_size, modify_time;
+    Variable32Field filename, filehandle, lookup_dir_filehandle;
 
     struct fhinfo {
-	string filename, lookup_dir_filehandle, type;
-	ExtentType::int32 uid, gid;
-	ExtentType::int64 file_size, modify_time;
+	string filename, lookup_dir_filehandle;
+	fhinfo(const string &a, const string &b)
+	    : filename(a), lookup_dir_filehandle(b) 
+	{ }
+	fhinfo() { }
     };
-    HashMap<string, fhinfo> mymap;
+    HashMap<string, fhinfo> fh2info;
+    static HashUnique<string> wanted;
+    HashUnique<string> any_wanted; // wanted + any intermediates
+    string fhbuf, ldfhbuf, fnbuf;
+    RotatingHashMap<string, fhinfo> tmpfh2info;
 };
+
+HashUnique<string> DirectoryPathLookup::wanted;
 
 class TimeBoundPrune : public NFSDSModule {
 public:
@@ -948,7 +987,7 @@ public:
     virtual void processRow() {
 	if (wanted.exists(filehandle.stringval())) {
 	    if (!printed_header) {
-		cout << "FHOL: reply-at client server ; operation type filehandle filename ; file-size modify-time\n";
+		cout << "FHOL: reply-at client server ; operation type filehandle filename; file-size modify-time\n";
 		printed_header = true;
 	    }
 	    cout << format("FHOL: %s %s %s ; %s %s %s '%s' ; %d %s\n")
@@ -992,8 +1031,7 @@ public:
     Variable32Field operation, type;
 
     bool printed_header;
-    static HashUnique<string> wanted;
-    
+    static HashUnique<string> wanted;    
 };
 
 HashUnique<string> FileHandleOperationLookup::wanted;
@@ -1038,7 +1076,7 @@ usage(char *progname)
     cerr << "    #-r # Common bytes between filehandle and dirhandle\n";
     cerr << "    #-s # Sequential whole access\n";
     cerr << "    #-t # Strange write search\n";
-    cerr << "    #-u <fh-list filename> # file handle lookup\n";
+    cerr << "    -u <fh|fh-list pathname> # directory path lookup\n";
     cerr << "    #-v <series> # select series to print 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5 = common/attr/rw join\n";
     cerr << "    #-w # servers per filehandle\n";
     cerr << "    #-x # transactions\n";
@@ -1111,8 +1149,9 @@ parseopts(int argc, char *argv[])
 		need_mount_by_filehandle = true;
 	    }
 	    break;
-	case 'u': FATAL_ERROR("untested");options[fileHandleLookup] = 1;
-	    FHL_inputfilename = optarg;
+	case 'u': options[optDirectoryPathLookup] = 1;
+	    need_mount_by_filehandle = true;
+	    DirectoryPathLookup::processArg(optarg);
 	    break;
 	case 'v': print_input_series = atoi(optarg);
 	    AssertAlways(print_input_series >= 1 && print_input_series <= 5,
@@ -1190,6 +1229,7 @@ main(int argc, char *argv[])
 	new TypeIndexModule("NFS trace: read-write");
     TypeIndexModule *sourced = 
 	new TypeIndexModule("NFS trace: mount");
+    sourced->setSecondMatch("Trace::NFS::mount");
     bool timebound_set = false;
     int timebound_start = 0;
     int timebound_end = INT_MAX;
@@ -1249,8 +1289,7 @@ main(int argc, char *argv[])
     }
 
     if (need_mount_by_filehandle) {
-	PrefetchBufferModule prefetch(*sourced,32*1024*1024);
-	NFSDSModule *tmp = NFSDSAnalysisMod::newFillMount_HashTable(prefetch);
+	NFSDSModule *tmp = NFSDSAnalysisMod::newFillMount_HashTable(*sourced);
 	DataSeriesModule::getAndDelete(*tmp);
 	delete tmp;
     }
@@ -1312,8 +1351,8 @@ main(int argc, char *argv[])
 	attrOpsSequence.addModule(NFSDSAnalysisMod::newUniqueBytesInFilehandles(attrOpsSequence.tail()));
     }
 
-    if (options[fileHandleLookup]) {
-	attrOpsSequence.addModule(new FileHandleLookup(attrOpsSequence.tail()));
+    if (options[optDirectoryPathLookup]) {
+	attrOpsSequence.addModule(new DirectoryPathLookup(attrOpsSequence.tail()));
     }
 
     // merge join with attributes

@@ -1,0 +1,100 @@
+#
+# (c) Copyright 2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# All of the options and dependencies for the various cmake sub-bits
+
+#### Shared Libs
+
+OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
+
+IF(BUILD_SHARED_LIBS)
+    SET(LIBRARY_TYPE SHARED)
+ELSE(BUILD_SHARED_LIBS)
+    SET(LIBRARY_TYPE STATIC)
+ENDIF(BUILD_SHARED_LIBS)
+
+#### Lintel
+
+SET(LINTEL_FIND_REQUIRED)
+SET(LINTELPTHREAD_FIND_REQUIRED)
+INCLUDE(FindLintel)
+
+#### LibXML2
+
+INCLUDE(FindLibXml2)
+IF(NOT LIBXML2_FOUND)
+    MESSAGE(FATAL_ERROR "DataSeries requires libxml2 to build")
+ENDIF(NOT LIBXML2_FOUND)
+
+#### Zlib
+
+INCLUDE(FindZLIB)
+
+IF(ZLIB_FOUND)
+    SET(WITH_ZLIB_DEFAULT ON)
+ELSE(ZLIB_FOUND)
+    SET(WITH_ZLIB_DEFAULT OFF)
+ENDIF(ZLIB_FOUND)
+
+OPTION(WITH_ZLIB "Build with zlib (gzip) support?" ${WITH_ZLIB_DEFAULT})
+
+#### BZip2
+
+INCLUDE(FindBZip2)
+
+IF(BZIP2_FOUND)
+    SET(WITH_BZIP2_DEFAULT ON)
+ELSE(BZIP2_FOUND)
+    SET(WITH_BZIP2_DEFAULT OFF)
+ENDIF(BZIP2_FOUND)
+
+OPTION(WITH_BZIP2 "Build with bzip2 support?" ${WITH_BZIP2_DEFAULT})
+
+#### SRT
+
+LINTEL_WITH_LIBRARY(SRT SRT/SRTTrace.H SRTlite)
+IF(SRT_ENABLED) # hack
+    SET(FULL_SRT_INCLUDE_DIR "${SRT_INCLUDE_DIR}/SRT")
+ENDIF(SRT_ENABLED)
+
+#### Other libraries
+
+INCLUDE(FindLZO)
+INCLUDE(FindCrypto)
+LINTEL_WITH_LIBRARY(PCRE pcre.h pcre)
+
+LINTEL_WITH_HEADER(PCAP pcap.h)
+LINTEL_WITH_HEADER(LINUX_COMPILER linux/compiler.h)
+
+#### Perl
+
+LINTEL_FIND_PERL_MODULE(XML::Parser PERL_XML_PARSER)
+LINTEL_FIND_PERL_MODULE(Date::Parse PERL_DATE_PARSE)
+LINTEL_FIND_PERL_MODULE(Crypt::Rijndael PERL_CRYPT_RIJNDAEL)
+
+#### Misc Options
+
+OPTION(BUILD_PAPER "Build the src/paper programs" OFF)
+OPTION(BUILD_EXAMPLE "Build the example program" OFF)
+
+#### RPath
+
+OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
+
+IF(WITH_INSTALLED_RPATH)
+  # use, i.e. don't skip the full RPATH for the build tree
+  SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+  # when building, don't use the install RPATH already
+  # (but later on when installing)
+  SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+
+  # the RPATH to be used when installing
+  SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+  # add the automatically determined parts of the RPATH
+  # which point to directories outside the build tree to the install RPATH
+  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+ENDIF(WITH_INSTALLED_RPATH)

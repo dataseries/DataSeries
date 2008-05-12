@@ -1,3 +1,8 @@
+2008-05-09: 
+   * Switched over to using cmake for building instead of autoconf.  This
+     change is intended to move us toward being able to build on Windows.
+   * Added support for building and installing doxygen based documentation.
+
 2008-03-26:
   * Added the lindump-mmap raw collection program.  lindump-mmap is
     roughly twice as efficient at doing packet capture as tcpdump, but

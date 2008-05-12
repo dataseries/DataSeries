@@ -347,7 +347,7 @@ private:
 	}
     };
 
-    int base_update_check_interval,update_check_interval;
+    unsigned base_update_check_interval, update_check_interval;
 
     PriorityQueue<packetTimeSize, packetTimeSizeGeq> pending_packets;
     long long max_packettime;

@@ -22,6 +22,9 @@
 #include <DataSeries/DataSeriesModule.H>
 #include <DataSeries/TypeIndexModule.H>
 
+using namespace std;
+using boost::format;
+
 int
 main(int argc, char *argv[])
 {
@@ -43,19 +46,18 @@ main(int argc, char *argv[])
 
     //Get start_time and offset from the info file.
     FILE* info_file_ptr = NULL;
-    char* info_file_name = new char[strlen(argv[1]) + 6]; // + .info
-    info_file_name = strcpy(info_file_name, argv[1]);
-    info_file_name = strcat(info_file_name,".info");
-    printf ("%s\n", info_file_name);
-    AssertAlways(access(info_file_name, R_OK|W_OK|F_OK) == 0,("Unable to open %s for read", info_file_name));
-    info_file_ptr = fopen((const char*)info_file_name, "r");
-    if (info_file_ptr == NULL) {
-	fprintf(stderr, "Info file %s cannot be opened\n", info_file_name);
-	perror("error was:");
-	exit(1);
-    }
+
+    string info_file_name(argv[1]);
+    info_file_name.append(".info");
+
+    cout << format("%s\n") % info_file_name;
+    info_file_ptr = fopen(info_file_name.c_str(), "r");
+    AssertAlways(info_file_ptr != NULL,
+		 ("Unable to open %s for read: %s", info_file_name.c_str(), strerror(errno)));
+
     char info_file_string[1024];
     char *ifs_ptr = info_file_string;
+    *ifs_ptr = '\0';
     int str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
     int read_count = 0;
     while(read_count < str_size && *ifs_ptr != '\n') {
@@ -65,13 +67,15 @@ main(int argc, char *argv[])
     ifs_ptr++;
     read_count++;
     char *tmp_ptr = ifs_ptr;
-    while (*tmp_ptr != '.') {
+    while (*tmp_ptr != '.' && *tmp_ptr != '\0') {
 	tmp_ptr++;
 	read_count++;
     }
+    SINVARIANT(*tmp_ptr == '.');
     *tmp_ptr = '\0';
     tmp_ptr++;
     read_count--; //goes up to the . not including it
+    cout << boost::format("hi '%s'\n") % maybehexstring(ifs_ptr);
     int64_t new_tfrac_base = stringToInt64(ifs_ptr, 10);
     ifs_ptr = tmp_ptr;
     while (read_count < str_size && *ifs_ptr != ' ') {
@@ -79,6 +83,7 @@ main(int argc, char *argv[])
 	read_count++;
     }
     Clock::Tfrac base_time = 0, time_offset = 0;
+    cout << "hi2\n";
     uint64_t new_tfrac_offset = stringToInt64(ifs_ptr, 10);
     base_time = (Clock::Tfrac)new_tfrac_base;
     time_offset = (Clock::Tfrac)new_tfrac_offset;

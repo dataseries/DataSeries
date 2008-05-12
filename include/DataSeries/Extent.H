@@ -116,6 +116,9 @@ public:
     };
 
     const ExtentType &type;
+    const ExtentType &getType() const {
+	return type;
+    }
 
     Extent(ExtentTypeLibrary &library, 
 	   Extent::ByteArray &packeddata, 

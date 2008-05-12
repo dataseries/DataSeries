@@ -36,6 +36,12 @@ public:
     
     virtual Extent *getExtent();
 
+    /** Called right after each extent is retrieved, but before the 
+	extent is set in the series.  Serves two purposes: 1) infrequent
+	statistics/processing; and 2) setting up fields with unknown 
+	field names */
+    virtual void newExtentHook(const Extent &e);
+
     /** this function will be called once after the first extent has been
 	retrieved, but before processRow() has been called; it will not 
 	be called if there were no extents to process */
@@ -57,7 +63,7 @@ public:
      * evaluated, and if it evaluates to true, then processRow will be
      * called. An empty expression is treated as true for all values.
      *
-     * @param where the expression to evaluate
+     * @param where_expression the expression to evaluate
      */
     void setWhereExpr(const std::string &where_expression);
 
@@ -76,9 +82,8 @@ public:
 protected:
     ExtentSeries series;
     DataSeriesModule &source;
-
-private:
     bool prepared;
+
     std::string where_expr_str;
     DSExpr *where_expr;
 };
