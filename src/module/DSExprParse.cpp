@@ -38,7 +38,7 @@
 #include "DSExprParse.hpp"
 
 /* User implementation prologue.  */
-#line 60 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 60 "module/DSExprParse.yy"
 
 
 #include <Lintel/Clock.H>
@@ -134,6 +134,7 @@ namespace DSExprImpl {
 	    return left->valDouble() + right->valDouble(); 
 	}
 	virtual int64_t valInt64() { 
+	    // TODO: add check for overflow?
 	    return left->valInt64() + right->valInt64(); 
 	}
 	virtual bool valBool() {
@@ -222,7 +223,7 @@ using namespace DSExprImpl;
 
 
 /* Line 317 of lalr1.cc.  */
-#line 226 "/home/anderse/projects/DataSeries/src/module/DSExprParse.cpp"
+#line 227 "module/DSExprParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -568,63 +569,63 @@ namespace DSExprImpl
     switch (yyn)
       {
 	  case 2:
-#line 255 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 256 "module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 256 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 257 "module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 4:
-#line 258 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 259 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprStrictlyGreaterThan((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 263 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 264 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 264 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 265 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 265 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 266 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 8:
-#line 266 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 267 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 9:
-#line 267 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 268 "module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 10:
-#line 268 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 269 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
     break;
 
   case 11:
-#line 269 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 270 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
     break;
 
   case 12:
-#line 270 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 271 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 628 "/home/anderse/projects/DataSeries/src/module/DSExprParse.cpp"
+#line 629 "module/DSExprParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -962,8 +963,8 @@ namespace DSExprImpl
   const unsigned short int
   Parser::yyrline_[] =
   {
-         0,   255,   255,   256,   258,   263,   264,   265,   266,   267,
-     268,   269,   270
+         0,   256,   256,   257,   259,   264,   265,   266,   267,   268,
+     269,   270,   271
   };
 
   // Print the state stack on the debug stream.
@@ -1051,7 +1052,7 @@ namespace DSExprImpl
 
 } // namespace DSExprImpl
 
-#line 273 "/home/anderse/projects/DataSeries/src/module/DSExprParse.yy"
+#line 274 "module/DSExprParse.yy"
 
 
 void

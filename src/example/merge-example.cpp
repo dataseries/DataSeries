@@ -61,8 +61,8 @@ public:
 
 	// Now we can make the type and initialize the series.
 	string type = join("",spec);
-	output_type = new ExtentType(type);
-	series.setType(output_type);
+	output_type = &ExtentTypeLibrary::sharedExtentType(type);
+	series.setType(*output_type);
     }
 
     virtual Extent *getExtent() {
@@ -81,7 +81,7 @@ public:
 	}
 
 	// Make a new extent
-	Extent *out_extent = new Extent(output_type);
+	Extent *out_extent = new Extent(*output_type);
 	// Put it into the series so we can access it.
 	series.setExtent(out_extent);
 
@@ -109,7 +109,7 @@ private:
     DoubleField time;
     DoubleField rownum;
     vector<DoubleField *> columns;
-    ExtentType *output_type;
+    const ExtentType *output_type;
 };
 
 /// This class does the merge of multiple input extents mapping the
@@ -190,13 +190,13 @@ public:
 		}
 	    }
 	    spec.push_back("</ExtentType>\n");
-	    output_type = new ExtentType(join("",spec));
+	    output_type = &ExtentTypeLibrary::sharedExtentType(join("",spec));
 	    // For debugging, dump out the final spec.
 	    cout << join("", spec);
 	}
 	
 	// Make output extent and prepare to use it.
-	Extent *out_extent = new Extent(output_type);
+	Extent *out_extent = new Extent(*output_type);
        	output_series.setExtent(out_extent);
 
 	// In practice a way to small number (10), but it forces
@@ -267,7 +267,7 @@ public:
 private:
     ExtentSeries output_series;
     const string type_name;
-    ExtentType *output_type;
+    const ExtentType *output_type;
     vector<Source *> sources;
     Int32Field orig_src;
     DoubleField time;

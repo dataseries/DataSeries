@@ -1,0 +1,46 @@
+#
+# (c) Copyright 2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# cmake rules for the src/process directory
+
+DATASERIES_PROGRAM(dsextentindex)
+DATASERIES_PROGRAM(dsselect)
+DATASERIES_PROGRAM(dsrepack)
+DATASERIES_PROGRAM(dsstatgroupby)
+DATASERIES_PROGRAM(ds2txt)
+DATASERIES_PROGRAM(pssimple2ds)
+DATASERIES_PROGRAM(ellardnfs2ds)
+DATASERIES_PROGRAM(ds2ellardnfs)
+DATASERIES_PROGRAM(ellardanalysis)
+DATASERIES_PROGRAM(wcweb2ds)
+DATASERIES_PROGRAM(ds2wcweb)
+DATASERIES_PROGRAM(textindex)
+DATASERIES_PROGRAM(indexnfscommon)
+DATASERIES_PROGRAM(lvpvprocessusage)
+DATASERIES_PROGRAM(ipdsanalysis sourcebyrange.cpp)
+
+IF(CRYPTO_ENABLED)
+    DATASERIES_PROGRAM(iphost2ds)
+ENDIF(CRYPTO_ENABLED)
+
+IF(SRT_ENABLED)
+    DATASERIES_PROGRAM(srt2ds)
+    TARGET_LINK_LIBRARIES(srt2ds ${SRT_LIBRARIES})
+
+    DATASERIES_PROGRAM(cmpsrtds)
+    TARGET_LINK_LIBRARIES(cmpsrtds ${SRT_LIBRARIES})
+
+    INSTALL(PROGRAMS dssrt2txt DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+ENDIF(SRT_ENABLED)
+
+IF(PCRE_ENABLED)
+    DATASERIES_PROGRAM(bacct2ds)
+    TARGET_LINK_LIBRARIES(bacct2ds ${PCRE_LIBRARIES})
+ENDIF(PCRE_ENABLED)
+
+IF(PCAP_ENABLED)
+    DATASERIES_PROGRAM(nettrace2ds)
+    TARGET_LINK_LIBRARIES(nettrace2ds ${PCAP_LIBRARIES})
+ENDIF(PCAP_ENABLED)

@@ -78,12 +78,9 @@ public:
 int
 main(int argc, char *argv[]) 
 {
-    //    Extent::ByteArray::setRetainedAutotuning(4,0);
-    TypeIndexModule source("Trace::BlockIO::SRT");
-    // TypeIndexModule source("I/O trace: SRT-V7");
-    PrefetchBufferModule *prefetch = new PrefetchBufferModule(source,64*1024*1024);
+    TypeIndexModule *source = new TypeIndexModule("Trace::BlockIO::SRT");
 
-    SequenceModule seq(prefetch);
+    SequenceModule seq(source);
     while(1) {
 	int opt = getopt(argc, argv, "123456789");
 	if (opt == -1) break;
@@ -123,26 +120,25 @@ main(int argc, char *argv[])
     }
 
     for(int i=optind; i<argc; ++i) {
-	source.addSource(argv[i]);
+	source->addSource(argv[i]);
     }
     DataSeriesModule::getAndDelete(seq);
     
     RowAnalysisModule::printAllResults(seq,1);
 
     printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",
-	   (double)(source.total_compressed_bytes)/(1024.0*1024),
-	   (double)(source.total_uncompressed_bytes)/(1024.0*1024),
-	   source.decode_time);
+	   (double)(source->total_compressed_bytes)/(1024.0*1024),
+	   (double)(source->total_uncompressed_bytes)/(1024.0*1024),
+	   source->decode_time);
     printf("                   common\n");
     printf("MB compressed:   %8.2f\n",
-	   (double)source.total_compressed_bytes/(1024.0*1024));
+	   (double)source->total_compressed_bytes/(1024.0*1024));
     printf("MB uncompressed: %8.2f\n",
-	   (double)source.total_uncompressed_bytes/(1024.0*1024));
+	   (double)source->total_uncompressed_bytes/(1024.0*1024));
     printf("decode seconds:  %8.2f\n",
-	   source.decode_time);
+	   source->decode_time);
     printf("wait fraction :  %8.2f\n",
-	   source.waitFraction());
+	   source->waitFraction());
     
-    Extent::ByteArray::flushRetainedAllocations();
     return 0;
 }

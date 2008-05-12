@@ -1,6 +1,6 @@
-#line 2 "/home/anderse/projects/DataSeries/src/module/DSExprScan.cpp"
+#line 2 "module/DSExprScan.cpp"
 
-#line 4 "/home/anderse/projects/DataSeries/src/module/DSExprScan.cpp"
+#line 4 "module/DSExprScan.cpp"
 
 #define  YY_INT_ALIGNED short int
 
@@ -457,8 +457,8 @@ static yyconst flex_int16_t yy_chk[78] =
 #define yymore() yymore_used_but_not_detected
 #define YY_MORE_ADJ 0
 #define YY_RESTORE_YY_MORE_OFFSET
-#line 1 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
-#line 2 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 1 "module/DSExprScan.ll"
+#line 2 "module/DSExprScan.ll"
 /*
    (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
@@ -484,9 +484,9 @@ static yyconst flex_int16_t yy_chk[78] =
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
-#line 42 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 42 "module/DSExprScan.ll"
 #define YY_USER_ACTION  cur_column += (yyleng);
-#line 490 "/home/anderse/projects/DataSeries/src/module/DSExprScan.cpp"
+#line 490 "module/DSExprScan.cpp"
 
 #define INITIAL 0
 
@@ -701,7 +701,7 @@ YY_DECL
 	register int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
-#line 45 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 45 "module/DSExprScan.ll"
 
 
 
@@ -710,7 +710,7 @@ typedef DSExprImpl::Parser::token token;
 static unsigned cur_column;
 
 
-#line 714 "/home/anderse/projects/DataSeries/src/module/DSExprScan.cpp"
+#line 714 "module/DSExprScan.cpp"
 
 	if ( !yyg->yy_init )
 		{
@@ -792,46 +792,46 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 53 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 53 "module/DSExprScan.ll"
 { /* ignore whitespace */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 55 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 55 "module/DSExprScan.ll"
 return token_type(yytext[0]);
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 56 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 56 "module/DSExprScan.ll"
 { yylval->constant = stringToDouble(yytext); 
              return token::CONSTANT; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 58 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 58 "module/DSExprScan.ll"
 { yylval->field = new std::string(yytext);
 	  return token::FIELD; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 60 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 60 "module/DSExprScan.ll"
 { return token::FN_TfracToSeconds; }
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 61 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 61 "module/DSExprScan.ll"
 { return token::END_OF_STRING; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 62 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 62 "module/DSExprScan.ll"
 { FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 64 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 64 "module/DSExprScan.ll"
 ECHO;
 	YY_BREAK
-#line 835 "/home/anderse/projects/DataSeries/src/module/DSExprScan.cpp"
+#line 835 "module/DSExprScan.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1895,7 +1895,7 @@ void DSStatGroupByScanfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 64 "/home/anderse/projects/DataSeries/src/module/DSExprScan.ll"
+#line 64 "module/DSExprScan.ll"
 
 
 

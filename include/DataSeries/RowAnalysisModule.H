@@ -63,7 +63,7 @@ public:
      * evaluated, and if it evaluates to true, then processRow will be
      * called. An empty expression is treated as true for all values.
      *
-     * @param where the expression to evaluate
+     * @param where_expression the expression to evaluate
      */
     void setWhereExpr(const std::string &where_expression);
 
@@ -82,9 +82,8 @@ public:
 protected:
     ExtentSeries series;
     DataSeriesModule &source;
-
-private:
     bool prepared;
+
     std::string where_expr_str;
     DSExpr *where_expr;
 };

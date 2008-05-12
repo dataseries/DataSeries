@@ -23,19 +23,15 @@
 #endif
 
 #ifndef DATASERIES_ENABLE_BZ2
-#define DATASERIES_ENABLE_BZ2 1
+#define DATASERIES_ENABLE_BZ2 0
 #endif
 
 #ifndef DATASERIES_ENABLE_ZLIB
-#define DATASERIES_ENABLE_ZLIB 1
+#define DATASERIES_ENABLE_ZLIB 0
 #endif
 
 #ifndef DATASERIES_ENABLE_LZO
-#define DATASERIES_ENABLE_LZO 1
-#endif
-
-#ifndef DATASERIES_ENABLE_LZF
-#define DATASERIES_ENABLE_LZF 1
+#define DATASERIES_ENABLE_LZO 0
 #endif
 
 #if DATASERIES_ENABLE_BZ2
@@ -47,11 +43,10 @@
 #if DATASERIES_ENABLE_LZO
 #include <lzo1x.h>
 #endif
-#if DATASERIES_ENABLE_LZF
+
 extern "C" {
 #include <lzf.h>
 }
-#endif
 
 #include <Lintel/Clock.H>
 #include <Lintel/HashTable.H>
@@ -67,7 +62,7 @@ using boost::format;
 
 extern "C" {
     char *dataseriesVersion() {
-	return (char *)VERSION;
+	return (char *)DATASERIES_VERSION;
     }
 }
 
@@ -952,7 +947,6 @@ bool
 Extent::packLZF(byte *input, int32 inputsize,
 		Extent::ByteArray &into, int compression_level)
 {
-#if DATASERIES_ENABLE_LZF
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -965,8 +959,6 @@ Extent::packLZF(byte *input, int32 inputsize,
 
     into.resize(ret);
     return true;
-#endif
-    return false;
 }
 
 // TODO: test that this works, but I believe that if we do a resize on
@@ -1095,12 +1087,10 @@ Extent::uncompressBytes(byte *into, byte *from,
 	INVARIANT(ret == BZ_OK, "Error decompressing extent!");
 	outsize = destlen;
 #endif
-#if DATASERIES_ENABLE_LZF
     } else if (compression_mode == compress_mode_lzf) {
 	unsigned int destlen = lzf_decompress((const void *)from, fromsize,
 					       (void *)into, intosize);
 	outsize = destlen;
-#endif
     } else {
 	string mode_name("unknown");
 	if (compression_mode == compress_mode_lzo) {

@@ -18,11 +18,11 @@ void expectRecordSize(const string &type_in, unsigned original,
 		      unsigned max_column_size)
 {
     string a_type((format(type_in) % "original").str());
-    ExtentType &a(ExtentTypeLibrary::sharedExtentType(a_type));
+    const ExtentType &a(ExtentTypeLibrary::sharedExtentType(a_type));
     SINVARIANT(a.fixedrecordsize() == original);
 
     string b_type((format(type_in) % "max_column_size").str());
-    ExtentType &b(ExtentTypeLibrary::sharedExtentType(b_type));
+    const ExtentType &b(ExtentTypeLibrary::sharedExtentType(b_type));
     SINVARIANT(b.fixedrecordsize() == max_column_size);
 }
 

@@ -1,0 +1,142 @@
+#
+# (c) Copyright 2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# cmake rules for the src directory
+
+INCLUDE_DIRECTORIES(
+	${DataSeries_SOURCE_DIR}/include
+	${DataSeries_SOURCE_DIR}/src
+
+        ${LIBXML2_INCLUDE_DIR}
+	${LINTEL_INCLUDE_DIR}
+	${ZLIB_INCLUDE_DIR}
+	${BZIP2_INCLUDE_DIR}
+	${LZO_INCLUDE_DIR}
+	${CRYPTO_INCLUDE_DIR}
+	${FULL_SRT_INCLUDE_DIR}
+	${PCRE_INCLUDE_DIR}
+	${PCAP_INCLUDE_DIR}
+	${LINUX_COMPILER_INCLUDE_DIR}
+)
+
+ADD_DEFINITIONS(-D_FILE_OFFSET_BITS=64 -D_LARGE_FILES 
+	-I${CMAKE_CURRENT_SOURCE_DIR}/liblzf-1.6 
+	-DDATASERIES_VERSION=\"\\"${DATASERIES_VERSION}\\"\")
+
+IF(WITH_BZIP2)
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_BZ2)
+ENDIF(WITH_BZIP2)
+
+IF(WITH_ZLIB)
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_ZLIB)
+ENDIF(WITH_ZLIB)
+
+IF(LZO_ENABLED)
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_LZO)
+ENDIF(LZO_ENABLED)
+
+SET(LIBDATASERIES_SOURCES
+	base/DataSeriesFile.cpp
+	base/Extent.cpp
+	base/ExtentField.cpp
+	base/ExtentSeries.cpp
+	base/ExtentType.cpp
+	base/GeneralField.cpp
+	base/Int64TimeField.cpp
+	process/commonargs.cpp
+	module/DSExpr.cpp
+	module/DSExprParse.cpp
+	module/DSExprScan.cpp
+	module/DSStatGroupByModule.cpp
+	module/DStoTextModule.cpp
+	module/DataSeriesModule.cpp
+	module/IndexSourceModule.cpp
+	module/MinMaxIndexModule.cpp
+	module/PrefetchBufferModule.cpp
+	module/RowAnalysisModule.cpp
+	module/SequenceModule.cpp
+	module/TypeIndexModule.cpp
+	liblzf-1.6/lzf_c.c
+	liblzf-1.6/lzf_d.c 
+)
+
+################################## SUBDIRS
+
+ADD_SUBDIRECTORY(process)
+ADD_SUBDIRECTORY(analysis)
+ADD_SUBDIRECTORY(BatchParallel)
+ADD_SUBDIRECTORY(raw-collection)
+ADD_SUBDIRECTORY(tests)
+ADD_SUBDIRECTORY(perl-modules)
+IF(BUILD_PAPER)
+    ADD_SUBDIRECTORY(paper)
+ENDIF(BUILD_PAPER)
+IF(BUILD_EXAMPLE)
+    ADD_SUBDIRECTORY(example)
+ENDIF(BUILD_EXAMPLE)
+
+################################## SCRIPTS
+
+LINTEL_INSTALL_CONFIG_PROGRAM(dataseries-config)
+
+IF(PERL_XML_PARSER_ENABLED)
+    LINTEL_INSTALL_CONFIG_PROGRAM(dstypes2cxx)
+ENDIF(PERL_XML_PARSER_ENABLED)
+
+################################## MISC
+
+ADD_CUSTOM_TARGET(rebuild_DSExpr
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/module/rebuild-dsexpr.sh
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+
+################################## LIBRARY CONDITIONAL
+
+IF(WITH_ZLIB)
+    INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_ZLIB=1)
+ENDIF(WITH_ZLIB)
+
+IF(WITH_BZIP2)
+    INCLUDE_DIRECTORIES(${BZIP2_INCLUDE_DIR})
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_BZIP2=1)
+ENDIF(WITH_BZIP2)
+
+IF(WITH_LZO)
+    INCLUDE_DIRECTORIES(${LZO_INCLUDE_DIR})
+    ADD_DEFINITIONS(-DDATASERIES_ENABLE_LZO=1)
+ENDIF(WITH_LZO)
+
+IF(CRYPTO_ENABLED)
+    SET(LIBDATASERIES_SOURCES ${LIBDATASERIES_SOURCES} module/cryptutil.cpp)
+ENDIF(CRYPTO_ENABLED)
+
+################################## LIBRARY
+
+ADD_LIBRARY(DataSeries ${LIBRARY_TYPE} ${LIBDATASERIES_SOURCES})
+SET_TARGET_PROPERTIES(DataSeries 
+    PROPERTIES VERSION ${DATASERIES_VERSION} SONAME ${DATASERIES_ABI_VERSION})
+TARGET_LINK_LIBRARIES(DataSeries ${LINTELPTHREAD_LIBRARIES} ${LIBXML2_LIBRARIES})
+
+################################## CONDITIONAL LIBRARY
+
+IF(WITH_ZLIB)
+    TARGET_LINK_LIBRARIES(DataSeries ${ZLIB_LIBRARIES})
+ENDIF(WITH_ZLIB)
+
+IF(WITH_BZIP2)
+    TARGET_LINK_LIBRARIES(DataSeries ${BZIP2_LIBRARIES})
+ENDIF(WITH_BZIP2)
+
+IF(WITH_LZO)
+    TARGET_LINK_LIBRARIES(DataSeries ${LZO_LIBRARIES})
+ENDIF(WITH_LZO)
+
+IF(CRYPTO_ENABLED)
+    TARGET_LINK_LIBRARIES(DataSeries ${CRYPTO_LIBRARIES})
+ENDIF(CRYPTO_ENABLED)
+
+################################## INSTALL
+
+INSTALL(TARGETS DataSeries DESTINATION ${CMAKE_INSTALL_PREFIX}/lib)

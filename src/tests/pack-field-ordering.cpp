@@ -18,7 +18,7 @@ void testSimpleCheckOffsets(const string &type_xml, int off_bool, int off_byte,
 			    int off_i32, int off_v32, int off_i64, 
 			    int off_dbl, unsigned recordsize)
 {
-    ExtentType &a(ExtentTypeLibrary::sharedExtentType(type_xml));
+    const ExtentType &a(ExtentTypeLibrary::sharedExtentType(type_xml));
 
     SINVARIANT(a.getOffset("bool") == off_bool);
     SINVARIANT(a.getOffset("byte") == off_byte);

@@ -69,10 +69,10 @@ public:
 	FieldOrderingSmallToBigSepVar32, FieldOrderingBigToSmallSepVar32,
     };
 
-    static ExtentType &getDataSeriesXMLType() {
+    static const ExtentType &getDataSeriesXMLType() {
 	return dataseries_xml_type;
     }
-    static ExtentType &getDataSeriesIndexTypeV0() {
+    static const ExtentType &getDataSeriesIndexTypeV0() {
 	return dataseries_index_type_v0;
     }
     // we have visible and invisible fields; visible fields are
@@ -206,8 +206,8 @@ public:
     static std::string strGetXMLProp(xmlNodePtr cur, 
 				     const std::string &option_name);
 private:
-    static ExtentType &dataseries_xml_type;
-    static ExtentType &dataseries_index_type_v0;
+    static const ExtentType &dataseries_xml_type;
+    static const ExtentType &dataseries_index_type_v0;
 
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
@@ -337,7 +337,7 @@ public:
 				   bool null_ok = false);
 
     std::map<const std::string, const ExtentType *> name_to_type;
-    static ExtentType &sharedExtentType(const std::string &xmldesc);
+    static const ExtentType &sharedExtentType(const std::string &xmldesc);
 };
 
 #endif

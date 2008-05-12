@@ -5,10 +5,9 @@
 #  See the file named COPYING for license details
 #
 
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-includedir=@includedir@
-libdir=@libdir@
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=$prefix/include
+libdir=$prefix/lib
 
 usage()
 {
@@ -31,18 +30,21 @@ fi
 
 case "$1" in
     --cflags)
-    	echo "-I${includedir}/DataSeries @LINTEL_CFLAGS@ @XML2_CFLAGS@"
+        cflags="-I${includedir}/DataSeries"
+	t="@LINTEL_INCLUDE_DIR@"; [ ! -z "$t" ] && cflags="$cflags -I$t"
+	t="@XML2_INCLUDE_DIR@"; [ ! -z "$t" ] && cflags="$cflags -I$t"
+	echo $cflags
 	exit 0
     	;;
     --libtool-libs)
-	echo ${libdir}/libDataSeries.la
+	echo /no/such/file/not/supported/dataseries-config/--libtool-libs
 	exit 0
 	;;
     --libs)
         if test $libdir = '/usr/lib'; then
-	    echo "-lDataSeries @LINTEL_LIBS@"
+	    echo "-lDataSeries"
         else
-	    echo "-L$libdir -lDataSeries @LINTEL_LIBS@ @XML2_LIBS@ @LZF_LIBS@ @LZO_LIBS@ @ZLIB_LIBS@ @BZ2_LIBS@"
+	    echo "-L$libdir -lDataSeries"
 	fi
 	exit 0
 	;;
@@ -50,7 +52,7 @@ case "$1" in
         usage
 	;;
     --version)
-    	echo @VERSION@;
+    	echo @DATASERIES_VERSION@;
     	exit 0
     	;;
     *)
