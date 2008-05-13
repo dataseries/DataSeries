@@ -17,22 +17,29 @@ sub new {
 	if ($_ eq 'help') {
 	    $this->usage();
 	    exit(0);
+	} elsif (/^mode=((info)|(convert))$/o) {
+	    die "Already have specified mode" 
+		if (defined $this->{mode});
+	    $this->{mode} = $1;
 	} elsif (/^compress=(.+)$/o) {
 	    die "Already have specified compression" 
-		if defined $this->{compress};
+		if (defined $this->{compress});
 	    $this->{compress} = $1;
         } elsif (/^minor=(.+)$/o) {
-            die "Already have a new minor version" if defined $this->{new_minor};
+            die "Already have a new minor version" 
+		if (defined $this->{new_minor});
             $this->{new_minor} = $1;
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
     }
+    die "No mode set expected mode=info or mode=convert" 
+	unless (defined $this->{mode});
     return $this;
 }
 
 sub usage {
-    print "batch-parallel srt2ds [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
+    print "batch-parallel srt2ds mode={info|convert} [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
 }
 
 sub file_is_source {
@@ -44,8 +51,13 @@ sub file_is_source {
 
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
-
-    $fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
+    if ($this->{mode} eq "info") {
+	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.info/o;
+    } elsif ($this->{mode} eq "convert") {
+	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
+    } else {
+	die "srt2ds internal consistency failure.";
+    }
     return $fullpath;
 }
 
