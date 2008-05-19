@@ -5,13 +5,9 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/LintelAssert.hpp>
-
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
 
 TypeIndexModule::TypeIndexModule(const string &_type_match)
     : IndexSourceModule(), 
@@ -32,16 +28,16 @@ TypeIndexModule::~TypeIndexModule()
 void
 TypeIndexModule::setMatch(const string &_type_match)
 {
-    AssertAlways(startedPrefetching() == false,
-		 ("invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out"));
+    INVARIANT(startedPrefetching() == false,
+	      "invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out");
     type_match = _type_match;
 }
 
 void
 TypeIndexModule::setSecondMatch(const std::string &_type_match)
 {
-    AssertAlways(startedPrefetching() == false,
-		 ("invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out"));
+    INVARIANT(startedPrefetching() == false,
+	      "invalid to set prefix after we start prefetching; just doesn't make sense to make a change like this -- would have different results pop out");
     second_type_match = _type_match;
 }
 
@@ -49,8 +45,8 @@ TypeIndexModule::setSecondMatch(const std::string &_type_match)
 void
 TypeIndexModule::addSource(const std::string &filename) 
 {
-    AssertAlways(startedPrefetching() == false, 
-		 ("can't add sources safely after starting prefetching -- could get confused about the end of the entries.\n"));
+    INVARIANT(startedPrefetching() == false, 
+	      "can't add sources safely after starting prefetching -- could get confused about the end of the entries.");
     inputFiles.push_back(filename);
 }
 

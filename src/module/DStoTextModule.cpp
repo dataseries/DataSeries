@@ -9,8 +9,6 @@
     implementation
 */
 
-#include <Lintel/LintelAssert.hpp>
-
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/GeneralField.hpp>
 
@@ -40,9 +38,10 @@ DStoTextModule::setPrintSpec(const char *xmlText)
 {
     xmlNodePtr cur = parseXML(xmlText, "printSpec");
     xmlChar *extenttype = xmlGetProp(cur, (const xmlChar *)"type");
-    AssertAlways(extenttype != NULL,("Error: printSpec missing type attribute\n"));
+    INVARIANT(extenttype != NULL, "Error: printSpec missing type attribute");
     xmlChar *fieldname = xmlGetProp(cur, (const xmlChar *)"name");
-    AssertAlways(fieldname != NULL,("Error: printSpec missing field name attribute\n"));
+    INVARIANT(fieldname != NULL, 
+	      "Error: printSpec missing field name attribute");
     setPrintSpec((char *)extenttype,(char *)fieldname,cur);
 }
 
@@ -60,9 +59,9 @@ DStoTextModule::setHeader(const char *xmlText)
 {
     xmlNodePtr cur = parseXML(xmlText,"header");
     xmlChar *extenttype = xmlGetProp(cur, (const xmlChar *)"type");
-    AssertAlways(extenttype != NULL,("Error: header missing type attribute\n"));
+    INVARIANT(extenttype != NULL, "Error: header missing type attribute");
     xmlChar *header = xmlNodeListGetString(cur->doc,cur->xmlChildrenNode, 1);
-    AssertAlways(header != NULL,("Error: header missing content?!\n"));
+    INVARIANT(header != NULL, "Error: header missing content?!");
     setHeader((char *)extenttype,(char *)header);
 }
 
@@ -77,8 +76,7 @@ DStoTextModule::setFields(const char *xmlText)
 {
     xmlNodePtr cur = parseXML(xmlText,"fields");
     xmlChar *extenttype = xmlGetProp(cur, (const xmlChar *)"type");
-    AssertAlways(extenttype != NULL,
-		 ("error fields must have a type!\n"));
+    INVARIANT(extenttype != NULL, "error fields must have a type!");
     string s_et = reinterpret_cast<char *>(extenttype);
     vector<string> &fields = type_to_state[s_et].field_names;
     for(cur = cur->xmlChildrenNode; cur != NULL; cur = cur->next) {
@@ -86,11 +84,11 @@ DStoTextModule::setFields(const char *xmlText)
 	    cur = cur->next;
 	    continue;
 	}
-	AssertAlways(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
-		     ("Error: fields sub-element should be field, not '%s\n",
-		      cur->name));
+	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
+	    boost::format("Error: fields sub-element should be field, not '%s")
+		  % reinterpret_cast<const char *>(cur->name));
 	xmlChar *name = xmlGetProp(cur,(const xmlChar *)"name");
-	AssertAlways(name != NULL,("error field must have a name\n"));
+	INVARIANT(name != NULL, "error field must have a name");
 	string s_name = (char *)name;
 	fields.push_back(s_name);
     }
@@ -139,7 +137,7 @@ DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
 	if (cur == NULL)
 	    break;
 	xmlChar *fname = xmlGetProp(cur,(const xmlChar *)"name");
-	AssertAlways(fname != NULL,("?!\n"));
+	SINVARIANT(fname != NULL);
 	string s_fname = reinterpret_cast<char *>(fname);
 	if (state.print_specs[s_fname] == NULL) {
 	    state.print_specs[s_fname] = cur;
@@ -281,11 +279,13 @@ DStoTextModule::parseXML(string xml, const string &roottype)
     LIBXML_TEST_VERSION;
     xmlKeepBlanksDefault(0);
     xmlDocPtr doc = xmlParseMemory((char *)xml.data(),xml.size());
-    AssertAlways(doc != NULL,("Error: parsing %s failed\n",roottype.c_str()));
+    INVARIANT(doc != NULL,
+	      boost::format("Error: parsing %s failed") % roottype);
     xmlNodePtr cur = xmlDocGetRootElement(doc);
-    AssertAlways(cur != NULL,("Error: %s missing document\n",roottype.c_str()));
-    AssertAlways(xmlStrcmp(cur->name, (const xmlChar *)roottype.c_str()) == 0,
-		 ("Error: %s has wrong type\n",roottype.c_str()));
+    INVARIANT(cur != NULL,
+	      boost::format("Error: %s missing document") % roottype.c_str());
+    INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)roottype.c_str()) == 0,
+	      boost::format("Error: %s has wrong type") % roottype);
     return cur;
 }
     

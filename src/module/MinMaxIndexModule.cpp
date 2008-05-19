@@ -12,7 +12,6 @@
 #include <algorithm>
 
 #include <Lintel/HashMap.hpp>
-#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/MinMaxIndexModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
@@ -133,7 +132,7 @@ MinMaxIndexModule::MinMaxIndexModule(const std::string &index_filename,
 void
 MinMaxIndexModule::lockedResetModule()
 {
-    AssertFatal(("unimplemented"));
+    FATAL_ERROR("unimplemented");
 }
 
 IndexSourceModule::PrefetchExtent *

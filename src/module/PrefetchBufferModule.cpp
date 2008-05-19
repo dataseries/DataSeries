@@ -9,8 +9,6 @@
     implementation
 */
 
-#include <Lintel/LintelAssert.hpp>
-
 #include <DataSeries/PrefetchBufferModule.hpp>
 
 /** Note: we special case the code when we are compiling in profile mode because
@@ -31,10 +29,10 @@ PrefetchBufferModule::PrefetchBufferModule(DataSeriesModule &_source, unsigned m
 #ifdef COMPILE_PROFILE
     prefetch_thread = 0;
 #else
-    AssertAlways(pthread_create(&prefetch_thread, NULL, pthreadfn, this)==0,
-		 ("Pthread create failed??"));
+    INVARIANT(pthread_create(&prefetch_thread, NULL, pthreadfn, this)==0,
+	      "Pthread create failed??");
 #endif
-    AssertAlways(max_used_memory > 0,("can't have 0 max used memory\n"));
+    INVARIANT(max_used_memory > 0, "can't have 0 max used memory");
 }
 
 PrefetchBufferModule::~PrefetchBufferModule()
@@ -46,8 +44,8 @@ PrefetchBufferModule::~PrefetchBufferModule()
     abort_prefetching = true;
     cond.signal();
     mutex.unlock();
-    AssertAlways(pthread_join(prefetch_thread, NULL) == 0,
-		 ("pthread_join failed.\n"));
+    INVARIANT(pthread_join(prefetch_thread, NULL) == 0, 
+	      "pthread_join failed.");
     while (buffer.empty() == false) {
 	delete buffer.front();
 	buffer.pop_front();
@@ -64,7 +62,7 @@ PrefetchBufferModule::getExtent()
     Extent *ret;
     mutex.lock();
     while (true) {
-	AssertAlways(abort_prefetching == false,("bad"));
+	SINVARIANT(abort_prefetching == false);
 	if (buffer.empty() == false) {
 	    ret = buffer.front();
 	    buffer.pop_front();
@@ -101,7 +99,7 @@ void
 PrefetchBufferModule::prefetcherThread()
 {
 #ifdef COMPILE_PROFILE
-    AssertFatal(("should not have created a prefetcher thread in profiling mode"));
+    FATAL_ERROR("should not have created a prefetcher thread in profiling mode");
 #endif
     mutex.lock();
     while (start_prefetching == false) {
@@ -123,7 +121,7 @@ PrefetchBufferModule::prefetcherThread()
 	    cond.signal();
 	    cur_used_memory += e->extentsize();
 	} else {
-	    AssertAlways(buffer.empty() == false,("bad"));
+	    SINVARIANT(buffer.empty() == false);
 	    cond.wait(mutex);
 	}
     }
