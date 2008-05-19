@@ -25,7 +25,6 @@ using namespace std;
 
 #include <Lintel/Double.hpp>
 #include <Lintel/HashTable.hpp>
-#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/ExtentField.hpp>
@@ -52,9 +51,9 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     data.resize(file_header_size);
     Extent::checkedPread(fd,0,data.begin(),file_header_size);
     cur_offset = file_header_size;
-    AssertAlways(data[0] == 'D' && data[1] == 'S' &&
-		 data[2] == 'v' && data[3] == '1',
-		 ("Invalid data series source, not DSv1\n"));
+    INVARIANT(data[0] == 'D' && data[1] == 'S' &&
+	      data[2] == 'v' && data[3] == '1',
+	      "Invalid data series source, not DSv1");
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
     int32 check_int = *(int32 *)(data.begin() + 4);
@@ -63,7 +62,8 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     } else if (check_int == 0x78563412) {
 	need_bitflip = true;
     } else {
-	AssertFatal(("Unable to interpret check integer %x\n",check_int));
+	FATAL_ERROR(boost::format("Unable to interpret check integer %x")
+		    % check_int);
     }
     if (need_bitflip) {
 	Extent::flip4bytes(data.begin()+4);
@@ -72,19 +72,19 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
 	Extent::flip8bytes(data.begin()+24);
 	Extent::flip8bytes(data.begin()+32);
     }
-    AssertAlways(*(int32 *)(data.begin() + 4) == 0x12345678,
-		 ("int32 check failed\n"));
-    AssertAlways(*(int64 *)(data.begin() + 8) == 0x123456789ABCDEF0LL,
-		 ("int64 check failed\n"));
-    AssertAlways(fabs(3.1415926535897932384 - *(double *)(data.begin() + 16)) < 1e-18,
-		 ("fixed double check failed\n"));
-    AssertAlways(*(double *)(data.begin() + 24) == Double::Inf,
-		 ("infinity double check failed\n"));
-    AssertAlways(*(double *)(data.begin() + 32) != *(double *)(data.begin() + 32),
-		 ("NaN double check failed\n"));
+    INVARIANT(*(int32 *)(data.begin() + 4) == 0x12345678,
+	      "int32 check failed");
+    INVARIANT(*(int64 *)(data.begin() + 8) == 0x123456789ABCDEF0LL,
+	      "int64 check failed");
+    INVARIANT(fabs(3.1415926535897932384 - *(double *)(data.begin() + 16)) 
+	      < 1e-18, "fixed double check failed");
+    INVARIANT(*(double *)(data.begin() + 24) == Double::Inf,
+	      "infinity double check failed");
+    INVARIANT(*(double *)(data.begin() + 32) != *(double *)(data.begin() + 32),
+	      "NaN double check failed");
     Extent::ByteArray extentdata;
-    AssertAlways(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
-		 ("Invalid file, must have a first extent\n"));
+    INVARIANT(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
+	      "Invalid file, must have a first extent");
     Extent *e = new Extent(mylibrary,extentdata,need_bitflip);
     INVARIANT(&e->type == &ExtentType::getDataSeriesXMLType(),
 	      "First extent must be the type defining extent");
@@ -131,17 +131,18 @@ DataSeriesSource::~DataSeriesSource()
 void
 DataSeriesSource::closefile()
 {
-    AssertAlways(close(fd) == 0,("close failed: %s\n",strerror(errno)));
+    CHECKED(close(fd) == 0,
+	    boost::format("close failed: %s") % strerror(errno));
     fd = -1;
 }
 
 void
 DataSeriesSource::reopenfile()
 {
-    AssertAlways(fd == -1,("trying to reopen non-closed source?!\n"));
+    INVARIANT(fd == -1, "trying to reopen non-closed source?!");
     fd = open(filename.c_str(), O_RDONLY | O_LARGEFILE);
-    AssertAlways(fd >= 0,("error opening %s for read: %s\n",filename.c_str(),
-			  strerror(errno)));
+    INVARIANT(fd >= 0,boost::format("error opening file '%s' for read: %s")
+	      % filename % strerror(errno));
 }
 
 Extent *
@@ -211,9 +212,8 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
 	fd = open(filename.c_str(), 
 		  O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
     }
-    AssertAlways(fd >= 0,
-		 ("Error opening %s for write: %s\n",
-		  filename.c_str(),strerror(errno)));
+    INVARIANT(fd >= 0, boost::format("Error opening %s for write: %s")
+	      % filename % strerror(errno));
     const string filetype = "DSv1";
     checkedWrite(filetype.data(),4);
     ExtentType::int32 int32check = 0x12345678;
@@ -256,9 +256,9 @@ DataSeriesSink::~DataSeriesSink()
 void
 DataSeriesSink::close()
 {
-    AssertAlways(wrote_library,
-		 ("error: never wrote the extent type library?!"));
-    AssertAlways(cur_offset >= 0,("error: close called twice?!"));
+    INVARIANT(wrote_library,
+	      "error: never wrote the extent type library?!");
+    INVARIANT(cur_offset >= 0, "error: close called twice?!");
 
     mutex.lock();
     shutdown_workers = true;
@@ -305,7 +305,8 @@ DataSeriesSink::close()
 	      % bytes_in_progress);
 
     char *tail = new char[7*4];
-    AssertAlways(((unsigned long)tail % 8) == 0,("malloc alignment glitch?!"));
+    INVARIANT((reinterpret_cast<unsigned long>(tail) % 8) == 0, 
+	      "malloc alignment glitch?!");
     for(int i=0;i<4;i++) {
 	tail[i] = 0xFF;
     }
@@ -367,8 +368,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 	}
 
 	type_extent_series.newRecord();
-	AssertAlways(et->xmldesc.size() > 0,
-		     ("whoa extenttype has no xml data?!\n"));
+	INVARIANT(et->xmldesc.size() > 0, "whoa extenttype has no xml data?!");
 	typevar.set(et->xmldesc.data(),et->xmldesc.size());
 	valid_types[et] = true;
 	if (et->majorVersion() == 0 && et->minorVersion() == 0 ||
@@ -412,8 +412,8 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
     // Only thing we can't check here is a match between the offset of
     // the tail and the offset stored in the tail.
     for(int i=0;i<4;i++) {
-	AssertAlways(tail[i] == 0xFF,("bad header for the tail of %s!\n",
-				      filename.c_str()));
+	INVARIANT(tail[i] == 0xFF,
+		  boost::format("bad header for the tail of %s!") % filename);
     }
     typedef ExtentType::int32 int32;
     int32 packed_size = *(int32 *)(tail + 4);
@@ -424,11 +424,10 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
 	tilde_packed_size = Extent::flip4bytes(tilde_packed_size);
 	bjhash = Extent::flip4bytes(bjhash);
     }
-    AssertAlways(packed_size == ~tilde_packed_size,
-		 ("bad packed size in the tail!\n"));
+    INVARIANT(packed_size == ~tilde_packed_size,
+	      "bad packed size in the tail!");
     int32 check_bjhash = BobJenkinsHash(1776,tail,6*4);
-    AssertAlways(bjhash == check_bjhash,
-		 ("bad hash in the tail!\n"));
+    INVARIANT(bjhash == check_bjhash, "bad hash in the tail!");
 }
 
 void

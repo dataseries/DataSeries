@@ -1006,13 +1006,13 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 
     xmlChar *xml_printhex = myXmlGetProp(fieldxml, (const xmlChar *)"print_hex");
     if (xml_printhex != NULL) {
-        // AssertFatal(("print_hex is obsolete, it was replaced by print_style=\"hex\"\n"));
+        // FATAL_ERROR("print_hex is obsolete, it was replaced by print_style=\"hex\"");
 	printstyle = printhex;
     }
 
     xmlChar *xml_printmaybehex = myXmlGetProp(fieldxml, (const xmlChar *)"print_maybehex");
     if (xml_printmaybehex != NULL) {
-        // AssertFatal(("print_maybehex is obsolete, it was replaced by print_style=\"maybehex\"\n"));
+        // FATAL_ERROR("print_maybehex is obsolete, it was replaced by print_style=\"maybehex\"");
 	printstyle = printmaybehex;
     }
 

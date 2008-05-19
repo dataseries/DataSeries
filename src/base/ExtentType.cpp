@@ -14,7 +14,6 @@
 #include <libxml/parser.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/PThread.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -341,9 +340,9 @@ ExtentType::parseXML(const string &xmldesc)
 	}
 	if (cur == NULL) 
 	    break;
-	AssertAlways(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
-		     ("Error: ExtentType sub-element should be field, not '%s'\n",
-		      cur->name));
+	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
+		  boost::format("Error: ExtentType sub-element should be"
+				" field, not '%s'") % cur->name);
 	for(xmlAttr *prop = cur->properties; prop != NULL; prop = prop->next) {
 	    // if you add a new type or type option, you should update
 	    // test.C:test_makecomplexfile() and the regression test.
@@ -358,10 +357,12 @@ ExtentType::parseXML(const string &xmldesc)
 	    } else if (xmlStrcmp(prop->name,(const xmlChar *)"opt_nullable") == 0) {
 		// ok
 	    } else {
-		AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
-			     ("Unrecognized local packing option %s\n",prop->name));
-		AssertAlways(xmlStrncmp(prop->name,(const xmlChar *)"opt_",4)!=0,
-			     ("Unrecognized local option %s\n",prop->name));
+		INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"pack_",5)!=0,
+			  boost::format("Unrecognized local packing"
+					" option %s") % prop->name);
+		INVARIANT(xmlStrncmp(prop->name,(const xmlChar *)"opt_",4)!=0,
+			  boost::format("Unrecognized local option %s")
+			  % prop->name);
 	    }
 	}
 
@@ -702,8 +703,8 @@ ExtentType::nullableFieldname(const string &fieldname)
 string
 ExtentType::xmlFieldDesc(int field_num) const
 {
-    AssertAlways(field_num >= 0 && field_num < (int)rep.field_info.size(),
-		 ("bad field num\n"));
+    INVARIANT(field_num >= 0 && field_num < (int)rep.field_info.size(),
+	      "bad field num");
     xmlBufferPtr buf = xmlBufferCreate();
     xmlBufferSetAllocationScheme(buf,XML_BUFFER_ALLOC_DOUBLEIT);
     xmlNodeDump(buf, field_desc_doc, rep.field_info[field_num].xmldesc, 2, 1);
@@ -735,8 +736,8 @@ static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const string);
 const string &
 ExtentType::fieldTypeString(fieldType ft)
 {
-    AssertAlways(ft >= 0 && ft < Nfieldtypes,
-		 ("invalid fieldtype %d\n",ft));
+    INVARIANT(ft >= 0 && ft < Nfieldtypes,
+	      boost::format("invalid fieldtype %d") % ft);
     return fieldtypes[ft];
 }
 
