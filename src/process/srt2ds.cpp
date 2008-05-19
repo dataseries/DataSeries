@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <math.h>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/Clock.hpp>
 

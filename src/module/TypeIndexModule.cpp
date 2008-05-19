@@ -5,6 +5,8 @@
    See the file named COPYING for license details
 */
 
+#include <Lintel/LintelAssert.hpp>
+
 #include <DataSeries/TypeIndexModule.hpp>
 
 #ifndef __HP_aCC

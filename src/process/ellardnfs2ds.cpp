@@ -11,6 +11,7 @@
 
 #include <boost/algorithm/string.hpp>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/HashUnique.hpp>

@@ -4,6 +4,7 @@
    See the file named COPYING for license details
 */
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/StringUtil.hpp>
 

@@ -25,6 +25,7 @@ using namespace std;
 
 #include <Lintel/Double.hpp>
 #include <Lintel/HashTable.hpp>
+#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/ExtentField.hpp>

@@ -9,6 +9,7 @@
     implementation
 */
 
+#include <Lintel/LintelAssert.hpp>
 #include <DataSeries/commonargs.hpp>
 
 void

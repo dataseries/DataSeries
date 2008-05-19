@@ -6,6 +6,7 @@
 
 #include <list>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StringUtil.hpp>
 

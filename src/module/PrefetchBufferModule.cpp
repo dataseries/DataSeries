@@ -9,6 +9,8 @@
     implementation
 */
 
+#include <Lintel/LintelAssert.hpp>
+
 #include <DataSeries/PrefetchBufferModule.hpp>
 
 /** Note: we special case the code when we are compiling in profile mode because

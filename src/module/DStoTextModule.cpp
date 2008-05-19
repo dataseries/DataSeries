@@ -9,6 +9,8 @@
     implementation
 */
 
+#include <Lintel/LintelAssert.hpp>
+
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/GeneralField.hpp>
 

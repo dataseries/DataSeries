@@ -600,7 +600,8 @@ ExtentType::ExtentType(const string &_xmldesc)
 
 int 
 ExtentType::getColumnNumber(const ParsedRepresentation &rep,
-			    const string &column) 
+			    const string &column,
+			    bool missing_ok) 
 {
     for(unsigned int i=0; i<rep.field_info.size(); i++) {
 	if (rep.field_info[i].name == column) {
@@ -613,6 +614,7 @@ ExtentType::getColumnNumber(const ParsedRepresentation &rep,
     if (debug_getcolnum) {
 	cout << boost::format("column %s -> -1\n") % column;
     }
+    INVARIANT(missing_ok, boost::format("Unknown column '%s'") % column);
     return -1;
 }
 

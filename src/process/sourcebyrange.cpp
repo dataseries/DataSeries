@@ -8,6 +8,7 @@
     sourcebyrange implementation, not this is obsolete, don't do this
 */
 
+#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/IndexSourceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>

@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/Clock.hpp>
 

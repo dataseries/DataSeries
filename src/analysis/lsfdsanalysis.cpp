@@ -25,6 +25,7 @@ using namespace std;
 #include <ostream>
 #include <algorithm>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsQuantile.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashMap.hpp>

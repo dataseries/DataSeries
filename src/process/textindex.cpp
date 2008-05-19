@@ -21,6 +21,7 @@
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/HashUnique.hpp>
+#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/commonargs.hpp>
 #include <DataSeries/DataSeriesFile.hpp>

@@ -17,6 +17,7 @@
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/Deque.hpp>
 #include <Lintel/StringUtil.hpp>
+#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/SequenceModule.hpp>

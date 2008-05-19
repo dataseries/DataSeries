@@ -9,6 +9,8 @@
 
 #include <ostream>
 
+#include <Lintel/LintelAssert.hpp>
+
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/commonargs.hpp>
 

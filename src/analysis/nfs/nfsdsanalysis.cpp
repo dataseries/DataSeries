@@ -14,6 +14,7 @@
 #include <ostream>
 #include <algorithm>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/ConstantString.hpp>
 #include <Lintel/HashTable.hpp>

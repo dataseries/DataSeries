@@ -52,6 +52,7 @@ extern "C" {
 #include <Lintel/HashTable.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/PThread.hpp>
+#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>

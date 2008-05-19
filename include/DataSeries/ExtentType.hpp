@@ -24,7 +24,6 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
-#include <Lintel/LintelAssert.hpp> // TODO: make this go away
 #include <Lintel/StringUtil.hpp>
 
 class ExtentType : boost::noncopyable {
@@ -87,38 +86,31 @@ public:
     }
 
     fieldType getFieldType(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getFieldType(cnum);
     }
     int32 getSize(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getSize(cnum);
     }
     int32 getOffset(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getOffset(cnum);
     }
     int getBitPos(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getBitPos(cnum);
     }
     bool getUnique(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getUnique(cnum);
     }
     bool getNullable(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getNullable(cnum);
     }
     double getDoubleBase(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return getDoubleBase(cnum);
     }
 
@@ -135,13 +127,11 @@ public:
     static std::string nullableFieldname(const std::string &fieldname);
 
     std::string xmlFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return xmlFieldDesc(cnum);
     }
     xmlNodePtr xmlNodeFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	AssertAlways(cnum != -1,("Unknown column '%s'\n",column.c_str()));
+	int cnum = getColumnNumber(rep, column, false);
 	return xmlNodeFieldDesc(cnum);
     }
 
@@ -280,7 +270,8 @@ private:
     };
     
     static int getColumnNumber(const ParsedRepresentation &rep,
-			       const std::string &column);
+			       const std::string &column,
+			       bool missing_ok = true);
     static int getColumnNumber(const ParsedRepresentation &rep,
 			       const xmlChar *column) {
 	return getColumnNumber(rep, reinterpret_cast<const char *>(column));

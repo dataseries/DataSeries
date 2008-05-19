@@ -6,6 +6,7 @@
    Description:  Mostly finished modules
 */
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashUnique.hpp>
 
 #include "analysis/lsfdsanalysis-mod1.hpp"

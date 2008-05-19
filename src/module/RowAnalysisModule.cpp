@@ -9,6 +9,8 @@
     implementation
 */
 
+#include <Lintel/LintelAssert.hpp>
+
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/SequenceModule.hpp>
 

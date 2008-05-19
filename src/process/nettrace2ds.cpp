@@ -53,6 +53,7 @@
 
 #include <string>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/AssertException.hpp>

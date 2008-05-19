@@ -72,6 +72,7 @@ public:
      * RowAnalysisModule.  If it does not succeed, it ignores the
      * module.
 
+     * @param sequence What sequence should we find module in?
      * @param expected_nonprintable if >= 0 aborts if # non-printable doesn't match expectation
      * @return the number of modules that could not be printed */
     static int printAllResults(SequenceModule &sequence,

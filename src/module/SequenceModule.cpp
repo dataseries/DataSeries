@@ -5,6 +5,7 @@
    See the file named COPYING for license details
 */
 
+#include <Lintel/LintelAssert.hpp>
 #include <DataSeries/SequenceModule.hpp>
 
 SequenceModule::SequenceModule(DataSeriesModule *head)

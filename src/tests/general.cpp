@@ -22,6 +22,7 @@
 
 #include <boost/bind.hpp>
 
+#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/Clock.hpp>
