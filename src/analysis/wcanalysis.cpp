@@ -1,6 +1,6 @@
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
 using boost::format;

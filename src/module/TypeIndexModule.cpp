@@ -5,7 +5,7 @@
    See the file named COPYING for license details
 */
 
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/TypeIndexModule.hpp>
 
 #ifndef __HP_aCC
 using namespace std;

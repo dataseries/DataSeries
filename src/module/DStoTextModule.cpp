@@ -9,8 +9,8 @@
     implementation
 */
 
-#include <DataSeries/DStoTextModule.H>
-#include <DataSeries/GeneralField.H>
+#include <DataSeries/DStoTextModule.hpp>
+#include <DataSeries/GeneralField.hpp>
 
 using namespace std;
 

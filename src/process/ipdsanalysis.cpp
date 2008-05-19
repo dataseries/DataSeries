@@ -12,19 +12,19 @@
 
 #include <iostream>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/PriorityQueue.H>
-#include <Lintel/Deque.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/Deque.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/DStoTextModule.H>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/DStoTextModule.hpp>
 
-#include "sourcebyrange.H"
+#include "sourcebyrange.hpp"
 
 using namespace std;
 

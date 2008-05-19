@@ -12,10 +12,10 @@
 #ifndef DATASERIES_FIELD_HPP
 #define DATASERIES_FIELD_HPP
 
-#include <Lintel/AssertBoost.H>
+#include <Lintel/AssertBoost.hpp>
 
-#include <DataSeries/ExtentSeries.H>
-#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentSeries.hpp>
+#include <DataSeries/Extent.hpp>
 
 class Field {
 public:

@@ -23,17 +23,17 @@
 #include <Lintel/Stats.hpp>
 #include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/DStoTextModule.H>
-#include <DataSeries/GeneralField.H>
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/DStoTextModule.hpp>
+#include <DataSeries/GeneralField.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 #include "analysis/nfs/mod1.hpp"
 #include "analysis/nfs/mod2.hpp"
 #include "analysis/nfs/mod3.hpp"
 #include "analysis/nfs/mod4.hpp"
-#include "process/sourcebyrange.H"
+#include "process/sourcebyrange.hpp"
 
 using namespace std;
 using boost::format;

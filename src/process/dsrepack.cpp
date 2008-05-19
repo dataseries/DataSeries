@@ -72,15 +72,15 @@ dataseries(7), dsselect(1)
 
 #include <boost/format.hpp>
 
-#include <Lintel/StringUtil.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/AssertBoost.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/GeneralField.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/PrefetchBufferModule.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/GeneralField.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
 
 static const bool debug = false;
 static const bool show_progress = true;

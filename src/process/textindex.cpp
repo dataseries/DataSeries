@@ -18,15 +18,15 @@
 #include <vector>
 #include <string>
 
-#include <Lintel/StringUtil.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/HashUnique.H>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 static const bool debug_word_find = false;
 static const bool debug_search_found = false;

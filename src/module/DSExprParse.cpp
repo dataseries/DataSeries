@@ -41,9 +41,9 @@
 #line 60 "module/DSExprParse.yy"
 
 
-#include <Lintel/Clock.H>
+#include <Lintel/Clock.hpp>
 
-#include <DataSeries/GeneralField.H>
+#include <DataSeries/GeneralField.hpp>
 
 YY_DECL;
 

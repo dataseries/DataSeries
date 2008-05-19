@@ -13,13 +13,13 @@
 
 #include <libxml/parser.h>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/PThread.H>
-#include <Lintel/HashTable.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/PThread.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/ExtentType.H>
+#include <DataSeries/ExtentType.hpp>
 
 using namespace std;
 using boost::format;

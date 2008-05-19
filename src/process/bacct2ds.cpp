@@ -25,15 +25,15 @@
 #include <pcre.h>
 #include <openssl/sha.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/HashUnique.H>
-#include <Lintel/Clock.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/cryptutil.hpp>
 
 using namespace std;
 using boost::format;

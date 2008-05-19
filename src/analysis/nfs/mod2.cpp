@@ -4,8 +4,8 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/HashTable.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include "analysis/nfs/mod2.hpp"
 

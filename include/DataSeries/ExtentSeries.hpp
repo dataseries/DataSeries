@@ -15,8 +15,8 @@
 class Field;
 class Extent;
 
-#include <DataSeries/ExtentType.H>
-#include <DataSeries/Extent.H>
+#include <DataSeries/ExtentType.hpp>
+#include <DataSeries/Extent.hpp>
 
 class ExtentSeries {
 public:

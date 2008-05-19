@@ -16,11 +16,11 @@ using namespace std;
 
 #include <map>
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/LintelAssert.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 const ExtentType::int64 max_backward_ns_in_extent = 20000000LL;
 const ExtentType::int64 max_backward_ns_between_extent = 5000000LL;

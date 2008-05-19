@@ -21,8 +21,8 @@
 #include <string>
 using namespace std;
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/PThread.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/PThread.hpp>
 #include <linux/wait.h>
 #include "kernel-driver-add.h"
 

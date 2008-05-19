@@ -4,11 +4,11 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/AssertBoost.H>
+#include <Lintel/AssertBoost.hpp>
 
-#include <DataSeries/ExtentSeries.H>
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
+#include <DataSeries/ExtentSeries.hpp>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
 
 using namespace std;
 

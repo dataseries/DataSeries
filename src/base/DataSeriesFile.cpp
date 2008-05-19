@@ -23,11 +23,11 @@
 
 using namespace std;
 
-#include <Lintel/Double.H>
-#include <Lintel/HashTable.H>
+#include <Lintel/Double.hpp>
+#include <Lintel/HashTable.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/ExtentField.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/ExtentField.hpp>
 
 #if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
 #define _LARGEFILE64_SOURCE

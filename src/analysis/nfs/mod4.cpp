@@ -6,9 +6,9 @@
 
 #include <list>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/PriorityQueue.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include "analysis/nfs/mod4.hpp"
 

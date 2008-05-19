@@ -9,8 +9,8 @@
 
 #include <ostream>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/commonargs.hpp>
 
 using namespace std;
 

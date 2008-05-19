@@ -117,6 +117,25 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/DataSeries/TypeIndexModule.H
 %{_includedir}/DataSeries/commonargs.H
 %{_includedir}/DataSeries/cryptutil.H
+
+%{_includedir}/DataSeries/DStoTextModule.hpp
+%{_includedir}/DataSeries/DataSeriesFile.hpp
+%{_includedir}/DataSeries/DataSeriesModule.hpp
+%{_includedir}/DataSeries/DSExpr.hpp
+%{_includedir}/DataSeries/Extent.hpp
+%{_includedir}/DataSeries/ExtentField.hpp
+%{_includedir}/DataSeries/ExtentSeries.hpp
+%{_includedir}/DataSeries/ExtentType.hpp
+%{_includedir}/DataSeries/GeneralField.hpp
+%{_includedir}/DataSeries/GroupByModule.hpp
+%{_includedir}/DataSeries/IndexSourceModule.hpp
+%{_includedir}/DataSeries/MinMaxIndexModule.hpp
+%{_includedir}/DataSeries/PrefetchBufferModule.hpp
+%{_includedir}/DataSeries/RowAnalysisModule.hpp
+%{_includedir}/DataSeries/SequenceModule.hpp
+%{_includedir}/DataSeries/TypeIndexModule.hpp
+%{_includedir}/DataSeries/commonargs.hpp
+%{_includedir}/DataSeries/cryptutil.hpp
 %{_libdir}/libDataSeries.a
 /usr/share/aclocal/com_hp_hpl_dataseries.m4
 

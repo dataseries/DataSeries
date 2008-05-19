@@ -15,10 +15,10 @@
 #include <string>
 #include <vector>
 
-#include <Lintel/HashMap.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
 
 // g++ was rebuilding inline static strings every time when measured
 // at one point in 2003, and still was doing so in a later test in

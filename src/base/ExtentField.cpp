@@ -4,8 +4,8 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/Double.H>
-#include <DataSeries/ExtentField.H>
+#include <Lintel/Double.hpp>
+#include <DataSeries/ExtentField.hpp>
 
 using namespace std;
 using boost::format;

@@ -9,7 +9,7 @@
     common argument handling for the converters
 */
 
-#include <DataSeries/Extent.H>
+#include <DataSeries/Extent.hpp>
 
 struct commonPackingArgs {
     int compress_level;

@@ -9,7 +9,7 @@
     Test the pad-record options
 */
 
-#include <DataSeries/ExtentType.H>
+#include <DataSeries/ExtentType.hpp>
 
 using namespace std;
 using boost::format;

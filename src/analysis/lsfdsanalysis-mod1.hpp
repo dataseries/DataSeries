@@ -9,9 +9,9 @@
 #ifndef __LSFDSANALYSIS_MOD1_H
 #define __LSFDSANALYSIS_MOD1_H
 
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/SequenceModule.hpp>
 
-#include "lsfdsanalysis-common.H"
+#include "lsfdsanalysis-common.hpp"
 
 namespace LSFDSAnalysisMod {
     // in lsfdsanalysis-mod1.C

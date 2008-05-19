@@ -13,11 +13,11 @@
 #ifndef __PREFETCH_BUFFER_MODULE_H
 #define __PREFETCH_BUFFER_MODULE_H
 
-#include <Lintel/PThread.H>
-#include <Lintel/Deque.H>
+#include <Lintel/PThread.hpp>
+#include <Lintel/Deque.hpp>
 
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/IndexSourceModule.H>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/IndexSourceModule.hpp>
 
 class PrefetchBufferModule : public DataSeriesModule {
 public:

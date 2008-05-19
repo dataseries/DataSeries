@@ -12,11 +12,11 @@
 #ifndef __DATASERIES_FILE_H
 #define __DATASERIES_FILE_H
 
-#include <Lintel/Deque.H>
-#include <Lintel/PThread.H>
+#include <Lintel/Deque.hpp>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
 // ExtentField isn't used in this header, but makes using the library
 // simpler as just including this file gets everything you need.
 

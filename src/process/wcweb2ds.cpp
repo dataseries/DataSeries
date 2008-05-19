@@ -45,8 +45,8 @@ Eric Anderson <software@cello.hpl.hp.com>
 
 #include <arpa/inet.h>
 
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/commonargs.hpp>
 
 using namespace std;
 using boost::format;

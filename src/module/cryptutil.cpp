@@ -12,13 +12,13 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/AssertBoost.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/Clock.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/cryptutil.hpp>
 
 using namespace std;
 using boost::format;

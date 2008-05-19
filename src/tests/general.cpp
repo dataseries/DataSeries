@@ -22,15 +22,15 @@
 
 #include <boost/bind.hpp>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/Clock.H>
-#include <Lintel/Stats.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/Stats.hpp>
 
-#include <DataSeries/cryptutil.H>
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
-#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/cryptutil.hpp>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 using namespace std;
 using boost::format;

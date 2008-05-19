@@ -21,10 +21,10 @@
 #include <libxml/parser.h> 
 #include <boost/static_assert.hpp>
 
-#include <Lintel/HashMap.H>
+#include <Lintel/HashMap.hpp>
 
-#include <DataSeries/ExtentSeries.H>
-#include <DataSeries/ExtentField.H>
+#include <DataSeries/ExtentSeries.hpp>
+#include <DataSeries/ExtentField.hpp>
 
 class GeneralField;
 

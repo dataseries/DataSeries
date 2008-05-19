@@ -25,7 +25,7 @@
 #define enable_encrypt_filenames 1
 
 // Do this first to get byteswap things...
-#include <DataSeries/Extent.H>
+#include <DataSeries/Extent.hpp>
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -53,21 +53,21 @@
 
 #include <string>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/AssertBoost.H>
-#include <Lintel/AssertException.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/PriorityQueue.H>
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/Deque.H>
-#include <Lintel/Clock.H>
-#include <Lintel/PThread.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/AssertException.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/Deque.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 #include <process/nfs_prot.h>
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/cryptutil.hpp>
 extern "C" {
 #include <liblzf-1.6/lzf.h>
 }

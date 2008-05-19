@@ -9,7 +9,7 @@
     implementation
 */
 
-#include <DataSeries/commonargs.H>
+#include <DataSeries/commonargs.hpp>
 
 void
 getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)

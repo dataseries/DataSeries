@@ -9,18 +9,18 @@
 #include <sys/resource.h>
 #include <math.h>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/Clock.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/Clock.hpp>
 
 #include <SRT/SRTTrace.H>
 #include <SRT/SRTrecord.H>
 #include <SRT/SRTTraceRaw.H>
 #include <SRT/SRTTrace_Filter.H>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
 using boost::format;

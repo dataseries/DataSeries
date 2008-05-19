@@ -13,10 +13,10 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/Clock.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/Clock.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/GeneralField.H>
+#include <DataSeries/GeneralField.hpp>
 
 using namespace std;
 using boost::format;

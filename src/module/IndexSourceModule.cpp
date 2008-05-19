@@ -13,8 +13,8 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#include <Lintel/PThread.H>
-#include <DataSeries/IndexSourceModule.H>
+#include <Lintel/PThread.hpp>
+#include <DataSeries/IndexSourceModule.hpp>
 
 #ifndef __HP_aCC
 using namespace std;

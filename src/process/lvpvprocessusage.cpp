@@ -4,14 +4,14 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/HashTable.H>
-#include <Lintel/Double.H>
-#include <Lintel/Stats.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/Stats.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/DStoTextModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/DStoTextModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 #ifndef __HP_aCC
 using namespace std;

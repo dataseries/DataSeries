@@ -41,14 +41,14 @@ real    0m5.407s user    0m6.980s sys     0m1.188s
 
 #include <boost/format.hpp>
 
-#include <Lintel/Stats.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/Stats.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/AssertBoost.hpp>
 
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
 
 using namespace std;
 

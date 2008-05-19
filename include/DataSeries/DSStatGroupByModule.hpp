@@ -13,11 +13,11 @@
 #ifndef __DATASERIES_DSSTATGROUPBY_H
 #define __DATASERIES_DSSTATGROUPBY_H
 
-#include <Lintel/HashMap.H>
+#include <Lintel/HashMap.hpp>
 
 #include <DataSeries/DSExpr.hpp>
-#include <DataSeries/GeneralField.H>
-#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/GeneralField.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
 
 class DSStatGroupByModule : public RowAnalysisModule {
 public:

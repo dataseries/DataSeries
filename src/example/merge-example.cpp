@@ -15,15 +15,15 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/HashMap.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/DStoTextModule.H>
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/DStoTextModule.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
 
 using namespace std;
 using namespace boost;

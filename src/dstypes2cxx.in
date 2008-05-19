@@ -226,9 +226,9 @@ sub output {
     my $safe_typename = ::cxxSafeName($typename);
 
     print "/// analysis module/program for $typename (ns = $ns, version = $version)
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 class ${safe_typename}Analysis : public RowAnalysisModule {
 public:

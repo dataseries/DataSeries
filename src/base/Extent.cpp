@@ -48,14 +48,14 @@ extern "C" {
 #include <lzf.h>
 }
 
-#include <Lintel/Clock.H>
-#include <Lintel/HashTable.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/PThread.H>
+#include <Lintel/Clock.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
-#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
 
 using namespace std;
 using boost::format;

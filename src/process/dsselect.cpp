@@ -13,14 +13,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/GeneralField.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/GeneralField.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 #ifndef HPUX_ACC
 using namespace std;

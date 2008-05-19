@@ -13,7 +13,7 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.hpp>
 
 DataSeriesModule::~DataSeriesModule()
 {

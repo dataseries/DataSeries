@@ -13,7 +13,7 @@
 #ifndef __DATASERIES_TYPEINDEXMODULE_H
 #define __DATASERIES_TYPEINDEXMODULE_H
 
-#include <DataSeries/IndexSourceModule.H>
+#include <DataSeries/IndexSourceModule.hpp>
 
 /** \brief Source module that returns extents matching a particular type
 

@@ -2,12 +2,12 @@
 
 #include <iostream>
 
-#include <Lintel/StringUtil.H>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/GeneralField.H>
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/commonargs.H>
+#include <DataSeries/GeneralField.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/commonargs.hpp>
 
 using namespace std;
 

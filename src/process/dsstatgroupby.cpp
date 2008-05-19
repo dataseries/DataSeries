@@ -11,10 +11,10 @@
 
 #include <boost/format.hpp>
 
-#include <DataSeries/DSStatGroupByModule.H>
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/DSStatGroupByModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
 
 using namespace std;
 

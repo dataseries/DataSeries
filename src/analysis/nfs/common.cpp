@@ -6,7 +6,7 @@
 
 #include <ctype.h>
 
-#include <Lintel/StringUtil.H>
+#include <Lintel/StringUtil.hpp>
 
 #include "common.hpp"
 

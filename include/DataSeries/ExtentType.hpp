@@ -22,10 +22,10 @@
 
 #include <boost/utility.hpp>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
-#include <Lintel/LintelAssert.H> // TODO: make this go away
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/LintelAssert.hpp> // TODO: make this go away
+#include <Lintel/StringUtil.hpp>
 
 class ExtentType : boost::noncopyable {
 public:

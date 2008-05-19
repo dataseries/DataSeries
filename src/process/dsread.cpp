@@ -10,7 +10,7 @@
 
 // TODO: make this work and put it into the standard build, or drop it.
 
-#include <DataSeriesModule.H>
+#include <DataSeries/DataSeriesModule.hpp>
 
 #include <sys/time.h>
 #include <sys/resource.h>

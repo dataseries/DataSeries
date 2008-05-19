@@ -9,7 +9,7 @@
     Common lsf analysis bits.
 */
 
-#include "analysis/lsfdsanalysis-common.H"
+#include "analysis/lsfdsanalysis-common.hpp"
 
 using namespace std;
 

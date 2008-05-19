@@ -19,10 +19,10 @@
 #ifndef __DATASERIES_MODULE_H
 #define __DATASERIES_MODULE_H
 
-#include <Lintel/PThread.H>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/Extent.H>
-#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
 
 class DataSeriesModule {
 public:

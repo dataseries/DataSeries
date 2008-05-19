@@ -12,8 +12,10 @@
 #ifndef __GROUP_BY_MODULE_H
 #define __GROUP_BY_MODULE_H
 
-#include <HashTable.H>
-#include <RowAnalysisModule.H>
+#include <Lintel/HashTable.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+
+// TODO: start using this or drop it.
 
 /** \brief Single series analysis handling different rows in different groups
 

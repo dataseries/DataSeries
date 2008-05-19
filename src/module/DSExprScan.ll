@@ -15,8 +15,8 @@
 #include <errno.h>
 #include <string>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/DSExpr.hpp>
 
