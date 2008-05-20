@@ -14,7 +14,6 @@
 #include <unistd.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/commonargs.hpp>
@@ -23,9 +22,8 @@
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef HPUX_ACC
 using namespace std;
-#endif
+using boost::format;
 
 int
 main(int argc, char *argv[])
@@ -34,8 +32,9 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc > 4,
-		 ("Usage: %s <common-args> type-prefix field,field,field,... input-filename... output-filename\n",argv[0]));
+    INVARIANT(argc > 4,
+	     format("Usage: %s <common-args> type-prefix field,field,field,..."
+		    "input-filename... output-filename") % argv[0]);
     string type_prefix(argv[1]);
     string fieldlist(argv[2]);
     
@@ -45,8 +44,9 @@ main(int argc, char *argv[])
 
     {
 	struct stat buf;
-	AssertAlways(stat(argv[argc-1],&buf) != 0, 
-		     ("Refusing to overwrite existing file %s.\n", argv[argc-1]));
+	INVARIANT(stat(argv[argc-1],&buf) != 0, 
+		  format("Refusing to overwrite existing file %s.")
+		  % argv[argc-1]);
     }
     DataSeriesSink output(argv[argc-1],packing_args.compress_modes,packing_args.compress_level);
 

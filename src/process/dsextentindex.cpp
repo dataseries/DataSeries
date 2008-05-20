@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/StringUtil.hpp>
 
@@ -23,9 +22,8 @@
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
+using boost::format;
 
 HashMap<string, vector<ExtentType::int64> > filenameToOffsets;
 
@@ -139,7 +137,7 @@ indexExtent(DataSeriesSource &source, const string &filename,
     Extent *e = source.preadExtent(tmp_offset);
     updateNamespaceVersions(*e);
     inseries.setExtent(e);
-    AssertAlways(inseries.pos.morerecords(),("internal"));
+    SINVARIANT(inseries.pos.morerecords());
 
     if (infields.size() == 0) {
 	// do things this way so we store the types for generating the
@@ -151,7 +149,7 @@ indexExtent(DataSeriesSource &source, const string &filename,
 	    if (infieldtypes.size() < infields.size()) {
 		infieldtypes.push_back(f->getType());
 	    } else {
-		AssertAlways((infieldtypes[i]) == f->getType(),("internal"));
+		SINVARIANT((infieldtypes[i]) == f->getType());
 	    }
 	}
     }
@@ -207,7 +205,8 @@ ExtentType::int64
 mtimens(const char *filename)
 {
     struct stat statbuf;
-    AssertAlways(stat(filename,&statbuf)==0,("stat failed: %s\n",strerror(errno)));
+    INVARIANT(stat(filename,&statbuf)==0,
+	      format("stat failed: %s") % strerror(errno));
 
 #ifdef __HP_aCC
     // don't know how to get ns time on HPUX
@@ -225,7 +224,7 @@ indexFile(const string &filename)
 {
     cout << "indexing " << filename << " ...";
     cout.flush();
-    AssertAlways(filename.size() > 0,("empty filename?!"));
+    INVARIANT(filename.size() > 0, "empty filename?!");
     if (filename[0] != '/') {
 	fprintf(stderr,"warning, filename %s is relative, not absolute\n",filename.c_str());
     }
@@ -281,21 +280,22 @@ readExistingIndex(const char *index_filename, string &fieldlist)
     modifytimes_mod.addSource(index_filename);
 
     Extent *e = info_mod.getExtent();
-    AssertAlways(e != NULL,("must have an DSIndex::Extent::Info extent in index %s!",
-			    index_filename));
+    INVARIANT(e != NULL, format("must have an DSIndex::Extent::Info extent"
+				" in index %s!") % index_filename);
     ExtentSeries infoseries(e);
     Variable32Field info_type_prefix(infoseries,"type-prefix");
     Variable32Field info_fields(infoseries,"fields");
-    AssertAlways(infoseries.pos.morerecords(),("must have at least one rows in info extent"));
+    INVARIANT(infoseries.pos.morerecords(),
+	      "must have at least one rows in info extent");
     
     type_prefix = info_type_prefix.stringval();
     fieldlist = info_fields.stringval();
     ++infoseries.pos;
-    AssertAlways(infoseries.pos.morerecords() == false,
-		 ("must have at most one row in info extent"));
+    INVARIANT(infoseries.pos.morerecords() == false,
+	      "must have at most one row in info extent");
     e = info_mod.getExtent();
-    AssertAlways(e == NULL,("must have only one DSIndex::Extent::Info in index %s!",
-			    index_filename));
+    INVARIANT(e == NULL, format("must have only one DSIndex::Extent::Info in"
+				" index %s!") % index_filename);
 
     string minmax_typename("DSIndex::Extent::MinMax::");
     minmax_typename.append(type_prefix);
@@ -317,9 +317,8 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 	    }
 	}
     }
-    AssertAlways(modifytimes_count > 0,
-		 ("must have modifytimes extent in index %s!",
-		  index_filename));
+    INVARIANT(modifytimes_count > 0, format("must have modifytimes extent in"
+					    " index %s!") % index_filename);
 
     cout << "."; 
     cout.flush();
@@ -327,7 +326,7 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 
     // get extent to define type
     e = minmax_mod.getExtent();
-    AssertAlways(e != NULL,("must have at least one minmax extent"));
+    INVARIANT(e != NULL, "must have at least one minmax extent");
     ExtentSeries minmaxseries(e);
     // TODO: check type.
     vector<GeneralField *> mins, maxs;
@@ -394,13 +393,15 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc >= 3,
-		 ("Usage: %s <common-args> [--new type-prefix field,field,field,...] index-dataseries input-filename...\n",argv[0]));
+    INVARIANT(argc >= 3, 
+	      format("Usage: %s <common-args>"
+		     " [--new type-prefix field,field,field,...]"
+		     " index-dataseries input-filename...") % argv[0]);
     int files_start= -1;
     const char *index_filename = NULL;
     string fieldlist;
     if (strcmp(argv[1],"--new") == 0) {
-	AssertAlways(argc > 5,("--new needs more arguments"));
+	INVARIANT(argc > 5, "--new needs more arguments");
 	type_prefix = argv[2];
 	fieldlist = argv[3];
 	
@@ -409,16 +410,17 @@ main(int argc, char *argv[])
 	index_filename = argv[4];
 	struct stat statbuf;
 	int ret = stat(index_filename,&statbuf);
-	AssertAlways(ret == -1 && errno == ENOENT,
-		     ("refusing to run with existing index dataseries %s in --new mode (%d,%s)",
-		      index_filename,errno,strerror(errno)));
+	INVARIANT(ret == -1 && errno == ENOENT,
+		  format("refusing to run with existing index dataseries %s"
+			 "in --new mode (%d,%s)") % index_filename % errno
+		  % strerror(errno));
     } else {
 	index_filename = argv[1];
 	files_start = 2;
 	readExistingIndex(index_filename,fieldlist);
     }
 
-    AssertAlways(files_start < argc,("missing input files?"));
+    INVARIANT(files_start < argc, "missing input files?");
     for(int i=files_start;i<argc;++i) {
 	char *filename = argv[i];
 	indexFile(filename);
@@ -502,10 +504,6 @@ main(int argc, char *argv[])
 	maxs.push_back(GeneralField::create(NULL, minmaxseries, str_max + fields[i]));
 	hasnulls.push_back(new BoolField(minmaxseries, str_hasnull + fields[i]));
     }
-
-//    infields can have no entries if we didn't actually index any new extents
-//    AssertAlways(infields.size() == infieldtypes.size() && infields.size() > 0,
-//		   ("internal error %d %d", infields.size(), infieldtypes.size()));
 
     OutputModule minmaxmodule(output,minmaxseries,minmaxtype,
 			      packing_args.extent_size);

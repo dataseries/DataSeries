@@ -11,7 +11,6 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/HashUnique.hpp>
@@ -1149,8 +1148,7 @@ main(int argc,char *argv[])
 	if (buf[0] == '\0') {
 	    break;
 	}
-	AssertAlways(strlen(buf) < (bufsize - 1),
-		     ("increase bufsize constant.\n"));
+	INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
 	processLine(buf);
     }
     cout << format("Processed %d lines\n") % nlines;
