@@ -4,7 +4,6 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/Stats.hpp>
@@ -14,9 +13,8 @@
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
+using boost::format;
 
 struct mergeinfo {
     int pid;
@@ -318,8 +316,8 @@ public:
 	}
 	Extent *io_extent = io_input.getExtent();
 	if (io_extent == NULL) {
-	    AssertAlways(ioextents > 0 && psextents > 0,
-			 ("didn't get both I/O and PS data??"));
+	    INVARIANT(ioextents > 0 && psextents > 0,
+		      "didn't get both I/O and PS data??");
 	    delete ps_series.extent();
 	    ps_series.clearExtent();
 	    all_done = true;
@@ -338,7 +336,7 @@ public:
 	output_series.setExtent(outExtent);
 	if (ps_series.extent() == NULL) {
 	    Extent *ps_extent = ps_input.getExtent();
-	    AssertAlways(ps_extent != NULL,("must get at least one ps extent\n"));
+	    INVARIANT(ps_extent != NULL, "must get at least one ps extent");
 	    ps_series.setExtent(ps_extent);
 	    ++psextents;
 	    ps_byte_count += ps_extent->fixeddata.size() + ps_extent->variabledata.size();
@@ -369,8 +367,8 @@ public:
 		ps_byte_count += ps_extent->fixeddata.size() + ps_extent->variabledata.size();
 		ps_series.setExtent(ps_extent);
 	    }
-	    AssertAlways(iopid.val() >= 0 && pspid.val() >= 0,
-			 ("can't handle negative pid's\n"));
+	    INVARIANT(iopid.val() >= 0 && pspid.val() >= 0,
+		      "can't handle negative pid's");
 	    // Each ps sample effectively represents the process from
 	    // the previous interval to the next interval, so we need
 	    // to keep reading records until the previous ps time has
@@ -387,13 +385,14 @@ public:
 
     void doPSRecord() {
 	if (pstime.val() > (cur_ps_time + 1e-6)) {
-	    AssertAlways(pstime.val() > (cur_ps_time + min_ps_interval_time),
-			 ("min_ps_interval_time too small %.4f vs %.4f\n",
-			  pstime.val(),cur_ps_time));
+	    INVARIANT(pstime.val() > (cur_ps_time + min_ps_interval_time),
+		      format("min_ps_interval_time too small %.4f vs %.4f")
+		      % pstime.val() % cur_ps_time);
 	    prev_ps_time = cur_ps_time;
 	    cur_ps_time = pstime.val();
 	}
-	AssertAlways(pstime.val() == cur_ps_time,("sanity check error\n")); // needed in doOldPid()
+	// needed in doOldPid()
+	INVARIANT(pstime.val() == cur_ps_time, "sanity check error"); 
 	psinfo *x = pid_to_psinfo.lookup(psinfo(pspid.val()));
 	if (x == NULL) {
 	    doNewPid();
@@ -466,9 +465,10 @@ public:
 	// allow a little bit of backwardness because it doesn't hurt,
 	// and the traces we have seem to get a little bit of slop in the
 	// time ordering
-	AssertAlways(iotime.absval()+time_slop/10 >= last_io_time,
-		     ("merge join doesn't work if merge field goes backwards; %.20g < %.20g\n",
-		      iotime.absval(),last_io_time));
+	INVARIANT(iotime.absval()+time_slop/10 >= last_io_time,
+		  format("merge join doesn't work if merge field goes"
+			 " backwards; %.20g < %.20g")
+		  % iotime.absval() % last_io_time);
 	if (iotime.absval() > last_io_time) {
 	    last_io_time = iotime.absval();
 	}
@@ -479,7 +479,7 @@ public:
 //	    }
 	++io_record_count;
 	psinfo *x = forceIOFound();
-	AssertAlways(x != NULL,("internal error\n"));
+	SINVARIANT(x != NULL);
 	
 	output_series.newRecord();
 	++output_record_count;
@@ -515,7 +515,7 @@ public:
 	    pid_to_psinfo.add(newx);
 	    return pid_to_psinfo.lookup(newx);
 	} 
-	AssertAlways(x->pid == iopid.val(),("internal error\n"));
+	SINVARIANT(x->pid == iopid.val());
 	if (x->last_seen >= prev_ps_time || // present in the last fully-read sample, defined as ok.
 	    iotime.absval() < (x->last_seen + time_slop)) { // another way that's valid
 	    if (debug_io_read) {
@@ -725,7 +725,7 @@ public:
 		key.data = new rollupinfo;
 		rollup.add(key); // ought to change add to return a pointer to the new data as it's done the work of the lookup.
 		val = rollup.lookup(key);
-		AssertAlways(val->data == key.data,("internal error\n"));
+		SINVARIANT(val->data == key.data);
 	    }
 	    if (is_read.val()) {
 		val->data->read.add(bytes.val());
@@ -827,7 +827,7 @@ public:
 		key.data = new rollupinfo;
 		rollup.add(key); // ought to change add to return a pointer to the new data as it's done the work of the lookup.
 		val = rollup.lookup(key);
-		AssertAlways(val->data == key.data,("internal error\n"));
+		SINVARIANT(val->data == key.data);
 	    }
 	    if (is_read.val()) {
 		val->data->read.add(bytes.val());
@@ -870,7 +870,8 @@ static const bool debug_level1_rollup = false;
 int 
 main(int argc, char *argv[])
 {
-    AssertAlways(argc >= 3,("Usage: %s <io-trace.ds> ... <ps-sample.ds> ...\n",argv[0]));
+    INVARIANT(argc >= 3, format("Usage: %s <io-trace.ds> ... <ps-sample.ds>"
+				" ...") % argv[0]);
     
     TypeIndexModule iotrace_source("I/O trace");
     TypeIndexModule pstrace_source("Process sample");
@@ -972,8 +973,8 @@ main(int argc, char *argv[])
 	    ++psextents;
 	    pstrace.setExtent(psextent);
 	}
-	AssertAlways(iopid.val() >= 0 && pspid.val() >= 0,
-		     ("can't handle negative pid's\n"));
+	INVARIANT(iopid.val() >= 0 && pspid.val() >= 0,
+		  "can't handle negative pid's");
 	// keep filling the pid_to_process mapping until the current
 	// pid time is at least the io time + time_slop
 	if (pstime.val() <= iotime.absval() + time_slop) {
@@ -1028,9 +1029,10 @@ main(int argc, char *argv[])
 	    // allow a little bit of backwardness because it doesn't hurt,
 	    // and the traces we have seem to get a little bit of slop in the
 	    // time ordering
-	    AssertAlways(iotime.absval()+time_slop/1.0e3 >= last_io_time,
-			 ("merge join doesn't work if merge field goes backwards; %.20g < %.20g\n",
-			  iotime.absval(),last_io_time));
+	    INVARIANT(iotime.absval()+time_slop/1.0e3 >= last_io_time,
+		      format("merge join doesn't work if merge field goes" 
+			     " backwards; %.20g < %.20g")
+		      % iotime.absval() % last_io_time);
 	    if (iotime.absval() > last_io_time) {
 		last_io_time = iotime.absval();
 	    }
@@ -1089,7 +1091,7 @@ main(int argc, char *argv[])
 		    }
 		}
 	    }		    
-	    AssertAlways(x != NULL,("internal error\n"));
+	    SINVARIANT(x != NULL);
 	    mergeinfo *access = access_info.lookup(mergeinfo(x->pid,x->first_seen,
 							     devid.val(),lvid.val()));
 	    if (access == NULL) {

@@ -17,7 +17,6 @@
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/Deque.hpp>
 #include <Lintel/StringUtil.hpp>
-#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/SequenceModule.hpp>
@@ -28,6 +27,7 @@
 #include "sourcebyrange.hpp"
 
 using namespace std;
+using boost::format;
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -69,8 +69,7 @@ public:
 		if (packet_at.val() == interval_end) {
 		    interval_end += interval_ns;
 		}
-		AssertAlways(interval_end > packet_at.val(),
-			     ("bad"));
+		SINVARIANT(interval_end > packet_at.val());
 	    }
 	}
 	++packets;
@@ -204,21 +203,25 @@ public:
 	vector<string> subargs;
 	split(args,":",subargs);
 
-	AssertAlways(subargs.size() <= 3,("too many arguments to iprollingpacketstatistics"));
+	INVARIANT(subargs.size() <= 3,
+		  "too many arguments to iprollingpacketstatistics");
 	vector<string> interval_secs;
 	split(subargs[0],",",interval_secs);
 	double reorder_seconds = subargs.size() >= 2 ? atof(subargs[1].c_str()) : 1;
-	AssertAlways(reorder_seconds >= 1,("reorder_seconds too small %.2f < 1",reorder_seconds));
+	INVARIANT(reorder_seconds >= 1, format("reorder_seconds too small"
+					       " %.2f < 1") % reorder_seconds);
 	measurement_reorder_ns = (long long)(reorder_seconds * 1.0e9);
 	base_update_check_interval = subargs.size() >= 3 ? atoi(subargs[2].c_str()) : 100000;
 	update_check_interval = base_update_check_interval;
-	AssertAlways(update_check_interval >= 10000,
-		     ("update_check_interval too small %d < 10000",update_check_interval));
+	INVARIANT(update_check_interval >= 10000,
+		  format("update_check_interval too small %d < 10000")
+		  % update_check_interval);
 
 	measurement_intervals_ns.reserve(interval_secs.size());
 	for(unsigned i = 0; i < interval_secs.size(); ++i) {
 	    double dbl_secs = atof(interval_secs[i].c_str());
-	    AssertAlways(dbl_secs >= 1e-6,("invalid interval seconds %.4g < 1e-6",dbl_secs));
+	    INVARIANT(dbl_secs >= 1e-6, format("invalid interval seconds"
+					       " %.4g < 1e-6") % dbl_secs);
 	    long long time_ns = (long long)(dbl_secs * 1.0e9); 
 	    measurement_intervals_ns.push_back(time_ns);
 	}
@@ -240,8 +243,9 @@ public:
 	    } else {
 		int start_size = pending_packets.size();
 		processPendingPackets(max_packettime - measurement_reorder_ns);
-		AssertAlways(pending_packets.empty() == false,
-			     ("internal %lld %lld",max_packettime,measurement_reorder_ns));
+		INVARIANT(pending_packets.empty() == false,
+			  format("internal %lld %lld")
+			  % max_packettime % measurement_reorder_ns);
 		int end_size = pending_packets.size();
 		if ((start_size - end_size) < start_size / 2) {
 		    // didn't process enough packets, increase update_check_interval a bit.
@@ -253,7 +257,7 @@ public:
 
     virtual void completeProcessing() {
 	processPendingPackets(max_packettime);
-	AssertAlways(pending_packets.empty() == true,("internal"));
+	SINVARIANT(pending_packets.empty() == true);
     }
 
     virtual void printResult() {
@@ -318,8 +322,8 @@ private:
 	StatsQuantile MiB_per_second, kpackets_per_second;
 
       	void update(long long packet_ns, int packet_size) {
-	    AssertAlways(packets_in_flight.empty() || 
-			 packet_ns >= packets_in_flight.back().timestamp_ns,("internal"));
+	    SINVARIANT(packets_in_flight.empty() || 
+		       packet_ns >= packets_in_flight.back().timestamp_ns);
 	    while ((packet_ns - cur_time) > interval_width) {
 		// update statistics for the interval from cur_time to cur_time + interval_width
 		// all packets in p_i_f must have been recieved in that interval
@@ -344,7 +348,7 @@ private:
 	    kpackets_per_second_convert((1/1000.0) * (1.0e9/(double)interval_ns)),
 	    cur_bytes_in_queue(0), MiB_per_second(0.001), 
 	    kpackets_per_second(0.001) { 
-	    AssertAlways(substep_count > 0,("internal"));
+	    SINVARIANT(substep_count > 0);
 	}
     };
 
@@ -372,7 +376,7 @@ public:
 	  wire_len(series,"wire-length")
     { 
 	interval_nsecs = (long long)(atof(args.c_str()) * 1.0e9);
-	AssertAlways(interval_nsecs > 0,("bad argument"));
+	SINVARIANT(interval_nsecs > 0);
     }
 
     virtual ~IPTimeSeriesBandwidthPacketsPerSecond() { };
@@ -391,21 +395,22 @@ public:
 		  % packet_at.val() % intervals_base);
 	if (packet_at.val() >= last_interval_end) {
 	    uint64_t total_intervals = (packet_at.val() - intervals_base)/interval_nsecs+1;
-	    INVARIANT(total_intervals > sum_bytes.size(),"bad");
+	    SINVARIANT(total_intervals > sum_bytes.size());
 	    sum_bytes.resize(total_intervals);
 	    sum_packets.resize(total_intervals);
 	    last_interval_end = intervals_base + interval_nsecs * total_intervals;
 	    last_interval_start = last_interval_end - interval_nsecs;
-	    AssertAlways(packet_at.val() >= last_interval_start && packet_at.val() < last_interval_end,("bad"));
+	    SINVARIANT(packet_at.val() >= last_interval_start 
+		       && packet_at.val() < last_interval_end);
 	}
 
 	if (packet_at.val() >= last_interval_start) {
-	    AssertAlways(packet_at.val() < last_interval_end,("bad"));
+	    SINVARIANT(packet_at.val() < last_interval_end);
 	    sum_packets[sum_packets.size()-1] += 1;
 	    sum_bytes[sum_bytes.size()-1] += wire_len.val();
 	} else {
 	    uint64_t interval = (packet_at.val() - intervals_base)/interval_nsecs;
-	    INVARIANT(interval >= 0 && interval < sum_bytes.size() - 1, "bad");
+	    SINVARIANT(interval >= 0 && interval < sum_bytes.size() - 1);
 	    sum_packets[interval] += 1;
 	    sum_bytes[interval] += wire_len.val();
 	}
@@ -459,7 +464,8 @@ parseopts(int argc, char *argv[])
 	switch(opt){
 	case 'a': options[optIPUsage] = 1;
 	    ippair_interval = atof(optarg);
-	    AssertAlways(ippair_interval >= 0.001,("bad option to -a, expect interval seconds"));
+	    INVARIANT(ippair_interval >= 0.001,
+		      "bad option to -a, expect interval seconds");
 	    break;
 	case 'b': options[optIPRollingPacketStatistics] = 1;
 	    ip_rolling_packet_statistics_arg = optarg;
@@ -469,12 +475,12 @@ parseopts(int argc, char *argv[])
 	    break;
 	case 'h': usage(argv[0]);
 	    break;
-	case '?': AssertFatal(("invalid option"));
+	case '?': FATAL_ERROR("invalid option");
 	default:
-	    AssertFatal(("getopt returned '%c'\n",opt));
+	    FATAL_ERROR(format("getopt returned '%c'\n") % opt);
 	}
     }
-    AssertAlways(any_selected,("must select at least one option for analysis\n"));
+    INVARIANT(any_selected, "must select at least one option for analysis");
 
     return optind;
 }
@@ -492,7 +498,7 @@ printResult(DataSeriesModule *mod)
 	return; // this is ok
     }
 	
-    AssertAlways(rowmod != NULL,("dynamic cast failed?!\n"));
+    INVARIANT(rowmod != NULL, "dynamic cast failed?!");
     rowmod->printResult();
     printf("\n");
 }

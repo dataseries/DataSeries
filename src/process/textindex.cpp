@@ -21,7 +21,6 @@
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/HashUnique.hpp>
-#include <Lintel/LintelAssert.hpp>
 
 #include <DataSeries/commonargs.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
@@ -55,9 +54,9 @@ check_file_missing(const char *filename)
 {
     struct stat statbuf;
     int ret = stat(filename,&statbuf);
-    AssertAlways(ret == -1 && errno == ENOENT,
-		 ("refusing to run with existing file %s (%d,%s)",
-		  filename,errno,strerror(errno)));
+    INVARIANT(ret == -1 && errno == ENOENT,
+	      format("refusing to run with existing file %s (%d,%s)")
+	      % filename % errno % strerror(errno));
 }
 
 string
@@ -160,7 +159,7 @@ public:
     string nextLine(const string &msg, unsigned &offset) {
 	string ret;
 	while(1) {
-	    AssertAlways(offset < msg.size(),("bad"));
+	    SINVARIANT(offset < msg.size());
 	    char tmp = msg[offset];
 	    ret.push_back(tmp);
 	    ++offset;
@@ -211,11 +210,10 @@ public:
 		// TODO: work out how to split these a bit.
 		unsigned tmp_offset = 0;
 		string header_type;
-		AssertAlways(nextWord(headerline, tmp_offset, header_type) == true,
-			     ("bad"));
-		AssertAlways(header_type[header_type.size()-1] == ':',
-			     ("bad"));
-		AssertAlways(headerline[headerline.size()-1] == '\n',("bad"));
+		SINVARIANT(nextWord(headerline, tmp_offset, header_type) 
+			   == true);
+		SINVARIANT(header_type[header_type.size()-1] == ':');
+		SINVARIANT(headerline[headerline.size()-1] == '\n');
 		// strip off header type and newline
 		headerline = headerline.substr(header_type.size()+1,
 					       headerline.size()-(header_type.size() + 2));
@@ -282,9 +280,9 @@ readLine(FILE *f)
 	buf[0] = '\0';
 	buf[1023] = '\0';
 	fgets(buf,1023,f);
-	AssertAlways('\0' == buf[1023],("internal"));
+	SINVARIANT('\0' == buf[1023]);
 	if ('\0' == buf[0]) {
-	    AssertAlways(ret.size() == 0,("internal"));
+	    SINVARIANT(ret.size() == 0);
 	    return "";
 	}
 	ret.append(buf);
@@ -420,14 +418,15 @@ public:
 	    }
 	}
 
-	AssertAlways(filename.stringval().size() > 0,("bad"));
+	SINVARIANT(filename.stringval().size() > 0);
 	vector<bool> &found = found_list[filename.stringval()][id.val()];
 	if (found.size() == 0) {
 	    found.resize(substrings.size());
 	}
 	for(vector<int>::iterator i = matches.begin(); i != matches.end(); ++i) {
 	    int substring_num = *i;
-	    AssertAlways(substring_num >= 0 && found.size() > static_cast<unsigned>(substring_num),("bad"));
+	    SINVARIANT(substring_num >= 0 && found.size() 
+		       > static_cast<unsigned>(substring_num));
 	    found[substring_num] = true;
 	    if (debug_word_find) {
 		printf("Found %d (%s:%s) in %d via %s\n",substring_num, substring_types[substring_num].c_str(),
@@ -474,7 +473,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	    substrings.push_back(args[args_offset]);
 	}
     }
-    AssertAlways(args_offset < args.size() -1 && args[args_offset] == "--",("bad"));
+    SINVARIANT(args_offset < args.size() -1 && args[args_offset] == "--");
     ++args_offset;
 
     for(;args_offset < args.size(); ++args_offset) {
@@ -487,12 +486,12 @@ search_and(vector<string> &args, bool case_insensitive)
 
 	for(HashMap<string, HashMap<int, vector<bool> > >::iterator i = search.found_list.begin();
 	    i != search.found_list.end(); ++i) {
-	    AssertAlways(i->first.size() > 0, ("bad"));
+	    SINVARIANT(i->first.size() > 0);
 	    for(HashMap<int, vector<bool> >::iterator j = i->second.begin();
 		j != i->second.end(); ++j) {
 		bool all_found = true;
 		vector<bool> &found = j->second;
-		AssertAlways(found.size() == substrings.size(),("bad"));
+		SINVARIANT(found.size() == substrings.size());
 		for(unsigned k=0; k<found.size(); ++k) {
 		    if (false == found[k]) {
 			all_found = false;
@@ -509,7 +508,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	for(HashMap<string, HashUnique<int> >::iterator i = wanted_ids.begin();
 	    i != wanted_ids.end(); ++i) {
 
-	    AssertAlways(i->first.size() > 0,("bad"));
+	    SINVARIANT(i->first.size() > 0);
 	    if (debug_search_found) {
 		printf("in %s:\n",i->first.c_str());
 	    }

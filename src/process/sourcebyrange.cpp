@@ -8,11 +8,10 @@
     sourcebyrange implementation, not this is obsolete, don't do this
 */
 
-#include <Lintel/LintelAssert.hpp>
-
 #include <DataSeries/IndexSourceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
+using boost::format;
 bool
 isnumber(char *v)
 {
@@ -44,8 +43,8 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     TypeIndexModule src("NFS trace: common index");
     src.addSource(index_filename);
     Extent *e = src.getExtent();
-    AssertAlways(e->type.getName() == "NFS trace: common index",
-		 ("whoa, extent type %s bad\n",e->type.getName().c_str()));
+    INVARIANT(e->type.getName() == "NFS trace: common index",
+	      format("whoa, extent type %s bad") % e->type.getName());
 
     char *start_add = (char *)sbrk(0);
     ExtentSeries s(e);
@@ -68,14 +67,14 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
 	    source->addSource(filename.stringval());
 	}
     }
-    AssertAlways(nfiles > 0,("didn't find any files for range [%d .. %d]\n",
-			     start_secs, end_secs));
+    INVARIANT(nfiles > 0,format("didn't find any files for range [%d .. %d]")
+	      % start_secs % end_secs);
     delete e;
     
     e = src.getExtent(); 
-    AssertAlways(e == NULL,("bad"));
+    SINVARIANT(e == NULL);
     delete e;
-    AssertAlways(src.getExtent() == NULL,("whoa, index had incorrect extents\n"));
+    INVARIANT(src.getExtent() == NULL,"whoa, index had incorrect extents");
     char *end_add = (char *)sbrk(0);
     if (false) 
 	printf("%d bytes used for %d files, or %d bytes/file\n",
