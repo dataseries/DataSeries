@@ -25,7 +25,7 @@
 #define enable_encrypt_filenames 1
 
 // Do this first to get byteswap things...
-#include <DataSeries/Extent.H>
+#include <DataSeries/Extent.hpp>
 
 #include <stdio.h>
 #include <fcntl.h>
@@ -53,21 +53,22 @@
 
 #include <string>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/AssertBoost.H>
-#include <Lintel/AssertException.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/PriorityQueue.H>
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/Deque.H>
-#include <Lintel/Clock.H>
-#include <Lintel/PThread.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/AssertException.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/Deque.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 #include <process/nfs_prot.h>
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/cryptutil.hpp>
 extern "C" {
 #include <liblzf-1.6/lzf.h>
 }
@@ -199,8 +200,8 @@ struct bandwidth_rolling {
     StatsQuantile mbps;
     void update(ExtentType::int64 packet_us, int packet_size) {
 	INVARIANT(cur_time > 0, "bad, didn't call setStartTime()");
-	AssertAlways(packets_in_flight.empty() || 
-		     packet_us >= packets_in_flight.back().timestamp_us,("internal"));
+	SINVARIANT(packets_in_flight.empty() || 
+		   packet_us >= packets_in_flight.back().timestamp_us);
 	while ((packet_us - cur_time) > interval_microseconds) {
 	    // update statistics for the interval from cur_time to cur_time + interval_width
 	    // all packets in p_i_f must have been recieved in that interval
@@ -229,7 +230,7 @@ struct bandwidth_rolling {
 		 cur_time(start_time), 
 		 cur_bytes_to_mbits_multiplier(8.0/static_cast<double>(interval_microseconds)),
 		 cur_bytes_in_queue(0) { 
-	AssertAlways(substep_count > 0,("internal"));
+	SINVARIANT(substep_count > 0);
     }
 };
 
@@ -689,9 +690,8 @@ public:
     }
 
     static void selfCheck() {
-	AssertAlways(CONSTANTHOSTNETSWAP(0x12345678) == htonl(0x12345678) &&
-		     CONSTANTHOSTNETSWAP(0x9ABCDEF0) == ntohl(0x9ABCDEF0),
-		     ("bad\n"));
+	SINVARIANT(CONSTANTHOSTNETSWAP(0x12345678) == htonl(0x12345678) &&
+		   CONSTANTHOSTNETSWAP(0x9ABCDEF0) == ntohl(0x9ABCDEF0));
     }
 
     // make sure bytes points to a buffer of at least 24 bytes
@@ -1293,7 +1293,7 @@ inline ExtentType::int64 xdr_ll(const uint32_t *xdr,int offset)
 string 
 getLookupFilename(const uint32_t *xdr, int remain_len)
 {
-    AssertAlways(remain_len >= 4,("bad1 %d\n",remain_len));
+    INVARIANT(remain_len >= 4, format("bad1 %d") % remain_len);
     uint32_t strlen = ntohl(xdr[0]);
     // Changed to an assertion to handle set-6/cqracks.19352
     RPCParseAssertMsg(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
@@ -1303,7 +1303,7 @@ getLookupFilename(const uint32_t *xdr, int remain_len)
     if (enable_encrypt_filenames) {
 	string enc_ret = encryptString(ret);
 	string dec_ret = decryptString(enc_ret);
-	AssertAlways(dec_ret == ret,("bad"));
+	SINVARIANT(dec_ret == ret);
 	return enc_ret;
     } else {
 	return ret;
@@ -1404,7 +1404,7 @@ public:
 			     RPCReply &reply) 
     {
 	FATAL_ERROR("unimplemented");
-	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	INVARIANT(reply.status() == 0, "request not accepted?!");
 	int v3fattroffset = getfattroffset(reqdata,reply);
 	if (v3fattroffset >= 0) {
 	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
@@ -1413,7 +1413,7 @@ public:
 	    const uint32_t *xdr = reply.getrpcresults();
 	    xdr += v3fattroffset;
 	    int type = ntohl(xdr[0]);
-	    AssertAlways(type >= 1 && type < 8,("bad"));
+	    SINVARIANT(type >= 1 && type < 8);
 
 	    if (mode == Convert) {
 		nfs_attrops_outmodule->newRecord();
@@ -1486,21 +1486,21 @@ public:
   {
     const uint32_t *xdr = reply.getrpcresults();
     int actual_len = reply.getrpcresultslen();
-    AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+    INVARIANT(reply.status() == 0, "request not accepted?!");
     uint32_t op_status = ntohl(*xdr);
     xdr += 1;
     actual_len -= 4;
     if (op_status != 0) {
       if (is_read) {
-	  AssertAlways(op_status == 70 || // stale file handle
-		       op_status == 13, // permission denied
-		       ("bad12 %d", op_status)); 
+	  INVARIANT(op_status == 70 || // stale file handle
+		    op_status == 13, // permission denied
+		    format("bad12 %d") % op_status); 
       } else {
-	  AssertAlways(op_status == 13 || // permission denied
-		       op_status == 28 || // out of space
-		       op_status == 69 || // disk quota exceeded
-		       op_status == 70, // stale file handle
-		       ("bad12 op_status = %d",op_status)); 
+	  INVARIANT(op_status == 13 || // permission denied
+		    op_status == 28 || // out of space
+		    op_status == 69 || // disk quota exceeded
+		    op_status == 70, // stale file handle
+		    format("bad12 op_status = %d") % op_status); 
       }
     } else {
       nfs_readwrite_outmodule->newRecord();
@@ -1512,12 +1512,13 @@ public:
       readwrite_bytes.set(reqbytes);
       
       if (is_read) {
-	AssertAlways(actual_len >= 17*4 + 4,("bad %d",actual_len));
-	uint32_t actual_bytes = ntohl(xdr[17]);
-	AssertAlways(reqbytes >= (ExtentType::int32)actual_bytes,("wrong %d %d\n",reqbytes,actual_bytes));
-	readwrite_bytes.set(actual_bytes);
+	  INVARIANT(actual_len >= 17*4 + 4, format("bad %d") % actual_len);
+	  uint32_t actual_bytes = ntohl(xdr[17]);
+	  INVARIANT(reqbytes >= (ExtentType::int32)actual_bytes,
+		    format("wrong %d %d") % reqbytes % actual_bytes);
+	  readwrite_bytes.set(actual_bytes);
       } else {
-	AssertAlways(actual_len == 17*4,("bad %d",actual_len));
+	  INVARIANT(actual_len == 17*4, format("bad %d") % actual_len);
       }
     } 
   }
@@ -1551,7 +1552,7 @@ public:
 			     int source_port, int dest_port, int l4checksum, int payload_len,
 			     RPCReply &reply) 
     {
-	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	INVARIANT(reply.status() == 0, "request not accepted?!");
 	int v3fattroffset = getfattroffset(reqdata,reply);
 	if (v3fattroffset >= 0) {
 	    ShortDataAssertMsg(v3fattroffset * 4 + fattr3_len <= reply.getrpcresultslen(),
@@ -1560,7 +1561,7 @@ public:
 	    const uint32_t *xdr = reply.getrpcresults();
 	    xdr += v3fattroffset;
 	    int type = ntohl(xdr[0]);
-	    AssertAlways(type >= 1 && type < 8,("bad"));
+	    SINVARIANT(type >= 1 && type < 8);
 
 	    if (mode == Convert) {
 		nfs_attrops_outmodule->newRecord();
@@ -1611,7 +1612,7 @@ public:
 			   ("bad %d", actual_len));
 	uint32_t op_status = ntohl(*xdr);
 	if (op_status != 0) {
-	    AssertAlways(op_status == 70,("bad %d\n",op_status));
+	    INVARIANT(op_status == 70, format("bad %d") % op_status);
 	    return -1;
 	}
 	return 1;
@@ -1627,10 +1628,10 @@ public:
     virtual ~NFSV3LookupReplyHandler() { }
 
     void checkOpStatus(uint32_t op_status) {
-	AssertAlways(op_status == 2 || // enoent
-		     op_status == 13 || // eaccess
-		     op_status == 70, // estale
-		     ("bad11 %d",op_status)); 
+	INVARIANT(op_status == 2 || // enoent
+		  op_status == 13 || // eaccess
+		  op_status == 70, // estale
+		  format("bad11 %d") % op_status); 
 	// might at some point want to record failed lookups, as per the NFSV2 
 	// decode also
     }
@@ -1662,16 +1663,16 @@ public:
     {
 	const uint32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(actual_len >= 4,("bad"));
+	SINVARIANT(actual_len >= 4);
 	uint32_t op_status = ntohl(*xdr);
-	AssertAlways(op_status == 0,("internal"));
+	SINVARIANT(op_status == 0);
 
 	int fhlen = ntohl(xdr[1]);
-	AssertAlways(fhlen >= 4 && (fhlen % 4) == 0,("bad"));
+	SINVARIANT(fhlen >= 4 && (fhlen % 4) == 0);
 	int objattroffset = 1 + 1 + fhlen / 4;
 	ShortDataAssertMsg(actual_len >= (objattroffset + 1 + 1) * 4 + fattr3_len,
 			   "NFSv3 lookup reply",("bad %d",actual_len));
-	AssertAlways(ntohl(xdr[objattroffset]) == 1,("bad"));
+	SINVARIANT(ntohl(xdr[objattroffset]) == 1);
 	return objattroffset + 1;
     }
 };
@@ -1866,7 +1867,7 @@ public:
     {
 	const uint32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(actual_len >= 4,("readdirplus3 packet size < 4"));
+	INVARIANT(actual_len >= 4, "readdirplus3 packet size < 4");
 	uint32_t op_status = ntohl(*xdr);
 	if (op_status != 0) {
 	    cout << "Warning, readdirplus3 failed, op_status " << op_status << endl;
@@ -1894,10 +1895,10 @@ public:
     virtual ~NFSV3AccessReplyHandler() { }
 
     void checkOpStatus(uint32_t op_status) {
-	AssertAlways(op_status == 2 || // enoent
-		     op_status == 13 || // eaccess
-		     op_status == 70, // estale
-		     ("bad11 %d",op_status)); 
+	INVARIANT(op_status == 2 || // enoent
+		  op_status == 13 || // eaccess
+		  op_status == 70, // estale
+		  format("bad11 %d") % op_status); 
 	// might at some point want to record failed accesses, as per the NFSV2 
 	// decode also
     }
@@ -1965,9 +1966,9 @@ public:
 		    // Seeing these in some cache traces?!
 		    cout << "Warning, weird op status in write reply " << op_status << endl;
 		} else {
-		    AssertAlways(op_status == 70 || // stale file handle
-				 op_status == 13, // permission denied
-				 ("bad12 %d", op_status)); 
+		    INVARIANT(op_status == 70 || // stale file handle
+			      op_status == 13, // permission denied
+			      format("bad12 %d") % op_status); 
 		}
 	    } else {
 		if ((op_status >= 12000 && op_status <= 16000) ||
@@ -1975,11 +1976,11 @@ public:
 		    // Seeing these in some cache traces?!
 		    cout << "Warning, weird op status in write reply " << op_status << endl;
 		} else {
-		    AssertAlways(op_status == 70 || // stale file handle
-				 op_status == 28 || // out of space
-				 op_status == 13 || // permission denied
-				 op_status == 69, // disk quota exceeded
-				 ("bad12 op_status = %d",op_status)); 
+		    INVARIANT(op_status == 70 || // stale file handle
+			      op_status == 28 || // out of space
+			      op_status == 13 || // permission denied
+			      op_status == 69, // disk quota exceeded
+			      format("bad12 op_status = %d") % op_status); 
 		}
 	    }
 	    return -1;
@@ -1990,7 +1991,9 @@ public:
 	    if (ntohl(*xdr) == 0) {
 		return -1;
 	    }
-	    AssertAlways(ntohl(*xdr) == 1,("bad; should be either 0 or 1 to mark whether attrs are there??"));
+	    INVARIANT(ntohl(*xdr) == 1, "bad; should be either 0 or 1 to mark"
+		      " whether attrs are there??");
+		      
 	    ShortDataAssertMsg(actual_len >= 4 + fattr3_len,is_read ? "NFSv3 read reply" : "NFSv3 write reply",
 			       ("actual len %d",actual_len));
 	    return 2;
@@ -2029,7 +2032,7 @@ public:
 					     payload_len, reply);
 	const uint32_t *xdr = reply.getrpcresults();
 	int actual_len = reply.getrpcresultslen();
-	AssertAlways(reply.status() == 0,("request not accepted?!\n"));
+	INVARIANT(reply.status() == 0, "request not accepted?!");
 	uint32_t op_status = ntohl(*xdr);
 	xdr += 1;
 	actual_len -= 4;
@@ -2039,9 +2042,9 @@ public:
 		    // Weird things being seen in NFS cache traces
 		    cout << "Warning, weird op status in write reply " << op_status << endl;
 		} else {
-		    AssertAlways(op_status == 70 || // stale file handle
-				 op_status == 13, // permission denied
-				 ("bad12 %d", op_status)); 
+		    INVARIANT(op_status == 70 || // stale file handle
+			      op_status == 13, // permission denied
+			      format("bad12 %d") % op_status); 
 		}
 	    } else {
 		if ((op_status >= 12000 && op_status <= 16000) ||
@@ -2049,11 +2052,11 @@ public:
 		    // Weird things being seen in NFS cache traces
 		    cout << "Warning, weird op status in write reply " << op_status << endl;
 		} else {
-		    AssertAlways(op_status == 70 || // stale file handle
-				 op_status == 28 || // out of space
-				 op_status == 13 || // permission denied
-				 op_status == 69, // disk quota exceeded
-				 ("bad12 op_status = %d",op_status)); 
+		    INVARIANT(op_status == 70 || // stale file handle
+			      op_status == 28 || // out of space
+			      op_status == 13 || // permission denied
+			      op_status == 69, // disk quota exceeded
+			      format("bad12 op_status = %d") % op_status); 
 		}
 	    }
 	} else {
@@ -2078,8 +2081,8 @@ public:
 		} else {
 		    FATAL_ERROR("should have been caught in getfattroffset!");
 		}
-		AssertAlways(reqbytes >= (ExtentType::int32)actual_bytes,
-			     ("wrong %d %d\n",reqbytes,actual_bytes));
+		INVARIANT(reqbytes >= (ExtentType::int32)actual_bytes,
+			  format("wrong %d %d") % reqbytes % actual_bytes);
 		if (mode == Convert) {
 		    readwrite_bytes.set(actual_bytes);
 		}
@@ -2089,14 +2092,16 @@ public:
 		    INVARIANT(xdr[1+3*2],
 			      format("Unimplemented, Missing post-op fattr3 for write in %s") % tracename);
 		    //                       flag pre_op flag post_op  count committed writeverf
-		    AssertAlways(actual_len == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8,
-				 ("bad"));
+		    SINVARIANT(actual_len 
+			       == 4 + 3*8 + 4 + fattr3_len + 4 + 4 + 8)
 		    actual_bytes = ntohl(xdr[1+3*2+1+fattr3_len/4]);
 		} else if (xdr[1]) { // missing pre-op attr, have post-op
 		    INVARIANT(xdr[1], 
 			      format("Unimplemented, Missing post-op fattr3 for write in %s size is %d") % tracename % actual_len);
-		    AssertAlways(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, 
-				 ("bad on %s %d != %d", tracename.c_str(), actual_len, 4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
+		    INVARIANT(actual_len == 4 + 4 + fattr3_len + 4 + 4 + 8, 
+			      format("bad on %s %d != %d") % tracename
+			      % actual_len 
+			      % (4+ 3*8 + 4 + fattr3_len + 4 + 4 + 8));
 		    actual_bytes = ntohl(xdr[1+1+fattr3_len/4]);
 		} else {
 		    INVARIANT(actual_len == 4 + 4 + 4 + 4 + 8, 
@@ -2104,7 +2109,7 @@ public:
 		    actual_bytes = ntohl(xdr[1+1]);
 		}
 
-		AssertAlways((int)actual_bytes == reqbytes,("bad\n"));
+		SINVARIANT((int)actual_bytes == reqbytes);
 
 		if (mode == Convert) {
 		    readwrite_bytes.set(reqbytes);
@@ -2188,8 +2193,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 				    tracename.c_str(), cur_record_id,
 				    actual_len));
 		int fhlen = ntohl(xdr[0]);
-		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-			     ("bad"));
+		SINVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64);
 		ShortDataAssertMsg(actual_len == 4+fhlen,"NFSv3 getattr request",("bad"));
 		string filehandle((char *)(xdr+1), fhlen);
 		d.replyhandler =
@@ -2252,12 +2256,11 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
-		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-			     ("bad fhlen1"));
+		SINVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64);
 		RPCParseAssertMsg(actual_len == 4 + fhlen + 8 + 4,("bad actual_len %d fhlen %d +=16",actual_len,fhlen));
 		string filehandle((char *)(xdr+1), fhlen);
 		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
-		AssertAlways(len < 65536,("bad"));
+		SINVARIANT(len < 65536);
 		d.replyhandler = 
 		    new NFSV3ReadWriteReplyHandler(filehandle, 
 						   xdr_ll(xdr,1+fhlen/4),
@@ -2272,8 +2275,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 				    Clock::TfracToSec(time),Clock::TfracToNanoSec(time),
 				    ip_hdr->protocol,IPPROTO_UDP));
 		int fhlen = ntohl(xdr[0]);
-		AssertAlways(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64,
-			     ("bad"));
+		SINVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64);
 		ShortDataAssertMsg(actual_len >= (4+ fhlen + 8 + 4),
 				   "NFSv3 Write Request",
 				   ("bad read len %d @%d.%09d; %d %d",actual_len,
@@ -2285,7 +2287,7 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 			       % time % d.client % d.server
 			       % actual_len;
 		unsigned len = ntohl(xdr[1+ fhlen/4 + 2]);
-		AssertAlways(len < 65536,("bad"));
+		SINVARIANT(len < 65536);
 		d.replyhandler = 
 		    new NFSV3ReadWriteReplyHandler(filehandle, 
 						   xdr_ll(xdr,1+fhlen/4),

@@ -8,19 +8,19 @@
     indexer for NFS Common DataSeries files
 */
 
-// TODO: obsolete this.
-using namespace std;
+// TODO: obsolete this program, merge it into dsextentindex
 
 #include <sys/types.h>
 #include <sys/stat.h>
 
 #include <map>
 
-#include <Lintel/LintelAssert.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
+using namespace std;
+using boost::format;
 
 const ExtentType::int64 max_backward_ns_in_extent = 20000000LL;
 const ExtentType::int64 max_backward_ns_between_extent = 5000000LL;
@@ -49,8 +49,8 @@ readExistingIndex(char *out_filename)
     TypeIndexModule src("NFS trace: common index");
     src.addSource(out_filename);
     Extent *e = src.getExtent();
-    AssertAlways(e->type.getName() == "NFS trace: common index",
-		 ("whoa, extent type %s bad\n",e->type.getName().c_str()));
+    INVARIANT(e->type.getName() == "NFS trace: common index",
+	      format("whoa, extent type %s bad") % e->type.getName());
 
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
@@ -72,9 +72,9 @@ readExistingIndex(char *out_filename)
     delete e;
     
     e = src.getExtent(); 
-    AssertAlways(e->type.getName() == "DataSeries: ExtentIndex",("bad"));
+    SINVARIANT(e->type.getName() == "DataSeries: ExtentIndex");
     delete e;
-    AssertAlways(src.getExtent() == NULL,("whoa, index had incorrect extents\n"));
+    INVARIANT(src.getExtent() == NULL, "whoa, index had incorrect extents");
 }
 
 struct backward_timeness {
@@ -120,7 +120,7 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 	    f.start_id = f.end_id = recordid.val();
 	    f.start_time = f.end_time = packettime.val();
 	} else {
-	    AssertAlways(recordid.val() > f.end_id,("bad"));
+	    SINVARIANT(recordid.val() > f.end_id);
 	    f.end_id = recordid.val();
 	    if (packettime.val() < f.end_time) {
 		// this happens all the time; the large jumps are
@@ -130,7 +130,7 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 		for(int i=0;i<nok_backwards;++i) {
 		    if (packettime.val() == ok_backwards[i].packettime &&
 			f.end_time == ok_backwards[i].end_time) {
-			AssertAlways(found_ok_backwardness == false,("internal"));
+			SINVARIANT(found_ok_backwardness == false);
 			found_ok_backwardness = true;
 		    }
 		}
@@ -148,8 +148,9 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 			   recordid.val(),f.end_time - packettime.val(),
 			   packettime.val(),f.end_time);
 		} else {
-		    AssertAlways(backward_ns <= max_backward_ns_in_extent,
-				 ("bad2 %lld < %lld -> %lld",packettime.val(),f.end_time,backward_ns));
+		    INVARIANT(backward_ns <= max_backward_ns_in_extent,
+			      format("bad2 %lld < %lld -> %lld")
+			      % packettime.val() % f.end_time % backward_ns);
 		    printf("warning backwards timeness on recordid %lld of %lld ns: %lld < %lld\n",
 			   recordid.val(),f.end_time - packettime.val(),packettime.val(),f.end_time);
 		}
@@ -165,7 +166,8 @@ bool
 updateIndexMap(char *filename)
 {
     struct stat statbuf;
-    AssertAlways(stat(filename,&statbuf)==0,("stat failed: %s\n",strerror(errno)));
+    CHECKED(stat(filename,&statbuf)==0,
+	    format("stat(%s) failed: %s") % filename % strerror(errno));
     ExtentType::int64 mtime = mtimens(statbuf);
     if (filename_to_mtime[filename] == mtime) {
 	printf("%s: up to date\n",filename);
@@ -205,11 +207,11 @@ updateIndexMap(char *filename)
 	   (double)f.end_time / 1.0e9);
     indexmapT::iterator exist = indexmap.find(f.start_id);
     if (exist != indexmap.end()) {
-	AssertAlways(exist->second.start_id == f.start_id &&
-		     exist->second.end_id == f.end_id &&
-		     exist->second.start_time == f.start_time &&
-		     exist->second.end_time == f.end_time &&
-		     exist->second.filename == f.filename,("mismatch\n"));
+	SINVARIANT(exist->second.start_id == f.start_id &&
+		   exist->second.end_id == f.end_id &&
+		   exist->second.start_time == f.start_time &&
+		   exist->second.end_time == f.end_time &&
+		   exist->second.filename == f.filename);
 	exist->second.mtime = mtime;
     } else {
 	indexmap[f.start_id] = f;
@@ -230,19 +232,19 @@ validateIndexMap()
     ExtentType::int64 last_id = -1, last_time = -1;
     for(indexmapT::iterator i = indexmap.begin();
 	i != indexmap.end();++i) {
-	AssertAlways(i->second.start_id > last_id,("bad"));
+	SINVARIANT(i->second.start_id > last_id);
 	last_id = i->second.end_id;
 	if (i->second.start_time < last_time) {
 	    bool found_ok_backwardness = false;
 	    for(int j=0;j<nok_validate;++j) {
 		if (i->second.start_time == ok_validate[j].packettime &&
 		    last_time == ok_validate[j].end_time) {
-		    AssertAlways(found_ok_backwardness == false,("internal"));
+		    SINVARIANT(found_ok_backwardness == false);
 		    found_ok_backwardness = true;
 		}
 	    }
 	    long long backward_ns = last_time - i->second.start_time;
-	    AssertAlways(backward_ns > 0,("huh"));
+	    SINVARIANT(backward_ns > 0);
 	    if (backward_ns < max_backward_ns_between_extent)
 		found_ok_backwardness = true;
 	    if (found_ok_backwardness) {
@@ -252,8 +254,9 @@ validateIndexMap()
 			   last_time);
 		}
 	    } else {
-		AssertAlways(i->second.start_time >= last_time,
-			     ("bad out of order %lld < %lld -> %lld",i->second.start_time,last_time,backward_ns));
+		INVARIANT(i->second.start_time >= last_time,
+			  format("bad out of order %lld < %lld -> %lld")
+			  % i->second.start_time % last_time % backward_ns);
 	    }
 	}
 	last_time = i->second.end_time;
@@ -293,7 +296,7 @@ writeIndexMap(char *out_filename)
 	start_time.set(i->second.start_time);
 	end_time.set(i->second.end_time);
 	filename.set(i->second.filename);
-	AssertAlways(i->second.mtime > 0,("bad mtime\n"));
+	SINVARIANT(i->second.mtime > 0);
 	mtime.set(i->second.mtime);
     } 
     sink.writeExtent(*e, NULL);
@@ -302,9 +305,9 @@ writeIndexMap(char *out_filename)
 int
 main(int argc, char *argv[])
 {
-    AssertAlways(argc > 2 && strncmp(argv[0],"-h",2) != 0,
-		 ("Usage: %s <index-dataseries> <nfs common dataseries...>\n",
-		  argv[0]));
+    INVARIANT(argc > 2 && strncmp(argv[0],"-h",2) != 0,
+	      format("Usage: %s <index-dataseries> <nfs common dataseries...>")
+	      % argv[0]);
     struct stat buf;
 
     if (stat(argv[1],&buf) == 0) {

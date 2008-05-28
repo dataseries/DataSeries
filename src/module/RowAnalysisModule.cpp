@@ -9,8 +9,8 @@
     implementation
 */
 
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
 
 RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
 				     ExtentSeries::typeCompatibilityT _tc)
@@ -102,9 +102,11 @@ RowAnalysisModule::printAllResults(SequenceModule &sequence,
 	    ram->printResult();
 	}
     }
-    AssertAlways(expected_nonprintable < 0 ||
-		 non_rowmods == expected_nonprintable,
-		 ("mismatch on number of non-printable modules %d != %d (expected)\n",
-		  non_rowmods,expected_nonprintable));
-     return non_rowmods;
+    INVARIANT(expected_nonprintable < 0 || 
+	      non_rowmods == expected_nonprintable,
+	      boost::format("mismatch on number of non-printable"
+			    " modules %d != %d (expected)\n")
+	      % non_rowmods % expected_nonprintable);
+
+    return non_rowmods;
 }

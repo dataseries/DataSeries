@@ -1,4 +1,4 @@
-#include <Lintel/AssertBoost.H>
+#include <Lintel/AssertBoost.hpp>
 
 #include <DataSeries/DSExpr.hpp>
 #include <module/DSExprParse.hpp>

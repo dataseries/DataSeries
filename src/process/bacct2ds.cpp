@@ -15,8 +15,7 @@
 // "standard" LSF fields and a portion which parses any cluster
 // specific lsf naming/directory naming conventions.
 
-// TODO: remove AssertAlways, printf, replace with INVARIANT,
-// boost::format, then remove LintelAssert.
+// TODO: remove printf, replace with boost::format
 
 #include <stdio.h>
 #include <string>
@@ -25,15 +24,14 @@
 #include <pcre.h>
 #include <openssl/sha.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/HashUnique.H>
-#include <Lintel/Clock.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/cryptutil.hpp>
 
 using namespace std;
 using boost::format;
@@ -242,7 +240,7 @@ parselsfstring(char *start,string &into, int maxlen)
     if ((int)tmpstring.size() < maxlen) {
 	tmpstring.resize(maxlen);
     }
-    AssertAlways(start[0] == '"',("bad %s\n",start));
+    INVARIANT(start[0] == '"', format("bad %s") % start);
     char *finish = start+1;
 
     int i = 0;
@@ -259,11 +257,10 @@ parselsfstring(char *start,string &into, int maxlen)
 	    // into.push_back(finish[0]);
 	    finish += 1;
 	}
-	AssertAlways(*finish != '\n' && *finish != '\0',
-		     ("parse error"));
+	INVARIANT(*finish != '\n' && *finish != '\0', "parse error");
     }
 
-    AssertAlways(i < maxlen,("internal"));
+    SINVARIANT(i < maxlen);
     into = tmpstring.substr(0,i);
     return finish;
 }
@@ -279,9 +276,9 @@ parsenumber(char *start,string &into, int line_num)
 	if (isdigit(*finish) || *finish == '.') {
 	    ++finish;
 	} else {
-	    AssertAlways(*finish == ' ' || *finish == '\n',
-			 ("parse error, got '%c' at line %d from '%s'",*finish,
-			  line_num, start));
+	    INVARIANT(*finish == ' ' || *finish == '\n',
+		    format("parse error, got '%c' at line %d from '%s'")
+		      % *finish % line_num % start);
 	    break;
 	}
     }
@@ -299,22 +296,23 @@ extract_fields(char *buf, vector<string> &fields, int linenum)
     int maxlen = strlen(buf);
     while(*buf != '\n') {
 	string tmp;
-	AssertAlways(*buf != '\0',("parse error"));
+	INVARIANT(*buf != '\0', "parse error");
 	if (*buf == '"') {
 	    buf = parselsfstring(buf,tmp,maxlen);
 	} else {
 	    buf = parsenumber(buf,tmp, linenum);
 	}
 	if (debug_extract_fields) {
-	    cout << boost::format("%d. %s\n") % fields.size() % tmp.c_str();
+	    cout << format("%d. %s\n") % fields.size() % tmp.c_str();
 	}
 	fields.push_back(tmp);
 	if (*buf == ' ') {
 	    ++buf;
-	    AssertAlways(*buf != '\n' && *buf != '\0',
-			 ("parse error"));
+	    INVARIANT(*buf != '\n' && *buf != '\0', "parse error");
 	} else {
-	    AssertAlways(*buf == '\n',("parse error, got '%c' from '%s' at line %d",*buf,buf, linenum));
+	    INVARIANT(*buf == '\n',
+		      format("parse error, got '%c' from '%s' at line %d")
+		      % *buf % buf % linenum);
 	}
     }
 }
@@ -486,9 +484,9 @@ struct job_info {
 	if (res_idx == -1) {
 	    job_resolution = -1;
 	} else {
-	    AssertAlways(lsf_command[res_idx] == '-' &&
-			 lsf_command[res_idx+1] == 'r' &&
-			 lsf_command[res_idx+2] == ' ',("bad"));
+	    SINVARIANT(lsf_command[res_idx] == '-' &&
+		       lsf_command[res_idx+1] == 'r' &&
+		       lsf_command[res_idx+2] == ' ');
 	    res_idx = res_idx+2;
 	    bool found_res = true;
 	    while(isspace(lsf_command[res_idx])) {
@@ -543,14 +541,14 @@ struct job_info {
 		job_frame = atoi(lsf_command.c_str() + (frame_idx + 3));
 		if (false) printf("XX %s -> %d\n",lsf_command.c_str(),job_frame);
 	    }
-	    //	    AssertAlways(frame_idx == -1,("bad %s %d",lsf_command.c_str(),lsf_idx));
+	    //	    INVARIANT(frame_idx == -1, format("bad %s %d") % lsf_command % lsf_idx);
 	} else if (array_idx > 0) {
 	    job_frame = lsf_idx;
 	} else if (frame_idx == -1) {
 	    string enccmd = encryptString(command_name);
 	    bool *v = encrypted_ok_idx_noframe.lookup(enccmd);
 	    if (v) {
-		AssertAlways(*v,("internal"));
+		SINVARIANT(*v);
 	    } else if (print_frame_lsfidx_warnings) {
 		fprintf(stderr,"Warning, got lsf_idx (but not frame option) for unrecognized '%s'/'%s'/'%s'\n",
 			command_name.c_str(),hexstring(encryptString(command_name)).c_str(),command.c_str());
@@ -622,7 +620,7 @@ struct job_info {
 	} else if (fields[0] == job_cache) {
 	    end_time = 0;
 	} else {
-	    AssertFatal(("internal"));
+	    FATAL_ERROR("internal");
 	}
 	queue = fields[12];
 	email = fields[49+tailoffset];
@@ -642,7 +640,7 @@ struct job_info {
 	} else if (status_int == jStatusDONE) {
 	    status = status_done;
 	} else {
-	    AssertFatal(("unrecognized job status %d\n",status_int));
+	    FATAL_ERROR(format("unrecognized job status %d") % status_int);
 	}
 	team = fields[50+tailoffset];
 	exit_code = uintfield(fields[51+tailoffset]);
@@ -703,8 +701,8 @@ void
 xpcre_get_substring(const string &str, int *ovector, int rc, int stringnum, string &outstr)
 {
     const char *stringptr;
-    AssertAlways(pcre_get_substring(str.c_str(),ovector,rc,stringnum,&stringptr) >= 0,
-		 ("get substring failed"));
+    CHECKED(pcre_get_substring(str.c_str(),ovector,rc,stringnum,
+			       &stringptr) >= 0, "get substring failed");
     outstr = stringptr;
     pcre_free((void *)stringptr);
 }
@@ -747,7 +745,7 @@ xpcre_compile(const char *regex)
 
     pcre *ret = pcre_compile(regex,0,&errptr,&erroffset,NULL);
     INVARIANT(ret != NULL,
-	      boost::format("pcre compile(%s) failed at: %s")
+	      format("pcre compile(%s) failed at: %s")
 	      % regex % errptr);
     return ret;
 }
@@ -782,8 +780,8 @@ parse_frameinfo(const string &framebits, job_info &jinfo)
 	jinfo.nframes = 1;
 	return true;
     }
-    AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		 ("inexplicable error from pcre: %d\n",rc));
+    INVARIANT(rc == PCRE_ERROR_NOMATCH,
+	      format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_range, NULL, framebits.c_str(),
 		   framebits.length(),0,0,ovector,novector);
@@ -798,8 +796,8 @@ parse_frameinfo(const string &framebits, job_info &jinfo)
 	jinfo.frame_step = 1;
 	return true;
     }
-    AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		 ("inexplicable error from pcre: %d\n",rc));
+    INVARIANT(rc == PCRE_ERROR_NOMATCH,
+	      format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_range_step_1, NULL, framebits.c_str(),
 		   framebits.length(), 0,0,ovector,novector);
@@ -842,8 +840,8 @@ parse_frameinfo(const string &framebits, job_info &jinfo)
 	// dunno how to extract start, end, count, step from that mess
 	return true;
     }
-    AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		 ("inexplicable error from pcre: %d\n",rc));
+    INVARIANT(rc == PCRE_ERROR_NOMATCH,
+	      format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_single_step, NULL, framebits.c_str(),
 		   framebits.length(), 0,0,ovector,novector);
@@ -1279,7 +1277,7 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
 	    }
 	}
 	string foo = jobname.substr(start_offset,end_offset - start_offset);
-	if (false) cout << boost::format("  ColonSep JobName field %d: %s\n") % fields.size() % foo.c_str();
+	if (false) cout << format("  ColonSep JobName field %d: %s\n") % fields.size() % foo.c_str();
 	fields.push_back(foo);
 	start_offset = end_offset + 1;
     }
@@ -1350,7 +1348,7 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
 	fields[1] == jinfo.dir_production) {
 	bool *v = noframerange_map.lookup(encryptString(fields[4]));
 	if (v != NULL) {
-	    AssertAlways(*v,("internal"));
+	    SINVARIANT(*v);
 	    jinfo.meta_id = uintfield(fields[0]);
 	    jinfo.production = fields[1];
 	    jinfo.sequence = fields[2];
@@ -1592,7 +1590,7 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
 	fields[1].size() > jobdirectory.size() &&
 	fields[1].substr(0,jobdirectory.size()) == jobdirectory) {
 	int off = jobdirectory.size() + 1;
-	AssertAlways(off < (int)fields[1].size(),("internal"));
+	SINVARIANT(off < (int)fields[1].size());
 	jinfo.task = fields[0];
 	jinfo.subtask = fields[1].substr(off,fields[1].size() - off);
 	return true;
@@ -1705,8 +1703,8 @@ pcre *xpcre_compile(const string &regex)
     int erroffset;
 
     pcre *ret = pcre_compile(regex.c_str(),0,&errptr,&erroffset,NULL);
-    AssertAlways(ret != NULL,("pcre compile of %s failed at: %s\n",
-			      regex.c_str(),errptr));
+    INVARIANT(ret != NULL, 
+	      format("pcre compile of %s failed at: %s") % regex % errptr);
     return ret;
 }
 
@@ -2526,7 +2524,7 @@ parse_directory_jobinfo(const string &run_directory,
     }
 
     if (jinfo.directory_name_unpacked) {
-	AssertAlways(jinfo.dir_production != empty_string,("internal"));
+	SINVARIANT(jinfo.dir_production != empty_string);
 	jinfo.production = jinfo.dir_production;
 	jinfo.sequence = jinfo.dir_sequence;
 	jinfo.shot = jinfo.dir_shot;
@@ -2538,9 +2536,9 @@ parse_directory_jobinfo(const string &run_directory,
 	} else {
 	    ++jobdirectory_odd_fail_count;
 	}
-	AssertAlways(jinfo.dir_production == empty_string &&
-		     jinfo.dir_sequence == empty_string &&
-		     jinfo.dir_shot == empty_string,("internal"));
+	SINVARIANT(jinfo.dir_production == empty_string &&
+		   jinfo.dir_sequence == empty_string &&
+		   jinfo.dir_shot == empty_string);
     }
 }
 
@@ -2659,8 +2657,9 @@ parse_jobname_trim_framespec(string &jobname, job_info &jinfo)
 	if (false) printf("%s\n",jobname.c_str());
     } else {
 	if (false) printf("nomatch on %s\n",jobname.c_str());
-	AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		     ("inexplicable error from pcre: %d on %s\n",rc,jobname.c_str()));
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  format("inexplicable error from pcre: %d on %s")
+		  % rc % jobname);
     }
     return true;
 }
@@ -2728,8 +2727,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	framespec_trimmed_jobname
 	    = jobname.substr(0,jobname.length() - str.length());
     } else {
-	AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		     ("inexplicable error from pcre: %d\n",rc));
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  format("inexplicable error from pcre: %d") % rc);
     }
 
     // seq.shot.task.?[framespec]
@@ -3132,8 +3131,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	    printf("nomatch %s\n",hexstring(encryptString(str)).c_str());
 	}
     } else {
-	AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		     ("inexplicable error from pcre: %d\n",rc));
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  format("inexplicable error from pcre: %d") % rc);
     }
 
     rc = pcre_exec(regex_periodsep_bsub_path_task_2, NULL, jobname.c_str(),
@@ -3149,8 +3148,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	    printf("nomatch %s\n",hexstring(encryptString(str)).c_str());
 	}
     } else {
-	AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		     ("inexplicable error from pcre: %d\n",rc));
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  format("inexplicable error from pcre: %d") % rc);
     }
 
     rc = pcre_exec(regex_periodsep_taskCAPS_sq_shot, NULL, jobname.c_str(),
@@ -3161,8 +3160,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	xpcre_get_substring(jobname,ovector,rc,3,jinfo.shot);
 	return true;
     } else {
-	AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		     ("inexplicable error from pcre: %d\n",rc));
+	INVARIANT(rc == PCRE_ERROR_NOMATCH,
+		  format("inexplicable error from pcre: %d") % rc);
     }
 
     // *match-1/task*.shot.*match-2*.#
@@ -3362,8 +3361,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
 	return true;
     }
-    AssertAlways(rc == PCRE_ERROR_NOMATCH,
-		 ("inexplicable error from pcre: %d\n",rc));
+    INVARIANT(rc == PCRE_ERROR_NOMATCH,
+	      format("inexplicable error from pcre: %d") % rc);
 
     // bizarre special case; copied stuff
     if (encryptString(jinfo.production) == encrypted_parse_periodsep[13] &&
@@ -3376,7 +3375,8 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	    jinfo.sequence = jinfo.subtask;
 	    jinfo.subtask = empty_string;
 	    period_parse_any(jobname,jinfo.shot,true);
-	    AssertAlways(jobname == empty_string,("internal %s",jobname.c_str()));
+	    INVARIANT(jobname == empty_string,
+		      boost::format("internal %s") % jobname);
 	    return true;
 	}
 	jinfo.task = jinfo.subtask = empty_string;
@@ -3535,10 +3535,9 @@ void
 framelike(const string &v)
 {
     for(unsigned i = 0;i<v.size();++i) {
-	AssertAlways(isdigit(v[i]) || v[i] == '[' || v[i] == ']' || v[i] == '-'
-		     || v[i] == '%' || v[i] == ',' || v[i] == ':',
-		     ("whoa, not framelike '%c' %s\n",
-		      v[i],v.c_str()));
+	INVARIANT(isdigit(v[i]) || v[i] == '[' || v[i] == ']' || v[i] == '-'
+		  || v[i] == '%' || v[i] == ',' || v[i] == ':',
+		  format("whoa, not framelike '%c' %s") % v[i] % v);
     }
 }
 
@@ -3553,7 +3552,7 @@ hostGroupUnrecognized(const string &group, const string &hostname)
 	    i != tmp.end(); ++i) {
 	    hostnames.push_back(*i);
 	}
-	FATAL_ERROR(boost::format("too many hosts in group %s -> %s: %s")
+	FATAL_ERROR(format("too many hosts in group %s -> %s: %s")
 		    % group % hexstring(encryptString(group)) 
 		    % join(", ", hostnames));
     }
@@ -3583,7 +3582,7 @@ hostGroupWordPrefixCheck(const string &hostname)
 	}
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      boost::format("unexpected error from pcre on %s: %d") 
+	      format("unexpected error from pcre on %s: %d") 
 	      % hostname % rc);
 
     return empty_string;
@@ -3625,7 +3624,7 @@ hostGroup(const string &hostname)
 	}
 	return hostGroupWordPrefixCheck(hostname);
     } else {
-	FATAL_ERROR(boost::format("Don't know how to determine host groups for cluster %s")
+	FATAL_ERROR(format("Don't know how to determine host groups for cluster %s")
 		    % cluster_name_str);
 	return empty_string;
     }
@@ -3641,7 +3640,7 @@ process_line(char *buf, int linenum)
     bool has_maxrmem = true;
 
     INVARIANT(fields.size() > 22,
-	      boost::format("bad field count %d\n") % fields.size());
+	      format("bad field count %d\n") % fields.size());
     int fieldcount = -1;
     if (false) {
     } else if (fields[1] == ver_62) {
@@ -3667,27 +3666,26 @@ process_line(char *buf, int linenum)
 	fields.push_back(str_zero);
 	fields.push_back(str_zero);
     } else {
-	FATAL_ERROR(boost::format("bad version '%s' %d fields")
+	FATAL_ERROR(format("bad version '%s' %d fields")
 		    % fields[1] % fields.size());
     }
-    AssertAlways(fieldcount > 0, ("no version %s??", fields[1].c_str()));
-    AssertAlways(fields[0] == job_finish || fields[0] == job_cache,
-		 ("don't know how to handle a %s line\n",
-		  fields[0].c_str()));
+    INVARIANT(fieldcount > 0, format("no version %s??") % fields[1]);
+    INVARIANT(fields[0] == job_finish || fields[0] == job_cache,
+	      format("don't know how to handle a %s line") % fields[0]);
     int naskhosts = uintfield(fields[22]);
     int exechostsoffset = naskhosts - 1;
     INVARIANT((int)fields.size() > 24+exechostsoffset,
-	      boost::format("bad field count %d at line %d\n") 
+	      format("bad field count %d at line %d\n") 
 	      % fields.size() % linenum);
     int nexechosts = uintfield(fields[24+exechostsoffset]);
     int tailoffset = exechostsoffset + nexechosts - 1;
 
     // 4.2 doesn't have the reservation entry added to the end.
     INVARIANT((int)fields.size() == fieldcount+tailoffset,
-	      boost::format("bad %d != %d + %d on line %d")
+	      format("bad %d != %d + %d on line %d")
 	      % fields.size() % fieldcount % tailoffset % linenum);
-    AssertAlways(fields[54+tailoffset].size() == 0,("bad"));
-    AssertAlways(fieldcount <= 61 || fields[66+tailoffset] == str_minus1,("bad"));
+    SINVARIANT(fields[54+tailoffset].size() == 0);
+    SINVARIANT(fieldcount <= 61 || fields[66+tailoffset] == str_minus1);
 	
     job_info jinfo;
     jinfo.parse_command(fields[29+tailoffset],fields[55+tailoffset]);
@@ -3721,11 +3719,11 @@ process_line(char *buf, int linenum)
 	}
     }
 
-    if (false) cout << boost::format("%d fields\n") % (fields.size() - tailoffset);
-    if (false) cout << boost::format("YY %d %s %s\n") % jinfo.job_name_unpacked % sqlstring(jinfo.production) % sqlstring(jinfo.team).c_str();
+    if (false) cout << format("%d fields\n") % (fields.size() - tailoffset);
+    if (false) cout << format("YY %d %s %s\n") % jinfo.job_name_unpacked % sqlstring(jinfo.production) % sqlstring(jinfo.team).c_str();
     if (false) printf("%s\n",sqlstring(jinfo.team).c_str());
     framelike(jinfo.frames);
-    AssertAlways(jinfo.queue != empty_string,("internal error queue empty?!\n"));
+    INVARIANT(!jinfo.queue.empty(), "internal error queue empty?!");
 
     lsf_grizzly_outmodule->newRecord();
     cluster_name.set(cluster_name_str);
@@ -3790,7 +3788,8 @@ main(int argc,char *argv[])
     packing_args.extent_size = 8*1024*1024;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 4,("Usage: %s inname cluster-name outdsname; - valid for inname",argv[0]));
+    INVARIANT(argc == 4, format("Usage: %s inname cluster-name outdsname;"
+				" - valid for inname") % argv[0]);
     cluster_name_str = argv[2];
     prepareEncryptEnvOrRandom();
     prepEncryptedStuff();
@@ -3800,9 +3799,8 @@ main(int argc,char *argv[])
     } else {
 	infile = fopen(argv[1],"r");
     }
-    AssertAlways(infile != NULL,
-		 ("Unable to open %s for read: %s\n",
-		  argv[1],strerror(errno)));
+    INVARIANT(infile != NULL, format("Unable to open %s for read: %s")
+	      % argv[1] % strerror(errno));
     DataSeriesSink outds(argv[3],
 			 packing_args.compress_modes,
 			 packing_args.compress_level);
@@ -3828,8 +3826,7 @@ main(int argc,char *argv[])
 	if (buf[0] == '\0') {
 	    break;
 	}
-	AssertAlways(strlen(buf) < (bufsize - 1),
-		     ("increase bufsize constant.\n"));
+	INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
 	process_line(buf,nlines);
     }
     fprintf(stderr,"\nProcessed %d lines; failed to decode %d jobnames (%.2f%%), %d directories (%.2f%%), %d/%d odd names/directories\n",

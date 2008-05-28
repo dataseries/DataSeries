@@ -23,9 +23,9 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/Stats.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/Stats.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 using namespace std;
 

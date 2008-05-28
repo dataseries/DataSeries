@@ -6,20 +6,40 @@
 # cmake description for the include/DataSeries directory
 
 SET(INCLUDE_FILES
-	DataSeriesFile.H
+	DataSeriesFile.hpp
 	DSExpr.hpp
+	DStoTextModule.hpp
+	Extent.hpp
+	ExtentField.hpp
+	ExtentSeries.hpp
+	ExtentType.hpp
+	Field.hpp
+	FixedField.hpp
+	GeneralField.hpp
+	GroupByModule.hpp
+	IndexSourceModule.hpp
+	Int64Field.hpp
+	Int64TimeField.hpp
+	MinMaxIndexModule.hpp
+	DataSeriesModule.hpp
+	PrefetchBufferModule.hpp
+	RowAnalysisModule.hpp
+	SequenceModule.hpp
+	TypeIndexModule.hpp
+	commonargs.hpp
+	cryptutil.hpp
+)
+
+SET(TRANSITIONAL_INCLUDE_FILES
+	DataSeriesFile.H
 	DStoTextModule.H
 	Extent.H
 	ExtentField.H
 	ExtentSeries.H
 	ExtentType.H
-	Field.hpp
-	FixedField.hpp
 	GeneralField.H
 	GroupByModule.H
 	IndexSourceModule.H
-	Int64Field.hpp
-	Int64TimeField.hpp
 	MinMaxIndexModule.H
 	DataSeriesModule.H
 	PrefetchBufferModule.H
@@ -29,8 +49,6 @@ SET(INCLUDE_FILES
 	commonargs.H
 	cryptutil.H
 )
-
-SET(TRANSITIONAL_INCLUDE_FILES)
 
 ################################## INSTALL
 

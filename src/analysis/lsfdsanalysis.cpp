@@ -25,20 +25,21 @@ using namespace std;
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/HashTable.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/HashUnique.H>
-#include <Lintel/PriorityQueue.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
+#include <Lintel/PriorityQueue.hpp>
 
-#include <DataSeries/TypeIndexModule.H>
-#include <DataSeries/DStoTextModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/MinMaxIndexModule.H>
+#include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/DStoTextModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/MinMaxIndexModule.hpp>
 
-#include "analysis/lsfdsanalysis-common.H"
-#include "analysis/lsfdsanalysis-mod1.H"
+#include "analysis/lsfdsanalysis-common.hpp"
+#include "analysis/lsfdsanalysis-mod1.hpp"
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 

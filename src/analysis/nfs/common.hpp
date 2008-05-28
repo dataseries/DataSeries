@@ -8,11 +8,11 @@
 
 #include <string>
 
-#include <Lintel/ConstantString.H>
-#include <Lintel/HashTable.H>
+#include <Lintel/ConstantString.hpp>
+#include <Lintel/HashTable.hpp>
 
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/RowAnalysisModule.H>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
 
 class NFSDSModule : public DataSeriesModule {
 public:

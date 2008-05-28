@@ -48,14 +48,14 @@ extern "C" {
 #include <lzf.h>
 }
 
-#include <Lintel/Clock.H>
-#include <Lintel/HashTable.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/PThread.H>
+#include <Lintel/Clock.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/PThread.hpp>
 
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
-#include <DataSeries/DataSeriesFile.H>
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
 
 using namespace std;
 using boost::format;
@@ -175,8 +175,7 @@ Extent::init()
 {
 #if DATASERIES_ENABLE_LZO
     if (lzo_init == 0) {
-	AssertAlways(lzo_init() == LZO_E_OK,
-		     ("lzo_init() failed ?!\n"));
+	INVARIANT(lzo_init() == LZO_E_OK, "lzo_init() failed ?!");
 	lzo_init = 1;
     }
 #endif
@@ -554,7 +553,7 @@ Extent::packData(Extent::ByteArray &into,
     fixed_coded.resize(fixeddata.size(), false);
     Extent::ByteArray variable_coded;
     variable_coded.resize(variabledata.size(), false);
-    AssertAlways(variabledata.size() >= 4,("internal error\n"));
+    SINVARIANT(variabledata.size() >= 4);
 
     HashTable<variableDuplicateEliminate, 
 	variableDuplicateEliminate_Hash, 
@@ -630,7 +629,7 @@ Extent::packData(Extent::ByteArray &into,
 	    int32 size = Variable32Field::size(variabledata,varoffset);
 	    int32 roundup = Variable32Field::roundupSize(size);
 	    if (size == 0) {
-		AssertAlways(varoffset == 0,("internal error\n"));
+		SINVARIANT(varoffset == 0);
 	    } else {
 		memcpy(variable_data_pos, variabledata.begin() + varoffset,
 		       4 + roundup);
@@ -649,8 +648,9 @@ Extent::packData(Extent::ByteArray &into,
 		} else {
 		    variable_data_pos += 4 + roundup;
 		}
-		AssertAlways((packed_varoffset + 4) % 8 == 0,
-			     ("bad packing offset %d\n",packed_varoffset));
+		INVARIANT((packed_varoffset + 4) % 8 == 0,
+			  boost::format("bad packing offset %d")
+			  % packed_varoffset);
 		*(int32 *)(fixed_record + offset) = packed_varoffset;
 	    } 
 	}
@@ -792,7 +792,7 @@ Extent::packData(Extent::ByteArray &into,
 	    variable_sizes.resize(0);
 	}
 	curvarpos += 4 + Variable32Field::roundupSize(size);
-	AssertAlways(curvarpos <= endvarpos,("internal error\n"));
+	SINVARIANT(curvarpos <= endvarpos);
     }
     bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     variable_sizes.resize(0);
@@ -844,8 +844,7 @@ Extent::packData(Extent::ByteArray &into,
     memcpy(l,compressed_variable->begin(),compressed_variable->size()); l += compressed_variable->size();
     align = (4 - ((l - into.begin()) % 4)) % 4;
     memset(l,0,align); l += align;
-    AssertAlways(l - into.begin() == extentsize,
-		 ("Internal Error\n"));
+    SINVARIANT(l - into.begin() == extentsize);
 
     // adler32 everything but the compressed digest
     uLong adler32sum = adler32(0L, Z_NULL, 0);
@@ -875,13 +874,12 @@ Extent::packBZ2(byte *input, int32 inputsize,
 				       (char *)input,inputsize,
 				       compression_level,0,0);
     if (ret == BZ_OK) {
-	AssertAlways(outsize <= into.size(),
-		     ("internal error, outsize is bad\n"));
+	INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
 	into.resize(outsize);
 	return true;
     }
-    AssertAlways(ret == BZ_OUTBUFF_FULL,
-		 ("Whoa, got unexpected libbz2 error %d\n",ret));
+    INVARIANT(ret == BZ_OUTBUFF_FULL,
+	      boost::format("Whoa, got unexpected libbz2 error %d") % ret);
 #endif
     return false;
 }
@@ -899,13 +897,12 @@ Extent::packZLib(byte *input, int32 inputsize,
 			(const Bytef *)input,inputsize,
 			compression_level);
     if (ret == Z_OK) {
-	AssertAlways(outsize <= into.size(),
-		     ("internal error, outsize is bad\n"));
+	INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
 	into.resize(outsize);
 	return true;
     }
-    AssertAlways(ret == Z_BUF_ERROR,
-		 ("Whoa, got unexpected zlib error %d\n",ret));
+    INVARIANT(ret == Z_BUF_ERROR,
+	      boost::format("Whoa, got unexpected zlib error %d") % ret);
 #endif
     return false;
 }
@@ -922,8 +919,9 @@ Extent::packLZO(byte *input, int32 inputsize,
     int ret = lzo1x_999_compress_level((lzo_byte *)input, inputsize,
 				       (lzo_byte *)into.begin(), &out_len,
 				       work_memory, NULL, 0, 0, compression_level);
-    AssertAlways(ret == LZO_E_OK,
-		 ("internal error: lzo compression failed (%d)\n",ret));
+    INVARIANT(ret == LZO_E_OK,
+	      boost::format("internal error: lzo compression failed (%d)")
+	      % ret);
     INVARIANT(out_len < into.size(),
 	      boost::format("internal error: lzo compression too large %d >= %d\n")
 	      % out_len % into.size());
@@ -1115,14 +1113,13 @@ Extent::uncompressBytes(byte *into, byte *from,
 const string
 Extent::getPackedExtentType(Extent::ByteArray &from)
 {
-    AssertAlways(from.size() > (6*4+2),
-		 ("Invalid extent data, too small.\n"));
+    INVARIANT(from.size() > (6*4+2), "Invalid extent data, too small.");
 
     byte type_name_len = from[6*4+2];
 
     unsigned header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
-    AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
+    INVARIANT(from.size() >= header_len, "Invalid extent data, too small");
 
     string type_name((char *)from.begin() + (6*4+4), (int)type_name_len);
     return type_name;
@@ -1139,8 +1136,7 @@ Extent::unpackData(Extent::ByteArray &from,
 	      "Internal: type mismatch") ;
 
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
-    AssertAlways(from.size() > (6*4+2),
-		 ("Invalid extent data, too small.\n"));
+    INVARIANT(from.size() > (6*4+2), "Invalid extent data, too small.");
 
     uLong adler32sum = adler32(0L, Z_NULL, 0);
     if (preuncompress_check) {
@@ -1153,8 +1149,10 @@ Extent::unpackData(Extent::ByteArray &from,
 	}
     }
     if (preuncompress_check) {
-	AssertAlways(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
-		     ("Invalid extent data, adler32 digest mismatch on compressed data %x != %x\n",*(int32 *)(from.begin() + 4*4),(int32)adler32sum));
+	INVARIANT(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
+		  boost::format("Invalid extent data, adler32 digest"
+				" mismatch on compressed data %x != %x")
+		  % *(int32 *)(from.begin() + 4*4) % (int32)adler32sum);
     }
     TIME_UNPACKING(Clock::Tdbl time_upc = Clock::tod());
     int32 compressed_fixed_size = *(int32 *)from.begin();
@@ -1167,7 +1165,7 @@ Extent::unpackData(Extent::ByteArray &from,
     
     uint32_t header_len = 6*4+4+type_name_len;
     header_len += (4 - (header_len % 4))%4;
-    AssertAlways(from.size() >= header_len,("Invalid extent data, too small"));
+    INVARIANT(from.size() >= header_len, "Invalid extent data, too small");
 
     byte *compressed_fixed_begin = from.begin() + header_len;
     int32 rounded_fixed = compressed_fixed_size;
@@ -1176,8 +1174,8 @@ Extent::unpackData(Extent::ByteArray &from,
     int32 rounded_variable = compressed_variable_size;
     rounded_variable += (4-(rounded_variable%4))%4;
 
-    AssertAlways(header_len + rounded_fixed + rounded_variable == from.size(),
-		 ("Invalid extent data\n"));
+    INVARIANT(header_len + rounded_fixed + rounded_variable == from.size(),
+	      "Invalid extent data");
 
     fixeddata.resize(nrecords * type.rep.fixed_record_size, false);
     int32 fixed_uncompressed_size
@@ -1191,7 +1189,7 @@ Extent::unpackData(Extent::ByteArray &from,
     INVARIANT(fixed_uncompressed_size == nrecords * type.rep.fixed_record_size, "internal");
     
     variabledata.resize(variable_size, false);
-    AssertAlways(variable_size >= 4,("error unpacking, invalid variable size\n"));
+    INVARIANT(variable_size >= 4, "error unpacking, invalid variable size");
     *(int32 *)variabledata.begin() = 0;
     int32 variable_uncompressed_size
 	= uncompressBytes(variabledata.begin()+4, compressed_variable_begin,
@@ -1227,17 +1225,18 @@ Extent::unpackData(Extent::ByteArray &from,
 	bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     }
     variable_sizes.resize(0);
-    AssertAlways(postuncompress_check == false || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
-		 ("final partially unpacked hash check failed\n"));
+    INVARIANT(postuncompress_check == false 
+	      || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
+	      "final partially unpacked hash check failed");
     
     vector<ExtentType::pack_self_relativeT> psr_copy 
 	= type.rep.pack_self_relative;
     for(unsigned int j=0;j<type.rep.pack_self_relative.size();++j) {
-	INVARIANT(psr_copy[j].field_num < type.rep.field_info.size(), "whoa");
+	SINVARIANT(psr_copy[j].field_num < type.rep.field_info.size());
 	
-	AssertAlways(psr_copy[j].double_prev_v == 0 &&
-		     psr_copy[j].int32_prev_v == 0 &&
-		     psr_copy[j].int64_prev_v == 0,("internal"));
+	SINVARIANT(psr_copy[j].double_prev_v == 0 &&
+		   psr_copy[j].int32_prev_v == 0 &&
+		   psr_copy[j].int64_prev_v == 0);
     }
     TIME_UNPACKING(Clock::Tdbl time_postuc = Clock::tod());
     int record_count = 0;
@@ -1414,8 +1413,8 @@ bool
 Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok)
 {
     ssize_t ret = pread64(fd,into,amount,offset);
-    AssertAlways(ret != -1,("error reading %d bytes: %s\n",amount,
-			    strerror(errno)));
+    INVARIANT(ret != -1, boost::format("error reading %d bytes: %s") 
+	      % amount % strerror(errno));
     if (ret == 0 && eof_ok) {
 	return false;
     }
@@ -1446,8 +1445,8 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
 	DataSeriesSink::verifyTail(into.begin(), need_bitflip,"*unknown*");
 	return false;
     }
-    AssertAlways(compressed_fixed >= 0 && compressed_variable >= 0 &&
-		 typenamelen >= 0,("Error reading extent\n"));
+    INVARIANT(compressed_fixed >= 0 && compressed_variable >= 0
+	      && typenamelen >= 0, "Error reading extent");
     int extentsize = prefix_size+typenamelen;
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_fixed;

@@ -6,7 +6,8 @@
 
 #include <ctype.h>
 
-#include <Lintel/StringUtil.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include "common.hpp"
 

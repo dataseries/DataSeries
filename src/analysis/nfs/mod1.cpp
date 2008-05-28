@@ -9,10 +9,10 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/ConstantString.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/StatsQuantile.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/ConstantString.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/StatsQuantile.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include "analysis/nfs/mod1.hpp"
 

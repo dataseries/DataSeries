@@ -11,10 +11,10 @@
 
 #include <algorithm>
 
-#include <Lintel/HashMap.H>
+#include <Lintel/HashMap.hpp>
 
-#include <DataSeries/MinMaxIndexModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/MinMaxIndexModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 #ifndef __HP_aCC
 using namespace std;
@@ -132,7 +132,7 @@ MinMaxIndexModule::MinMaxIndexModule(const std::string &index_filename,
 void
 MinMaxIndexModule::lockedResetModule()
 {
-    AssertFatal(("unimplemented"));
+    FATAL_ERROR("unimplemented");
 }
 
 IndexSourceModule::PrefetchExtent *

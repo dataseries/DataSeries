@@ -47,10 +47,10 @@ Eric Anderson <software@cello.hpl.hp.com>
 
 #include <arpa/inet.h>
  
-#include <DataSeries/PrefetchBufferModule.H>
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/PrefetchBufferModule.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 struct record {
     uint32_t timestamp, clientID, objectID, size;

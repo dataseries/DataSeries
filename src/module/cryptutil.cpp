@@ -12,13 +12,12 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/AssertBoost.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/Clock.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/Clock.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/cryptutil.hpp>
 
 using namespace std;
 using boost::format;
@@ -169,7 +168,7 @@ runCryptUtilChecks()
     for(int i = 0;i<4096;++i) {
 	string enc = encryptString(in);
 	string dec = decryptString(enc);
-	AssertAlways(enc != dec && dec == in,("bad"));
+	SINVARIANT(enc != dec && dec == in);
 	in.append(" ");
     }
     if (false) cout << "CryptUtilChecks passed." << endl;
@@ -188,15 +187,15 @@ prepareEncryptEnvOrRandom(bool random_ok)
 	INVARIANT(random_ok, "Missing environment variables NAME_KEY_1 and NAME_KEY_2; random choice not ok");
 	fprintf(stderr,"Warning; no NAME_KEY_[12] env variables, using random hmac\n");
 	FILE *f = fopen("/dev/urandom","r");
-	AssertAlways(f != NULL,("bad"));
+	SINVARIANT(f != NULL);
 	const int randombytes = 32;
 	char buf[randombytes + 100];
 	int i = fread(buf,1,randombytes,f);
-	AssertAlways(i == randombytes,("bad %d",i));
+	INVARIANT(i == randombytes, boost::format("bad %d") % i);
 	string key_a;
 	key_a.assign(buf,randombytes);
 	i = fread(buf,1,randombytes,f);
-	AssertAlways(i==randombytes,("bad"));
+	SINVARIANT(i==randombytes);
 	string key_b;
 	key_b.assign(buf,randombytes);
 	prepareEncrypt(key_a,key_b);
@@ -217,7 +216,7 @@ prepareEncryptEnvOrRandom(bool random_ok)
 void
 aesEncryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 {
-    AssertAlways((bufsize % 16) == 0,("bad %d",bufsize));
+    INVARIANT((bufsize % 16) == 0, boost::format("bad %d") % bufsize);
     uint32_t *v = (uint32_t *)buf;
     uint32_t *vend = v + bufsize/4;
     AES_encrypt((const unsigned char *)v,(unsigned char *)v, key);
@@ -233,7 +232,7 @@ aesEncryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 void
 aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
 {
-    AssertAlways((bufsize % 16) == 0,("bad"));
+    SINVARIANT((bufsize % 16) == 0);
     uint32_t *vbegin = (uint32_t *)buf;
     uint32_t *v = vbegin + bufsize/4;
     for(v -= 4; v > vbegin; v -= 4) {
@@ -276,8 +275,8 @@ encryptString(string in)
     // Worst case is 8 bytes required + 15 bytes roundup -> 23 bytes -
     // 1 of hmacsize = 22 hmac
 
-    AssertAlways(hmaclen >= 7 && hmaclen <= 22,
-		 ("should have at least 7-22 bytes of hmac!\n"));
+    INVARIANT(hmaclen >= 7 && hmaclen <= 22,
+	      "should have at least 7-22 bytes of hmac!");
     tmp[0] = hmaclen;
     for(;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
 	tmp.append(" ");
@@ -300,10 +299,10 @@ decryptString(string in)
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
 	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     aesDecryptFast(&decrypt_key,(unsigned char *)&*in.begin(),in.size());
-    int hmaclen = in[0];
+    unsigned hmaclen = static_cast<unsigned>(in[0]);
     INVARIANT(hmaclen >= 7 && hmaclen <= 22,
 	      format("bad decrypt; hmaclen = %d") % hmaclen);
-    AssertAlways((int)in.size() >= (hmaclen + 1),("bad decrypt"));
+    INVARIANT(in.size() >= (hmaclen + 1), "bad decrypt");
     string ret = in.substr(hmaclen + 1,in.size() - (hmaclen + 1));
     string tmp = hmac_key_2;
     tmp.append(ret);
@@ -311,10 +310,11 @@ decryptString(string in)
     SHA1((unsigned char *)&*tmp.begin(),tmp.size(),sha_out);
     char *cmpto = &in[1];
     for(;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
-	AssertAlways(*cmpto == ' ',("bad decrypt"));
+	INVARIANT(*cmpto == ' ', "bad decrypt");
 	++cmpto;
     }
-    AssertAlways(memcmp(sha_out,cmpto,hmaclen)==0,("bad decrypt %d",hmaclen));
+    INVARIANT(memcmp(sha_out,cmpto,hmaclen)==0, 
+	      boost::format("bad decrypt %d") % hmaclen);
     return ret;
 }
     
@@ -395,7 +395,8 @@ unsigned
 uintfield(const string &str)
 {
     for(unsigned i = 0;i<str.size();++i) {
-	AssertAlways(isdigit(str[i]),("parse error (not uint) on '%s'",str.c_str()));
+	INVARIANT(isdigit(str[i]),
+		  boost::format("parse error (not uint) on '%s'") % str);
     }
     return atoi(str.c_str());
 }
@@ -414,7 +415,8 @@ double
 dblfield(const string &str)
 {
     for(unsigned i = 0;i<str.size();++i) {
-	AssertAlways(isdigit(str[i]) || str[i] == '.' || str[i] == '-',("parse error on %s",str.c_str()));
+	INVARIANT(isdigit(str[i]) || str[i] == '.' || str[i] == '-',
+		  boost::format("parse error on %s") % str);
     }
     return atof(str.c_str());
 }
@@ -428,8 +430,9 @@ hexhmac(string &in)
 {
     // H-Mac construction from Applied Cryptography:
     // H(K_1, H(K_2,M))
-    AssertAlways(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-		 ("no %d %d\n",hmac_key_1.size(),hmac_key_2.size()));
+    INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
+	      boost::format("no %d %d") 
+	      % hmac_key_1.size() % hmac_key_2.size());
     string tmp = hmac_key_2;
     tmp.append(in);
     unsigned char sha_out[SHA_DIGEST_LENGTH];

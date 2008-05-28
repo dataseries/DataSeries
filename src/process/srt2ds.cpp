@@ -14,12 +14,13 @@
 #include <fcntl.h>
 #include <math.h>
 
-#include <Lintel/StringUtil.H>
-#include <Lintel/Clock.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/Clock.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/commonargs.H>
-#include <DataSeries/DataSeriesModule.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 #include <SRT/SRTTrace.H>
 #include <SRT/SRTrecord.H>

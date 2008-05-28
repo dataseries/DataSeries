@@ -14,7 +14,7 @@
 
 #include <string>
 
-#include <DataSeries/ExtentSeries.H>
+#include <DataSeries/ExtentSeries.hpp>
 
 class DSExpr {
 public:

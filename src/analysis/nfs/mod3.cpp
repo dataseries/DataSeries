@@ -6,8 +6,9 @@
 
 #include <list>
 
-#include <Lintel/PriorityQueue.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include "analysis/nfs/mod3.hpp"
 

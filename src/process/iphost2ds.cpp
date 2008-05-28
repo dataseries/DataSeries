@@ -9,13 +9,13 @@
 
 #include <iostream>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/commonargs.H>
-#include <DataSeries/cryptutil.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/commonargs.hpp>
+#include <DataSeries/cryptutil.hpp>
 
 using namespace std;
 using namespace boost;

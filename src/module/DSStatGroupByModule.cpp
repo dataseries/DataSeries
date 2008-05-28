@@ -9,10 +9,10 @@
     implementation
 */
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StatsQuantile.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StatsQuantile.hpp>
 
-#include <DataSeries/DSStatGroupByModule.H>
+#include <DataSeries/DSStatGroupByModule.hpp>
 
 using namespace std;
 

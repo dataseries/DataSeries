@@ -51,9 +51,9 @@
     // fields for DataSeries: XmlType (ns = , version = )
     Variable32Field xmltype(series, "xmltype");
 /// analysis module/program for Batch::LSF::Grizzly (ns = ssd.hpl.hp.com, version = 1.0)
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 class Batch__LSF__GrizzlyAnalysis : public RowAnalysisModule {
 public:
@@ -192,9 +192,9 @@ main(int argc, char *argv[])
 
 
 /// analysis module/program for DataSeries: ExtentIndex (ns = , version = )
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 class DataSeries__ExtentIndexAnalysis : public RowAnalysisModule {
 public:
@@ -245,9 +245,9 @@ main(int argc, char *argv[])
 
 
 /// analysis module/program for DataSeries: XmlType (ns = , version = )
-#include <DataSeries/RowAnalysisModule.H>
-#include <DataSeries/SequenceModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 class DataSeries__XmlTypeAnalysis : public RowAnalysisModule {
 public:

@@ -11,12 +11,12 @@
 
 #include <boost/algorithm/string.hpp>
 
-#include <Lintel/HashMap.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/HashUnique.H>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/HashUnique.hpp>
 
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/commonargs.H>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/commonargs.hpp>
 
 using namespace std;
 using boost::format;
@@ -1148,8 +1148,7 @@ main(int argc,char *argv[])
 	if (buf[0] == '\0') {
 	    break;
 	}
-	AssertAlways(strlen(buf) < (bufsize - 1),
-		     ("increase bufsize constant.\n"));
+	INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
 	processLine(buf);
     }
     cout << format("Processed %d lines\n") % nlines;

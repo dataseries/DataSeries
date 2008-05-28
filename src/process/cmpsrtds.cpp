@@ -9,18 +9,18 @@
 #include <sys/resource.h>
 #include <math.h>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StringUtil.H>
-#include <Lintel/Clock.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/Clock.hpp>
 
 #include <SRT/SRTTrace.H>
 #include <SRT/SRTrecord.H>
 #include <SRT/SRTTraceRaw.H>
 #include <SRT/SRTTrace_Filter.H>
 
-#include <DataSeries/DataSeriesFile.H>
-#include <DataSeries/DataSeriesModule.H>
-#include <DataSeries/TypeIndexModule.H>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
 using boost::format;
@@ -33,10 +33,12 @@ main(int argc, char *argv[])
     Extent::setReadChecksFromEnv(true); // verifying things converted properly, should check
     typedef ExtentType::int32 int32;
     typedef ExtentType::int64 int64;
-    AssertAlways(argc == 3 || argc == 4,("Usage: %s in-srt in-ds [minor_version]\n",argv[0]));
+    INVARIANT(argc == 3 || argc == 4,
+	      format("Usage: %s in-srt in-ds [minor_version]") % argv[0]);
 		  
     tracestream = new SRTTraceRaw(argv+1,1);
-    AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
+    INVARIANT(tracestream != NULL, 
+	      format("Unable to open %s for read") % argv[1]);
 
     TypeIndexModule srtdsin("Trace::BlockIO::HP-UX"); 
     //srtdsin.setSecondPrefix("I/O trace: SRT-V7"); // rename in progress...
@@ -52,8 +54,9 @@ main(int argc, char *argv[])
 
     cout << format("%s\n") % info_file_name;
     info_file_ptr = fopen(info_file_name.c_str(), "r");
-    AssertAlways(info_file_ptr != NULL,
-		 ("Unable to open %s for read: %s", info_file_name.c_str(), strerror(errno)));
+    INVARIANT(info_file_ptr != NULL,
+	      format("Unable to open %s for read: %s")
+	      % info_file_name % strerror(errno));
 
     char info_file_string[1024];
     char *ifs_ptr = info_file_string;
@@ -88,8 +91,7 @@ main(int argc, char *argv[])
     base_time = (Clock::Tfrac)new_tfrac_base;
     time_offset = (Clock::Tfrac)new_tfrac_offset;
     Clock::Tfrac curtime = base_time;
-    AssertAlways(curtime == base_time,
-	    ("internal self check failed\n"));
+    INVARIANT(curtime == base_time, "internal self check failed");
     printf("adjusted basetime %lld\n", base_time);
     printf("used time_offset %lld\n", time_offset);
 
@@ -183,7 +185,10 @@ main(int argc, char *argv[])
     INVARIANT(srtheaderextent != NULL, "can't find srtheader extents in input file");
 	      
     srtheaderseries.setExtent(srtheaderextent);
-    AssertAlways(strcmp(tracestream->header(), (const char*)header_text.val()) == 0,("header's are NOT equal %s \n******************\n %s",tracestream->header(), header_text.val()));
+    INVARIANT(strcmp(tracestream->header(), 
+		     (const char*)header_text.val()) == 0,
+	      format("header's are NOT equal %s \n******************\n %s")
+	      % tracestream->header() % header_text.stringval());
     const char *header = tracestream->header();
     //printf("Header: %s\n", header);
     std::vector<std::string> lines;
@@ -209,19 +214,22 @@ main(int argc, char *argv[])
 		date_part++;
 		date_part++;
 	    } else {
-		AssertAlways(false, ("Don't understand this trace format's timestamp"));
+		FATAL_ERROR("Don't understand this trace format's timestamp");
 	    }
 	}
 	printf("Inferring start time from %s\n", date_part);
 	struct tm tm;
 	tm.tm_yday = -1;
 	strptime(date_part, "%a %b %d %H:%M:%S %Y", &tm);
-	AssertAlways(tm.tm_yday != -1, ("bad"));
+	SINVARIANT(tm.tm_yday != -1);
 	time_t the_time = mktime(&tm);
 	//printf("tfrac_start:%lld, offset:%lld\n", start_time.val(), start_time_offset.val());
 	printf("SRT time:%ld, trace_base:%ld, info file base:%ld\n", the_time, Clock::TfracToSec(start_time.val()+start_time_offset.val()), Clock::TfracToSec(base_time + time_offset));
 	printf("tfrac: SRT time:%lld trace_base:%lld info file base:%lld\n", Clock::secMicroToTfrac(the_time,0), start_time.val()+start_time_offset.val(),base_time+time_offset);
-	AssertAlways(the_time == Clock::TfracToSec(start_time.val()+start_time_offset.val()) && the_time == Clock::TfracToSec(base_time + time_offset), ("Start times DO NOT MATCH!"));
+	INVARIANT(the_time == Clock::TfracToSec(start_time.val() 
+						+ start_time_offset.val()) 
+		  && the_time == Clock::TfracToSec(base_time + time_offset), 
+		  "Start times DO NOT MATCH!");
 	break;
     }
 
@@ -243,114 +251,142 @@ main(int argc, char *argv[])
 	    }
 	}
 	if (raw_tr == NULL || tracestream->eof() || tracestream->fail() || srtextent == NULL) {
-	    AssertAlways((raw_tr == NULL || tracestream->eof()) && 
-			 srtextent == NULL,("traces ended at different places\n"));
+	    INVARIANT((raw_tr == NULL || tracestream->eof()) && 
+		      srtextent == NULL,
+		      "traces ended at different places");
 	    break;
 	}
 	
 	SRTrecord *_tr = new SRTrecord(raw_tr, 
 				      SRTrawTraceVersion(trace_major, trace_minor));
 	
-	AssertAlways(_tr->type() == SRTrecord::IO,
-		     ("Only know how to handle I/O records\n"));
+	INVARIANT(_tr->type() == SRTrecord::IO,
+		  "Only know how to handle I/O records");
 	SRTio *tr = (SRTio *)_tr;
-	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
+	INVARIANT(trace_minor == tr->get_version(), 
+		  format("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!") % trace_minor % tr->get_version());
 	++nrecords;
-	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
+	SINVARIANT(trace_minor < 7 || tr->noStart() == false);
 	if (tr->is_suspect()) {
-	  AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created())) < 5e-7,("enter_kernel:%lld versus SRT created:%lld\n", enter_kernel.val(), (tr->tfrac_created())));
-	  AssertAlways(fabs(leave_driver.val() - (tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
-	  AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished())) < 5e-7,("bad compare\n"));
+	    INVARIANT(fabs(enter_kernel.val() - (tr->tfrac_created())) < 5e-7,
+		      format("enter_kernel:%lld versus SRT created:%lld")
+		      % enter_kernel.val() % tr->tfrac_created());
+	    // 0.4s == 1717986918 Tfrac
+	    INVARIANT(fabs(leave_driver.val() - (tr->tfrac_started())) <= 1717986918,
+		      format("leave_driver:%lld versus SRT started:%lld\n")
+		      % leave_driver.val() % tr->tfrac_started()); 
+	    SINVARIANT(fabs(return_to_driver.val() - (tr->tfrac_finished())) 
+		      < 5e-7);
 	} else {
-	  AssertAlways(fabs(enter_kernel.val() - (tr->tfrac_created()+base_time+time_offset)) < 5e-7,("enter_kernel:%lld versus SRT created:%lld\n", enter_kernel.val(), (base_time+time_offset+tr->tfrac_created())));
+	    INVARIANT(fabs(enter_kernel.val() - 
+			   (tr->tfrac_created()+base_time+time_offset)) < 5e-7,
+		      format("enter_kernel:%lld versus SRT created:%lld")
+		      % enter_kernel.val() % 
+		      (base_time+time_offset+tr->tfrac_created()));
 	  
-	  AssertAlways(fabs(leave_driver.val() - (base_time+time_offset+tr->tfrac_started())) <= 1717986918,("leave_driver:%lld versus SRT started:%lld\n", leave_driver.val(), (base_time+time_offset+tr->tfrac_started()))); // .4 sec in tfracs the trace_offset
-	  AssertAlways(fabs(return_to_driver.val() - (tr->tfrac_finished()+base_time+time_offset)) < 5e-7,("bad compare\n"));
+	    // 0.4s == 1717986918 Tfrac (2^-32 seconds)
+	    INVARIANT(fabs(leave_driver.val() 
+			   - (base_time+time_offset+tr->tfrac_started())) 
+		      <= 1717986918,
+		      format("leave_driver:%lld versus SRT started:%lld")
+		      % leave_driver.val() 
+		      % (base_time+time_offset+tr->tfrac_started())); 
+	    SINVARIANT(fabs(return_to_driver.val() 
+			    - (tr->tfrac_finished()+base_time+time_offset)) 
+		       < 5e-7);
 	}
 
-	AssertAlways(bytes.val() == (int32)tr->length(),("bad compare\n"));
-	AssertAlways(disk_offset.val() == (int64)tr->offset(),("bad compare %d %lld %lld\n",nrecords,disk_offset.val(),(int64)tr->offset()));
-	AssertAlways(device_major.val() == (((int32)tr->device_number() >> 24) & 0xFF),("bad compare %d versus %d\n", device_major.val(), ((int32)(tr->device_number()) >> 24) & 0xFF));
-	AssertAlways(device_minor.val() == ((int32)tr->device_number() >> 16 & 0xFF),("bad compare\n"));
-	AssertAlways(device_controller.val() == ((int32)tr->device_number() >> 12 & 0xF),("bad compare\n"));
-	AssertAlways(device_disk.val() == ((int32)tr->device_number() >> 8 & 0xF),("bad compare\n"));
-	AssertAlways(device_partition.val() == ((int32)tr->device_number() & 0xFF),("bad compare\n"));
-	AssertAlways(buffertype.val() == (int32)tr->buffertype(),("bad compare\n"));
-	AssertAlways(tr->is_synchronous() == flag_synchronous.val(),("bad compare"));
-	AssertAlways(tr->is_DUXaccess() == false,("bad compare"));
-	AssertAlways(tr->is_raw() == flag_raw.val(),("bad compare"));
-	AssertAlways(tr->is_no_cache() == flag_no_cache.val(),("bad compare"));
-	AssertAlways(tr->is_call() == flag_call.val(),("bad compare"));
-	AssertAlways(tr->is_filesystemIO() == flag_filesystemIO.val(),("bad compare"));
-	AssertAlways(tr->is_invalid_info() == flag_bufdata_invalid.val(),("bad compare"));
-	AssertAlways(tr->is_cache() == flag_cache.val(),("bad compare"));
-	AssertAlways(tr->is_power_failure_timeout() == flag_power_failure_timeout.val(),("bad compare"));
-	AssertAlways(tr->is_write_verification() == flag_write_verification.val(),("bad compare"));
-	AssertAlways(tr->is_private() == false,("bad compare"));
-	AssertAlways(tr->is_rewrite() == flag_rewrite.val(),("bad compare"));
-	AssertAlways(tr->is_ord_write() == flag_ord_write.val(),("bad compare"));
-	AssertAlways(tr->is_write_at_exit() == flag_delwrite.val(),("bad compare"));
-	AssertAlways(tr->is_asynchronous() == flag_async.val(),("bad compare"));
-	AssertAlways(tr->is_no_delay() == flag_ndelay.val(),("bad compare"));
-	AssertAlways(tr->is_wanted() == flag_wanted.val(),("bad compare"));
-	AssertAlways(tr->is_end_of_data() == flag_end_of_data.val(),("bad compare"));
-	AssertAlways(tr->is_physical_io() == flag_phys.val(),("bad compare"));
-	AssertAlways(tr->is_busy() == flag_busy.val(),("bad compare"));
-	AssertAlways(tr->is_error() == flag_error.val(),("bad compare"));
-	AssertAlways(tr->is_transaction_complete() == flag_done.val(),("bad compare"));
-	AssertAlways(tr->is_read() == is_read.val(),("bad compare"));
+	SINVARIANT(bytes.val() == (int32)tr->length());
+	INVARIANT(disk_offset.val() == (int64)tr->offset(), 
+		  format("bad compare %d %lld %lld") % nrecords 
+		  % disk_offset.val() % (int64)tr->offset());
+	INVARIANT(device_major.val() 
+		  == (((int32)tr->device_number() >> 24) & 0xFF), 
+		  format("bad compare %d versus %d\n") % device_major.val() 
+		  % (((int32)(tr->device_number()) >> 24) & 0xFF));
+	SINVARIANT(device_minor.val() 
+		   == ((int32)tr->device_number() >> 16 & 0xFF));
+	SINVARIANT(device_controller.val() 
+		   == ((int32)tr->device_number() >> 12 & 0xF));
+	SINVARIANT(device_disk.val() 
+		   == ((int32)tr->device_number() >> 8 & 0xF));
+	SINVARIANT(device_partition.val() 
+		   == ((int32)tr->device_number() & 0xFF));
+	SINVARIANT(buffertype.val() == (int32)tr->buffertype());
+	SINVARIANT(tr->is_synchronous() == flag_synchronous.val());
+	SINVARIANT(tr->is_DUXaccess() == false);
+	SINVARIANT(tr->is_raw() == flag_raw.val());
+	SINVARIANT(tr->is_no_cache() == flag_no_cache.val());
+	SINVARIANT(tr->is_call() == flag_call.val());
+	SINVARIANT(tr->is_filesystemIO() == flag_filesystemIO.val());
+	SINVARIANT(tr->is_invalid_info() == flag_bufdata_invalid.val());
+	SINVARIANT(tr->is_cache() == flag_cache.val());
+	SINVARIANT(tr->is_power_failure_timeout() 
+		   == flag_power_failure_timeout.val());
+	SINVARIANT(tr->is_write_verification() 
+		   == flag_write_verification.val());
+	SINVARIANT(tr->is_private() == false);
+	SINVARIANT(tr->is_rewrite() == flag_rewrite.val());
+	SINVARIANT(tr->is_ord_write() == flag_ord_write.val());
+	SINVARIANT(tr->is_write_at_exit() == flag_delwrite.val());
+	SINVARIANT(tr->is_asynchronous() == flag_async.val());
+	SINVARIANT(tr->is_no_delay() == flag_ndelay.val());
+	SINVARIANT(tr->is_wanted() == flag_wanted.val());
+	SINVARIANT(tr->is_end_of_data() == flag_end_of_data.val());
+	SINVARIANT(tr->is_physical_io() == flag_phys.val());
+	SINVARIANT(tr->is_busy() == flag_busy.val());
+	SINVARIANT(tr->is_error() == flag_error.val());
+	SINVARIANT(tr->is_transaction_complete() == flag_done.val());
+	SINVARIANT(tr->is_read() == is_read.val());
 	// is_readahead is a composite test, so we don't propogate it as a flag
-	// AssertAlways(tr->is_readahead() == false,("bad compare"));
-	AssertAlways(tr->is_merged() == flag_merged.val(),("bad compare"));
-	AssertAlways(tr->is_merged_from() == flag_merged_from.val(),("bad compare"));
-	AssertAlways(tr->is_flush() == act_flush.val(),("bad compare"));
-	AssertAlways(tr->is_release() == act_release.val(),("bad compare"));
-	AssertAlways(tr->is_allocate() == act_allocate.val(),("bad compare"));
-	AssertAlways(tr->is_free() == act_free.val(),("bad compare"));
-	AssertAlways(tr->is_character_dev_io() == act_raw.val(),("bad compare"));
-	AssertAlways(tr->is_netbuf() == net_buf.val(), ("bad_compare"));
+	// SINVARIANT(tr->is_readahead() == false);
+	SINVARIANT(tr->is_merged() == flag_merged.val());
+	SINVARIANT(tr->is_merged_from() == flag_merged_from.val());
+	SINVARIANT(tr->is_flush() == act_flush.val());
+	SINVARIANT(tr->is_release() == act_release.val());
+	SINVARIANT(tr->is_allocate() == act_allocate.val());
+	SINVARIANT(tr->is_free() == act_free.val());
+	SINVARIANT(tr->is_character_dev_io() == act_raw.val());
+	SINVARIANT(tr->is_netbuf() == net_buf.val());
 
 	if (trace_minor >= 7 && tr->noDriver()) {
-	    AssertAlways(driver_type.isNull(),("bad compare\n"));
+	    SINVARIANT(driver_type.isNull());
 	} else {
-	    AssertAlways(driver_type.val() == (int32)tr->driverType(),
-			 ("bad compare\n"));
+	    SINVARIANT(driver_type.val() == (int32)tr->driverType());
 	}
 	if (cylinder_number) {
-	    AssertAlways(cylinder_number->val() == (int32)tr->cylno(),("bad compare\n"));
+	    SINVARIANT(cylinder_number->val() == (int32)tr->cylno());
 	}
 	if (queue_length) {
-	    AssertAlways(trace_minor < 7 || tr->noQueueLen() == false,("?!"));
-	    AssertAlways(queue_length->val() == (int32)tr->qlen(),("bad compare"));
+	    SINVARIANT(trace_minor < 7 || tr->noQueueLen() == false);
+	    SINVARIANT(queue_length->val() == (int32)tr->qlen());
 	}
 	if (pid) {
-	    AssertAlways(tr->noPid() == false,("?!"));
-	    AssertAlways(pid->val() == (int32)tr->pid(),("bad compare"));
+	    SINVARIANT(tr->noPid() == false);
+	    SINVARIANT(pid->val() == (int32)tr->pid());
 	}
 	if (logical_volume_number) {
-	    AssertAlways(trace_minor < 7 || tr->noLvDevNo() == false,("?!"));
-	    AssertAlways(logical_volume_number->val() == (int32)tr->lvdevno(),("bad compare"));
+	    SINVARIANT(trace_minor < 7 || tr->noLvDevNo() == false);
+	    SINVARIANT(logical_volume_number->val() == (int32)tr->lvdevno());
 	}
 	if (machine_id) {
-	    AssertAlways(tr->noMachineID() == false,("?!"));
-	    AssertAlways(machine_id->val() == (int32)tr->machineID(),("bad compare"));
+	    SINVARIANT(tr->noMachineID() == false);
+	    SINVARIANT(machine_id->val() == (int32)tr->machineID());
 	}
 	if (thread_id) {
 	    if (tr->noThread()) {
-		AssertAlways(thread_id->isNull(),("bad compare"));
+		SINVARIANT(thread_id->isNull());
 	    } else {
-		AssertAlways((ExtentType::int32)tr->thread() >= 0,
-			     ("internal error\n"));
-		AssertAlways(thread_id->val() == (int32)tr->thread(),("bad compare"));
+		SINVARIANT((ExtentType::int32)tr->thread() >= 0);
+		SINVARIANT(thread_id->val() == (int32)tr->thread());
 	    }
 	}
 	if (lv_offset) {
 	    if (tr->noLvOffset()) {
-		AssertAlways(lv_offset->isNull(),("bad compare"));
+		SINVARIANT(lv_offset->isNull());
 	    } else {
-		AssertAlways((ExtentType::int64)tr->lv_offset() >= 0,
-			     ("internal error\n"));
-		AssertAlways(lv_offset->val() == (int64)tr->lv_offset(),("bad compare"));
+		SINVARIANT((ExtentType::int64)tr->lv_offset() >= 0);
+		SINVARIANT(lv_offset->val() == (int64)tr->lv_offset());
 	    }
 	}
 	delete _tr;

@@ -5,11 +5,11 @@
    See the file named COPYING for license details
 */
 
-#include <DataSeries/SequenceModule.H>
+#include <DataSeries/SequenceModule.hpp>
 
 SequenceModule::SequenceModule(DataSeriesModule *head)
 {
-    AssertAlways(head != NULL,("invalid argument"));
+    INVARIANT(head != NULL, "invalid argument");
     modules.push_back(head);
 }
 
@@ -26,14 +26,14 @@ DataSeriesModule &
 SequenceModule::tail()
 {
     DataSeriesModule *tail = modules.back();
-    AssertAlways(tail != NULL,("internal error"));
+    SINVARIANT(tail != NULL);
     return *tail;
 }
 
 void
 SequenceModule::addModule(DataSeriesModule *mod)
 {
-    AssertAlways(mod != NULL,("invalid argument"));
+    SINVARIANT(mod != NULL);
     modules.push_back(mod);
 }
 

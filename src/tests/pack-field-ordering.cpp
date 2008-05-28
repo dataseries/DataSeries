@@ -9,8 +9,10 @@
     Test the pad-record options
 */
 
-#include <DataSeries/Extent.H>
-#include <DataSeries/ExtentField.H>
+#include <iostream>
+
+#include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentField.hpp>
 
 using namespace std;
 

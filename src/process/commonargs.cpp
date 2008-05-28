@@ -9,7 +9,8 @@
     implementation
 */
 
-#include <DataSeries/commonargs.H>
+#include <DataSeries/commonargs.hpp>
+using boost::format;
 
 void
 getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)
@@ -49,14 +50,15 @@ getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs)
 	    commonArgs->compress_modes |= Extent::compress_lzf;
 	} else if (strncmp(argv[cur_arg],"--compress-level=",17) == 0) {
 	    commonArgs->compress_level = atoi(argv[cur_arg]+17);
-	    AssertAlways(commonArgs->compress_level > 0 && commonArgs->compress_level < 10,
-			 ("compression level %d (%s) invalid, should be 1..9\n",
-			  commonArgs->compress_level,argv[cur_arg]));
+	    INVARIANT(commonArgs->compress_level > 0 
+		      && commonArgs->compress_level < 10,
+		    format("compression level %d (%s) invalid, should be 1..9")
+		      % commonArgs->compress_level % argv[cur_arg]);
 	} else if (strncmp(argv[cur_arg],"--extent-size=",14) == 0) {
 	    commonArgs->extent_size = atoi(argv[cur_arg]+14);
-	    AssertAlways(commonArgs->extent_size >= 1024,
-			 ("extent size %d (%s), < 1024 doesn't make sense\n",
-			  commonArgs->extent_size,argv[cur_arg]));
+	    INVARIANT(commonArgs->extent_size >= 1024,
+		      format("extent size %d (%s), < 1024 doesn't make sense")
+		      % commonArgs->extent_size % argv[cur_arg]);
 	} else {
 	    continue; // ignore unrecognized arguments
 	}
