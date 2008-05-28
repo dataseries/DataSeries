@@ -52,7 +52,7 @@ sub file_is_source {
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
     if ($this->{mode} eq "info") {
-	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.info/o;
+	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/\.srt$1\.info/o;
     } elsif ($this->{mode} eq "convert") {
 	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
     } else {

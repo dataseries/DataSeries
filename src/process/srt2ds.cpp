@@ -150,19 +150,19 @@ main(int argc, char *argv[])
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
     FILE* info_file_ptr = NULL;
-    char* info_file_name = new char[strlen(argv[1]) + 6]; // + .info
-    info_file_name = strcpy(info_file_name, argv[1]);
-    info_file_name = strcat(info_file_name,".info");
-    printf ("%s\n", info_file_name);
-    if (access(info_file_name, R_OK|W_OK|F_OK) != 0) {
+    std::string info_file_name(argv[1]);
+    info_file_name.append(".info-new");
+
+    std::cout << info_file_name << "\n";
+    if (access(info_file_name.c_str(), R_OK|W_OK|F_OK) != 0) {
 	info_create = true;
-	info_file_ptr = fopen((const char *)info_file_name,"w");
+	info_file_ptr = fopen((const char *)info_file_name.c_str(),"w");
     } else {
 	info_create = false;
-	info_file_ptr = fopen((const char*)info_file_name, "r");
+	info_file_ptr = fopen((const char*)info_file_name.c_str(), "r");
     }
     if (info_file_ptr == NULL) {
-	fprintf(stderr, "Info file %s cannot be created/opened\n", info_file_name);
+	std::cerr << "Info file " <<  info_file_name << " cannot be created/opened\n";
 	perror("error was:");
 	exit(1);
     }
