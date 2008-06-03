@@ -142,9 +142,9 @@ main(int argc, char *argv[])
     getPackingArgs(&argc,argv,&packing_args);
 
     AssertAlways(argc == 3 || argc == 4,
-		 ("Usage: %s in-file out-file [minor_version]'- allowed for stdin/stdout'\n",
+		 ("Usage: %s --info|--convert in-file out-dir [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0]));
-    if (strcmp(argv[1],"-")==0) {
+    if (strcmp(argv[2],"-")==0) {
 	tracestream = new SRTTraceRaw(fileno(stdin));
     } else {
 	tracestream = new SRTTraceRaw(argv+1,1);
