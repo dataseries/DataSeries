@@ -32,40 +32,61 @@ ENDIF(NOT LIBXML2_FOUND)
 
 INCLUDE(FindZLIB)
 
-IF(ZLIB_FOUND)
-    SET(WITH_ZLIB_DEFAULT ON)
-ELSE(ZLIB_FOUND)
-    SET(WITH_ZLIB_DEFAULT OFF)
-ENDIF(ZLIB_FOUND)
+OPTION(WITH_ZLIB "Build with zlib (gzip) support?" ON)
 
-OPTION(WITH_ZLIB "Build with zlib (gzip) support?" ${WITH_ZLIB_DEFAULT})
+IF(WITH_ZLIB AND ZLIB_FOUND) 
+    SET(ZLIB_ENABLED ON)
+ELSE(WITH_ZLIB AND ZLIB_FOUND) 
+    SET(ZLIB_ENABLED OFF)	    
+ENDIF(WITH_ZLIB AND ZLIB_FOUND) 
+
+IF(WITH_ZLIB AND NOT ZLIB_ENABLED)
+    MESSAGE("WITH_ZLIB on, but could not find zlib includes/libraries.")
+    MESSAGE("  zlib (gzip) compression support will be skipped.")
+ENDIF(WITH_ZLIB AND NOT ZLIB_ENABLED)
 
 #### BZip2
 
 INCLUDE(FindBZip2)
 
-IF(BZIP2_FOUND)
-    SET(WITH_BZIP2_DEFAULT ON)
-ELSE(BZIP2_FOUND)
-    SET(WITH_BZIP2_DEFAULT OFF)
-ENDIF(BZIP2_FOUND)
+OPTION(WITH_BZIP2 "Build with bzip2 support?" ON)
 
-OPTION(WITH_BZIP2 "Build with bzip2 support?" ${WITH_BZIP2_DEFAULT})
+IF(WITH_BZIP2 AND BZIP2_FOUND) 
+    SET(BZIP2_ENABLED ON)
+ELSE(WITH_BZIP2 AND BZIP2_FOUND) 
+    SET(BZIP2_ENABLED OFF)	    
+ENDIF(WITH_BZIP2 AND BZIP2_FOUND) 
+
+IF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
+    MESSAGE("WITH_BZIP2 on, but could not find bzip2 includes/libraries.")
+    MESSAGE("  bzip2 compression support will be skipped.")
+ENDIF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
 
 #### SRT
 
+SET(SRT_MISSING_EXTRA "  will skip building srt2ds, cmpsrtds")
 LINTEL_WITH_LIBRARY(SRT SRT/SRTTrace.H SRTlite)
 IF(SRT_ENABLED) # hack
     SET(FULL_SRT_INCLUDE_DIR "${SRT_INCLUDE_DIR}/SRT")
 ENDIF(SRT_ENABLED)
 
-#### Other libraries
+#### Extra libraries
 
+SET(LZO_MISSING_EXTRA "  lzo compression support will be skipped.")
 INCLUDE(FindLZO)
+
+#### crypto
+
+SET(CRYPTO_MISSING_EXTRA "  will skip building iphost2ds, nettrace2ds")
 INCLUDE(FindCrypto)
+
+SET(PCRE_MISSING_EXTRA "  will skip building bacct2ds")
 LINTEL_WITH_LIBRARY(PCRE pcre.h pcre)
 
+SET(PCAP_MISSING_EXTRA "  will skip building nettrace2ds, network-driverdump")
 LINTEL_WITH_HEADER(PCAP pcap.h)
+
+SET(LINUX_COMPILER_MISSING_EXTRA "  will skip building lindump-mmap")
 LINTEL_WITH_HEADER(LINUX_COMPILER linux/compiler.h)
 
 #### Perl
