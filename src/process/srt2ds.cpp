@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <math.h>
+#include <sstream>
 
 #include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -141,21 +142,22 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 3 || argc == 4,
+    AssertAlways(argc == 4 || argc == 5,
 		 ("Usage: %s --info|--convert in-file out-dir [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0]));
-    if (strcmp(argv[2],"-")==0) {
+    std::string in_name(argv[2]);
+    if (strcmp(in_name.c_str(),"-")==0) {
 	tracestream = new SRTTraceRaw(fileno(stdin));
     } else {
-	tracestream = new SRTTraceRaw(argv+1,1);
+	tracestream = new SRTTraceRaw(in_name.c_str());
     }
-    AssertAlways(tracestream != NULL,("Unable to open %s for read",argv[1]));
+    AssertAlways(tracestream != NULL,("Unable to open %s for read",in_name.c_str()));
     FILE* info_file_ptr = NULL;
-    std::string info_file_name(argv[1]);
+    std::string info_file_name(in_name);
     info_file_name.append(".info-new");
 
     std::cout << info_file_name << "\n";
-    if (access(info_file_name.c_str(), R_OK|W_OK|F_OK) != 0) {
+    if (strcmp(argv[1], "--info") == 0) {
 	info_create = true;
 	info_file_ptr = fopen((const char *)info_file_name.c_str(),"w");
     } else {
@@ -173,10 +175,24 @@ main(int argc, char *argv[])
     
     printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
     
-    if (argc == 4) {
-	trace_minor = strtol(argv[3],NULL, 10);
+    if (argc == 5) {
+	trace_minor = strtol(argv[4],NULL, 10);
 	printf ("overriding minor with %d\n", trace_minor);
     }
+    std::string trace_version_string = "";
+    if (trace_minor < 7) {
+	std::string trace_string;
+	std::stringstream out;
+	out << trace_major << "." << trace_minor;
+	trace_string = out.str();
+	trace_version_string.append(trace_string);
+    } else {
+	//1.7 version SRT traces once converted to
+	//DataSeries are NOT compatible with prior versions
+	trace_version_string.append("2.0");
+    }	
+    std::cout << trace_version_string << " ooo\n";
+    exit(0);
     SRTrawRecord *raw_tr;
     Clock::Tfrac base_time = 0, time_offset = 0;
     SRTrecord *_tr;
@@ -190,8 +206,6 @@ main(int argc, char *argv[])
     AssertAlways(_tr->type() == SRTrecord::IO,
 	    ("Only know how to handle I/O records\n"));
     tr = (SRTio *)_tr;
-    // TODO: separate this out into a separate program, or make it
-    // controlled by an option
     if (info_create) {
 	//Make an info file and exit
 	const char *header = tracestream->header();
@@ -240,7 +254,7 @@ main(int argc, char *argv[])
 	    
 	    AssertAlways(_tr->type() == SRTrecord::IO,
 		    ("Only know how to handle I/O records\n"));
-	    if (argc!=4) {
+	    if (argc!=5) {
 	    	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	    }
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
@@ -300,12 +314,8 @@ main(int argc, char *argv[])
     DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
     srtheadertype_xml.append("\" version=\"");
-    char header_char_ver[4];
-    header_char_ver[0] = (char)('0' + trace_major);
-    header_char_ver[1] = '.';
-    header_char_ver[2] = (char)('0' + trace_minor);
-    header_char_ver[3] = '\0';
-    srtheadertype_xml.append(header_char_ver);
+
+    srtheadertype_xml.append(trace_version_string);
     srtheadertype_xml.append("\" >\n");
     std::string srt_start = "  <field type=\"int64\" name=\"start_time\" comment=\"Start time of this trace in units of 2^-32 seconds relative to the UNIX epoc.  Used SRT header tracedate and added start_time_offset.\" />\n";
     srtheadertype_xml.append(srt_start);
@@ -321,12 +331,7 @@ main(int argc, char *argv[])
 
     std::string srttype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::HP-UX";
     srttype_xml.append("\" version=\"");
-    char char_ver[4];
-    char_ver[0] = (char)('0' + trace_major);
-    char_ver[1] = '.';
-    char_ver[2] = (char)('0' + trace_minor);
-    char_ver[3] = '\0';
-    srttype_xml.append(char_ver);
+    srttype_xml.append(trace_version_string);
     srttype_xml.append("\" >\n");
     char *buf = new char[srt_timefields.size() + 200];
     sprintf(buf,srt_timefields.c_str(),base_time,base_time,base_time);
@@ -462,7 +467,7 @@ main(int argc, char *argv[])
 	AssertAlways(_tr->type() == SRTrecord::IO,
 		     ("Only know how to handle I/O records\n"));
 	SRTio *tr = (SRTio *)_tr;
-	if (argc != 4) {
+	if (argc != 5) {
 	    AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	}
 	++nrecords;
