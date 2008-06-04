@@ -141,11 +141,15 @@ public:
 	return prefixequal(a, prefix);
     }
 
-    /// compatible if app_major == majorVersion() and app_minor <=
-    /// minorVersion() the former because major version changes allow
-    /// for arbitrary differences the latter because minor version
-    /// changes have to be backwards compatible.
+    // Update doc/tr/design.tex if you change this.
 
+    /// versionCompatible() checks if the versions of the extents are
+    /// compatible.  The version number is of the form major.minor
+    /// with the semantics that minor versions are only allowed to add
+    /// new fields, whereas major versions can remove fields, rename
+    /// fields or change field semantics.  This means that analysis
+    /// code that can process version 1.x will work on any version 1.y
+    /// for y $\geq$ x, but may or may not work on version 2.0.
     bool versionCompatible(unsigned app_major, unsigned app_minor) const {
 	return app_major == majorVersion() && app_minor <= minorVersion();
     }

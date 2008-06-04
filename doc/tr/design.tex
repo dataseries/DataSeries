@@ -137,12 +137,14 @@ a program is compatible with a particular extent-type.
 %% independently choose names will choose different namespaces.  
 %% Finally,
 
-%% The extent type also has a version number of the form major.minor with the
-%% semantics that minor versions are only allowed to add new fields,
-%% whereas major versions can remove fields, rename fields or change
-%% field semantics.  This means that analysis code that can process
-%% version 1.x will work on any version 1.y for y $\geq$ x, but may or may not
-%% work on version 2.0.
+% Update ExtentType.hpp if you change this.
+
+The extent type also has a version number of the form major.minor with the
+semantics that minor versions are only allowed to add new fields,
+whereas major versions can remove fields, rename fields or change
+field semantics.  This means that analysis code that can process
+version 1.x will work on any version 1.y for y $\geq$ x, but may or may not
+work on version 2.0.
 
 \subsection{Data types}
 
