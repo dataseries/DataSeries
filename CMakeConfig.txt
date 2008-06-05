@@ -95,6 +95,12 @@ LINTEL_FIND_PERL_MODULE(XML::Parser PERL_XML_PARSER)
 LINTEL_FIND_PERL_MODULE(Date::Parse PERL_DATE_PARSE)
 LINTEL_FIND_PERL_MODULE(Crypt::Rijndael PERL_CRYPT_RIJNDAEL)
 
+#### Doxygen
+
+INCLUDE(LintelDocs)
+
+LINTEL_DOCS_CONFIG("DataSeries")
+
 #### Misc Options
 
 OPTION(BUILD_PAPER "Build the src/paper programs" OFF)
