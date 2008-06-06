@@ -633,7 +633,7 @@ test_byteflip()
 	onebytefliptest(buf, bufsize, reps, Extent::run_flip4bytes, "Extent::flip4bytes", flip4_sum, flip4_time, flip4_time);
     }
 
-#ifndef COMPILE_DEBUG
+#ifndef DEBUG
     // With debugging turned on, even with the functions marked
     // inline, it seems gcc still generates a function call, which
     // makes elapsed_flip4 much slower
