@@ -142,10 +142,11 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 4 || argc == 5,
-		 ("Usage: %s --info|--convert in-file out-dir [minor_version]'- allowed for stdin/stdout'\n",
-		  argv[0]));
+    AssertAlways(argc == 4 || argc == 5 || argc == 6,
+		 ("Usage: %s --info in-file info-filename [minor_version]'- allowed for stdin/stdout'\n %s --convert in-file info-filename ds-filename [minor_version]'- allowed for stdin/stdout'\n",
+		  argv[0],argv[0]));
     std::string in_name(argv[2]);
+    std::string ds_output_filename("");
     if (strcmp(in_name.c_str(),"-")==0) {
 	tracestream = new SRTTraceRaw(fileno(stdin));
     } else {
@@ -153,15 +154,14 @@ main(int argc, char *argv[])
     }
     AssertAlways(tracestream != NULL,("Unable to open %s for read",in_name.c_str()));
     FILE* info_file_ptr = NULL;
-    std::string info_file_name(in_name);
-    info_file_name.append(".info-new");
-
-    std::cout << info_file_name << "\n";
+    std::string info_file_name(argv[3]);
     if (strcmp(argv[1], "--info") == 0) {
 	info_create = true;
 	info_file_ptr = fopen((const char *)info_file_name.c_str(),"w");
     } else {
 	info_create = false;
+	AssertAlways(argc == 5 || argc == 6, ("barfed during convert because wrong number of arguments\n"));
+	ds_output_filename.append(argv[4]);
 	info_file_ptr = fopen((const char*)info_file_name.c_str(), "r");
     }
     if (info_file_ptr == NULL) {
@@ -172,10 +172,8 @@ main(int argc, char *argv[])
     
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
-    
     printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
-    
-    if (argc == 5) {
+    if ((argc == 5 && info_create) || argc == 6 && !info_create) {
 	trace_minor = strtol(argv[4],NULL, 10);
 	printf ("overriding minor with %d\n", trace_minor);
     }
@@ -191,8 +189,6 @@ main(int argc, char *argv[])
 	//DataSeries are NOT compatible with prior versions
 	trace_version_string.append("2.0");
     }	
-    std::cout << trace_version_string << " ooo\n";
-    exit(0);
     SRTrawRecord *raw_tr;
     Clock::Tfrac base_time = 0, time_offset = 0;
     SRTrecord *_tr;
@@ -239,10 +235,13 @@ main(int argc, char *argv[])
 	    }
 	}
 	Clock::Tfrac old_finished = tr->tfrac_finished();
+	Clock::Tfrac last_finished = old_finished;
+	Clock::Tfrac first_finished = old_finished;
 	while (1) {
 	    if (raw_tr == NULL || tracestream->eof() || tracestream->fail()) {
 		printf("num_records %lld\n", num_records);
-		fprintf(info_file_ptr, "\"%lld\"\t", old_finished);
+		fprintf(info_file_ptr, "\"%lld\"\t", first_finished);
+		fprintf(info_file_ptr, "\"%lld\"\t", last_finished);
 		printf("oldestcreate %lld\n",oldest_create);
 		fprintf(info_file_ptr, "\"%lld\"\n",oldest_create);
 		fclose(info_file_ptr);
@@ -258,6 +257,9 @@ main(int argc, char *argv[])
 	    	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	    }
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
+	    if (old_finished > last_finished) {
+		last_finished = old_finished;
+	    }
 	    if (((SRTio *)_tr)->is_suspect() && (((SRTio *)_tr)->tfrac_created() < oldest_create)) {
 		if (((SRTio *)_tr)->created() > 2147483648LL) { //1998 traces
 		    SRTtime_t double_old = ((SRTio *)_tr)->created();
@@ -311,7 +313,7 @@ main(int argc, char *argv[])
     printf("adjusted basetime %lld\n", base_time);
     printf("used time_offset %lld\n", time_offset);
 
-    DataSeriesSink srtdsout(argv[2],packing_args.compress_modes,packing_args.compress_level);
+    DataSeriesSink srtdsout(ds_output_filename,packing_args.compress_modes,packing_args.compress_level);
     std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
     srtheadertype_xml.append("\" version=\"");
 
@@ -498,9 +500,29 @@ main(int argc, char *argv[])
 	    leave_driver.set(tr->tfrac_started());
 	    return_to_driver.set(tr->tfrac_finished());
 	} else {
-	    enter_kernel.set(tr->tfrac_created()+base_time+time_offset);
-	    leave_driver.set(tr->tfrac_started()+base_time + time_offset);
-	    return_to_driver.set(tr->tfrac_finished()+base_time + time_offset);
+	    // The traces need to be monotonically increasing in time.
+	    // the end times are non-overlapping, so if we find the
+	    // first end time in the trace and use that as the basis
+	    // for the absolute time, we can set all other times from
+	    // that.  We are setting the base_time to be the first
+	    // end_time so every time that is smaller than the first
+	    // end_time we need to subtract the time from the
+	    // base_time to get the absolute time
+	    if (tr->tfrac_created() < time_offset) {
+		enter_kernel.set(base_time-tr->tfrac_created());
+	    } else {
+		enter_kernel.set(tr->tfrac_created()+base_time);
+	    }
+	    if (tr->tfrac_started() < time_offset) {
+		leave_driver.set(base_time-tr->tfrac_started());
+	    } else {
+		leave_driver.set(tr->tfrac_started()+base_time);
+	    }
+	    if (tr->tfrac_finished() < time_offset) {
+		return_to_driver.set(base_time-tr->tfrac_finished());
+	    } else {
+		return_to_driver.set(tr->tfrac_finished()+base_time);
+	    }
 	}
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
