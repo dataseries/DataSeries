@@ -14,26 +14,26 @@ using namespace std;
 using boost::format;
 
 struct RegisteredInfo {
-    string type_name, name_space;
+    string field_name, type_name, name_space;
     uint32_t major_version;
     bool operator==(const RegisteredInfo &a) const {
-	return a.major_version == major_version &&
-	    a.type_name == type_name &&
-	    a.name_space == name_space;
+	return a.major_version == major_version && a.field_name == field_name 
+	    && a.type_name == type_name && a.name_space == name_space;
     }
-    RegisteredInfo(const string &a, const string &b, uint32_t c)
-	: type_name(a), name_space(b), major_version(c) 
+    RegisteredInfo(const string &a, const string &b, const string &c, 
+		   uint32_t d)
+	: field_name(a), type_name(b), name_space(c), major_version(d) 
     { }
 };
 
 template <>
 struct HashMap_hash<const RegisteredInfo> {
     uint32_t operator()(const RegisteredInfo &r) const {
-	uint32_t a = HashTable_hashbytes(r.type_name.data(),
-					 r.type_name.size());
-	uint32_t b = HashTable_hashbytes(r.name_space.data(),
-					 r.name_space.size());
-	return BobJenkinsHashMix3(a,b,r.major_version);
+	uint32_t a = HashTable_hashbytes(r.field_name.data(), 
+					 r.field_name.size(), r.major_version);
+	a = HashTable_hashbytes(r.type_name.data(), r.type_name.size(), a);
+	a = HashTable_hashbytes(r.name_space.data(), r.name_space.size(), a);
+	return a;
     }
 };
 
@@ -125,11 +125,34 @@ string Int64TimeField::rawToStrSecNano(Raw raw) const
     }
 }
 
+double Int64TimeField::rawToDoubleSeconds(Raw raw) const {
+    // max_seconds = floor(2^52/(1000^3)), using 52 bits to give us 1
+    // bit of extra precision to achive nanosecond resolution on the
+    // return value.
+    static const int32_t max_seconds = 4503599;
+    if (time_type == UnixFrac32) {
+	int32_t seconds = raw >> 32;
+	SINVARIANT(seconds <= max_seconds && seconds >= -max_seconds);
+	return Clock::int64TfracToDouble(raw);
+    } else if (time_type == UnixNanoSec) {
+	SecNano tmp;
+	splitSecNano(raw, tmp);
+	SINVARIANT(tmp.seconds <= max_seconds && tmp.seconds >= -max_seconds);
+	return tmp.seconds + tmp.nanoseconds / (1.0e9);
+    } else if (time_type == Unknown) {
+	FATAL_ERROR("time type has not been set yet; no extent?");
+    } else {
+	FATAL_ERROR("internal error");
+    }
+    return 0; // unreached
+}
+
 void Int64TimeField::newExtentType()
 {
     Int64Field::newExtentType();
     DEBUG_SINVARIANT(dataseries.getType() != NULL);
-    RegisteredInfo ri(dataseries.getType()->getName(),
+    RegisteredInfo ri(getName(),
+		      dataseries.getType()->getName(),
 		      dataseries.getType()->getNamespace(),
 		      dataseries.getType()->majorVersion());
     {
@@ -200,19 +223,28 @@ Int64TimeField::splitSecNano(int64_t isecnano, SecNano &osecnano)
     osecnano.nanoseconds = static_cast<uint32_t>(tmp2);
 }
 
-void Int64TimeField::registerUnitsEpoch(const std::string &type_name,
+void Int64TimeField::registerUnitsEpoch(const std::string &field_name,
+					const std::string &type_name,
 					const std::string &name_space,
 					const uint32_t major_version,
 					const std::string &units,
-					const std::string &epoch)
-{
-    FATAL_ERROR("unimplemented");
+					const std::string &epoch) {
+    TimeType time_type = convertUnitsEpoch(units, epoch, field_name);
+
+    RegisteredInfo ri(field_name, type_name, name_space, major_version);
+
+    PThreadScopedLock lock(registered_mutex);
+    if (registered_type_info.exists(ri)) {
+	SINVARIANT(registered_type_info[ri] == time_type);
+    } else {
+	registered_type_info[ri] = time_type;
+    }
 }
 
 void Int64TimeField::setUnitsEpoch(const std::string &units,
 				   const std::string &epoch)
 {
-    TimeType new_type = convertUnitsEpoch(units,epoch);
+    TimeType new_type = convertUnitsEpoch(units,epoch, getName());
     INVARIANT(time_type == Unknown || time_type == new_type,
 	      format("invalid to change the time type after it is set (%d != %d)")
 	      % new_type % time_type);
@@ -226,11 +258,12 @@ static string str_microseconds("microseconds");
 
 Int64TimeField::TimeType 
 Int64TimeField::convertUnitsEpoch(const std::string &units,
-				  const std::string &epoch)
+				  const std::string &epoch,
+				  const std::string &field_name)
 {
     INVARIANT(epoch == str_unix,
 	      format("only handle unix epoch, not '%s' for field %s")
-	      % epoch % getName());
+	      % epoch % field_name);
     if (units == str_tfrac_seconds) {
 	return UnixFrac32;
     } else if (units == str_nanoseconds) {

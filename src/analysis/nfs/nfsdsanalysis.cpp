@@ -1220,6 +1220,14 @@ main(int argc, char *argv[])
 	usage(argv[0]);
     }
 
+    // Register time types for some of the old traces so we don't have to
+    // do it in each of the modules.
+    Int64TimeField::registerUnitsEpoch("packet-at", "NFS trace: common", "", 0,
+				       "nanoseconds", "unix");
+    Int64TimeField::registerUnitsEpoch("packet-at", "Trace::NFS::common", 
+				       "ssd.hpl.hp.com", 1, "2^-32 seconds", 
+				       "unix");
+
     TypeIndexModule *sourcea = 
 	new TypeIndexModule("NFS trace: common");
     sourcea->setSecondMatch("Trace::NFS::common");
