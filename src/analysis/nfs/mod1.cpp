@@ -268,20 +268,29 @@ public:
     }
     virtual ~HostInfo() { }
 
-    void prepareForProcessing() {
-	const ExtentType *type = series.getType();
-	SINVARIANT(type != NULL);
-	if (type->getName() == "NFS trace: common") {
-	    SINVARIANT(type->getNamespace() == "" &&
-		       type->majorVersion() == 0 &&
-		       type->minorVersion() == 0);
+    void newExtentHook(const Extent &e) {
+	if (series.getType() != NULL) {
+	    return; // already did this
+	}
+	const ExtentType &type = e.getType();
+	if (type.getName() == "NFS trace: common") {
+	    SINVARIANT(type.getNamespace() == "" &&
+		       type.majorVersion() == 0 &&
+		       type.minorVersion() == 0);
 	    packet_at.setFieldName("packet-at");
 	    payload_length.setFieldName("payload-length");
 	    op_id.setFieldName("op-id");
 	    nfs_version.setFieldName("nfs-version");
 	    is_request.setFieldName("is-request");
-	} else if (type->getName() == "Trace::NFS::common"
-		   && type->versionCompatible(2,0)) {
+	} else if (type.getName() == "Trace::NFS::common"
+		   && type.versionCompatible(1,0)) {
+	    packet_at.setFieldName("packet-at");
+	    payload_length.setFieldName("payload-length");
+	    op_id.setFieldName("op-id");
+	    nfs_version.setFieldName("nfs-version");
+	    is_request.setFieldName("is-request");
+	} else if (type.getName() == "Trace::NFS::common"
+		   && type.versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    payload_length.setFieldName("payload_length");
 	    op_id.setFieldName("op_id");
@@ -445,9 +454,9 @@ public:
     HashMap<uint32_t, PerHostData> host_to_data;
 
     virtual void processRow() {
-	uint32_t seconds = packet_at.val() / 1000000000;
+	uint32_t seconds = packet_at.valSec();
 	unsigned unified_op_id = opIdToUnifiedId(nfs_version.val(),
-						op_id.val());
+						 op_id.val());
 	host_to_data[source_ip.val()]
 	    .getPerTimeData(seconds, group_seconds)
 	    .send.add(unified_op_id, is_request.val(), payload_length.val());
@@ -474,7 +483,7 @@ public:
 	total_time.print();
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
-    Int64Field packet_at;
+    Int64TimeField packet_at;
     Int32Field payload_length;
     ByteField op_id, nfs_version;
     Int32Field source_ip, dest_ip;
@@ -497,8 +506,9 @@ public:
 	  is_udp(s,"is-udp"),
 	  op_id(s,"op-id",Field::flag_nullable),
 	  min_time(numeric_limits<int64_t>::max()), 
-	  max_time(numeric_limits<int64_t>::min())
-    { }
+	  max_time(numeric_limits<int64_t>::min()) { 
+	FATAL_ERROR("need to fix time code");
+    }
     virtual ~PayloadInfo() {}
 
     virtual Extent *getExtent() {
@@ -562,7 +572,7 @@ public:
     BoolField is_udp;
     ByteField op_id;
     Stats stat_payload_length, stat_payload_length_udp, stat_payload_length_tcp;
-    Extent::int64 min_time, max_time;
+    int64_t min_time, max_time;
 };
 
 NFSDSModule *
@@ -570,6 +580,8 @@ NFSDSAnalysisMod::newPayloadInfo(DataSeriesModule &prev)
 {
     return new PayloadInfo(prev);
 }
+
+// TODO: re-do this with the rotating hash-map.
 
 // TODO: add code to every so often throw away any old requests to
 // limit excessive memory fillup; one of the other analysis does this
@@ -580,30 +592,38 @@ NFSDSAnalysisMod::newPayloadInfo(DataSeriesModule &prev)
 // to do because the conversion code doesn't handle replies where the
 // request was in a different file
 
-class ServerLatency : public NFSDSModule {
+// TODO: check to see if enough time has passed that we should
+// switch pending1 and pending2, e.g. wait for 5 minutes or
+// something like that, or wait until 5 minutes, the latter is
+// probably safer, i.e. more likely to catch really late
+// replies, it might be worth counting them in this case.  if
+// we do this, some of the code in printResult that tracks
+// missing replies needs to get moved here so it runs on rotation.
+
+class ServerLatency : public RowAnalysisModule {
 public:
-    ServerLatency(DataSeriesModule &_source) 
-	: source(_source), 
-	  s(ExtentSeries::typeExact),
-	  reqtime(s,"packet-at"),
-	  sourceip(s,"source"), 
-	  destip(s,"dest"),	  
-	  is_request(s,"is-request"),
-	  transaction_id(s, "transaction-id"),
-	  op_id(s,"op-id",Field::flag_nullable),
-	  operation(s,"operation"),
+    ServerLatency(DataSeriesModule &source) 
+	: RowAnalysisModule(source),
+	  reqtime(series,"packet-at"),
+	  sourceip(series,"source"), 
+	  destip(series,"dest"),	  
+	  is_request(series,"is-request"),
+	  transaction_id(series, "transaction-id"),
+	  op_id(series,"op-id",Field::flag_nullable),
+	  operation(series,"operation"),
 	  pending1(NULL), pending2(NULL),
 	  duplicate_request_delay(0.001),
 	  missing_request_count(0),
 	  duplicate_reply_count(0),
-	  min_packet_time(1ULL<<63), // TODO: replace with appropriate max thing
-	  max_packet_time(0)
+	  min_packet_time_raw(numeric_limits<int64_t>::max()),
+	  max_packet_time_raw(numeric_limits<int64_t>::min()),
+	  duplicate_request_min_retry_raw(numeric_limits<int64_t>::max())
     {
 	pending1 = new pendingT;
 	pending2 = new pendingT;
     }
 
-    // TODO: maek this options and configurable.
+    // TODO: mak this options and configurable.
     static const bool enable_first_latency_stat = true; // Estimate the latency seen by client
     static const bool enable_last_latency_stat = false; // Estimate the latency for the reply by the server
 
@@ -613,9 +633,7 @@ public:
     
     virtual ~ServerLatency() { }
 
-    DataSeriesModule &source;
-    ExtentSeries s;
-    Int64Field reqtime;
+    Int64TimeField reqtime;
     Int32Field sourceip, destip;
     BoolField is_request;
     Int32Field transaction_id;
@@ -702,12 +720,12 @@ public:
     // matching response
     struct TidData {
 	uint32_t tid, server, client, duplicate_count;
-	int64_t first_reqtime, last_reqtime;
+	int64_t first_reqtime_raw, last_reqtime_raw;
 	bool seen_reply;
 	TidData(uint32_t tid_in, uint32_t server_in, uint32_t client_in)
 	    : tid(tid_in), server(server_in), client(client_in), 
-	      duplicate_count(0), first_reqtime(0), last_reqtime(0), 
-	      seen_reply(false) {}
+	      duplicate_count(0), first_reqtime_raw(0), 
+	      last_reqtime_raw(0), seen_reply(false) {}
     };
 
     class TidHash {
@@ -732,16 +750,18 @@ public:
 	// catch this and not think that we have realy lots of
 	// duplicate requests.  Tried 50ms, but found a case about 5ms
 	// apart, so dropped to 2ms
-	const uint32_t min_retry_ns = 2*1000*1000;
 	// inter arrival time
-	int64_t request_iat = reqtime.val() - t->last_reqtime; 
-	if (request_iat < min_retry_ns) {
-	    cerr << format("warning: duplicate requests unexpectedly close together %lld - %lld = %lld >= %d\n")
-		% reqtime.val() % request_iat % min_retry_ns;
+	int64_t request_iat = reqtime.valRaw() - t->last_reqtime_raw; 
+	if (request_iat < duplicate_request_min_retry_raw) {
+	    cerr << format("warning: duplicate requests unexpectedly close together %s - %s = %s >= %s\n")
+		% reqtime.valStrSecNano() 
+		% reqtime.rawToStrSecNano(t->last_reqtime_raw)
+		% reqtime.rawToStrSecNano(request_iat)
+		% reqtime.rawToStrSecNano(duplicate_request_min_retry_raw);
 	}
 	++t->duplicate_count;
 	duplicate_request_delay.add(request_iat/(1000.0*1000.0));
-	t->last_reqtime = reqtime.val();
+	t->last_reqtime_raw = reqtime.valRaw();
     }
 
     void handleRequest() {
@@ -753,7 +773,8 @@ public:
 	    t = pending2->lookup(dummy);
 	    if (t == NULL) {
 		// add request to list of pending requests (requests without a response yet)
-		dummy.first_reqtime = dummy.last_reqtime = reqtime.val();
+		dummy.first_reqtime_raw = dummy.last_reqtime_raw 
+		    = reqtime.valRaw();
 		t = pending1->add(dummy);
 	    } else {
 		// wow, long enough delay that we've rotated the entry; add it to pending1, 
@@ -767,6 +788,7 @@ public:
 	}
     }
     
+    // TODO: use rotating hash map
     void handleResponse() {
 	// row is a response, so address of server = sourceip
 	TidData dummy(transaction_id.val(), sourceip.val(), destip.val());
@@ -783,8 +805,14 @@ public:
 	    ++missing_request_count;
 	} else {
 	    // we now have both request and response, so we can add latency to statistics
-	    double delay_first_ms = (double)(reqtime.val() - t->first_reqtime) / 1000000.0;
-	    double delay_last_ms = (double)(reqtime.val() - t->last_reqtime) / 1000000.0;
+	    // TODO: do the calculation in raw units and convert at the end.
+	    int64_t delay_first_raw = reqtime.valRaw() - t->first_reqtime_raw;
+	    int64_t delay_last_raw = reqtime.valRaw() - t->last_reqtime_raw;
+
+	    double delay_first_ms 
+		= reqtime.rawToDoubleSeconds(delay_first_raw) * 1.0e3;
+	    double delay_last_ms 
+		= reqtime.rawToDoubleSeconds(delay_last_raw) * 1.0e3;
 	    StatsData hdummy(sourceip.val(), operation.stringval());
 	    StatsData *d = stats_table.lookup(hdummy);
 
@@ -815,37 +843,24 @@ public:
 	}
     }
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) 
-	    return NULL;
-	INVARIANT(e->type.getName() == "NFS trace: common", "??");
-	s.setExtent(e);
+    virtual void prepareForProcessing() {
+	// See updateDuplicateRequest for definition of this.
+	duplicate_request_min_retry_raw 
+	    = reqtime.secNanoToRaw(0, 2*1000*1000);
+    }
 
-	// TODO: check to see if enough time has passed that we should
-	// switch pending1 and pending2, e.g. wait for 5 minutes or
-	// something like that, or wait until 5 minutes, the latter is
-	// probably safer, i.e. more likely to catch really late
-	// replies, it might be worth counting them in this case.  if
-	// we do this, some of the code in printResult that tracks
-	// missing replies needs to get moved here so it runs on rotation.
-
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
-	    if (op_id.isNull())
-		continue;
-	    if (reqtime.val() < min_packet_time) {
-		min_packet_time = reqtime.val();
-	    } 
-	    if (reqtime.val() > max_packet_time) {
-		max_packet_time = reqtime.val();
-	    }
-	    if (is_request.val()) {
-		handleRequest();
-	    } else { 
-		handleResponse();
-	    }
+    virtual void processRow() {
+	if (op_id.isNull()) {
+	    return;
 	}
-	return e;
+	min_packet_time_raw = min(reqtime.valRaw(), min_packet_time_raw);
+	max_packet_time_raw = max(reqtime.valRaw(), max_packet_time_raw);
+
+	if (is_request.val()) {
+	    handleRequest();
+	} else { 
+	    handleResponse();
+	}
     }
 
     class sortByServerOp {
@@ -864,7 +879,7 @@ public:
 
     void printOneQuant(StatsQuantile *v) {
 	if (v) {
-	    cout << format("; %7.3f %6.2f %6.2f ") 
+	    cout << format("; %7.3f %6.3f %6.3f ") 
 		% v->mean() % v->getQuantile(0.5)
 		% v->getQuantile(0.9);
 	}
@@ -907,13 +922,13 @@ public:
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 
 	uint64_t missing_reply_count = 0;
-	double missing_reply_firstlat = 0;
-	double missing_reply_lastlat = 0;
+	double missing_reply_firstlat_ms = 0;
+	double missing_reply_lastlat_ms = 0;
 
 	// 1s -- measured peak retransmit in one dataset was
 	// 420ms with 95% <= 80ms
 
-	int64_t max_noretransmit_ns = 1000*1000*1000; 
+	int64_t max_noretransmit_raw = reqtime.secNanoToRaw(1,0);
 	for(pendingT::iterator i = pending1->begin(); 
 	    i != pending1->end(); ++i) {
 	    // the check against noretransmit handles the fact that we
@@ -921,12 +936,19 @@ public:
 	    // miss the reply due to the processing issue of not
 	    // handling replies that cross request boundaries.
 	    if (!i->seen_reply && 
-		(max_packet_time - i->last_reqtime) < max_noretransmit_ns) {
+		(max_packet_time_raw - i->last_reqtime_raw) 
+		< max_noretransmit_raw) {
 		++missing_reply_count;
-		missing_reply_firstlat += 
-		    (max_packet_time - i->first_reqtime)/(1000.0*1000.0);
-		missing_reply_lastlat += 
-		    (max_packet_time - i->last_reqtime)/(1000.0*1000.0);
+
+		int64_t missing_reply_firstlat_raw =
+		    max_packet_time_raw - i->first_reqtime_raw;
+		int64_t missing_reply_lastlat_raw =
+		    max_packet_time_raw - i->last_reqtime_raw;
+
+		missing_reply_firstlat_ms += 1.0e3 * 
+		    reqtime.rawToDoubleSeconds(missing_reply_firstlat_raw);
+		missing_reply_lastlat_ms += 1.0e3 *
+		    reqtime.rawToDoubleSeconds(missing_reply_lastlat_raw);
 	    }
 	}
 
@@ -1004,8 +1026,10 @@ public:
 	double missing_reply_mean_est_firstlat = 0;
 	double missing_reply_mean_est_lastlat = 0;
 	if (missing_reply_count > 0) {
-	    missing_reply_mean_est_firstlat = (double)missing_reply_firstlat/(double)missing_reply_count;
-	    missing_reply_mean_est_lastlat = (double)missing_reply_lastlat/(double)missing_reply_count;
+	    missing_reply_mean_est_firstlat 
+		= missing_reply_firstlat_ms/(double)missing_reply_count;
+	    missing_reply_mean_est_lastlat 
+		= missing_reply_lastlat_ms/(double)missing_reply_count;
 	}
 	cout << format("%d missing requests, %d missing replies; %.2fms mean est firstlat, %.2fms mean est lastlat\n")
 	    % missing_request_count % missing_reply_count 
@@ -1031,10 +1055,12 @@ public:
     StatsQuantile duplicate_request_delay;
     uint64_t missing_request_count;
     uint64_t duplicate_reply_count;
-    int64_t min_packet_time, max_packet_time;
+    int64_t min_packet_time_raw, max_packet_time_raw;
+
+    int64_t duplicate_request_min_retry_raw;
 };
 
-NFSDSModule *
+RowAnalysisModule *
 NFSDSAnalysisMod::newServerLatency(DataSeriesModule &prev)
 {
     return new ServerLatency(prev);

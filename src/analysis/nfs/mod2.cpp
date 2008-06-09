@@ -114,6 +114,19 @@ public:
 	    in_modifytime.setFieldName("modify-time");
 	    in_payloadlen.setFieldName("payload-length");
 	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(1,0)) {
+	    SINVARIANT(es_attrops.getType()->getName() == "Trace::NFS::attr-ops" &&
+		       es_attrops.getType()->versionCompatible(1,0));
+
+	    in_packetat.setFieldName("packet-at");
+	    in_is_request.setFieldName("is-request");
+	    in_recordid.setFieldName("record-id");
+	    in_requestid.setFieldName("request-id");
+	    in_replyid.setFieldName("reply-id");
+	    in_filesize.setFieldName("file-size");
+	    in_modifytime.setFieldName("modify-time");
+	    in_payloadlen.setFieldName("payload-length");
+	} else if (type->getName() == "Trace::NFS::common"
 		   && type->versionCompatible(2,0)) {
 	    SINVARIANT(es_attrops.getType()->getName() == "Trace::NFS::attr-ops" &&
 		       es_attrops.getType()->versionCompatible(2,0));
@@ -163,6 +176,9 @@ public:
 	if (es_common.getType()->majorVersion() == 0) {
 	    SINVARIANT(es_attrops.getType()->majorVersion() == 0);
 	    units_epoch = "units=\"nanoseconds\" epoch=\"unix\"";
+	} else if (es_common.getType()->majorVersion() == 1) { 
+	    SINVARIANT(es_attrops.getType()->majorVersion() == 1);
+	    units_epoch = "units=\"2^-32 seconds\" epoch=\"unix\"";
 	} else if (es_common.getType()->majorVersion() == 2) {
 	    SINVARIANT(es_attrops.getType()->majorVersion() == 2);
 	    units_epoch = "units=\"2^-32 seconds\" epoch=\"unix\"";

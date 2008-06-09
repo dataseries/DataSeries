@@ -18,6 +18,8 @@
 
 #include <DataSeries/Int64Field.hpp>
 
+/// Int64Field is intentionally protected so that you can't get at the
+/// various base-class operations without doing something special.
 class Int64TimeField : protected Int64Field {
 public:
     // TODO: calculate functions that will tell us how much error we
@@ -72,12 +74,18 @@ public:
     int64_t valFrac32() const {
 	return rawToFrac32(valRaw());
     }
-    /// (seconds, nanoseconds) with unix epoch time value at
+    /// (seconds, nanoseconds) with unix epoch time for value at
     /// current series position.
     SecNano valSecNano() const {
 	return rawToSecNano(valRaw());
     }
 
+    /// seconds with unix epoch for time at current series position.
+    int64_t valSec() const {
+	// TODO: make this more efficient.
+	return valSecNano().seconds;
+    }
+	
     /// Return the seconds.nanoseconds string value for the current
     /// series position.
     std::string valStrSecNano() const {
@@ -99,11 +107,18 @@ public:
     /// Convert a raw value into a seconds.nanoseconds string value
     std::string rawToStrSecNano(Raw raw) const;
 
+    /// Convert a raw value into a double with units of seconds. Note
+    /// this is dangerous with large values, so the conversion
+    /// verifies that a precision of at least nanoseconds will be
+    /// preserved.
+    double rawToDoubleSeconds(Raw raw) const;
+
     /// Some old files may not include the necessary units and epoch
     /// fields.  This function provides a back-door for specifying
     /// these values.  A call to this will override any specification
     /// in a file.
-    static void registerUnitsEpoch(const std::string &type_name,
+    static void registerUnitsEpoch(const std::string &field_name,
+				   const std::string &type_name,
 				   const std::string &name_space,
 				   const uint32_t major_version,
 				   const std::string &units,
@@ -119,6 +134,17 @@ public:
     TimeType getType() const {
 	return time_type;
     }
+
+    /// allow people to call this function
+    const std::string &getName() const {
+	return Field::getName();
+    }
+
+    /// allow people to call this function
+    void setFieldName(const std::string &new_name) {
+	Field::setFieldName(new_name);
+    }
+
 private:
     virtual void newExtentType();
 
@@ -134,8 +160,9 @@ private:
 	return joinSecNano(secnano.seconds, secnano.nanoseconds);
     }
 
-    TimeType convertUnitsEpoch(const std::string &units,
-			       const std::string &epoch);
+    static TimeType convertUnitsEpoch(const std::string &units,
+				      const std::string &epoch,
+				      const std::string &field_name);
     TimeType time_type;
     
     int64_t val() const; // unimplemented; no accidental use

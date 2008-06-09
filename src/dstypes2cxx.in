@@ -13,7 +13,7 @@ use Getopt::Long;
 use Fcntl ':seek';
 
 my %prefixes;
-my $ds2txt = "@expanded_bindir@/ds2txt";
+my $ds2txt = "@CMAKE_INSTALL_PREFIX@/bin/ds2txt";
 my @outputs = qw(basic rowanalysismodule dsmodule);
 my $output_form = 'rowanalysismodule';
 
