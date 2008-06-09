@@ -15,7 +15,7 @@ use DataSeries::LSFcommon ':all';
 use DataSeries::Crypt;
 use Plot::Mercury::Tics;
 
-my $lsfdsanalysis = '@expanded_bindir@/lsfdsanalysis';
+my $lsfdsanalysis = '@CMAKE_INSTALL_PREFIX@/bin/lsfdsanalysis';
 my $indexfile;
 my $plotdir;
 my $starttime;
