@@ -294,7 +294,8 @@ public:
 
 class GF_Int64 : public GeneralField {
 public:
-    GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
+    GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, 
+	     const std::string &column);
     virtual ~GF_Int64();
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
@@ -306,10 +307,10 @@ public:
     ExtentType::int64 val() { return myfield.val(); }
 
     Int64Field myfield, *relative_field;
+    Int64TimeField *myfield_time; // null unless printing as a time value.
     char *printspec;
     int64_t divisor, offset;
     bool offset_first;
-    std::string units;
 };
 
 class GF_Double : public GeneralField {

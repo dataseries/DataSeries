@@ -701,10 +701,11 @@ atoll(char *str)
 
 static string str_sec_nanosec = ("sec.nsec");
 
-GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
-    : GeneralField(ExtentType::ft_int64), myfield(series,column,Field::flag_nullable),
-      relative_field(NULL), offset_first(false)
-{
+GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, 
+		   const std::string &column) 
+    : GeneralField(ExtentType::ft_int64), 
+      myfield(series,column,Field::flag_nullable),
+      relative_field(NULL), myfield_time(NULL), offset_first(false) {
     xmlChar *xmlprintspec = myXmlGetProp(fieldxml, (const xmlChar *)"print_format");
     if (xmlprintspec == NULL) {
 	xmlprintspec = (xmlChar *)"%lld";
@@ -713,8 +714,11 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     if (false) printf("should use printspec %s\n",printspec);
     
     if (printspec == str_sec_nanosec) {
-	units = strGetXMLProp(fieldxml, "units");
-	SINVARIANT(units == "Lintel::Tfrac" || units == "2^-32 seconds");
+	myfield_time = new Int64TimeField(series, column);
+	string units = strGetXMLProp(fieldxml, "units");
+	string epoch = strGetXMLProp(fieldxml, "epoch");
+
+	myfield_time->setUnitsEpoch(units, epoch);
     } 
 	       
     xmlChar *xml_divisor = myXmlGetProp(fieldxml, (const xmlChar *)"print_divisor");
@@ -741,6 +745,8 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
 
 GF_Int64::~GF_Int64() 
 {
+    delete relative_field;
+    delete myfield_time;
 }
 
 void 
@@ -755,12 +761,12 @@ GF_Int64::write(FILE *to)
 	} else if (relative_field != NULL) {
 	    offset = relative_field->val();
 	}
-	if (printspec == str_sec_nanosec) {
-	    // TODO: support more units, right now we know it's tfrac.
+	if (myfield_time != NULL) {
+	    DEBUG_SINVARIANT(printspec == str_sec_nanosec);
+
 	    int64_t v = myfield.val() - offset;
-	    SINVARIANT(v > 0);
-	    fprintf(to, "%d.%09d", Clock::TfracToSec(v), 
-		    Clock::TfracToNanoSec(v));
+
+	    fputs(myfield_time->rawToStrSecNano(v).c_str(), to);
 	} else {
 	    fprintf(to,printspec,(myfield.val() - offset)/divisor);
 	}
@@ -867,6 +873,7 @@ GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
 
 GF_Double::~GF_Double() 
 {
+    delete relative_field;
 }
 
 void 

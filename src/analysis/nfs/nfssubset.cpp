@@ -77,7 +77,8 @@ checkFileMissing(const std::string &filename)
 
 void
 doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
-       vector<string> source_files, DataSeriesSink &output)
+       vector<string> source_files, DataSeriesSink &output, 
+       uint32_t extent_size) 
 {
     TypeIndexModule indata(extenttype.getName());
     for(vector<string>::iterator i = source_files.begin();
@@ -86,7 +87,7 @@ doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
     }
     ExtentSeries output_series(extenttype);
     OutputModule output_module(output, output_series, 
-			       &extenttype, 64*1024);
+			       &extenttype, extent_size);
 
     string sel1, sel2;
     if (extenttype.hasColumn("request-id")) {
@@ -112,7 +113,7 @@ main(int argc, char *argv[])
     Extent::setReadChecksFromEnv(true);
 
     INVARIANT(argc > 4,
-	      boost::format("Usage: %s [common-args] min_keep_id max_keep_id input-filename... output-filename\nCommon args:\n%s") 
+	      boost::format("Usage: %s [common-args] min_keep_id max_keep_id_inclusive input-filename... output-filename\nCommon args:\n%s") 
 	      % argv[0] % packingOptions());
     
     int64_t min_keep = stringToInt64(argv[1]);
@@ -128,13 +129,23 @@ main(int argc, char *argv[])
 			  packing_args.compress_level);
     
     vector<string> copy_names;
-    copy_names.push_back("NFS trace: attr-ops");
-    copy_names.push_back("NFS trace: common");
-    copy_names.push_back("NFS trace: read-write");
 
     ExtentTypeLibrary out_library;
     {
 	DataSeriesSource tmp(source_files[0]);
+	ExtentTypeLibrary &lib(tmp.getLibrary());
+
+	if (lib.getTypeByName("NFS trace: common", true) != NULL) {
+	    copy_names.push_back("NFS trace: attr-ops");
+	    copy_names.push_back("NFS trace: common");
+	    copy_names.push_back("NFS trace: read-write");
+	} else if (lib.getTypeByName("Trace::NFS::common") != NULL) {
+	    copy_names.push_back("Trace::NFS::attr-ops");
+	    copy_names.push_back("Trace::NFS::common");
+	    copy_names.push_back("Trace::NFS::read-write");
+	} else {
+	    FATAL_ERROR("do not recognize this type of NFS trace.");
+	}
 	
 	for(vector<string>::iterator i = copy_names.begin();
 	    i != copy_names.end(); ++i) {
@@ -148,7 +159,7 @@ main(int argc, char *argv[])
     for(vector<string>::iterator i = copy_names.begin();
 	i != copy_names.end(); ++i) {
 	doCopy(*out_library.getTypeByName(*i), min_keep, max_keep, 
-	       source_files, output);
+	       source_files, output, packing_args.extent_size);
     }
     return 0;
 }

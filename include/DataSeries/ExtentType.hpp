@@ -308,7 +308,7 @@ private:
 				     int32 &byte_pos);
 };
 
-class ExtentTypeLibrary {
+class ExtentTypeLibrary : boost::noncopyable {
 public:
     ExtentTypeLibrary() {};
 

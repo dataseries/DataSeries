@@ -504,10 +504,11 @@ public:
 	  server(series,"server"),
 	  operation(series,"operation"), filehandle(series,"filehandle"),
 	  request_at(series,"request-at"), reply_at(series,"reply-at"),
-	  payload_len(series,"payload-length"), out_of_bounds_count(0)
+	  payload_len(series,"payload-length"), 
+	  min_time(numeric_limits<int64_t>::max()),
+	  max_time(numeric_limits<int64_t>::min()),
+	  out_of_bounds_count(0)
     {
-	min_time = 0x7FFFFFFFLL << 32;
-	max_time = 0;
     }
     virtual ~OperationByFileHandle() { }
     
