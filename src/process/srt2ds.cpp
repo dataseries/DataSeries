@@ -68,9 +68,9 @@ const std::string srt_ioflags(
 
 
 const std::string srt_timefields(
-  "  <field type=\"int64\" name=\"enter_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
-  "  <field type=\"int64\" name=\"leave_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
-  "  <field type=\"int64\" name=\"return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"enter_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" />\n"
+  "  <field type=\"int64\" name=\"leave_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
   );
 
 
@@ -142,8 +142,8 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    AssertAlways(argc == 4 || argc == 5 || argc == 6,
-		 ("Usage: %s --info in-file info-filename [minor_version]'- allowed for stdin/stdout'\n %s --convert in-file info-filename ds-filename [minor_version]'- allowed for stdin/stdout'\n",
+    AssertAlways(argc == 4 || argc == 5 || argc == 8 || argc == 9,
+		 ("Usage: %s --info in-file info-filename [minor_version]'- allowed for stdin/stdout'\n %s --convert in-file info-filename ds-filename absolute_first_end_tfracs absolute_last_end_tfracs offset_amount_tfracs [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0],argv[0]));
     std::string in_name(argv[2]);
     std::string ds_output_filename("");
@@ -160,7 +160,7 @@ main(int argc, char *argv[])
 	info_file_ptr = fopen((const char *)info_file_name.c_str(),"w");
     } else {
 	info_create = false;
-	AssertAlways(argc == 5 || argc == 6, ("barfed during convert because wrong number of arguments\n"));
+	AssertAlways(argc == 8 || argc == 9, ("barfed during convert because wrong number of arguments\n"));
 	ds_output_filename.append(argv[4]);
 	info_file_ptr = fopen((const char*)info_file_name.c_str(), "r");
     }
@@ -173,8 +173,8 @@ main(int argc, char *argv[])
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
     printf ("inferred trace version %d.%d\n", trace_major, trace_minor);
-    if ((argc == 5 && info_create) || argc == 6 && !info_create) {
-	trace_minor = strtol(argv[4],NULL, 10);
+    if ((argc == 5 && info_create) || argc == 9 && !info_create) {
+	trace_minor = strtol(argv[argc-1],NULL, 10);
 	printf ("overriding minor with %d\n", trace_minor);
     }
     std::string trace_version_string = "";
@@ -253,7 +253,7 @@ main(int argc, char *argv[])
 	    
 	    AssertAlways(_tr->type() == SRTrecord::IO,
 		    ("Only know how to handle I/O records\n"));
-	    if (argc!=5) {
+	    if (argc!=5 && argc !=9) {
 	    	AssertAlways(trace_minor == tr->get_version(), ("Version mismatch between header (minor version %d) and data (minor version %d).  Override header with data version to convert correctly!\n",trace_minor, tr->get_version()));
 	    }
 	    old_finished = ((SRTio *)_tr)->tfrac_finished();
@@ -276,53 +276,24 @@ main(int argc, char *argv[])
 	    raw_tr = tracestream->record();
 	}
     }
-    // set the base time from the info file
-    char info_file_string[1024];
-    char *ifs_ptr = info_file_string;
-    int str_size = 0;
-    str_size = fread(ifs_ptr, 1, 1024, info_file_ptr);
-    int read_count = 0;
-    while(read_count < str_size && *ifs_ptr != '\n') {
-	ifs_ptr++;
-	read_count++;
-    }
-    ifs_ptr++;
-    read_count++;
-    char *tmp_ptr = ifs_ptr;
-    while (read_count < str_size && *tmp_ptr != '.') {
-	tmp_ptr++;
-	read_count++;
-    }
-    *tmp_ptr = '\0';
-    tmp_ptr++;
-    if (read_count < str_size) {
-	base_time = (Clock::Tfrac)stringToInt64(ifs_ptr, 10);
-    }
-    read_count--; //goes up to the . not including it
-    ifs_ptr = tmp_ptr;
-    while (read_count < str_size && *ifs_ptr != ' ') {
-	ifs_ptr++;
-	read_count++;
-    }
-    if (read_count < str_size) {
-	time_offset = (Clock::Tfrac)stringToInt64(ifs_ptr, 10);
-    }
+    base_time = (Clock::Tfrac)stringToInt64(argv[5], 10);
+    last_end_time = (Clock::Tfrac)stringToInt64(argv[6], 10);
+    time_offset = (Clock::Tfrac)stringToInt64(argv[7], 10);
     Clock::Tfrac curtime = base_time;
     AssertAlways(curtime == base_time,
 	    ("internal self check failed\n"));
-    printf("adjusted basetime %lld\n", base_time);
+    printf("adjusted first end time to:%lld\n", base_time);
+    printf("adjusted last end time to:%lld\n", last_end_time);
     printf("used time_offset %lld\n", time_offset);
 
     DataSeriesSink srtdsout(ds_output_filename,packing_args.compress_modes,packing_args.compress_level);
-    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata";
-    srtheadertype_xml.append("\" version=\"");
-
-    srtheadertype_xml.append(trace_version_string);
-    srtheadertype_xml.append("\" >\n");
-    std::string srt_start = "  <field type=\"int64\" name=\"start_time\" comment=\"Start time of this trace in units of 2^-32 seconds relative to the UNIX epoc.  Used SRT header tracedate and added start_time_offset.\" />\n";
+    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata\" version=\"2.0\" comment=\"SRT Traces used zero-based relative times in each file.  To allow multiple files in a related set of trace files to be combined, an adjustment was applied to the times in each file.  To convert to non-overlapping absolute times, time_adjustment was added to all trace times (enter_driver, leave_driver, return_to_driver) whose return_to_driver times fall between first_return_to_driver and last_return_to_driver.  Usually, time adjustment was set by taking the trace capture start time from the SRT header and subtracting the relative time of the smallest return_to_driver value in the file. If as a result of this adjustment, the last_return_to_driver in the previous file would overlap with the computed first_return_to_driver then time_adjustment was set equal to the last_return_to_driver time in the previous file + 0.1 seconds. 0.1 seconds is an arbitrary choice to guarantee non-overlapping I/Os.  See srt2ds.cpp and srt2ds.pm for the calculations and doc/tr for discussion and other alternatives.\" >\n");
+    std::string time_adjustment = "  <field type=\"int64\" name=\"time_adjustment\" units=\"2^-32 seconds\" pack_relative=\"time_adjustment\" print_format=\"sec.nsec\" />\n";
+    srtheadertype_xml.append(time_adjustment);
+    std::string srt_start = "  <field type=\"int64\" name=\"first_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" />\n";
     srtheadertype_xml.append(srt_start);
-    std::string srt_start_offset = "  <field type=\"int64\" name=\"start_time_offset\" comment=\"time in units of 2^-32 seconds added to the SRT trace tracedate to compute initial start_time of this trace\" />\n";
-    srtheadertype_xml.append(srt_start_offset);
+    std::string srt_end = "  <field type=\"int64\" name=\"last_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:first_return_to_driver\" />\n";
+    srtheadertype_xml.append(srt_end);
     std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
     srtheadertype_xml.append(srt_header);
     srtheadertype_xml.append("</ExtentType>\n");
