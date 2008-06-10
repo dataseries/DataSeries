@@ -44,6 +44,7 @@ const string attropscommonjoin_xml_in(
 // have a generic resort implemented, nor do I feel like writing a
 // sort module here.
 
+// TODO: redo-with rotating hash map.
 class AttrOpsCommonJoin : public NFSDSModule {
 public:
     AttrOpsCommonJoin(DataSeriesModule &_nfs_common,
@@ -85,7 +86,8 @@ public:
 	  in_initial_skip_mode(true),
 	  first_keep_time(0),
 	  skipped_common_count(0), skipped_attrops_count(0), 
-	  skipped_duplicate_attr_count(0), last_reply_id(-1)
+	  skipped_duplicate_attr_count(0), 
+	  last_reply_id(-1)
     { 
 	curreqht = new reqHashTable();
 	prevreqht = new reqHashTable();
@@ -257,6 +259,12 @@ public:
 		    d.request_id = in_recordid.val();
 		    d.request_at = in_packetat.val();
 		    curreqht->add(d);
+		} else {
+		    // reply common record entry that occurs before
+		    // the first attr-ops entry we have; usually a
+		    // result of common operations that have no
+		    // attr-ops.
+		    ++skipped_common_count;
 		}
 		++es_common.pos;
 	    } else if (in_initial_skip_mode && in_replyid.val() < in_recordid.val()) {
@@ -354,6 +362,7 @@ public:
 	output_bytes += outextent->extentsize();
 	return outextent;
     }
+
     virtual void printResult() {
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	cout << format("  generated %.3f million records, %.2f MB of extent output\n")
@@ -392,7 +401,8 @@ private:
 	output_bytes;
     bool in_initial_skip_mode;
     ExtentType::int64 first_keep_time;
-    uint64_t skipped_common_count, skipped_attrops_count, skipped_duplicate_attr_count;
+    uint64_t skipped_common_count, skipped_attrops_count, 
+	      skipped_duplicate_attr_count;
     int64_t last_reply_id;
 };
 	

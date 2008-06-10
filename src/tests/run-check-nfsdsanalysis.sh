@@ -13,4 +13,8 @@ perl $1/check-data/clean-timing.pl < check.nfsdsanalysis.tmp >check.nfsdsanalysi
 cmp check.nfsdsanalysis.txt $1/check-data/check.nfsdsanalysis.ref
 rm check.nfsdsanalysis.tmp
 
+../analysis/nfs/nfsdsanalysis -a -j $1/check-data/nfs-2.set-1.20k.ds >nfs-2.set-1.20k.tmp
+perl $1/check-data/clean-timing.pl < nfs-2.set-1.20k.tmp > nfs-2.set-1.20k.check
+cmp nfs-2.set-1.20k.check $1/check-data/nfs-2.set-1.20k.ref
+
 exit 0
