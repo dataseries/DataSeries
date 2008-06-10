@@ -71,7 +71,13 @@ sub rebuild {
     if (defined ($this->{compress})) {
 	$compress = "--compress-$this->{compress}";
     }
-    my $command = "srt2ds $compress $fullpath $destpath $new_minor";
+    $mode = "--$this->{mode}";
+    if ($this->{mode} eq "info") {
+	$command = "srt2ds $compress $mode $fullpath $destpath $new_minor";
+    } elsif ($this->{mode} eq "convert") {
+	$command = "srt2ds $compress $mode $fullpath $fullpath\.info $destpath $new_minor";
+    }	
+    die "??" unless defined $command;
     print "$command\n";
     return system($command) == 0;
 }
