@@ -14,9 +14,8 @@
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
+using boost::format;
 
 static string str_DataSeries("DataSeries:");
 
@@ -41,7 +40,14 @@ main(int argc, char *argv[])
 	    std::string s = (char *)(argv[1] + 12);
 	    toText.setSeparator(s);
 	} else if (strncmp(argv[1],"--printSpec=",12)==0) {
-	    toText.setPrintSpec(argv[1] + 12);
+	    if (*(argv[1]+12) == '<') {
+		toText.setPrintSpec(argv[1] + 12);
+	    } else if (strncmp(argv[1]+12, "type=", 5) == 0) {
+		string tmp = string("<printSpec ") + (argv[1]+12) + "/>";
+		toText.setPrintSpec(tmp.c_str()); // TODO: make it take a string
+	    } else {
+		FATAL_ERROR(format("Unexpected argument '%s' to --printSpec;\n expected it to start with '<' or 'type='") % (argv[1]+12));
+	    }
 	} else if (strncmp(argv[1],"--header=",9)==0) {
 	    toText.setHeader(argv[1] + 9);
 	} else if (strncmp(argv[1],"--fields=",9)==0) {
@@ -72,7 +78,7 @@ main(int argc, char *argv[])
 	    }
 	    argc -= 2;
 	} else if (strncmp(argv[1],"-",1)==0) {
-	    FATAL_ERROR(boost::format("Unknown argument %s\n") % argv[1]);
+	    FATAL_ERROR(format("Unknown argument %s\n") % argv[1]);
 	} else {
 	    break;
 	}
@@ -83,9 +89,10 @@ main(int argc, char *argv[])
     }
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
-	      boost::format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
+	      format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
 			    "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
-			    "  [--printSpec='<printSpec type=\"...\" name=\"...\" print_format=\"...\" ...>']\n"
+			    "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
+// put in the <printSpec ... /> version into man page
 // fields is mostly obsolete, move to man page eventually
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
@@ -113,12 +120,12 @@ main(int argc, char *argv[])
 		first_source->mylibrary.getTypeByPrefix(match_extent_type);
 	    INVARIANT(t != NULL, "internal");
 	    for(unsigned i = 0; i < t->getNFields(); ++i) {
-		xmlspec.append((boost::format("<field name=\"%s\"/>")
+		xmlspec.append((format("<field name=\"%s\"/>")
 				% t->getFieldName(i)).str());
 	    }
 	} else {
 	    for(unsigned i=0;i<fields.size();++i) {
-		xmlspec.append((boost::format("<field name=\"%s\"/>")
+		xmlspec.append((format("<field name=\"%s\"/>")
 				% fields[i]).str());
 	    }
 	}

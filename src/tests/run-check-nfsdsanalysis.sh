@@ -13,8 +13,8 @@ perl $1/check-data/clean-timing.pl < check.nfsdsanalysis.tmp >check.nfsdsanalysi
 cmp check.nfsdsanalysis.txt $1/check-data/check.nfsdsanalysis.ref
 rm check.nfsdsanalysis.tmp
 
-../analysis/nfs/nfsdsanalysis -a -j -l 1 -u 059f13004fb46a0d2000000002725fa8b2c39a0060f8073d059f13004fb46a00 -u 059f13004fb46a0d2000000004de9a890a4af00ebadc0762059f13004fb46a00 -u 059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00 $1/check-data/nfs-2.set-1.20k.ds -z 87d874012ece4f0520000000040ba0561d83d10060f8073e87d874012ece4f00 >nfs-2.set-1.20k.tmp
-perl $1/check-data/clean-timing.pl < nfs-2.set-1.20k.tmp > nfs-2.set-1.20k.check
-cmp nfs-2.set-1.20k.check $1/check-data/nfs-2.set-1.20k.ref
+../analysis/nfs/nfsdsanalysis -a -j -l 1 -u 059f13004fb46a0d2000000002725fa8b2c39a0060f8073d059f13004fb46a00 -u 059f13004fb46a0d2000000004de9a890a4af00ebadc0762059f13004fb46a00 -u 059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00 $1/check-data/nfs-2.set-0.20k.ds -z 87d874012ece4f0520000000040ba0561d83d10060f8073e87d874012ece4f00 >nfs-2.set-0.20k.tmp
+perl $1/check-data/clean-timing.pl < nfs-2.set-0.20k.tmp > nfs-2.set-0.20k.check
+cmp nfs-2.set-0.20k.check $1/check-data/nfs-2.set-0.20k.ref
 
 exit 0

@@ -110,8 +110,9 @@ public:
     /// Convert a raw value into a double with units of seconds. Note
     /// this is dangerous with large values, so the conversion
     /// verifies that a precision of at least nanoseconds will be
-    /// preserved.
-    double rawToDoubleSeconds(Raw raw) const;
+    /// preserved after the conversion unless precision_check is set
+    /// to false.
+    double rawToDoubleSeconds(Raw raw, bool precision_check = true) const;
 
     /// Some old files may not include the necessary units and epoch
     /// fields.  This function provides a back-door for specifying

@@ -516,8 +516,8 @@ public:
 	ExtentType::int32 server;
 	uint32_t opcount;
 	ConstantString filehandle, operation;
-	ExtentType::int64 payload_sum, latency_sum;
-	void zero() { opcount = 0; payload_sum = 0; latency_sum = 0; }
+	int64_t payload_sum, latency_sum_raw;
+	void zero() { opcount = 0; payload_sum = 0; latency_sum_raw = 0; }
     };
 
     struct byServerFhOp {
@@ -603,12 +603,15 @@ public:
 	++v->opcount;
 	v->payload_sum += payload_len.val();
 	if (reply_at.valRaw() == request_at.valRaw()) {
-	    v->latency_sum += 1;
+	    // TODO: count the number of these "0-latency" events; note with
+	    // 10GbE you can see this in the traces as two packets can arrive
+	    // with < 1us between them.
+	    v->latency_sum_raw += 1;
 	} else {
 	    AssertAlways(reply_at.valRaw() > request_at.valRaw(),
 			 ("no %lld %lld.\n",reply_at.valRaw(),
 			  request_at.valRaw()));
-	    v->latency_sum += reply_at.valRaw() - request_at.valRaw();
+	    v->latency_sum_raw += reply_at.valRaw() - request_at.valRaw();
 	}
 
 	v = fhRollup.lookup(k);
@@ -621,7 +624,7 @@ public:
 		  % maybehexstring(v->filehandle) % maybehexstring(filehandle.stringval()));
 	++v->opcount;
 	v->payload_sum += payload_len.val();
-	v->latency_sum += reply_at.valRaw() - request_at.valRaw();
+	v->latency_sum_raw += reply_at.valRaw() - request_at.valRaw();
 
 	if (fsRollup.size() < NFSDSAnalysisMod::max_mount_points_expected) {
 	    k.filehandle = fh2mountData::pruneToMountPart(k.filehandle);
@@ -632,13 +635,14 @@ public:
 	    }
 	    ++v->opcount;
 	    v->payload_sum += payload_len.val();
-	    v->latency_sum += reply_at.valRaw() - request_at.valRaw();
+	    v->latency_sum_raw += reply_at.valRaw() - request_at.valRaw();
 	}
     }
 
     // sorting so the regression tests give stable results.
 
     void printFSRollup() {
+	SINVARIANT(request_at.getType() == reply_at.getType());
 	printf("FileSystem Rollup:\n");
 	if (fsRollup.size() >= NFSDSAnalysisMod::max_mount_points_expected) {
 	    printf("Too many filesystems (>= %d) filesystems found, assuming that fh->fs mapping is wrong\n", NFSDSAnalysisMod::max_mount_points_expected);
@@ -648,7 +652,9 @@ public:
 	    for(fhRollupT::hte_vectorT::iterator i = raw.begin();
 		i != raw.end(); ++i) {
 		hteData &d(i->data);
-		double avglat = d.latency_sum / (1.0e3 * d.opcount);
+		double lat_sum_sec = 
+		    request_at.rawToDoubleSeconds(d.latency_sum_raw, false);
+		double avglat_us = 1.0e6 * lat_sum_sec / d.opcount;
 		fh2mountData fhdata(d.filehandle);
 		fh2mountData *v = fh2mount.lookup(fhdata);
 		string pathname;
@@ -660,7 +666,8 @@ public:
 		}
 		printf("fsrollup: server %s, fs %s: %d ops %.3f MB, %.3f us avg lat\n",
 		       ipv4tostring(d.server).c_str(),pathname.c_str(),
-		       d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+		       d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us, 
+		       d.latency_sum_raw);
 	    }
 	}
     }
@@ -671,12 +678,15 @@ public:
 	sort(raw.begin(), raw.end(), byServerFhOp());
 	for(fhRollupT::hte_vectorT::iterator i = raw.begin();
 	    i != raw.end(); ++i) {
+	    // TODO: eliminate duplicate code with printFSRollup?
 	    hteData &d(i->data);
-	    double avglat = d.latency_sum / (1.0e3 * d.opcount);
+	    double lat_sum_sec = 
+		request_at.rawToDoubleSeconds(d.latency_sum_raw, false);
+	    double avglat_us = 1.0e6 * lat_sum_sec / d.opcount;
 	    printf("fhrollup: server %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
 		   ipv4tostring(d.server).c_str(),
 		   maybehexstring(d.filehandle).c_str(),
-		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us);
 	}
 
     }
@@ -689,11 +699,14 @@ public:
 	for(fhOpRollupT::hte_vectorT::iterator i = raw.begin();
 	    i != raw.end(); ++i) {
 	    hteData &d(i->data);
-	    double avglat = d.latency_sum / (1.0e3 * d.opcount);
+	    // TODO: eliminate duplicate code with printFSRollup?
+	    double lat_sum_sec = 
+		request_at.rawToDoubleSeconds(d.latency_sum_raw, false);
+	    double avglat_us = 1.0e6 * lat_sum_sec / d.opcount;
 	    printf("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
 		   ipv4tostring(d.server).c_str(),d.operation.c_str(),
 		   maybehexstring(d.filehandle).c_str(),
-		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat);
+		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us);
 	}
     }
 

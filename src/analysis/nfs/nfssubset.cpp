@@ -95,6 +95,11 @@ doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
 	sel2 = "reply-id";
     } else if (extenttype.hasColumn("record-id")) {
 	sel1 = sel2 = "record-id";
+    } else if (extenttype.hasColumn("request_id")) {
+	sel1 = "request_id";
+	sel2 = "reply_id";
+    } else if (extenttype.hasColumn("record_id")) {
+	sel1 = sel2 = "record_id";
     } else {
 	FATAL_ERROR("?");
     }

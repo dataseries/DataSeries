@@ -125,19 +125,22 @@ string Int64TimeField::rawToStrSecNano(Raw raw) const
     }
 }
 
-double Int64TimeField::rawToDoubleSeconds(Raw raw) const {
+double
+Int64TimeField::rawToDoubleSeconds(Raw raw, bool precision_check) const {
     // max_seconds = floor(2^52/(1000^3)), using 52 bits to give us 1
     // bit of extra precision to achive nanosecond resolution on the
     // return value.
     static const int32_t max_seconds = 4503599;
     if (time_type == UnixFrac32) {
 	int32_t seconds = raw >> 32;
-	SINVARIANT(seconds <= max_seconds && seconds >= -max_seconds);
+	SINVARIANT(!precision_check || 
+		   (seconds <= max_seconds && seconds >= -max_seconds));
 	return Clock::int64TfracToDouble(raw);
     } else if (time_type == UnixNanoSec) {
 	SecNano tmp;
 	splitSecNano(raw, tmp);
-	SINVARIANT(tmp.seconds <= max_seconds && tmp.seconds >= -max_seconds);
+	SINVARIANT(!precision_check || (tmp.seconds <= max_seconds 
+					&& tmp.seconds >= -max_seconds));
 	return tmp.seconds + tmp.nanoseconds / (1.0e9);
     } else if (time_type == Unknown) {
 	FATAL_ERROR("time type has not been set yet; no extent?");
