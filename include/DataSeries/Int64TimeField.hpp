@@ -111,7 +111,10 @@ public:
     /// this is dangerous with large values, so the conversion
     /// verifies that a precision of at least nanoseconds will be
     /// preserved after the conversion unless precision_check is set
-    /// to false.
+    /// to false.  Skipping the precision check is more safe if you
+    /// are converting a sum of times for turning into a mean,
+    /// although there you could be running the risk of overflowing
+    /// the raw units.
     double rawToDoubleSeconds(Raw raw, bool precision_check = true) const;
 
     /// Some old files may not include the necessary units and epoch
