@@ -32,10 +32,17 @@ dataseries version of that record format.
 
 % gunzip -c < wc_day46_3.gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
 % wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
-
+# transform a whole bunch of files using a batch cluster, checking to 
+# make sure the conversion worked.
+% batch-parallel -w 100 make printcmd \
+    transform='s,/wc/,/wc/ds/,;s,\.gz$,.ds,;' \
+    command='gunzip -c < $< >$TMP/in' \
+    command='wcweb2ds --compress-gz --extent-size=1000000 $TMP/in $@' \
+    command='ds2wcweb $@ >$TMP/out' command='cmp $TMP/in $TMP/out' \
+    -- wc_day*gz
 =head1 SEE ALSO
 
-ds2wcweb(1), DataSeries(5), DSCommonArgs(1)
+ds2wcweb(1), DataSeries(5), DSCommonArgs(1), batch-parallel --man
 
 =head1 AUTHOR/CONTACT
 
