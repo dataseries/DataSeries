@@ -1241,6 +1241,9 @@ main(int argc, char *argv[])
     Int64TimeField::registerUnitsEpoch("packet-at", "Trace::NFS::common", 
 				       "ssd.hpl.hp.com", 1, "2^-32 seconds", 
 				       "unix");
+    Int64TimeField::registerUnitsEpoch("packet_at", "Trace::NFS::common", 
+				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
+				       "unix");
 
     TypeIndexModule *sourcea = 
 	new TypeIndexModule("NFS trace: common");

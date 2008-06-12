@@ -604,12 +604,12 @@ class ServerLatency : public RowAnalysisModule {
 public:
     ServerLatency(DataSeriesModule &source) 
 	: RowAnalysisModule(source),
-	  reqtime(series,"packet-at"),
+	  reqtime(series,""),
 	  sourceip(series,"source"), 
 	  destip(series,"dest"),	  
-	  is_request(series,"is-request"),
-	  transaction_id(series, "transaction-id"),
-	  op_id(series,"op-id",Field::flag_nullable),
+	  is_request(series,""),
+	  transaction_id(series, ""),
+	  op_id(series,"",Field::flag_nullable),
 	  operation(series,"operation"),
 	  pending1(NULL), pending2(NULL),
 	  duplicate_request_delay(0.001),
@@ -639,6 +639,27 @@ public:
     Int32Field transaction_id;
     ByteField op_id;
     Variable32Field operation;
+
+    void newExtentHook(const Extent &e) {
+	if (series.getType() != NULL) {
+	    return; // already did this
+	}
+	const ExtentType &type = e.getType();
+	if (type.versionCompatible(0,0) || type.versionCompatible(1,0)) {
+	    reqtime.setFieldName("packet-at");
+	    is_request.setFieldName("is-request");
+	    transaction_id.setFieldName("transaction-id");
+	    op_id.setFieldName("op-id");
+	} else if (type.versionCompatible(2,0)) {
+	    reqtime.setFieldName("packet_at");
+	    is_request.setFieldName("is_request");
+	    transaction_id.setFieldName("transaction_id");
+	    op_id.setFieldName("op_id");
+	} else {
+	    FATAL_ERROR(format("can only handle v[0,1,2].*; not %d.%d")
+			% type.majorVersion() % type.minorVersion());
+	}
+    }
 
     // data structure for keeping statistics per request type and server
     struct StatsData {

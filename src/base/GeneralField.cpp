@@ -614,17 +614,23 @@ GF_Int32::~GF_Int32()
 {
 }
 
-void 
-GF_Int32::write(FILE *to) {
+static const string ipv4addr("ipv4");
+
+void GF_Int32::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
+    } else if (printspec == ipv4addr) {
+	SINVARIANT(divisor == 1);
+	uint32_t v = static_cast<uint32_t>(myfield.val());
+	fprintf(to, "%d.%d.%d.%d", v >> 24, (v >> 16) & 0xFF,
+		(v >> 8) & 0xFF, v & 0xFF);
     } else {
 	fprintf(to,printspec,myfield.val()/divisor);
     }
 }
 
-void 
-GF_Int32::write(std::ostream &to) {
+void GF_Int32::write(std::ostream &to) {
+    FATAL_ERROR("inconsistent with write(FILE)");
     if (myfield.isNull()) {
 	to << "null";
     } else {

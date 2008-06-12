@@ -36,6 +36,11 @@ public:
     
     virtual Extent *getExtent();
 
+    // TODO: think about a firstExtentHook; primary (only?) use of
+    // newExtentHook so far has been to handle the case of different
+    // field names, and for that, you only need to hook on the first
+    // Extent.
+
     /** Called right after each extent is retrieved, but before the 
 	extent is set in the series.  Serves two purposes: 1) infrequent
 	statistics/processing; and 2) setting up fields with unknown 
