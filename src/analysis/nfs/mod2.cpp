@@ -79,34 +79,29 @@ public:
 	  in_payloadlen(es_common,""),
 	  out_payloadlen(es_out,"payload-length"),
 	  all_done(false), prev_replyid(-1),
-	  rotate_interval(5LL*60*1000*1000*1000LL), // 5 minutes in ns.
+	  curreqht(new reqHashTable()),
+	  prevreqht(new reqHashTable()),
+	  last_rotate_time_raw(0),
+	  rotate_interval_raw(0), 
 	  output_record_count(0), 
 	  force_1us_turnaround_count(0),
 	  output_bytes(0),
 	  in_initial_skip_mode(true),
-	  first_keep_time(0),
+	  first_keep_time_raw(0),
 	  skipped_common_count(0), skipped_attrops_count(0), 
 	  skipped_duplicate_attr_count(0), 
-	  last_reply_id(-1)
+	  last_reply_id(numeric_limits<int64_t>::min())
     { 
-	curreqht = new reqHashTable();
-	prevreqht = new reqHashTable();
-	last_rotate_time = 0;
     }
 
     virtual ~AttrOpsCommonJoin() { }
 
-    void prepFields() {
-	const ExtentType *type = es_common.getType();
-	SINVARIANT(type != NULL);
-	SINVARIANT(es_attrops.getType() != NULL);
-	if (type->getName() == "NFS trace: common") {
-	    SINVARIANT(type->getNamespace() == "" &&
-		       type->majorVersion() == 0 &&
-		       type->minorVersion() == 0);
-	    SINVARIANT(es_attrops.getType()->getName() == "NFS trace: attr-ops" &&
-		       es_attrops.getType()->majorVersion() == 0 &&
-		       es_attrops.getType()->minorVersion() == 0);
+    void prepFields(Extent *e) {
+	const ExtentType &type = e->getType();
+	if (type.getName() == "NFS trace: common") {
+	    SINVARIANT(type.getNamespace() == "" &&
+		       type.majorVersion() == 0 &&
+		       type.minorVersion() == 0);
 	    in_packetat.setFieldName("packet-at");
 	    in_is_request.setFieldName("is-request");
 	    in_recordid.setFieldName("record-id");
@@ -115,11 +110,8 @@ public:
 	    in_filesize.setFieldName("file-size");
 	    in_modifytime.setFieldName("modify-time");
 	    in_payloadlen.setFieldName("payload-length");
-	} else if (type->getName() == "Trace::NFS::common"
-		   && type->versionCompatible(1,0)) {
-	    SINVARIANT(es_attrops.getType()->getName() == "Trace::NFS::attr-ops" &&
-		       es_attrops.getType()->versionCompatible(1,0));
-
+	} else if (type.getName() == "Trace::NFS::common"
+		   && type.versionCompatible(1,0)) {
 	    in_packetat.setFieldName("packet-at");
 	    in_is_request.setFieldName("is-request");
 	    in_recordid.setFieldName("record-id");
@@ -128,11 +120,8 @@ public:
 	    in_filesize.setFieldName("file-size");
 	    in_modifytime.setFieldName("modify-time");
 	    in_payloadlen.setFieldName("payload-length");
-	} else if (type->getName() == "Trace::NFS::common"
-		   && type->versionCompatible(2,0)) {
-	    SINVARIANT(es_attrops.getType()->getName() == "Trace::NFS::attr-ops" &&
-		       es_attrops.getType()->versionCompatible(2,0));
-
+	} else if (type.getName() == "Trace::NFS::common"
+		   && type.versionCompatible(2,0)) {
 	    in_packetat.setFieldName("packet_at");
 	    in_is_request.setFieldName("is_request");
 	    in_recordid.setFieldName("record_id");
@@ -148,7 +137,7 @@ public:
 
     struct reqData {
 	ExtentType::int64 request_id;
-	ExtentType::int64 request_at;
+	Int64TimeField::Raw request_at_raw;
     };
     
     struct reqHash {
@@ -203,7 +192,15 @@ public:
 		es_attrops.clearExtent();
 		return NULL;
 	    }
+
+	    if (in_packetat.getName().empty()) {
+		prepFields(tmp);
+	    }
+
 	    es_common.setExtent(tmp);
+	    if (rotate_interval_raw == 0) {
+		rotate_interval_raw = in_packetat.secNanoToRaw(5*60,0);
+	    }
 	}
 
 	Extent *attrextent = nfs_attrops.getExtent();
@@ -224,11 +221,6 @@ public:
 	Extent *outextent = new Extent(*es_out.getType());
 	es_out.setExtent(outextent);
 
-	if (in_packetat.getName().empty()) {
-	    prepFields();
-	    last_reply_id = in_replyid.val() - 1;
-	}
-
 	string fh;
 	while(es_attrops.pos.morerecords()) {
 	    if (es_common.pos.morerecords() == false) {
@@ -247,17 +239,18 @@ public:
 	    prev_replyid = in_replyid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
 		if (in_is_request.val()) {
-		    if (last_rotate_time < (in_packetat.val() - rotate_interval)) {
-			// much cheaper than scanning through the hash table looking for
-			// old entries.
+		    if (last_rotate_time_raw 
+			< (in_packetat.valRaw() - rotate_interval_raw)) {
+			// much cheaper than scanning through the hash
+			// table looking for old entries.
 			delete prevreqht;
 			prevreqht = curreqht;
 			curreqht = new reqHashTable();
-			last_rotate_time = in_packetat.val();
+			last_rotate_time_raw = in_packetat.valRaw();
 		    }
 		    reqData d;
 		    d.request_id = in_recordid.val();
-		    d.request_at = in_packetat.val();
+		    d.request_at_raw = in_packetat.valRaw();
 		    curreqht->add(d);
 		} else {
 		    // reply common record entry that occurs before
@@ -290,7 +283,7 @@ public:
 	    } else {
 		if (in_initial_skip_mode) {
 		    in_initial_skip_mode = false;
-		    first_keep_time = in_packetat.val();
+		    first_keep_time_raw = in_packetat.valRaw();
 		}
 		// Following can happen now that we generate multiple
 		// attr-ops bits as a result of parsing all of the
@@ -315,11 +308,12 @@ public:
 		    // because of the initial common pruning, we can
 		    // now get the case where the reply was in the
 		    // acceptable set, but the request wasn't.
-		    AssertAlways(// assume request took at most 30 seconds to process
-				 (in_packetat.val() - first_keep_time) < (ExtentType::int64)30*1000*1000*1000,
+		    AssertAlways(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
+				 (in_packetat.valRaw() - first_keep_time_raw) 
+				 < in_packetat.secNanoToRaw(30,0),
 				 ("bad missing request %lld - %lld = %lld",
-				  in_packetat.val(), first_keep_time, 
-				  in_packetat.val() - first_keep_time));
+				  in_packetat.valRaw(), first_keep_time_raw, 
+				  in_packetat.valRaw() - first_keep_time_raw));
 		    ++es_common.pos;
 		    ++es_attrops.pos;
 		    continue;
@@ -327,14 +321,15 @@ public:
 		AssertAlways(d != NULL,("unable to find request id %lld\n",k.request_id));
 		es_out.newRecord();
 		++output_record_count;
-		out_requestat.set(d->request_at);
-		out_replyat.set(in_packetat.val());
-		if (in_packetat.val() <= d->request_at) {
+		out_requestat.setRaw(d->request_at_raw);
+		out_replyat.setRaw(in_packetat.valRaw());
+		if (in_packetat.valRaw() <= d->request_at_raw) {
 		    if (false)
 			fprintf(stderr,"Warning: %lld <= %lld on ids %lld/%lld; forcing 1us turnaround\n",
-				d->request_at, in_packetat.val(),
+				d->request_at_raw, in_packetat.valRaw(),
 				in_requestid.val(), in_replyid.val());
-		    out_replyat.set(d->request_at + 1000);
+		    out_replyat.setRaw(d->request_at_raw 
+				       + in_packetat.secNanoToRaw(0,1000));
 		    ++force_1us_turnaround_count;
 		}
 		out_server.set(in_source.val());
@@ -371,16 +366,16 @@ public:
 	cout << format("  %lld records, or %.4f%% forced to 1us turnaround from previous 0 or negative turnaround\n")
 	    % force_1us_turnaround_count
 	    % (100.0*(double)force_1us_turnaround_count/(double)output_record_count);
-	cout << format("  %d skipped common, %d skipped attrops, %d semi-duplicate attrops, first keep %.9fs\n")
+	cout << format("  %d skipped common, %d skipped attrops, %d semi-duplicate attrops, first keep %ss\n")
 	    % skipped_common_count % skipped_attrops_count % skipped_duplicate_attr_count
-	    % ((double)first_keep_time/1.0e9);
+	    % in_packetat.rawToStrSecNano(first_keep_time_raw);
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
 private:
     DataSeriesModule &nfs_common, &nfs_attrops;
     ExtentSeries es_common, es_attrops, es_out;
-    Int64Field in_packetat, out_requestat, out_replyat;
+    Int64TimeField in_packetat, out_requestat, out_replyat;
     Int32Field in_source, out_server;
     Int32Field in_dest, out_client;
     BoolField in_is_request;
@@ -394,13 +389,13 @@ private:
     ExtentType::int64 prev_replyid;
     vector<string> ignore_filehandles;
     reqHashTable *curreqht, *prevreqht;
-    ExtentType::int64 last_rotate_time;
-    const ExtentType::int64 rotate_interval;
+    Int64TimeField::Raw last_rotate_time_raw;
+    Int64TimeField::Raw rotate_interval_raw;
 
     ExtentType::int64 output_record_count, force_1us_turnaround_count, 
 	output_bytes;
     bool in_initial_skip_mode;
-    ExtentType::int64 first_keep_time;
+    ExtentType::int64 first_keep_time_raw;
     uint64_t skipped_common_count, skipped_attrops_count, 
 	      skipped_duplicate_attr_count;
     int64_t last_reply_id;

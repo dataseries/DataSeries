@@ -1945,7 +1945,7 @@ End-virtual void DirectoryPathLookup::printResult()
 Begin-virtual void AttrOpsCommonJoin::printResult()
   generated 0.010 million records, 1.28 MB of extent output
   0 records, or 0.0000% forced to 1us turnaround from previous 0 or negative turnaround
-  194 skipped common, 0 skipped attrops, 0 semi-duplicate attrops, first keep 5034717015.827861786s
+  194 skipped common, 0 skipped attrops, 0 semi-duplicate attrops, first keep 1172236403.410290681s
 End-virtual void AttrOpsCommonJoin::printResult()
 
 Begin-virtual void OperationByFileHandle::printResult()
