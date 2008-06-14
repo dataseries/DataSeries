@@ -17,10 +17,10 @@ sub new {
 	if ($_ eq 'help') {
 	    $this->usage();
 	    exit(0);
-	} elsif (/^mode=((info)|(convert))$/o) {
-	    die "Already have specified mode" 
-		if (defined $this->{mode});
-	    $this->{mode} = $1;
+	#} elsif (/^mode=((info)|(convert))$/o) {
+	#    die "Already have specified mode" 
+	#	if (defined $this->{mode});
+	#    $this->{mode} = $1;
 	} elsif (/^compress=(.+)$/o) {
 	    die "Already have specified compression" 
 		if (defined $this->{compress});
@@ -33,13 +33,14 @@ sub new {
 	    die "unknown options specified for batch-parallel module $class: '@_'";
 	}
     }
-    die "No mode set expected mode=info or mode=convert" 
-	unless (defined $this->{mode});
+    #die "No mode set expected mode=info or mode=convert" 
+	#unless (defined $this->{mode});
     return $this;
 }
 
 sub usage {
-    print "batch-parallel srt2ds mode={info|convert} [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
+    #print "batch-parallel srt2ds mode={info|convert} [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
+    print "batch-parallel srt2ds [compress={bz2,lzf,gz,lzo}] -- file/directory...\n";
 }
 
 sub file_is_source {
@@ -51,13 +52,13 @@ sub file_is_source {
 
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
-    if ($this->{mode} eq "info") {
-	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/\.srt$1\.info/o;
-    } elsif ($this->{mode} eq "convert") {
-	$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
-    } else {
-	die "srt2ds internal consistency failure.";
-    }
+    #if  ($this->{mode} eq "convert") {
+    $fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
+    #} elsif($this->{mode} eq "info") {
+	#$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/\.srt$1\.info/o;
+    #} else {
+	#die "srt2ds internal consistency failure.";
+    #}
     return $fullpath;
 }
 
@@ -71,13 +72,14 @@ sub rebuild {
     if (defined ($this->{compress})) {
 	$compress = "--compress-$this->{compress}";
     }
-    $mode = "--$this->{mode}";
-    if ($this->{mode} eq "info") {
-	$command = "srt2ds $compress $mode $fullpath $destpath $new_minor";
-    } elsif ($this->{mode} eq "convert") {
-	$command = "srt2ds $compress $mode $fullpath $fullpath\.info $destpath $new_minor";
-    }	
-    die "??" unless defined $command;
+    #$mode = "--$this->{mode}";
+    #if ($this->{mode} eq "convert") {
+    #$command = "srt2ds $compress $mode $fullpath $fullpath\.info $destpath $new_minor";
+    $command = "srt2ds $compress $fullpath $destpath $new_minor";
+    #} elsif ($this->{mode} eq "info") {
+	#$command = "srt2ds $compress $mode $fullpath $destpath $new_minor";
+    #}	
+    #die "??" unless defined $command;
     print "$command\n";
     return system($command) == 0;
 }

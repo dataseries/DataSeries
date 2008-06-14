@@ -63,6 +63,11 @@ public:
 		   unsigned flags = 0, int64_t default_value = 0);
     virtual ~Int64TimeField();
 
+    /// Set the raw time value at current series position
+    void setRaw(Raw raw) {
+	Int64Field::set(raw);
+    }
+
     /// Raw time value at current series position
     Raw valRaw() const {
 	return Int64Field::val();
