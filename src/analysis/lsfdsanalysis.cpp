@@ -20,6 +20,7 @@ using namespace std;
 #include <getopt.h>
 #include <ctype.h>
 #include <time.h>
+#include <limits.h>
 
 #include <list>
 #include <ostream>
@@ -89,11 +90,11 @@ public:
     virtual ~JobReport() { }
     
     struct hte {
-	int metaid;
+	int32_t metaid;
 	string team, production, sequence, shot, username;
 	double delivered_window, delivered_total;
-	int finished_jobs, running_jobs, pending_jobs, cancelled_jobs;
-	int mintime, maxtime;
+	uint32_t finished_jobs, running_jobs, pending_jobs, cancelled_jobs;
+	int32_t mintime, maxtime;
 	hte() : metaid(0), delivered_window(0), delivered_total(0),
 		       finished_jobs(0), running_jobs(0), pending_jobs(0),
 		       cancelled_jobs(0), mintime(INT_MAX), maxtime(0) { }
@@ -127,7 +128,7 @@ public:
 	}
 	// variables for exact to the second times, as used in this
 	// calculations, so cropped to the start and end windows.
-	ExtentType::int32 exact_submit, exact_start, exact_end;
+	int32_t exact_submit, exact_start, exact_end;
 	    
 	exact_submit = submit_time.val();
 	exact_start = start_time.isNull() ? event_time.val() : start_time.val();
@@ -195,7 +196,7 @@ public:
 		++v->cancelled_jobs;
 	    }
 	} else {
-	    v->mintime = min(v->mintime,start_time.val());
+            v->mintime = min(v->mintime,start_time.val());
 	    if (end_time.isNull()) {
 		v->maxtime = max(v->maxtime,event_time.val());
 		++v->running_jobs;
@@ -227,15 +228,16 @@ public:
  	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
-    const int rollup_start, rollup_end;
+    const int32_t rollup_start, rollup_end;
     const bool noerstest;
     Int32Field event_time, submit_time, start_time, end_time;
     Variable32Field team, production, sequence, shot, username;
     Int32Field meta_id, user_id;
 
-    int minsubmit, maxend, minwindow, maxwindow, nrecords;
+    int32_t minsubmit, maxend, minwindow, maxwindow;
+    uint64_t nrecords;
     double delivered_window, delivered_total;
-    int early_submit, early_start, running_at_end;
+    uint32_t early_submit, early_start, running_at_end;
 };
 
 class MetaId2InfoLookup : public RowAnalysisModule {

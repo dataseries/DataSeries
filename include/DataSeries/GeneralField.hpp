@@ -200,7 +200,7 @@ public:
     void set(const GeneralValue &from) {
 	set(&from);
     }
-    const ExtentType::fieldType getType() { return gftype; }
+    const ExtentType::fieldType getType() const { return gftype; }
 
     void enableCSV();
 
@@ -245,7 +245,7 @@ public:
 	}
     }
     virtual double valDouble();
-    bool val() { return myfield.val(); }
+    bool val() const { return myfield.val(); }
     BoolField myfield;
     std::string s_true, s_false;  
 };
@@ -264,7 +264,7 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     virtual double valDouble();
-    ExtentType::byte val() { return myfield.val(); }
+    ExtentType::byte val() const { return myfield.val(); }
     char *printspec;
     ByteField myfield;
 };
@@ -286,7 +286,7 @@ public:
     }
     virtual bool isNull();
     virtual double valDouble();
-    ExtentType::int32 val() { return myfield.val(); }
+    ExtentType::int32 val() const { return myfield.val(); }
     char *printspec;
     ExtentType::int32 divisor;
     Int32Field myfield;
@@ -304,7 +304,7 @@ public:
     virtual bool isNull();
     virtual double valDouble();
     void set(int64_t v) { myfield.set(v);}
-    ExtentType::int64 val() { return myfield.val(); }
+    ExtentType::int64 val() const { return myfield.val(); }
 
     Int64Field myfield, *relative_field;
     Int64TimeField *myfield_time; // null unless printing as a time value.
@@ -323,7 +323,7 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     virtual double valDouble();
-    double val() { return myfield.val(); }
+    double val() const { return myfield.val(); }
 
     DoubleField myfield;
     DoubleField *relative_field;

@@ -7,6 +7,8 @@
 */
 
 #include <inttypes.h>
+#include <cstring>
+
 #include <boost/format.hpp>
 
 #include <openssl/sha.h>

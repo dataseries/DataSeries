@@ -18,7 +18,7 @@
 
 #include <boost/limits.hpp>
 
-#if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
+#if (_FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)) || defined(__CYGWIN__)
 #define pread64 pread
 #endif
 
