@@ -143,7 +143,7 @@ main(int argc, char *argv[])
     getPackingArgs(&argc,argv,&packing_args);
 
     AssertAlways(argc == 4 || argc == 5 || argc == 8 || argc == 9,
-		 ("Usage: %s --info in-file info-filename [minor_version]'- allowed for stdin/stdout'\n %s --convert in-file info-filename ds-filename absolute_first_end_tfracs absolute_last_end_tfracs offset_amount_tfracs [minor_version]'- allowed for stdin/stdout'\n",
+		 ("Usage: %s --info in-file info-filename [minor_version]'- allowed for stdin/stdout'\n %s --convert in-file info-filename ds-filename absolute_first_end_tfracs absolute_last_end_tfracs absolute_offset_amount_tfracs [minor_version]'- allowed for stdin/stdout'\n",
 		  argv[0],argv[0]));
     std::string in_name(argv[2]);
     std::string ds_output_filename("");
@@ -190,7 +190,7 @@ main(int argc, char *argv[])
 	trace_version_string.append("2.0");
     }	
     SRTrawRecord *raw_tr;
-    Clock::Tfrac base_time = 0, time_offset = 0;
+    Clock::Tfrac base_time = 0, time_offset = 0, last_end_time;
     SRTrecord *_tr;
     SRTio *tr;
     raw_tr = tracestream->record();
@@ -287,13 +287,13 @@ main(int argc, char *argv[])
     printf("used time_offset %lld\n", time_offset);
 
     DataSeriesSink srtdsout(ds_output_filename,packing_args.compress_modes,packing_args.compress_level);
-    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata\" version=\"2.0\" comment=\"SRT Traces used zero-based relative times in each file.  To allow multiple files in a related set of trace files to be combined, an adjustment was applied to the times in each file.  To convert to non-overlapping absolute times, time_adjustment was added to all trace times (enter_driver, leave_driver, return_to_driver) whose return_to_driver times fall between first_return_to_driver and last_return_to_driver.  Usually, time adjustment was set by taking the trace capture start time from the SRT header and subtracting the relative time of the smallest return_to_driver value in the file. If as a result of this adjustment, the last_return_to_driver in the previous file would overlap with the computed first_return_to_driver then time_adjustment was set equal to the last_return_to_driver time in the previous file + 0.1 seconds. 0.1 seconds is an arbitrary choice to guarantee non-overlapping I/Os.  See srt2ds.cpp and srt2ds.pm for the calculations and doc/tr for discussion and other alternatives.\" >\n");
-    std::string time_adjustment = "  <field type=\"int64\" name=\"time_adjustment\" units=\"2^-32 seconds\" pack_relative=\"time_adjustment\" print_format=\"sec.nsec\" />\n";
-    srtheadertype_xml.append(time_adjustment);
-    std::string srt_start = "  <field type=\"int64\" name=\"first_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" />\n";
-    srtheadertype_xml.append(srt_start);
-    std::string srt_end = "  <field type=\"int64\" name=\"last_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:first_return_to_driver\" />\n";
-    srtheadertype_xml.append(srt_end);
+    std::string srtheadertype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::SRTMetadata\" version=\"2.0\" comment=\"SRT Traces used zero-based relative times in each file.  To allow multiple files in a related set of trace files to be combined, an adjustment was applied to the times in each file.  To convert to non-overlapping absolute times, time_adjustment was added to all trace times (enter_driver, leave_driver, return_to_driver) whose return_to_driver times fall between first_return_to_driver and last_return_to_driver.  Usually, time adjustment was set by taking the trace capture start time from the SRT header and subtracting the relative time of the smallest return_to_driver value in the file. If as a result of this adjustment, the last_return_to_driver in the previous file would overlap with the computed first_return_to_driver then time_adjustment was set equal to the last_return_to_driver time in the previous file + 0.1 seconds. 0.1 seconds is an arbitrary choice to guarantee non-overlapping I/Os.  See srt2ds.cpp and srt2ds.pm for the calculations and doc/tr for discussion and other alternatives.\" >\n";
+    std::string time_adjustment_string = "  <field type=\"int64\" name=\"time_adjustment\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"time_adjustment\" print_format=\"sec.nsec\" />\n";
+    srtheadertype_xml.append(time_adjustment_string);
+    std::string first_end = "  <field type=\"int64\" name=\"first_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" />\n";
+    srtheadertype_xml.append(first_end);
+    std::string last_end = "  <field type=\"int64\" name=\"last_return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"first_return_to_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:first_return_to_driver\" />\n";
+    srtheadertype_xml.append(last_end);
     std::string srt_header = "  <field type=\"variable32\" name=\"header_text\" pack_unique=\"yes\" print_style=\"text\" />\n";
     srtheadertype_xml.append(srt_header);
     srtheadertype_xml.append("</ExtentType>\n");
@@ -306,9 +306,7 @@ main(int argc, char *argv[])
     srttype_xml.append("\" version=\"");
     srttype_xml.append(trace_version_string);
     srttype_xml.append("\" >\n");
-    char *buf = new char[srt_timefields.size() + 200];
-    sprintf(buf,srt_timefields.c_str(),base_time,base_time,base_time);
-    srttype_xml.append(buf);
+    srttype_xml.append(srt_timefields);
     printf("trace_minor %d\n", trace_minor);
     if (trace_minor < 7) {
 	if (trace_minor == 0) {
@@ -344,8 +342,9 @@ main(int argc, char *argv[])
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
 
-    Int64Field start_time(srtheaderseries, "start_time", Field::flag_nullable);
-    Int64Field start_time_offset(srtheaderseries, "start_time_offset", Field::flag_nullable);
+    Int64Field time_adjustment(srtheaderseries, "time_adjustment", Field::flag_nullable);
+    Int64Field first_return_to_driver(srtheaderseries, "first_return_to_driver", Field::flag_nullable);
+    Int64Field last_return_to_driver(srtheaderseries, "last_return_to_driver", Field::flag_nullable);
     Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
 
     Int64Field enter_kernel(srtseries,"enter_driver");
@@ -421,10 +420,9 @@ main(int argc, char *argv[])
 
     //Write out SRT header info to the DS file and flush the extent.
     headeroutmodule.newRecord();
-    //printf("HI %s\n", tracestream->header());
-    
-    start_time.set(base_time);
-    start_time_offset.set(time_offset);
+    time_adjustment.set(time_offset);
+    first_return_to_driver.set(base_time);
+    last_return_to_driver.set(last_end_time);
     header_text.set(tracestream->header());
     headeroutmodule.flushExtent();
 
@@ -472,28 +470,16 @@ main(int argc, char *argv[])
 	    return_to_driver.set(tr->tfrac_finished());
 	} else {
 	    // The traces need to be monotonically increasing in time.
-	    // the end times are non-overlapping, so if we find the
-	    // first end time in the trace and use that as the basis
-	    // for the absolute time, we can set all other times from
-	    // that.  We are setting the base_time to be the first
-	    // end_time so every time that is smaller than the first
-	    // end_time we need to subtract the time from the
-	    // base_time to get the absolute time
-	    if (tr->tfrac_created() < time_offset) {
-		enter_kernel.set(base_time-tr->tfrac_created());
-	    } else {
-		enter_kernel.set(tr->tfrac_created()+base_time);
-	    }
-	    if (tr->tfrac_started() < time_offset) {
-		leave_driver.set(base_time-tr->tfrac_started());
-	    } else {
-		leave_driver.set(tr->tfrac_started()+base_time);
-	    }
-	    if (tr->tfrac_finished() < time_offset) {
-		return_to_driver.set(base_time-tr->tfrac_finished());
-	    } else {
-		return_to_driver.set(tr->tfrac_finished()+base_time);
-	    }
+	    // the return_to_driver times are non-overlapping, so if
+	    // we find the first return_to_driver time in the trace
+	    // and use that as the basis for the absolute time, we can
+	    // set all other times from that.  We are setting the
+	    // base_time to be the first end_time so every time that
+	    // is smaller than the first end_time we need to subtract
+	    // the time from the base_time to get the absolute time
+	    enter_kernel.set(tr->tfrac_created()+time_offset);
+	    leave_driver.set(tr->tfrac_started()+time_offset);
+	    return_to_driver.set(tr->tfrac_finished()+time_offset);
 	}
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
