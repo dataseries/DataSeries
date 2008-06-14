@@ -1257,8 +1257,8 @@ main(int argc, char *argv[])
 	new TypeIndexModule("NFS trace: mount");
     sourced->setSecondMatch("Trace::NFS::mount");
     bool timebound_set = false;
-    int timebound_start = 0;
-    int timebound_end = INT_MAX;
+    int32_t timebound_start = 0;
+    int32_t timebound_end = numeric_limits<int32_t>::max();
     if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
 	timebound_set = true;
 	timebound_start = atoi(argv[first+1]);

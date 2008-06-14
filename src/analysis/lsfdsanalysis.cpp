@@ -81,7 +81,8 @@ public:
 	  username(series,"username"),
 	  meta_id(series,"meta_id", Field::flag_nullable, -1),
 	  user_id(series,"user_id"), 
-	  minsubmit(INT_MAX), maxend(0), minwindow(INT_MAX),
+	  minsubmit(numeric_limits<int32_t>::max()), maxend(0), 
+	  minwindow(numeric_limits<int32_t>::max()),
 	  maxwindow(0), nrecords(0),
 	  delivered_window(0), delivered_total(0),
 	  early_submit(0), early_start(0), running_at_end(0)
@@ -96,8 +97,9 @@ public:
 	uint32_t finished_jobs, running_jobs, pending_jobs, cancelled_jobs;
 	int32_t mintime, maxtime;
 	hte() : metaid(0), delivered_window(0), delivered_total(0),
-		       finished_jobs(0), running_jobs(0), pending_jobs(0),
-		       cancelled_jobs(0), mintime(INT_MAX), maxtime(0) { }
+		finished_jobs(0), running_jobs(0), pending_jobs(0),
+		cancelled_jobs(0), mintime(numeric_limits<int32_t>::max()), 
+		maxtime(0) { }
     };
 
     struct hteHash {

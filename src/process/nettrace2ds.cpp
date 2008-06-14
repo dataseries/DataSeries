@@ -3237,7 +3237,7 @@ main(int argc, char **argv)
 		FATAL_ERROR(format("expecting --erf or --pcap as second argument, not %s") % argv[2]);
 	    }
 
-	    int startFileArg = INT_MAX;
+	    int32_t startFileArg = numeric_limits<int32_t>::max();
 	    MultiFileReader *mfr = new MultiFileReader();
 
 	    if (info) { 
