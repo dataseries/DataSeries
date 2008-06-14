@@ -283,7 +283,7 @@ void check_conversion_random()
 // TODO: add an explicit test for the registerUnitsEpoch code; it's
 // currently implicitly tested by running the nfsanalysis test.
 
-int main(int argc, char *argv)
+int main(int argc, char **argv)
 {
     check_conversion_static();
     check_conversion_random();
