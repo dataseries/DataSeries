@@ -29,13 +29,17 @@ using namespace std;
 #include <DataSeries/DataSeriesFile.H>
 #include <DataSeries/ExtentField.H>
 
-#if _FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)
+#if (_FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)) || defined(__CYGWIN__)
 #define _LARGEFILE64_SOURCE
 #define lseek64 lseek
 #endif
 
 #ifndef _LARGEFILE64_SOURCE
 #error "Must compile with -D_LARGEFILE64_SOURCE"
+#endif
+
+#ifdef __CYGWIN__
+#define O_LARGEFILE 0
 #endif
 
 DataSeriesSource::DataSeriesSource(const string &_filename)
