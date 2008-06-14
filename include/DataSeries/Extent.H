@@ -20,6 +20,8 @@ extern "C" {
 
 #include <unistd.h>
 #include <inttypes.h>
+#include <cstring>
+
 #if defined(__linux__) && defined(__GNUC__) && __GNUC__ >= 2 
 #  ifdef __i386__
 #    if defined __i486__ || defined __pentium__ || defined __pentiumpro__ || defined __pentium4__ || defined __k6__ || defined __k8__ || defined __athlon__ 
@@ -44,6 +46,12 @@ extern "C" {
 #include <Lintel/LintelAssert.H>
 
 #include <DataSeries/ExtentType.H>
+
+// This doesn't really belong here, but it's not clear what a better
+// place is.
+#ifdef __CYGWIN__
+    typedef _off64_t off64_t;
+#endif
 
 class ExtentSeries;
 class Extent {
