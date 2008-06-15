@@ -21,8 +21,6 @@ DATASERIES_SIMPLE_TEST(pack-field-ordering)
 # *** WARNING, don't use | in any of the test scripts; if you do, then
 # *** the error conditions are not checked properly.
 
-DATASERIES_SCRIPT_TEST(pssimple)
-
 DATASERIES_PROGRAM_NOINST(general)
 DATASERIES_SCRIPT_TEST(general)
 
@@ -34,6 +32,10 @@ DATASERIES_SCRIPT_TEST(nfsdsanalysis)
 DATASERIES_SCRIPT_TEST(ellard)
 DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
+
+IF(BUNZIP2_PROGRAM_ENABLED)
+    DATASERIES_SCRIPT_TEST(pssimple)
+ENDIF(BUNZIP2_PROGRAM_ENABLED)
 
 IF(PERL_XML_PARSER_ENABLED)
     DATASERIES_SCRIPT_TEST(dstypes2cxx)

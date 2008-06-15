@@ -62,6 +62,10 @@ IF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
     MESSAGE("  bzip2 compression support will be skipped.")
 ENDIF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
 
+SET(BUNZIP2_PROGRAM_MISSING_EXTRA 
+    "  will not be able to run the pssimple regression test")
+LINTEL_WITH_PROGRAM(BUNZIP2_PROGRAM bunzip2)
+
 #### SRT
 
 SET(SRT_MISSING_EXTRA "  will skip building srt2ds, cmpsrtds")
