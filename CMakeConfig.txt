@@ -5,6 +5,13 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+#### Default build type
+
+IF(NOT CMAKE_BUILD_TYPE)
+    MESSAGE("WARNING: you did not set a CMAKE_BUILD_TYPE; assuming RelWithDebInfo")
+    SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+ENDIF(NOT CMAKE_BUILD_TYPE)
+
 #### Shared Libs
 
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
