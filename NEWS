@@ -1,7 +1,36 @@
+2008-06-14: 
+  * DataSeries should now build on cygwin.
+
+2008-06-12:
+  * nfsdsanalysis should work on the v1.0, v2.0, v2.1 trace files.
+
+2008-05-19:
+  * DataSeries has switched over to using .hpp for the header names.  .H
+    files are still present for transition; a warning will be present for
+    one release and then the transitional files will be removed.
+
 2008-05-09: 
-   * Switched over to using cmake for building instead of autoconf.  This
-     change is intended to move us toward being able to build on Windows.
-   * Added support for building and installing doxygen based documentation.
+  * Switched over to using cmake for building instead of autoconf.  This
+    change is intended to move us toward being able to build on Windows.
+  * Added support for building and installing doxygen based documentation.
+
+2008-04-14: 
+  * Created code to convert the 1998 World Cup traces and to perform the
+    same analysis as shipped with the data.
+
+2008-04-07: 
+  * Added a new packing option pack_pad_record to avoid rounding records
+    up to 8 bytes. 
+  * Added a new packing option pack_field_ordering to control the order
+    used for packing fields.
+
+2008-04-02:
+  * Added the Int64TimeField class to start dealing with the problems of
+    different units for times.  Used primarily in the NFS analysis since
+    those have different time units.
+
+2008-03-28:
+  * You can now set the name of a field after the constructor.
 
 2008-03-26:
   * Added the lindump-mmap raw collection program.  lindump-mmap is
