@@ -29,7 +29,7 @@ usage(const std::string &program_name, const std::string &error)
 	 << "  supported stat-types: basic, quantile\n"
 	 << "  expressions include field names, numeric (double) constants, functions, +,-,*,/,()\n"
 	 << "  functions include: fn.TfracToSeconds\n"
-	 << "  boolean expressions currently support <\n"
+	 << "  boolean expressions currently support <, <=, >, >=, ==, !=\n"
 	 << "  for fields with non-alpha-numeric or _ in the name, escape with \\\n";
     
     exit(0);
