@@ -18,6 +18,7 @@
 
 %{
 #include <string>
+#include <Lintel/Double.hpp>
 #include <DataSeries/DSExpr.hpp>
 
 #define YY_DECL \
@@ -205,9 +206,9 @@ namespace DSExprImpl {
 	}
     };
 
-    class ExprStrictlyGreaterThan : public ExprBinary {
+    class ExprEq : public ExprBinary {
     public:
-	ExprStrictlyGreaterThan(DSExpr *l, DSExpr *r)
+	ExprEq(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -216,7 +217,82 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return left->valDouble() > right->valDouble();
+	    return Double::eq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprNeq : public ExprBinary {
+    public:
+	ExprNeq(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return !Double::eq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprGt : public ExprBinary {
+    public:
+	ExprGt(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double::gt(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprLt : public ExprBinary {
+    public:
+	ExprLt(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double::lt(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprGeq : public ExprBinary {
+    public:
+	ExprGeq(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double::geq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprLeq : public ExprBinary {
+    public:
+	ExprLeq(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double::leq(left->valDouble(), right->valDouble());
 	}
     };
 
@@ -246,6 +322,12 @@ using namespace DSExprImpl;
 %token <field>    FIELD 
 %token <constant> CONSTANT
 %token            FN_TfracToSeconds
+%token EQ
+%token NEQ
+%token GT
+%token LT
+%token GEQ
+%token LEQ
 
 %type  <expression>     expr
 %type  <expression>     bool_expr
@@ -256,7 +338,12 @@ using namespace DSExprImpl;
 complete_expr: expr END_OF_STRING { driver.expr = $1; } ;
     | bool_expr END_OF_STRING { driver.expr = $1; } ;
 
-bool_expr: expr '>' expr { $$ = new ExprStrictlyGreaterThan($1, $3); }
+bool_expr: expr EQ expr { $$ = new ExprEq($1, $3); }
+bool_expr: expr NEQ expr { $$ = new ExprNeq($1, $3); }
+bool_expr: expr GT expr { $$ = new ExprGt($1, $3); }
+bool_expr: expr LT expr { $$ = new ExprLt($1, $3); }
+bool_expr: expr GEQ expr { $$ = new ExprGeq($1, $3); }
+bool_expr: expr LEQ expr { $$ = new ExprLeq($1, $3); }
 
 %left '+' '-';
 %left '*' '/';
@@ -270,7 +357,6 @@ expr: expr '+' expr { $$ = new ExprAdd($1, $3); }
     | CONSTANT { $$ = new ExprConstant($1); }
     | FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
 ;
-
 %%
 
 void
