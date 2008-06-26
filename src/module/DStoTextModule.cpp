@@ -164,7 +164,7 @@ DStoTextModule::getExtentParseWhereExpr(PerTypeState &state)
 {
     if ((state.where_expr == NULL) &&
 	(!state.where_expr_str.empty())) {
-	state.where_expr = DSExpr::make(state.series, where_expr_str);
+	state.where_expr = DSExpr::make(state.series, state.where_expr_str);
     }
 }
 
