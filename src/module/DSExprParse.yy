@@ -205,9 +205,9 @@ namespace DSExprImpl {
 	}
     };
 
-    class ExprStrictlyGreaterThan : public ExprBinary {
+    class ExprEqualTo : public ExprBinary {
     public:
-	ExprStrictlyGreaterThan(DSExpr *l, DSExpr *r)
+	ExprEqualTo(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -216,7 +216,82 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return left->valDouble() > right->valDouble();
+	    return Double.eq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprNotEqualTo : public ExprBinary {
+    public:
+	ExprNotEqualTo(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return !Doubl.eq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprGreaterThan : public ExprBinary {
+    public:
+	ExprGreaterThan(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double.gt(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprLessThan : public ExprBinary {
+    public:
+	ExprLessThan(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double.lt(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprGreaterEqualThan : public ExprBinary {
+    public:
+	ExprGreaterEqualThan(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double.geq(left->valDouble(), right->valDouble());
+	}
+    };
+
+    class ExprLessEqualThan : public ExprBinary {
+    public:
+	ExprLessEqualThan(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return Double.leq(left->valDouble(), right->valDouble());
 	}
     };
 
@@ -256,7 +331,12 @@ using namespace DSExprImpl;
 complete_expr: expr END_OF_STRING { driver.expr = $1; } ;
     | bool_expr END_OF_STRING { driver.expr = $1; } ;
 
-bool_expr: expr '>' expr { $$ = new ExprStrictlyGreaterThan($1, $3); }
+bool_expr: expr '==' expr { $$ = new ExprEqualTo($1, $3); }
+bool_expr: expr '!=' expr { $$ = new ExprNotEqualTo($1, $3); }
+bool_expr: expr '>' expr { $$ = new ExprGreaterThan($1, $3); }
+bool_expr: expr '<' expr { $$ = new ExprLessThan($1, $3); }
+bool_expr: expr '>=' expr { $$ = new ExprGreaterEqualThan($1, $3); }
+bool_expr: expr '<=' expr { $$ = new ExprLessEqualThan($1, $3); }
 
 %left '+' '-';
 %left '*' '/';
@@ -270,7 +350,6 @@ expr: expr '+' expr { $$ = new ExprAdd($1, $3); }
     | CONSTANT { $$ = new ExprConstant($1); }
     | FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
 ;
-
 %%
 
 void
