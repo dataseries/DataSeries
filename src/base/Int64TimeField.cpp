@@ -20,6 +20,7 @@ struct RegisteredInfo {
 	return a.major_version == major_version && a.field_name == field_name 
 	    && a.type_name == type_name && a.name_space == name_space;
     }
+    RegisteredInfo() : major_version(0) { }
     RegisteredInfo(const string &a, const string &b, const string &c, 
 		   uint32_t d)
 	: field_name(a), type_name(b), name_space(c), major_version(d) 
