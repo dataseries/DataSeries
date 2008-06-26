@@ -18,6 +18,7 @@
 
 %{
 #include <string>
+#include <Lintel/Double.hpp>
 #include <DataSeries/DSExpr.hpp>
 
 #define YY_DECL \
@@ -205,9 +206,9 @@ namespace DSExprImpl {
 	}
     };
 
-    class ExprEqualTo : public ExprBinary {
+    class ExprEq : public ExprBinary {
     public:
-	ExprEqualTo(DSExpr *l, DSExpr *r)
+	ExprEq(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -216,13 +217,13 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return Double.eq(left->valDouble(), right->valDouble());
+	    return Double::eq(left->valDouble(), right->valDouble());
 	}
     };
 
-    class ExprNotEqualTo : public ExprBinary {
+    class ExprNeq : public ExprBinary {
     public:
-	ExprNotEqualTo(DSExpr *l, DSExpr *r)
+	ExprNeq(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -231,13 +232,13 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return !Doubl.eq(left->valDouble(), right->valDouble());
+	    return !Double::eq(left->valDouble(), right->valDouble());
 	}
     };
 
-    class ExprGreaterThan : public ExprBinary {
+    class ExprGt : public ExprBinary {
     public:
-	ExprGreaterThan(DSExpr *l, DSExpr *r)
+	ExprGt(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -246,13 +247,13 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return Double.gt(left->valDouble(), right->valDouble());
+	    return Double::gt(left->valDouble(), right->valDouble());
 	}
     };
 
-    class ExprLessThan : public ExprBinary {
+    class ExprLt : public ExprBinary {
     public:
-	ExprLessThan(DSExpr *l, DSExpr *r)
+	ExprLt(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -261,13 +262,13 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return Double.lt(left->valDouble(), right->valDouble());
+	    return Double::lt(left->valDouble(), right->valDouble());
 	}
     };
 
-    class ExprGreaterEqualThan : public ExprBinary {
+    class ExprGeq : public ExprBinary {
     public:
-	ExprGreaterEqualThan(DSExpr *l, DSExpr *r)
+	ExprGeq(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -276,13 +277,13 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return Double.geq(left->valDouble(), right->valDouble());
+	    return Double::geq(left->valDouble(), right->valDouble());
 	}
     };
 
-    class ExprLessEqualThan : public ExprBinary {
+    class ExprLeq : public ExprBinary {
     public:
-	ExprLessEqualThan(DSExpr *l, DSExpr *r)
+	ExprLeq(DSExpr *l, DSExpr *r)
 	    : ExprBinary(l,r) { }
 	virtual double valDouble() {
 	    FATAL_ERROR("no silent type switching");
@@ -291,7 +292,7 @@ namespace DSExprImpl {
 	    FATAL_ERROR("no silent type switching");
 	}
 	virtual bool valBool() {
-	    return Double.leq(left->valDouble(), right->valDouble());
+	    return Double::leq(left->valDouble(), right->valDouble());
 	}
     };
 
@@ -321,6 +322,12 @@ using namespace DSExprImpl;
 %token <field>    FIELD 
 %token <constant> CONSTANT
 %token            FN_TfracToSeconds
+%token EQ
+%token NEQ
+%token GT
+%token LT
+%token GEQ
+%token LEQ
 
 %type  <expression>     expr
 %type  <expression>     bool_expr
@@ -331,12 +338,12 @@ using namespace DSExprImpl;
 complete_expr: expr END_OF_STRING { driver.expr = $1; } ;
     | bool_expr END_OF_STRING { driver.expr = $1; } ;
 
-bool_expr: expr '==' expr { $$ = new ExprEqualTo($1, $3); }
-bool_expr: expr '!=' expr { $$ = new ExprNotEqualTo($1, $3); }
-bool_expr: expr '>' expr { $$ = new ExprGreaterThan($1, $3); }
-bool_expr: expr '<' expr { $$ = new ExprLessThan($1, $3); }
-bool_expr: expr '>=' expr { $$ = new ExprGreaterEqualThan($1, $3); }
-bool_expr: expr '<=' expr { $$ = new ExprLessEqualThan($1, $3); }
+bool_expr: expr EQ expr { $$ = new ExprEq($1, $3); }
+bool_expr: expr NEQ expr { $$ = new ExprNeq($1, $3); }
+bool_expr: expr GT expr { $$ = new ExprGt($1, $3); }
+bool_expr: expr LT expr { $$ = new ExprLt($1, $3); }
+bool_expr: expr GEQ expr { $$ = new ExprGeq($1, $3); }
+bool_expr: expr LEQ expr { $$ = new ExprLeq($1, $3); }
 
 %left '+' '-';
 %left '*' '/';

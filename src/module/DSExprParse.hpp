@@ -178,6 +178,7 @@ namespace DSExprImpl
 /* First part of user declarations.  */
 
 #include <string>
+#include <Lintel/Double.hpp>
 #include <DataSeries/DSExpr.hpp>
 
 #define YY_DECL \
@@ -561,7 +562,13 @@ namespace DSExprImpl
      END_OF_STRING = 0,
      FIELD = 258,
      CONSTANT = 259,
-     FN_TfracToSeconds = 260
+     FN_TfracToSeconds = 260,
+     EQ = 261,
+     NEQ = 262,
+     GT = 263,
+     LT = 264,
+     GEQ = 265,
+     LEQ = 266
    };
 
     };
