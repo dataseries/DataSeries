@@ -9,6 +9,7 @@
     implementation
 */
 
+#include <DataSeries/DSExpr.hpp>
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/SequenceModule.hpp>
 

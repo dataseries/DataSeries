@@ -9,6 +9,7 @@
     implementation
 */
 
+#include <DataSeries/DSExpr.hpp>
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/GeneralField.hpp>
 
@@ -18,13 +19,19 @@ static const string str_star("*");
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       ostream &text_dest)
-  : source(_source), stream_text_dest(&text_dest), text_dest(NULL), print_index(true), print_extent_type(true), print_extent_fieldnames(true), csvEnabled(false), separator(" ")
+  : source(_source), stream_text_dest(&text_dest),
+    text_dest(NULL), print_index(true),
+    print_extent_type(true), print_extent_fieldnames(true), 
+    csvEnabled(false), separator(" ")
 {
 }
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       FILE *_text_dest)
-  : source(_source), stream_text_dest(NULL), text_dest(_text_dest), print_index(true), print_extent_type(true), print_extent_fieldnames(true), csvEnabled(false), separator(" ")
+  : source(_source), stream_text_dest(NULL),
+    text_dest(_text_dest), print_index(true),
+    print_extent_type(true), print_extent_fieldnames(true),
+    csvEnabled(false), separator(" ")
 {
 }
 
@@ -105,6 +112,13 @@ DStoTextModule::addPrintField(const string &extenttype,
     }
 }
 
+void
+DStoTextModule::setWhereExpr(const string &extenttype,
+			     const string &where_expr_str)
+{
+    type_to_state[extenttype].where_expr_str = where_expr_str;
+}
+
 
 void
 DStoTextModule::setSeparator(const string &s)
@@ -118,7 +132,6 @@ DStoTextModule::enableCSV(void)
     csvEnabled = true;
     print_extent_type = false;
 }
-
 
 void
 DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
@@ -146,6 +159,20 @@ DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
     }
 }
 
+void
+DStoTextModule::getExtentParseWhereExpr(PerTypeState &state)
+{
+    if ((state.where_expr == NULL) &&
+	(!state.where_expr_str.empty())) {
+	state.where_expr = DSExpr::make(state.series, where_expr_str);
+    }
+}
+
+
+DStoTextModule::PerTypeState::PerTypeState()
+    : where_expr(NULL)
+{}
+
 DStoTextModule::PerTypeState::~PerTypeState()
 {
     for(vector<GeneralField *>::iterator i = fields.begin();
@@ -160,6 +187,8 @@ DStoTextModule::PerTypeState::~PerTypeState()
 	i->second = NULL;
     }
     override_print_specs.clear();
+    delete where_expr;
+    where_expr = NULL;
 }
 
 void
@@ -229,6 +258,8 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     }
 }
 
+
+
 Extent *
 DStoTextModule::getExtent()
 {
@@ -249,18 +280,24 @@ DStoTextModule::getExtent()
     state.series.setExtent(e);
     getExtentPrintSpecs(state);
     getExtentPrintHeaders(state);
+    getExtentParseWhereExpr(state);
 
     for (;state.series.pos.morerecords();++state.series.pos) {
-	for(unsigned int i=0;i<state.fields.size();i++) {
-	    if (text_dest == NULL) {
-		state.fields[i]->write(*stream_text_dest);		
-		if (i != (state.fields.size() - 1)){		  
-		    *stream_text_dest << separator;
+	if (state.where_expr && !state.where_expr->valBool()) {
+	    //++ignored_rows;
+	} else {
+	    //++processed_rows;
+	    for(unsigned int i=0;i<state.fields.size();i++) {
+		if (text_dest == NULL) {
+		    state.fields[i]->write(*stream_text_dest);		
+		    if (i != (state.fields.size() - 1)){		  
+			*stream_text_dest << separator;
+		    }
+		} else {
+		    state.fields[i]->write(text_dest);
+		    if (i != (state.fields.size() - 1))
+			fprintf(text_dest,separator.c_str());
 		}
-	    } else {
-		state.fields[i]->write(text_dest);
-		if (i != (state.fields.size() - 1))
-		    fprintf(text_dest,separator.c_str());
 	    }
 	}
 	if (text_dest == NULL) {

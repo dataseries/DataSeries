@@ -13,8 +13,8 @@
 #define __ROW_ANALYSIS_MODULE_H
 
 #include <DataSeries/DataSeriesModule.hpp>
-#include <DataSeries/DSExpr.hpp>
 
+class DSExpr;
 class SequenceModule;
 
 /** \brief Single series analysis handling each row in order.  

@@ -13,6 +13,8 @@
 #define __DSTOTEXTMODULE_H
 
 #include <DataSeries/DataSeriesModule.hpp>
+
+class DSExpr;
 class GeneralField;
 
 class DStoTextModule : public DataSeriesModule {
@@ -28,13 +30,16 @@ public:
     virtual Extent *getExtent(); // will print extent as a side effect.
 
     void setPrintSpec(const char *xmlText);
+
     /// After a call to this, the module owns the printSpec and will free it
     /// when done.
     void setHeader(const char *xmlText);
     void setFields(const char *xmlText);
     void addPrintField(const std::string &extenttype, 
 		       const std::string &field);
-    
+    void setWhereExpr(const std::string &extenttype,
+		      const std::string &where_expr_str);
+
     void skipIndex() {
 	print_index = false;
     }
@@ -58,12 +63,16 @@ public:
     // done relative to the first row of the first extent, not the
     // first row of each extent.
     struct PerTypeState {
+	PerTypeState();
+	~PerTypeState();
+
 	ExtentSeries series;
 	std::map<std::string, xmlNodePtr> override_print_specs, print_specs;
 	std::string header;
 	std::vector<std::string> field_names;
 	std::vector<GeneralField *> fields;
-	~PerTypeState();
+	std::string where_expr_str;
+	DSExpr *where_expr;
     };
 
 private:
@@ -79,6 +88,9 @@ private:
 
     // Also initializes state.fields if necessary.
     void getExtentPrintHeaders(PerTypeState &state);
+
+    // Intiailizes state.where_expr if necessary.
+    void getExtentParseWhereExpr(PerTypeState &state);
 			       
     DataSeriesModule &source;
     std::ostream *stream_text_dest;
