@@ -14,15 +14,14 @@ MACRO(DATASERIES_SCRIPT_TEST testname)
   ADD_TEST(${testname} ${CMAKE_CURRENT_SOURCE_DIR}/run-check-${testname}.sh ${DataSeries_SOURCE_DIR})
 ENDMACRO(DATASERIES_SCRIPT_TEST)
 
+### Simple exit(0) program tests
 DATASERIES_SIMPLE_TEST(time-field)
 DATASERIES_SIMPLE_TEST(pack-pad-record)
 DATASERIES_SIMPLE_TEST(pack-field-ordering)
 
+### Script tests of public programs
 # *** WARNING, don't use | in any of the test scripts; if you do, then
 # *** the error conditions are not checked properly.
-
-DATASERIES_PROGRAM_NOINST(general)
-DATASERIES_SCRIPT_TEST(general)
 
 DATASERIES_SCRIPT_TEST(dsselect)
 DATASERIES_SCRIPT_TEST(dsextentindex)
@@ -32,6 +31,15 @@ DATASERIES_SCRIPT_TEST(nfsdsanalysis)
 DATASERIES_SCRIPT_TEST(ellard)
 DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
+
+### Script tests of testing-only programs
+DATASERIES_PROGRAM_NOINST(general)
+DATASERIES_SCRIPT_TEST(general)
+
+DATASERIES_PROGRAM_NOINST(expr)
+DATASERIES_SCRIPT_TEST(expr)
+
+### Conditional tests...
 
 IF(BUNZIP2_PROGRAM_ENABLED)
     DATASERIES_SCRIPT_TEST(pssimple)
@@ -49,5 +57,3 @@ IF(SRT_ENABLED)
     DATASERIES_SCRIPT_TEST(srt)
 ENDIF(SRT_ENABLED)
 
-DATASERIES_PROGRAM_NOINST(expr)
-DATASERIES_SCRIPT_TEST(expr)

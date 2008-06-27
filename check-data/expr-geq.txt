@@ -93,4 +93,4 @@
 # MB compressed:       0.00
 # MB uncompressed:     0.02
 # decode seconds:      0.00
-# wait fraction :      0.00
+# wait fraction:       0.00
