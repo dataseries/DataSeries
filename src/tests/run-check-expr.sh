@@ -30,11 +30,8 @@ run "a >= b" expr-geq
 run "a <= b" expr-leq
 
 for x in '' '-neq' '-eq' '-gt' '-lt' '-geq' '-leq'; do
-    echo $x
     cmp $SRC/check-data/expr$x.txt expr$x.txt
+    rm -f ./expr$x.txt
 done
-
-#rm expr.ds expr.txt expr-neq.txt expr-eq.txt expr-gt.txt \
-#   expr-lt.txt expr-geq.txt expr-leq.txt
 
 exit 0
