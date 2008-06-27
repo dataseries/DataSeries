@@ -665,9 +665,8 @@ public:
 		    pathname = maybehexstring(v->pathname);
 		}
 		printf("fsrollup: server %s, fs %s: %d ops %.3f MB, %.3f us avg lat\n",
-		       ipv4tostring(d.server).c_str(),pathname.c_str(),
-		       d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us, 
-		       d.latency_sum_raw);
+		       ipv4tostring(d.server).c_str(), pathname.c_str(),
+		       d.opcount, d.payload_sum/(1024.0*1024.0), avglat_us);
 	    }
 	}
     }

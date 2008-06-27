@@ -79,7 +79,7 @@ public:
      * for ft_unknown, always false
      * for ft_bool, true < false
      * for integer/double types, works as normal
-     * for ft_variable32, works as if memcmp on values padded with '\0' to 
+     * for ft_variable32, works as if memcmp on values padded with '\\0' to 
      *   the maximum length
      *
      * we implement strictlylessthan rather than compare as is done

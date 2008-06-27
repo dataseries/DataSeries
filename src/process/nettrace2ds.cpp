@@ -236,7 +236,7 @@ struct bandwidth_rolling {
 
 vector<bandwidth_rolling *> bw_info;
 Clock::Tll max_incremental_processed = 0;
-int incremental_process_at_packet_count = 500000; // 6-8MB of buffering
+unsigned incremental_process_at_packet_count = 500000; // 6-8MB of buffering
 
 #if defined(bswap_64)
 inline uint64_t ntohll(uint64_t in)
@@ -1221,14 +1221,18 @@ void
 incrementalBandwidthInformation()
 {
     INVARIANT(!bw_info.empty(), "didn't call prepareBandwidthInformation()");
-    if (0 == bw_info[0]->cur_time && packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
+    if (0 == bw_info[0]->cur_time && packet_bw_rolling_info.size() 
+	> incremental_process_at_packet_count) {
+	
 	for(unsigned i = 0;i<bw_info.size();++i) {
 	    bw_info[i]->setStartTime(packet_bw_rolling_info.top().timestamp_us);
 	}
     }
 	
-    while(packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
-	INVARIANT(max_incremental_processed <= packet_bw_rolling_info.top().timestamp_us, 
+    while(packet_bw_rolling_info.size() 
+	  > incremental_process_at_packet_count) {
+	INVARIANT(max_incremental_processed 
+		  <= packet_bw_rolling_info.top().timestamp_us, 
 		  "too much out of orderness");
 	max_incremental_processed = packet_bw_rolling_info.top().timestamp_us;
 	doBandwidthProcessPacket();
