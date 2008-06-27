@@ -75,6 +75,8 @@ public:
 	DSExpr *where_expr;
     };
 
+    uint64_t processed_rows, ignored_rows;
+
 private:
     static xmlNodePtr parseXML(std::string xml, const std::string &roottype);
 

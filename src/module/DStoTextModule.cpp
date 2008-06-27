@@ -19,19 +19,21 @@ static const string str_star("*");
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       ostream &text_dest)
-  : source(_source), stream_text_dest(&text_dest),
-    text_dest(NULL), print_index(true),
-    print_extent_type(true), print_extent_fieldnames(true), 
-    csvEnabled(false), separator(" ")
+    : processed_rows(), ignored_rows(),
+      source(_source), stream_text_dest(&text_dest),
+      text_dest(NULL), print_index(true),
+      print_extent_type(true), print_extent_fieldnames(true), 
+      csvEnabled(false), separator(" ")
 {
 }
 
 DStoTextModule::DStoTextModule(DataSeriesModule &_source,
 			       FILE *_text_dest)
-  : source(_source), stream_text_dest(NULL),
-    text_dest(_text_dest), print_index(true),
-    print_extent_type(true), print_extent_fieldnames(true),
-    csvEnabled(false), separator(" ")
+    : processed_rows(), ignored_rows(),
+      source(_source), stream_text_dest(NULL),
+      text_dest(_text_dest), print_index(true),
+      print_extent_type(true), print_extent_fieldnames(true),
+      csvEnabled(false), separator(" ")
 {
 }
 
@@ -166,6 +168,7 @@ DStoTextModule::getExtentParseWhereExpr(PerTypeState &state)
 	(!state.where_expr_str.empty())) {
 	state.where_expr = DSExpr::make(state.series, state.where_expr_str);
     }
+
 }
 
 
@@ -284,9 +287,9 @@ DStoTextModule::getExtent()
 
     for (;state.series.pos.morerecords();++state.series.pos) {
 	if (state.where_expr && !state.where_expr->valBool()) {
-	    //++ignored_rows;
+	    ++ignored_rows;
 	} else {
-	    //++processed_rows;
+	    ++processed_rows;
 	    for(unsigned int i=0;i<state.fields.size();i++) {
 		if (text_dest == NULL) {
 		    state.fields[i]->write(*stream_text_dest);		
