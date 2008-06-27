@@ -17,6 +17,7 @@ perl $SRC/check-data/clean-timing.pl <expr.tmp >expr.txt
 run() {
   ../process/dsstatgroupby 'Test::Simple' basic a where "$1" group by b basic b where "$1" group by a from expr.ds > "$2".tmp
   perl $SRC/check-data/clean-timing.pl <"$2".tmp >"$2".txt
+  rm -f ./"$2".tmp
 }
 
 # TODO: collapse all of these into a single test run with a single output file
