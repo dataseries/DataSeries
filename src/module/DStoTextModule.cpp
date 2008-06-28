@@ -14,6 +14,7 @@
 #include <DataSeries/GeneralField.hpp>
 
 using namespace std;
+using boost::format;
 
 static const string str_star("*");
 
@@ -94,7 +95,7 @@ DStoTextModule::setFields(const char *xmlText)
 	    continue;
 	}
 	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
-	    boost::format("Error: fields sub-element should be field, not '%s")
+	    format("Error: fields sub-element should be field, not '%s")
 		  % reinterpret_cast<const char *>(cur->name));
 	xmlChar *name = xmlGetProp(cur,(const xmlChar *)"name");
 	INVARIANT(name != NULL, "error field must have a name");
@@ -118,6 +119,12 @@ void
 DStoTextModule::setWhereExpr(const string &extenttype,
 			     const string &where_expr_str)
 {
+    INVARIANT(type_to_state[extenttype].where_expr_str.empty(),
+	      format("Error: multiple where expr for extent type '%s'")
+	      % extenttype);
+    INVARIANT(!where_expr_str.empty(),
+	      format("Error: empty where expression for extent type '%s'")
+	      % extenttype);
     type_to_state[extenttype].where_expr_str = where_expr_str;
 }
 
@@ -200,9 +207,17 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     const string &type_name = state.series.type->name;
     if (print_extent_type) {
 	if (text_dest == NULL) {
-	    *stream_text_dest << "# Extent, type='" << type_name << "'\n";
+	    *stream_text_dest << "# Extent, type='" << type_name << "'";
+	    if (state.where_expr) {
+		*stream_text_dest << ", where='" << state.where_expr_str << "'";
+	    }
+	    *stream_text_dest << "\n";
 	} else {
-	    fprintf(text_dest,"# Extent, type='%s'\n", type_name.c_str());
+	    fprintf(text_dest,"# Extent, type='%s'", type_name.c_str());
+	    if (state.where_expr) {
+		fprintf(text_dest, ", where='%s'", state.where_expr_str.c_str());
+	    }
+	    fputc('\n', text_dest);
 	}
     }
 
@@ -281,9 +296,9 @@ DStoTextModule::getExtent()
     PerTypeState &state = type_to_state[e->type.getName()];
 
     state.series.setExtent(e);
+    getExtentParseWhereExpr(state);
     getExtentPrintSpecs(state);
     getExtentPrintHeaders(state);
-    getExtentParseWhereExpr(state);
 
     for (;state.series.pos.morerecords();++state.series.pos) {
 	if (state.where_expr && !state.where_expr->valBool()) {
@@ -302,11 +317,11 @@ DStoTextModule::getExtent()
 			fprintf(text_dest,separator.c_str());
 		}
 	    }
-	}
-	if (text_dest == NULL) {
-	    *stream_text_dest << "\n";
-	} else {
-	    fprintf(text_dest,"\n");
+	    if (text_dest == NULL) {
+		*stream_text_dest << "\n";
+	    } else {
+		fprintf(text_dest,"\n");
+	    }
 	}
     }
     return e;
@@ -320,12 +335,12 @@ DStoTextModule::parseXML(string xml, const string &roottype)
     xmlKeepBlanksDefault(0);
     xmlDocPtr doc = xmlParseMemory((char *)xml.data(),xml.size());
     INVARIANT(doc != NULL,
-	      boost::format("Error: parsing %s failed") % roottype);
+	      format("Error: parsing %s failed") % roottype);
     xmlNodePtr cur = xmlDocGetRootElement(doc);
     INVARIANT(cur != NULL,
-	      boost::format("Error: %s missing document") % roottype.c_str());
+	      format("Error: %s missing document") % roottype.c_str());
     INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)roottype.c_str()) == 0,
-	      boost::format("Error: %s has wrong type") % roottype);
+	      format("Error: %s has wrong type") % roottype);
     return cur;
 }
     
