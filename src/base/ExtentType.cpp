@@ -821,15 +821,20 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
+ExtentTypeLibrary::getTypeMatch(const std::string &match, 
+				bool null_ok, bool skip_info)
 {
     const ExtentType *t = NULL;
 
     static string str_DataSeries("DataSeries:");
+    static string str_Info("Info:");
     if (match == "*") {
 	for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
 	    i != name_to_type.end();++i) {
 	    if (prefixequal(i->first,str_DataSeries)) {
+		continue;
+	    }
+	    if (skip_info && prefixequal(i->first,str_Info)) {
 		continue;
 	    }
 	    INVARIANT(t == NULL, 

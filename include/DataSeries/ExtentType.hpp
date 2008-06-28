@@ -329,7 +329,7 @@ public:
     // tries ByName, ByPrefix and BySubstring in that order.
     // selects a single unique non-dataseries type if match is "*"
     const ExtentType *getTypeMatch(const std::string &match,
-				   bool null_ok = false);
+				   bool null_ok = false, bool skip_info=false);
 
     std::map<const std::string, const ExtentType *> name_to_type;
     static const ExtentType &sharedExtentType(const std::string &xmldesc);
