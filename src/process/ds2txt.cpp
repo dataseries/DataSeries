@@ -27,6 +27,7 @@ main(int argc, char *argv[])
 
     Extent::setReadChecksFromEnv(true); // ds2txt so slow, may as well check
     string select_extent_type, select_fields;
+    string where_extent_type, where_expr_str;
 
     bool skip_types = false;
     while (argc > 2) {
@@ -69,10 +70,24 @@ main(int argc, char *argv[])
 	    source.setMatch(argv[1]+7);
 	} else if (strcmp(argv[1],"--select")==0) {
 	    INVARIANT(argc > 4, "--select needs two arguments");
+	    INVARIANT(select_extent_type.empty(),
+		      "multiple --select arguments specified");
 	    select_extent_type = argv[2];
 	    INVARIANT(select_extent_type != "",
 		      "--select type needs to be non-empty");
 	    select_fields = argv[3];
+	    for(int i=3;i<argc;i++) {
+		argv[i-2] = argv[i];
+	    }
+	    argc -= 2;
+	} else if (strcmp(argv[1],"--where")==0) {
+	    INVARIANT(argc > 4, "--where needs two arguments");
+	    INVARIANT(where_extent_type.empty(),
+		      "multiple where statements specified");
+	    where_extent_type = argv[2];
+	    INVARIANT(where_extent_type != "",
+		      "--where type needs to be non-empty");
+	    where_expr_str = argv[3];
 	    for(int i=3;i<argc;i++) {
 		argv[i-2] = argv[i];
 	    }
@@ -96,7 +111,8 @@ main(int argc, char *argv[])
 // fields is mostly obsolete, move to man page eventually
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
-			    "  [--skip-extent-fieldnames] <file...>\n")
+			    "  [--skip-extent-fieldnames] <file...>\n"
+			    "  [--where '*'|extent-type-match where-clause]")
 	      % argv[0]);
     for(int i=1;i<argc;++i) {
 	source.addSource(argv[i]);
@@ -107,7 +123,8 @@ main(int argc, char *argv[])
     if (select_extent_type != "") {
 	string match_extent_type;
 	const ExtentType *match_type 
-	    = first_source->mylibrary.getTypeMatch(select_extent_type);
+	    = first_source->mylibrary.getTypeMatch(select_extent_type, 
+						   false, true);
 
 	match_extent_type = match_type->getName();
 	vector<string> fields;
@@ -135,6 +152,13 @@ main(int argc, char *argv[])
 	    source.setMatch(select_extent_type);
 	}
 	toText.setFields(xmlspec.c_str());
+    }
+
+    if (where_extent_type != "") {
+	const ExtentType *match_type 
+	    = first_source->mylibrary.getTypeMatch(where_extent_type, 
+						   false, true);
+	toText.setWhereExpr(match_type->getName(), where_expr_str);
     }
 
     // Note that this doesn't completely do the right thing with
