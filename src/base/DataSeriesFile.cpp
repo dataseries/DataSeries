@@ -375,7 +375,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 	INVARIANT(et->xmldesc.size() > 0, "whoa extenttype has no xml data?!");
 	typevar.set(et->xmldesc.data(),et->xmldesc.size());
 	valid_types[et] = true;
-	if (et->majorVersion() == 0 && et->minorVersion() == 0 ||
+	if ((et->majorVersion() == 0 && et->minorVersion() == 0) ||
 	    et->getNamespace().empty()) {
 	    // Once we have a version of dsrepack/dsselect that can
 	    // change the XML type, we can make this an error.
