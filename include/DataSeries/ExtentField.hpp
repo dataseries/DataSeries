@@ -167,7 +167,7 @@ public:
 	    return val(dataseries.extent()->variabledata,getVarOffset());
 	}
     }
-    const int32 size() const {
+    int32 size() const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
 			"internal error; extent not set or field not ready");
 	if (isNull()) {
