@@ -398,7 +398,7 @@ public:
 	} else if (val == "U") {
 	    // No clue as to what this is.
 	    field.set(1 << 6); 
-	} else if (isdigit(val[0]) || islower(val[0]) && isxdigit(val[0])) {
+	} else if (isdigit(val[0]) || (islower(val[0]) && isxdigit(val[0]))) {
 	    uint32_t v = stringToUInt32(val, 16);
 	    INVARIANT(v <= 63, "bad");
 	    field.set(v);
