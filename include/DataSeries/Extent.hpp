@@ -70,7 +70,7 @@ public:
     public:
 	ByteArray() { beginV = endV = maxV = NULL; }
 	~ByteArray();
-	const size_t size() const { return endV - beginV; }
+	size_t size() const { return endV - beginV; }
 	void resize(size_t newsize, bool zero_it = true) {
 	    size_t oldsize = size();
 	    if (newsize <= oldsize) {

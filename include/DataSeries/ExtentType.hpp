@@ -120,9 +120,9 @@ public:
 	int i = rep.visible_fields[columnnum];
 	return rep.field_info[i].name;
     }
-    const unsigned fixedrecordsize() const { return rep.fixed_record_size; }
+    unsigned fixedrecordsize() const { return rep.fixed_record_size; }
 
-    const uint32_t getNFields() const { return rep.visible_fields.size(); };
+    uint32_t getNFields() const { return rep.visible_fields.size(); };
 
     static std::string nullableFieldname(const std::string &fieldname);
 
