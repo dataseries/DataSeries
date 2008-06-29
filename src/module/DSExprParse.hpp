@@ -568,7 +568,12 @@ namespace DSExprImpl
      GT = 263,
      LT = 264,
      GEQ = 265,
-     LEQ = 266
+     LEQ = 266,
+     LOR = 267,
+     LAND = 268,
+     LNOT = 269,
+     ULNOT = 270,
+     UMINUS = 271
    };
 
     };

@@ -126,6 +126,21 @@ namespace DSExprImpl {
 	DSExpr *left, *right;
     };
 
+    class ExprMinus : public ExprUnary {
+    public:
+	ExprMinus(DSExpr *subexpr)
+	    : ExprUnary(subexpr) { }
+	virtual double valDouble() { 
+	    return - subexpr->valDouble();
+	}
+	virtual int64_t valInt64() { 
+	    return - subexpr->valInt64();
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
+	}
+    };
+
     class ExprAdd : public ExprBinary {
     public:
 	ExprAdd(DSExpr *left, DSExpr *right) : 
@@ -277,6 +292,51 @@ namespace DSExprImpl {
 	}
     };
 
+    class ExprLor : public ExprBinary {
+    public:
+	ExprLor(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return left->valBool() || right->valBool();
+	}
+    };
+
+    class ExprLand : public ExprBinary {
+    public:
+	ExprLand(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return left->valBool() && right->valBool();
+	}
+    };
+
+    class ExprLnot : public ExprUnary {
+    public:
+	ExprLnot(DSExpr *subexpr)
+	    : ExprUnary(subexpr) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return !(subexpr->valBool());
+	}
+    };
+
     class ExprFnTfracToSeconds : public ExprUnary {
     public:
 	ExprFnTfracToSeconds(DSExpr *subexpr) 
@@ -298,7 +358,7 @@ using namespace DSExprImpl;
 
 
 /* Line 317 of lalr1.cc.  */
-#line 302 "module/DSExprParse.cpp"
+#line 362 "module/DSExprParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -644,88 +704,113 @@ namespace DSExprImpl
     switch (yyn)
       {
 	  case 2:
-#line 338 "module/DSExprParse.yy"
+#line 412 "module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 3:
-#line 339 "module/DSExprParse.yy"
+#line 413 "module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 4:
-#line 341 "module/DSExprParse.yy"
+#line 417 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprEq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 5:
-#line 342 "module/DSExprParse.yy"
+#line 418 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprNeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 343 "module/DSExprParse.yy"
+#line 419 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprGt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 344 "module/DSExprParse.yy"
+#line 420 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 8:
-#line 345 "module/DSExprParse.yy"
+#line 421 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprGeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 9:
-#line 346 "module/DSExprParse.yy"
+#line 422 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 10:
-#line 351 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+#line 426 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLor((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 11:
-#line 352 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+#line 427 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLand((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 12:
-#line 353 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+#line 428 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLnot((yysemantic_stack_[(2) - (2)].expression)); ;}
     break;
 
   case 13:
-#line 354 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
-    break;
-
-  case 14:
-#line 355 "module/DSExprParse.yy"
+#line 429 "module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 15:
-#line 356 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
+#line 434 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 16:
-#line 357 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
+#line 435 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 17:
-#line 358 "module/DSExprParse.yy"
+#line 436 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+    break;
+
+  case 18:
+#line 437 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+    break;
+
+  case 19:
+#line 438 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprMinus((yysemantic_stack_[(2) - (2)].expression)); ;}
+    break;
+
+  case 20:
+#line 439 "module/DSExprParse.yy"
+    { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
+    break;
+
+  case 21:
+#line 440 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
+    break;
+
+  case 22:
+#line 441 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
+    break;
+
+  case 23:
+#line 442 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 729 "module/DSExprParse.cpp"
+#line 814 "module/DSExprParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -932,14 +1017,15 @@ namespace DSExprImpl
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const signed char Parser::yypact_ninf_ = -14;
+  const signed char Parser::yypact_ninf_ = -21;
   const signed char
   Parser::yypact_[] =
   {
-        32,   -14,   -14,     4,    32,     3,    21,    19,    32,    26,
-     -14,   -14,   -14,    32,    32,    32,    32,    32,    32,    32,
-      32,    32,    32,    37,   -14,    -7,    -7,    -7,    -7,    -7,
-      -7,   -13,   -13,   -14,   -14,   -14
+        -1,   -21,   -21,   -20,    -1,    31,    -1,    10,   -21,     9,
+      33,    31,   -21,    67,    31,   -21,    -5,    50,   -21,   -21,
+      -1,    -1,   -21,    31,    31,    31,    31,    31,    31,    31,
+      31,    31,    31,    71,    79,   -21,   -21,     3,   -21,    87,
+      87,    87,    87,    87,    87,     1,     1,   -21,   -21,   -21
   };
 
   /* YYDEFACT[S] -- default rule to reduce with in state S when YYTABLE
@@ -948,24 +1034,25 @@ namespace DSExprImpl
   const unsigned char
   Parser::yydefact_[] =
   {
-         0,    15,    16,     0,     0,     0,     0,     0,     0,     0,
-       1,     3,     2,     0,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,    14,     4,     5,     6,     7,     8,
-       9,    10,    11,    12,    13,    17
+         0,    21,    22,     0,     0,     0,     0,     0,    14,     0,
+       0,     0,    12,     0,     0,    19,     0,     0,     1,     3,
+       0,     0,     2,     0,     0,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,    13,    20,    10,    11,     4,
+       5,     6,     7,     8,     9,    15,    16,    17,    18,    23
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const signed char
   Parser::yypgoto_[] =
   {
-       -14,   -14,   -14,    -4
+       -21,   -21,   -21,    49,     0
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
   const signed char
   Parser::yydefgoto_[] =
   {
-        -1,     5,     6,     7
+        -1,     7,     8,     9,    13
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -975,24 +1062,34 @@ namespace DSExprImpl
   const unsigned char
   Parser::yytable_[] =
   {
-         9,    21,    22,    10,    23,    19,    20,    21,    22,    25,
-      26,    27,    28,    29,    30,    31,    32,    33,    34,    12,
-       8,    11,     0,     0,     0,    13,    14,    15,    16,    17,
-      18,    19,    20,    21,    22,     1,     2,     3,    19,    20,
-      21,    22,     0,    24,     0,     0,     0,     0,     4,    19,
-      20,    21,    22,     0,    35
+        10,    11,     1,     2,     3,    15,    17,    20,    21,    19,
+      18,    33,     0,     4,    34,     5,    21,    35,    31,    32,
+       6,    20,    21,    39,    40,    41,    42,    43,    44,    45,
+      46,    47,    48,    22,     1,     2,     3,     0,     0,    23,
+      24,    25,    26,    27,    28,     0,     0,     5,    29,    30,
+      31,    32,    14,    12,     0,    16,    23,    24,    25,    26,
+      27,    28,     0,     0,     0,    29,    30,    31,    32,    37,
+      38,     0,    36,    23,    24,    25,    26,    27,    28,     0,
+       0,     0,    29,    30,    31,    32,    29,    30,    31,    32,
+       0,     0,     0,    49,    29,    30,    31,    32,     0,     0,
+       0,    36,    29,    30,    31,    32
   };
 
   /* YYCHECK.  */
   const signed char
   Parser::yycheck_[] =
   {
-         4,    14,    15,     0,     8,    12,    13,    14,    15,    13,
-      14,    15,    16,    17,    18,    19,    20,    21,    22,     0,
-      16,     0,    -1,    -1,    -1,     6,     7,     8,     9,    10,
-      11,    12,    13,    14,    15,     3,     4,     5,    12,    13,
-      14,    15,    -1,    17,    -1,    -1,    -1,    -1,    16,    12,
-      13,    14,    15,    -1,    17
+         0,    21,     3,     4,     5,     5,     6,    12,    13,     0,
+       0,    11,    -1,    14,    14,    16,    13,    22,    17,    18,
+      21,    12,    13,    23,    24,    25,    26,    27,    28,    29,
+      30,    31,    32,     0,     3,     4,     5,    -1,    -1,     6,
+       7,     8,     9,    10,    11,    -1,    -1,    16,    15,    16,
+      17,    18,    21,     4,    -1,     6,     6,     7,     8,     9,
+      10,    11,    -1,    -1,    -1,    15,    16,    17,    18,    20,
+      21,    -1,    22,     6,     7,     8,     9,    10,    11,    -1,
+      -1,    -1,    15,    16,    17,    18,    15,    16,    17,    18,
+      -1,    -1,    -1,    22,    15,    16,    17,    18,    -1,    -1,
+      -1,    22,    15,    16,    17,    18
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -1000,10 +1097,11 @@ namespace DSExprImpl
   const unsigned char
   Parser::yystos_[] =
   {
-         0,     3,     4,     5,    16,    19,    20,    21,    16,    21,
-       0,     0,     0,     6,     7,     8,     9,    10,    11,    12,
-      13,    14,    15,    21,    17,    21,    21,    21,    21,    21,
-      21,    21,    21,    21,    21,    17
+         0,     3,     4,     5,    14,    16,    21,    24,    25,    26,
+      27,    21,    26,    27,    21,    27,    26,    27,     0,     0,
+      12,    13,     0,     6,     7,     8,     9,    10,    11,    15,
+      16,    17,    18,    27,    27,    22,    22,    26,    26,    27,
+      27,    27,    27,    27,    27,    27,    27,    27,    27,    22
   };
 
 #if YYDEBUG
@@ -1013,7 +1111,8 @@ namespace DSExprImpl
   Parser::yytoken_number_[] =
   {
          0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
-     265,   266,    43,    45,    42,    47,    40,    41
+     265,   266,   267,   268,   269,    43,    45,    42,    47,   270,
+     271,    40,    41
   };
 #endif
 
@@ -1021,8 +1120,9 @@ namespace DSExprImpl
   const unsigned char
   Parser::yyr1_[] =
   {
-         0,    18,    19,    19,    20,    20,    20,    20,    20,    20,
-      21,    21,    21,    21,    21,    21,    21,    21
+         0,    23,    24,    24,    25,    25,    25,    25,    25,    25,
+      26,    26,    26,    26,    26,    27,    27,    27,    27,    27,
+      27,    27,    27,    27
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -1030,7 +1130,8 @@ namespace DSExprImpl
   Parser::yyr2_[] =
   {
          0,     2,     2,     2,     3,     3,     3,     3,     3,     3,
-       3,     3,     3,     3,     3,     1,     1,     4
+       3,     3,     2,     3,     1,     3,     3,     3,     3,     2,
+       3,     1,     1,     4
   };
 
 #if YYDEBUG || YYERROR_VERBOSE || YYTOKEN_TABLE
@@ -1040,9 +1141,9 @@ namespace DSExprImpl
   const Parser::yytname_[] =
   {
     "END_OF_STRING", "error", "$undefined", "FIELD", "CONSTANT",
-  "FN_TfracToSeconds", "EQ", "NEQ", "GT", "LT", "GEQ", "LEQ", "'+'", "'-'",
-  "'*'", "'/'", "'('", "')'", "$accept", "complete_expr", "bool_expr",
-  "expr", 0
+  "FN_TfracToSeconds", "EQ", "NEQ", "GT", "LT", "GEQ", "LEQ", "LOR",
+  "LAND", "LNOT", "'+'", "'-'", "'*'", "'/'", "ULNOT", "UMINUS", "'('",
+  "')'", "$accept", "complete_expr", "rel_expr", "bool_expr", "expr", 0
   };
 #endif
 
@@ -1051,13 +1152,15 @@ namespace DSExprImpl
   const Parser::rhs_number_type
   Parser::yyrhs_[] =
   {
-        19,     0,    -1,    21,     0,    -1,    20,     0,    -1,    21,
-       6,    21,    -1,    21,     7,    21,    -1,    21,     8,    21,
-      -1,    21,     9,    21,    -1,    21,    10,    21,    -1,    21,
-      11,    21,    -1,    21,    12,    21,    -1,    21,    13,    21,
-      -1,    21,    14,    21,    -1,    21,    15,    21,    -1,    16,
-      21,    17,    -1,     3,    -1,     4,    -1,     5,    16,    21,
-      17,    -1
+        24,     0,    -1,    27,     0,    -1,    26,     0,    -1,    27,
+       6,    27,    -1,    27,     7,    27,    -1,    27,     8,    27,
+      -1,    27,     9,    27,    -1,    27,    10,    27,    -1,    27,
+      11,    27,    -1,    26,    12,    26,    -1,    26,    13,    26,
+      -1,    14,    26,    -1,    21,    26,    22,    -1,    25,    -1,
+      27,    15,    27,    -1,    27,    16,    27,    -1,    27,    17,
+      27,    -1,    27,    18,    27,    -1,    16,    27,    -1,    21,
+      27,    22,    -1,     3,    -1,     4,    -1,     5,    21,    27,
+      22,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -1066,15 +1169,17 @@ namespace DSExprImpl
   Parser::yyprhs_[] =
   {
          0,     0,     3,     6,     9,    13,    17,    21,    25,    29,
-      33,    37,    41,    45,    49,    53,    55,    57
+      33,    37,    41,    44,    48,    50,    54,    58,    62,    66,
+      69,    73,    75,    77
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
   const unsigned short int
   Parser::yyrline_[] =
   {
-         0,   338,   338,   339,   341,   342,   343,   344,   345,   346,
-     351,   352,   353,   354,   355,   356,   357,   358
+         0,   412,   412,   413,   417,   418,   419,   420,   421,   422,
+     426,   427,   428,   429,   430,   434,   435,   436,   437,   438,
+     439,   440,   441,   442
   };
 
   // Print the state stack on the debug stream.
@@ -1118,7 +1223,7 @@ namespace DSExprImpl
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      16,    17,    14,    12,     2,    13,     2,    15,     2,     2,
+      21,    22,    17,    15,     2,    16,     2,    18,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -1140,7 +1245,8 @@ namespace DSExprImpl
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     7,     8,     9,    10,    11
+       5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
+      19,    20
     };
     if ((unsigned int) t <= yyuser_token_number_max_)
       return translate_table[t];
@@ -1149,26 +1255,26 @@ namespace DSExprImpl
   }
 
   const int Parser::yyeof_ = 0;
-  const int Parser::yylast_ = 54;
-  const int Parser::yynnts_ = 4;
+  const int Parser::yylast_ = 105;
+  const int Parser::yynnts_ = 5;
   const int Parser::yyempty_ = -2;
-  const int Parser::yyfinal_ = 10;
+  const int Parser::yyfinal_ = 18;
   const int Parser::yyterror_ = 1;
   const int Parser::yyerrcode_ = 256;
-  const int Parser::yyntokens_ = 18;
+  const int Parser::yyntokens_ = 23;
 
-  const unsigned int Parser::yyuser_token_number_max_ = 266;
+  const unsigned int Parser::yyuser_token_number_max_ = 271;
   const Parser::token_number_type Parser::yyundef_token_ = 2;
 
 } // namespace DSExprImpl
 
-#line 360 "module/DSExprParse.yy"
+#line 444 "module/DSExprParse.yy"
 
 
 void
 DSExprImpl::Parser::error(const DSExprImpl::location &,
 			  const std::string &err)
 {
-	FATAL_ERROR(boost::format("error parsing: %s") % err);
+    FATAL_ERROR(boost::format("error parsing: %s starting") % err);
 }
 

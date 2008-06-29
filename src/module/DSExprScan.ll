@@ -43,6 +43,9 @@ geq		">="
 leq		"<="
 eq		"=="
 neq		"!="
+lor		"||"
+land		"&&"
+lnot		"!"
 
 %{
 #define YY_USER_ACTION  cur_column += (yyleng);
@@ -65,6 +68,9 @@ static unsigned cur_column;
 {leq}	{ return token_type(token::LEQ); }
 {eq}	{ return token_type(token::EQ); }
 {neq}	{ return token_type(token::NEQ); }
+{lor}	{ return token_type(token::LOR); }
+{land}  { return token_type(token::LAND); }
+{lnot}  { return token_type(token::LNOT); }
 {constant} { yylval->constant = stringToDouble(yytext); 
              return token::CONSTANT; }
 {field} { yylval->field = new std::string(yytext);

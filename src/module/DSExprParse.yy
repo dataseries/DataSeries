@@ -145,6 +145,21 @@ namespace DSExprImpl {
 	DSExpr *left, *right;
     };
 
+    class ExprMinus : public ExprUnary {
+    public:
+	ExprMinus(DSExpr *subexpr)
+	    : ExprUnary(subexpr) { }
+	virtual double valDouble() { 
+	    return - subexpr->valDouble();
+	}
+	virtual int64_t valInt64() { 
+	    return - subexpr->valInt64();
+	}
+	virtual bool valBool() {
+	    FATAL_ERROR("no silent type switching");
+	}
+    };
+
     class ExprAdd : public ExprBinary {
     public:
 	ExprAdd(DSExpr *left, DSExpr *right) : 
@@ -296,6 +311,51 @@ namespace DSExprImpl {
 	}
     };
 
+    class ExprLor : public ExprBinary {
+    public:
+	ExprLor(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return left->valBool() || right->valBool();
+	}
+    };
+
+    class ExprLand : public ExprBinary {
+    public:
+	ExprLand(DSExpr *l, DSExpr *r)
+	    : ExprBinary(l,r) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return left->valBool() && right->valBool();
+	}
+    };
+
+    class ExprLnot : public ExprUnary {
+    public:
+	ExprLnot(DSExpr *subexpr)
+	    : ExprUnary(subexpr) { }
+	virtual double valDouble() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual int64_t valInt64() {
+	    FATAL_ERROR("no silent type switching");
+	}
+	virtual bool valBool() {
+	    return !(subexpr->valBool());
+	}
+    };
+
     class ExprFnTfracToSeconds : public ExprUnary {
     public:
 	ExprFnTfracToSeconds(DSExpr *subexpr) 
@@ -328,40 +388,64 @@ using namespace DSExprImpl;
 %token LT
 %token GEQ
 %token LEQ
+%token LOR
+%token LAND
+%token LNOT
 
 %type  <expression>     expr
 %type  <expression>     bool_expr
+%type  <expression>     rel_expr
 
 %%
 %start complete_expr;
 
-complete_expr: expr END_OF_STRING { driver.expr = $1; } ;
-    | bool_expr END_OF_STRING { driver.expr = $1; } ;
-
-bool_expr: expr EQ expr { $$ = new ExprEq($1, $3); }
-bool_expr: expr NEQ expr { $$ = new ExprNeq($1, $3); }
-bool_expr: expr GT expr { $$ = new ExprGt($1, $3); }
-bool_expr: expr LT expr { $$ = new ExprLt($1, $3); }
-bool_expr: expr GEQ expr { $$ = new ExprGeq($1, $3); }
-bool_expr: expr LEQ expr { $$ = new ExprLeq($1, $3); }
-
+%left LOR;
+%left LAND;
+%left EQ NEQ;
+%left LT GT LEQ GEQ;
 %left '+' '-';
 %left '*' '/';
+%left ULNOT;
+%left UMINUS;
 
-expr: expr '+' expr { $$ = new ExprAdd($1, $3); }
-    | expr '-' expr { $$ = new ExprSubtract($1, $3); }
-    | expr '*' expr { $$ = new ExprMultiply($1, $3); }
-    | expr '/' expr { $$ = new ExprDivide($1, $3); }
-    | '(' expr ')'  { $$ = $2; }
-    | FIELD { $$ = new ExprField(driver.series, *$1); }
-    | CONSTANT { $$ = new ExprConstant($1); }
-    | FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
-;
+complete_expr
+	: expr END_OF_STRING { driver.expr = $1; } ;
+	| bool_expr END_OF_STRING { driver.expr = $1; } 
+	;
+
+rel_expr
+	: expr EQ expr { $$ = new ExprEq($1, $3); }
+	| expr NEQ expr { $$ = new ExprNeq($1, $3); }
+	| expr GT expr { $$ = new ExprGt($1, $3); }
+	| expr LT expr { $$ = new ExprLt($1, $3); }
+	| expr GEQ expr { $$ = new ExprGeq($1, $3); }
+	| expr LEQ expr { $$ = new ExprLeq($1, $3); }
+	;
+
+bool_expr
+	: bool_expr LOR bool_expr { $$ = new ExprLor($1, $3); }
+	| bool_expr LAND bool_expr { $$ = new ExprLand($1, $3); }
+	| LNOT bool_expr %prec ULNOT { $$ = new ExprLnot($2); }
+	| '(' bool_expr ')'  { $$ = $2; }
+	| rel_expr
+	;
+
+expr
+	: expr '+' expr { $$ = new ExprAdd($1, $3); }
+	| expr '-' expr { $$ = new ExprSubtract($1, $3); }
+	| expr '*' expr { $$ = new ExprMultiply($1, $3); }
+	| expr '/' expr { $$ = new ExprDivide($1, $3); }
+	| '-' expr %prec UMINUS { $$ = new ExprMinus($2); }
+	| '(' expr ')'  { $$ = $2; }
+	| FIELD { $$ = new ExprField(driver.series, *$1); }
+	| CONSTANT { $$ = new ExprConstant($1); }
+	| FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
+	;
 %%
 
 void
 DSExprImpl::Parser::error(const DSExprImpl::location &,
 			  const std::string &err)
 {
-	FATAL_ERROR(boost::format("error parsing: %s") % err);
+    FATAL_ERROR(boost::format("error parsing: %s starting") % err);
 }
