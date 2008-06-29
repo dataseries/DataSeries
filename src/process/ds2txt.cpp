@@ -112,6 +112,7 @@ main(int argc, char *argv[])
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
 			    "  [--skip-extent-fieldnames] <file...>\n"
+		            "  [--skip-all]\n"
 			    "  [--where '*'|extent-type-match where-clause]")
 	      % argv[0]);
     for(int i=1;i<argc;++i) {
