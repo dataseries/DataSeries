@@ -10,29 +10,30 @@ set -e
 
 SRC=$1
 
+# create our data file
 ./expr
-../process/ds2txt --skip-index expr.ds >expr.tmp
-perl $SRC/check-data/clean-timing.pl <expr.tmp >expr.txt
+../process/ds2txt --skip-index expr.ds |
+  perl $SRC/check-data/clean-timing.pl >expr.txt
 
+# run our tests
 run() {
-  ../process/dsstatgroupby 'Test::Simple' basic a where "$1" group by b basic b where "$1" group by a from expr.ds > "$2".tmp
-  perl $SRC/check-data/clean-timing.pl <"$2".tmp >"$2".txt
-  rm -f ./"$2".tmp
+  echo "expr: $1 start" >>expr.txt
+  ../process/ds2txt --skip-all --where 'Test::Simple' "$1" expr.ds |
+    perl $SRC/check-data/clean-timing.pl >>expr.txt
+  echo "expr: $1 end" >>expr.txt
 }
 
-# TODO: collapse all of these into a single test run with a single output file
-# and do all the comparisons in one go.  Leads to fewer regression test files.
+run "a != b"
+run "a == b"
+run "a > b"
+run "a < b"
+run "a >= b"
+run "a <= b"
+run "a * - b == - c"
+run "(a == b) && (b == c)"
+run "(a == b) || (a == c)"
 
-run "a != b" expr-neq
-run "a == b" expr-eq
-run "a > b" expr-gt
-run "a < b" expr-lt
-run "a >= b" expr-geq
-run "a <= b" expr-leq
-
-for x in '' '-neq' '-eq' '-gt' '-lt' '-geq' '-leq'; do
-    cmp $SRC/check-data/expr$x.txt expr$x.txt
-    rm -f ./expr$x.txt
-done
+cmp $SRC/check-data/expr.txt expr.txt
+rm -f expr.ds expr.txt
 
 exit 0

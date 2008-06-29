@@ -10,6 +10,7 @@ static string extent_type_xml(
 "	    version=\"1.0\">"
 "  <field type=\"double\" name=\"a\" />"
 "  <field type=\"double\" name=\"b\" />"
+"  <field type=\"double\" name=\"c\" />"
 "</ExtentType>"
 );
 
@@ -31,6 +32,7 @@ int main(int argc, char **argv)
     ExtentSeries extent_series(*extent_type);
     DoubleField a(extent_series, "a");
     DoubleField b(extent_series, "b");
+    DoubleField c(extent_series, "c");
 
     const unsigned extent_size = 16 * 1024;
     OutputModule output(dsout, extent_series, extent_type, extent_size);
@@ -40,6 +42,7 @@ int main(int argc, char **argv)
 	    output.newRecord();
 	    a.set(ax);
 	    b.set(bx);
+	    c.set(ax * bx);
 	}
     }
 	    
