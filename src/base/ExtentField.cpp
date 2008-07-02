@@ -19,7 +19,12 @@ Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname,
 
 Field::~Field()
 {
-    dataseries.removeField(*this);
+    // could be not present if the constructor failed somehow.  TODO:
+    // think about how best to handle this since the call in the
+    // type-specific fields that registers the field is wrong if the
+    // series already has a type.  If we can figure out that side,
+    // then we can also fix this side.
+    dataseries.removeField(*this, false);
 }
 
 void
