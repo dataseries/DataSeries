@@ -428,6 +428,11 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.doublebase = stringToDouble(opt_doublebase);
 	}	    
 
+	// TODO: consider a variant of pack_scale where you can
+	// specify Q#.#[b#] as an alternative specification following
+	// http://en.wikipedia.org/wiki/Fixed-point_arithmetic#Nomenclature
+	// Much further extention would be non-space preserving
+	// transformations to make it take up less space.
 	string pack_scale_v = strGetXMLProp(cur, "pack_scale");
 	if (!pack_scale_v.empty()) {
 	    INVARIANT(info.type == ft_double,
