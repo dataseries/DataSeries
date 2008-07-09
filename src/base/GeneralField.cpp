@@ -362,6 +362,43 @@ GeneralValue::valBool()
     return 0;
 }
 
+static string s_true("true");
+static string s_false("false");
+
+const std::string
+GeneralValue::valString()
+{
+    switch(gvtype) {
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valString()");
+	    break;
+	case ExtentType::ft_bool:
+	    if (gvval.v_bool) {
+		return s_true;
+	    } else {
+		return s_false;
+	    }
+	    break;
+	case ExtentType::ft_byte:
+	    FATAL_ERROR("haven't decided how to translate byte to strings");
+	    break;
+	case ExtentType::ft_int32:
+	    FATAL_ERROR("haven't decided how to translate int32 to strings");
+	    break;
+	case ExtentType::ft_int64:
+	    FATAL_ERROR("haven't decided how to translate int64 to strings");
+	    break;
+	case ExtentType::ft_double:
+	    FATAL_ERROR("haven't decided how to translate double to strings");
+	    break;
+	case ExtentType::ft_variable32:
+	    return *v_variable32;
+	    break;
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+    }
+    return 0;
+}
 
 void GeneralField::enableCSV(void){
     csvEnabled = true;
@@ -410,6 +447,12 @@ GF_Bool::~GF_Bool()
 {
 }
 
+bool
+GF_Bool::isNull()
+{
+    return myfield.isNull();
+}
+
 void
 GF_Bool::write(FILE *to)
 {
@@ -436,12 +479,6 @@ GF_Bool::write(std::ostream &to)
 	    to << s_false;
 	}
     }
-}
-
-bool
-GF_Bool::isNull()
-{
-    return myfield.isNull();
 }
 
 // TODO: see whether it's worth optimizing the set functions to special
@@ -1042,18 +1079,14 @@ static const bool print_v32_spaces = false;
 void 
 GF_Variable32::write(FILE *to) 
 {
+    // TODO: unify with boths writes and val_formatted (but take care
+    // as this write has extra behavior in that always applies a
+    // printf format.
     if (myfield.isNull()) {
-	fprintf(to,"null");
-    } else if (printstyle == printhex) {      
-        fprintf(to,printspec,hexstring(myfield.stringval()).c_str());
-    } else if (printstyle == printmaybehex) {
-	fprintf(to,printspec,maybehexstring(myfield.stringval()).c_str());
-    } else if ((printstyle == printcsv) || csvEnabled) {
-        fprintf(to,printspec,(toCSVform(maybehexstring(myfield.stringval()))).c_str());
-    } else if (printstyle == printtext) {
-	fprintf(to,printspec,myfield.stringval().c_str());
-    } else {	      
-	fprintf(to,printspec,myfield.stringval().c_str());
+	fprintf(to, "null");
+    } else {
+	string v = val_formatted();
+        fprintf(to, printspec, v.c_str());
     }
 }
 
@@ -1086,6 +1119,7 @@ GF_Variable32::isNull()
 
 static const string str_true("true");
 static const string str_false("false");
+static const string str_null("null");
 
 void
 GF_Variable32::set(GeneralField *from)
@@ -1146,6 +1180,28 @@ double
 GF_Variable32::valDouble()
 {
     return stringToDouble(myfield.stringval());
+}
+
+const std::string GF_Variable32::val()
+{
+    return myfield.stringval();
+}
+
+const std::string GF_Variable32::val_formatted()
+{
+    if (myfield.isNull()) {
+	return str_null;
+    } else if (printstyle == printhex) {      
+        return hexstring(myfield.stringval());
+    } else if (printstyle == printmaybehex) {
+	return maybehexstring(myfield.stringval());
+    } else if ((printstyle == printcsv) || csvEnabled) {
+	return toCSVform(maybehexstring(myfield.stringval()));
+    } else if (printstyle == printtext) {
+	return myfield.stringval();
+    } else {
+	return myfield.stringval();
+    }
 }
 
 GeneralField::~GeneralField() 
