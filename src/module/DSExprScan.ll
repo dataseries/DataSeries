@@ -43,9 +43,11 @@ geq		">="
 leq		"<="
 eq		"=="
 neq		"!="
+rematch		"=~"
 lor		"||"
 land		"&&"
 lnot		"!"
+strliteral	\"([^\"]|\\.)*\"
 
 %{
 #define YY_USER_ACTION  cur_column += (yyleng);
@@ -68,14 +70,17 @@ static unsigned cur_column;
 {leq}	{ return token_type(token::LEQ); }
 {eq}	{ return token_type(token::EQ); }
 {neq}	{ return token_type(token::NEQ); }
+{rematch}	{ return token_type(token::REMATCH); }
 {lor}	{ return token_type(token::LOR); }
 {land}  { return token_type(token::LAND); }
 {lnot}  { return token_type(token::LNOT); }
-{constant} { yylval->constant = stringToDouble(yytext); 
-             return token::CONSTANT; }
+{constant}	{ yylval->constant = stringToDouble(yytext); 
+                  return token::CONSTANT; }
 {field} { yylval->field = new std::string(yytext);
 	  return token::FIELD; }
 {TfracToSeconds} { return token::FN_TfracToSeconds; }
+{strliteral}	{ yylval->strliteral = new std::string(yytext);
+                  return token_type(token::STRLITERAL); }
 <<EOF>> { return token::END_OF_STRING; }
 . { FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
 

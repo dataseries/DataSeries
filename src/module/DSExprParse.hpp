@@ -190,7 +190,7 @@ namespace DSExprImpl {
     public:
 	// Implementation in DSExpr.cpp
 	Driver(ExtentSeries &_series) 
-	    : expr(NULL), series(_series), scanner_state(NULL) { }
+	    : expr(NULL), series(_series), scanner_state(NULL) {}
 	~Driver();
 
 	void doit(const std::string &str);
@@ -546,6 +546,7 @@ namespace DSExprImpl
     double constant;
     DSExpr *expression;
     std::string *field;
+    std::string *strliteral;
 }
 /* Line 35 of lalr1.cc.  */
 	;
@@ -565,15 +566,17 @@ namespace DSExprImpl
      FN_TfracToSeconds = 260,
      EQ = 261,
      NEQ = 262,
-     GT = 263,
-     LT = 264,
-     GEQ = 265,
-     LEQ = 266,
-     LOR = 267,
-     LAND = 268,
-     LNOT = 269,
-     ULNOT = 270,
-     UMINUS = 271
+     REMATCH = 263,
+     GT = 264,
+     LT = 265,
+     GEQ = 266,
+     LEQ = 267,
+     LOR = 268,
+     LAND = 269,
+     LNOT = 270,
+     STRLITERAL = 271,
+     ULNOT = 272,
+     UMINUS = 273
    };
 
     };

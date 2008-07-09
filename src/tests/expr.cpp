@@ -1,5 +1,7 @@
 #include <string>
 
+#include <boost/format.hpp>
+
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/commonargs.hpp>
 
@@ -11,6 +13,8 @@ static string extent_type_xml(
 "  <field type=\"double\" name=\"a\" />"
 "  <field type=\"double\" name=\"b\" />"
 "  <field type=\"double\" name=\"c\" />"
+"  <field type=\"variable32\" name=\"d\" />"
+"  <field type=\"variable32\" name=\"e\" />"
 "</ExtentType>"
 );
 
@@ -33,6 +37,8 @@ int main(int argc, char **argv)
     DoubleField a(extent_series, "a");
     DoubleField b(extent_series, "b");
     DoubleField c(extent_series, "c");
+    Variable32Field d(extent_series, "d");
+    Variable32Field e(extent_series, "e");
 
     const unsigned extent_size = 16 * 1024;
     OutputModule output(dsout, extent_series, extent_type, extent_size);
@@ -43,6 +49,8 @@ int main(int argc, char **argv)
 	    a.set(ax);
 	    b.set(bx);
 	    c.set(ax * bx);
+	    d.set((boost::format("%1%") % ax).str());
+	    e.set((boost::format("%1%") % bx).str());
 	}
     }
 	    

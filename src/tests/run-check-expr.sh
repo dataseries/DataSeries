@@ -33,6 +33,20 @@ run "a * - b == - c"
 run "(a == b) && (b == c)"
 run "(a == b) || (a == c)"
 
+run "d == e"
+run "d != e"
+run "d > e"
+run "d >= e"
+run "d < e"
+run "d <= e"
+run 'd == "0"'
+run 'd != "0"'
+run '"0" == d'
+run '"0" != d'
+run '"\\\"\f\r\n\b\t\v" == "\\\"\f\r\n\b\t\v"'
+run "d == e"
+run "d != e"
+
 cmp $SRC/check-data/expr.txt expr.txt
 rm -f expr.ds expr.txt
 
