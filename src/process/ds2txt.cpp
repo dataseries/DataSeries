@@ -13,6 +13,7 @@
 
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/DSExpr.hpp>
 
 using namespace std;
 using boost::format;
@@ -105,16 +106,17 @@ main(int argc, char *argv[])
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
 	      format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
-			    "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
-			    "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
+		     "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
+		     "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
 // put in the <printSpec ... /> version into man page
 // fields is mostly obsolete, move to man page eventually
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
-			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
-			    "  [--skip-extent-fieldnames] <file...>\n"
-		            "  [--skip-all]\n"
-			    "  [--where '*'|extent-type-match where-clause]")
-	      % argv[0]);
+		     "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
+		     "  [--skip-extent-fieldnames] <file...>\n"
+		     "  [--skip-all]\n"
+		     "  [--where '*'|extent-type-match bool-expr]\n"
+		     "\n%s\n")
+	      % argv[0] % DSExpr::usage);
     for(int i=1;i<argc;++i) {
 	source.addSource(argv[i]);
     }

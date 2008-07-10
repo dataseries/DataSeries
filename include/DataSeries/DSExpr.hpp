@@ -30,6 +30,8 @@ public:
     virtual const std::string valString() = 0;
 
     static DSExpr *make(ExtentSeries &series, std::string &expr);
+
+    static const std::string usage;
 };
 
 
