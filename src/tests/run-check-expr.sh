@@ -17,10 +17,12 @@ SRC=$1
 
 # run our tests
 run() {
-  echo "expr: $1 start" >>expr.txt
+  msg=$2
+  test "$msg" = "" && msg="$1"
+  echo "expr: $msg start" >>expr.txt
   ../process/ds2txt --skip-all --where 'Test::Simple' "$1" expr.ds |
     perl $SRC/check-data/clean-timing.pl >>expr.txt
-  echo "expr: $1 end" >>expr.txt
+  echo "expr: $msg end" >>expr.txt
 }
 
 run "a != b"
@@ -43,7 +45,7 @@ run 'd == "0"'
 run 'd != "0"'
 run '"0" == d'
 run '"0" != d'
-run '"\\\"\f\r\n\b\t\v" == "\\\"\f\r\n\b\t\v"'
+run '"\\\"\f\r\n\b\t\v" == "\\\"\f\r\n\b\t\v"' "special-characters"
 run "d == e"
 run "d != e"
 
