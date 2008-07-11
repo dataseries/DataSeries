@@ -2849,7 +2849,8 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 
     const struct iphdr *ip_hdr = reinterpret_cast<const struct iphdr *>(p);
     INVARIANT(ip_hdr->version == 4,
-	      format("Non IPV4 (was V%d) unimplemented\n") % ip_hdr->version);
+              format("Non IPV4 (was V%d) unimplemented\n")
+              % static_cast<int32_t>(ip_hdr->version));
     int ip_hdrlen = ip_hdr->ihl * 4;
     p += ip_hdrlen;
     INVARIANT(p < pend, "short capture?!\n");
