@@ -20,6 +20,14 @@ using boost::format;
 
 static string str_DataSeries("DataSeries:");
 
+static void eat_args(int n, int &argc, char *argv[])
+{
+    for(int i = n + 1; i < argc; i++) {
+	argv[i - n] = argv[i];
+    }
+    argc -= n;
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -77,10 +85,7 @@ main(int argc, char *argv[])
 	    INVARIANT(select_extent_type != "",
 		      "--select type needs to be non-empty");
 	    select_fields = argv[3];
-	    for(int i=3;i<argc;i++) {
-		argv[i-2] = argv[i];
-	    }
-	    argc -= 2;
+	    eat_args(2, argc, argv);
 	} else if (strcmp(argv[1],"--where")==0) {
 	    INVARIANT(argc > 4, "--where needs two arguments");
 	    INVARIANT(where_extent_type.empty(),
@@ -89,19 +94,13 @@ main(int argc, char *argv[])
 	    INVARIANT(where_extent_type != "",
 		      "--where type needs to be non-empty");
 	    where_expr_str = argv[3];
-	    for(int i=3;i<argc;i++) {
-		argv[i-2] = argv[i];
-	    }
-	    argc -= 2;
+	    eat_args(2, argc, argv);
 	} else if (strncmp(argv[1],"-",1)==0) {
 	    FATAL_ERROR(format("Unknown argument %s\n") % argv[1]);
 	} else {
 	    break;
 	}
-	for(int i=2;i<argc;i++) {
-	    argv[i-1] = argv[i];
-	}
-	--argc;
+	eat_args(1, argc, argv);
     }
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
