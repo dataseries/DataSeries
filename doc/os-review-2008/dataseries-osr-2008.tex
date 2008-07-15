@@ -214,6 +214,36 @@ calculation on the client would further slow the relative performance.
 
 \section{Design}\label{sec:design}
 
+DataSeries is intended to provide streaming access to structured serial
+data. Corresponding
+to the first four properties\footnote{The fifth property, an expressive
+programming interface, is described in Section~\ref{sec:programming}.}
+described in the introduction, DataSeries was designed with the
+following goals in mind. First, it should be very storage
+efficient. Second, it must be efficient to encode, decode and
+interpret the data.  Third, the format should not constrain the
+types of information to be stored. Fourth, the internal data must be
+self-describing, i.e., the names and types of the data stored have to
+be determined by the contents of the file itself, rather than 
+externally.
+
+DataSeries' data model is conceptually very similar to that used by
+relational databases.  Logically, a DataSeries file is composed of an
+ordered sequence of {\it records}, where each record is composed from
+a set of {\it fields}. Each field has a {\it field-type} (e.g.,
+integer, string, double, boolean) and a name. A DataSeries record is
+analogous to a row in a conventional relational database. We call the
+type of a row the {\it extent-type} because an {\it extent} contains a
+collection of rows with the same fields and field-types.
+
+A single DataSeries file comprises a collection of extents
+(potentially with different extent-types), plus a header and
+extent-type extent at the beginning of the file, and an index extent
+and trailer at the end of the file. Figure~\ref{fig:dsorg} shows this
+organization.  The extent-type and index extents are the same as the
+other extents in the file except that their names and extent-types are
+hard-coded in the library.
+
 \begin{figure*}
 % \vspace{-0.6cm}
 \hfil\includegraphics[width=6.5in]{tr-fig/ds-format2.eps}\hfil
@@ -222,9 +252,151 @@ calculation on the client would further slow the relative performance.
 % \vspace{-2mm}
 \end{figure*}
 
+The header on a DataSeries file contains the DataSeries file version,
+and five check values to determine the encoding format for integers
+and doubles.  DataSeries files are always written out using the native
+formats of the system doing the writing. We did this to minimize
+byte-swapping overheads, as usually the architecture reading the files
+is the same as the architecture writing the files.  The library
+transparently does endianness conversions in the rare circumstances
+that this is not true, and also provides a ``repack'' utility for
+explicit conversion.
+
+Immediately following the header is the extent-type extent. Records in
+this extent have a single string-valued field, each of which 
+contains an XML specification that defines the extent-types of all the 
+other extents in the file.  
+
+When reading a DataSeries file, the trailer is read next.  It consists
+of the offset and size (after compression) of the index extent.  The
+offset is used to read the index extent, which has two fields, an
+extent-type and an offset, to allow direct access to extents of a
+single type.  The index and trailer are stored in this order, at the
+end of the file, to enable efficient writing. The writer will often
+not know, a priori, what the final extent sizes will be, so space for
+the index cannot be allocated until after the extents have been
+written.
+
+The data extents themselves consist of a header, followed by the fixed
+size data and the variable sized data.  Both fixed and variable sized
+data may be compressed, using any one of a number of standard
+compression algorithms~\cite{GZIP,BZIP,LZF,LZO}.  The header contains
+metadata about the data in the extent, such as the compressed sizes of
+the fixed and variable data, the number of records in the extent, the
+uncompressed size of the variable length data, the compression mode,
+the extent-type of the extent, and checksums of the extent before and
+after compression to guard against hardware and software errors.
+Checksum validation can be disabled during extent reading to improve
+performance at the cost of reduced reliability.
+
+Each row in the fixed size data is stored as a structure, with the
+fields sorted by size and with padding between sizes.  In particular,
+in each row, all of the boolean fields are packed, then all the byte
+fields, padding is added to align to a 4 byte boundary, and then the 4
+byte integer and variable offset pointers are packed.  Lastly, the
+structure is padded to an 8 byte boundary and the 8 byte integer and
+double fields are packed. When uncompressed, this layout allows for
+very efficient access to data: every field can be accessed through a
+pointer to the row, using a single addition and deference.  This
+access method achieves goal two -- efficient decoding and
+interpretation of the data.
+
+DataSeries supports a number of options that control either the
+interpretation of a field (e.g. can it be null), or the way the field
+is represented prior to compression (\em{packed}, e.g. relative to
+another field).  DataSeries also has some options for representation
+of entire extents (e.g. ordering of the fields in a record).  The
+packing options are handled transparently by DataSeries, the
+interpretation options are checked against the field accessors.
+Detailed explanation of the options can be found in the DataSeries
+technical report~\cite{DSTechnicalReportSnapshot}.
+
 \section{Programming}\label{sec:programming}
 
-...
+We introduce programming in DataSeries by means of a code sample,
+which demonstrates how to read and process a DataSeries file.  
+
+\subsection{Example analysis module}
+
+The following example is extracted from the block I/O statistics
+program used to perform the comparison with MySQL in
+Section~\ref{sec:results}.  This is a very simple example that happens
+to be equivalent to running {\tt dsstatgroupby Trace::BlockIO::HPUX
+basic 'leave\_driver - enter\_driver' group by lvol\_number from
+files...}
+
+{ \footnotesize
+\begin{verbatim}
+
+// RowAnalysisModule handles the details of 
+// getting each extent and iterating over the 
+// rows using the ExtentSeries series.
+class LatencyAnalysis : public RowAnalysis {
+public:
+    // The fields we will access in each row. 
+    // In the real implementation, the field 
+    // names are constructor arguments so that 
+    // the module can operate on any fields of
+    // the appropriate type.
+    DoubleField start(series, "enter_driver");
+    DoubleField end(series, "leave_driver");
+    Int32Field group(series, "lvol_number");
+
+    // Hash table for group-by operation
+    typedef HashMap<int32, Stats *> mytableT;
+    mytableT mystats;
+
+    // This function is called for each row
+    virtual void processRow() {
+        // Stats class provides simple statistics
+        // val method returns a field value
+        Stats *stat = mystats[group.val()];
+        if (stat == NULL) {
+	    // make it easy to calculate 
+	    // other stat types.
+            stat = new Stats();
+            mystats[group.val()] = stat;
+        }
+        stat->add(end.val() - start.val());
+    }
+
+    virtual void printResult() {
+        cout << "lvol_num, mean, stddev\n";
+        for_each(mytableT::iterator i, mystats) {
+            cout << boost::format("%d, %.6g, %.6g\n") 
+                % i->first % i->second->mean() 
+                % i->second->stddev();
+        }
+    }
+};
+
+int main(int argc, char *argv[]) {
+    // This defines the type of extents we want to 
+    // process. We handle HPUX Block IO traces.
+    TypeIndexModule source("Trace::BlockIO::HPUX");
+
+    // Add in all the files to the source module.
+    for(int i=1; i<argc; ++i) {
+        source.addSource(argv[i]);
+    }
+
+    LatencyAnalysis analysis(source);
+
+    // A real program would stack a whole 
+    // collection of analysis in series.
+
+    // Read all extents, delete after processing.
+    analysis.getAndDelete();
+    
+    analysis.printResult();
+    return 0;
+}
+
+\end{verbatim}
+}
+
+There are also lots of modules to help; see the TR.  Mention
+dstypes2cxx here also.
 
 \section{Performance Results}\label{sec:results}
 

@@ -253,6 +253,12 @@ ExtentType::parseXML(const string &xmldesc)
     INVARIANT(ret.name.length() <= 255,
 	      "invalid extent type name, max of 255 characters allowed");
 
+    /// ************************************************************
+    /// If you add in new packing options, you should update the TR to
+    /// describe the options and any experiments that were used to
+    /// evaluate them.
+    /// ************************************************************
+
     ret.pack_null_compact = CompactNo;
     {
 	string pack_option = strGetXMLProp(cur, "pack_null_compact");

@@ -1,10 +1,10 @@
 \section{Design}\label{sec:design}
 
-\DataSeries{} is intended to provide streaming access to structured serial
+DataSeries is intended to provide streaming access to structured serial
 data. Corresponding
 to the first four properties\footnote{The fifth property, an expressive
 programming interface, is described in Section~\ref{sec:programming}.}
-described in the introduction, \DataSeries{} was designed with the
+described in the introduction, DataSeries was designed with the
 following goals in mind. First, it should be very storage
 efficient. Second, it must be efficient to encode, decode and
 interpret the data.  Third, the format should not constrain the
@@ -18,23 +18,23 @@ externally.
 \begin{figure*}
 % \vspace{-0.6cm}
 \hfil\includegraphics[width=6.5in]{fig/ds-format2.eps}\hfil
-\caption{Internal structure of a \DataSeries{} file. }
+\caption{Internal structure of a DataSeries file. }
 \label{fig:dsorg}
 % \vspace{-2mm}
 \end{figure*}
 
-\DataSeries{}' data model is conceptually very similar to that used
+DataSeries' data model is conceptually very similar to that used
 by relational databases. 
-Logically, a \DataSeries{} file is composed of an ordered sequence of
+Logically, a DataSeries file is composed of an ordered sequence of
 {\it records}, where each record is composed from a set of {\it
 fields}. Each field has a {\it field-type} (e.g., integer, string, double,
-boolean) and a name. A \DataSeries{} record is analogous to a row in a
+boolean) and a name. A DataSeries record is analogous to a row in a
 conventional relational database. We call the type of a row 
 the {\it extent-type} because 
 an {\it extent} contains a collection of rows with the same fields and 
 field-types.
 
-A single \DataSeries{} file comprises a
+A single DataSeries file comprises a
 collection of extents (potentially with different extent-types), plus a
 header and extent-type extent at the beginning of the file, and an index extent and
 trailer at the end of the file. Figure~\ref{fig:dsorg} shows
@@ -42,10 +42,10 @@ this organization.  The extent-type and index extents are the same as the
 other extents in the file except that their names and extent-types are 
 hard-coded in the library.
 
-The header on a \DataSeries{} file contains the \DataSeries{} file version,
+The header on a DataSeries file contains the DataSeries file version,
 and five check values 
 to determine the encoding format for integers and doubles.
-\DataSeries{} files
+DataSeries files
 are always written out using the native formats of the system doing
 the writing. We did this to minimize byte-swapping overheads,
 as usually the architecture reading the files is the same 
@@ -58,22 +58,24 @@ Immediately following the header is the extent-type extent. Records in
 this extent have a single string-valued field, each of which 
 contains an XML specification that defines the extent-types of all the 
 other extents in the file.  
-%% INCLUDE IN EXTENDED VERSION
-%% Figure~\ref{fig:xml} shows an example of the XML used to describe an extent-type.
-%% \begin{figure}
-%%  \vspace{-0.6cm}
-%% \hfil
-%% \includegraphics[width=2.8in]{fig/xml.eps}
-%% \hfil
-%% \caption{Example XML used to describe extent types, as described in
-%% Section~\ref{sec:structure}. Section~\ref{sec:extenttype} discusses
-%% extent typing while Section~\ref{sec:options} describes the opt\_* and
-%% pack\_* options. }
-%% \label{fig:xml}
-%% % \vspace{-2mm}
-%% \end{figure}
 
-When reading a \DataSeries{} file, the trailer is read next.  It consists
+% TODO: get the xml figure example working again.
+
+% Figure~\ref{fig:xml} shows an example of the XML used to describe an extent-type.
+% \begin{figure}
+%  \vspace{-0.6cm}
+% \hfil
+% \includegraphics[width=2.8in]{fig/xml.eps}
+% \hfil
+% \caption{Example XML used to describe extent types, as described in
+% Section~\ref{sec:structure}. Section~\ref{sec:extenttype} discusses
+% extent typing while Section~\ref{sec:options} describes the opt\_* and
+% pack\_* options. }
+% \label{fig:xml}
+% % \vspace{-2mm}
+% \end{figure}
+
+When reading a DataSeries file, the trailer is read next.  It consists
 of the offset and size (after compression) of the index extent.  The
 offset is used to read the index extent, which has two fields, an
 extent-type and an offset, to allow direct access to extents of a single type.
@@ -110,7 +112,7 @@ interpretation of the data.
 
 \subsection{Extent types and options}\label{sec:extenttype}
 
-An extent-type in \DataSeries{} defines the field-type of all the fields in a
+An extent-type in DataSeries defines the field-type of all the fields in a
 related group of records.  Every extent-type has a name; this is
 intended to be a general description of the record.  We have found that
 using a naming convention that encodes type and hierarchical information,
@@ -148,18 +150,7 @@ work on version 2.0.
 
 \subsection{Data types}
 
-%There a number of different data types supported by \DataSeries{}.  In
-%particular these are:
-%
-%\begin{enumerate}
-%\item bool -- 0 or 1
-%\item byte -- 0 ... 255
-%\item int32 -- signed 32bit integer
-%\item int64 -- signed 64bit integer
-%\item double -- IEEE 64 bit floating point
-%\item variable32 -- variable length data up to $2^{31}$ bytes.\footnote{This could be changed to $2^{32}$ bytes by use of unsigned instead of signed.} This is typically used for recording string values.
-%\end{enumerate}
-\DataSeries{} currently supports six data types:
+DataSeries currently supports six data types:
 \textbf{bool} (0 or 1),
 \textbf{byte} (0-255),
 \textbf{int32} (signed 32bit integer),
@@ -169,7 +160,7 @@ work on version 2.0.
 % This is typically used for recording string values.
 
 Supporting additional data types is a straightforward extension that
-does not require changing the version of \DataSeries{}.  In practice we
+does not require changing the version of DataSeries.  In practice we
 have found these data types to be sufficient.
 % for the many types of data we have stored.  
 %Section~\ref{sec:lessons} discusses some possible extensions.
@@ -178,14 +169,45 @@ have found these data types to be sufficient.
 
 In addition to the types that are supported, there are a number of
 options that can be applied to the data types.  Options are either of
-the form opt\_*, or pack\_*; the former extend or change the values available
-to applications, and require applications to
-understand the option, whereas the latter form are transparent
-to applications, but enable far higher compression than would otherwise
-be available. Options include:
-% Currently users have to specify packing options.
-%Section~\ref{sec:lessons} discusses the possibility of auto-inferring 
-%the best options.
+the form opt\_*, or pack\_*; the former extend or change the values
+available to applications, and require applications to understand the
+option, whereas the latter form are transparent to applications, but
+enable higher compression than would otherwise be available. Options
+are applied to either an entire extent or to individual fields.  One
+possible direction for future work would be automatically inferring
+the ``best'' packing options.
+
+\subsubsection{Extent-level options}
+
+Extent level options control the way the entire extent is stored.
+Currently there are three options here:
+
+\begin{enumerate}
+
+\item pack\_null\_compact: Should we remove all of the nullable fields
+before running the results through compression.  For records with many
+nullable values this can greatly increase the compression ratio at a
+cost of additional computation time.  See section~\ref{sec:ellard} for
+an evaluation of this option.
+
+\item pack\_pad\_record: This option controls how the record is
+padded.  Originally all records were padded to 8 bytes.  For records
+with only 4 byte or smaller fields, this wastes some amount of space,
+and hence the option to pad to the maximum column size was added.  See
+section~\ref{sec:world-cup-1998} for an evaluation of this option.
+
+\item pack\_field\_ordering: This option controls how the fields are
+ordered within a record.  It turns out some files compress better with
+different field orderings.  See section~\ref{sec:world-cup-1998} for
+an evaluation of this option.
+
+\end{enumerate}
+
+\subsection{Field-level Options}
+
+Field-level options control the meaning of individual fields (for
+opt\_* options), or how that field is represented before compression
+(for pack\_* options).  Options include:
 
 \begin{enumerate}
 
@@ -219,23 +241,17 @@ This option improves compression by removing the pseudo-random bits in the low
 bits of doubles by scaling and rounding the double.  
 
 \item pack\_relative={\it field-name}: Specifies that this field
-should be packed relative to another field.  
-% INCLUDE IN EXTENDED VERSION
-%In particular it means
-%that if {\it field-name} is the same as the current field's name, the
-%previous row's value will be subtracted from the current row's value
-%before the data is compressed, and otherwise from the value of the
-%other field in the same row.  This feature is only supported for
-%int32, int64, and double fields.  For double fields it is required
-%that the fields be packed with pack\_scale as well to eliminate
-%precision issues. 
-%This option is useful, for example, in trace data
-%which contains time stamps.  If stored as a double, these timestamps
-%effectively have a lot of random bits until they are delta encoded.
-This delta encoding option is useful 
-for compressing time stamps and other values which may be large but are
-usually close to the previous value in the same field or the value of a
-different field in the same row.
+should be packed relative to another field.  This delta encoding
+option is useful for compressing time stamps and other values which
+may be large but are usually close to the previous value in the same
+field or the value of a different field in the same row.  In
+particular it means that if {\it field-name} is the same as the
+current field's name, the previous row's value will be subtracted from
+the current row's value before the data is compressed, and otherwise
+from the value of the other field in the same row.  This feature is
+only supported for int32, int64, and double fields.  For double fields
+it is required that the fields be packed with pack\_scale as well to
+eliminate precision issues.
 
 \item pack\_unique: Specifies that each unique variable32 value
 should only be packed once within that extent.  This option applies across all variable32
@@ -248,9 +264,9 @@ compression ratio because it entirely removes duplicate data within that extent
 
 \subsection{Design summary}
 
-The \DataSeries{} file format was designed to allow for flexibility
+The DataSeries file format was designed to allow for flexibility
 (through the use of a self-contained and extensible type description
 for extents) and performance (through extensive use of compression and
 a data layout that allows for direct access to data values). 
 Section~\ref{sec:results} describes experiments using
-\DataSeries{} that quantitatively validate these claims.
+DataSeries that quantitatively validate these claims.

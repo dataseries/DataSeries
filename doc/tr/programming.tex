@@ -1,43 +1,36 @@
 \section{Programming}\label{sec:programming}
 
-We introduce programming in \DataSeries{} by means of a code sample,
-which demonstrates how to read and process a \DataSeries{} file.  
+We introduce programming in DataSeries by means of a code sample,
+which demonstrates how to read and process a DataSeries file.  
 %For space reasons, we
-%elide an example of creating a \DataSeries{} file.  In both operations
+%elide an example of creating a DataSeries file.  In both operations
 
-There are two key concepts in the C++ API provided by \DataSeries{}. The
+There are two key concepts in the C++ API provided by DataSeries. The
 first is that of an \textit{ExtentSeries}, which is an iterator over
-the rows in at least one extent-type-compatible 
-extent.  When reading a
-file, the ExtentSeries is initialized with the extent, each row is
+the rows in at least one extent-type-compatible extent.  When reading
+a file, the ExtentSeries is initialized with the extent, each row is
 iterated over, and then the series is reset to use the next extent.
-The second key concept is that of a \textit{module}, which
-provides functionality similar to the modules in
-River~\cite{river99}, and the iterator model~\cite{graefeQueryProcessing93} in relational
-databases.  With \DataSeries{}, each module processes
-an extent at a time, and iterates over each of the rows in the extent.
-%%  INCLUDE IN EXTENDED VERSION
-%%   In the standard iterator model, a tree of modules are
-%% created and each module provides a {\tt getNext()} operation that
-%% reads the next row from that module.  This model is inefficient as
-%% each row is handled as a separate data structure.  
-%% The bulk iterator
-%% model amortizes the cost of reading each row 
-%% by collecting multiple rows together.  The
-%% row analysis module used above then calls the processRow() function on
-%% each row.
-For efficiency reasons, the transfer of extents
-between modules is a transfer of ownership, i.e., the module that returns an
-extent must not continue to access it, although we are considering
-relaxing this constraint in the future.  
-%% Each module can iterate
-%% over the rows in the extent by putting it into a series and
-%% using the series iterator to select the row and the fields to access
-%% rows in that series.
+The second key concept is that of a \textit{module}, which provides
+functionality similar to the modules in River~\cite{river99}, and the
+iterator model~\cite{graefeQueryProcessing93} in relational databases.
+With DataSeries, each module processes an extent at a time, and
+iterates over each of the rows in the extent.  In the standard
+iterator model, a tree of modules are created and each module provides
+a {\tt getNext()} operation that reads the next row from that module.
+This model is inefficient as each row is handled as a separate data
+structure.  The bulk iterator model amortizes the cost of reading each
+row by collecting multiple rows together.  The row analysis module
+used above then calls the processRow() function on each row.  For
+efficiency reasons, the transfer of extents between modules is a
+transfer of ownership, i.e., the module that returns an extent must
+not continue to access it, although we are considering relaxing this
+constraint in the future.  Each module can iterate over the rows in
+the extent by putting it into a series and using the series iterator
+to select the row and the fields to access rows in that series.
 
 \subsection{Built-in modules}
 
-\DataSeries{} includes a number of built in general modules, including:
+DataSeries includes a number of built in general modules, including:
 \begin{enumerate} 
 
 \item SourceModule: generic base class for modules that read from 
@@ -56,26 +49,27 @@ specified columns, and stores them in a file to be read by the
 MinMaxIndexModule.  This module is used to analyze sub-sets of a larger
 dataset, for example one month out of a multi-year dataset.
 
-%%    \item FilterModule: filters for extents matching a
-%%  particular type, mostly deprecated in preference to using a
-%%  TypeIndexModule.
+  \item FilterModule: filters for extents matching a
+particular type, mostly deprecated in preference to using a
+TypeIndexModule.
 
   \item OutputModule: A module for generating new extents.  This
 module tracks the size of the current extent and automatically flushes
 the extent when it exceeds a specified size.  It can optionally parallelize
 compression for improved performance.
 
-  \item \DS{}toTextModule: A module that converts the input extents to
+  \item DStoTextModule: A module that converts the input extents to
 text.  It allows the user to specify the output format to allow
 matching existing output programs.  An example use is
-converting \DataSeries{} files to CSV.
+converting DataSeries files to CSV.
 
   \item PrefetchBufferModule: A module that allows the decompression
 and analysis steps to proceed in parallel, increasing efficiency on
-multi-core and SMP systems.  While source modules
-already overlap the operations of reading from disk,  a PrefetchBufferModule 
-can also be placed between analysis modules so that different analyses
-can run in parallel.
+multi-core and SMP systems.  While source modules already overlap the
+operations of reading from disk, a PrefetchBufferModule can also be
+placed between analysis modules so that different analyses can run in
+parallel.  Mostly deprecated except for the use of parallelizing
+analysis as the input modules now read in paralle.
 
   \item SequenceModule: A module that stores a sequence of modules in
 a pipeline.  This is used by analysis programs to dynamically
@@ -88,15 +82,16 @@ rows in each extent, and calling preparation and finalization
 functions.  Using it is slightly less efficient than duplicating the
 iteration code because of the virtual function call for each row.
 
-  \item \DS{}StatGroupByModule: For each row, calculates an expression over
-constants and the fields in the row.  The expression results are used to
-calculate statistics such as means, quantiles, or sequences.  A separate 
-field is used to group the statistics.  A \DS{}StatGroupByModule can be thought of as a very 
-simplified SQL select statement.
+  \item DSStatGroupByModule: For each row, calculates an expression
+over constants and the fields in the row.  The expression results are
+used to calculate statistics such as means, quantiles, or sequences.
+A separate field is used to group the statistics.  A
+DSStatGroupByModule can be thought of as a very simplified SQL select
+statement.
 
 \end{enumerate}
 
-% \DataSeries{} includes a number of general modules, including
+% DataSeries includes a number of general modules, including
 % \textbf{SourceModule} is generic base class for modules that read from a
 % file. This module also tracks statistics (e.g., number of rows read).
 % \textbf{TypeIndexModule} reads from an input source and
@@ -124,7 +119,7 @@ simplified SQL select statement.
 % \textbf{DSStatGroupByModule} can calculate a variety of statistics over
 % some expression as grouped by some other specified column.
 
-The \DataSeries{} source distribution also contains many
+The DataSeries source distribution also contains many
 analysis modules present for analyzing specific datatypes, e.g., NFS, LSF
 and logical/physical disk volume traces.
 % the modules present in ipdsanalysis,
@@ -133,12 +128,12 @@ and logical/physical disk volume traces.
 Most analysis programs will run a sequence of analysis modules on the
 series of extents being read.  More sophisticated analysis programs
 can join two series of extents to form a new series for further
-analysis. Examples of this can be found in the \DataSeries{} source distribution.
+analysis. Examples of this can be found in the DataSeries source distribution.
 %, potentially after running a number of analysis on the two
 %input series.  Our NFS analysis has precisely that setup.  
 % More sophisticated 
 %analysis 
-% examples can be found in the \DataSeries{} source distribution.
+% examples can be found in the DataSeries source distribution.
 
 %INCLUDE IN EXTENDED VERSION
 %Instead of using a TypeIndexModule, a program may use a
@@ -206,13 +201,10 @@ main(int argc, char *argv[])
         source.addSource(argv[i]);
     }
 
-    // Parallel decompress and stats, 64MiB buffer
-    PrefetchBuffer prefetch(source, 64*1024*1024);
-
-    LatencyAnalysis analysis(prefetch);
+    LatencyAnalysis analysis(source);
 
     // Read all extents, delete after processing.
-    SSDSeriesModule::getAndDelete(analysis);
+    analysis.getAndDelete();
     
     analysis.printResult();
     return 0;
