@@ -136,3 +136,15 @@ IF(WITH_INSTALLED_RPATH)
   # which point to directories outside the build tree to the install RPATH
   SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 ENDIF(WITH_INSTALLED_RPATH)
+
+#### latex Documentation
+
+INCLUDE(LintelCMakeUtil)
+
+LINTEL_LATEX_CONFIG()
+
+IF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
+    MESSAGE("WITH_LINTEL_LATEX_REBUILD enabled, but lintel-latex-rebuild not found")
+    MESSAGE("  latex-documentation will remain un-built")
+ENDIF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
+
