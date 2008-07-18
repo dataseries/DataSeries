@@ -178,7 +178,8 @@ analagous to a database table.
 A single DataSeries file comprises a collection of extents
 (potentially with different extent-types), plus a header and
 extent-type extent at the beginning of the file, and an index extent
-and trailer at the end of the file. The header on a DataSeries file contains the DataSeries
+and trailer at the end of the file. The header on a DataSeries file 
+contains the DataSeries
 file version, and endianness encodings of the data types.  The
 extent-type extent contains records with a single string-valued field,
 each of which contains an XML specification that defines the
@@ -239,25 +240,28 @@ the original files when both were compressed using gzip.  Second, we
 wrote an analysis program that implemented the first three examples in
 the README that came with the tools.  We found that our analysis
 program ran about 76x faster on those data files than the text
-analysis program that came with the distribution.  
-We also found that if we utilized lzo compression, which decompresses
-more quickly than gzip,
-our analysis program
-ran about 107x faster, in exchange for slightly larger (1.14x) data files.
+analysis program that came with the distribution.  We also found that
+if we utilized lzo compression, which decompresses more quickly than
+gzip, our analysis program ran about 107x faster, in exchange for
+slightly larger (1.14x) data files.  This also illustrates how
+DataSeries can be optimized for a given purpose (e.g. greater
+compression for archival storage vs. faster decompression for more
+efficient analysis). The detailed experimental setup can be found in
+the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
 
-\subsubsection{Performance comparison}
-
-For the performance comparison, we implemented a subset of the
-analysis performed by Ellard's \texttt{nfsscan} program. In particular one
-that can perform the first three of the five example questions
-presented in the EXAMPLES file that comes with Ellard's trace tools.
-This analysis turned out to be very simple, it is just counting the
-number of requests performed of each client of each type.  We chose to
-implement this over the integer operation id, rather than the string,
-and so wrote a short table that converted NFSv2 and NFSv3 operation
-id's into a common space. The detailed experimental setup can be found in the DataSeries
-technical report~\cite{DSTechnicalReportSnapshot}.
+% \subsubsection{Performance comparison}
+%
+% For the performance comparison, we implemented a subset of the
+% analysis performed by Ellard's \texttt{nfsscan} program. In particular one
+% that can perform the first three of the five example questions
+% presented in the EXAMPLES file that comes with Ellard's trace tools.
+% This analysis turned out to be very simple, it is just counting the
+% number of requests performed of each client of each type.  We chose to
+% implement this over the integer operation id, rather than the string,
+% and so wrote a short table that converted NFSv2 and NFSv3 operation
+% id's into a common space. The detailed experimental setup can be found in the DataSeries
+% technical report~\cite{DSTechnicalReportSnapshot}.
 
 \begin{table*}
 \centering
@@ -281,7 +285,7 @@ ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \
 operating on a variety of input files.  The analysis was run over the
 anon-home04-011118-* files.  For the ellard \texttt{nfsscan} program
 the text files were compressed with either gz or bz2.  For the
-DataSeries \texttt{ellardanalysis} program, the dataseries files were
+DataSeries \texttt{ellardanalysis} program, the DataSeries files were
 compressed with either gz, bz2, or lzo, and used various extent sizes
 as specified.  CPU and wall time are both relative to ellard-gz.}
 
@@ -297,16 +301,24 @@ The substantial increase in system time for dealing
 with large extents for bzip2 is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
 mmap/munmap calls to the kernel and hence a substantial about of page
-zeroing in the kernel.  The detailed measurements can be found 
-in the DataSeries distribution in \texttt{doc/tr/ellard-details.tex}.
+zeroing in the kernel.  
+% The detailed measurements can be found 
+% in the DataSeries distribution in \texttt{doc/tr/ellard-details.tex}.
 
+\subsection{Other results}\label{sec:otherresults}
+
+To be written
 
 \section{Conclusions}\label{sec:conclusions}
 
-We have described \DataSeries{}, a data format that enables the efficient
-and flexible storage of structured serial data. This type of data is
-used in numerous applications in all areas of computing
-and science.
+We have described \DataSeries{}, a data format that enables the
+efficient and flexible storage of structured serial data. This type of
+data is used in numerous applications in all areas of computing and
+science. We have identified the properties required for a system that
+processes such data, and shown through a series of experiements and
+comparisons to other systems that DataSeries meets satisfies these
+properties. In particular, DataSeries offers significant performance
+and storage efficiency benefits.
 
 \bibliographystyle{abbrv}
 {\small
