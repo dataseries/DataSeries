@@ -1,6 +1,9 @@
 \documentclass{acm_proc_article-sp}
 
 \begin{document}
+% replace the name to unblind
+\newcommand{\DataSeries}{DataSeries}
+\newcommand{\DS}{DS}
 
 \title{DataSeries: an efficient, flexible data format for structured serial data}
 % Pretend we have one author, minimizes the space we waste on that.
@@ -13,34 +16,6 @@ Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
 }
 
 \maketitle
-\begin{abstract}
-
-DataSeries is an on-disk data format, run-time library, and set of
-tools that is optimized for analyzing \textit{structured serial data},
-which we define as an ordered series of records that share a common
-structure.  This type of data commonly occurs as trace data in
-computer systems, but since the format is essentially ordered RDBMS
-tables, the need to maintain and analyze such data occurs in a large
-number of scientific fields.
-
-DataSeries has been optimized to be extremely space and CPU efficient,
-while providing the flexibility to accommodate a very wide range of
-record structures. We demonstrate the flexibility by describing the
-many different types of data we have stored and analyzed in
-DataSeries.  We examine the efficiency of DataSeries on a subset of
-these types and demonstrate three improvements: 1) processing rates up
-to two orders of magnitude better than existing formats; 2) ability to
-store and analyze traces with hundreds of billions of records on
-low-end servers; 3) compression ratios somewhat better than existing,
-specialized formats when using the same generic compression algorithm,
-and much better when compared to formats without built-in
-compression. 
-
-Finally, DataSeries software is open source, enabling others to take
-advantage of these benefits.
-
-\end{abstract}
-
 % % A category with the (minimum) three required fields
 % \category{H.4}{Information Systems Applications}{Miscellaneous}
 % %A category including the fourth, optional field follows...
@@ -49,8 +24,15 @@ advantage of these benefits.
 % \terms{Structured serial data}
 
 % \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
+\section{Introduction}\label{sec:intro}
 
-\section{Introduction}
+DataSeries is an on-disk data format, run-time library, and set of
+tools that is optimized for analyzing \textit{structured serial data},
+which we define as an ordered series of records that share a common
+structure.  This type of data commonly occurs as trace data in
+computer systems, but since the format is essentially ordered RDBMS
+tables, the need to maintain and analyze such data occurs in a large
+number of scientific fields.
 
 Traces, recordings and measurements taken from computer systems,
 networks and scientific infrastructure are vitally important for a
@@ -64,10 +46,7 @@ extremely useful for fault-finding, auditing and debugging purposes
 ~\cite{DebugRef}. Traces composed of failure data have been used to
 determine system reliability~\cite{ReliabilityRef, Schroeder07,
 Pinheiro07}. Trend analyses of performance information is a core
-operation of various management tools~\cite{MgmtRef}. Specific to the
-area of I/O and storage systems alone, we found that almost 60\% of
-papers published in the File and Storage Technologies (FAST)
-conferences have used traces of one sort or another.  Scientific and
+operation of various management tools~\cite{MgmtRef}. Scientific and
 medical instrumentation can also generate large amounts of
 data~\cite{SciRef}, which also needs to be stored, filtered and
 analyzed.
@@ -79,39 +58,7 @@ variables). Structured serial data has four defining characteristics:
 its structure is record-oriented; it is typically written only once,
 not modified afterward, and is read many times; it is usually ordered
 in some manner, e.g., chronologically; and it is typically read in a
-sequential manner.  Traditionally, researchers and developers have
-accomplished the tasks of collecting, storing, and analyzing this type
-of data using formats, libraries and software which are customized to
-the particular task at hand.  Unfortunately, such approaches
-significantly limit both flexibility and reusability, and often
-performance.  For instance, if a binary format is used, it may be
-difficult to add new items of information or remove obsolete
-information.  More flexible formats (e.g., text or XML) are not
-amenable to efficient analysis or storage.  Traditional databases
-generally store data without compression, requiring large amounts of
-disk space for storage, and are typically not optimized for the
-specific types of processing used on structured serial data.  One of
-the key contributions of this work is the specific storage format and
-optimizations that make it possible to very efficiently store and
-analyze this type of data, without requiring excessive amounts of disk
-storage or computational resources.
-
-Another, often overlooked advantage of having a one-size-fits-all
-trace format is the ease of use provided in data analysis. In our own
-work, we have combined disparate trace types (block level I/O, process
-accounting, system call, NFS, batch scheduler, and system performance
-traces) in various combinations. Having a single software system and
-trace format that can work with each of these trace types through
-merge and analysis operations greatly facilitates the ease of
-analysis. A related advantage is scientific; reproducibility is
-enhanced and interpretation is simplified.  The authors have
-experienced, both personally and anecdotally, the difficulty of
-reproducing results with ``old'' trace files and software (often just
-finding software and getting it to compile can be extremely
-problematic). We observe that of the 101 papers published in the
-history of FAST, 57 used traces in some way; the traces used in these
-papers were of at least 45 different formats.  Several papers even
-used 4-5 different types (e.g.,~\cite{arc03, ellard03}).
+sequential manner.  
 
 There are five key properties that are desired of a data format
 and analysis system for structured serial data:
@@ -171,8 +118,7 @@ The remainder of this paper is organized as follows.
 Section~\ref{sec:related} describes the strengths and weaknesses of
 existing storage technologies relative to DataSeries.
 Section~\ref{sec:design} describes the design of DataSeries, including
-on-disk and in-memory formats.  Section~\ref{sec:programming}
-describes the programming interface for DataSeries.
+on-disk and in-memory formats.
 Section~\ref{sec:results} presents empirical and benchmark results
 from our use of DataSeries to illustrate and quantify the benefits of
 DataSeries.  Section~\ref{sec:discussion} describes our experiences
@@ -197,35 +143,26 @@ they fail to achieve property 1, and can fail property two by multiple
 orders of magnitude.  As we show in our results even very tuned CSV
 implementations can only get to within 2-7$\times$ the
 access-efficiency of DataSeries, and x-y$\times$ for the storage
-efficiency.  {\bf TODO: need to re-do these experiments at least to
-measure the file sizes, and potentially with Tfrac text files,
-although I suspect people would use sec.usec in a block I/O trace}
+efficiency.  
+%{\bf TODO: need to re-do these experiments at least to
+%measure the file sizes, and potentially with Tfrac text files,
+%although I suspect people would use sec.usec in a block I/O trace}
 
 Relational databases achieve properties 3, 4, and 5. RDBMS's were
 designed to handle updates, so do very limited compression drastically
 hurting their storage efficiency (property 1).  Our results show
 $>$10x improvement on storage efficiency for DataSeries over
-MySQL. {\bf TODO: check the exact sizes, should be around there.}
+MySQL. 
+%{\bf TODO: check the exact sizes, should be around there.}
 Similarly, the generality of SQL can hurt it.  Even for fairly simple
 queries running entirely in the database, DataSeries runs 2-7$\times$
-faster than MySQL. {\bf TODO: re-do these numbers with parallel
-decompression, etc.}  Retrieving the data for a more complicated
+faster than MySQL. 
+%{\bf TODO: re-do these numbers with parallel
+%decompression, etc.}  
+Retrieving the data for a more complicated
 calculation on the client would further slow the relative performance.
 
 \section{Design}\label{sec:design}
-
-DataSeries is intended to provide streaming access to structured serial
-data. Corresponding
-to the first four properties\footnote{The fifth property, an expressive
-programming interface, is described in Section~\ref{sec:programming}.}
-described in the introduction, DataSeries was designed with the
-following goals in mind. First, it should be very storage
-efficient. Second, it must be efficient to encode, decode and
-interpret the data.  Third, the format should not constrain the
-types of information to be stored. Fourth, the internal data must be
-self-describing, i.e., the names and types of the data stored have to
-be determined by the contents of the file itself, rather than 
-externally.
 
 DataSeries' data model is conceptually very similar to that used by
 relational databases.  Logically, a DataSeries file is composed of an
@@ -240,9 +177,15 @@ A single DataSeries file comprises a collection of extents
 (potentially with different extent-types), plus a header and
 extent-type extent at the beginning of the file, and an index extent
 and trailer at the end of the file. Figure~\ref{fig:dsorg} shows this
-organization.  The extent-type and index extents are the same as the
-other extents in the file except that their names and extent-types are
-hard-coded in the library.
+organization.  The header on a DataSeries file contains the DataSeries
+file version, and endianness encodings of the data types.  The
+extent-type extent contains records with a single string-valued field,
+each of which contains an XML specification that defines the
+extent-types of all the other extents in the file. The trailer
+consists of the offset and size (after compression) of the index
+extent.  The offset is used to read the index extent, which has two
+fields, an extent-type and an offset, to allow direct access to
+extents of a single type.
 
 \begin{figure*}
 % \vspace{-0.6cm}
@@ -251,31 +194,6 @@ hard-coded in the library.
 \label{fig:dsorg}
 % \vspace{-2mm}
 \end{figure*}
-
-The header on a DataSeries file contains the DataSeries file version,
-and five check values to determine the encoding format for integers
-and doubles.  DataSeries files are always written out using the native
-formats of the system doing the writing. We did this to minimize
-byte-swapping overheads, as usually the architecture reading the files
-is the same as the architecture writing the files.  The library
-transparently does endianness conversions in the rare circumstances
-that this is not true, and also provides a ``repack'' utility for
-explicit conversion.
-
-Immediately following the header is the extent-type extent. Records in
-this extent have a single string-valued field, each of which 
-contains an XML specification that defines the extent-types of all the 
-other extents in the file.  
-
-When reading a DataSeries file, the trailer is read next.  It consists
-of the offset and size (after compression) of the index extent.  The
-offset is used to read the index extent, which has two fields, an
-extent-type and an offset, to allow direct access to extents of a
-single type.  The index and trailer are stored in this order, at the
-end of the file, to enable efficient writing. The writer will often
-not know, a priori, what the final extent sizes will be, so space for
-the index cannot be allocated until after the extents have been
-written.
 
 The data extents themselves consist of a header, followed by the fixed
 size data and the variable sized data.  Both fixed and variable sized
@@ -289,21 +207,9 @@ after compression to guard against hardware and software errors.
 Checksum validation can be disabled during extent reading to improve
 performance at the cost of reduced reliability.
 
-Each row in the fixed size data is stored as a structure, with the
-fields sorted by size and with padding between sizes.  In particular,
-in each row, all of the boolean fields are packed, then all the byte
-fields, padding is added to align to a 4 byte boundary, and then the 4
-byte integer and variable offset pointers are packed.  Lastly, the
-structure is padded to an 8 byte boundary and the 8 byte integer and
-double fields are packed. When uncompressed, this layout allows for
-very efficient access to data: every field can be accessed through a
-pointer to the row, using a single addition and deference.  This
-access method achieves goal two -- efficient decoding and
-interpretation of the data.
-
 DataSeries supports a number of options that control either the
 interpretation of a field (e.g. can it be null), or the way the field
-is represented prior to compression (\em{packed}, e.g. relative to
+is represented prior to compression ({\em packed}, e.g. relative to
 another field).  DataSeries also has some options for representation
 of entire extents (e.g. ordering of the fields in a record).  The
 packing options are handled transparently by DataSeries, the
@@ -311,96 +217,173 @@ interpretation options are checked against the field accessors.
 Detailed explanation of the options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
-\section{Programming}\label{sec:programming}
-
-We introduce programming in DataSeries by means of a code sample,
-which demonstrates how to read and process a DataSeries file.  
-
-\subsection{Example analysis module}
-
-The following example is extracted from the block I/O statistics
-program used to perform the comparison with MySQL in
-Section~\ref{sec:results}.  This is a very simple example that happens
-to be equivalent to running {\tt dsstatgroupby Trace::BlockIO::HPUX
-basic 'leave\_driver - enter\_driver' group by lvol\_number from
-files...}
-
-{ \footnotesize
-\begin{verbatim}
-
-// RowAnalysisModule handles the details of 
-// getting each extent and iterating over the 
-// rows using the ExtentSeries series.
-class LatencyAnalysis : public RowAnalysis {
-public:
-    // The fields we will access in each row. 
-    // In the real implementation, the field 
-    // names are constructor arguments so that 
-    // the module can operate on any fields of
-    // the appropriate type.
-    DoubleField start(series, "enter_driver");
-    DoubleField end(series, "leave_driver");
-    Int32Field group(series, "lvol_number");
-
-    // Hash table for group-by operation
-    typedef HashMap<int32, Stats *> mytableT;
-    mytableT mystats;
-
-    // This function is called for each row
-    virtual void processRow() {
-        // Stats class provides simple statistics
-        // val method returns a field value
-        Stats *stat = mystats[group.val()];
-        if (stat == NULL) {
-	    // make it easy to calculate 
-	    // other stat types.
-            stat = new Stats();
-            mystats[group.val()] = stat;
-        }
-        stat->add(end.val() - start.val());
-    }
-
-    virtual void printResult() {
-        cout << "lvol_num, mean, stddev\n";
-        for_each(mytableT::iterator i, mystats) {
-            cout << boost::format("%d, %.6g, %.6g\n") 
-                % i->first % i->second->mean() 
-                % i->second->stddev();
-        }
-    }
-};
-
-int main(int argc, char *argv[]) {
-    // This defines the type of extents we want to 
-    // process. We handle HPUX Block IO traces.
-    TypeIndexModule source("Trace::BlockIO::HPUX");
-
-    // Add in all the files to the source module.
-    for(int i=1; i<argc; ++i) {
-        source.addSource(argv[i]);
-    }
-
-    LatencyAnalysis analysis(source);
-
-    // A real program would stack a whole 
-    // collection of analysis in series.
-
-    // Read all extents, delete after processing.
-    analysis.getAndDelete();
-    
-    analysis.printResult();
-    return 0;
-}
-
-\end{verbatim}
-}
-
-There are also lots of modules to help; see the TR.  Mention
-dstypes2cxx here also.
+Programming is in the TR.  There are also lots of modules to help; see
+the TR.  Mention dstypes2cxx here also.
 
 \section{Performance Results}\label{sec:results}
 
-...
+We performed various experiments to measure the effectiveness of
+\DataSeries{}' compression techniques, and then further compared \DataSeries{} to data encoding and analysis using MySQL, CSV, CStore, Dan Ellard's Harvard traces\cite{ellard03}, and the 1998 World Cup Web traces\cite{ita08} for compression ratio and analysis execution speed.  Due to space constraints we simply give example results
+from our comparison with Ellard and the World Cup.  More complete coverage can be found in the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
+
+
+\subsection{Ellard Traces}\label{sec:ellard}
+
+In an effort to experiment with using DataSeries to represent and
+analyze traces generated by other people, we converted Daniel Ellard's
+Harvard traces\cite{ellard03} into DataSeries.  The Ellard traces
+were originally stored as compressed text files, one record per line.
+The first part of each line is a series of fixed fields, followed by a
+set of key-value pairs, and finally some debugging information.  As
+part of the tools, there is also a scanning program which reads the
+trace files and outputs summary information for a trace.
+
+Our evaluation came in two parts.  First, we wrote programs that
+converted between the two formats.  The reversable conversion
+guaranteed that we were properly preserving all of the information.
+We found that the DataSeries files were on average 0.74x the size of
+the original files when both were compressed using gzip.  Second, we
+wrote an analysis program that implemented the first three examples in
+the README that came with the tools.  We found that our analysis
+program ran about 76x faster on those data files than the text
+analysis program that came with the distribution.  
+We also found that if we utilized lzo compression, which decompresses
+more quickly than gzip,
+our analysis program
+ran about 107x faster, in exchange for slightly larger (1.14x) data files.
+
+% Move this so it shows up on same page as reference.
+\begin{table*}[t]
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|}\hline
+Trace Set & gz-64k  & gz-128k & gz-512k & lzo-64k & lzo-128k & bzip2-16M \\ \hline
+overall   & 0.9459x & 0.8531x & 0.7721x & 1.1387x & 1.0437x & 0.76x   \\
+deasna    & 0.9800x & 0.8856x & 0.7996x & 1.1535x & 1.0552x & 0.8064x \\
+deasna2   & 1.0003x & 0.8976x & 0.8051x & 1.1680x & 1.0614x & 0.8148x \\
+home02    & 0.9111x & 0.8204x & 0.7440x & 1.1252x & 1.0335x & 0.7084x \\
+home03    & 0.9059x & 0.8170x & 0.7422x & 1.1197x & 1.0301x & 0.7073x \\
+home04    & 0.8974x & 0.8094x & 0.7358x & 1.1148x & 1.0261x & 0.6979x \\
+lair62    & 0.9663x & 0.8949x & 0.8271x & 1.1153x & 1.0427x & 0.8145x \\
+lair62b   & 0.9859x & 0.8883x & 0.8009x & 1.1597x & 1.0579x & 0.8438x \\
+\hline
+\end{tabular}
+
+\caption{Compression ratios for the different options.  The gz and lzo
+columns are compared relative to the gzip compressed text files.  The
+bzip2 results are compared to bzip2 compressed text files.  The
+results exclude the 8 files with zero blocks in them.  The sizes after
+the compression ratio is the extent size used for the DataSeries files.}
+
+\label{table:ellard:compression}
+\end{table*}
+
+\subsubsection{Compression comparison}
+
+Table~\ref{table:ellard:compression} shows the DataSeries compression results
+relative to the original Ellard traces.  The compression difference
+using bzip2 compression is slightly lower than with gzip, the
+DataSeries files are 0.76x smaller than the text files compressed
+using bzip2.  We compared the lzo files to the gzip compressed files
+since for the text files compression with lzo would offer no benefit,
+the files would be larger and the wall time for analysis would be the
+same.  For gzip we tested with extent sizes of 64k, 128k and 512k.
+For lzo, we tested with extent sizes of 64k and 128k.
+
+We have not investigated what causes the difference in the compressed
+file sizes.  We have observed that for the small extent sizes
+(64k/128k) the compressed extents are very small (5-10k), which means
+that some of the DataSeries per-extent overhead may be contributing to
+the larger size, as well as the compression algorithms may not have
+enough data to fill their window.
+
+\subsubsection{Performance comparison}
+
+For the performance comparison, we implemented a subset of the
+analysis performed by Ellard's \texttt{nfsscan} program. In particular one
+that can perform the first three of the five example questions
+presented in the EXAMPLES file that comes with Ellard's trace tools.
+This analysis turned out to be very simple, it is just counting the
+number of requests performed of each client of each type.  We chose to
+implement this over the integer operation id, rather than the string,
+and so wrote a short table that converted NFSv2 and NFSv3 operation
+id's into a common space. The performance comparison was done using
+DataSeries revision 61f07e212acb972da6c603bed82ab2ec5ca1b731 from
+2008-01-21.
+
+All of our experiments were performed on a DL365g1 with 8 GB memory,
+2x 2.4GHz dual-core Opteron 2216 HE.  Data was stored on nfs.
+Ellard's \texttt{nfsscan} program was run \texttt{zcat (or bzcat) $|$
+nfsscan -t0 -BC -}, so we get separate times for the decompression and
+nfsscan execution, but a single elapsed time.  The detailed
+measurements can be found in the DataSeries distribution in
+\texttt{doc/tr/ellard-details.tex}.
+
+\begin{table*}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|c|} \hline
+            & mean     & mean       & mean     & CPU     & mean     & Wall time \\
+algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
+ellard-gz   & 537.58    &  7.80     & 545.38   &  1.0x   & 545.71   &   1.0x   \\
+ellard-bz2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
+\hline
+ds-gz-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
+ds-gz-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
+ds-gz-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+\hline
+ds-bz2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
+ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
+ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
+\end{tabular}
+
+\caption{Summary of performance results for the two analysis programs
+operating on a variety of input files.  The analysis was run over the
+anon-home04-011118-* files.  For the ellard \texttt{nfsscan} program
+the text files were compressed with either gz or bz2.  For the
+DataSeries \texttt{ellardanalysis} program, the dataseries files were
+compressed with either gz, bz2, or lzo, and used various extent sizes
+as specified.  CPU and wall time are both relative to ellard-gz.}
+
+\label{tab:summary}
+\end{table*}
+
+
+Table~\ref{tab:summary} presents the summary results, showing the
+impressive speedup and reduction in CPU time that can be achieved by
+using DataSeries.  The different sizes specified after the compression
+algorithm for the DataSeries rows are the extent sizes. 
+The substantial increase in system time for dealing
+with large extents for bzip2 is a result of glibc's use of mmap/munmap
+for large allocations.  Every extent results in a separate pair of
+mmap/munmap calls to the kernel and hence a substantial about of page
+zeroing in the kernel.  The detailed measurements can be found 
+in the DataSeries distribution in \texttt{doc/tr/ellard-details.tex}.
+
+\subsection{1998 World cup traces}\label{sec:world-cup-1998}
+
+The 1998 World cup traces\cite{ita08} are one of the largest
+publically available web traces.  They were collected from the many
+web servers for the 1998 World Cup games.  We converted the traces
+from the special raw format used for them into DataSeries, and also
+created a version of the {\tt checklog} program that comes with the
+traces as a comparison point for analysis.  For these traces, we found
+that conversion to DataSeries files were on average 0.93$\times$ the
+size of the original files, and that the analysis program used about
+YY$\times$ less CPU time and ran about ZZ$\times$ faster.
+% YY = 1.5, ZZ = 2 on my laptop
+
+\subsubsection{Conversion to and from DataSeries}
+
+Table~\ref{table:wc1998:compression} shows the overall compression of
+the different options.  The \{le,be\}-\{bts,stb\}-gz files are the
+original data files stored in little or big endian format (le/be) and
+big to small or small to big (bts/stb) ordering.  The original traces
+are be-bts-gz.  The DataSeries file without any options is ds-base,
+and then options can be added on for reducing the field padding to the
+maximum column size (mcs), packing the fields in big to small order
+(bts), or packing the time field self-relative (tsr).
+
+% plots and tables can be re-generated using graphs/wc1998/plot.hg
 
 \begin{table}
 \centering
@@ -410,11 +393,20 @@ dstypes2cxx here also.
     dataset    & size (MiB) & ds-base & be-bts-gz \\
 \hline							   
 ds-mcs-bts-tsr & 7648.98  & 1.133         & 1.077         \\
+ds-mcs-tsr     & 7722.78  & 1.122         & 1.067         \\
+ds-bts-tsr     & 7890.12  & 1.098         & 1.044         \\
+ds-tsr         & 8065.99  & 1.074         & 1.021         \\
+le-bts-gz      & 8152.47  & 1.063         & 1.011         \\
+ds-mcs-bts     & 8183.98  & 1.059         & 1.007         \\
 be-bts-gz      & 8239.15  & 1.052         & 1.000         \\
+le-stb-gz      & 8391.09  & 1.032         & 0.982         \\
+be-stb-gz      & 8411.46  & 1.030         & 0.980         \\
+ds-mcs         & 8423.56  & 1.029         & 0.978         \\
+ds-bts         & 8439.72  & 1.027         & 0.976         \\
 ds-base        & 8663.78  & 1.000         & 0.951         \\
 \hline
-\hline
 \end{tabular}
+
 
 \caption{Compression options for the data files sorted from the smallest 
 to the largest.  Gzipped files can be stored little or big endian
@@ -427,13 +419,116 @@ Cup trace format.}
 \label{table:wc1998:compression}
 \end{table}
 
-\section{Discussion}\label{sec:discussion}
+\subsubsection{Analysis performance}
 
-...
+We re-implemented the {\tt checklog} program that comes with the 1998
+World Cup traces.  That program calculates a couple of the values in
+multiple ways.  We duplicated this calculation because we wanted the
+programs to be comparable, even though performing the calculation is
+unnecesary. When running the program we found that the DataSeries
+implementation ran ZZ$\times$ faster.  This result was expected as the
+analysis performed was fairly simple, and as DataSeries used multiple
+CPUs for decompression, it was able to run faster.  However, we also
+found that the implementation used about YY$\times$ less CPU.  This
+was unexpected given that DataSeries was using a virtual function call
+for every row, and was having to process the extents separately.  We
+examined the CPU utilization using oprofile and valgrind and found
+that the original code had three problems:
+
+\begin{itemize}
+
+\item {\bf Non-integrated decompression}.  The {\tt checklog} program 
+used a separate process to perform the decompression, this led to
+slightly increased system time to pass the data over the pipe.
+
+\item {\bf Very slow byte-swapping routine}.  The {\tt checklog} program
+had to byte-swap every record, and the implementation used for
+byte-swapping was very slow.  Moreover, the implementation copied the
+data rather than doing the byte-swapping in-place, further increasing
+the overhead.
+
+\item {\bf Slow per-record fread}.  The {\tt checklog} program called 
+fread for each record.  While we didn't expect this to be slow, it
+turned out that the implementation is slow, and so calling fread for
+each record is a poor choice.
+
+\end{itemize}
+
+While we could re-implement {\tt checklog}, it doesn't seem
+particularly valuable.  The expected end result would be that the
+checklog program would use less CPU time than the DataSeries program,
+but would use more wall-clock time because there is no easy way to
+parallelize the reading of the underlying files.
+
+
+
+\section{Practical Experiences}\label{sec:discussion}
+
+The largest dataset we have is NFS data we have collected.  The primary extent type 
+in this data is the common records which store information about each
+of the 200 billion request and reply messages. We have secondary tables that
+store information about each packet captured, operations that included
+file attributes, read and write requests and mount requests.  The total dataset
+is about 5TB in size.
+
+As a demonstration of the real-life performance of
+\DataSeries{}, consider the following example.  Utilizing a trace of NFS
+traffic from a LAN, we performed an analysis of the throughput
+effects if servers were instead accessed across a WAN.
+The analysis read in 45.5 GB of data (406 GB when uncompressed), and
+processed 7.6 billion records (each record corresponds to an NFS
+transaction).  Using a four year old two-way 2.8 GHz Xeon server, the
+entire data set was processed in 11,263 wall clock seconds (about 3
+hours), or roughly 675,000 rows per second performing a set of complex
+analyses.
+
+As a second demonstration of real life performance we used
+\DataSeries{} to build a large set of reports and graphs from LSF
+data.  Some of our reports were similar to ones already being created
+through queries to a commercial relational database.  Report
+generation in \DataSeries{} ran over 50$\times$ faster than the
+database report generation.  While we did not investigate precisely
+why the database version was slower, it appeared to come from two
+sources.  First, \DataSeries{} is entirely targeted at analysis, and
+hence runs those calculations very efficiently.  Second, the desired
+calculations would require many SQL queries to generate the same
+results as the single pass \DataSeries{} calculation, and it is likely
+the queries were executed sequentially for simplicity in the program
+generating the report.
+
+
 
 \section{Conclusions}\label{sec:conclusions}
 
-...
+We have described \DataSeries{}, a data format that enables the efficient
+and flexible storage of structured serial data. This type of data is
+used in numerous applications in all areas of computing
+and science, and researchers have developed almost as many ways to
+store and process it as there are applications. Unfortunately, there are
+many limitations to these formats. In contrast, \DataSeries{} offers five major
+advantages:
+\begin{enumerate}
+\item \DataSeries{} improves \textit{storage efficiency}, by
+ incorporating compression algorithms and related techniques.  Using
+ \DataSeries{}, we have been able to store and analyze large datasets on
+ a significantly smaller server and storage system than is typically
+ used with databases.
+
+\item \DataSeries{} provides much better \textit{access efficiency} than
+other formats.  This enables the timely analysis of very large datasets.
+
+\item \DataSeries{} is \textit{flexible}, in that it can handle a wide variety of
+different types of data, multiple types of data in the same file, and
+is easily extensible to handle new data types without changing the
+format. In fact, in almost four years of use, and an increasing number of
+data types, including I/O traces (disk block and NFS), batch cluster logs, 
+system call traces, performance measurements and email content, we have 
+not had to update the format once.
+
+\item \DataSeries{} is \textit{self-describing}; that is, relevant metadata is retained with the data.
+
+\item \DataSeries{} has an API to improve the \textit{usability} of the format by others.
+\end{enumerate}
 
 DataSeries is open source that can be downloaded from {\tt
 http://tesla.hpl.hp.com/opensource/}
