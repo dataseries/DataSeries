@@ -26,14 +26,6 @@ Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
 % \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
 \section{Introduction}\label{sec:intro}
 
-DataSeries is an on-disk data format, run-time library, and set of
-tools that is optimized for analyzing \textit{structured serial data},
-which we define as an ordered series of records that share a common
-structure.  This type of data commonly occurs as trace data in
-computer systems, but since the format is essentially ordered RDBMS
-tables, the need to maintain and analyze such data occurs in a large
-number of scientific fields.
-
 Traces, recordings and measurements taken from computer systems,
 networks and scientific infrastructure are vitally important for a
 large variety of tasks. In every area of computer system design,
@@ -58,7 +50,20 @@ variables). Structured serial data has four defining characteristics:
 its structure is record-oriented; it is typically written only once,
 not modified afterward, and is read many times; it is usually ordered
 in some manner, e.g., chronologically; and it is typically read in a
-sequential manner.  
+sequential manner.  We have designed and build DataSeries, an on-disk 
+data format, run-time library, and set of
+tools that is optimized for analyzing this type of data.
+We show that the performance of DataSeries
+exceeds the performance of common trace formats and databases by at
+least a factor of two, and in some cases up to an order of
+magnitude. DataSeries also requires far less disk space (factors vary
+from 4X to 8X in test workloads).
+
+% which we define as an ordered series of records that share a common
+% structure.  This type of data commonly occurs as trace data in
+% computer systems, but since the format is essentially ordered RDBMS
+% tables, the need to maintain and analyze such data occurs in a large
+% number of scientific fields.
 
 There are five key properties that are desired of a data format
 and analysis system for structured serial data:
@@ -100,19 +105,16 @@ Second, we discuss how DataSeries can support very large datasets
 describe how we have used DataSeries in practice to store a wide
 variety of data types.  Fourth, we demonstrate the performance and
 storage efficiency of DataSeries in a set of controlled experiments,
-using empirical data sets. We show that the performance of DataSeries
-exceeds the performance of common trace formats and databases by at
-least a factor of two, and in some cases up to an order of
-magnitude. DataSeries also requires far less disk space (factors vary
-from 4X to 8X in test workloads).
+using empirical data sets. 
 
 Since DataSeries software is publicly available (under a BSD software
 license), and given the benefits of DataSeries that we demonstrate, we
 argue that DataSeries should be considered for use by any application
-that needs to store large amounts of structured serial data. Indeed, a
-storage industry group\footnote{name withheld for blinding purposes}
-has chosen DataSeries as a standard format for I/O trace data, and is
-currently specifying the semantics of the fields.
+that needs to store large amounts of structured serial data. Indeed
+SNIA (the Storage Networking Industry Association)
+has chosen DataSeries as a standard format for I/O trace data.
+% and is
+% currently specifying the semantics for I/O traces encoded using DataSeries.
 
 The remainder of this paper is organized as follows.
 Section~\ref{sec:related} describes the strengths and weaknesses of
@@ -134,10 +136,10 @@ Custom binary formats are usually serialized or directly written
 versions of an in-memory data structure.  As such, they usually
 achieve properties 1 and 2, and fail to achieve properties 3-5,
 although as we will show in the results, unless the authors are
-careful, they can also fail to achieve property 2.
+careful they can also fail to achieve property 2.
 
-Text base formats such as column separated value, or XML usually
-achieve properties 3 and 4, and XML achieves property 5.  However,
+Text formats such as column separated value often (but far from always)
+achieve properties 3 and 4. XML achieves properties 3-5.  However,
 they fail to achieve property 1, and can fail property two by multiple
 orders of magnitude.  As we show in our results even very tuned CSV
 implementations can only get to within 2-7$\times$ the
@@ -154,7 +156,7 @@ $>$10x improvement on storage efficiency for DataSeries over
 MySQL. 
 %{\bf TODO: check the exact sizes, should be around there.}
 Similarly, the generality of SQL can hurt it.  Even for fairly simple
-queries running entirely in the database, DataSeries runs 2-7$\times$
+queries running entirely on in-memeory data, DataSeries runs 2-7$\times$
 faster than MySQL. 
 %{\bf TODO: re-do these numbers with parallel
 %decompression, etc.}  
@@ -170,7 +172,8 @@ a set of {\it fields}. Each field has a {\it field-type} (e.g.,
 integer, string, double, boolean) and a name. A DataSeries record is
 analogous to a row in a conventional relational database. We call the
 type of a row the {\it extent-type} because an {\it extent} contains a
-collection of rows with the same fields and field-types.
+collection of rows with the same fields and field-types. An extent is
+analagous to a database table.
 
 A single DataSeries file comprises a collection of extents
 (potentially with different extent-types), plus a header and
@@ -208,15 +211,20 @@ technical report~\cite{DSTechnicalReportSnapshot}.
 \section{Performance Results}\label{sec:results}
 
 We performed various experiments to measure the effectiveness of
-\DataSeries{}' compression techniques, and then further compared \DataSeries{} to data encoding and analysis using MySQL, CSV, CStore, Dan Ellard's Harvard traces\cite{ellard03}, and the 1998 World Cup Web traces\cite{ita08} for compression ratio and analysis execution speed.  Due to space constraints we simply give example results
-from our comparison with Ellard.  More complete coverage can be found in the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
+\DataSeries{}' compression techniques, and then further compared
+\DataSeries{} to data encoding and analysis using MySQL, CSV, CStore,
+Dan Ellard's NFS traces\cite{ellard03}, and the 1998 World Cup Web
+traces\cite{ita08} for compression ratio and analysis execution speed.
+Due to space constraints we simply give example results from our
+comparison with Ellard.  More complete coverage can be found in the
+DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
 
 \subsection{Ellard Traces}\label{sec:ellard}
 
 In an effort to experiment with using DataSeries to represent and
-analyze traces generated by other people, we converted Daniel Ellard's
-Harvard traces\cite{ellard03} into DataSeries.  The Ellard traces
+analyze traces generated by other people, we converted the Ellard NFS
+traces into DataSeries.  These traces
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
 set of key-value pairs, and finally some debugging information.  As
