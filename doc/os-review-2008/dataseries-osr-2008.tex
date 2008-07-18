@@ -50,7 +50,7 @@ variables). Structured serial data has four defining characteristics:
 its structure is record-oriented; it is typically written only once,
 and is read many times; it is usually ordered
 in some manner, e.g., chronologically; and it is typically read
-sequentially.  We have designed and build DataSeries, an on-disk 
+sequentially.  We have designed and built DataSeries, an on-disk 
 data format, run-time library, and set of
 tools that is optimized for storing and analyzing this type of data.
 We show that the performance of DataSeries
@@ -141,10 +141,11 @@ careful they can also fail to achieve property 2.
 Text formats such as column separated value often (but far from always)
 achieve properties 3 and 4. XML achieves properties 3-5.  However,
 they fail to achieve property 1, and can fail property two by multiple
-orders of magnitude.  As we show in our results even very tuned CSV
+orders of magnitude.  Even very tuned CSV
 implementations can only get to within 2-7$\times$ the
 access-efficiency of DataSeries, and 4-7$\times$ for the storage
-efficiency.  
+efficiency (See the DataSeries technical 
+report~\cite{DSTechnicalReportSnapshot} for these results.)
 %{\bf TODO: need to re-do these experiments at least to
 %measure the file sizes, and potentially with Tfrac text files,
 %although I suspect people would use sec.usec in a block I/O trace}
@@ -216,8 +217,9 @@ DataSeries' compression techniques, and then further compared
 DataSeries to data encoding and analysis using MySQL, CSV, CStore,
 Dan Ellard's NFS traces\cite{ellard03}, and the 1998 World Cup Web
 traces\cite{ita-wcweb98} for compression ratio and analysis execution speed.
-Due to space constraints we simply give example results from our
-comparison with Ellard.  More complete coverage can be found in the
+Due to space constraints we give example results from our
+comparison with Ellard and comment on highlights of our other results.
+  More complete coverage can be found in the
 DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Ellard Traces}\label{sec:ellard}
