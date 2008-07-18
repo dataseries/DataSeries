@@ -48,16 +48,16 @@ serial data}, which we define as a series of records, each record
 having a specified structure (i.e., containing the same set of
 variables). Structured serial data has four defining characteristics:
 its structure is record-oriented; it is typically written only once,
-not modified afterward, and is read many times; it is usually ordered
-in some manner, e.g., chronologically; and it is typically read in a
-sequential manner.  We have designed and build DataSeries, an on-disk 
+and is read many times; it is usually ordered
+in some manner, e.g., chronologically; and it is typically read
+sequentially.  We have designed and build DataSeries, an on-disk 
 data format, run-time library, and set of
-tools that is optimized for analyzing this type of data.
+tools that is optimized for storing and analyzing this type of data.
 We show that the performance of DataSeries
 exceeds the performance of common trace formats and databases by at
 least a factor of two, and in some cases up to an order of
 magnitude. DataSeries also requires far less disk space (factors vary
-from 4X to 8X in test workloads).
+from 4X to 8X in test datasets).
 
 % which we define as an ordered series of records that share a common
 % structure.  This type of data commonly occurs as trace data in
@@ -143,7 +143,7 @@ achieve properties 3 and 4. XML achieves properties 3-5.  However,
 they fail to achieve property 1, and can fail property two by multiple
 orders of magnitude.  As we show in our results even very tuned CSV
 implementations can only get to within 2-7$\times$ the
-access-efficiency of DataSeries, and x-y$\times$ for the storage
+access-efficiency of DataSeries, and 4-7$\times$ for the storage
 efficiency.  
 %{\bf TODO: need to re-do these experiments at least to
 %measure the file sizes, and potentially with Tfrac text files,
@@ -307,7 +307,14 @@ zeroing in the kernel.
 
 \subsection{Other results}\label{sec:otherresults}
 
-To be written
+We have performed a number of other experiments that demonstrate
+DataSeries' benefits. Due to space considerations, we will only
+describe them briefly. One study of data compression showed that for a
+relatively large disk I/O trace, DataSeries provides superior disk
+space utilization; stored in DataSeries, the trace consumed 1.9GB of
+disk space, but 14GB in CSV format and 8.5GB as a MySQL
+database. Using the same trace in a series of analyses showed that
+DataSeries delivers results 6-7x faster than both formats.
 
 \section{Conclusions}\label{sec:conclusions}
 
