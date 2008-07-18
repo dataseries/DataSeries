@@ -57,7 +57,7 @@ We show that the performance of DataSeries
 exceeds the performance of common trace formats and databases by at
 least a factor of two, and in some cases up to an order of
 magnitude. DataSeries also requires far less disk space (factors vary
-from 4X to 8X in test datasets).
+from 4X to 8X in test data sets).
 
 % which we define as an ordered series of records that share a common
 % structure.  This type of data commonly occurs as trace data in
@@ -95,12 +95,12 @@ programming interface that is both expressive and easy to use.
 Although numerous tracing and measurement systems have been developed
 over the last 20-30 years, we are not aware of any that meet all of
 these requirements. We analyze some of these in our description of
-related work (section~\ref{sec:related}).
+related work (Section~\ref{sec:related}).
 
 We provide four primary contributions in this paper.  First, we
 introduce DataSeries, a data format and associated library, which was
 specifically designed to meet the five key properties discussed above.
-Second, we discuss how DataSeries can support very large datasets
+Second, we discuss how DataSeries can support very large data sets
 (e.g., hundreds of billions of records) on modest systems.  Third, we
 describe how we have used DataSeries in practice to store a wide
 variety of data types.  Fourth, we demonstrate the performance and
@@ -111,8 +111,9 @@ Since DataSeries software is publicly available (under a BSD software
 license), and given the benefits of DataSeries that we demonstrate, we
 argue that DataSeries should be considered for use by any application
 that needs to store large amounts of structured serial data. Indeed
-SNIA (the Storage Networking Industry Association)
-has chosen DataSeries as a standard format for I/O trace data.
+the Storage Networking Industry Association (SNIA) I/O traces tools
+and analysis (IOTTA) technical working group~\cite{iotta-website} has
+chosen DataSeries as a standard format for I/O trace data.
 % and is
 % currently specifying the semantics for I/O traces encoded using DataSeries.
 
@@ -124,7 +125,8 @@ on-disk and in-memory formats.
 Section~\ref{sec:results} presents empirical and benchmark results
 from our use of DataSeries to illustrate and quantify the benefits of
 DataSeries. Section~\ref{sec:conclusions} concludes the
-paper with a summary of our work and a list of future directions.
+paper with a summary of our work.
+% and a list of future directions.
 
 \section{Related Work}\label{sec:related}
 
@@ -138,12 +140,13 @@ achieve properties 1 and 2, and fail to achieve properties 3-5,
 although as we will show in the results, unless the authors are
 careful they can also fail to achieve property 2.
 
-Text formats such as column separated value often (but far from always)
+Text formats such as Column Separated Value (CSV) can
+%often (but far from always)
 achieve properties 3 and 4. XML achieves properties 3-5.  However,
-they fail to achieve property 1, and can fail property two by multiple
+they fail to achieve property 1, and can fail property 2 by multiple
 orders of magnitude.  Even very tuned CSV
-implementations can only get to within 2-7$\times$ the
-access-efficiency of DataSeries, and 4-7$\times$ for the storage
+implementations can only get to within 2-7x the
+access-efficiency of DataSeries, and 4-7x for the storage
 efficiency (See the DataSeries technical 
 report~\cite{DSTechnicalReportSnapshot} for these results.)
 %{\bf TODO: need to re-do these experiments at least to
@@ -157,7 +160,7 @@ $>$10x improvement on storage efficiency for DataSeries over
 MySQL. 
 %{\bf TODO: check the exact sizes, should be around there.}
 Similarly, the generality of SQL can hurt it.  Even for fairly simple
-queries running entirely on in-memeory data, DataSeries runs 2-7$\times$
+queries running entirely on in-memory data, DataSeries runs 2-7x
 faster than MySQL. 
 %{\bf TODO: re-do these numbers with parallel
 %decompression, etc.}  
@@ -203,10 +206,10 @@ Checksum validation can be disabled during extent reading to improve
 performance at the cost of reduced reliability.
 
 DataSeries supports a number of options that control either the
-interpretation of a field (e.g. can it be null), or the way the field
-is represented prior to compression ({\em packed}, e.g. relative to
+interpretation of a field (e.g., can it be null), or the way the field
+is represented prior to compression ({\em packed}, e.g., relative to
 another field).  DataSeries also has some options for representation
-of entire extents (e.g. ordering of the fields in a record).  
+of entire extents (e.g., ordering of the fields in a record).  
 Detailed explanation of the options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
@@ -215,8 +218,8 @@ technical report~\cite{DSTechnicalReportSnapshot}.
 We performed various experiments to measure the effectiveness of
 DataSeries' compression techniques, and then further compared
 DataSeries to data encoding and analysis using MySQL, CSV, CStore,
-Dan Ellard's NFS traces\cite{ellard03}, and the 1998 World Cup Web
-traces\cite{ita-wcweb98} for compression ratio and analysis execution speed.
+Dan Ellard's NFS traces~\cite{ellard03}, and the 1998 World Cup Web
+traces~\cite{ita-wcweb98} for compression ratio and analysis execution speed.
 Due to space constraints we give example results from our
 comparison with Ellard and comment on highlights of our other results.
   More complete coverage can be found in the
@@ -242,11 +245,11 @@ wrote an analysis program that implemented the first three examples in
 the README that came with the tools.  We found that our analysis
 program ran about 76x faster on those data files than the text
 analysis program that came with the distribution.  We also found that
-if we utilized lzo compression, which decompresses more quickly than
+if we utilized lzo compression which decompresses more quickly than
 gzip, our analysis program ran about 107x faster, in exchange for
 slightly larger (1.14x) data files.  This also illustrates how
-DataSeries can be optimized for a given purpose (e.g. greater
-compression for archival storage vs. faster decompression for more
+DataSeries can be optimized for a given purpose (e.g., greater
+compression for archival storage versus faster decompression for more
 efficient analysis). The detailed experimental setup can be found in
 the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
@@ -266,10 +269,10 @@ the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
  
 \begin{table*}
 \centering
-\begin{tabular}{|c|c|c|c|c|c|c|} \hline
+\begin{tabular}{|r|r|r|r|r|r|r|} \hline
             & mean     & mean       & mean     & CPU     & mean     & Wall time \\
 algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
-ellard-gz   & 537.58    &  7.80     & 545.38   &  1.0x   & 545.71   &   1.0x   \\
+ellard-gz   & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
 ellard-bz2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
 \hline
 ds-gz-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
@@ -277,6 +280,7 @@ ds-gz-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \
 ds-gz-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
 \hline
 ds-bz2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+\hline
 ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
 ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
 ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
@@ -297,9 +301,11 @@ as specified.  CPU and wall time are both relative to ellard-gz.
 
 
 Table~\ref{tab:summary} presents the summary results, showing the
-impressive speedup and reduction in CPU time that can be achieved by
+significant speedup and reduction in CPU time that can be achieved by
 using DataSeries.  The different sizes specified after the compression
 algorithm for the DataSeries rows are the extent sizes. 
+For example, ds-gz-512k corresponds to DataSeries with gzip
+compression and a 512 KB extent size.
 The substantial increase in system time for dealing
 with large extents for bzip2 is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
@@ -321,14 +327,15 @@ DataSeries delivers results 6-7x faster than both formats.
 
 \section{Conclusions}\label{sec:conclusions}
 
-We have described DataSeries, a data format that enables the
-efficient and flexible storage of structured serial data. This type of
-data is used in numerous applications in all areas of computing and
+We have described DataSeries, a data format that enables the efficient
+and flexible storage of structured serial data. This type of data is
+used in numerous applications in all areas of computing and
 science. We have identified the properties required for a system that
 processes such data, and shown through a series of experiements and
 comparisons to other systems that DataSeries meets satisfies these
 properties. In particular, DataSeries offers significant performance
-and storage efficiency benefits.
+and storage efficiency benefits.  For these reasons, DataSeries is the
+recommended trace for the SNIA IOTTA technical working group.
 
 \bibliographystyle{abbrv}
 {\small
