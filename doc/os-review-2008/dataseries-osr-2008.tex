@@ -212,14 +212,13 @@ technical report~\cite{DSTechnicalReportSnapshot}.
 \section{Performance Results}\label{sec:results}
 
 We performed various experiments to measure the effectiveness of
-\DataSeries{}' compression techniques, and then further compared
-\DataSeries{} to data encoding and analysis using MySQL, CSV, CStore,
+DataSeries' compression techniques, and then further compared
+DataSeries to data encoding and analysis using MySQL, CSV, CStore,
 Dan Ellard's NFS traces\cite{ellard03}, and the 1998 World Cup Web
-traces\cite{ita08} for compression ratio and analysis execution speed.
+traces\cite{ita-wcweb98} for compression ratio and analysis execution speed.
 Due to space constraints we simply give example results from our
 comparison with Ellard.  More complete coverage can be found in the
 DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
-
 
 \subsection{Ellard Traces}\label{sec:ellard}
 
@@ -262,7 +261,7 @@ the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 % and so wrote a short table that converted NFSv2 and NFSv3 operation
 % id's into a common space. The detailed experimental setup can be found in the DataSeries
 % technical report~\cite{DSTechnicalReportSnapshot}.
-
+ 
 \begin{table*}
 \centering
 \begin{tabular}{|c|c|c|c|c|c|c|} \hline
@@ -281,13 +280,15 @@ ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \
 ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
 \end{tabular}
 
-\caption{Summary of performance results for the two analysis programs
+\caption{
+Summary of performance results for the two analysis programs
 operating on a variety of input files.  The analysis was run over the
-anon-home04-011118-* files.  For the ellard \texttt{nfsscan} program
+anon-home04-011118-* files.  For the ellard {\tt nfsscan} program
 the text files were compressed with either gz or bz2.  For the
-DataSeries \texttt{ellardanalysis} program, the DataSeries files were
+DataSeries {\tt ellardanalysis} program, the DataSeries files were
 compressed with either gz, bz2, or lzo, and used various extent sizes
-as specified.  CPU and wall time are both relative to ellard-gz.}
+as specified.  CPU and wall time are both relative to ellard-gz.
+}
 
 \label{tab:summary}
 \end{table*}
@@ -318,7 +319,7 @@ DataSeries delivers results 6-7x faster than both formats.
 
 \section{Conclusions}\label{sec:conclusions}
 
-We have described \DataSeries{}, a data format that enables the
+We have described DataSeries, a data format that enables the
 efficient and flexible storage of structured serial data. This type of
 data is used in numerous applications in all areas of computing and
 science. We have identified the properties required for a system that
