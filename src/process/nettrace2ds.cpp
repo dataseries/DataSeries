@@ -804,7 +804,7 @@ public:
 	    ++cur_pos;
 	    rpcparam = cur_pos;
 	} else {
-	    RPCParseAssert("unsupported authentication" == "");
+	    RPCParseAssert(false && "unsupported authentication");
 	}
 	rpcparamlen = len - ((char *)rpcparam - (char *)rpchdr);
 	RPCParseAssert(rpcparamlen >= 0);
