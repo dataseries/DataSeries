@@ -2,12 +2,12 @@ INCLUDE(LintelCMakeUtil)
 
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
     COMMAND ln 
-    ARGS -s ${CMAKE_CURRENT_SOURCE_DIR}/../tr/references.bib
+    ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/references.bib
       ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib)
 
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-fig/ds-format2.eps
     COMMAND ln 
-    ARGS -s ${CMAKE_CURRENT_SOURCE_DIR}/../tr/fig
+    ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/fig
       ${CMAKE_CURRENT_BINARY_DIR}/tr-fig)
 
 SET(dataseries-osr-2008_EXTRA_DEPENDS 
