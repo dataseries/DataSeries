@@ -4,7 +4,6 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/StringUtil.hpp>
 
@@ -234,8 +233,9 @@ public:
 		}
 		es_common.setExtent(tmp);
 	    }
-	    AssertAlways(in_replyid.val() >= prev_replyid,
-			 ("needsort %lld %lld",in_replyid.val(),prev_replyid));
+	    INVARIANT(in_replyid.val() >= prev_replyid, 
+		      format("needsort %lld %lld") 
+		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
 		if (in_is_request.val()) {
@@ -292,7 +292,8 @@ public:
 		INVARIANT(in_recordid.val() == in_replyid.val(),
 			  format("mismatch on common(%d) and attr-ops(%d) tables")
 			  % in_recordid.val() % in_replyid.val());
-		AssertAlways(!in_is_request.val(), ("request not response being joined"));
+		INVARIANT(!in_is_request.val(), 
+			  "request not response being joined");
 		last_reply_id = in_replyid.val();
 
 		reqData k;
@@ -308,17 +309,18 @@ public:
 		    // because of the initial common pruning, we can
 		    // now get the case where the reply was in the
 		    // acceptable set, but the request wasn't.
-		    AssertAlways(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
-				 (in_packetat.valRaw() - first_keep_time_raw) 
-				 < in_packetat.secNanoToRaw(30,0),
-				 ("bad missing request %lld - %lld = %lld",
-				  in_packetat.valRaw(), first_keep_time_raw, 
-				  in_packetat.valRaw() - first_keep_time_raw));
+		    INVARIANT(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
+			      (in_packetat.valRaw() - first_keep_time_raw) 
+			      < in_packetat.secNanoToRaw(30,0),
+			      format("bad missing request %d - %d = %d")
+			      % in_packetat.valRaw() % first_keep_time_raw  
+			      % (in_packetat.valRaw() - first_keep_time_raw));
 		    ++es_common.pos;
 		    ++es_attrops.pos;
 		    continue;
 		}
-		AssertAlways(d != NULL,("unable to find request id %lld\n",k.request_id));
+		INVARIANT(d != NULL,format("unable to find request id %d")
+			  % k.request_id);
 		es_out.newRecord();
 		++output_record_count;
 		out_requestat.setRaw(d->request_at_raw);
@@ -443,7 +445,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
@@ -538,7 +540,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
@@ -645,7 +647,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
@@ -764,7 +766,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
@@ -894,7 +896,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {

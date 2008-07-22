@@ -62,7 +62,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "attr-ops-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {

@@ -136,7 +136,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "NFS trace: attr-ops",("bad\n"));
+	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (filehandle.size() > max_seen_fh_size) {
@@ -210,7 +210,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "NFS trace: attr-ops",("bad\n"));
+	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (dirfilehandle.isNull())
@@ -644,7 +644,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "common-attr-rw-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "common-attr-rw-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {

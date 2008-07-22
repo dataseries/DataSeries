@@ -6,12 +6,12 @@
    Description:  Mostly finished modules
 */
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashUnique.hpp>
 
 #include "analysis/lsfdsanalysis-mod1.hpp"
 
 using namespace std;
+using boost::format;
 
 namespace LSFDSAnalysisMod {
 
@@ -162,9 +162,11 @@ public:
     {
 	DEBUG_INVARIANT(frac > 0, "should have pruned earlier");
 	int offset = time - args.rollup_start;
-	AssertAlways(offset >= 0,("bad; time start = %d",time));
+	INVARIANT(offset >= 0, format("bad; time start = %d") % time);
 	offset = offset / args.rollup_granularity;
-	AssertAlways(offset < maxRollupChunks,("bad (%d - %d)/%d = %d ",time,args.rollup_start,args.rollup_granularity,offset));
+	INVARIANT(offset < maxRollupChunks, format("bad (%d - %d)/%d = %d ")
+		  % time % args.rollup_start % args.rollup_granularity 
+		  % offset);
 	for(unsigned i = 0;i<ents.size();++i) {
 	    if(ents[i]->data.size() <= (unsigned)offset) {
 		ents[i]->data.resize(offset+1);
@@ -180,7 +182,7 @@ public:
 	int offset = time - args.rollup_start;
 	INVARIANT(offset >= 0,boost::format("bad %d %d") % time % args.rollup_start);
 	offset = offset / args.rollup_granularity;
-	AssertAlways(offset < maxRollupChunks,("bad"));
+	SINVARIANT(offset < maxRollupChunks);
 	for(unsigned i = 0;i<ents.size();++i) {
 	    if(ents[i]->data.size() <= (unsigned)offset) {
 		ents[i]->data.resize(offset+1);
@@ -199,15 +201,15 @@ public:
 
     double partialStartFrac(unsigned rounddown, unsigned exact) 
     {
-	AssertAlways(rounddown < exact 
-		     && exact < rounddown + args.rollup_granularity,("bad"));
+	SINVARIANT(rounddown < exact 
+		   && exact < rounddown + args.rollup_granularity);
 	return (double)(args.rollup_granularity - (exact - rounddown))/(double)args.rollup_granularity;
     }
 
     double partialEndFrac(unsigned rounddown, unsigned exact)
     {
-	AssertAlways(rounddown < exact 
-		     && exact < rounddown + args.rollup_granularity,("bad"));
+	SINVARIANT(rounddown < exact 
+		   && exact < rounddown + args.rollup_granularity);
 	return (double)(exact - rounddown)/(double)args.rollup_granularity;
     }
 
@@ -386,8 +388,9 @@ public:
 		exact_end = exact_start;
 	    }
 	}
-	AssertAlways(exact_submit <= exact_start && exact_start <= exact_end,
-		     ("internal %d %d %d\n",exact_submit,exact_start,exact_end));
+	INVARIANT(exact_submit <= exact_start && exact_start <= exact_end,
+		  format("internal %d %d %d") 
+		  % exact_submit % exact_start % exact_end);
 	++nrecordsinwindow;
 
 	setGroupsToUpdate();
@@ -721,7 +724,8 @@ public:
 	    fprintf(stderr,"warning, bad start/end %d %d\n",start_time.val(),end_time.val());
 	    return;
 	}
-	AssertAlways(end_time.val() >= start_time.val(),("bad %d %d",end_time.val(),start_time.val()));
+	INVARIANT(end_time.val() >= start_time.val(),
+		  format("bad %d %d") % end_time.val() % start_time.val());
 	v.wall_sum += end_time.val() - start_time.val();
 	    
 	// frame count
@@ -954,7 +958,7 @@ addProductionReportModules(SequenceModule &sequence)
 // 	} else if (*arg == 'W' || *arg == 'A') {
 // 	    find_rr_start = atoi(arg+2);
 // 	    char *pt2 = index(arg+2,':');
-// 	    AssertAlways(pt2 != NULL && *pt2 == ':',("internal"));
+// 	    INVARIANT(pt2 != NULL && *pt2 == ':');
 // 	    find_rr_end = atoi(pt2+1);
 // 	    AssertAlways(find_rr_start > 0 && find_rr_end > find_rr_start,
 // 			 ("invalid range %d %d\n",find_rr_start,find_rr_end));
@@ -988,7 +992,7 @@ addProductionReportModules(SequenceModule &sequence)
 //     virtual void processRow() { 
 // 	RRLookup::data *v = lookuplist.rr_found.lookup(rr_id.val());
 // 	if (v != NULL) {
-// 	    AssertAlways(production.equal(empty_string) == false,("bad"));
+// 	    SINVARIANT(production.equal(empty_string) == false);
 // 	    if (!(production.equal(v->prod) && sequence.equal(v->seq) && 
 // 		  shot.equal(v->shot))) {
 // 		if ((v->seq == str_ok_neq_rr_rj_1 && (v->shot == str_ok_neq_rr_rj_1 ||
