@@ -6,7 +6,6 @@
 
 #include <ctype.h>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include "common.hpp"
@@ -72,7 +71,7 @@ static bool did_fh2fn_insert = false;
 string *
 fnByFileHandle(const ConstantString &fh)
 {
-    AssertAlways(did_fh2fn_insert,("bad"));
+    SINVARIANT(did_fh2fn_insert);
     fh2fnData k;
     k.filehandle = fh;
     fh2fnData *v = fh2fn.lookup(k);
@@ -103,7 +102,7 @@ public:
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (filename.isNull())
 		continue;
-	    AssertAlways(filename.size() > 0,("??"));
+	    SINVARIANT(filename.size() > 0);
 	    v.set(filehandle.stringval(),filename.stringval());
 	    fh2fnData *v2 = fh2fn.lookup(v);
 	    if (v2 != NULL) {

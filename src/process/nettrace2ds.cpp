@@ -2357,12 +2357,12 @@ fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
     INVARIANT(cur_record_id >= 0 && cur_record_id >= first_record_id, "bad");
 
     if (v_nfsversion == 2) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv2ops,("bad"));
+	SINVARIANT(procnum >= 0 && procnum < n_nfsv2ops);
     } else if (v_nfsversion == 3) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv3ops,("bad"));
+	SINVARIANT(procnum >= 0 && procnum < n_nfsv3ops);
     } else if (v_nfsversion == 1) {
 	// caches seem to use NFS version 1 null op occasionally
-	AssertAlways(procnum == 0,("bad"));
+	SINVARIANT(procnum == 0);
     } else {
 	AssertFatal(("bad; nfs version %d",v_nfsversion));
     }
@@ -2383,7 +2383,7 @@ fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	} else if (v_nfsversion == 3) {
 	    operation.set(nfsv3ops[procnum]);
 	} else if (v_nfsversion == 1) {
-	    AssertAlways(procnum == 0,("bad"));
+	    SINVARIANT(procnum == 0);
 	}
 	payload_length.set(payload_len);
 	common_record_id.set(cur_record_id);
@@ -2473,14 +2473,14 @@ handleMountReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	{
 	case MountProc::proc_mnt: {
 	    MountRequest_MNT *m_req = dynamic_cast<MountRequest_MNT *>(req->reqdata);
-	    AssertAlways(m_req != NULL,("bad"));
+	    SINVARIANT(m_req != NULL);
 	    MountReply_MNT m_rep(req->version,reply);
 	    if (m_rep.mountok()) {
 		string pathname = m_req->pathname();
 		if (enable_encrypt_filenames) {
 		    string enc_path = encryptString(pathname);
 		    string dec_path = decryptString(enc_path);
-		    AssertAlways(dec_path == pathname,("bad"));
+		    SINVARIANT(dec_path == pathname);
 		    pathname = enc_path;
 		}
 		if (mode == Convert) {

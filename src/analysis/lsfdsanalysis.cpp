@@ -26,7 +26,6 @@ using namespace std;
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsQuantile.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashMap.hpp>
@@ -42,6 +41,7 @@ using namespace std;
 #include "analysis/lsfdsanalysis-common.hpp"
 #include "analysis/lsfdsanalysis-mod1.hpp"
 
+using boost::format;
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
    __attribute__ ((format (printf, 1, 2)));
@@ -151,13 +151,12 @@ public:
 	window_start = min(window_start,rollup_end);
 	window_end = max(exact_end,rollup_start);
 	window_end = min(window_end,rollup_end);
-	AssertAlways(window_submit <= window_start &&
-		     window_start <= window_end &&
-		     window_start >= rollup_start &&
-		     window_end <= rollup_end,
-		     ("?! %d %d %d ; %d %d",
-		      window_submit, window_start,window_end,
-		      rollup_start,rollup_end));
+	INVARIANT(window_submit <= window_start &&
+		  window_start <= window_end &&
+		  window_start >= rollup_start &&
+		  window_end <= rollup_end,
+		  format("?! %d %d %d ; %d %d") % window_submit % window_start
+		  % window_end % rollup_start % rollup_end);
 	++nrecords;
 	minwindow = min(window_submit,minwindow);
 	maxwindow = max(window_end,maxwindow);
@@ -270,9 +269,9 @@ public:
 
     virtual void processRow() { 
 	if (lookupents.exists(meta_id.val())) {
-	    AssertAlways(production.equal(empty_string) == false,("bad"));
+	    SINVARIANT(production.equal(empty_string) == false);
 	    data &v = meta_map[meta_id.val()];
-	    AssertAlways(v.production == empty_string,("dup metaid?!"));
+	    INVARIANT(v.production == empty_string, "dup metaid?!");
 	    v.rr_id = rr_id.val();
 	    v.production = production.stringval();
 	    v.sequence = sequence.stringval();
@@ -369,15 +368,14 @@ public:
 	    weekdayPrevSeconds.resize(7*24);
 	}
 	int hourused(int day, int hour) {
-	    int index = 24*day + hour;
-	    AssertAlways(index >= 0 && index < (int)weekdayHourAvailability.size(),
-			 ("bad"));
+	    unsigned index = 24*day + hour;
+	    SINVARIANT(index >= 0 && index < weekdayHourAvailability.size());
 	    return weekdayHourAvailability[index];
 	}
 	static const int max_separation_seconds = 3*24*3600 + 12*3600; // 3.5 days of no jobs ==> down
 	void addUsage(int seconds, int weekday, int hour) { 
 	    if (seconds >= prev_interval_start + max_separation_seconds) {
-		AssertAlways(max_seen_time >= prev_interval_start,("internal"));
+		SINVARIANT(max_seen_time >= prev_interval_start);
 		// new interval of availability starting
 		if ((max_seen_time + max_separation_seconds) >= seconds) {
 		    // continuous intervals
@@ -389,8 +387,10 @@ public:
 		    prev_interval_start = seconds; // skip to new start interval
 		}
 	    }
-	    int offset = weekday * 24 + hour;
-	    AssertAlways(offset >= 0 && offset <= (int)weekdayHourAvailability.size(),("internal"));
+	    unsigned offset = weekday * 24 + hour;
+	    SINVARIANT(offset >= 0 && offset 
+		       <= weekdayHourAvailability.size());
+		       
 	    if ((weekdayPrevSeconds[offset] + 7200) < seconds) {
 		// don't duplicate count hours
 		weekdayHourAvailability[offset] += 1;
@@ -410,14 +410,14 @@ public:
 	    return;
 	availability &d = host2availability[exec_host.stringval()];
 	d.total_seconds += end_time.val() - start_time.val();
-	AssertAlways(d.weeks_available >= 0,("internal"));
+	SINVARIANT(d.weeks_available >= 0);
 	
 	struct tm ltime;
 	time_t start = 3600 * (start_time.val() / 3600);
-	AssertAlways(localtime_r(&start,&ltime) == &ltime, ("internal"));
+	SINVARIANT(localtime_r(&start,&ltime) == &ltime);
 	int cur_weekday = ltime.tm_wday;
 	int cur_hour = ltime.tm_hour;
-	AssertAlways(ltime.tm_min == 0 && ltime.tm_sec == 0,("internal"));
+	SINVARIANT(ltime.tm_min == 0 && ltime.tm_sec == 0);
 	for(;start <= end_time.val(); start += 3600) {
 	    d.addUsage(start,cur_weekday,cur_hour);
 	    cur_hour += 1;
@@ -428,7 +428,7 @@ public:
 		    cur_weekday = 0;
 	    }
 	}
-	AssertAlways(d.weeks_available >= 0 && d.weeks_available < 1000,("internal"));
+	SINVARIANT(d.weeks_available >= 0 && d.weeks_available < 1000);
     }
 
     void resultHourDetail(availability &d) {
@@ -508,7 +508,8 @@ public:
 		return -1;
 	    }
 		
-	    AssertAlways(maxat > 5 && maxat < 15,("invalid maxat %d\n",maxat));
+	    INVARIANT(maxat > 5 && maxat < 15, 
+		      format("invalid maxat %d") % maxat);
 	    if (maxat >= 6 && maxat <= 9)
 		return maxat;
 
@@ -529,10 +530,10 @@ public:
 	for(availabilityMapT::iterator i = host2availability.begin();
 	    i != host2availability.end();++i) {
 	    availability &d = i->second;
-	    AssertAlways(d.weeks_available >= 0 && d.weeks_available < 1000,("internal"));
+	    SINVARIANT(d.weeks_available >= 0 && d.weeks_available < 1000);
 	    d.weeks_available += (d.max_seen_time - d.prev_interval_start)/(7.0*24*3600);
-	    AssertAlways(d.weeks_available >= 0 && d.weeks_available < 1000,("internal"));
-	    AssertAlways(d.max_seen_time >= d.prev_interval_start,("internal"));
+	    SINVARIANT(d.weeks_available >= 0 && d.weeks_available < 1000);
+	    SINVARIANT(d.max_seen_time >= d.prev_interval_start);
 	    week_avail.add(d.weeks_available);
 	}
 
@@ -617,7 +618,7 @@ public:
 		    }
 		}
 	    } else {
-		AssertFatal(("bad"));
+		FATAL_ERROR("bad");
 	    }
 	}
 	printf("summary: %d hosts; %d always, %d partial, %d unavail, %d unknown\n",
@@ -807,8 +808,8 @@ public:
 	    if (end_time.isNull()) return;
 	    wall_time.add(end_time.val() - start_time.val());
 	    double wall_elapsed = end_time.val() - start_time.val();
-	    AssertAlways(wall_elapsed >= 0,
-			 ("error end_time <= start_time! %.2f",wall_elapsed));
+	    INVARIANT(wall_elapsed >= 0, format
+		      ("error end_time <= start_time! %.2f") % wall_elapsed);
 	    if (cpu_time.val() < 0) {
 		++negative_cpu_time_count;
 	    } else {
@@ -817,8 +818,8 @@ public:
 			++skipped_short_job_count;
 			return;
 		    }
-		    AssertAlways(cpu_time.val() < 2,("whoa, zero wall, %.2f cpu\n",
-						     cpu_time.val()));
+		    INVARIANT(cpu_time.val() < 2, format
+			      ("whoa, zero wall, %.2f cpu") % cpu_time.val());
 		    wall_elapsed = cpu_time.val();
 		    ++bumped_wall_time_count;
 		}
@@ -1064,7 +1065,7 @@ public:
 	  str_ers("ers"), ers_job_count(0), non_ers_job_count(0),
 	  out_of_window_jobs(0), zero_length_jobs(0), ers_test_job(0)
     {
-	AssertAlways(reserved.empty() == false,("internal"));
+	SINVARIANT(reserved.empty() == false);
 	jcTrans.push_back("Unknown");
 	jcTrans.push_back("Reserved");
 	jcTrans.push_back("BestEffort");
@@ -1172,7 +1173,7 @@ public:
 		    starts.top()->starttime < finishes.top()->endtime) {
 		    // start is strictly first, prefer to end jobs
 		    jobEnt *tmp = starts.top();
-		    AssertAlways(tmp->jobclass == jcUnknown,("internal"));
+		    SINVARIANT(tmp->jobclass == jcUnknown);
 		    if (cur_reserved_jobs < cur_reserved_cap) {
 			tmp->jobclass = jcReserved;
 			++cur_reserved_jobs;
@@ -1198,10 +1199,10 @@ public:
 		} else {
 		    // finish is first
 		    jobEnt *tmp = finishes.top();
-		    AssertAlways(tmp->jobclass != jcUnknown,("internal"));
+		    SINVARIANT(tmp->jobclass != jcUnknown);
 		    ExtentType::int32 window_job_start = max(window_start,tmp->starttime);
 		    ExtentType::int32 window_job_end = min(window_end,tmp->endtime);
-		    AssertAlways(window_job_start <= window_job_end,("internal"));
+		    SINVARIANT(window_job_start <= window_job_end);
 		    max_reserved = max(max_reserved, cur_reserved_jobs);
 		    max_best_effort = max(max_best_effort, cur_best_effort_jobs);
 		    if (tmp->jobclass == jcReserved) {
@@ -1224,14 +1225,14 @@ public:
 			    printf("  finish %d.%d at %d as excess (%lld cum secs)\n",
 				   tmp->job_id,tmp->job_idx,tmp->endtime - base_time,excess_seconds);
 		    } else {
-			AssertFatal(("internal"));
+			FATAL_ERROR("internal");
 		    }
 		    finishes.pop();
 		    delete tmp;
 		}
 	    }
-	    AssertAlways(cur_reserved_jobs == cur_best_effort_jobs &&
-			 cur_best_effort_jobs == 0,("internal"));
+	    SINVARIANT(cur_reserved_jobs == cur_best_effort_jobs &&
+		       cur_best_effort_jobs == 0);
 	    printf("window was %d .. %d\n",window_start,window_end);
 	    printf("job counts: non-ers=%d, ers=%d, out-of-window-ers=%d, zero-length-ers=%d, ers-test=%d\n",
 		   non_ers_job_count, ers_job_count, out_of_window_jobs, zero_length_jobs,ers_test_job);
@@ -1320,19 +1321,19 @@ parseopts(int argc, char *argv[])
 	    FATAL_ERROR("disabled until tested and added to regression suite");
 	    vector<string> opts;
 	    split(optarg,":",opts);
-	    AssertAlways(opts.size() == 3,
-			 ("invalid option to -c, expect <start-secs>:<end-secs>:[erstest]"));
+	    INVARIANT(opts.size() == 3, "invalid option to -c,"
+		      " expect <start-secs>:<end-secs>:[erstest]");
 	    job_report_start = atoi(opts[0].c_str());
 	    job_report_end = atoi(opts[1].c_str());
 	    if (opts[2] == "erstest") {
 		job_report_noerstest = false;
 	    } else {
-		AssertAlways(opts[2] == "",
-			     ("unrecognized option '%s'\n",opts[2].c_str()));
+		INVARIANT(opts[2] == "",
+			  format("unrecognized option '%s'") % opts[2]);
 	    }
-	    AssertAlways(job_report_end > job_report_start,
-			 ("invalid option to -c, end(%d) <= start(%d)\n",
-			  job_report_end, job_report_start));
+	    INVARIANT(job_report_end > job_report_start,
+		      format("invalid option to -c, end(%d) <= start(%d)")
+		      % job_report_end % job_report_start);
 	    options[optJobReport] = true;
 	    break;
 	}
@@ -1347,7 +1348,7 @@ parseopts(int argc, char *argv[])
 	}
 //	case 'f': {
 //	    int meta_id = atoi(optarg);
-//	    AssertAlways(meta_id > 0,("bad option %s\n",optarg));
+//	    INVARIANT(meta_id > 0, format("bad option %s") % optarg);
 //	    find_metaid_list.push_back(meta_id);
 //	    break;
 //	}
@@ -1380,15 +1381,15 @@ parseopts(int argc, char *argv[])
 	    options[optLSFSlowJobs] = true;
 	    vector<string> opts;
 	    split(optarg,":",opts);
-	    AssertAlways(opts.size() == 1,
-			 ("invalid options to -l, expect [yes|no]"));
+	    INVARIANT(opts.size() == 1, 
+		      "invalid options to -l, expect [yes|no]");
 	    if (opts[0] == "yes") {
 		lsfslowjobs_show_finished = true;
 	    } else if (opts[0] == "no") {
 		lsfslowjobs_show_finished = false;
 	    } else {
-		AssertFatal(("expect [yes|no] to -l , not '%s'\n",
-			     opts[0].c_str()));
+		FATAL_ERROR(format("expect [yes|no] to -l , not '%s'")
+			    % opts[0]);
 	    }
 	    break;
 	}
@@ -1403,30 +1404,31 @@ parseopts(int argc, char *argv[])
 	    options[optBestEffort] = true;
 	    vector<string> opts;
 	    split(optarg,":",opts);
-	    AssertAlways(opts.size() >= 3,("missing options to -n"));
-	    AssertAlways(opts[0].find(",") > opts[0].size(),
-			 ("bad first opt %s, has ','; did you leave off best-effort-starttime?",
-			  opts[0].c_str()));
-	    AssertAlways(opts[1].find(",") > opts[1].size(),
-			 ("bad second opt %s, has ','; did you leave off best-effort-endtime?",
-			  opts[1].c_str()));
-	    best_effort_window_start = atoi(opts[0].c_str());
-	    best_effort_window_end = atoi(opts[1].c_str());
+	    INVARIANT(opts.size() >= 3, "missing options to -n");
+	    INVARIANT(opts[0].find(",") > opts[0].size(),
+		      format("bad first opt %s, has ','; did you leave off"
+			     " best-effort-starttime?") % opts[0]);
+	    INVARIANT(opts[1].find(",") > opts[1].size(),
+		      format("bad second opt %s, has ','; did you leave off"
+			     " best-effort-endtime?") % opts[1]);
+	    best_effort_window_start = stringToInt32(opts[0]);
+	    best_effort_window_end = stringToInt32(opts[1]);
 	    BestEffort::BEInfo tmp;
 	    for(unsigned i = 2;i<opts.size();++i) {
 		vector<string> beopts;
 		split(opts[i],",",beopts);
-		AssertAlways(beopts.size() == 3,("purchase spec '%s' wrong\n",opts[i].c_str()));
-		tmp.starttime = atoi(beopts[0].c_str());
-		tmp.reserved_cpus = atoi(beopts[1].c_str());
-		tmp.best_effort_cpus = atoi(beopts[2].c_str());
+		INVARIANT(beopts.size() == 3, 
+			  format("purchase spec '%s' wrong\n") % opts[i]);
+		tmp.starttime = stringToInt32(beopts[0]);
+		tmp.reserved_cpus = stringToInt32(beopts[1]);
+		tmp.best_effort_cpus = stringToInt32(beopts[2]);
 		best_effort_reserved.push_back(tmp);
 	    }
 	    break;
 	}
-	case '?': AssertFatal(("invalid option"));
+	case '?': FATAL_ERROR("invalid option");
 	default:
-	    AssertFatal(("getopt returned '%c'\n",opt));
+	    FATAL_ERROR(format("getopt returned '%c'") % opt);
 	}
     }
     INVARIANT(any_selected, "You need to have selected at least one option.\n"
