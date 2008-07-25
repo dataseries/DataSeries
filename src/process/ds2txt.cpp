@@ -111,9 +111,9 @@ main(int argc, char *argv[])
 // fields is mostly obsolete, move to man page eventually
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
 		     "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
-		     "  [--skip-extent-fieldnames] <file...>\n"
-		     "  [--skip-all]\n"
+		     "  [--skip-extent-fieldnames] [--skip-all]\n"
 		     "  [--where '*'|extent-type-match bool-expr]\n"
+		     "  <file...>\n"
 		     "\n%s\n")
 	      % argv[0] % DSExpr::usage);
     for(int i=1;i<argc;++i) {
