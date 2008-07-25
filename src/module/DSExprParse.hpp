@@ -545,7 +545,7 @@ namespace DSExprImpl
 {
     double constant;
     DSExpr *expression;
-    std::string *field;
+    std::string *symbol;
     std::string *strliteral;
 }
 /* Line 35 of lalr1.cc.  */
@@ -561,7 +561,7 @@ namespace DSExprImpl
       /* Tokens.  */
    enum yytokentype {
      END_OF_STRING = 0,
-     FIELD = 258,
+     SYMBOL = 258,
      CONSTANT = 259,
      FN_TfracToSeconds = 260,
      EQ = 261,

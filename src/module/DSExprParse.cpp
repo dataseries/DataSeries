@@ -1036,7 +1036,7 @@ namespace DSExprImpl
 
   case 22:
 #line 681 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].field)); ;}
+    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].symbol)); ;}
     break;
 
   case 23:
@@ -1051,12 +1051,17 @@ namespace DSExprImpl
 
   case 25:
 #line 684 "module/DSExprParse.yy"
+    { FATAL_ERROR("not implemented yet"); ;}
+    break;
+
+  case 26:
+#line 685 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 1060 "module/DSExprParse.cpp"
+#line 1065 "module/DSExprParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -1263,16 +1268,16 @@ namespace DSExprImpl
 
   /* YYPACT[STATE-NUM] -- Index in YYTABLE of the portion describing
      STATE-NUM.  */
-  const signed char Parser::yypact_ninf_ = -13;
+  const signed char Parser::yypact_ninf_ = -23;
   const signed char
   Parser::yypact_[] =
   {
-        -2,   -13,   -13,   -12,    -2,   -13,    33,    -2,    19,   -13,
-       4,    35,    33,   -13,    70,    33,   -13,    -4,    51,   -13,
-     -13,    -2,    -2,   -13,    33,    33,    33,    33,    33,    33,
-      33,    33,    33,    33,    33,    74,    82,   -13,   -13,    34,
-     -13,    47,    47,    47,    47,    47,    47,    47,    20,    20,
-     -13,   -13,   -13
+        -1,   -22,   -23,   -12,    -1,   -23,    50,    -1,    21,   -23,
+      69,    40,    50,    50,   -23,    87,    50,   -23,    -4,    68,
+     -23,   -23,    -1,    -1,   -23,    50,    50,    50,    50,    50,
+      50,    50,    50,    50,    50,    50,    44,    -6,    19,    91,
+     -23,   -23,    30,   -23,    44,    44,    44,    44,    44,    44,
+      44,    22,    22,   -23,   -23,   -23,    50,   -23,    44
   };
 
   /* YYDEFACT[S] -- default rule to reduce with in state S when YYTABLE
@@ -1282,25 +1287,25 @@ namespace DSExprImpl
   Parser::yydefact_[] =
   {
          0,    22,    23,     0,     0,    24,     0,     0,     0,    15,
-       0,     0,     0,    13,     0,     0,    20,     0,     0,     1,
-       3,     0,     0,     2,     0,     0,     0,     0,     0,     0,
-       0,     0,     0,     0,     0,     0,     0,    14,    21,    11,
-      12,     4,     5,    10,     6,     7,     8,     9,    16,    17,
-      18,    19,    25
+       0,     0,     0,     0,    13,     0,     0,    20,     0,     0,
+       1,     3,     0,     0,     2,     0,     0,     0,     0,     0,
+       0,     0,     0,     0,     0,     0,    27,     0,     0,     0,
+      14,    21,    11,    12,     4,     5,    10,     6,     7,     8,
+       9,    16,    17,    18,    19,    25,     0,    26,    28
   };
 
   /* YYPGOTO[NTERM-NUM].  */
   const signed char
   Parser::yypgoto_[] =
   {
-       -13,   -13,   -13,     1,     0
+       -23,   -23,   -23,     1,     0,   -23
   };
 
   /* YYDEFGOTO[NTERM-NUM].  */
   const signed char
   Parser::yydefgoto_[] =
   {
-        -1,     8,     9,    10,    14
+        -1,     8,     9,    10,    15,    37
   };
 
   /* YYTABLE[YYPACT[STATE-NUM]].  What to do in state STATE-NUM.  If
@@ -1310,34 +1315,36 @@ namespace DSExprImpl
   const unsigned char
   Parser::yytable_[] =
   {
-        11,     1,     2,     3,    20,    13,    16,    18,    17,    21,
-      22,    12,    35,     4,     5,    36,     6,    21,    22,    19,
-      37,     7,    39,    40,    41,    42,    43,    44,    45,    46,
-      47,    48,    49,    50,    51,    23,     1,     2,     3,    33,
-      34,    24,    25,    26,    27,    28,    29,    30,    22,     5,
-       0,     6,    31,    32,    33,    34,    15,    24,    25,    26,
-      27,    28,    29,    30,    31,    32,    33,    34,    31,    32,
-      33,    34,     0,     0,     0,    38,    24,    25,    26,    27,
-      28,    29,    30,     0,     0,     0,     0,    31,    32,    33,
-      34,    31,    32,    33,    34,     0,     0,     0,    52,    31,
-      32,    33,    34,     0,     0,     0,    38
+        11,    12,     1,     2,     3,    14,    17,    19,    18,    22,
+      23,    13,    36,    38,     4,     5,    39,     6,    55,    56,
+      40,    20,     7,    42,    43,    44,    45,    46,    47,    48,
+      49,    50,    51,    52,    53,    54,    32,    33,    34,    35,
+      24,    34,    35,    57,    23,     0,    25,    26,    27,    28,
+      29,    30,    31,     1,     2,     3,    58,    32,    33,    34,
+      35,    32,    33,    34,    35,     0,     5,     0,     6,    21,
+       0,     0,     0,    16,    25,    26,    27,    28,    29,    30,
+      31,     0,    22,    23,     0,    32,    33,    34,    35,     0,
+       0,     0,    41,    25,    26,    27,    28,    29,    30,    31,
+       0,     0,     0,     0,    32,    33,    34,    35,    32,    33,
+      34,    35,     0,     0,     0,    41
   };
 
   /* YYCHECK.  */
   const signed char
   Parser::yycheck_[] =
   {
-         0,     3,     4,     5,     0,     4,     6,     7,     7,    13,
-      14,    23,    12,    15,    16,    15,    18,    13,    14,     0,
-      24,    23,    21,    22,    24,    25,    26,    27,    28,    29,
-      30,    31,    32,    33,    34,     0,     3,     4,     5,    19,
-      20,     6,     7,     8,     9,    10,    11,    12,    14,    16,
-      -1,    18,    17,    18,    19,    20,    23,     6,     7,     8,
-       9,    10,    11,    12,    17,    18,    19,    20,    17,    18,
-      19,    20,    -1,    -1,    -1,    24,     6,     7,     8,     9,
-      10,    11,    12,    -1,    -1,    -1,    -1,    17,    18,    19,
-      20,    17,    18,    19,    20,    -1,    -1,    -1,    24,    17,
-      18,    19,    20,    -1,    -1,    -1,    24
+         0,    23,     3,     4,     5,     4,     6,     7,     7,    13,
+      14,    23,    12,    13,    15,    16,    16,    18,    24,    25,
+      24,     0,    23,    22,    23,    25,    26,    27,    28,    29,
+      30,    31,    32,    33,    34,    35,    17,    18,    19,    20,
+       0,    19,    20,    24,    14,    -1,     6,     7,     8,     9,
+      10,    11,    12,     3,     4,     5,    56,    17,    18,    19,
+      20,    17,    18,    19,    20,    -1,    16,    -1,    18,     0,
+      -1,    -1,    -1,    23,     6,     7,     8,     9,    10,    11,
+      12,    -1,    13,    14,    -1,    17,    18,    19,    20,    -1,
+      -1,    -1,    24,     6,     7,     8,     9,    10,    11,    12,
+      -1,    -1,    -1,    -1,    17,    18,    19,    20,    17,    18,
+      19,    20,    -1,    -1,    -1,    24
   };
 
   /* STOS_[STATE-NUM] -- The (internal number of the) accessing
@@ -1345,12 +1352,12 @@ namespace DSExprImpl
   const unsigned char
   Parser::yystos_[] =
   {
-         0,     3,     4,     5,    15,    16,    18,    23,    26,    27,
-      28,    29,    23,    28,    29,    23,    29,    28,    29,     0,
-       0,    13,    14,     0,     6,     7,     8,     9,    10,    11,
-      12,    17,    18,    19,    20,    29,    29,    24,    24,    28,
-      28,    29,    29,    29,    29,    29,    29,    29,    29,    29,
-      29,    29,    24
+         0,     3,     4,     5,    15,    16,    18,    23,    27,    28,
+      29,    30,    23,    23,    29,    30,    23,    30,    29,    30,
+       0,     0,    13,    14,     0,     6,     7,     8,     9,    10,
+      11,    12,    17,    18,    19,    20,    30,    31,    30,    30,
+      24,    24,    29,    29,    30,    30,    30,    30,    30,    30,
+      30,    30,    30,    30,    30,    24,    25,    24,    30
   };
 
 #if YYDEBUG
@@ -1361,7 +1368,7 @@ namespace DSExprImpl
   {
          0,   256,   257,   258,   259,   260,   261,   262,   263,   264,
      265,   266,   267,   268,   269,   270,   271,    43,    45,    42,
-      47,   272,   273,    40,    41
+      47,   272,   273,    40,    41,    44
   };
 #endif
 
@@ -1369,9 +1376,9 @@ namespace DSExprImpl
   const unsigned char
   Parser::yyr1_[] =
   {
-         0,    25,    26,    26,    27,    27,    27,    27,    27,    27,
-      27,    28,    28,    28,    28,    28,    29,    29,    29,    29,
-      29,    29,    29,    29,    29,    29
+         0,    26,    27,    27,    28,    28,    28,    28,    28,    28,
+      28,    29,    29,    29,    29,    29,    30,    30,    30,    30,
+      30,    30,    30,    30,    30,    30,    30,    31,    31
   };
 
   /* YYR2[YYN] -- Number of symbols composing right hand side of rule YYN.  */
@@ -1380,7 +1387,7 @@ namespace DSExprImpl
   {
          0,     2,     2,     2,     3,     3,     3,     3,     3,     3,
        3,     3,     3,     2,     3,     1,     3,     3,     3,     3,
-       2,     3,     1,     1,     1,     4
+       2,     3,     1,     1,     1,     4,     4,     1,     3
   };
 
 #if YYDEBUG || YYERROR_VERBOSE || YYTOKEN_TABLE
@@ -1389,11 +1396,11 @@ namespace DSExprImpl
   const char*
   const Parser::yytname_[] =
   {
-    "END_OF_STRING", "error", "$undefined", "FIELD", "CONSTANT",
+    "END_OF_STRING", "error", "$undefined", "SYMBOL", "CONSTANT",
   "FN_TfracToSeconds", "EQ", "NEQ", "REMATCH", "GT", "LT", "GEQ", "LEQ",
   "LOR", "LAND", "LNOT", "STRLITERAL", "'+'", "'-'", "'*'", "'/'", "ULNOT",
-  "UMINUS", "'('", "')'", "$accept", "complete_expr", "rel_expr",
-  "bool_expr", "expr", 0
+  "UMINUS", "'('", "')'", "','", "$accept", "complete_expr", "rel_expr",
+  "bool_expr", "expr", "fnargs", 0
   };
 #endif
 
@@ -1402,15 +1409,16 @@ namespace DSExprImpl
   const Parser::rhs_number_type
   Parser::yyrhs_[] =
   {
-        26,     0,    -1,    29,     0,    -1,    28,     0,    -1,    29,
-       6,    29,    -1,    29,     7,    29,    -1,    29,     9,    29,
-      -1,    29,    10,    29,    -1,    29,    11,    29,    -1,    29,
-      12,    29,    -1,    29,     8,    29,    -1,    28,    13,    28,
-      -1,    28,    14,    28,    -1,    15,    28,    -1,    23,    28,
-      24,    -1,    27,    -1,    29,    17,    29,    -1,    29,    18,
-      29,    -1,    29,    19,    29,    -1,    29,    20,    29,    -1,
-      18,    29,    -1,    23,    29,    24,    -1,     3,    -1,     4,
-      -1,    16,    -1,     5,    23,    29,    24,    -1
+        27,     0,    -1,    30,     0,    -1,    29,     0,    -1,    30,
+       6,    30,    -1,    30,     7,    30,    -1,    30,     9,    30,
+      -1,    30,    10,    30,    -1,    30,    11,    30,    -1,    30,
+      12,    30,    -1,    30,     8,    30,    -1,    29,    13,    29,
+      -1,    29,    14,    29,    -1,    15,    29,    -1,    23,    29,
+      24,    -1,    28,    -1,    30,    17,    30,    -1,    30,    18,
+      30,    -1,    30,    19,    30,    -1,    30,    20,    30,    -1,
+      18,    30,    -1,    23,    30,    24,    -1,     3,    -1,     4,
+      -1,    16,    -1,     3,    23,    31,    24,    -1,     5,    23,
+      30,    24,    -1,    30,    -1,    31,    25,    30,    -1
   };
 
   /* YYPRHS[YYN] -- Index of the first RHS symbol of rule number YYN in
@@ -1420,7 +1428,7 @@ namespace DSExprImpl
   {
          0,     0,     3,     6,     9,    13,    17,    21,    25,    29,
       33,    37,    41,    45,    48,    52,    54,    58,    62,    66,
-      70,    73,    77,    79,    81,    83
+      70,    73,    77,    79,    81,    83,    88,    93,    95
   };
 
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
@@ -1429,7 +1437,7 @@ namespace DSExprImpl
   {
          0,   652,   652,   653,   657,   658,   659,   660,   661,   662,
      663,   667,   668,   669,   670,   671,   675,   676,   677,   678,
-     679,   680,   681,   682,   683,   684
+     679,   680,   681,   682,   683,   684,   685,   689,   690
   };
 
   // Print the state stack on the debug stream.
@@ -1473,7 +1481,7 @@ namespace DSExprImpl
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      23,    24,    19,    17,     2,    18,     2,    20,     2,     2,
+      23,    24,    19,    17,    25,    18,     2,    20,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -1505,20 +1513,20 @@ namespace DSExprImpl
   }
 
   const int Parser::yyeof_ = 0;
-  const int Parser::yylast_ = 106;
-  const int Parser::yynnts_ = 5;
+  const int Parser::yylast_ = 115;
+  const int Parser::yynnts_ = 6;
   const int Parser::yyempty_ = -2;
-  const int Parser::yyfinal_ = 19;
+  const int Parser::yyfinal_ = 20;
   const int Parser::yyterror_ = 1;
   const int Parser::yyerrcode_ = 256;
-  const int Parser::yyntokens_ = 25;
+  const int Parser::yyntokens_ = 26;
 
   const unsigned int Parser::yyuser_token_number_max_ = 273;
   const Parser::token_number_type Parser::yyundef_token_ = 2;
 
 } // namespace DSExprImpl
 
-#line 686 "module/DSExprParse.yy"
+#line 693 "module/DSExprParse.yy"
 
 
 void

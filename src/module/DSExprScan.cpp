@@ -381,7 +381,7 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    2,    4,    5,    1,    1,    1,    6,    1,    7,
-        7,    7,    7,    1,    7,    8,    7,    9,    9,    9,
+        7,    7,    7,    7,    7,    8,    7,    9,    9,    9,
         9,    9,    9,    9,    9,    9,    9,    1,    1,   10,
        11,   12,    1,    1,   13,   13,   13,   13,   13,   13,
        13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
@@ -883,8 +883,8 @@ YY_RULE_SETUP
 case 14:
 YY_RULE_SETUP
 #line 79 "module/DSExprScan.ll"
-{ yylval->field = new std::string(yytext);
-	  return token::FIELD; }
+{ yylval->symbol = new std::string(yytext);
+	  return token::SYMBOL; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP

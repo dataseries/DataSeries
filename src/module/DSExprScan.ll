@@ -35,7 +35,7 @@
 
 constant	[0-9]+(\.[0-9]+)?
 blank		[ \t\n]
-field		[a-zA-Z_]([a-zA-Z0-9_]|(\\.))*
+symbol		[a-zA-Z_]([a-zA-Z0-9_]|(\\.))*
 TfracToSeconds	"fn.TfracToSeconds"
 gt		">"
 lt		"<"
@@ -63,7 +63,7 @@ static unsigned cur_column;
 
 {blank}+    { /* ignore whitespace */ }
 
-[+\-*/\(\)]	{ return token_type(yytext[0]); }
+[+\-*/\(\),]	{ return token_type(yytext[0]); }
 {gt}	{ return token_type(token::GT); }
 {lt}	{ return token_type(token::LT); }
 {geq}	{ return token_type(token::GEQ); }
@@ -76,8 +76,8 @@ static unsigned cur_column;
 {lnot}  { return token_type(token::LNOT); }
 {constant}	{ yylval->constant = stringToDouble(yytext); 
                   return token::CONSTANT; }
-{field} { yylval->field = new std::string(yytext);
-	  return token::FIELD; }
+{symbol} { yylval->symbol = new std::string(yytext);
+	  return token::SYMBOL; }
 {TfracToSeconds} { return token::FN_TfracToSeconds; }
 {strliteral}	{ yylval->strliteral = new std::string(yytext);
                   return token_type(token::STRLITERAL); }

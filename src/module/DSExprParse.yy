@@ -55,7 +55,7 @@ namespace DSExprImpl {
 %union {
     double constant;
     DSExpr *expression;
-    std::string *field;
+    std::string *symbol;
     std::string *strliteral;
 };
 
@@ -616,7 +616,7 @@ using namespace DSExprImpl;
 %file-prefix="yacc.DSExprParse"
 
 %token            END_OF_STRING 0
-%token <field>    FIELD 
+%token <symbol>    SYMBOL 
 %token <constant> CONSTANT
 %token            FN_TfracToSeconds
 %token EQ
@@ -678,11 +678,18 @@ expr
 	| expr '/' expr { $$ = new ExprDivide($1, $3); }
 	| '-' expr %prec UMINUS { $$ = new ExprMinus($2); }
 	| '(' expr ')'  { $$ = $2; }
-	| FIELD { $$ = new ExprField(driver.series, *$1); }
+	| SYMBOL { $$ = new ExprField(driver.series, *$1); }
 	| CONSTANT { $$ = new ExprNumericConstant($1); }
 	| STRLITERAL { $$ = new ExprStrLiteral(*$1); }
+	| SYMBOL '(' fnargs ')' { FATAL_ERROR("not implemented yet"); }
 	| FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
 	;
+
+fnargs
+	: expr
+	| fnargs ',' expr
+	;
+
 %%
 
 void
