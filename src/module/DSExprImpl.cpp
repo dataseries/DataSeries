@@ -6,7 +6,10 @@
 
 #include "DSExprImpl.hpp"
 
+#include <ios>
+
 #include <boost/foreach.hpp>
+#include <boost/format.hpp>
 
 #include "DSExprParse.hpp"
 
@@ -31,6 +34,12 @@ DSExprImpl::Driver::~Driver()
 
 //////////////////////////////////////////////////////////////////////
 
+void DSExprImpl::ExprNumericConstant::dump(ostream &out) {
+    out << format("{NumericConstant: %1%}") % val;
+}
+
+//////////////////////////////////////////////////////////////////////
+
 DSExprImpl::ExprField::ExprField(ExtentSeries &series, const string &fieldname_)
 { 
     // Allow for almost arbitrary fieldnames through escaping...
@@ -50,6 +59,36 @@ DSExprImpl::ExprField::ExprField(ExtentSeries &series, const string &fieldname_)
 	field = GeneralField::create(NULL, series, fieldname_);
 	fieldname = fieldname_;
     }
+}
+
+void DSExprImpl::ExprField::dump(ostream &out) {
+    out << format("{Field: %1%}") % fieldname;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void DSExprImpl::ExprStrLiteral::dump(ostream &out) {
+    out << format("{StrLiteral: %1%}") % s;
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void DSExprImpl::ExprUnary::dump(ostream &out) 
+{
+    out << opname();
+    out << " ";
+    subexpr->dump(out);
+}
+
+//////////////////////////////////////////////////////////////////////
+
+void DSExprImpl::ExprBinary::dump(ostream &out) 
+{
+    left->dump(out);
+    out << " ";
+    out << opname();
+    out << " ";
+    right->dump(out);
 }
 
 //////////////////////////////////////////////////////////////////////

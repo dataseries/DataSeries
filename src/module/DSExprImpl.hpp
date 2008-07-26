@@ -1,12 +1,10 @@
 #ifndef _DSExprImpl_Hpp_
 #define _DSExprImpl_Hpp_
 
-#include <ios>
+#include <iosfwd>
 #include <string>
-#include <boost/format.hpp>
 
 #include <Lintel/Double.hpp>
-#include <Lintel/Clock.hpp>
 
 #include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.hpp>
@@ -52,9 +50,7 @@ public:
 	FATAL_ERROR("no automatic coercion of numeric constants to string");
     }
 
-    virtual void dump(ostream &out) {
-	out << format("{NumericConstant: %1%}") % val;
-    }
+    virtual void dump(ostream &out);
 
 private:
     double val;
@@ -89,9 +85,7 @@ public:
 	return GeneralValue(*field).valString();
     }
 
-    virtual void dump(ostream &out) {
-	out << format("{Field: %1%}") % fieldname;
-    }
+    virtual void dump(ostream &out);
 
 private:
     GeneralField *field;
@@ -121,9 +115,7 @@ public:
 	return s;
     }
 
-    virtual void dump(ostream &out) {
-	out << format("{StrLiteral: %1%}") % s;
-    }
+    virtual void dump(ostream &out);
 
 private:
     string s;
@@ -137,11 +129,7 @@ public:
 	delete subexpr;
     }
 
-    virtual void dump(ostream &out) {
-	out << opname();
-	out << " ";
-	subexpr->dump(out);
-    }
+    virtual void dump(ostream &out);
 
     virtual string opname() const {
 	FATAL_ERROR("either override dump or defined opname");
@@ -166,13 +154,7 @@ public:
 		(right->getType() == t_String));
     }
 
-    virtual void dump(ostream &out) {
-	left->dump(out);
-	out << " ";
-	out << opname();
-	out << " ";
-	right->dump(out);
-    }
+    virtual void dump(ostream &out);
 
     virtual string opname() const {
 	FATAL_ERROR("either override dump or defined opname");
