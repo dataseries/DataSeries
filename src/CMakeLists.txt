@@ -55,6 +55,7 @@ SET(LIBDATASERIES_SOURCES
 	base/Int64TimeField.cpp
 	process/commonargs.cpp
 	module/DSExpr.cpp
+	module/DSExprImpl.cpp
 	module/DSExprParse.cpp
 	module/DSExprScan.cpp
 	module/DSStatGroupByModule.cpp
