@@ -1,12 +1,32 @@
 #include <DataSeries/DSExpr.hpp>
 
+#include <boost/smart_ptr.hpp>
+
 #include "DSExprImpl.hpp"
 
 using namespace std;
 
-DSExpr::~DSExpr()
+// deprecated
+DSExpr *
+DSExpr::make(ExtentSeries &series, string &expr_string)
 {
+    DSExprParserFactory &defaultParserFactory =
+	DSExprParserFactory::GetDefaultParserFactory();
+    boost::scoped_ptr<DSExprParser> parser(defaultParserFactory.make());
+    return parser->parse(series, expr_string);
 }
+
+// deprecated
+string 
+DSExpr::usage()
+{
+    DSExprParserFactory &defaultParserFactory =
+	DSExprParserFactory::GetDefaultParserFactory();
+    boost::scoped_ptr<DSExprParser> parser(defaultParserFactory.make());
+    return parser->getUsage();
+}
+
+//////////////////////////////////////////////////////////////////////
 
 class DefaultParser : public DSExprParser
 {
@@ -39,6 +59,8 @@ class DefaultParser : public DSExprParser
 	FATAL_ERROR("not implemented");
     }
 };
+
+//////////////////////////////////////////////////////////////////////
 
 class DefaultParserFactory : public DSExprParserFactory 
 {

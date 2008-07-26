@@ -73,7 +73,7 @@ class DSExpr : boost::noncopyable {
 public:
     typedef std::vector<DSExpr *> List;
 
-    virtual ~DSExpr();
+    virtual ~DSExpr() {}
 
     // t_Numeric is double or int64 or bool
     typedef enum { t_Unknown, t_Numeric, t_Bool, t_String } expr_type_t;
@@ -87,26 +87,9 @@ public:
     virtual void dump(std::ostream &) = 0;
 
     // deprecated
-    static DSExpr *make(ExtentSeries &series, std::string &expr_string)
-    {
-	DSExprParserFactory &defaultParserFactory =
-	    DSExprParserFactory::GetDefaultParserFactory();
-	DSExprParser *parser = defaultParserFactory.make();
-	DSExpr *expr = parser->parse(series, expr_string);
-	delete parser;
-	return expr;
-    }
-
+    static DSExpr *make(ExtentSeries &series, std::string &expr_string);
     // deprecated
-    static std::string usage()
-    {
-	DSExprParserFactory &defaultParserFactory =
-	    DSExprParserFactory::GetDefaultParserFactory();
-	DSExprParser *parser = defaultParserFactory.make();
-	std::string s(parser->getUsage());
-	delete parser;
-	return s;
-    }
+    static std::string usage();
 };
 
 #endif
