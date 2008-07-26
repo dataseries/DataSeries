@@ -1,10 +1,19 @@
+/* -*- C++ -*-
+   (c) Copyright 2007, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
 #include "DSExprImpl.hpp"
 
 #include <boost/foreach.hpp>
 
 #include "DSExprParse.hpp"
 
-void DSExprImpl::Driver::doit(const std::string &str)
+using namespace std;
+using boost::format;
+
+void DSExprImpl::Driver::doit(const string &str)
 {
     startScanning(str);
     
@@ -103,7 +112,8 @@ DSExprImpl::ExprFunctionApplication::~ExprFunctionApplication()
     args.clear();
 }
 
-void DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
+void 
+DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
     out << name;
     out << "(";
     out << " ";
@@ -118,4 +128,14 @@ void DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
     }
     out << " ";
     out << ")";
+}
+
+
+//////////////////////////////////////////////////////////////////////
+
+void
+DSExprImpl::Parser::error(const DSExprImpl::location &,
+			  const string &err)
+{
+    FATAL_ERROR(format("error parsing: %s starting") % err);
 }

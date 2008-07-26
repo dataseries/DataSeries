@@ -38,8 +38,7 @@
 #include "DSExprParse.hpp"
 
 /* User implementation prologue.  */
-#line 41 "module/DSExprParse.yy"
-
+#line 39 "module/DSExprParse.yy"
 
 YY_DECL;
 
@@ -50,7 +49,7 @@ using namespace DSExprImpl;
 
 
 /* Line 317 of lalr1.cc.  */
-#line 54 "module/DSExprParse.cpp"
+#line 53 "module/DSExprParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -396,140 +395,140 @@ namespace DSExprImpl
     switch (yyn)
       {
 	  case 2:
-#line 88 "module/DSExprParse.yy"
+#line 85 "module/DSExprParse.yy"
     { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
     break;
 
   case 5:
-#line 97 "module/DSExprParse.yy"
+#line 94 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprEq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 6:
-#line 98 "module/DSExprParse.yy"
+#line 95 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprNeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 7:
-#line 99 "module/DSExprParse.yy"
+#line 96 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprGt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 8:
-#line 100 "module/DSExprParse.yy"
+#line 97 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 9:
-#line 101 "module/DSExprParse.yy"
+#line 98 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprGeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 10:
-#line 102 "module/DSExprParse.yy"
+#line 99 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 11:
-#line 103 "module/DSExprParse.yy"
+#line 100 "module/DSExprParse.yy"
     { FATAL_ERROR("not implemented yet"); ;}
     break;
 
   case 12:
-#line 107 "module/DSExprParse.yy"
+#line 104 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLor((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 13:
-#line 108 "module/DSExprParse.yy"
+#line 105 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLand((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 14:
-#line 109 "module/DSExprParse.yy"
+#line 106 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprLnot((yysemantic_stack_[(2) - (2)].expression)); ;}
     break;
 
   case 15:
-#line 110 "module/DSExprParse.yy"
+#line 107 "module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 17:
-#line 115 "module/DSExprParse.yy"
+#line 112 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 18:
-#line 116 "module/DSExprParse.yy"
+#line 113 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 19:
-#line 117 "module/DSExprParse.yy"
+#line 114 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 20:
-#line 118 "module/DSExprParse.yy"
+#line 115 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
   case 21:
-#line 119 "module/DSExprParse.yy"
+#line 116 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprMinus((yysemantic_stack_[(2) - (2)].expression)); ;}
     break;
 
   case 22:
-#line 120 "module/DSExprParse.yy"
+#line 117 "module/DSExprParse.yy"
     { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
     break;
 
   case 23:
-#line 121 "module/DSExprParse.yy"
+#line 118 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].symbol)); ;}
     break;
 
   case 24:
-#line 122 "module/DSExprParse.yy"
+#line 119 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprNumericConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
     break;
 
   case 25:
-#line 123 "module/DSExprParse.yy"
+#line 120 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprStrLiteral(*(yysemantic_stack_[(1) - (1)].strliteral)); ;}
     break;
 
   case 26:
-#line 124 "module/DSExprParse.yy"
+#line 121 "module/DSExprParse.yy"
     { driver.current_fnargs.clear(); ;}
     break;
 
   case 27:
-#line 125 "module/DSExprParse.yy"
+#line 122 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFunctionApplication(*(yysemantic_stack_[(5) - (1)].symbol), driver.current_fnargs); 
 	    driver.current_fnargs.clear();
 	  ;}
     break;
 
   case 28:
-#line 128 "module/DSExprParse.yy"
+#line 125 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
     break;
 
   case 31:
-#line 137 "module/DSExprParse.yy"
+#line 134 "module/DSExprParse.yy"
     { driver.current_fnargs.push_back((yysemantic_stack_[(1) - (1)].expression)); ;}
     break;
 
   case 32:
-#line 138 "module/DSExprParse.yy"
+#line 135 "module/DSExprParse.yy"
     { driver.current_fnargs.push_back((yysemantic_stack_[(3) - (3)].expression)); ;}
     break;
 
 
     /* Line 675 of lalr1.cc.  */
-#line 533 "module/DSExprParse.cpp"
+#line 532 "module/DSExprParse.cpp"
 	default: break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
@@ -909,10 +908,10 @@ namespace DSExprImpl
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,    88,    88,    92,    93,    97,    98,    99,   100,   101,
-     102,   103,   107,   108,   109,   110,   111,   115,   116,   117,
-     118,   119,   120,   121,   122,   123,   124,   124,   128,   131,
-     133,   137,   138
+         0,    85,    85,    89,    90,    94,    95,    96,    97,    98,
+      99,   100,   104,   105,   106,   107,   108,   112,   113,   114,
+     115,   116,   117,   118,   119,   120,   121,   121,   125,   128,
+     130,   134,   135
   };
 
   // Print the state stack on the debug stream.
@@ -1001,13 +1000,4 @@ namespace DSExprImpl
 
 } // namespace DSExprImpl
 
-#line 141 "module/DSExprParse.yy"
-
-
-void
-DSExprImpl::Parser::error(const DSExprImpl::location &,
-			  const std::string &err)
-{
-    FATAL_ERROR(boost::format("error parsing: %s starting") % err);
-}
 

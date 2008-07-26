@@ -177,13 +177,11 @@ namespace DSExprImpl
 
 /* First part of user declarations.  */
 
-
 #include "DSExprImpl.hpp"
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
-
 
 
 /* Line 35 of lalr1.cc.  */

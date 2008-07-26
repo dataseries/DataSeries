@@ -16,13 +16,11 @@
 %define "parser_class_name" "Parser"
 
 %{
-
 #include "DSExprImpl.hpp"
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
-
 %}
 
 %name-prefix="DSExprImpl"
@@ -39,7 +37,6 @@
 };
 
 %{
-
 YY_DECL;
 
 #undef yylex
@@ -137,12 +134,3 @@ fnargs1
 	: expr { driver.current_fnargs.push_back($1); }
 	| fnargs1 ',' expr { driver.current_fnargs.push_back($3); }
 	;
-
-%%
-
-void
-DSExprImpl::Parser::error(const DSExprImpl::location &,
-			  const std::string &err)
-{
-    FATAL_ERROR(boost::format("error parsing: %s starting") % err);
-}
