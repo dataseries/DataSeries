@@ -12,12 +12,16 @@
 #ifndef __DATASERIES_DSEXPR_H
 #define __DATASERIES_DSEXPR_H
 
+#include <iosfwd>
 #include <string>
+#include <vector>
 
 #include <DataSeries/ExtentSeries.hpp>
 
 class DSExpr {
 public:
+    typedef std::vector<DSExpr *> List;
+
     virtual ~DSExpr();
 
     // t_Numeric is double or int64 or bool
@@ -29,10 +33,11 @@ public:
     virtual bool valBool() = 0;
     virtual const std::string valString() = 0;
 
+    virtual void dump(std::ostream &) = 0;
+
     static DSExpr *make(ExtentSeries &series, std::string &expr);
 
     static const std::string usage;
 };
-
 
 #endif

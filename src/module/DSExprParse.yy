@@ -13,19 +13,23 @@
 %skeleton "lalr1.cc"
 %require "2.1a"
 %defines
-
 %define "parser_class_name" "Parser"
 
 %{
+#include <ios>
 #include <string>
 #include <Lintel/Double.hpp>
 #include <DataSeries/DSExpr.hpp>
+#include <boost/format.hpp>
+#include <boost/foreach.hpp>
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
 
 namespace DSExprImpl {
+    using namespace std;
+
     class Driver {
     public:
 	// Implementation in DSExpr.cpp
@@ -33,14 +37,15 @@ namespace DSExprImpl {
 	    : expr(NULL), series(_series), scanner_state(NULL) {}
 	~Driver();
 
-	void doit(const std::string &str);
+	void doit(const string &str);
 
-	void startScanning(const std::string &str);
+	void startScanning(const string &str);
 	void finishScanning();
 	
 	DSExpr *expr;
 	ExtentSeries &series;
 	void *scanner_state;
+	DSExpr::List current_fnargs;
     };
 };
 
@@ -71,6 +76,9 @@ YY_DECL;
 #define yylex DSExprScanlex
 
 namespace DSExprImpl {
+    using namespace std;
+    using namespace boost;
+
     // TODO: make valGV to do general value calculations.
 
     class ExprNumericConstant : public DSExpr {
@@ -86,8 +94,12 @@ namespace DSExprImpl {
 	virtual double valDouble() { return val; }
 	virtual int64_t valInt64() { return static_cast<int64_t>(val); }
 	virtual bool valBool() { return val ? true : false; }
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no automatic coercion of numeric constants to string");
+	}
+
+	virtual void dump(ostream &out) {
+	    out << format("{NumericConstant: %1%}") % val;
 	}
 
     private:
@@ -96,22 +108,24 @@ namespace DSExprImpl {
 
     class ExprField : public DSExpr {
     public:
-	ExprField(ExtentSeries &series, const std::string &fieldname)
+	ExprField(ExtentSeries &series, const string &fieldname_)
 	{ 
 	    // Allow for almost arbitrary fieldnames through escaping...
-	    if (fieldname.find('\\', 0) != std::string::npos) {
-		std::string fixup;
-		fixup.reserve(fieldname.size());
-		for(unsigned i=0; i<fieldname.size(); ++i) {
-		    if (fieldname[i] == '\\') {
+	    if (fieldname_.find('\\', 0) != string::npos) {
+		string fixup;
+		fixup.reserve(fieldname_.size());
+		for(unsigned i=0; i<fieldname_.size(); ++i) {
+		    if (fieldname_[i] == '\\') {
 			++i;
-			INVARIANT(i < fieldname.size(), "missing escaped value");
+			INVARIANT(i < fieldname_.size(), "missing escaped value");
 		    }
-		    fixup.push_back(fieldname[i]);
+		    fixup.push_back(fieldname_[i]);
 		}
 		field = GeneralField::create(NULL, series, fixup);
+		fieldname = fixup;
 	    } else {
-		field = GeneralField::create(NULL, series, fieldname);
+		field = GeneralField::create(NULL, series, fieldname_);
+		fieldname = fieldname_;
 	    }
 	}
 	
@@ -136,19 +150,24 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    return GeneralValue(*field).valBool();
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    return GeneralValue(*field).valString();
+	}
+
+	virtual void dump(ostream &out) {
+	    out << format("{Field: %1%}") % fieldname;
 	}
 
     private:
 	GeneralField *field;
+	string fieldname;
     };
 
     class ExprStrLiteral : public DSExpr {
     public:
-	ExprStrLiteral(const std::string &l)
+	ExprStrLiteral(const string &l)
 	{
-	    std::string fixup;
+	    string fixup;
 	    SINVARIANT(l.size() > 2);
 	    SINVARIANT(l[0] == '\"');
 	    SINVARIANT(l[l.size() - 1] == '\"');
@@ -209,11 +228,16 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no automatic coercion of string literals to boolean");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    return s;
 	}
+
+	virtual void dump(ostream &out) {
+	    out << format("{StrLiteral: %1%}") % s;
+	}
+
     private:
-	std::string s;
+	string s;
     };
 
     class ExprUnary : public DSExpr {
@@ -223,6 +247,17 @@ namespace DSExprImpl {
 	virtual ~ExprUnary() {
 	    delete subexpr;
 	}
+
+	virtual void dump(ostream &out) {
+	    out << opname();
+	    out << " ";
+	    subexpr->dump(out);
+	}
+
+	virtual string opname() const {
+	    FATAL_ERROR("either override dump or defined opname");
+	}
+
     protected:
 	DSExpr *subexpr;
     };
@@ -240,6 +275,18 @@ namespace DSExprImpl {
 	{
 	    return ((left->getType() == t_String) ||
 		    (right->getType() == t_String));
+	}
+
+	virtual void dump(ostream &out) {
+	    left->dump(out);
+	    out << " ";
+	    out << opname();
+	    out << " ";
+	    right->dump(out);
+	}
+
+	virtual string opname() const {
+	    FATAL_ERROR("either override dump or defined opname");
 	}
 
     protected:
@@ -264,9 +311,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("-"); }
     };
 
     class ExprAdd : public ExprBinary {
@@ -288,9 +337,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("+"); }
     };
 
     class ExprSubtract : public ExprBinary {
@@ -309,9 +360,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("-"); }
     };
 
     class ExprMultiply : public ExprBinary {
@@ -332,9 +385,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("*"); }
     };
 
     class ExprDivide : public ExprBinary {
@@ -355,9 +410,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("/"); }
     };
 
     class ExprEq : public ExprBinary {
@@ -380,9 +437,11 @@ namespace DSExprImpl {
 		return Double::eq(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("=="); }
     };
 
     class ExprNeq : public ExprBinary {
@@ -407,9 +466,11 @@ namespace DSExprImpl {
 		return !Double::eq(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("!="); }
     };
 
     class ExprGt : public ExprBinary {
@@ -434,9 +495,11 @@ namespace DSExprImpl {
 		return Double::gt(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string(">"); }
     };
 
     class ExprLt : public ExprBinary {
@@ -459,9 +522,11 @@ namespace DSExprImpl {
 		return Double::lt(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("<"); }
     };
 
     class ExprGeq : public ExprBinary {
@@ -486,9 +551,11 @@ namespace DSExprImpl {
 		return Double::geq(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string(">="); }
     };
 
     class ExprLeq : public ExprBinary {
@@ -513,9 +580,11 @@ namespace DSExprImpl {
 		return Double::leq(left->valDouble(), right->valDouble());
 	    }
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("<="); }
     };
 
     class ExprLor : public ExprBinary {
@@ -536,9 +605,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    return (left->valBool() || right->valBool());
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("||"); }
     };
 
     class ExprLand : public ExprBinary {
@@ -557,9 +628,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    return (left->valBool() && right->valBool());
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("&&"); }
     };
 
     class ExprLnot : public ExprUnary {
@@ -580,9 +653,11 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    return !(subexpr->valBool());
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual string opname() const { return string("!"); }
     };
 
     class ExprFnTfracToSeconds : public ExprUnary {
@@ -604,9 +679,66 @@ namespace DSExprImpl {
 	virtual bool valBool() {
 	    FATAL_ERROR("no silent type switching");
 	}
-	virtual const std::string valString() {
+	virtual const string valString() {
 	    FATAL_ERROR("no silent type switching");
 	}
+
+	virtual void dump(ostream &out) {
+	    out << "fn.TfracToSeconds(";
+	    subexpr->dump(out);
+	    out << ")";
+	}
+    };
+
+    class ExprFunctionApplication : public DSExpr {
+    public:
+	ExprFunctionApplication(const string &fnname, const DSExpr::List &fnargs) 
+	    : name(fnname), args(fnargs)
+	{}
+	virtual ~ExprFunctionApplication() {
+	    BOOST_FOREACH(DSExpr *e, args) {
+		delete e;
+	    }
+	    args.clear();
+	}
+
+	virtual expr_type_t getType() {
+	    return t_Unknown;
+	}
+
+	virtual double valDouble() {
+	    return 0.0;
+	}
+	virtual int64_t valInt64() {
+	    return 0;
+	}
+	virtual bool valBool() {
+	    return false;
+	}
+	virtual const string valString() {
+	    return "";
+	}
+
+	virtual void dump(ostream &out) {
+	    out << name;
+	    out << "(";
+	    out << " ";
+	    bool first = true;
+	    BOOST_FOREACH(DSExpr *e, args) {
+		if (first) {
+		    first = false;
+		} else {
+		    out << ", ";
+		}
+		e->dump(out);
+	    }
+	    out << " ";
+	    out << ")";
+	}
+
+    private:
+	const string name;
+        DSExpr::List args;
     };
 }
 
@@ -615,10 +747,11 @@ using namespace DSExprImpl;
 
 %file-prefix="yacc.DSExprParse"
 
-%token            END_OF_STRING 0
-%token <symbol>    SYMBOL 
+%token END_OF_STRING 0
+%token <symbol> SYMBOL 
 %token <constant> CONSTANT
-%token            FN_TfracToSeconds
+%token <strliteral> STRLITERAL
+%token FN_TfracToSeconds
 %token EQ
 %token NEQ
 %token REMATCH
@@ -629,11 +762,11 @@ using namespace DSExprImpl;
 %token LOR
 %token LAND
 %token LNOT
-%token <strliteral> STRLITERAL
 
 %type  <expression>     expr
-%type  <expression>     bool_expr
 %type  <expression>     rel_expr
+%type  <expression>     bool_expr
+%type  <expression>     top_level_expr
 
 %%
 
@@ -649,9 +782,13 @@ using namespace DSExprImpl;
 %left UMINUS;
 
 complete_expr
-	: expr END_OF_STRING { driver.expr = $1; } 
-	| bool_expr END_OF_STRING { driver.expr = $1; } 
+	: top_level_expr END_OF_STRING { driver.expr = $1; }
         ;
+
+top_level_expr
+	: expr
+	| bool_expr
+	;
 
 rel_expr
 	: expr EQ expr { $$ = new ExprEq($1, $3); }
@@ -681,13 +818,21 @@ expr
 	| SYMBOL { $$ = new ExprField(driver.series, *$1); }
 	| CONSTANT { $$ = new ExprNumericConstant($1); }
 	| STRLITERAL { $$ = new ExprStrLiteral(*$1); }
-	| SYMBOL '(' fnargs ')' { FATAL_ERROR("not implemented yet"); }
+	| SYMBOL '(' { driver.current_fnargs.clear(); } fnargs ')' 
+	  { $$ = new ExprFunctionApplication(*$1, driver.current_fnargs); 
+	    driver.current_fnargs.clear();
+	  } 
 	| FN_TfracToSeconds '(' expr ')' { $$ = new ExprFnTfracToSeconds($3); }
 	;
 
 fnargs
-	: expr
-	| fnargs ',' expr
+	: /* empty */ 
+	| fnargs1
+	;
+
+fnargs1
+	: expr { driver.current_fnargs.push_back($1); }
+	| fnargs1 ',' expr { driver.current_fnargs.push_back($3); }
 	;
 
 %%

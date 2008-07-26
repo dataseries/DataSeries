@@ -177,15 +177,20 @@ namespace DSExprImpl
 
 /* First part of user declarations.  */
 
+#include <ios>
 #include <string>
 #include <Lintel/Double.hpp>
 #include <DataSeries/DSExpr.hpp>
+#include <boost/format.hpp>
+#include <boost/foreach.hpp>
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
 
 namespace DSExprImpl {
+    using namespace std;
+
     class Driver {
     public:
 	// Implementation in DSExpr.cpp
@@ -193,14 +198,15 @@ namespace DSExprImpl {
 	    : expr(NULL), series(_series), scanner_state(NULL) {}
 	~Driver();
 
-	void doit(const std::string &str);
+	void doit(const string &str);
 
-	void startScanning(const std::string &str);
+	void startScanning(const string &str);
 	void finishScanning();
 	
 	DSExpr *expr;
 	ExtentSeries &series;
 	void *scanner_state;
+	DSExpr::List current_fnargs;
     };
 };
 
@@ -563,18 +569,18 @@ namespace DSExprImpl
      END_OF_STRING = 0,
      SYMBOL = 258,
      CONSTANT = 259,
-     FN_TfracToSeconds = 260,
-     EQ = 261,
-     NEQ = 262,
-     REMATCH = 263,
-     GT = 264,
-     LT = 265,
-     GEQ = 266,
-     LEQ = 267,
-     LOR = 268,
-     LAND = 269,
-     LNOT = 270,
-     STRLITERAL = 271,
+     STRLITERAL = 260,
+     FN_TfracToSeconds = 261,
+     EQ = 262,
+     NEQ = 263,
+     REMATCH = 264,
+     GT = 265,
+     LT = 266,
+     GEQ = 267,
+     LEQ = 268,
+     LOR = 269,
+     LAND = 270,
+     LNOT = 271,
      ULNOT = 272,
      UMINUS = 273
    };
