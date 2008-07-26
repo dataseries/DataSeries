@@ -10,9 +10,7 @@ using namespace std;
 DSExpr *
 DSExpr::make(ExtentSeries &series, string &expr_string)
 {
-    DSExprParserFactory &defaultParserFactory =
-	DSExprParserFactory::GetDefaultParserFactory();
-    boost::scoped_ptr<DSExprParser> parser(defaultParserFactory.make());
+    boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
     return parser->parse(series, expr_string);
 }
 
@@ -20,9 +18,7 @@ DSExpr::make(ExtentSeries &series, string &expr_string)
 string 
 DSExpr::usage()
 {
-    DSExprParserFactory &defaultParserFactory =
-	DSExprParserFactory::GetDefaultParserFactory();
-    boost::scoped_ptr<DSExprParser> parser(defaultParserFactory.make());
+    boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
     return parser->getUsage();
 }
 
@@ -30,6 +26,16 @@ DSExpr::usage()
 
 class DefaultParser : public DSExprParser
 {
+    DSExpr *parse(ExtentSeries &series, string &expr)
+    {
+	// TODO: DSExprImpl::Driver and the defined factory interface
+	// have a poor impedance match.  One or the other needs to
+	// change.
+	DSExprImpl::Driver driver(series);
+	driver.doit(expr);
+	return driver.expr;
+    }
+
     const string getUsage() const
     {
 	return string(
@@ -42,16 +48,6 @@ class DefaultParser : public DSExprParser
 "    <, <=, >, >=, ==, !=, ||, &&, !\n"
 "  for fields with non-alpha-numeric or _ in the name, escape with \\\n"
 		      );
-    }
-
-    DSExpr *parse(ExtentSeries &series, string &expr)
-    {
-	// TODO: DSExprImpl::Driver and the defined factory interface
-	// have a poor impedance match.  One or the other needs to
-	// change.
-	DSExprImpl::Driver driver(series);
-	driver.doit(expr);
-	return driver.expr;
     }
 
     void registerFunction(DSExprFunction &)
