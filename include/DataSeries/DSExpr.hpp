@@ -60,9 +60,7 @@ public:
     virtual void registerFunction(DSExprFunction &) = 0;
 
     static DSExprParser *MakeDefaultParser() {
-	DSExprParserFactory &factory = 
-	    DSExprParserFactory::GetDefaultParserFactory();
-	return factory.make();
+	return DSExprParserFactory::GetDefaultParserFactory().make();
     }
     
 protected:
