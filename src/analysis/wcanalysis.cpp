@@ -51,6 +51,38 @@ Eric Anderson <software@cello.hpl.hp.com>
 =cut
 */
 
+class TestByteField : public FixedField {
+public:
+    TestByteField(ExtentSeries &_dataseries, const std::string &field)
+	: FixedField(_dataseries,field, ExtentType::ft_byte, 0) {
+	dataseries.addField(*this); 
+    }
+
+    uint8_t val() const { 
+	return *(uint8_t *)rawval();
+    }
+    void set(int32_t val) {
+	*(uint8_t *)rawval() = val;
+	setNull(false);
+    }
+};
+
+class TestInt32Field : public FixedField {
+public:
+    TestInt32Field(ExtentSeries &_dataseries, const std::string &field)
+	: FixedField(_dataseries,field, ExtentType::ft_int32, 0) {
+	dataseries.addField(*this); 
+    }
+
+    int32_t val() const { 
+	return *(int32_t *)rawval();
+    }
+    void set(int32_t val) {
+	*(int32_t *)rawval() = val;
+	setNull(false);
+    }
+};
+
 class WorldCupSimpleAnalysis : public RowAnalysisModule {
 public:
     static const uint32_t max_region = 4;
@@ -92,7 +124,7 @@ public:
 	first_time = timestamp.val();
     }
 
-    virtual void processRow() {
+    inline void inlineProcessRow() {
 	if ((request_count % 1000000) == 0) {
 	    cerr << format("%d\n") % request_count;
 	}
@@ -139,6 +171,33 @@ public:
 	SINVARIANT(method.val() < method_count);
 	SINVARIANT(file_type.val() < file_type_count);
     }
+
+#if 0
+    virtual Extent *getExtent() {
+	Extent *e = source.getExtent();
+	if (e == NULL) {
+	    completeProcessing();
+	    return NULL;
+	}
+	series.setExtent(e);
+	if (!prepared) {
+	    prepareForProcessing();
+	    prepared = true;
+	}
+	for(;series.pos.morerecords();++series.pos) {
+	    inlineProcessRow();
+	}
+	series.setExtent(NULL);
+	return e;
+    }
+    virtual void processRow() { 
+	FATAL_ERROR("no");
+    }
+#else
+    virtual void processRow() {
+	inlineProcessRow();
+    }
+#endif
 
     virtual void completeProcessing() {
     }
@@ -193,6 +252,21 @@ private:
     uint32_t out_of_order, unique_server_count;
     vector<uint32_t> server_op_count;
     
+    // Timing 1.95, 1.92, 1.88, 1.90, 1.96
+    // 5,133,672,411 total instructions
+    // 1,774,993,925 instructions below SequenceModule::getExtent
+
+    // 1.84, 1.84, 1.86, 1.77, 1.85, 1.83 -- with TestInt32Field
+    // 4,784,308,999 total instructions
+    // 1,424,290,037 instructions below SequenceModule::getExtent
+
+    // 1.76, 1.80, 1.75, 1.76 -- with TestInt32Field and TestByteField
+    // 4,588,277,698 total instructions
+    // 1,228,209,841 instructions below SequenceModule::getExtent
+
+    // 1.71, 1.71, 1.74, 1.72 -- with inlineProcessRow
+    // 4,439,796,689 total instructions for wc_day51_1.ds
+    // 1,081,011,994 instructions below SequenceModule::getExtent
     Int32Field timestamp;
     Int32Field clientID;
     Int32Field objectID;
