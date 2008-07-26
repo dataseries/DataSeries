@@ -16,9 +16,60 @@
 #include <string>
 #include <vector>
 
+#include <boost/utility.hpp>
+
 #include <DataSeries/ExtentSeries.hpp>
 
-class DSExpr {
+class DSExpr;
+class DSExprParser;
+
+class DSExprFunction : boost::noncopyable {
+    // name
+    // min required args
+    // max required args
+    // extra args ok
+    // type
+    // eval
+};
+
+class DSExprParserFactory : boost::noncopyable {
+public:
+    virtual ~DSExprParserFactory() {}
+
+    virtual DSExprParser *make() = 0;
+
+    static DSExprParserFactory &GetDefaultParserFactory();
+
+    // later, if/as needed ...
+    // static DSExprParserFactory &GetParserFactory(const std::string &name);
+    // static void RegisterParserFactory(const std::string &name,
+    //                                   DSExprParserFactory &factory);
+
+protected:
+    DSExprParserFactory() {}
+};
+
+class DSExprParser : boost::noncopyable {
+public:
+    virtual ~DSExprParser() {}
+    
+    virtual const std::string getUsage() const = 0;
+
+    virtual DSExpr *parse(ExtentSeries &series, std::string &expr) = 0;
+
+    virtual void registerFunction(DSExprFunction &) = 0;
+
+    static DSExprParser *MakeDefaultParser() {
+	DSExprParserFactory &factory = 
+	    DSExprParserFactory::GetDefaultParserFactory();
+	return factory.make();
+    }
+    
+protected:
+    DSExprParser() {}
+};
+
+class DSExpr : boost::noncopyable {
 public:
     typedef std::vector<DSExpr *> List;
 
@@ -35,9 +86,27 @@ public:
 
     virtual void dump(std::ostream &) = 0;
 
-    static DSExpr *make(ExtentSeries &series, std::string &expr);
+    // deprecated
+    static DSExpr *make(ExtentSeries &series, std::string &expr_string)
+    {
+	DSExprParserFactory &defaultParserFactory =
+	    DSExprParserFactory::GetDefaultParserFactory();
+	DSExprParser *parser = defaultParserFactory.make();
+	DSExpr *expr = parser->parse(series, expr_string);
+	delete parser;
+	return expr;
+    }
 
-    static const std::string usage;
+    // deprecated
+    static std::string usage()
+    {
+	DSExprParserFactory &defaultParserFactory =
+	    DSExprParserFactory::GetDefaultParserFactory();
+	DSExprParser *parser = defaultParserFactory.make();
+	std::string s(parser->getUsage());
+	delete parser;
+	return s;
+    }
 };
 
 #endif
