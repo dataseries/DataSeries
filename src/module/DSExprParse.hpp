@@ -177,38 +177,12 @@ namespace DSExprImpl
 
 /* First part of user declarations.  */
 
-#include <ios>
-#include <string>
-#include <Lintel/Double.hpp>
-#include <DataSeries/DSExpr.hpp>
-#include <boost/format.hpp>
-#include <boost/foreach.hpp>
+
+#include "DSExprImpl.hpp"
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
-
-namespace DSExprImpl {
-    using namespace std;
-
-    class Driver {
-    public:
-	// Implementation in DSExpr.cpp
-	Driver(ExtentSeries &_series) 
-	    : expr(NULL), series(_series), scanner_state(NULL) {}
-	~Driver();
-
-	void doit(const string &str);
-
-	void startScanning(const string &str);
-	void finishScanning();
-	
-	DSExpr *expr;
-	ExtentSeries &series;
-	void *scanner_state;
-	DSExpr::List current_fnargs;
-    };
-};
 
 
 
@@ -705,7 +679,7 @@ namespace DSExprImpl
     /// For each rule, the index of the first RHS symbol in \a yyrhs_.
     static const unsigned char yyprhs_[];
     /// For each rule, its source line number.
-    static const unsigned short int yyrline_[];
+    static const unsigned char yyrline_[];
     /// For each scanner token number, its symbol number.
     static const unsigned short int yytoken_number_[];
     /// Report on the debug stream that the rule \a r is going to be reduced.
