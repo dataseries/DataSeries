@@ -71,7 +71,7 @@ public:
         /** Indicates a double precision floating point number.
             Corresponds to the C++ type @c double. */
         ft_double,
-        /** Indicates a field which can store up to 2�31 bytes of data.
+        /** Indicates a field which can store up to 2^31 bytes of data.
             Most closely corresponds to the C++ type @c string. 
 
 	    \internal Note that for alignment purposes @c variable32

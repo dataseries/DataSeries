@@ -757,11 +757,13 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
     if (false) printf("should use printspec %s\n",printspec);
     
     if (printspec == str_sec_nanosec) {
-	myfield_time = new Int64TimeField(series, column);
 	string units = strGetXMLProp(fieldxml, "units");
 	string epoch = strGetXMLProp(fieldxml, "epoch");
 
-	myfield_time->setUnitsEpoch(units, epoch);
+	Int64TimeField::TimeType time_type
+	    = Int64TimeField::convertUnitsEpoch(units, epoch, column);
+	myfield_time = new Int64TimeField(series, column, Field::flag_nullable,
+					  time_type);
     } 
 	       
     xmlChar *xml_divisor = myXmlGetProp(fieldxml, (const xmlChar *)"print_divisor");

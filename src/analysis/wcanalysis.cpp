@@ -251,8 +251,18 @@ private:
     uint32_t first_time, last_time;
     uint32_t out_of_order, unique_server_count;
     vector<uint32_t> server_op_count;
-    
-    // Timing 1.95, 1.92, 1.88, 1.90, 1.96
+
+    //-- Measurements using wc_day51_1.ds (gz compression) 
+    //-- timing in seconds for just user time.
+
+    //-- Measurements on a HP nw9440 - T2600 cpu, debian etch,
+    //-- frequency scaling off
+
+    // Timing gunzip | checklog: 
+    // 1.85 | 0.96; 1.90 | 1.06; 1.99 | 1.04; 1.89 | 0.97; 1.95 | 1.05
+    // 3,059,581,616 instructions in checklog; 959,195,741 in ReadLog
+
+    // Timing 1.95, 1.92, 1.88, 1.90, 1.96 -- base
     // 5,133,672,411 total instructions
     // 1,774,993,925 instructions below SequenceModule::getExtent
 
@@ -265,21 +275,76 @@ private:
     // 1,228,209,841 instructions below SequenceModule::getExtent
 
     // 1.71, 1.71, 1.74, 1.72 -- with inlineProcessRow
-    // 4,439,796,689 total instructions for wc_day51_1.ds
+    // 4,439,796,689 total instructions 
     // 1,081,011,994 instructions below SequenceModule::getExtent
-    Int32Field timestamp;
-    Int32Field clientID;
-    Int32Field objectID;
-    Int32Field size;
-    ByteField method;
-    ByteField status;
-    ByteField file_type;
-    ByteField server;
+
+    // 1.74, 1.73, 1.75, 1.73, 1.74 -- with virtual processRow,
+    // template fields.
+    // 4,586,668,439 total instructions
+    // 1,227,962,351 instructions below SequenceModule::getExtent
+
+    // 1,081,051,478 below with gcc-4.1.2 on debian 4.0 (etch)
+    // 875,204,012 below with gcc-4.3.1 on debian testing/x86 (lenny)
+    // 1,593,631,927 below with gcc-4.3.1 and in base configuration
+    // So all the optimization is cenetered around the lowest level;
+    // the delta between gcc-4.3.1 base and all code optimized is the
+    // same as for gcc-4.1.
+
+    //-- Measurements on a 2-cpu HP DL365g1 Opteron 2216HE (4 cores
+    //-- total), RHEL4 frequency scaling off
+
+    // Timing gunzip | checklog: (more measurements, was less stable)
+    // 1.33 | 0.76; 1.60 | 0.56; 1.42 | 0.63; 1.31 | 0.74; 1.66 | 0.52
+    // 1.57 | 0.49; 1.59 | 0.53; 1.60 | 0.46; 1.60 | 0.48; 1.60 | 0.51
+    // mean = 1.528 | 0.568, sum = 2.096
+    // 2,465,016,298 instructions in checklog; 800,996,515 in ReadLog
+
+    // Timing 1.85, 1.86, 1.85, 1.87, 1.85 -- base
+    // 5,852,543,291 total instructions
+    // 2,546,724,980 instructions below SequenceModule::getExtent
+
+    // 1.72, 1.73, 1.73, 1.73, 1.72 -- with TestInt32Field
+    // 5,197,941,237 total instructions
+    // 1,892,067,616 instructions below SequenceModule::getExtent
+
+    // 1.58, 1.59, 1.57, 1.57, 1.61 -- with TestInt32Field and TestByteField
+    // 4,715,044,617 total instructions
+    // 1,409,180,175 instructions below SequenceModule::getExtent
+
+    // 1.57, 1.58, 1.56, 1.59, 1.60 -- with inlineProcessRow
+    // 4,673,103,022 total instructions 
+    // 1,367,163,203 instructions below SequenceModule::getExtent
+
+    //-- gcc-4.3 same machine
+    // 1.32, 1.33, 1.32, 1.32, 1.32 -- both test fields and inline
+    // 4,023,558,639 total instructions
+    // 801,086,524 below SequenceModule::getExtent
+
+    // gunzip | checklog: 1.32 | 0.76, 1.34 | 0.74, 1.34 | 0.74, 1.33 | 0.76
+    // 2,465,016,163 instructions in checklog; 800,996,515 in ReadLog
+
+    // zcat wc_day*.gz | bin/checklog; user,sys | user,sys; wall
+    // 218.08,26.14 | 142.50,21.06; 7:11.92 // 360.58,47.20 431.92
+    // 232.24,26.18 | 133.70,20.58; 7:09.98 // 365.94,46.76 429.98
+    // 251.79,24.57 | 121.94,19.34; 7:05.03 // 373.73,43.91 425.03
+    // 224.68,25.10 | 138.31,19.26; 7:08.15 // 362.99,44.36 428.15
+    // 226.67,25.43 | 134.47,18.83; 7:09.58 // 361.14,44.26 429.58
+
+    // -- base configuration
+    // 353.55,42.90; 2:46.52 - 166.52
+    // 351.83,41.26; 2:44.33 - 164.33
+
+    dataseries::TFixedField<int32_t, true> timestamp;
+    dataseries::TFixedField<int32_t> clientID;
+    dataseries::TFixedField<int32_t> objectID;
+    dataseries::TFixedField<int32_t> size;
+    dataseries::TFixedField<uint8_t, true> method;
+    dataseries::TFixedField<uint8_t> status;
+    dataseries::TFixedField<uint8_t> file_type;
+    dataseries::TFixedField<uint8_t> server;
 };
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source 
         = new TypeIndexModule("Log::Web::WorldCup::Custom");
 
