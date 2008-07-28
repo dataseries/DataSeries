@@ -18,6 +18,7 @@ SET(INCLUDE_FILES
 	GeneralField.hpp
 	GroupByModule.hpp
 	IndexSourceModule.hpp
+	Int32Field.hpp
 	Int64Field.hpp
 	Int64TimeField.hpp
 	MinMaxIndexModule.hpp
@@ -25,6 +26,7 @@ SET(INCLUDE_FILES
 	PrefetchBufferModule.hpp
 	RowAnalysisModule.hpp
 	SequenceModule.hpp
+	TFixedField.hpp
 	TypeIndexModule.hpp
 	commonargs.hpp
 	cryptutil.hpp
