@@ -9,6 +9,9 @@
     common argument handling for the converters
 */
 
+#ifndef __DATASERIES_COMMONARGS_H
+#define __DATASERIES_COMMONARGS_H
+
 #include <DataSeries/Extent.hpp>
 
 struct commonPackingArgs {
@@ -26,3 +29,4 @@ struct commonPackingArgs {
 void getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs);
 const std::string &packingOptions();
 
+#endif
