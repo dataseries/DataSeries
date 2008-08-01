@@ -26,10 +26,6 @@
 #define DATASERIES_ENABLE_BZ2 0
 #endif
 
-#ifndef DATASERIES_ENABLE_ZLIB
-#define DATASERIES_ENABLE_ZLIB 0
-#endif
-
 #ifndef DATASERIES_ENABLE_LZO
 #define DATASERIES_ENABLE_LZO 0
 #endif
@@ -37,13 +33,11 @@
 #if DATASERIES_ENABLE_BZ2
 #include <bzlib.h>
 #endif
-#if DATASERIES_ENABLE_ZLIB
-#include <zlib.h>
-#endif
 #if DATASERIES_ENABLE_LZO
 #include <lzo1x.h>
 #endif
 
+#include <zlib.h>
 extern "C" {
 #include <lzf.h>
 }
@@ -888,7 +882,6 @@ bool
 Extent::packZLib(byte *input, int32 inputsize,
 		 Extent::ByteArray &into, int compression_level)
 {
-#if DATASERIES_ENABLE_ZLIB
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -903,7 +896,6 @@ Extent::packZLib(byte *input, int32 inputsize,
     }
     INVARIANT(ret == Z_BUF_ERROR,
 	      boost::format("Whoa, got unexpected zlib error %d") % ret);
-#endif
     return false;
 }
 
@@ -1066,14 +1058,12 @@ Extent::uncompressBytes(byte *into, byte *from,
 		  % ret % orig_len % intosize);
 	outsize = orig_len;
 #endif
-#if DATASERIES_ENABLE_ZLIB
     } else if (compression_mode == compress_mode_zlib) {
 	uLongf destlen = intosize;
 	int ret = uncompress((Bytef *)into, &destlen,
 			     (const Bytef *)from, fromsize);
 	INVARIANT(ret == Z_OK, "Error decompressing extent!");
 	outsize = destlen;
-#endif
 #if DATASERIES_ENABLE_BZ2
     } else if (compression_mode == compress_mode_bz2) {
 	unsigned int destlen = intosize;

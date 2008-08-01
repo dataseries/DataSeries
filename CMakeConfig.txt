@@ -24,6 +24,8 @@ ENDIF(BUILD_SHARED_LIBS)
 
 #### Lintel
 
+# TODO: extend FindLintel to check for all dependencies again and do something
+# useful if the dependencies have vanished.
 SET(LINTEL_FIND_REQUIRED ON)
 SET(LINTELPTHREAD_FIND_REQUIRED ON)
 INCLUDE(FindLintel)
@@ -39,18 +41,9 @@ ENDIF(NOT LIBXML2_FOUND)
 
 INCLUDE(FindZLIB)
 
-OPTION(WITH_ZLIB "Build with zlib (gzip) support?" ON)
-
-IF(WITH_ZLIB AND ZLIB_FOUND) 
-    SET(ZLIB_ENABLED ON)
-ELSE(WITH_ZLIB AND ZLIB_FOUND) 
-    SET(ZLIB_ENABLED OFF)	    
-ENDIF(WITH_ZLIB AND ZLIB_FOUND) 
-
-IF(WITH_ZLIB AND NOT ZLIB_ENABLED)
-    MESSAGE("WITH_ZLIB on, but could not find zlib includes/libraries.")
-    MESSAGE("  zlib (gzip) compression support will be skipped.")
-ENDIF(WITH_ZLIB AND NOT ZLIB_ENABLED)
+IF(NOT ZLIB_FOUND) 
+    MESSAGE(FATAL_ERROR "DataSeries requires zlib to build (for adler32 checksum)")
+ENDIF(NOT ZLIB_FOUND)
 
 #### BZip2
 
@@ -85,8 +78,6 @@ ENDIF(SRT_ENABLED)
 
 SET(LZO_MISSING_EXTRA "  lzo compression support will be skipped.")
 INCLUDE(FindLZO)
-
-#### crypto
 
 SET(CRYPTO_MISSING_EXTRA "  will skip building iphost2ds, nettrace2ds")
 INCLUDE(FindCrypto)
