@@ -448,8 +448,8 @@ main(int argc, char *argv[])
 	i != per_type_work.end(); ++i) {
 	i->second->output_module->flushExtent();
     }
-    writeRepackInfo(*output, packing_args, 
-		    target_file_bytes > 0 ? output_file_count : -1);
+    writeRepackInfo(*output, packing_args, target_file_bytes > 0 
+		    ? static_cast<int>(output_file_count) : -1);
     output->close();
     all_stats += output->getStats();
 

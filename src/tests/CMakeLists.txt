@@ -7,11 +7,11 @@
 
 MACRO(DATASERIES_SIMPLE_TEST testname)
   DATASERIES_PROGRAM_NOINST(${testname})
-  ADD_TEST(${testname} ./${testname})
+  ADD_TEST(${testname} ./${testname} ${ARGN})
 ENDMACRO(DATASERIES_SIMPLE_TEST)
 
 MACRO(DATASERIES_SCRIPT_TEST testname)
-  ADD_TEST(${testname} ${CMAKE_CURRENT_SOURCE_DIR}/run-check-${testname}.sh ${DataSeries_SOURCE_DIR})
+  ADD_TEST(${testname} ${CMAKE_CURRENT_SOURCE_DIR}/run-check-${testname}.sh ${DataSeries_SOURCE_DIR} ${ARGN})
 ENDMACRO(DATASERIES_SCRIPT_TEST)
 
 ### Simple exit(0) program tests
@@ -24,7 +24,7 @@ DATASERIES_SIMPLE_TEST(pack-field-ordering)
 # *** the error conditions are not checked properly.
 
 DATASERIES_SCRIPT_TEST(dsselect)
-DATASERIES_SCRIPT_TEST(dsextentindex)
+DATASERIES_SCRIPT_TEST(dsextentindex BZ2-${BZIP2_ENABLED})
 DATASERIES_SCRIPT_TEST(dsstatgroupby)
 DATASERIES_SCRIPT_TEST(lsfdsanalysis)
 DATASERIES_SCRIPT_TEST(nfsdsanalysis)
@@ -34,7 +34,7 @@ DATASERIES_SCRIPT_TEST(ds2txt)
 
 ### Script tests of testing-only programs
 DATASERIES_PROGRAM_NOINST(general)
-DATASERIES_SCRIPT_TEST(general)
+DATASERIES_SCRIPT_TEST(general LZO-${LZO_ENABLED})
 
 DATASERIES_PROGRAM_NOINST(expr)
 DATASERIES_SCRIPT_TEST(expr)

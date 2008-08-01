@@ -33,7 +33,7 @@
 class BoolField : public FixedField {
 public:
     BoolField(ExtentSeries &_dataseries, const std::string &field, 
-	      int flags = 0, bool default_value = false);
+	      int flags = 0, bool default_value = false, bool auto_add = true);
 
     bool val() const { 
 	if (isNull()) {
@@ -59,8 +59,8 @@ private:
 
 class ByteField : public FixedField {
 public:
-    ByteField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-	      byte default_value = '\0');
+    ByteField(ExtentSeries &_dataseries, const std::string &field, 
+	      int flags = 0, byte default_value = 0, bool auto_add = true);
 
     byte val() const { 
 	if (isNull()) {
@@ -76,43 +76,21 @@ public:
     byte default_value;
 };
 
-class Int32Field : public FixedField {
-public:
-    typedef ExtentType::int32 int32;
-
-    Int32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-	       int32 default_value = 0);
-
-    int32 val() const { 
-	if (isNull()) {
-	    return default_value;
-	} else {
-	    return *(int32 *)rawval();
-	}
-    }
-    void set(int32 val) {
-	*(int32 *)rawval() = val;
-	setNull(false);
-    }
-    void nset(int32 val, int32 null_val = -1) {
-	if (val == null_val) {
-	    setNull(true);
-	} else {
-	    set(val);
-	}
-    }
-    int32 default_value;
-};
-
+#include <DataSeries/Int32Field.hpp>
 #include <DataSeries/Int64Field.hpp>
 #include <DataSeries/Int64TimeField.hpp>
 
 class DoubleField : public FixedField {
 public:
+    /// flag_allownonzerobase is deprecated.  It seemed like a good
+    /// idea when we initially created it, but in practice it just
+    /// makes writing analysis really difficult.  It was intended to
+    /// deal with time fields, and the newer Int64TimeField deals with
+    /// that much better.
     static const int flag_allownonzerobase = 1024;
 
-    DoubleField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-		double default_value = 0);
+    DoubleField(ExtentSeries &_dataseries, const std::string &field, 
+		int flags = 0, double default_value = 0, bool auto_add = true);
 
     double val() const { 
 	if (isNull()) {
@@ -149,14 +127,18 @@ public:
     virtual void newExtentType();
 };
 
+#include <DataSeries/TFixedField.hpp>
+
 class Variable32Field : public Field {
 public:
     typedef ExtentType::byte byte;
     typedef ExtentType::int32 int32;
     static const std::string empty_string;
 
-    Variable32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-		    const std::string &default_value = empty_string);
+    Variable32Field(ExtentSeries &_dataseries, const std::string &field, 
+		    int flags = 0, 
+		    const std::string &default_value = empty_string,
+		    bool auto_add = true);
 
     const byte *val() const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,

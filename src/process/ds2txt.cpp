@@ -47,7 +47,7 @@ main(int argc, char *argv[])
 	    toText.skipIndex(); 
 	    toText.skipExtentType();
 	} else if (strncmp(argv[1],"--separator=",12)==0) {
-	    std::string s = (char *)(argv[1] + 12);
+	    string s = (char *)(argv[1] + 12);
 	    toText.setSeparator(s);
 	} else if (strncmp(argv[1],"--printSpec=",12)==0) {
 	    if (*(argv[1]+12) == '<') {
@@ -169,10 +169,10 @@ main(int argc, char *argv[])
     // going to see those anyway.
 
     if (skip_types == false) {
-	std::cout << "# Extent Types ...\n";
-	for(std::map<const std::string, const ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
+	cout << "# Extent Types ...\n";
+	for(map<const string, const ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
 	    i != first_source->mylibrary.name_to_type.end(); ++i) {
-	    std::cout << i->second->xmldesc << "\n";
+	    cout << i->second->xmldesc << "\n";
 	}
     }
 
@@ -182,12 +182,10 @@ main(int argc, char *argv[])
 	ExtentSeries es(first_source->indexExtent);
 	Int64Field offset(es,"offset");
 	Variable32Field extenttype(es,"extenttype");
-	std::cout << "extent offset  ExtentType" << std::endl;
+	cout << "extent offset  ExtentType\n";
 	for(;es.pos.morerecords();++es.pos) {
-	    char buf[30];
-	    snprintf(buf,20,(char *)"%-13lld  ",offset.val());
-	    buf[19] = '\0';
-	    std::cout << buf << extenttype.stringval() << std::endl;
+	    cout << format("%-13d  %s\n") % offset.val() 
+		% extenttype.stringval();
 	}
     }
     

@@ -90,12 +90,14 @@ FixedField::newExtentType()
 	      % getName() % dataseries.type->getName());
 }
 
-BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field, int flags,
-		     bool _default_value)
+BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field, 
+		     int flags, bool _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_bool,flags),
       default_value(_default_value), bit_mask(0)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
 void 
@@ -108,28 +110,34 @@ BoolField::newExtentType()
     bit_mask = (byte)(1 << bitpos);
 }
 
-ByteField::ByteField(ExtentSeries &_dataseries, const std::string &field, int flags,
-		     byte _default_value)
+ByteField::ByteField(ExtentSeries &_dataseries, const std::string &field, 
+		     int flags, byte _default_value, bool auto_add)
     : FixedField(_dataseries,field,ExtentType::ft_byte,flags),
       default_value(_default_value)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
-Int32Field::Int32Field(ExtentSeries &_dataseries, const std::string &field, int flags,
-		       int32 _default_value)
+Int32Field::Int32Field(ExtentSeries &_dataseries, const std::string &field, 
+		       int flags, int32 _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_int32, flags),
       default_value(_default_value)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
-Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, int flags,
-		       int64 _default_value)
+Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, 
+		       int flags, int64 _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_int64, flags),
       default_value(_default_value)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
 Int64Field::~Int64Field()
@@ -137,11 +145,13 @@ Int64Field::~Int64Field()
 }
 
 DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
-			 int flags, double _default_value)
+			 int flags, double _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_double, flags),
       default_value(_default_value), base_val(Double::NaN)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
 void 
@@ -159,12 +169,15 @@ DoubleField::newExtentType()
 const std::string Variable32Field::empty_string("");
 
 Variable32Field::Variable32Field(ExtentSeries &_dataseries, 
-				 const std::string &field, 
-				 int flags, const std::string &_default_value) 
+				 const std::string &field, int flags, 
+				 const std::string &_default_value,
+				 bool auto_add) 
     : Field(_dataseries,field,flags), default_value(_default_value), 
-    offset_pos(-1), unique(false)
+      offset_pos(-1), unique(false)
 { 
-    dataseries.addField(*this); 
+    if (auto_add) {
+	dataseries.addField(*this);
+    }
 }
 
 void 
