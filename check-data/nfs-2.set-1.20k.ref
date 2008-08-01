@@ -8349,9 +8349,9 @@ Begin-virtual void CommonAttrRWJoin::printResult()
   generated 0.00 MB of extent output
 End-virtual void CommonAttrRWJoin::printResult()
 
-extents: 0.18 MB -> 1.84 MB in 0.00 secs decode time
+extents: 0.23 MB -> 1.84 MB in 0.00 secs decode time
                    common  attr-ops read-write  mount
-MB compressed:       0.09     0.09     0.00     0.00
+MB compressed:       0.13     0.10     0.00     0.00
 MB uncompressed:     1.07     0.77     0.00     0.00
 decode seconds:      0.00     0.00     0.00     0.00
 wait fraction:       0.00     0.00     0.00     0.00

@@ -6,8 +6,6 @@
 
 #include "DSExprImpl.hpp"
 
-#include <boost/foreach.hpp>
-
 #include "DSExprParse.hpp"
 
 using namespace std;
@@ -106,8 +104,8 @@ DSExprImpl::ExprStrLiteral::ExprStrLiteral(const string &l)
 
 DSExprImpl::ExprFunctionApplication::~ExprFunctionApplication()
 {
-    BOOST_FOREACH(DSExpr *e, args) {
-	delete e;
+    for(DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
+	delete *i;
     }
     args.clear();
 }
@@ -118,13 +116,13 @@ DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
     out << "(";
     out << " ";
     bool first = true;
-    BOOST_FOREACH(DSExpr *e, args) {
+    for(DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
 	if (first) {
 	    first = false;
 	} else {
 	    out << ", ";
 	}
-	e->dump(out);
+	(**i).dump(out);
     }
     out << " ";
     out << ")";

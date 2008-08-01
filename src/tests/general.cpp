@@ -12,8 +12,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <openssl/opensslv.h>
-#include <openssl/evp.h>
 
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
@@ -1256,7 +1254,9 @@ main(int argc, char *argv[])
 {
     Extent::setReadChecksFromEnv(true);
 
+#if DATASERIES_ENABLE_CRYPTO
     runCryptUtilChecks();
+#endif
     test_byteflip();
     test_primitives();
     test_extentpackunpack();
