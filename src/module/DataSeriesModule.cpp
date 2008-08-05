@@ -140,6 +140,11 @@ OutputModule::close()
     delete old_extent;
 }
 
+DataSeriesSink::Stats OutputModule::getStats() {
+    PThreadScopedLock lock(DataSeriesSink::Stats::getMutex());
+    DataSeriesSink::Stats ret = stats;
+    return ret;
+}
 
 void
 OutputModule::printStats(std::ostream &to)

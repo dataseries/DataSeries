@@ -131,12 +131,7 @@ public:
 
     // You are only guaranteed to have all the statistics for writing
     // this file after you call close().
-    Stats getStats() {
-	// Make a copy so it's thread safe.
-	PThreadAutoLocker lock(Stats::getMutex());
-	Stats ret = stats; 
-	return ret;
-    }
+    Stats getStats();
 
     // If you are going to delete a Stats that you previously used to
     // write to a DataSeriesFile before you close the file, you need

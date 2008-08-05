@@ -485,6 +485,13 @@ DataSeriesSink::flushPending()
     mutex.unlock();
 }
 
+DataSeriesSink::Stats DataSeriesSink::getStats() {
+    // Make a copy so it's thread safe.
+    PThreadScopedLock lock(Stats::getMutex());
+    Stats ret = stats; 
+    return ret;
+}
+
 void
 DataSeriesSink::writeOutPending(bool have_lock)
 {

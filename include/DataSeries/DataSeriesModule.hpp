@@ -100,11 +100,7 @@ public:
     void flushExtent(); // force current extent out, you can continue writing.
     void close();
 
-    DataSeriesSink::Stats getStats() {
-	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());
-	DataSeriesSink::Stats ret = stats;
-	return ret;
-    }
+    DataSeriesSink::Stats getStats();
 
     uint32_t getTargetExtentSize() {
 	return target_extent_size;

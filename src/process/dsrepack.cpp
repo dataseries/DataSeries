@@ -22,8 +22,8 @@ dsrepack - split or merge DataSeries files and change the compression types
 
 =head1 SYNOPSIS
 
-dsrepack [common-options] [--target-file-size=MiB] input-filename... 
-  output-filename
+dsrepack [common-options] [--target-file-size=MiB] [--no-info] 
+  input-filename... output-filename
 
 =head1 DESCRIPTION
 
@@ -56,6 +56,12 @@ The last file may be arbitrarily small.  MiB can be specified as a
 double, so one could say 0.1 MiB, but it's not clear if that is
 useful.
 
+=item B<--no-info>
+
+Do not generate the Info::DSRepack extent.  This means that the output files
+will contain exactly the same information as the source files.  Normally the
+info extent is generated so the compression options for a file are known.
+
 =head1 SEE ALSO
 
 dataseries(7), dsselect(1)
@@ -84,6 +90,7 @@ dataseries(7), dsselect(1)
 
 static const bool debug = false;
 static const bool show_progress = true;
+static bool generate_info_extent = true;
 
 using namespace std;
 
@@ -230,6 +237,9 @@ void
 writeRepackInfo(DataSeriesSink &sink,
 		const commonPackingArgs &cpa, int file_count)
 {
+    if (!generate_info_extent) {
+	return;
+    }
     ExtentSeries series(*dsrepack_info_type);
     OutputModule out_module(sink, series, dsrepack_info_type, 
 			    cpa.extent_size);
@@ -264,6 +274,11 @@ skipType(const ExtentType &type)
 	    && type.getNamespace() == "ssd.hpl.hp.com");
 }
 
+void usage(const string argv0, const string &error) {
+    FATAL_ERROR(boost::format("Error:%s\nUsage: %s [common-args] [--target-file-size=MiB] input-filename... output-filename\nCommon args:\n%s") 
+		% error % argv0 % packingOptions());
+}
+
 // TODO: Split up main(), it's getting a bit large
 const string target_file_size_arg("--target-file-size=");
 int
@@ -273,20 +288,27 @@ main(int argc, char *argv[])
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 
-    if (argc > 1 && prefixequal(argv[1], target_file_size_arg)) {
-	double mib = stringToDouble(string(argv[1]).substr(target_file_size_arg.size()));
-	INVARIANT(mib > 0, "max file size MiB must be > 0");
-	target_file_bytes = static_cast<uint64_t>(mib * 1024.0 * 1024.0);
+    while (argc > 1 && argv[1][0] == '-') {
+	if (prefixequal(argv[1], target_file_size_arg)) {
+	    double mib = stringToDouble(string(argv[1]).substr(target_file_size_arg.size()));
+	    INVARIANT(mib > 0, "max file size MiB must be > 0");
+	    target_file_bytes = static_cast<uint64_t>(mib * 1024.0 * 1024.0);
+	} else if (string(argv[1]) == "--no-info") {
+	    generate_info_extent = false;
+	} else {
+	    usage(argv[0], 
+		  (boost::format("unknown argument '%s'") % argv[1]).str());
+	}
 	for(int i = 2; i < argc; ++i) {
 	    argv[i-1] = argv[i];
 	}
 	--argc;
     }
 
-    INVARIANT(argc > 2,
-	      boost::format("Usage: %s [common-args] [--target-file-size=MiB] input-filename... output-filename\nCommon args:\n%s") 
-	      % argv[0] % packingOptions());
-    
+    if (argc <= 2) {
+	usage(argv[0], "expected source and destination files");
+    }
+
     // Always check on repacking...
     if (getenv("DATASERIES_EXTENT_CHECKS")) {
 	cerr << "Warning: DATASERIES_EXTENT_CHECKS is set; generally you want all checks on during a dsrepack.\n";
@@ -295,7 +317,9 @@ main(int argc, char *argv[])
 
     TypeIndexModule source("");
     ExtentTypeLibrary library;
-    dsrepack_info_type = library.registerType(dsrepack_info_type_xml);
+    if (generate_info_extent) {
+	dsrepack_info_type = library.registerType(dsrepack_info_type_xml);
+    }
     map<string, PerTypeWork *> per_type_work;
 
     string output_base_path(argv[argc-1]);
@@ -432,7 +456,8 @@ main(int argc, char *argv[])
 			i != per_type_work.end(); ++i) {
 			i->second->rotateOutput(*new_output);
 		    }
-		    writeRepackInfo(*output, packing_args, output_file_count);
+		    writeRepackInfo(*output, packing_args, 
+				    output_file_count);
 		    output->close();
 		    all_stats += output->getStats();
 		    delete output;
