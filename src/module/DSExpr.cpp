@@ -1,22 +1,44 @@
 #include <DataSeries/DSExpr.hpp>
 
+#include <boost/smart_ptr.hpp>
+
 #include "DSExprImpl.hpp"
 
-DSExpr::~DSExpr()
-{
-}
+using namespace std;
 
+// deprecated
 DSExpr *
-DSExpr::make(ExtentSeries &series, std::string &expression) 
+DSExpr::make(ExtentSeries &series, string &expr_string)
 {
-    DSExprImpl::Driver driver(series);
-
-    driver.doit(expression);
-    return driver.expr;
+    boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
+    return parser->parse(series, expr_string);
 }
 
-// TODO: get from the implementation.
-const std::string DSExpr::usage(
+// deprecated
+string 
+DSExpr::usage()
+{
+    boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
+    return parser->getUsage();
+}
+
+//////////////////////////////////////////////////////////////////////
+
+class DefaultParser : public DSExprParser
+{
+    DSExpr *parse(ExtentSeries &series, string &expr)
+    {
+	// TODO: DSExprImpl::Driver and the defined factory interface
+	// have a poor impedance match.  One or the other needs to
+	// change.
+	DSExprImpl::Driver driver(series);
+	driver.doit(expr);
+	return driver.expr;
+    }
+
+    const string getUsage() const
+    {
+	return string(
 "  expressions include:\n"
 "    field names, numeric (double) constants, string literals,\n"
 "    functions, +, -, *, /, ()\n"
@@ -25,5 +47,26 @@ const std::string DSExpr::usage(
 "  boolean expressions include:\n"
 "    <, <=, >, >=, ==, !=, ||, &&, !\n"
 "  for fields with non-alpha-numeric or _ in the name, escape with \\\n"
-);
+		      );
+    }
 
+    void registerFunction(DSExprFunction &)
+    {
+	FATAL_ERROR("not implemented");
+    }
+};
+
+//////////////////////////////////////////////////////////////////////
+
+class DefaultParserFactory : public DSExprParserFactory 
+{
+    DSExprParser *make() {
+	return new DefaultParser();
+    }
+} DefaultParserFactorySingleton;
+
+DSExprParserFactory &
+DSExprParserFactory::GetDefaultParserFactory()
+{
+    return DefaultParserFactorySingleton;
+}

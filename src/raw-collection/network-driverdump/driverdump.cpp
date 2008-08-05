@@ -426,11 +426,14 @@ promiscuous_modify(int fd, char *interface_name, bool enable)
 	}
 }
 
+static char output_basename_default[] = "/mnt/tmpfs/network";
+static char interface_name_default[] = "eth0";
+
 int
 main(int argc, char *argv[])
 {
-    output_basename = "/mnt/tmpfs/network";
-    interface_name = "eth0";
+    output_basename = output_basename_default;
+    interface_name = interface_name_default;
     buffer_size = 200*1024*1024;
 
     get_driverdump_options(argc, argv);

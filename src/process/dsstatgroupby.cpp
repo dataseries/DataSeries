@@ -29,7 +29,7 @@ usage(const std::string &program_name, const std::string &error)
 	 << "\n"
 	 << "  stat-types include:\n\n"
          << "    basic, quantile\n\n"
-	 << DSExpr::usage;
+	 << DSExpr::usage();
     exit(0);
 }
 
