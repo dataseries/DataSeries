@@ -1072,30 +1072,31 @@ usage(char *progname)
 	
     cerr << "    -h # display this help\n";
     cerr << "    -a # Operation count by filehandle\n";
-    cerr << "    #-b # Unique bytes in file handles analysis\n";
-    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
-    cerr << "    #-d # Large file write analysis by file handle\n";
-    cerr << "    #-e # Large file write analysis by file name\n";
-    cerr << "    #-f # Large file analysis by file handle\n";
-    cerr << "    #-g # Large file analysis by file name\n";
-    cerr << "    #-i # NFS operation/payload analysis\n";
-    cerr << "    -j # Server latency analysis\n";
-    cerr << "    #-k # Client-server pair payload analysis\n";
-    cerr << "    -l <seconds> # Host analysis\n";
-    cerr << "    #-m # Overall payload analysis\n";
-    cerr << "    #-n # File size analysis\n";
-    cerr << "    #-o # Unbalanced operations analysis\n";
-    cerr << "    #-p <time-gap in ms to treat as skip> # Time range analysis\n";
-    cerr << "    #-q <sampling interval in ms> # Read analysis\n";
-    cerr << "    #-r # Common bytes between filehandle and dirhandle\n";
-    cerr << "    #-s # Sequential whole access\n";
-    cerr << "    #-t # Strange write search\n";
-    cerr << "    -u <fh|fh-list pathname> # directory path lookup\n";
-    cerr << "    #-v <series> # select series to print 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5 = common/attr/rw join\n";
-    cerr << "    #-w # servers per filehandle\n";
-    cerr << "    #-x # transactions\n";
-    cerr << "    #-y # outstanding requests\n";
-    cerr << "    -z <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+    cerr << "    -b # Server latency analysis\n";
+    cerr << "    -c <seconds> # Host analysis\n";
+    cerr << "    -d <fh|fh-list pathname> # directory path lookup\n";
+    cerr << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+
+//    cerr << "    #-b # Unique bytes in file handles analysis\n";
+//    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
+//    cerr << "    #-d # Large file write analysis by file handle\n";
+//    cerr << "    #-e # Large file write analysis by file name\n";
+//    cerr << "    #-f # Large file analysis by file handle\n";
+//    cerr << "    #-g # Large file analysis by file name\n";
+//    cerr << "    #-i # NFS operation/payload analysis\n";
+//    cerr << "    #-k # Client-server pair payload analysis\n";
+//    cerr << "    #-m # Overall payload analysis\n";
+//    cerr << "    #-n # File size analysis\n";
+//    cerr << "    #-o # Unbalanced operations analysis\n";
+//    cerr << "    #-p <time-gap in ms to treat as skip> # Time range analysis\n";
+//    cerr << "    #-q <sampling interval in ms> # Read analysis\n";
+//    cerr << "    #-r # Common bytes between filehandle and dirhandle\n";
+//    cerr << "    #-s # Sequential whole access\n";
+//    cerr << "    #-t # Strange write search\n";
+//    cerr << "    #-v <series> # select series to print 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5 = common/attr/rw join\n";
+//    cerr << "    #-w # servers per filehandle\n";
+//    cerr << "    #-x # transactions\n";
+//    cerr << "    #-y # outstanding requests\n";
     exit(1);
 }
 
@@ -1110,13 +1111,26 @@ parseopts(int argc, char *argv[])
 
     any_selected = false;
     while (1) {
-	int opt = getopt(argc, argv, "abc:defghijkl:mnop:q:r:stu:v:wxy:z:");
+	int opt = getopt(argc, argv, "abc:d:e:h");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
+	case 'h': usage(argv[0]); break;
 	case 'a': options[optOperationByFileHandle] = 1;
 	    need_mount_by_filehandle = 1;
 	    break;
+	case 'b': options[optServerLatency] = 1; break;
+	case 'c': options[optHostInfo] = 1; host_info_arg = optarg; break;
+	case 'd': options[optDirectoryPathLookup] = 1;
+	    need_mount_by_filehandle = true;
+	    DirectoryPathLookup::processArg(optarg);
+	    break;
+	case 'e': options[optFileHandleOperationLookup] = 1;
+	    FileHandleOperationLookup::processArg(optarg);
+	    break;
+
+
+#if UNTESTED_ANALYSIS_DISABLED
 	case 'b': FATAL_ERROR("untested");options[Unique] = 1; break;
 	case 'c': FATAL_ERROR("untested");{
 	    options[optFileageByFilehandle] = 1;
@@ -1135,11 +1149,8 @@ parseopts(int argc, char *argv[])
 	          need_filename_by_filehandle = true;
 		  late_filename_by_filehandle_ok = false;
 		  break;
-	case 'h': usage(argv[0]); break;
 	case 'i': FATAL_ERROR("untested");options[optNFSOpPayload] = 1; break;
-	case 'j': options[optServerLatency] = 1; break;
 	case 'k': FATAL_ERROR("untested");options[optClientServerPairInfo] = 1; break;
-	case 'l': options[optHostInfo] = 1; host_info_arg = optarg; break;
 	case 'm': FATAL_ERROR("untested");options[optPayloadInfo] = 1; break;
 	case 'n': FATAL_ERROR("untested");options[optFileSizeByType] = 1; break;
 	case 'o': FATAL_ERROR("untested");options[optUnbalancedOps] = 1; break;
@@ -1163,10 +1174,6 @@ parseopts(int argc, char *argv[])
 		need_mount_by_filehandle = true;
 	    }
 	    break;
-	case 'u': options[optDirectoryPathLookup] = 1;
-	    need_mount_by_filehandle = true;
-	    DirectoryPathLookup::processArg(optarg);
-	    break;
 	case 'v': print_input_series = atoi(optarg);
 	    AssertAlways(print_input_series >= 1 && print_input_series <= 5,
 			 ("invalid print input series '%s'\n",optarg));
@@ -1176,9 +1183,7 @@ parseopts(int argc, char *argv[])
 	case 'y': FATAL_ERROR("untested");options[optOutstandingRequests] = 1; 
 	  latency_offset = atoi(optarg);
 	  break;
-	case 'z': options[optFileHandleOperationLookup] = 1;
-	    FileHandleOperationLookup::processArg(optarg);
-	    break;
+#endif
 
 	case '?': AssertFatal(("invalid option"));
 	default:
@@ -1526,13 +1531,6 @@ main(int argc, char *argv[])
 	   sourceb->waitFraction(),
 	   sourcec->waitFraction(),
 	   sourced->waitFraction());
-//    DataSeriesModule *foo = prefetcha;
-//    delete foo;
-//    delete prefetchb;
-//    delete prefetchc;
-//    delete sourcea;
-//    delete sourceb;
-//    delete sourcec;
     return 0;
 }
 

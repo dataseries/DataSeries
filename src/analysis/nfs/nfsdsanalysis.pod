@@ -19,7 +19,7 @@ listable on a single command line.
 Classnames are given for each option to make it easier to find the
 implementation in the code.
 
-=head2 -a # classname OperationByFileHandle
+=head2 -a # Operation count by filehandle (class OperationByFileHandle)
 
 This analysis is useful for finding files which are very commonly
 accessed, the operations used on those files, and if the underlying
@@ -56,6 +56,125 @@ Example output:
 	fhoprollup: server 10.11.192.4, op write, fh 123456a000003e7000a000000025ac37224787b000a000000000002000007c3, fn *unknown*: 69 ops 0.009 MB, 2306.565 us avg lat
 	fhoprollup: server 10.11.224.10, op read, fh 123456050000008230303004002f0e2d1c00027bbab53417280d9b7a5a591f00003f0ed91f000600003f0e4f1f0006, fn *unknown*: 46 ops 0.176 MB, 192.565 us avg lat
 	...
+
+=head2 -b # Server latency by operation (classname ServerLatency)
+
+This analysis is useful for determining the number of operations and
+latency for each of the various servers in the trace.  In particular,
+for each request/response pair, it accumulates the latency of the
+operation for each server and operation.  It rolls the results up into
+by server, by operation, and overall.  The data under the duplicates
+line tells you quantiles for the delay between duplicates if any
+existed.  The code currently calculates the latency from the first
+request to each reply.  This emulates the delay seen by the client.
+The code has support for calculating the latency from the last
+request, which provides more information on how the server generating
+latency, but that code is currently disabled.
+
+Example Output:
+
+Begin-virtual void ServerLatency::printResult()
+ id: server ip
+001: 10.11.8.37
+002: 10.11.9.21
+
+0 missing requests, 0 missing replies; 0.00ms mean est firstlat, 0.00ms mean est lastlat
+duplicates: 0 replies, 0 requests; delays min=infms
+0 data points, mean 0 +- 0 [inf,-inf]
+
+Grouped by (Server,Operation) pair:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+001   getattr         2      0 0.00 ;   1.208   1.21   1.21 
+001    statfs         7      0 0.00 ;   0.349   0.23   1.25 
+002    statfs         3      0 0.00 ;   0.989   1.35   1.35 
+
+Grouped by Server:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+001         *         9      0 0.00 ;   0.540   0.27   1.25 
+002         *         3      0 0.00 ;   0.989   1.35   1.35 
+
+Grouped by Operation:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+ *    getattr      3358      0 0.00 ;   0.064   0.06   0.09 
+ *     lookup      1124      0 0.00 ;   0.165   0.15   0.22 
+
+Complete rollup:
+server operation   #ops  #dups mean ; firstlat mean 50% 90% 
+ *          *     10000      0 0.00 ;   0.135   0.10   0.20 
+End-virtual void ServerLatency::printResult()
+
+=head2 -c # Host analysis (classname HostInfo)
+
+This analysis looks at the amount of data and operations going either
+in or out of each of the hosts.  It is useful for identifying heavily
+used hosts.  In particular for each access, the payload size is
+accumulated for both the source host and the destination host. 
+
+Example Output:
+
+    Begin-virtual void HostInfo::printResult()
+    host     time        dir          op    op-dir   count mean-payload
+    0a0b0915 1063931160 send       fsstat response      3    24.00
+    0a0b0915 1063931160 send            * response      3    24.00
+    0a0b0915 1063931160 recv       fsstat  request      3    32.00
+    0a0b0915 1063931160 recv            *  request      3    32.00
+    0a0b0915          * send            * response      3    24.00
+    0a0b0915          * recv            *  request      3    32.00
+    0a0c0b0b 1063931160 send      getattr  request      2    32.00
+    0a0c0b0b 1063931160 send         read  request      4    44.00
+    0a0c0b0b 1063931160 send            *  request      6    40.00
+    0a0c0b0b 1063931160 recv      getattr response      2    72.00
+    0a0c0b0b 1063931160 recv         read response      4  7244.00
+    0a0c0b0b 1063931160 recv            * response      6  4853.33
+    0a0c0b0b          * send            *  request      6    40.00
+    0a0c0b0b          * recv            * response      6  4853.33
+    ...
+           * 1063931160  send           *        *  20000  1545.67
+           *          *  send           *        *  20000  1545.67
+    End-virtual void HostInfo::printResult()
+
+=head2 -d I<filehandle or path to file of filehandles> # Directory path lookup
+
+This analysis attempts to trace from each of the given filehandles up
+to the root of their filesystem.  Each output line consists of an
+original filehandle and as much of the path as could be reconstructed.
+If the analysis does not reach the root, then the first filehandle
+will have a FH:... prefix.  The remaining values on the line will be
+the filenames for that part of the path.  Components in a path are
+separated by /'s.  The analysis keeps a bounded amount of memory for
+storing previously seen filehandle, parent-fh, filename entries.
+Therefore, there is a chance for large datasets that re-running the
+analysis requesting some of the early filehandles will make additional
+progress in reconstructing the entire path.  The base path can only be
+reconstructed if the dataset includes the original mount request.
+
+Example Output:
+
+    Begin-virtual void DirectoryPathLookup::printResult()
+    e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800: FH:e8535201c2cca3052000000001d63ba0074e0209d6390035400000006bfc0800/0f96481c6462479c5d0ec6a8c8ae4de3be167bea59064c541a5fd74f86d0767a
+    a63c6021c20f0300200000000117721df1e3040064000000400000009a871600: FH:a63c6021c20f03002000000000b931882fd9040064000000400000009a871600/a7df16a9a4d78d0fff7370c4db658524/6bd595a355c6e6b695315994eeae03268630d4db3ec297a911950a0542627477
+    64000000c20f0300200000000127ef590364240c4fdf0058400000009a871600: FH:64000000c20f03002000000000a4d165e8e304004fdf0058400000009a871600/bb2531e57d5bc4f1f062ca919177d84c/c73a170c9d445b5f5787cad97e2253b4/3cccf0547171de3fc38438085d40074b62fa9aa11ab6004fb2b6f78b7e9ac130
+    End-virtual void DirectoryPathLookup::printResult()
+
+=head2 -e I<filehandle | fh-list filename> # File Handle Operation Lookup
+
+This analysis finds all of the operations associated with the specified 
+filehandles and prints out information about each operation.  To eliminate
+buffering, the output is printed out with a FHOL: prefix rather than within
+a Begin-... End-... block.
+
+Example Output:
+
+    FHOL: reply-at client server ; operation type filehandle filename; file-size modify-time
+    FHOL: 1063931188.266179000 10.12.11.75 10.110.1.14 ; getattr file 25cccd0040f47d05200000000160929015f77d0578e4003e1630670064637600 '' ; 325880 1023314262.000000000
+    FHOL: 1063931190.068588000 10.12.11.77 10.110.1.14 ; getattr directory 0138c000948119052000000000c03801948119050b71002c40000000ffa72e00 '' ; 4096 1050428920.444579000
+
+=head1 DISABLED ANALYSIS
+
+Most of the analysis were writen in early 2003, they do not have
+regression tests, and fixing some of the other ones has shown subtle
+bugs.  Therefore, for now, the below analysis are disabled in the
+code.
 
 =head2 -b # classname UniqueBytesInFilehandles
 
@@ -143,52 +262,6 @@ Example Output:
 	TCP      getattr   Reply: 2804.244 MB,  88.00 bytes/op,   88 max bytes/op, 33414358 ops
 
 
-=head2 -j # classname ServerLatency
-
-This analysis is useful for determining the number of operations and
-latency for each of the various servers in the trace.  In particular,
-for each request/response pair, it accumulates the latency of the
-operation for each server and operation.  It rolls the results up into
-by server, by operation, and overall.  The data under the duplicates
-line tells you quantiles for the delay between duplicates if any
-existed.  The code currently calculates the latency from the first
-request to each reply.  This emulates the delay seen by the client.
-The code has support for calculating the latency from the last
-request, which provides more information on how the server generating
-latency, but that code is currently disabled.
-
-Example Output:
-
-Begin-virtual void ServerLatency::printResult()
- id: server ip
-001: 10.11.8.37
-002: 10.11.9.21
-
-0 missing requests, 0 missing replies; 0.00ms mean est firstlat, 0.00ms mean est lastlat
-duplicates: 0 replies, 0 requests; delays min=infms
-0 data points, mean 0 +- 0 [inf,-inf]
-
-Grouped by (Server,Operation) pair:
-server operation   #ops  #dups mean ; firstlat mean 50% 90% 
-001   getattr         2      0 0.00 ;   1.208   1.21   1.21 
-001    statfs         7      0 0.00 ;   0.349   0.23   1.25 
-002    statfs         3      0 0.00 ;   0.989   1.35   1.35 
-
-Grouped by Server:
-server operation   #ops  #dups mean ; firstlat mean 50% 90% 
-001         *         9      0 0.00 ;   0.540   0.27   1.25 
-002         *         3      0 0.00 ;   0.989   1.35   1.35 
-
-Grouped by Operation:
-server operation   #ops  #dups mean ; firstlat mean 50% 90% 
- *    getattr      3358      0 0.00 ;   0.064   0.06   0.09 
- *     lookup      1124      0 0.00 ;   0.165   0.15   0.22 
-
-Complete rollup:
-server operation   #ops  #dups mean ; firstlat mean 50% 90% 
- *          *     10000      0 0.00 ;   0.135   0.10   0.20 
-End-virtual void ServerLatency::printResult()
-
 =head2 -k # classname ClientServerPairInfo
 
 This analysis is useful for determining if the usage between clients
@@ -205,22 +278,6 @@ Example Output:
 	TCP 10.11.220.133 10.11.224.52: 1412.919 MB, 1900.68 bytes/op, 32872 max bytes/op, 779485 ops
 	TCP 10.11.220.4 10.11.224.30: 1219.811 MB, 1765.50 bytes/op, 32872 max bytes/op, 724479 ops
 	TCP 10.11.220.118 10.11.224.30: 1170.995 MB, 1584.63 bytes/op, 32872 max bytes/op, 774868 ops
-	...
-
-=head2 -l # classname HostInfo
-
-This analysis looks at the amount of data and operations going either
-in or out of each of the hosts.  It is useful for identifying heavily
-used hosts.  In particular for each access, the payload size is
-accumulated for both the source host and the destination host. 
-
-Example Output:
-
-	Begin-virtual void HostInfo::printResult()
-	10.11.224.30: 33452.498 MB, 2033.51 bytes/op, 32872 max bytes/op, 17.250 million ops
-	10.11.224.52: 30743.872 MB, 1618.75 bytes/op, 32872 max bytes/op, 19.915 million ops
-	10.11.192.110: 27413.615 MB, 2637.69 bytes/op, 32872 max bytes/op, 10.898 million ops
-	10.11.224.10: 21685.491 MB, 1444.86 bytes/op, 32872 max bytes/op, 15.738 million ops
 	...
 
 =head2 -m # classname PayloadInfo
@@ -287,29 +344,6 @@ Example output:
 
 Strange write search
 
-=head2 -u I<filehandle or path to file of filehandles> # Directory path lookup
-
-This analysis attempts to trace from each of the given filehandles up
-to the root of their filesystem.  Each output line consists of an
-original filehandle and as much of the path as could be reconstructed.
-If the analysis does not reach the root, then the first filehandle
-will have a FH:... prefix.  The remaining values on the line will be
-the filenames for that part of the path.  Components in a path are
-separated by /'s.  The analysis keeps a bounded amount of memory for
-storing previously seen filehandle, parent-fh, filename entries.
-Therefore, there is a chance for large datasets that re-running the
-analysis requesting some of the early filehandles will make additional
-progress in reconstructing the entire path.  The base path can only be
-reconstructed if the dataset includes the original mount request.
-
-Example Output:
-
-    Begin-virtual void DirectoryPathLookup::printResult()
-    e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800: FH:e8535201c2cca3052000000001d63ba0074e0209d6390035400000006bfc0800/0f96481c6462479c5d0ec6a8c8ae4de3be167bea59064c541a5fd74f86d0767a
-    a63c6021c20f0300200000000117721df1e3040064000000400000009a871600: FH:a63c6021c20f03002000000000b931882fd9040064000000400000009a871600/a7df16a9a4d78d0fff7370c4db658524/6bd595a355c6e6b695315994eeae03268630d4db3ec297a911950a0542627477
-    64000000c20f0300200000000127ef590364240c4fdf0058400000009a871600: FH:64000000c20f03002000000000a4d165e8e304004fdf0058400000009a871600/bb2531e57d5bc4f1f062ca919177d84c/c73a170c9d445b5f5787cad97e2253b4/3cccf0547171de3fc38438085d40074b62fa9aa11ab6004fb2b6f78b7e9ac130
-    End-virtual void DirectoryPathLookup::printResult()
-
 =head2 -v I<1-5>
 
 print series: 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5
@@ -326,19 +360,6 @@ transactions
 =head2 -y
 
 outstanding requests
-
-=head2 -z I<filehandle | fh-list filename> # File Handle Operation Lookup
-
-This analysis finds all of the operations associated with the specified 
-filehandles and prints out information about each operation.  To eliminate
-buffering, the output is printed out with a FHOL: prefix rather than within
-a Begin-... End-... block.
-
-Example Output:
-
-    FHOL: reply-at client server ; operation type filehandle filename; file-size modify-time
-    FHOL: 1063931188.266179000 10.12.11.75 10.110.1.14 ; getattr file 25cccd0040f47d05200000000160929015f77d0578e4003e1630670064637600 '' ; 325880 1023314262.000000000
-    FHOL: 1063931190.068588000 10.12.11.77 10.110.1.14 ; getattr directory 0138c000948119052000000000c03801948119050b71002c40000000ffa72e00 '' ; 4096 1050428920.444579000
 
 =head1 COPYRIGHT
 
