@@ -11,8 +11,9 @@
 
 namespace NFSDSAnalysisMod {
     // nfsdsanalysis-mod2:
-    NFSDSModule *newAttrOpsCommonJoin(DataSeriesModule &nfs_common,
-				      DataSeriesModule &nfs_attrops);
+    NFSDSModule *newAttrOpsCommonJoin();
+    void setAttrOpsSources(DataSeriesModule *join, SequenceModule &common_seq,
+			   SequenceModule &attrops_seq);
     NFSDSModule *newLargeSizeFileHandle(DataSeriesModule &prev,int nkeept);
     NFSDSModule *newLargeSizeFilename(DataSeriesModule &prev, int nkeep);
     NFSDSModule *newLargeSizeFilenameWrite(DataSeriesModule &prev, int nkeep);

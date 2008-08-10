@@ -5,7 +5,10 @@
 */
 
 #include <Lintel/HashTable.hpp>
+#include <Lintel/PointerUtil.hpp>
 #include <Lintel/StringUtil.hpp>
+
+#include <DataSeries/SequenceModule.hpp>
 
 #include "analysis/nfs/mod2.hpp"
 
@@ -46,9 +49,8 @@ const string attropscommonjoin_xml_in(
 // TODO: redo-with rotating hash map.
 class AttrOpsCommonJoin : public NFSDSModule {
 public:
-    AttrOpsCommonJoin(DataSeriesModule &_nfs_common,
-		      DataSeriesModule &_nfs_attrops)
-	: nfs_common(_nfs_common), nfs_attrops(_nfs_attrops),
+    AttrOpsCommonJoin()
+	: nfs_common(NULL), nfs_attrops(NULL),
 	  es_common(ExtentSeries::typeExact),
 	  es_attrops(ExtentSeries::typeExact),
 	  in_packetat(es_common,""),
@@ -90,10 +92,14 @@ public:
 	  skipped_common_count(0), skipped_attrops_count(0), 
 	  skipped_duplicate_attr_count(0), 
 	  last_reply_id(numeric_limits<int64_t>::min())
-    { 
-    }
+    { }
 
     virtual ~AttrOpsCommonJoin() { }
+
+    void setInputs(DataSeriesModule &common, DataSeriesModule &attr_ops) {
+	nfs_common = &common;
+	nfs_attrops = &attr_ops;
+    }
 
     void prepFields(Extent *e) {
 	const ExtentType &type = e->getType();
@@ -184,7 +190,7 @@ public:
 	if (all_done)
 	    return NULL;
 	if(es_common.curExtent() == NULL) {
-	    Extent *tmp = nfs_common.getExtent();
+	    Extent *tmp = nfs_common->getExtent();
 	    if (tmp == NULL) {
 		all_done = true;
 		delete es_attrops.curExtent();
@@ -202,7 +208,7 @@ public:
 	    }
 	}
 
-	Extent *attrextent = nfs_attrops.getExtent();
+	Extent *attrextent = nfs_attrops->getExtent();
 	if (attrextent == NULL) {
 	    delete es_common.curExtent();
 	    es_common.clearExtent();
@@ -224,7 +230,7 @@ public:
 	while(es_attrops.pos.morerecords()) {
 	    if (es_common.pos.morerecords() == false) {
 		delete es_common.curExtent();
-		Extent *tmp = nfs_common.getExtent();
+		Extent *tmp = nfs_common->getExtent();
 		if (tmp == NULL) {
 		    es_common.clearExtent();
 		    delete es_attrops.curExtent();
@@ -362,20 +368,24 @@ public:
 
     virtual void printResult() {
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
-	cout << format("  generated %.3f million records, %.2f MB of extent output\n")
-	    % ((double)output_record_count/1000000.0)
-	    % ((double)output_bytes/(1024.0*1024.0));
-	cout << format("  %lld records, or %.4f%% forced to 1us turnaround from previous 0 or negative turnaround\n")
-	    % force_1us_turnaround_count
-	    % (100.0*(double)force_1us_turnaround_count/(double)output_record_count);
-	cout << format("  %d skipped common, %d skipped attrops, %d semi-duplicate attrops, first keep %ss\n")
-	    % skipped_common_count % skipped_attrops_count % skipped_duplicate_attr_count
-	    % in_packetat.rawToStrSecNano(first_keep_time_raw);
-	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
+	if (output_record_count == 0) {
+	    cout << "  No output from Join.\n";
+	} else {
+	    cout << format("  generated %.3f million records, %.2f MB of extent output\n")
+		% ((double)output_record_count/1000000.0)
+		% ((double)output_bytes/(1024.0*1024.0));
+	    cout << format("  %lld records, or %.4f%% forced to 1us turnaround from previous 0 or negative turnaround\n")
+		% force_1us_turnaround_count
+		% (100.0*(double)force_1us_turnaround_count/(double)output_record_count);
+	    cout << format("  %d skipped common, %d skipped attrops, %d semi-duplicate attrops, first keep %ss\n")
+		% skipped_common_count % skipped_attrops_count % skipped_duplicate_attr_count
+		% in_packetat.rawToStrSecNano(first_keep_time_raw);
+	    cout << format("End-%s\n") % __PRETTY_FUNCTION__;
+	}
     }
 
 private:
-    DataSeriesModule &nfs_common, &nfs_attrops;
+    DataSeriesModule *nfs_common, *nfs_attrops;
     ExtentSeries es_common, es_attrops, es_out;
     Int64TimeField in_packetat, out_requestat, out_replyat;
     Int32Field in_source, out_server;
@@ -404,10 +414,15 @@ private:
 };
 	
 NFSDSModule *
-NFSDSAnalysisMod::newAttrOpsCommonJoin(DataSeriesModule &nfs_common,
-				       DataSeriesModule &nfs_attrops)
-{
-    return new AttrOpsCommonJoin(nfs_common, nfs_attrops);
+NFSDSAnalysisMod::newAttrOpsCommonJoin() {
+    return new AttrOpsCommonJoin();
+}
+
+void NFSDSAnalysisMod::setAttrOpsSources(DataSeriesModule *join, 
+					 SequenceModule &common_seq, 
+					 SequenceModule &attrops_seq) {
+    lintel::safeDownCast<AttrOpsCommonJoin>(join)
+	->setInputs(common_seq.tail(), attrops_seq.tail());
 }
 
 class LargeSizeFileHandle : public NFSDSModule {

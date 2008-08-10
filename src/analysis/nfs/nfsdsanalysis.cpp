@@ -1101,13 +1101,13 @@ usage(char *progname)
 }
 
 static char *host_info_arg;
-int
-parseopts(int argc, char *argv[])
-{
+
+int parseopts(int argc, char *argv[]) {
     bool any_selected;
 
     // TODO: redo this so it gets passed the sequences and just stuffs
-    // things into them.
+    // things into them.  
+
 
     any_selected = false;
     while (1) {
@@ -1229,15 +1229,7 @@ isnumber(const char *v)
     return true;
 }
 
-int
-main(int argc, char *argv[])
-{
-    int first = parseopts(argc, argv);
-
-    if (argc - first < 1) {
-	usage(argv[0]);
-    }
-
+void registerUnitsEpoch() {
     // Register time types for some of the old traces so we don't have to
     // do it in each of the modules.
     Int64TimeField::registerUnitsEpoch("packet-at", "NFS trace: common", "", 0,
@@ -1248,18 +1240,31 @@ main(int argc, char *argv[])
     Int64TimeField::registerUnitsEpoch("packet_at", "Trace::NFS::common", 
 				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
 				       "unix");
+}
 
-    TypeIndexModule *sourcea = 
-	new TypeIndexModule("NFS trace: common");
+int
+main(int argc, char *argv[])
+{
+    registerUnitsEpoch();
+
+    int first = parseopts(argc, argv);
+
+    if (argc - first < 1) {
+	usage(argv[0]);
+    }
+
+    TypeIndexModule *sourcea = new TypeIndexModule("NFS trace: common");
     sourcea->setSecondMatch("Trace::NFS::common");
-    TypeIndexModule *sourceb = 
-	new TypeIndexModule("NFS trace: attr-ops");
+    TypeIndexModule *sourceb = new TypeIndexModule("NFS trace: attr-ops");
     sourceb->setSecondMatch("Trace::NFS::attr-ops");
-    TypeIndexModule *sourcec = 
-	new TypeIndexModule("NFS trace: read-write");
-    TypeIndexModule *sourced = 
-	new TypeIndexModule("NFS trace: mount");
+    TypeIndexModule *sourcec = new TypeIndexModule("NFS trace: read-write");
+    TypeIndexModule *sourced = new TypeIndexModule("NFS trace: mount");
     sourced->setSecondMatch("Trace::NFS::mount");
+
+    SequenceModule commonSequence(sourcea);
+    SequenceModule attrOpsSequence(sourceb);
+    SequenceModule rwSequence(sourcec);
+
     bool timebound_set = false;
     int32_t timebound_start = 0;
     int32_t timebound_end = numeric_limits<int32_t>::max();
@@ -1290,10 +1295,6 @@ main(int argc, char *argv[])
 
     // these are the three threads that we will build according to the
     // selected analyses
-
-    SequenceModule commonSequence(sourcea);
-    SequenceModule attrOpsSequence(sourceb);
-    SequenceModule rwSequence(sourcec);
 
     if (timebound_set) {
 	commonSequence.addModule(new TimeBoundPrune(commonSequence.tail(),
@@ -1386,7 +1387,9 @@ main(int argc, char *argv[])
     }
 
     // merge join with attributes
-    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin(commonSequence.tail(),attrOpsSequence.tail()));
+    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin());
+    NFSDSAnalysisMod::setAttrOpsSources
+	(*merge12Sequence.begin(), commonSequence, attrOpsSequence);
 
     // merge join rollups
     if (options[optFileageByFilehandle]) {
