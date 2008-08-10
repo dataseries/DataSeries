@@ -48,44 +48,6 @@ extern int printf (__const char *__restrict __format, ...)
 // on timestamps, but are not pruning the attr op rollups in the same
 // way.  Probably doesn't matter given the current analysis that are done.
 
-enum optionsEnum {
-    // Common rollups
-    optNFSOpPayload = 0,     // server payload analysis
-    optClientServerPairInfo, // client-server pair payload analysis
-    optHostInfo,             // host analysis
-    optPayloadInfo,          // overall payload analysis
-    optServerLatency,        // server latency analysis
-    optUnbalancedOps,        // unbalanced operations analysis
-    optNFSTimeGaps,          // time gap analysis
-    optTransactions,         // transaction analysis
-    optOutstandingRequests,  // outstanding requests analysis
-
-    // Attribute rollups
-    optFileSizeByType,       // file size analysis
-    Commonbytes,             // common bytes in dir/fh analysis
-    Unique,                  // unique bytes in file handles analysis
-    optDirectoryPathLookup,  // try to work out the directory path for filehandles
-
-    // Common + Attribute rollups
-    optFileageByFilehandle,   // file age by file handle analysis
-    Largewrite_Handle,        // large file write analysis by file handle
-    Largewrite_Name,          // large file write analysis by file name
-    Largefile_Handle,         // large file analysis by file handle
-    Largefile_Name,           // large file analysis by file name
-    strangeWriteSearch,       // search for strange write operations
-    optOperationByFileHandle, // per-operation information grouped by filename (or filehandle if name is unknown)
-    optServersPerFilehandle,  // how many servers for each file handle?
-    optFileHandleOperationLookup,   // dump records from the common + attr-ops rollup
-
-    // Common + Attribute + RW rollups
-    File_Read,                // files read analysis
-    optSequentialWholeAccess, // count files accessed sequentially and completely
-
-    LastOption
-};
-
-static bool options[LastOption];
-
 static const string str_read("read");
 static const string str_write("write");
 
@@ -496,11 +458,8 @@ struct fsKeep {
 
 class OperationByFileHandle : public RowAnalysisModule {
 public:
-    OperationByFileHandle(DataSeriesModule &_source, int _timebound_start, 
-			  int _timebound_end)
+    OperationByFileHandle(DataSeriesModule &_source)
 	: RowAnalysisModule(_source),
-	  timebound_start(_timebound_start),
-	  timebound_end(_timebound_end),
 	  server(series,"server"),
 	  operation(series,"operation"), filehandle(series,"filehandle"),
 	  request_at(series,"request-at"), reply_at(series,"reply-at"),
@@ -569,8 +528,6 @@ public:
     fhRollupT fhRollup, fsRollup;
 
     virtual void prepareForProcessing() {
-	timebound_start = request_at.secNanoToRaw(timebound_start,0);
-	timebound_end = request_at.secNanoToRaw(timebound_end,0);
 	SINVARIANT(request_at.getType() == reply_at.getType());
     }
 
@@ -578,11 +535,6 @@ public:
 	unique_fhs.add(ConstantString(filehandle.val(), filehandle.size()));
 
 	hteData k;
-	if (request_at.valRaw() < timebound_start ||
-	    reply_at.valRaw() > timebound_end) {
-	    ++out_of_bounds_count;
-	    return;
-	}
 	if (request_at.valRaw() < min_time) {
 	    min_time = request_at.valRaw();
 	} 
@@ -724,7 +676,6 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
-    ExtentType::int64 timebound_start, timebound_end;
     Int32Field server;
     Variable32Field operation, filehandle;
     Int64TimeField request_at, reply_at;
@@ -1053,9 +1004,6 @@ HashUnique<string> FileHandleOperationLookup::wanted;
 static bool need_mount_by_filehandle = false;
 static bool need_filename_by_filehandle = false;
 static bool late_filename_by_filehandle_ok = true;
-static vector<int> FileageByFilehandle_recent_secs;
-static int print_input_series;
-static int latency_offset = 0;
 
 void
 usage(char *progname) 
@@ -1100,9 +1048,10 @@ usage(char *progname)
     exit(1);
 }
 
-static char *host_info_arg;
-
-int parseopts(int argc, char *argv[]) {
+int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
+	      SequenceModule &attrOpsSequence, SequenceModule &rwSequence,
+	      SequenceModule &merge12Sequence, 
+	      SequenceModule &merge123Sequence) {
     bool any_selected;
 
     // TODO: redo this so it gets passed the sequences and just stuffs
@@ -1110,23 +1059,37 @@ int parseopts(int argc, char *argv[]) {
 
 
     any_selected = false;
+    bool add_directory_path_lookup = false;
+    bool add_file_handle_operation_lookup = false;
+
     while (1) {
 	int opt = getopt(argc, argv, "abc:d:e:h");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
 	case 'h': usage(argv[0]); break;
-	case 'a': options[optOperationByFileHandle] = 1;
+	case 'a': merge12Sequence.addModule
+		      (new OperationByFileHandle(merge12Sequence.tail()));
 	    need_mount_by_filehandle = 1;
 	    break;
-	case 'b': options[optServerLatency] = 1; break;
-	case 'c': options[optHostInfo] = 1; host_info_arg = optarg; break;
-	case 'd': options[optDirectoryPathLookup] = 1;
+	case 'b': 
+	    commonSequence.addModule
+		(NFSDSAnalysisMod::newServerLatency(commonSequence.tail()));
+	    break;
+	case 'c': 
+	    commonSequence.addModule
+		(NFSDSAnalysisMod::newHostInfo(commonSequence.tail(), optarg));
+	    break;
+	case 'd': 
 	    need_mount_by_filehandle = true;
 	    DirectoryPathLookup::processArg(optarg);
+	    // will add module once at the end of processing arguments
+	    add_directory_path_lookup = true;
 	    break;
-	case 'e': options[optFileHandleOperationLookup] = 1;
+	case 'e': 
 	    FileHandleOperationLookup::processArg(optarg);
+	    // will add module once at the end of processing arguments
+	    add_file_handle_operation_lookup = true;
 	    break;
 
 
@@ -1195,6 +1158,14 @@ int parseopts(int argc, char *argv[]) {
 	usage(argv[0]);
     }
 
+    if (add_directory_path_lookup) {
+	attrOpsSequence.addModule
+	    (new DirectoryPathLookup(attrOpsSequence.tail()));
+    }
+    if (add_file_handle_operation_lookup) {
+	merge12Sequence.addModule
+	    (new FileHandleOperationLookup(merge12Sequence.tail()));
+    }
     return optind;
 }
 
@@ -1242,32 +1213,13 @@ void registerUnitsEpoch() {
 				       "unix");
 }
 
-int
-main(int argc, char *argv[])
-{
-    registerUnitsEpoch();
+static int32_t timebound_start = 0;
+static int32_t timebound_end = numeric_limits<int32_t>::max();
 
-    int first = parseopts(argc, argv);
-
-    if (argc - first < 1) {
-	usage(argv[0]);
-    }
-
-    TypeIndexModule *sourcea = new TypeIndexModule("NFS trace: common");
-    sourcea->setSecondMatch("Trace::NFS::common");
-    TypeIndexModule *sourceb = new TypeIndexModule("NFS trace: attr-ops");
-    sourceb->setSecondMatch("Trace::NFS::attr-ops");
-    TypeIndexModule *sourcec = new TypeIndexModule("NFS trace: read-write");
-    TypeIndexModule *sourced = new TypeIndexModule("NFS trace: mount");
-    sourced->setSecondMatch("Trace::NFS::mount");
-
-    SequenceModule commonSequence(sourcea);
-    SequenceModule attrOpsSequence(sourceb);
-    SequenceModule rwSequence(sourcec);
-
+void setupInputs(int first, int argc, char *argv[], TypeIndexModule *sourcea,
+		 TypeIndexModule *sourceb, TypeIndexModule *sourcec,
+		 TypeIndexModule *sourced, SequenceModule &commonSequence) {
     bool timebound_set = false;
-    int32_t timebound_start = 0;
-    int32_t timebound_end = numeric_limits<int32_t>::max();
     if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
 	timebound_set = true;
 	timebound_start = atoi(argv[first+1]);
@@ -1293,14 +1245,43 @@ main(int argc, char *argv[])
     sourcec->sameInputFiles(*sourcea);
     sourced->sameInputFiles(*sourcea);
 
-    // these are the three threads that we will build according to the
-    // selected analyses
-
     if (timebound_set) {
 	commonSequence.addModule(new TimeBoundPrune(commonSequence.tail(),
 						    timebound_start, 
 						    timebound_end));
     }
+}
+
+int main(int argc, char *argv[]) {
+    registerUnitsEpoch();
+
+    // TODO: make sources an array/vector.
+    TypeIndexModule *sourcea = new TypeIndexModule("NFS trace: common");
+    sourcea->setSecondMatch("Trace::NFS::common");
+    TypeIndexModule *sourceb = new TypeIndexModule("NFS trace: attr-ops");
+    sourceb->setSecondMatch("Trace::NFS::attr-ops");
+    TypeIndexModule *sourcec = new TypeIndexModule("NFS trace: read-write");
+    TypeIndexModule *sourced = new TypeIndexModule("NFS trace: mount");
+    sourced->setSecondMatch("Trace::NFS::mount");
+
+    SequenceModule commonSequence(sourcea);
+    SequenceModule attrOpsSequence(sourceb);
+    SequenceModule rwSequence(sourcec);
+    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin());
+    SequenceModule merge123Sequence(NFSDSAnalysisMod::newCommonAttrRWJoin());
+
+    int first = parseopts(argc, argv, commonSequence, attrOpsSequence, 
+			  rwSequence, merge12Sequence, merge123Sequence);
+
+    if (argc - first < 1) {
+	usage(argv[0]);
+    }
+
+    setupInputs(first, argc, argv, sourcea, sourceb,
+		sourcec, sourced, commonSequence);
+
+    // these are the three threads that we will build according to the
+    // selected analyses
 
     // need to pre-build the table before we can do the write-filename
     // analysis after the merge join.
@@ -1325,6 +1306,15 @@ main(int argc, char *argv[])
 	delete tmp;
     }
 
+    // merge join with attributes
+    NFSDSAnalysisMod::setAttrOpsSources
+	(*merge12Sequence.begin(), commonSequence, attrOpsSequence);
+
+    // merge join with read-write data
+    NFSDSAnalysisMod::setCommonAttrRWSources
+	(*merge123Sequence.begin(), merge12Sequence, rwSequence);
+
+
     // 2004-09-02: tried experiment of putting some of the
     // bigger-memory bits into their own threads using a prefetch
     // buffer -- performance got much worse with way more time being
@@ -1332,140 +1322,7 @@ main(int argc, char *argv[])
     // malloc library issues as both those modules did lots of
     // malloc/free.
 
-    // common file rollups
-    if (options[optNFSOpPayload]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newNFSOpPayload(commonSequence.tail()));
-    }
-
-    if (options[optClientServerPairInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newClientServerPairInfo(commonSequence.tail()));
-    }
-
-    if (options[optHostInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newHostInfo(commonSequence.tail(), host_info_arg));
-    }
-
-    if (options[optPayloadInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newPayloadInfo(commonSequence.tail()));
-    }
-
-    if (options[optServerLatency]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newServerLatency(commonSequence.tail()));
-    }
-
-    if (options[optUnbalancedOps]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newUnbalancedOps(commonSequence.tail()));
-    }
-
-    if (options[optNFSTimeGaps]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newNFSTimeGaps(commonSequence.tail()));
-    }
-
-    if (options[optTransactions]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newTransactions(commonSequence.tail()));
-    }
-
-    if (options[optOutstandingRequests]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newOutstandingRequests(commonSequence.tail(), latency_offset));
-    }
-
-    // attribute rollups
-    if (options[optFileSizeByType]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newFileSizeByType(attrOpsSequence.tail()));
-    }
-
-    if (options[Commonbytes]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newCommonBytesInFilehandles(attrOpsSequence.tail()));
-    }
-
-    if (options[Unique]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newUniqueBytesInFilehandles(attrOpsSequence.tail()));
-    }
-
-    if (options[optDirectoryPathLookup]) {
-	attrOpsSequence.addModule(new DirectoryPathLookup(attrOpsSequence.tail()));
-    }
-
-    // merge join with attributes
-    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin());
-    NFSDSAnalysisMod::setAttrOpsSources
-	(*merge12Sequence.begin(), commonSequence, attrOpsSequence);
-
-    // merge join rollups
-    if (options[optFileageByFilehandle]) {
-	for(vector<int>::iterator i = FileageByFilehandle_recent_secs.begin();
-	    i != FileageByFilehandle_recent_secs.end(); ++i) {
-	    merge12Sequence.addModule(NFSDSAnalysisMod::newFileageByFilehandle(merge12Sequence.tail(),20,*i));
-	}
-    }
-
-    if (options[Largewrite_Handle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilehandleWrite(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largewrite_Name]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilenameWrite(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largefile_Handle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFileHandle(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largefile_Name]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilename(merge12Sequence.tail(),20));
-    }
-    
-    if (options[strangeWriteSearch] && sws_filehandle == false) {
-	merge12Sequence.addModule(new StrangeWriteSearch(merge12Sequence.tail()));
-    }
-
-    if (options[optOperationByFileHandle]) {
-	merge12Sequence.addModule(new OperationByFileHandle(merge12Sequence.tail(),timebound_start,timebound_end));
-    }
-
-    if (options[optServersPerFilehandle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newServersPerFilehandle(merge12Sequence.tail()));
-    }
-
-    if (options[optFileHandleOperationLookup]) {
-	merge12Sequence.addModule(new FileHandleOperationLookup(merge12Sequence.tail()));
-    }
-
-    // merge join with read-write data
-    SequenceModule merge123Sequence(NFSDSAnalysisMod::newCommonAttrRWJoin(merge12Sequence.tail(),
-									  rwSequence.tail()));
-    if (options[File_Read]) {
-	merge123Sequence.addModule(NFSDSAnalysisMod::newFilesRead(merge123Sequence.tail()));
-    }
-
-    if (options[optSequentialWholeAccess]) {
-	merge123Sequence.addModule(new SequentialWholeAccess(merge123Sequence.tail()));
-    }
-
-    switch (print_input_series) 
-	{
-	case 0: // nothing, ok
-	    break;
-	case 1: 
-	    commonSequence.addModule(new DStoTextModule(commonSequence.tail()));
-	    break;
-	case 2:
-	    attrOpsSequence.addModule(new DStoTextModule(attrOpsSequence.tail()));
-	    break;
-	case 3:
-	    rwSequence.addModule(new DStoTextModule(rwSequence.tail()));
-	    break;
-	case 4:
-	    merge12Sequence.addModule(new DStoTextModule(merge12Sequence.tail()));
-	    break;
-	case 5:
-	    merge123Sequence.addModule(new DStoTextModule(merge123Sequence.tail()));
-	    break;
-	default:
-	    AssertFatal(("internal"));
-	}
     // only pull through what we actually need to pull through.
-
     if (merge123Sequence.size() > 1) {
 	DataSeriesModule::getAndDelete(merge123Sequence);
     } else if (merge12Sequence.size()> 1) {
@@ -1503,10 +1360,6 @@ main(int argc, char *argv[])
     for(SequenceModule::iterator i = merge123Sequence.begin();
 	i != merge123Sequence.end(); ++i) {
 	printResult(*i);
-    }
-    if (options[strangeWriteSearch] && sws_filehandle) {
-	DataSeriesModule *m = new StrangeWriteSearch(commonSequence.tail());
-	printResult(m);
     }
 	
     printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",

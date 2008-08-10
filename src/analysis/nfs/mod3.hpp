@@ -13,8 +13,10 @@ namespace NFSDSAnalysisMod {
     NFSDSModule *newFileSizeByType(DataSeriesModule &prev); 
     NFSDSModule *newUniqueBytesInFilehandles(DataSeriesModule &prev);
     NFSDSModule *newCommonBytesInFilehandles(DataSeriesModule &prev);
-    NFSDSModule *newCommonAttrRWJoin(DataSeriesModule &commonattr,
-				     DataSeriesModule &rw);
+    NFSDSModule *newCommonAttrRWJoin();
+    void setCommonAttrRWSources(DataSeriesModule *join, 
+				SequenceModule &commonattr_seq,
+				SequenceModule &attrops_seq);
     NFSDSModule *newFilesRead(DataSeriesModule &prev);
     extern double read_sampling;
 };

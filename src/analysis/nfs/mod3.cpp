@@ -7,8 +7,11 @@
 #include <list>
 
 #include <Lintel/LintelAssert.hpp>
+#include <Lintel/PointerUtil.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StringUtil.hpp>
+
+#include <DataSeries/SequenceModule.hpp>
 
 #include "analysis/nfs/mod3.hpp"
 
@@ -320,9 +323,8 @@ static const string str_write("write");
 
 class CommonAttrRWJoin: public NFSDSModule {
 public:
-    CommonAttrRWJoin(DataSeriesModule &_commonattr,
-		      DataSeriesModule &_rw)
-	: commonattr(_commonattr), rw(_rw),
+    CommonAttrRWJoin()
+	: commonattr(NULL), rw(NULL),
 	  output_type(ExtentTypeLibrary::sharedExtentType(commonattrrw_xml)),
 	  es_commonattr(ExtentSeries::typeExact),
 	  es_rw(ExtentSeries::typeExact),
@@ -354,7 +356,13 @@ public:
     }
 
     virtual ~CommonAttrRWJoin() { }
-    
+
+    void setInputs(DataSeriesModule &common_attr_mod, 
+		   DataSeriesModule &rw_mod) {
+	commonattr = &common_attr_mod;
+	rw = &rw_mod;
+    }
+
     struct rwinfo { // for re-ordering to match by-reply-id order of attr-ops join
 	ExtentType::int64 request_id, offset;
 	ExtentType::int32 bytes;
@@ -368,7 +376,7 @@ public:
 
     void fillRWReorder() {
 	if (es_rw.extent() == NULL || es_rw.pos.morerecords() == false) {
-	    Extent *tmp = rw.getExtent();
+	    Extent *tmp = rw->getExtent();
 	    if (tmp == NULL) {
 		rw_done = true;
 		delete es_rw.extent();
@@ -401,7 +409,7 @@ public:
 
     void fillCommonAttrReorder() {
 	if (es_commonattr.extent() == NULL || es_commonattr.pos.morerecords() == false) {
-	    Extent *tmp = commonattr.getExtent();
+	    Extent *tmp = commonattr->getExtent();
 	    if (tmp == NULL) {
 		common_done = true;
 		delete es_commonattr.extent();
@@ -529,7 +537,7 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 private:
-    DataSeriesModule &commonattr, &rw;
+    DataSeriesModule *commonattr, *rw;
     const ExtentType &output_type;
     ExtentSeries es_commonattr, es_rw, es_out;
     Int64Field in_packetat, out_packetat;
@@ -551,10 +559,15 @@ private:
 
 
 NFSDSModule *
-NFSDSAnalysisMod::newCommonAttrRWJoin(DataSeriesModule &commonattr,
-				      DataSeriesModule &rw)
-{
-    return new CommonAttrRWJoin(commonattr,rw);
+NFSDSAnalysisMod::newCommonAttrRWJoin() {
+    return new CommonAttrRWJoin();
+}
+
+void NFSDSAnalysisMod::setCommonAttrRWSources(DataSeriesModule *join, 
+					      SequenceModule &commonattr_seq,
+					      SequenceModule &attrops_seq) {
+    lintel::safeDownCast<CommonAttrRWJoin>(join)
+	->setInputs(commonattr_seq.tail(), attrops_seq.tail());
 }
 
 //
