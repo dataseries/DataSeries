@@ -106,14 +106,18 @@ public:
 	return *this;
     }
     ExtentType::fieldType getType() { return gvtype; }
-    /** calculate a hash of this value */
-    uint32_t hash() const;
+    /** calculate a hash of this value, use partial_hash as the
+	starting hash. */
+    uint32_t hash(uint32_t partial_hash = 1776) const;
 
-    void setInt32(ExtentType::int32 from);
+    void setBool(bool val);
+    void setByte(uint8_t val);
+    void setInt32(int32_t val);
     void setVariable32(const std::string &from);
-    double valDouble();
-    int64_t valInt64();
+
     bool valBool();
+    int64_t valInt64();
+    double valDouble();
     const std::string valString();
 
 protected:

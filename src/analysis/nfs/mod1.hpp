@@ -13,10 +13,8 @@ namespace NFSDSAnalysisMod {
     // in nfsdsanalysis-mod1:
     NFSDSModule *newNFSOpPayload(DataSeriesModule &prev);
     NFSDSModule *newClientServerPairInfo(DataSeriesModule &prev);
-    RowAnalysisModule *newHostInfo(DataSeriesModule &prev, char *arg);
     NFSDSModule *newUnbalancedOps(DataSeriesModule &prev);
     NFSDSModule *newPayloadInfo(DataSeriesModule &prev);
-    RowAnalysisModule *newServerLatency(DataSeriesModule &prev);
     NFSDSModule *newNFSTimeGaps(DataSeriesModule &prev);
 
     extern double gap_parm;

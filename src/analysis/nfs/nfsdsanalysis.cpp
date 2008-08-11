@@ -34,6 +34,8 @@
 #include "analysis/nfs/mod2.hpp"
 #include "analysis/nfs/mod3.hpp"
 #include "analysis/nfs/mod4.hpp"
+#include <analysis/nfs/HostInfo.hpp>
+#include <analysis/nfs/ServerLatency.hpp>
 #include "process/sourcebyrange.hpp"
 
 using namespace std;

@@ -20,6 +20,7 @@ sub new {
 
     my $this = bless {
 	'compress' => [],
+	'verbose_level' => 1,
     }, $class;
     while (@_ > 0) {
 	$_ = shift @_;

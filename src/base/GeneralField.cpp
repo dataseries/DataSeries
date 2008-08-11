@@ -82,51 +82,64 @@ GeneralValue::set(const GeneralValue &from)
 	}
 }
 
-uint32_t GeneralValue::hash() const
+uint32_t GeneralValue::hash(uint32_t partial_hash) const
 {
     switch(gvtype) 
 	{
-	case ExtentType::ft_unknown: return 0;
+	case ExtentType::ft_unknown: return partial_hash;
 	case ExtentType::ft_bool: 
-	    return gvval.v_bool;
+	    return BobJenkinsHashMix3(gvval.v_bool, 1492, partial_hash);
 	case ExtentType::ft_byte: 
-	    return gvval.v_byte;
+	    return BobJenkinsHashMix3(gvval.v_byte, 1941, partial_hash);
 	case ExtentType::ft_int32: 
-	    return static_cast<u_int32_t>(gvval.v_int32);
+	    return BobJenkinsHashMix3(gvval.v_int32, 1861, partial_hash);
 	case ExtentType::ft_int64: 
-	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	    return BobJenkinsHashMixULL(gvval.v_int64, partial_hash);
 	case ExtentType::ft_double: 
 	    BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
 	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) 
 				== offsetof(gvvalT, v_int64));
-	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	    return BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
+					partial_hash);
 	case ExtentType::ft_variable32: 
 	    return HashTable_hashbytes(v_variable32->data(),
-				       v_variable32->size());
+				       v_variable32->size(), partial_hash);
 	default: FATAL_ERROR("internal error, unexpected type"); 
 	    return 0; 
 	}
 }
 
-void
-GeneralValue::setInt32(ExtentType::int32 from)
-{
+void GeneralValue::setBool(bool val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_bool,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_bool;
+    gvval.v_bool = val;
+}
+
+void GeneralValue::setByte(uint8_t val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_byte,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_byte;
+    gvval.v_byte = val;
+}
+
+void GeneralValue::setInt32(int32_t val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_int32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_int32;
-    gvval.v_int32 = from;
+    gvval.v_int32 = val;
 }
 
-void
-GeneralValue::setVariable32(const string &from)
-{
+void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_variable32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_variable32;
     if (NULL == v_variable32) v_variable32 = new string;
-    *v_variable32 = from;
+    *v_variable32 = val;
 }
 
 bool 

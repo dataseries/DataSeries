@@ -9,6 +9,7 @@ DATASERIES_PROGRAM(nfssubset)
 
 DATASERIES_PROGRAM(nfsdsanalysis 
 	common.cpp mod1.cpp mod2.cpp mod3.cpp mod4.cpp 
+	HostInfo.cpp ServerLatency.cpp
         ../../process/sourcebyrange.cpp)
 
 
