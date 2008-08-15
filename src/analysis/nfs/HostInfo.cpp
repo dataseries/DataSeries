@@ -290,7 +290,6 @@ public:
 	  cube(boost::bind(&HostInfo::makeStats))
     {
 	group_seconds = stringToUInt32(arg);
-	host_to_data.reserve(5000);
     }
 
     virtual ~HostInfo() { }
@@ -398,160 +397,7 @@ public:
 	}
     }
 
-    struct TotalTime {
-	vector<Stats *> total;
-	uint32_t first_time_seconds;
-	uint32_t group_seconds;
-
-	TotalTime(uint32_t a, uint32_t b) : first_time_seconds(a), group_seconds(b) { }
-	
-	void add(Stats &ent, uint32_t seconds) {
-	    SINVARIANT(seconds % group_seconds == 0);
-	    SINVARIANT(seconds >= first_time_seconds);
-	    uint32_t offset = (seconds - first_time_seconds)/group_seconds;
-	    if (total.size() <= offset) {
-		total.resize(offset+1);
-	    }
-	    if (total[offset] == NULL) {
-		total[offset] = new Stats();
-	    }
-	    total[offset]->add(ent);
-	}
-
-	void print() {
-	    uint32_t cur_seconds = first_time_seconds;
-	    Stats complete_total;
-	    for(vector<Stats *>::iterator i = total.begin(); i != total.end(); ++i) {
-		if (*i != NULL) {
-		    cout << format("       * %10d  send           *        * %6lld %8.2f\n")
-			% cur_seconds % (**i).countll() % (**i).mean();
-		    complete_total.add(**i);
-		}
-		
-		cur_seconds += group_seconds;
-	    }
-	    cout << format("       *          *  send           *        * %6lld %8.2f\n")
-		% complete_total.countll() % complete_total.mean();
-	}
-    };
-
-    struct PerDirectionData {
-	vector<Stats *> req_data, resp_data;
-	void add(unsigned op_id, bool is_request, uint32_t bytes) {
-	    doAdd(op_id, bytes, is_request ? req_data : resp_data);
-	}
-
-	void print(uint32_t host_id, uint32_t seconds,
-		   const std::string &direction,
-		   Stats &total_req, Stats &total_resp,
-		   TotalTime *total_time) {
-	    doPrint(host_id, seconds, direction, "request", req_data, 
-		    total_req, total_time);
-	    doPrint(host_id, seconds, direction, "response", resp_data, 
-		    total_resp, total_time);
-	}
-
-    private:
-	void doPrint(uint32_t host_id, uint32_t seconds, 
-		     const std::string &direction, 
-		     const std::string &msgtype,
-		     const vector<Stats *> &data,
-		     Stats &bigger_total, TotalTime *total_time) {
-	    Stats total;
-	    for(unsigned i = 0; i < data.size(); ++i) {
-		if (data[i] == NULL) {
-		    continue;
-		}
-		total.add(*data[i]);
-		cout << format("%08x %10d %s %12s %8s %6lld %8.2f\n")
-		    % host_id % seconds % direction % unifiedIdToName(i) 
-		    % msgtype % data[i]->countll() % data[i]->mean();
-	    }
-	    if (total.countll() > 0) {
-		cout << format("%08x %10d %s            * %8s %6lld %8.2f\n")
-		    % host_id % seconds % direction 
-		    % msgtype % total.countll() % total.mean();
-		bigger_total.add(total);
-		if (total_time != NULL) {
-		    total_time->add(total, seconds);
-		}
-	    }
-	}
-
-	void doAdd(unsigned op_id, uint32_t bytes, vector<Stats *> &data) {
-	    if (data.size() <= op_id) {
-		data.resize(op_id+1);
-	    }
-	    if (data[op_id] == NULL) {
-		data[op_id] = new Stats;
-	    }
-	    data[op_id]->add(bytes);
-	}
-
-    };
-
-    struct PerTimeData {
-	PerDirectionData send, recv;
-    };
-
-    struct PerHostData {
-	PerHostData() 
-	    : first_time_seconds(0) {}
-	vector<PerTimeData *> time_entries;
-	uint32_t first_time_seconds; 
-	PerTimeData &getPerTimeData(uint32_t seconds, uint32_t group_seconds) {
-	    seconds -= seconds % group_seconds;
-	    if (time_entries.empty()) {
-		first_time_seconds = seconds;
-	    }
-	    SINVARIANT(seconds >= first_time_seconds);
-	    uint32_t entry = (seconds - first_time_seconds) / group_seconds;
-	    INVARIANT(entry < 100000, format("time range of %d..%d seconds grouped every %d seconds leads to more than 100,000 entries; this is probably not what you want") % first_time_seconds % seconds % group_seconds);
-	    if (entry >= time_entries.size()) {
-		time_entries.resize(entry+1);
-	    }
-	    DEBUG_SINVARIANT(entry < time_entries.size());
-	    if (time_entries[entry] == NULL) {
-		time_entries[entry] = new PerTimeData();
-	    }
-	    return *time_entries[entry];
-	}
-
-	void printTotal(Stats &total, uint32_t host_id,
-			const std::string &direction,
-			const std::string &msgtype) {
-	    if (total.countll() > 0) {
-		cout << format("%08x          * %s            * %8s %6lld %8.2f\n")
-		    % host_id % direction % msgtype % total.countll() 
-		    % total.mean();
-	    }
-	}
-
-	void print(uint32_t host_id, uint32_t group_seconds, TotalTime &total_time) {
-	    uint32_t start_seconds = first_time_seconds;
-	    // Caches act as both senders and recievers.
-	    Stats total_send_req, total_send_resp, 
-		total_recv_req, total_recv_resp;
-	    for(vector<PerTimeData *>::iterator i = time_entries.begin();
-		i != time_entries.end(); ++i, start_seconds += group_seconds) {
-		if (*i != NULL) {
-		    (**i).send.print(host_id, start_seconds, "send", 
-				     total_send_req, total_send_resp, &total_time);
-		    (**i).recv.print(host_id, start_seconds, "recv", 
-				     total_recv_req, total_recv_resp, NULL);
-		}
-	    }
-	    printTotal(total_send_req,  host_id, "send", "request");
-	    printTotal(total_send_resp, host_id, "send", "response");
-	    printTotal(total_recv_req,  host_id, "recv", "request");
-	    printTotal(total_recv_resp, host_id, "recv", "response");
-	}
-    };
-
-    HashMap<uint32_t, PerHostData> host_to_data;
-
     virtual void processRow() {
-#if 1
 	uint32_t seconds = packet_at.valSec();
 	seconds -= seconds % group_seconds;
 	uint8_t operation = opIdToUnifiedId(nfs_version.val(), op_id.val());
@@ -564,17 +410,6 @@ public:
 	cube_key.get<0>() = dest_ip.val();
 	cube_key.get<1>() = false;
 	cube.add(cube_key, payload_length.val());
-#else
-	uint32_t seconds = packet_at.valSec();
-	unsigned unified_op_id = opIdToUnifiedId(nfs_version.val(),
-						 op_id.val());
-	host_to_data[source_ip.val()]
-	    .getPerTimeData(seconds, group_seconds)
-	    .send.add(unified_op_id, is_request.val(), payload_length.val());
-	host_to_data[dest_ip.val()]
-	    .getPerTimeData(seconds, group_seconds)
-	    .recv.add(unified_op_id, is_request.val(), payload_length.val());
-#endif
     }
 
     static void printFullRow(const Tuple &t, Stats *v) {
@@ -597,23 +432,6 @@ public:
 	cube.cube();
 	cube.printBase(boost::bind(&HostInfo::printFullRow, _1, _2));
 	cube.printCube(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
-	
-#if 0
-	uint32_t min_first_time = numeric_limits<uint32_t>::max();
-	for(HashMap<uint32_t, PerHostData>::iterator i = host_to_data.begin();
-	    i != host_to_data.end(); ++i) {
-	    min_first_time = min(min_first_time, i->second.first_time_seconds);
-	}
-	if (min_first_time < numeric_limits<uint32_t>::max()) {
-	    TotalTime total_time(min_first_time, group_seconds);
-	    for(HashMap<uint32_t, PerHostData>::iterator i 
-		    = host_to_data.begin();
-		i != host_to_data.end(); ++i) {
-		i->second.print(i->first, group_seconds, total_time);
-	    }
-	    total_time.print();
-	}
-#endif
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
@@ -628,15 +446,11 @@ public:
     BoolField is_request;
     uint32_t group_seconds;
 
-    //    enum KeyEnts { Host = 0, Seconds, IsSend, Operation, IsRequest, MaxEnts };
-    // [int32 host, int32 seconds, bool is_send, byte op, bool is_request]
-    //    StatsCube::CubeKey cube_key;
     StatsCube<Tuple> cube;
 };
 
 RowAnalysisModule *
-NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg)
-{
+NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg) {
     return new HostInfo(prev, arg);
 }
 
