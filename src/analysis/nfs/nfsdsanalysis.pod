@@ -38,7 +38,7 @@ This analysis can use a ton of memory because it's memory usage is
 proportional to the number of unique (server, operation, filehandle)
 pairs.  
 
-Example output:
+=head3 Example output
 
 	FileSystem Rollup:
 	Too many filesystems (>= 100000) filesystems found, assuming that fh->fs mapping is wrong
@@ -71,7 +71,7 @@ The code has support for calculating the latency from the last
 request, which provides more information on how the server generating
 latency, but that code is currently disabled.
 
-Example Output:
+=head3 Example Output
 
 Begin-virtual void ServerLatency::printResult()
  id: server ip
@@ -103,14 +103,42 @@ server operation   #ops  #dups mean ; firstlat mean 50% 90%
  *          *     10000      0 0.00 ;   0.135   0.10   0.20 
 End-virtual void ServerLatency::printResult()
 
-=head2 -c # Host analysis (classname HostInfo)
+=head2 -c I<seconds>[,I<options>] # Host analysis (classname HostInfo)
 
 This analysis looks at the amount of data and operations going either
 in or out of each of the hosts.  It is useful for identifying heavily
 used hosts.  In particular for each access, the payload size is
 accumulated for both the source host and the destination host. 
 
-Example Output:
+=head3 Options
+
+There are a number of options that you can specify in order to control
+host the HostInfo analysis will be performed.  They are separated by
+,'s after the mandatory seconds option that specifies the time
+interval for the basic grouping.
+
+=over 4
+
+=item B<no_cube_time>: Do not cube over the time column, i.e. in the
+cube output, this column will always be "*".  Unless you have a
+relatively high grouping for seconds, failing to specify this will
+generate an astonishing amount of output for the cube.
+
+=item B<no_cube_host>: Do not cube over the host colum, i.e. in the
+cube output, this column will always be "*".  This column tends to be
+the second most common, and hence skipping the cube over this column
+can reduce the amount of output.
+
+=item B<no_print_base>: Do not print the base data, i.e. at least one
+column in the output will include a "*".
+
+=item B<no_print_cube>: Do not print the cubed data, i.e. no column
+in the output will include a "*".  If you specify this option, the
+options controlling how the cube operates are irrelevant.
+
+=back
+
+=head3 Example Output
 
     Begin-virtual void HostInfo::printResult()
     host     time        dir          op    op-dir   count mean-payload
@@ -148,7 +176,7 @@ analysis requesting some of the early filehandles will make additional
 progress in reconstructing the entire path.  The base path can only be
 reconstructed if the dataset includes the original mount request.
 
-Example Output:
+=head3 Example Output
 
     Begin-virtual void DirectoryPathLookup::printResult()
     e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800: FH:e8535201c2cca3052000000001d63ba0074e0209d6390035400000006bfc0800/0f96481c6462479c5d0ec6a8c8ae4de3be167bea59064c541a5fd74f86d0767a
@@ -163,7 +191,8 @@ filehandles and prints out information about each operation.  To eliminate
 buffering, the output is printed out with a FHOL: prefix rather than within
 a Begin-... End-... block.
 
-Example Output:
+
+=head3 Example Output
 
     FHOL: reply-at client server ; operation type filehandle filename; file-size modify-time
     FHOL: 1063931188.266179000 10.12.11.75 10.110.1.14 ; getattr file 25cccd0040f47d05200000000160929015f77d0578e4003e1630670064637600 '' ; 325880 1023314262.000000000

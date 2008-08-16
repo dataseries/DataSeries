@@ -161,6 +161,8 @@ public:
     typedef boost::function<void (Tuple &key, Stats *value)> PrintBaseFn;
     typedef boost::function<void (Tuple &key, typename MyPartial::UsedT, 
 				  Stats *value)> PrintCubeFn;
+    typedef boost::function<bool (const typename MyPartial::UsedT &used)>
+       OptionalCubePartialFn;
 
     StatsCube(const StatsFactoryFn fn) : stats_factory_fn(fn) { }
 
@@ -172,25 +174,30 @@ public:
 	getCubeEntry(key).add(value);
     }
 
-    void cube() {
+    static bool cubeAll() {
+	return true;
+    }
+
+    void cube(OptionalCubePartialFn cube_select_fn 
+	      = boost::bind(&StatsCube::cubeAll)) {
 	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
 	    MyPartial tmp_key(i->first);
-	    cubeAddOne(tmp_key, 0, false, *i->second);
+	    cubeAddOne(tmp_key, 0, false, *i->second, cube_select_fn);
 	}
     }
 
     void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
-		    const Stats &value) {
+		    const Stats &value, const OptionalCubePartialFn &fn) {
 	if (pos == key.length) {
-	    if (had_false) {
+	    if (had_false && fn(key.used)) {
 		getPartialEntry(key).add(value);
 	    }
 	} else {
 	    DEBUG_SINVARIANT(pos < key.length);
 	    key.used[pos] = true;
-	    cubeAddOne(key, pos + 1, had_false, value);
+	    cubeAddOne(key, pos + 1, had_false, value, fn);
 	    key.used[pos] = false;
-	    cubeAddOne(key, pos + 1, true, value);
+	    cubeAddOne(key, pos + 1, true, value, fn);
 	}
     }
 
@@ -289,48 +296,68 @@ public:
 	  is_request(series, ""),
 	  cube(boost::bind(&HostInfo::makeStats))
     {
-	group_seconds = stringToUInt32(arg);
+	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
+	//                        no_print_base, no_print_cube}]+
+	vector<string> args = split(arg, ",");
+	group_seconds = stringToUInt32(args[0]);
+	SINVARIANT(group_seconds > 0);
+	options["cube_time"] = true;
+	options["cube_host"] = true;
+	options["print_base"] = true;
+	options["print_cube"] = true;
+	for(unsigned i = 1; i < args.size(); ++i) {
+	    SINVARIANT(prefixequal(args[i], "no_"));
+	    INVARIANT(options.exists(args[i].substr(3)),
+		      format("unknown option '%s'") % args[i]);
+	    options[args[i].substr(3)] = false;
+	}
     }
 
     virtual ~HostInfo() { }
 
-    //                   host,   is_send, seconds, operation, is_request
+    //                   host,   is_send,   time, operation, is_request
     typedef boost::tuple<int32_t, bool,   int32_t,  uint8_t,    bool> Tuple;
+    static const size_t host_index = 0;
+    static const size_t is_send_index = 1;
+    static const size_t time_index = 2;
+    static const size_t operation_index = 3;
+    static const size_t is_request_index = 4;
+
     typedef bitset<5> Used;
     static int32_t host(const Tuple &t) {
-	return t.get<0>();
+	return t.get<host_index>();
     }
     static string host(const Tuple &t, const Used &used) {
-	if (used[0] == false) {
+	if (used[host_index] == false) {
 	    return str_star;
 	} else {
 	    return str(format("%08x") % host(t));
 	}
     }
     static bool isSend(const Tuple &t) {
-	return t.get<1>();
+	return t.get<is_send_index>();
     }
     static const string &isSendStr(const Tuple &t) {
 	return isSend(t) ? str_send : str_recv;
     }
 
     static string isSendStr(const Tuple &t, const Used &used) {
-	if (used[1] == false) {
+	if (used[is_send_index] == false) {
 	    return str_star;
 	} else {
 	    return isSendStr(t);
 	}
     }
 
-    static int32_t seconds(const Tuple &t) {
-	return t.get<2>();
+    static int32_t time(const Tuple &t) {
+	return t.get<time_index>();
     }
 
-    static string seconds(const Tuple &t, const Used &used) {
-	if (used[2] == false) {
+    static string time(const Tuple &t, const Used &used) {
+	if (used[time_index] == false) {
 	    return str_star;
 	} else {
-	    return str(format("%d") % seconds(t));
+	    return str(format("%d") % time(t));
 	}
     }
 
@@ -414,24 +441,60 @@ public:
 
     static void printFullRow(const Tuple &t, Stats *v) {
 	cout << format("%08x %10d %s %12s %8s %6lld %8.2f\n")
-	    % host(t) % seconds(t) % isSendStr(t) % operationStr(t) 
+	    % host(t) % time(t) % isSendStr(t) % operationStr(t) 
 	    % isRequestStr(t) % v->countll() % v->mean();
     }	
     
     static void printPartialRow(const Tuple &t, const bitset<5> &used, 
 				Stats *v) {
 	cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
-	    % host(t,used) % seconds(t,used) % isSendStr(t,used) 
+	    % host(t,used) % time(t,used) % isSendStr(t,used) 
 	    % operationStr(t,used) % isRequestStr(t,used) 
 	    % v->countll() % v->mean();
     }
 
+    static bool cubeAll() {
+	return true;
+    }
+
+    typedef StatsCube<Tuple>::MyPartial::UsedT UsedT;
+    static bool cubeExceptTime(const UsedT &used) {
+	return used[time_index] == false;
+    }
+
+    static bool cubeExceptHost(const UsedT &used) {
+	return used[host_index] == false;
+    }
+
+    static bool cubeExceptTimeOrHost(const UsedT &used) {
+	return used[time_index] == false && used[host_index] == false;
+    }
+
+
     virtual void printResult() {
+	using boost::bind; 
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
 	cout << "host     time        dir          op    op-dir   count mean-payload\n";
-	cube.cube();
-	cube.printBase(boost::bind(&HostInfo::printFullRow, _1, _2));
-	cube.printCube(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+	if (options["print_base"]) {
+	    cube.printBase(boost::bind(&HostInfo::printFullRow, _1, _2));
+	}
+	if (options["print_cube"]) {
+	    StatsCube<Tuple>::OptionalCubePartialFn optional_cube_fn;
+
+	    if (options["cube_time"] && options["cube_host"]) {
+		optional_cube_fn = bind(&HostInfo::cubeAll);
+	    } else if (options["cube_time"] && !options["cube_host"]) {
+		optional_cube_fn = bind(&HostInfo::cubeExceptHost, _1);
+	    } else if (!options["cube_time"] && options["cube_host"]) {
+		optional_cube_fn = bind(&HostInfo::cubeExceptTime, _1);
+	    } else if (!options["cube_time"] && !options["cube_host"]) {
+		optional_cube_fn = bind(&HostInfo::cubeExceptTimeOrHost, _1);
+	    }
+
+	    cube.cube(optional_cube_fn);
+	    cube.printCube(boost::bind(&HostInfo::printPartialRow, 
+				       _1, _2, _3));
+	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
@@ -446,6 +509,7 @@ public:
     BoolField is_request;
     uint32_t group_seconds;
 
+    HashMap<string, bool> options;
     StatsCube<Tuple> cube;
 };
 
