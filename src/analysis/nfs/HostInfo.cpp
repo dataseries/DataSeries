@@ -9,6 +9,7 @@
 #include <analysis/nfs/HostInfo.hpp>
 
 #include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
 
 #include <DataSeries/GeneralField.hpp>
 
@@ -112,6 +113,29 @@ template<class Tuple> struct TupleHash {
     }
 };
 
+//                   host,   is_send,   time, operation, is_request
+typedef boost::tuple<int32_t, bool,   int32_t,  uint8_t,    bool> 
+    HostInfoTuple;
+static const size_t host_index = 0;
+static const size_t is_send_index = 1;
+static const size_t time_index = 2;
+static const size_t operation_index = 3;
+static const size_t is_request_index = 4;
+
+#if 0
+template<> struct TupleHash<HostInfoTuple> {
+    uint32_t operator()(const HostInfoTuple &v) {
+	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
+	uint32_t a = v.get<host_index>();
+	uint32_t b = v.get<time_index>();
+	uint32_t c = v.get<operation_index>()
+	    | (v.get<is_send_index>() ? 0x100 : 0)
+	    | (v.get<is_request_index>() ? 0x200 : 0);
+	return BobJenkinsHashMix3(a,b,c);
+    }
+};
+#endif
+	       
 template<class Tuple> struct PartialTuple {
     BOOST_STATIC_CONSTANT(uint32_t, 
 			  length = boost::tuples::length<Tuple>::value);
@@ -141,64 +165,241 @@ template<class Tuple> struct PartialTupleHash {
     }
 };
 
-template<class Tuple>
+#if 0
+template<> struct PartialTupleHash<HostInfoTuple> {
+    uint32_t operator()(const PartialTuple<HostInfoTuple> &v) {
+	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
+	uint32_t a = v.used[host_index] ? v.data.get<host_index>() : 0;
+	uint32_t b = v.used[time_index] ? v.data.get<time_index>() : 0;
+	uint32_t c 
+	    = (v.used[operation_index] ? v.data.get<operation_index>() : 0)
+	    | (v.used[is_send_index] && v.data.get<is_send_index>() 
+	       ? 0x100 : 0)
+	    | (v.used[is_request_index] && v.data.get<is_request_index>() 
+	       ? 0x200 : 0);
+	return BobJenkinsHashMix3(a,b,c);
+    }
+};
+#endif
+
+
+using boost::tuples::null_type;
+
+template<class T0, class T1>
+struct ConsToHashUniqueCons {
+    typedef ConsToHashUniqueCons<typename T1::head_type, 
+				 typename T1::tail_type> tail;
+    typedef boost::tuples::cons<HashUnique<T0>, typename tail::type> type;
+};
+
+template<class T0>
+struct ConsToHashUniqueCons<T0, null_type> {
+    typedef boost::tuples::cons<HashUnique<T0>, null_type> type;
+};
+
+template<class T>
+struct TupleToHashUniqueTuple 
+  : ConsToHashUniqueCons<typename T::head_type, typename T::tail_type> {
+};
+
+class StatsCubeFns {
+public:
+    static bool cubeAll() {
+	return true;
+    }
+
+    static void addFullStats(Stats &into, const Stats &val) {
+	into.add(val);
+    }
+    
+    static void addMean(Stats &into, const Stats &val) {
+	into.add(val.mean());
+    }
+};
+
+template<> struct HashMap_hash<const bool> {
+    uint32_t operator()(const bool x) {
+	return x;
+    }
+};
+
+template<> struct HashMap_hash<const unsigned char> {
+    uint32_t operator()(const bool x) {
+	return x;
+    }
+};
+
+void zeroAxisAdd(null_type, null_type) {
+}
+
+template<class HUT, class T>
+void zeroAxisAdd(HUT &hut, const T &v) {
+    hut.get_head().add(v.get_head());
+    zeroAxisAdd(hut.get_tail(), v.get_tail());
+}
+
+void hutPrint(null_type, int) { }
+
+template<class HUT>
+void hutPrint(HUT &hut, int pos) {
+    typedef typename HUT::head_type::iterator iterator;
+    cout << format("begin tuple part %d:\n") % pos;
+    if (false) {
+	Stats chain_lens;
+	hut.get_head().chainLengthStats(chain_lens);
+	
+	cout << format("  chain [%.0f,%.0f] %.2f +- %.2f\n")
+	    % chain_lens.min() % chain_lens.max() % chain_lens.mean()
+	    % chain_lens.stddev();
+    }
+    
+    for(iterator i = hut.get_head().begin(); i != hut.get_head().end(); ++i) {
+	cout << *i << " ";
+    }
+    cout << format("\nend tuple part %d:\n") % pos;
+
+    hutPrint(hut.get_tail(), pos + 1);
+}
+
+double zeroCubeBaseCount(null_type) { 
+    return 1; 
+}
+
+template<class HUT>
+double zeroCubeBaseCount(HUT &hut) {
+    return hut.get_head().size() * zeroCubeBaseCount(hut.get_tail());
+}
+
+template<class KeyBase, class BaseData, class StatsCube>
+void zeroCubeAll(null_type, null_type, KeyBase &key_base, 
+		 BaseData &base_data, Stats &null_stat, StatsCube &cube) {
+    typedef typename BaseData::iterator iterator;
+    iterator i = base_data.find(key_base);
+    typename StatsCube::MyPartial tmp_partial(key_base);
+    if (i == base_data.end()) {
+	cube.cubeAddOne(tmp_partial, 0, false, null_stat);
+    } else {
+	cube.cubeAddOne(tmp_partial, 0, false, *(i->second));
+    }
+}
+
+template<class HUT, class KeyTail, class KeyBase, class BaseData, 
+	 class StatsCube>
+void zeroCubeAll(HUT &hut, KeyTail &key_tail, KeyBase &key_base, 
+		 BaseData &base_data, Stats &null_stat, StatsCube &cube) {
+    typedef typename HUT::head_type::iterator iterator;
+
+    for(iterator i = hut.get_head().begin(); i != hut.get_head().end(); ++i) {
+	key_tail.get_head() = *i;
+
+	zeroCubeAll(hut.get_tail(), key_tail.get_tail(), key_base,
+		    base_data, null_stat, cube);
+    }
+}
+    
+template<class Tuple, class StatsT = Stats>
 class StatsCube {
 public:
-    typedef HashMap<Tuple, Stats *, TupleHash<Tuple> > CubeMap;
+    // cube types
+    typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > CubeMap;
     typedef typename CubeMap::iterator CMIterator;
-
     typedef vector<typename CubeMap::value_type> CMValueVector;
     typedef typename CMValueVector::iterator CMVVIterator;
 
+    // partial tuple types
     typedef PartialTuple<Tuple> MyPartial;
-    typedef HashMap<MyPartial, Stats *, PartialTupleHash<Tuple> > 
+    typedef HashMap<MyPartial, StatsT *, PartialTupleHash<Tuple> > 
         PartialTupleCubeMap;
     typedef typename PartialTupleCubeMap::iterator PTCMIterator;
     typedef vector<typename PartialTupleCubeMap::value_type> PTCMValueVector;
     typedef typename PTCMValueVector::iterator PTCMVVIterator;
 
-    typedef boost::function<Stats *()> StatsFactoryFn;
-    typedef boost::function<void (Tuple &key, Stats *value)> PrintBaseFn;
+    // zero cubing types
+    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
+    typedef typename HUTConvert::type HashUniqueTuple;
+
+    // functions controlling cubing...
+    typedef boost::function<StatsT *()> StatsFactoryFn;
+    typedef boost::function<void (Tuple &key, StatsT *value)> PrintBaseFn;
     typedef boost::function<void (Tuple &key, typename MyPartial::UsedT, 
-				  Stats *value)> PrintCubeFn;
+				  StatsT *value)> PrintCubeFn;
     typedef boost::function<bool (const typename MyPartial::UsedT &used)>
        OptionalCubePartialFn;
+    typedef boost::function<void (StatsT &into, const StatsT &val)>
+       CubeStatsAddFn;
 
-    StatsCube(const StatsFactoryFn fn) : stats_factory_fn(fn) { }
 
-    void add(const Tuple &key, const Stats &value) {
+    explicit StatsCube(const StatsFactoryFn &fn1,
+		       const OptionalCubePartialFn &fn2 
+		       = boost::bind(&StatsCubeFns::cubeAll),
+		       const CubeStatsAddFn &fn3
+		       = boost::bind(&StatsCubeFns::addFullStats, _1, _2)) 
+	: stats_factory_fn(fn1), optional_cube_partial_fn(fn2),
+	  cube_stats_add_fn(fn3) 
+    { }
+
+    void setOptionalCubePartialFn(const OptionalCubePartialFn &fn2 
+				  = boost::bind(&StatsCubeFns::cubeAll)) {
+	optional_cube_partial_fn = fn2;
+    }
+
+    void setCubeStatsAddFn(const CubeStatsAddFn &fn3
+			   = boost::bind(&StatsCubeFns::addFullStats)) {
+	cube_stats_add_fn = fn3;
+    }
+
+    void addBase(const Tuple &key, const StatsT &value) {
 	getCubeEntry(key).add(value);
     }
 
-    void add(const Tuple &key, double value) {
+    void addBase(const Tuple &key, double value) {
 	getCubeEntry(key).add(value);
     }
 
-    static bool cubeAll() {
-	return true;
-    }
-
-    void cube(OptionalCubePartialFn cube_select_fn 
-	      = boost::bind(&StatsCube::cubeAll)) {
+    void cube() {
 	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
 	    MyPartial tmp_key(i->first);
-	    cubeAddOne(tmp_key, 0, false, *i->second, cube_select_fn);
+	    cubeAddOne(tmp_key, 0, false, *i->second);
 	}
     }
 
     void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
-		    const Stats &value, const OptionalCubePartialFn &fn) {
+		    const StatsT &value) {
 	if (pos == key.length) {
-	    if (had_false && fn(key.used)) {
-		getPartialEntry(key).add(value);
+	    if (had_false && optional_cube_partial_fn(key.used)) {
+		cube_stats_add_fn(getPartialEntry(key), value);
 	    }
 	} else {
 	    DEBUG_SINVARIANT(pos < key.length);
 	    key.used[pos] = true;
-	    cubeAddOne(key, pos + 1, had_false, value, fn);
+	    cubeAddOne(key, pos + 1, had_false, value);
 	    key.used[pos] = false;
-	    cubeAddOne(key, pos + 1, true, value, fn);
+	    cubeAddOne(key, pos + 1, true, value);
 	}
+    }
+
+    void zeroCube() {
+	HashUniqueTuple hut;
+	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
+	    zeroAxisAdd(hut, i->first);
+	}
+
+	double expected_hut = zeroCubeBaseCount(hut);
+
+	uint32_t tuple_len = boost::tuples::length<Tuple>::value;
+
+	cout << format("Expecting to cube %.6g * 2^%d -1 = %.6g\n")
+	    % expected_hut % tuple_len 
+	    % (expected_hut * (pow(2.0, tuple_len) - 1));
+
+	if (false) { hutPrint(hut, 0); }
+
+	Tuple key;
+
+	StatsT *tmp_empty = stats_factory_fn();
+	zeroCubeAll(hut, key, key, base_data, *tmp_empty, *this);
+
+	delete tmp_empty;
     }
 
     void printBase(const PrintBaseFn fn) {
@@ -229,8 +430,8 @@ public:
 	}
     }
 private:
-    Stats &getCubeEntry(const Tuple &key) {
-	Stats * &v = base_data[key];
+    StatsT &getCubeEntry(const Tuple &key) {
+	StatsT * &v = base_data[key];
 
 	if (v == NULL) {
 	    v = stats_factory_fn();
@@ -248,6 +449,9 @@ private:
     }
 
     StatsFactoryFn stats_factory_fn;
+    OptionalCubePartialFn optional_cube_partial_fn;
+    CubeStatsAddFn cube_stats_add_fn;
+
     CubeMap base_data;
     PartialTupleCubeMap cube_data;
     uint32_t foo;
@@ -305,24 +509,23 @@ public:
 	options["cube_host"] = true;
 	options["print_base"] = true;
 	options["print_cube"] = true;
+	options["test"] = false;
 	for(unsigned i = 1; i < args.size(); ++i) {
-	    SINVARIANT(prefixequal(args[i], "no_"));
-	    INVARIANT(options.exists(args[i].substr(3)),
-		      format("unknown option '%s'") % args[i]);
-	    options[args[i].substr(3)] = false;
+	    if (prefixequal(args[i], "no_")) {
+		INVARIANT(options.exists(args[i].substr(3)),
+			  format("unknown option '%s'") % args[i]);
+		options[args[i].substr(3)] = false;
+	    } else {
+		INVARIANT(options.exists(args[i]),
+			  format("unknown option '%s'") % args[i]);
+		options[args[i]] = true;
+	    }
 	}
     }
 
     virtual ~HostInfo() { }
 
-    //                   host,   is_send,   time, operation, is_request
-    typedef boost::tuple<int32_t, bool,   int32_t,  uint8_t,    bool> Tuple;
-    static const size_t host_index = 0;
-    static const size_t is_send_index = 1;
-    static const size_t time_index = 2;
-    static const size_t operation_index = 3;
-    static const size_t is_request_index = 4;
-
+    typedef HostInfoTuple Tuple;
     typedef bitset<5> Used;
     static int32_t host(const Tuple &t) {
 	return t.get<host_index>();
@@ -432,11 +635,11 @@ public:
 	// sender...
 	Tuple cube_key(source_ip.val(), true, 
 		       seconds, operation, is_request.val());
-	cube.add(cube_key, payload_length.val());
+	cube.addBase(cube_key, payload_length.val());
 	// reciever...
-	cube_key.get<0>() = dest_ip.val();
-	cube_key.get<1>() = false;
-	cube.add(cube_key, payload_length.val());
+	cube_key.get<host_index>() = dest_ip.val();
+	cube_key.get<is_send_index>() = false;
+	cube.addBase(cube_key, payload_length.val());
     }
 
     static void printFullRow(const Tuple &t, Stats *v) {
@@ -453,10 +656,6 @@ public:
 	    % v->countll() % v->mean();
     }
 
-    static bool cubeAll() {
-	return true;
-    }
-
     typedef StatsCube<Tuple>::MyPartial::UsedT UsedT;
     static bool cubeExceptTime(const UsedT &used) {
 	return used[time_index] == false;
@@ -470,32 +669,55 @@ public:
 	return used[time_index] == false && used[host_index] == false;
     }
 
+    static double afs_count;
+
+    static void addFullStats(Stats &into, const Stats &val) {
+	into.add(val);
+	++afs_count;
+    }
+
+    void configCube() {
+	using boost::bind; 
+
+	if (options["cube_time"] && options["cube_host"]) {
+	    cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeAll));
+	} else if (options["cube_time"] && !options["cube_host"]) {
+	    cube.setOptionalCubePartialFn
+		(bind(&HostInfo::cubeExceptHost, _1));
+	} else if (!options["cube_time"] && options["cube_host"]) {
+	    cube.setOptionalCubePartialFn
+		(bind(&HostInfo::cubeExceptTime, _1));
+	} else if (!options["cube_time"] && !options["cube_host"]) {
+	    cube.setOptionalCubePartialFn
+		(bind(&HostInfo::cubeExceptTimeOrHost, _1));
+	}
+
+	cube.setCubeStatsAddFn(bind(&StatsCubeFns::addFullStats, _1, _2));
+    }
 
     virtual void printResult() {
-	using boost::bind; 
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	configCube();
+	
+	if (options["test"]) {
+	    cube.zeroCube();
+	    cout << format("Actual afs_count = %.0f\n") % afs_count;
+	    //	cube.printCube(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+	    return;
+	}
+
 	cout << "host     time        dir          op    op-dir   count mean-payload\n";
 	if (options["print_base"]) {
 	    cube.printBase(boost::bind(&HostInfo::printFullRow, _1, _2));
 	}
 	if (options["print_cube"]) {
-	    StatsCube<Tuple>::OptionalCubePartialFn optional_cube_fn;
-
-	    if (options["cube_time"] && options["cube_host"]) {
-		optional_cube_fn = bind(&HostInfo::cubeAll);
-	    } else if (options["cube_time"] && !options["cube_host"]) {
-		optional_cube_fn = bind(&HostInfo::cubeExceptHost, _1);
-	    } else if (!options["cube_time"] && options["cube_host"]) {
-		optional_cube_fn = bind(&HostInfo::cubeExceptTime, _1);
-	    } else if (!options["cube_time"] && !options["cube_host"]) {
-		optional_cube_fn = bind(&HostInfo::cubeExceptTimeOrHost, _1);
-	    }
-
-	    cube.cube(optional_cube_fn);
+	    cube.cube();
 	    cube.printCube(boost::bind(&HostInfo::printPartialRow, 
 				       _1, _2, _3));
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
+	foo.get_head().add(5);
+	foo.get_tail().get_head().add(3);
     }
 
     static Stats *makeStats() {
@@ -511,7 +733,10 @@ public:
 
     HashMap<string, bool> options;
     StatsCube<Tuple> cube;
+
+    TupleToHashUniqueTuple<boost::tuple<int, int> >::type foo;
 };
+double HostInfo::afs_count;
 
 RowAnalysisModule *
 NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg) {
