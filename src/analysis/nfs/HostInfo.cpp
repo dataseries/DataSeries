@@ -204,6 +204,10 @@ struct TupleToHashUniqueTuple
 
 class StatsCubeFns {
 public:
+    static Stats *createStats() {
+	return new Stats();
+    }
+
     static bool cubeAll() {
 	return true;
     }
@@ -298,6 +302,61 @@ void zeroCubeAll(HUT &hut, KeyTail &key_tail, KeyBase &key_base,
 }
     
 template<class Tuple, class StatsT = Stats>
+class HashTupleStats {
+public:
+    typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > HTSMap;
+    typedef typename HTSMap::iterator HTSiterator;
+    typedef vector<typename HTSMap::value_type> HTSValueVector;
+    typedef typename HTSValueVector::iterator HTSVViterator;
+
+    typedef boost::function<StatsT *()> StatsFactoryFn;
+    typedef boost::function<void (Tuple &key, StatsT *value)> WalkFn;
+
+    explicit HashTupleStats(const StatsFactoryFn &fn1 
+			    = boost::bind(&StatsCubeFns::createStats))
+	: stats_factory_fn(fn1)
+    { }
+
+    void add(const Tuple &key, double value) {
+	getHashEntry(key).add(value);
+    }
+
+    void walk(const WalkFn &walk_fn) {
+	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
+	    walk_fn(i->first, i->second);
+	}
+    }
+
+    void walkOrdered(const WalkFn &walk_fn) {
+	HTSValueVector sorted;
+
+	sorted.reserve(data.size());
+	// TODO: figure out why the below doesn't work.
+	//	sorted.push_back(base_data.begin(), base_data.end());
+	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
+	    sorted.push_back(*i);
+	}
+	sort(sorted.begin(), sorted.end());
+	for(HTSVViterator i = sorted.begin(); i != sorted.end(); ++i) {
+	    walk_fn(i->first, i->second);
+	}
+    }
+
+private:
+    StatsT &getHashEntry(const Tuple &key) {
+	StatsT * &v = data[key];
+
+	if (v == NULL) {
+	    v = stats_factory_fn();
+	}
+	return *v;
+    }
+
+    HTSMap data;
+    StatsFactoryFn stats_factory_fn;
+};
+
+template<class Tuple, class StatsT = Stats>
 class StatsCube {
 public:
     // cube types
@@ -329,7 +388,8 @@ public:
        CubeStatsAddFn;
 
 
-    explicit StatsCube(const StatsFactoryFn &fn1,
+    explicit StatsCube(const StatsFactoryFn &fn1
+		       = boost::bind(&StatsCubeFns::createStats),
 		       const OptionalCubePartialFn &fn2 
 		       = boost::bind(&StatsCubeFns::cubeAll),
 		       const CubeStatsAddFn &fn3
@@ -497,8 +557,7 @@ public:
 	  nfs_version(series, "", Field::flag_nullable),
 	  source_ip(series,"source"), 
 	  dest_ip(series, "dest"),
-	  is_request(series, ""),
-	  cube(boost::bind(&HostInfo::makeStats))
+	  is_request(series, "")
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -636,10 +695,13 @@ public:
 	Tuple cube_key(source_ip.val(), true, 
 		       seconds, operation, is_request.val());
 	cube.addBase(cube_key, payload_length.val());
+	base_data.add(cube_key, payload_length.val());
+
 	// reciever...
 	cube_key.get<host_index>() = dest_ip.val();
 	cube_key.get<is_send_index>() = false;
 	cube.addBase(cube_key, payload_length.val());
+	base_data.add(cube_key, payload_length.val());
     }
 
     static void printFullRow(const Tuple &t, Stats *v) {
@@ -700,6 +762,7 @@ public:
 	configCube();
 	
 	if (options["test"]) {
+	    
 	    cube.zeroCube();
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
 	    //	cube.printCube(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
@@ -708,7 +771,8 @@ public:
 
 	cout << "host     time        dir          op    op-dir   count mean-payload\n";
 	if (options["print_base"]) {
-	    cube.printBase(boost::bind(&HostInfo::printFullRow, _1, _2));
+	    base_data.walkOrdered
+		(boost::bind(&HostInfo::printFullRow, _1, _2));
 	}
 	if (options["print_cube"]) {
 	    cube.cube();
@@ -716,8 +780,6 @@ public:
 				       _1, _2, _3));
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
-	foo.get_head().add(5);
-	foo.get_tail().get_head().add(3);
     }
 
     static Stats *makeStats() {
@@ -734,7 +796,7 @@ public:
     HashMap<string, bool> options;
     StatsCube<Tuple> cube;
 
-    TupleToHashUniqueTuple<boost::tuple<int, int> >::type foo;
+    HashTupleStats<Tuple> base_data;
 };
 double HostInfo::afs_count;
 
