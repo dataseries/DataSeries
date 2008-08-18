@@ -359,12 +359,6 @@ private:
 template<class Tuple, class StatsT = Stats>
 class StatsCube {
 public:
-    // cube types
-    typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > CubeMap;
-    typedef typename CubeMap::iterator CMIterator;
-    typedef vector<typename CubeMap::value_type> CMValueVector;
-    typedef typename CMValueVector::iterator CMVVIterator;
-
     // partial tuple types
     typedef PartialTuple<Tuple> MyPartial;
     typedef HashMap<MyPartial, StatsT *, PartialTupleHash<Tuple> > 
@@ -387,7 +381,6 @@ public:
     typedef boost::function<void (StatsT &into, const StatsT &val)>
        CubeStatsAddFn;
 
-
     explicit StatsCube(const StatsFactoryFn &fn1
 		       = boost::bind(&StatsCubeFns::createStats),
 		       const OptionalCubePartialFn &fn2 
@@ -408,19 +401,10 @@ public:
 	cube_stats_add_fn = fn3;
     }
 
-    void addBase(const Tuple &key, const StatsT &value) {
-	getCubeEntry(key).add(value);
-    }
+    void cubeAddOne(const Tuple &key, const StatsT *value) {
+	MyPartial tmp_key(key);
 
-    void addBase(const Tuple &key, double value) {
-	getCubeEntry(key).add(value);
-    }
-
-    void cube() {
-	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
-	    MyPartial tmp_key(i->first);
-	    cubeAddOne(tmp_key, 0, false, *i->second);
-	}
+	cubeAddOne(tmp_key, 0, false, *value);
     }
 
     void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
@@ -439,6 +423,8 @@ public:
     }
 
     void zeroCube() {
+	FATAL_ERROR("broken");
+#if 0
 	HashUniqueTuple hut;
 	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
 	    zeroAxisAdd(hut, i->first);
@@ -460,21 +446,7 @@ public:
 	zeroCubeAll(hut, key, key, base_data, *tmp_empty, *this);
 
 	delete tmp_empty;
-    }
-
-    void printBase(const PrintBaseFn fn) {
-	CMValueVector sorted;
-
-	// TODO: figure out why the below doesn't work.
-	//	sorted.push_back(base_data.begin(), base_data.end());
-	for(CMIterator i = base_data.begin(); i != base_data.end(); ++i) {
-	    sorted.push_back(*i);
-	}
-	sort(sorted.begin(), sorted.end());
-
-	for(CMVVIterator i = sorted.begin(); i != sorted.end(); ++i) {
-	    fn(i->first, i->second);
-	}
+#endif
     }
 
     void printCube(const PrintCubeFn fn) {
@@ -490,15 +462,6 @@ public:
 	}
     }
 private:
-    StatsT &getCubeEntry(const Tuple &key) {
-	StatsT * &v = base_data[key];
-
-	if (v == NULL) {
-	    v = stats_factory_fn();
-	}
-	return *v;
-    }
-
     Stats &getPartialEntry(const MyPartial &key) {
 	Stats * &v = cube_data[key];
 
@@ -512,9 +475,7 @@ private:
     OptionalCubePartialFn optional_cube_partial_fn;
     CubeStatsAddFn cube_stats_add_fn;
 
-    CubeMap base_data;
     PartialTupleCubeMap cube_data;
-    uint32_t foo;
 };
 
 // We do the rollup internal to this module rather than an external
@@ -694,13 +655,11 @@ public:
 	// sender...
 	Tuple cube_key(source_ip.val(), true, 
 		       seconds, operation, is_request.val());
-	cube.addBase(cube_key, payload_length.val());
 	base_data.add(cube_key, payload_length.val());
 
 	// reciever...
 	cube_key.get<host_index>() = dest_ip.val();
 	cube_key.get<is_send_index>() = false;
-	cube.addBase(cube_key, payload_length.val());
 	base_data.add(cube_key, payload_length.val());
     }
 
@@ -775,7 +734,9 @@ public:
 		(boost::bind(&HostInfo::printFullRow, _1, _2));
 	}
 	if (options["print_cube"]) {
-	    cube.cube();
+	    base_data.walk
+		(boost::bind(&StatsCube<Tuple>::cubeAddOne, &cube, _1, _2));
+
 	    cube.printCube(boost::bind(&HostInfo::printPartialRow, 
 				       _1, _2, _3));
 	}
