@@ -122,7 +122,6 @@ static const size_t time_index = 2;
 static const size_t operation_index = 3;
 static const size_t is_request_index = 4;
 
-#if 0
 template<> struct TupleHash<HostInfoTuple> {
     uint32_t operator()(const HostInfoTuple &v) {
 	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
@@ -134,7 +133,6 @@ template<> struct TupleHash<HostInfoTuple> {
 	return BobJenkinsHashMix3(a,b,c);
     }
 };
-#endif
 	       
 template<class Tuple> struct PartialTuple {
     BOOST_STATIC_CONSTANT(uint32_t, 
@@ -165,7 +163,6 @@ template<class Tuple> struct PartialTupleHash {
     }
 };
 
-#if 0
 template<> struct PartialTupleHash<HostInfoTuple> {
     uint32_t operator()(const PartialTuple<HostInfoTuple> &v) {
 	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
@@ -180,8 +177,6 @@ template<> struct PartialTupleHash<HostInfoTuple> {
 	return BobJenkinsHashMix3(a,b,c);
     }
 };
-#endif
-
 
 using boost::tuples::null_type;
 
@@ -304,13 +299,19 @@ void zeroCubeAll(HUT &hut, KeyTail &key_tail, KeyBase &key_base,
 template<class Tuple, class StatsT = Stats>
 class HashTupleStats {
 public:
+    // base types
     typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > HTSMap;
-    typedef typename HTSMap::iterator HTSiterator;
+    typedef typename HTSMap::const_iterator HTSiterator;
     typedef vector<typename HTSMap::value_type> HTSValueVector;
     typedef typename HTSValueVector::iterator HTSVViterator;
 
+    // zero cubing types
+    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
+    typedef typename HUTConvert::type HashUniqueTuple;
+
+    // functions
     typedef boost::function<StatsT *()> StatsFactoryFn;
-    typedef boost::function<void (Tuple &key, StatsT *value)> WalkFn;
+    typedef boost::function<void (const Tuple &key, StatsT *value)> WalkFn;
 
     explicit HashTupleStats(const StatsFactoryFn &fn1 
 			    = boost::bind(&StatsCubeFns::createStats))
@@ -321,13 +322,13 @@ public:
 	getHashEntry(key).add(value);
     }
 
-    void walk(const WalkFn &walk_fn) {
+    void walk(const WalkFn &walk_fn) const {
 	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
 	    walk_fn(i->first, i->second);
 	}
     }
 
-    void walkOrdered(const WalkFn &walk_fn) {
+    void walkOrdered(const WalkFn &walk_fn) const {
 	HTSValueVector sorted;
 
 	sorted.reserve(data.size());
@@ -341,6 +342,14 @@ public:
 	    walk_fn(i->first, i->second);
 	}
     }
+
+    void walkZeros(const WalkFn &walk_fn) {
+	StatsT *zero = stats_factory_fn();
+	
+	HashUniqueTuple hut;
+	delete zero;
+    }
+	
 
 private:
     StatsT &getHashEntry(const Tuple &key) {
@@ -366,10 +375,6 @@ public:
     typedef typename PartialTupleCubeMap::iterator PTCMIterator;
     typedef vector<typename PartialTupleCubeMap::value_type> PTCMValueVector;
     typedef typename PTCMValueVector::iterator PTCMVVIterator;
-
-    // zero cubing types
-    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
-    typedef typename HUTConvert::type HashUniqueTuple;
 
     // functions controlling cubing...
     typedef boost::function<StatsT *()> StatsFactoryFn;
@@ -401,7 +406,12 @@ public:
 	cube_stats_add_fn = fn3;
     }
 
-    void cubeAddOne(const Tuple &key, const StatsT *value) {
+    void add(const HashTupleStats<Tuple, StatsT> &hts) {
+	hts.walk(boost::bind(&StatsCube<Tuple, StatsT>::cubeAddOne, 
+			     this, _1, _2));
+    }
+
+    void cubeAddOne(const Tuple &key, StatsT *value) {
 	MyPartial tmp_key(key);
 
 	cubeAddOne(tmp_key, 0, false, *value);
@@ -449,7 +459,7 @@ public:
 #endif
     }
 
-    void printCube(const PrintCubeFn fn) {
+    void print(const PrintCubeFn fn) {
 	PTCMValueVector sorted;
 
 	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
@@ -721,7 +731,6 @@ public:
 	configCube();
 	
 	if (options["test"]) {
-	    
 	    cube.zeroCube();
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
 	    //	cube.printCube(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
@@ -734,11 +743,8 @@ public:
 		(boost::bind(&HostInfo::printFullRow, _1, _2));
 	}
 	if (options["print_cube"]) {
-	    base_data.walk
-		(boost::bind(&StatsCube<Tuple>::cubeAddOne, &cube, _1, _2));
-
-	    cube.printCube(boost::bind(&HostInfo::printPartialRow, 
-				       _1, _2, _3));
+	    cube.add(base_data);
+	    cube.print(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
