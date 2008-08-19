@@ -41,21 +41,21 @@ struct mergeinfo {
 
 class mergeinfo_comparepid {
 public:
-    bool operator()(const mergeinfo &a, const mergeinfo &b) {
+    bool operator()(const mergeinfo &a, const mergeinfo &b) const {
 	return a.pid == b.pid;
     }
 };
 
 class mergeinfo_hashpid {
 public:
-    int operator()(const mergeinfo &a) {
+    int operator()(const mergeinfo &a) const {
 	return a.pid;
     }
 };
 
 class mergeinfo_comparelots {
 public:
-    bool operator()(const mergeinfo &a, const mergeinfo &b) {
+    bool operator()(const mergeinfo &a, const mergeinfo &b) const {
 	return a.pid == b.pid && a.first_seen == b.first_seen &&
 	    a.devid == b.devid && a.lvid == b.lvid;
     }
@@ -63,7 +63,7 @@ public:
 
 class mergeinfo_hashlots {
 public:
-    int operator()(const mergeinfo &a) {
+    int operator()(const mergeinfo &a) const {
 	int hash = 1776;
 	hash = BobJenkinsHash(hash,&a.pid,sizeof(int));
 	hash = BobJenkinsHash(hash,&a.first_seen,sizeof(double));
@@ -77,14 +77,14 @@ typedef map<ExtentType::int32, vector<mergeinfo *> > RollupPVLV;
 
 class mergeinfo_byIOs {
 public:
-    bool operator()(const mergeinfo *a, const mergeinfo *b) {
+    bool operator()(const mergeinfo *a, const mergeinfo *b) const {
 	return (a->reads + a->writes) > (b->reads + b->writes);
     }
 };
 
 class mergeinfo_byBytes {
 public:
-    bool operator()(const mergeinfo *a, const mergeinfo *b) {
+    bool operator()(const mergeinfo *a, const mergeinfo *b) const {
 	return (a->bytes_read + a->bytes_written) > (b->bytes_read + b->bytes_written);
     }
 };
@@ -246,14 +246,14 @@ struct psinfo {
 
 class psinfo_comparepid {
 public:
-    bool operator()(const psinfo &a, const psinfo &b) {
+    bool operator()(const psinfo &a, const psinfo &b) const {
 	return a.pid == b.pid;
     }
 };
 
 class psinfo_hashpid {
 public:
-    int operator()(const psinfo &a) {
+    int operator()(const psinfo &a) const {
 	return a.pid;
     }
 };
@@ -609,13 +609,13 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const char *k) {
+	unsigned int operator()(const char *k) const {
 	    return HashTable_hashbytes(k,strlen(k));
 	}
     };
     class hteEqual {
     public:
-	bool operator()(const char *a, const char *b) {
+	bool operator()(const char *a, const char *b) const {
 	    return strcmp(a,b) == 0;
 	}
     };
@@ -644,14 +644,14 @@ struct rollupptr {
 
 class rollupptr_compare {
 public:
-    bool operator()(const rollupptr &a, const rollupptr &b) {
+    bool operator()(const rollupptr &a, const rollupptr &b) const {
 	return a.id == b.id && a.strval == b.strval;
     }
 };
 
 class rollupptr_hash {
 public:
-    int operator()(const rollupptr &a) {
+    int operator()(const rollupptr &a) const {
 	return a.id ^ (long)a.strval;
     }
 };

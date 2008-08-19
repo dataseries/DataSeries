@@ -33,14 +33,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.type.data(),k.type.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.type == b.type;
 	}
     };
@@ -78,7 +78,7 @@ public:
 
     class sortByType {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->type < b->type;
 	}
     };
@@ -368,7 +368,7 @@ public:
 	ExtentType::int32 bytes;
     };
     struct rwinfo_geq { 
-	bool operator()(const rwinfo *a, const rwinfo *b) {
+	bool operator()(const rwinfo *a, const rwinfo *b) const {
 	    return a->request_id >= b->request_id;
 	}
     };
@@ -401,7 +401,7 @@ public:
     };
 
     struct commonattrinfo_geq {
-	bool operator()(const commonattrinfo *a, const commonattrinfo *b) {
+	bool operator()(const commonattrinfo *a, const commonattrinfo *b) const {
 	    return a->record_id >= b->record_id;
 	}
     };
@@ -622,12 +622,12 @@ public:
     };
     
     class hteHash {
-    public: unsigned int operator()(const hteData &k) {
+    public: unsigned int operator()(const hteData &k) const {
        return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
     }};
     
     class hteEqual {
-    public: bool operator()(const hteData &a, const hteData &b) {
+    public: bool operator()(const hteData &a, const hteData &b) const {
 	return a.filehandle == b.filehandle && a.server == b.server;
     }};
     

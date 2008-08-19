@@ -876,13 +876,13 @@ struct xmlDecodeInfo {
 };
 
 struct xmlDecodeInfoHash {
-    unsigned operator()(const xmlDecodeInfo *k) {
+    unsigned operator()(const xmlDecodeInfo *k) const {
 	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
     }
 };
 
 struct xmlDecodeInfoEqual {
-    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) {
+    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) const {
 	return a->xmldesc == b->xmldesc;
     }
 };

@@ -146,7 +146,7 @@ public:
     };
     
     struct reqHash {
-	unsigned operator()(const reqData &k) {
+	unsigned operator()(const reqData &k) const {
 	    unsigned ret,a,b;
 	    a = (unsigned)(k.request_id >> 32);
 	    b = (unsigned)(k.request_id & 0xFFFFFFFF);
@@ -157,7 +157,7 @@ public:
     };
 
     struct reqEqual {
-	bool operator()(const reqData &a, const reqData &b) {
+	bool operator()(const reqData &a, const reqData &b) const {
 	    return a.request_id == b.request_id;
 	}
     };
@@ -443,14 +443,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.filehandle == b.filehandle;
 	}
     };
@@ -483,7 +483,7 @@ public:
     
     class sortByMaxSize {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->maxsize > b->maxsize;
 	}
     };
@@ -538,14 +538,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filename.data(),k.filename.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.filename == b.filename;
 	}
     };
@@ -587,7 +587,7 @@ public:
     
     class sortByMaxSize {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->maxsize > b->maxsize;
 	}
     };
@@ -645,14 +645,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filename.data(),k.filename.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.filename == b.filename;
 	}
     };
@@ -697,7 +697,7 @@ public:
     
     class sortByMaxSize {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->maxsize > b->maxsize;
 	}
     };
@@ -764,14 +764,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.filehandle == b.filehandle;
 	}
     };
@@ -807,7 +807,7 @@ public:
     
     class sortByMaxSize {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->maxsize > b->maxsize;
 	}
     };
@@ -884,14 +884,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
@@ -944,7 +944,7 @@ public:
     
     class sortByMinFileAge {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->file_age == b->file_age ? a->maxsize < b->maxsize : a->file_age < b->file_age;
 	}
     };

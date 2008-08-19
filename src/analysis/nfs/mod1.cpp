@@ -40,14 +40,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return (k.is_udp ? 256 : 0) + (k.is_request ? 512 : 0) + k.op_id;
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.is_udp == b.is_udp && a.is_request == b.is_request &&
 		a.op_id == b.op_id;
 	}
@@ -78,7 +78,7 @@ public:
 
     class sortByTotal {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->payload_length->total() > b->payload_length->total();
 	}
     };
@@ -139,14 +139,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return BobJenkinsHashMix3(k.client,k.server,k.is_udp ? 0x55555555 : 0x0);
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.is_udp == b.is_udp && a.client == b.client &&
 		a.server == b.server;
 	}
@@ -185,7 +185,7 @@ public:
 
     class sortByTotal {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->payload_length->total() > b->payload_length->total();
 	}
     };
@@ -364,11 +364,11 @@ public:
 	       reqtime(0) {}
     };
     class tidHash {
-    public: unsigned int operator()(const tidData &t) {
+    public: unsigned int operator()(const tidData &t) const {
 	return BobJenkinsHashMix3(t.transaction_id,t.clientip,2004); // transaction id assigned by client
     }};
     class tidEqual {
-    public: bool operator()(const tidData &t1, const tidData &t2) {
+    public: bool operator()(const tidData &t1, const tidData &t2) const {
 	return t1.transaction_id == t2.transaction_id && t1.clientip == t2.clientip;
     }};
 
@@ -442,7 +442,7 @@ public:
     }
 
     class sortByTime {
-    public: bool operator()(tidData *a, tidData *b) {
+    public: bool operator()(tidData *a, tidData *b) const {
 	return a->reqtime < b->reqtime;
     }};
 

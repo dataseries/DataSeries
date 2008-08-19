@@ -39,14 +39,14 @@ struct IndexValues {
 };
 
 struct ivHash {
-    unsigned int operator()(const IndexValues &k) {
+    unsigned int operator()(const IndexValues &k) const {
 	return BobJenkinsHash(BobJenkinsHashMixULL(k.offset),k.filename.data(),
 			      k.filename.size());
     }
 };
 
 struct ivEqual {
-    bool operator()(const IndexValues &a, const IndexValues &b) {
+    bool operator()(const IndexValues &a, const IndexValues &b) const {
 	return a.offset == b.offset && a.filename == b.filename;
     }
 };

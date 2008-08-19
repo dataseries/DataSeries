@@ -90,14 +90,14 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),
 				       BobJenkinsHashMix3(k.server,k.client,(k.is_read ? 0x5555 : 0xAAAA)));
 	}
     };
 
     struct hteEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.client == b.client && a.is_read == b.is_read &&
 		a.filehandle == b.filehandle;
 	}
@@ -200,25 +200,25 @@ public:
     }
 
     struct rollupHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
     struct rollupEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
 
     struct mountRollupHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
     struct mountRollupEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
@@ -483,7 +483,7 @@ public:
 
     struct byServerFhOp {
 	bool operator() (const HashTable_hte<hteData> &a, 
-			 const HashTable_hte<hteData> &b) {
+			 const HashTable_hte<hteData> &b) const {
 	    if (a.data.server != b.data.server) {
 		return a.data.server < b.data.server;
 	    }
@@ -498,28 +498,28 @@ public:
     };
 
     struct fhOpHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    unsigned ret = HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	    return HashTable_hashbytes(k.operation.data(),k.operation.size(),ret);
 	}
     };
 
     struct fhOpEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && 
 		a.filehandle == b.filehandle && a.operation == b.operation;
 	}
     };
 
     struct fhHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    size_t dataaddr = reinterpret_cast<size_t>(k.filehandle.data());
 	    return static_cast<unsigned>(dataaddr) ^ k.server;
 	}
     };
 
     struct fhEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };

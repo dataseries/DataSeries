@@ -158,12 +158,12 @@ public:
     };
 
     class StatsHash {
-    public: uint32_t operator()(const StatsData &k) {
+    public: uint32_t operator()(const StatsData &k) const {
 	    return k.serverip ^ k.operation.hash();
     }};
 
     class StatsEqual {
-    public: bool operator()(const StatsData &a, const StatsData &b) {
+    public: bool operator()(const StatsData &a, const StatsData &b) const {
 	return a.serverip == b.serverip && a.operation == b.operation;
     }};
 
@@ -180,12 +180,12 @@ public:
     };
 
     class TidHash {
-    public: uint32_t operator()(const TidData &t) {
+    public: uint32_t operator()(const TidData &t) const {
 	return t.tid ^ t.client;
     }};
 
     class TidEqual {
-    public: bool operator()(const TidData &t1, const TidData &t2) {
+    public: bool operator()(const TidData &t1, const TidData &t2) const {
 	return t1.tid == t2.tid && t1.client == t2.client;
     }};
 
@@ -315,14 +315,14 @@ public:
     }
 
     class sortByServerOp {
-    public: bool operator()(StatsData *a, StatsData *b) {
+    public: bool operator()(StatsData *a, StatsData *b) const {
 	if (a->serverip != b->serverip)
 	    return a->serverip < b->serverip;
 	return a->operation < b->operation;
     }};
 
     class sortByNOpsReverse {
-    public: bool operator()(StatsData *a, StatsData *b) {
+    public: bool operator()(StatsData *a, StatsData *b) const {
 	uint64_t nops_a = a->nops();
 	uint64_t nops_b = b->nops();
 	return nops_a > nops_b;

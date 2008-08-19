@@ -53,14 +53,14 @@ struct fh2fnData {
 
 class fh2fnHash {
 public:
-    unsigned int operator()(const fh2fnData &k) {
+    unsigned int operator()(const fh2fnData &k) const {
 	return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
     }
 };
 
 class fh2fnEqual {
 public:
-    bool operator()(const fh2fnData &a, const fh2fnData &b) {
+    bool operator()(const fh2fnData &a, const fh2fnData &b) const {
 	return a.filehandle == b.filehandle;
     }
 };

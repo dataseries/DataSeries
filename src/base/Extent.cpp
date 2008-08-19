@@ -250,7 +250,7 @@ class variableDuplicateEliminate_Equal {
 public:
     typedef ExtentType::int32 int32;
     bool operator()(const variableDuplicateEliminate &a, 
-		    const variableDuplicateEliminate &b) {
+		    const variableDuplicateEliminate &b) const {
 	int32 size_a = *(int32 *)(a.varbits);
 	int32 size_b = *(int32 *)(b.varbits);
 	if (size_a != size_b) return false;
@@ -261,7 +261,7 @@ public:
 class variableDuplicateEliminate_Hash {
 public:
     typedef ExtentType::int32 int32;
-    unsigned int operator()(const variableDuplicateEliminate &a) {
+    unsigned int operator()(const variableDuplicateEliminate &a) const {
 	int32 size_a = *(int32 *)(a.varbits);
 	return BobJenkinsHash(1776, a.varbits, 4+size_a);
     }
