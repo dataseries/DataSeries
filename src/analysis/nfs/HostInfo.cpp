@@ -108,7 +108,7 @@ namespace boost { namespace tuples {
 } }
 
 template<class Tuple> struct TupleHash {
-    uint32_t operator()(const Tuple &a) {
+    uint32_t operator()(const Tuple &a) const {
 	return boost::tuples::hash(a);
     }
 };
@@ -123,7 +123,7 @@ static const size_t operation_index = 3;
 static const size_t is_request_index = 4;
 
 template<> struct TupleHash<HostInfoTuple> {
-    uint32_t operator()(const HostInfoTuple &v) {
+    uint32_t operator()(const HostInfoTuple &v) const {
 	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
 	uint32_t a = v.get<host_index>();
 	uint32_t b = v.get<time_index>();
@@ -158,13 +158,13 @@ template<class Tuple> struct PartialTuple {
 };
 
 template<class Tuple> struct PartialTupleHash {
-    uint32_t operator()(const PartialTuple<Tuple> &v) {
+    uint32_t operator()(const PartialTuple<Tuple> &v) const {
 	return boost::tuples::partial_hash(v.data, v.used, 0);
     }
 };
 
 template<> struct PartialTupleHash<HostInfoTuple> {
-    uint32_t operator()(const PartialTuple<HostInfoTuple> &v) {
+    uint32_t operator()(const PartialTuple<HostInfoTuple> &v) const {
 	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
 	uint32_t a = v.used[host_index] ? v.data.get<host_index>() : 0;
 	uint32_t b = v.used[time_index] ? v.data.get<time_index>() : 0;
@@ -217,13 +217,13 @@ public:
 };
 
 template<> struct HashMap_hash<const bool> {
-    uint32_t operator()(const bool x) {
+    uint32_t operator()(const bool x) const {
 	return x;
     }
 };
 
 template<> struct HashMap_hash<const unsigned char> {
-    uint32_t operator()(const bool x) {
+    uint32_t operator()(const bool x) const {
 	return x;
     }
 };

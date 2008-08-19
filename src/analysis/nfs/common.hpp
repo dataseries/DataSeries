@@ -55,14 +55,14 @@ struct fh2mountData {
 
 class fh2mountHash {
 public:
-    unsigned int operator()(const fh2mountData &k) {
+    unsigned int operator()(const fh2mountData &k) const {
 	return HashTable_hashbytes(k.mountpartfh.data(),k.mountpartfh.size());
     }
 };
 
 class fh2mountEqual {
 public:
-    bool operator()(const fh2mountData &a, const fh2mountData &b) {
+    bool operator()(const fh2mountData &a, const fh2mountData &b) const {
 	return a.mountpartfh == b.mountpartfh;
     }
 };

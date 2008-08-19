@@ -186,7 +186,7 @@ struct packetTimeSize {
 };
 
 struct packetTimeSizeGeq {
-    bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
+    bool operator()(const packetTimeSize &a, const packetTimeSize &b) const {
 	return a.timestamp_us >= b.timestamp_us;
     }
 };
@@ -1350,7 +1350,7 @@ struct RPCRequestData {
 
 class RPCRequestDataHash {
 public:
-    unsigned int operator()(const RPCRequestData &k) {
+    unsigned int operator()(const RPCRequestData &k) const {
       unsigned ret,a,b;
       ret = k.xid;
       a = k.server;
@@ -1365,7 +1365,7 @@ public:
 class RPCRequestDataEqual {
 public:
     // valid to reuse same xid between same client and server if program is different
-    bool operator()(const RPCRequestData &a, const RPCRequestData &b) {
+    bool operator()(const RPCRequestData &a, const RPCRequestData &b) const {
 	return a.client == b.client && a.server == b.server && a.xid == b.xid && a.server_port == b.server_port;
     }
 };

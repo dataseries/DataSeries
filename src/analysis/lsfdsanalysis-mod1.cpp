@@ -72,13 +72,13 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hteData *k) {
+	unsigned operator()(const hteData *k) const {
 	    return HashTable_hashbytes(k->group.data(),k->group.size());
 	}
     };
 
     struct hteEqual {
-	bool operator()(const hteData *a, const hteData *b) {
+	bool operator()(const hteData *a, const hteData *b) const {
 	    return a->group == b->group;
 	}
     };
@@ -596,7 +596,7 @@ public:
 		return a.lsf_job_idx < b.lsf_job_idx;
 	    }
 	}
-	bool operator() (const traceEnt &a, const traceEnt &b) { // return a < b
+	bool operator() (const traceEnt &a, const traceEnt &b) const { // return a < b
 	    // deal with pending order
 	    if (a.is_pending && ! b.is_pending) {
 		return false;
