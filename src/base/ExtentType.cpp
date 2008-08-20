@@ -105,7 +105,7 @@ parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 
 struct NonBoolCompactByPosition {
     bool operator()(const ExtentType::nullCompactInfo &a, 
-		    const ExtentType::nullCompactInfo &b) {
+		    const ExtentType::nullCompactInfo &b) const {
 	return a.offset < b.offset;
     }
 };
@@ -876,13 +876,13 @@ struct xmlDecodeInfo {
 };
 
 struct xmlDecodeInfoHash {
-    unsigned operator()(const xmlDecodeInfo *k) {
+    unsigned operator()(const xmlDecodeInfo *k) const {
 	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
     }
 };
 
 struct xmlDecodeInfoEqual {
-    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) {
+    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) const {
 	return a->xmldesc == b->xmldesc;
     }
 };

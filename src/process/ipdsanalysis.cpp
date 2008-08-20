@@ -154,25 +154,25 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return BobJenkinsHashMix3(k.source,k.dest,1972);
 	}
     };
 
     struct nodeHash {
-	unsigned operator()(const nodeData &k) {
+	unsigned operator()(const nodeData &k) const {
 	    return BobJenkinsHashMix3(k.node,1776,1972);
 	}
     };
 
     struct hteEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.source == b.source && a.dest == b.dest;
 	}
     };
     
     struct nodeEqual {
-	bool operator()(const nodeData &a, const nodeData &b) {
+	bool operator()(const nodeData &a, const nodeData &b) const {
 	    return a.node == b.node;
 	}
     };
@@ -310,7 +310,7 @@ private:
     };
     
     struct packetTimeSizeGeq {
-	bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
+	bool operator()(const packetTimeSize &a, const packetTimeSize &b) const {
 	    return a.timestamp_ns >= b.timestamp_ns;
 	}
     };

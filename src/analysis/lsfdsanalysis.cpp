@@ -103,7 +103,7 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hte &a) {
+	unsigned operator()(const hte &a) const {
 	    unsigned tmp = HashTable_hashbytes(a.team.data(),a.team.size(),a.metaid);
 	    tmp = HashTable_hashbytes(a.production.data(),a.production.size(),tmp);
 	    tmp = HashTable_hashbytes(a.sequence.data(),a.sequence.size(),tmp);
@@ -112,7 +112,7 @@ public:
     };
 
     struct hteEqual {
-	bool operator()(const hte &a, const hte &b) {
+	bool operator()(const hte &a, const hte &b) const {
 	    return a.metaid == b.metaid && a.shot == b.shot 
 		&& a.sequence == b.sequence && a.team == b.team &&
 		a.production == b.production;
@@ -672,7 +672,7 @@ public:
   };
 
   struct hteHash {
-    unsigned operator()(const hte &a) {
+    unsigned operator()(const hte &a) const {
       unsigned tmp = HashTable_hashbytes(a.production.data(),a.production.size(),1972);
       tmp = HashTable_hashbytes(a.sequence.data(),a.sequence.size());
       return HashTable_hashbytes(a.shot.data(),a.shot.size(),tmp);
@@ -680,7 +680,7 @@ public:
   };
 
   struct hteEqual {
-    bool operator()(const hte &a, const hte &b) {
+    bool operator()(const hte &a, const hte &b) const {
       return  a.shot == b.shot 
 	&& a.sequence == b.sequence && a.production == b.production ;
     }
@@ -978,7 +978,7 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hte &ent) {
+	unsigned operator()(const hte &ent) const {
 	    unsigned a = ent.job_id;
 	    unsigned b = ent.cluster_id;
 	    unsigned ret = 1972;
@@ -988,7 +988,7 @@ public:
     };
 
     struct hteEqual {
-	bool operator()(const hte &a, const hte &b) {
+	bool operator()(const hte &a, const hte &b) const {
 	    return a.job_id == b.job_id && a.cluster_id == b.cluster_id;
 	}
     };
@@ -1083,13 +1083,13 @@ public:
     };
 
     struct jobEntByStart {
-	bool operator()(const jobEnt *a, const jobEnt *b) {
+	bool operator()(const jobEnt *a, const jobEnt *b) const {
 	    return a->starttime >= b->starttime;
 	}
     };
 
     struct jobEntByFinish {
-	bool operator()(const jobEnt *a, const jobEnt *b) {
+	bool operator()(const jobEnt *a, const jobEnt *b) const {
 	    return a->endtime >= b->endtime;
 	}
     };

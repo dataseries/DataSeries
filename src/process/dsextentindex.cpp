@@ -39,14 +39,14 @@ struct IndexValues {
 };
 
 struct ivHash {
-    unsigned int operator()(const IndexValues &k) {
+    unsigned int operator()(const IndexValues &k) const {
 	return BobJenkinsHash(BobJenkinsHashMixULL(k.offset),k.filename.data(),
 			      k.filename.size());
     }
 };
 
 struct ivEqual {
-    bool operator()(const IndexValues &a, const IndexValues &b) {
+    bool operator()(const IndexValues &a, const IndexValues &b) const {
 	return a.offset == b.offset && a.filename == b.filename;
     }
 };
@@ -54,7 +54,7 @@ struct ivEqual {
 typedef HashTable<IndexValues,ivHash,ivEqual> ivHashTableT;
 
 struct IndexValuesByFilenameOffset {
-    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) {
+    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) const {
 	if (a.data.filename == b.data.filename) {
 	    return a.data.offset < b.data.offset;
 	} else {
@@ -89,7 +89,7 @@ typedef HashMap<string, ExtentType::int64> modifyTimesT;
 modifyTimesT modifytimes;
 
 struct ModifyTimesByFilename {
-    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) {
+    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) const {
 	return a.data.first < b.data.first;
     }
 };

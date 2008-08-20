@@ -44,14 +44,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.filehandle == b.filehandle;
 	}
     };
@@ -127,7 +127,7 @@ public:
     
     class sortByNumServers {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->servers.size() > b->servers.size();
 	}
     };
@@ -217,11 +217,11 @@ public:
     };
 
   class tidHash {
-  public: unsigned int operator()(const tidData &t) {
+  public: unsigned int operator()(const tidData &t) const {
     return t.tid ^ t.client;
   }};
   class tidEqual {
-  public: bool operator()(const tidData &t1, const tidData &t2) {
+  public: bool operator()(const tidData &t1, const tidData &t2) const {
     return t1.tid == t2.tid && t1.client == t2.client;
   }};
 
@@ -344,7 +344,7 @@ public:
     };
 
     struct reqinfo_geq { 
-	bool operator()(const reqinfo *a, const reqinfo *b) {
+	bool operator()(const reqinfo *a, const reqinfo *b) const {
 	    return a->reqtime > b->reqtime;
 	}
     };
@@ -360,12 +360,12 @@ public:
   };
 
   class rspHash {
-  public: unsigned int operator()(const rspData &r) {
+  public: unsigned int operator()(const rspData &r) const {
     return r.transactionid ^ r.destip;
   }};
 
   class rspEqual {
-  public: bool operator()(const rspData &r1, const rspData &r2) {
+  public: bool operator()(const rspData &r1, const rspData &r2) const {
     return r1.transactionid == r2.transactionid && r1.destip == r2.destip;
   }};
 
@@ -606,7 +606,7 @@ public:
   };
 
   struct reqinfo_geq { 
-    bool operator()(const reqinfo *a, const reqinfo *b) {
+    bool operator()(const reqinfo *a, const reqinfo *b) const {
       return a->reqtime > b->reqtime;
     }
   };
@@ -621,12 +621,12 @@ public:
   };
   
   class rspHash {
-  public: unsigned int operator()(const rspData &r) {
+  public: unsigned int operator()(const rspData &r) const {
     return r.transactionid ^ r.destip;
   }};
   
   class rspEqual {
-  public: bool operator()(const rspData &r1, const rspData &r2) {
+  public: bool operator()(const rspData &r1, const rspData &r2) const {
     return r1.transactionid == r2.transactionid && r1.destip == r2.destip;
   }};
 
@@ -639,7 +639,7 @@ public:
   };
 
   struct transinfo_geq { 
-    bool operator()(const transinfo *a, const transinfo *b) {
+    bool operator()(const transinfo *a, const transinfo *b) const {
       return a->end > b->end;
     }
   };
@@ -654,12 +654,12 @@ public:
   };
 
   class transHash {
-  public: unsigned int operator()(const transData &t) {
+  public: unsigned int operator()(const transData &t) const {
     return t.ip_addr;
   }};
   
   class transEqual {
-  public: bool operator()(const transData &t1, const transData &t2) {
+  public: bool operator()(const transData &t1, const transData &t2) const {
     return t1.ip_addr == t2.ip_addr;
   }};
 
