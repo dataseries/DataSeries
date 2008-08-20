@@ -115,7 +115,7 @@ main(int argc, char *argv[])
 		     "  [--where '*'|extent-type-match bool-expr]\n"
 		     "  <file...>\n"
 		     "\n%s\n")
-	      % argv[0] % DSExpr::usage);
+	      % argv[0] % DSExpr::usage());
     for(int i=1;i<argc;++i) {
 	source.addSource(argv[i]);
     }
