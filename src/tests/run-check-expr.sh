@@ -46,8 +46,6 @@ run 'd != "0"'
 run '"0" == d'
 run '"0" != d'
 run '"\\\"\f\r\n\b\t\v" == "\\\"\f\r\n\b\t\v"' "special-characters"
-run "d == e"
-run "d != e"
 
 cmp $SRC/check-data/expr.txt expr.txt
 rm -f expr.ds expr.txt

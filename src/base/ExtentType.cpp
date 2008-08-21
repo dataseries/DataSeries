@@ -105,7 +105,7 @@ parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 
 struct NonBoolCompactByPosition {
     bool operator()(const ExtentType::nullCompactInfo &a, 
-		    const ExtentType::nullCompactInfo &b) {
+		    const ExtentType::nullCompactInfo &b) const {
 	return a.offset < b.offset;
     }
 };

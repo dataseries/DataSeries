@@ -46,7 +46,6 @@ DSStatGroupByModule::prepareForProcessing()
     // from the first extent in order to build the generalfields
 
     expr = DSExpr::make(series, expression);
-
     groupby = GeneralField::create(NULL, series, groupby_name);
 }
 

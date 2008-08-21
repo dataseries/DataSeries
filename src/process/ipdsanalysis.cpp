@@ -310,7 +310,7 @@ private:
     };
     
     struct packetTimeSizeGeq {
-	bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
+	bool operator()(const packetTimeSize &a, const packetTimeSize &b) const {
 	    return a.timestamp_ns >= b.timestamp_ns;
 	}
     };

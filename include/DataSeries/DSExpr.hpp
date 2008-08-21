@@ -16,13 +16,62 @@
 #include <string>
 #include <vector>
 
+#include <boost/utility.hpp>
+
 #include <DataSeries/ExtentSeries.hpp>
 
-class DSExpr {
+class DSExpr;
+class DSExprParser;
+
+class DSExprFunction : boost::noncopyable {
+    // name
+    // min required args
+    // max required args
+    // extra args ok
+    // type
+    // eval
+};
+
+class DSExprParserFactory : boost::noncopyable {
+public:
+    virtual ~DSExprParserFactory() {}
+
+    virtual DSExprParser *make() = 0;
+
+    static DSExprParserFactory &GetDefaultParserFactory();
+
+    // later, if/as needed ...
+    // static DSExprParserFactory &GetParserFactory(const std::string &name);
+    // static void RegisterParserFactory(const std::string &name,
+    //                                   DSExprParserFactory &factory);
+
+protected:
+    DSExprParserFactory() {}
+};
+
+class DSExprParser : boost::noncopyable {
+public:
+    virtual ~DSExprParser() {}
+    
+    virtual const std::string getUsage() const = 0;
+
+    virtual DSExpr *parse(ExtentSeries &series, std::string &expr) = 0;
+
+    virtual void registerFunction(DSExprFunction &) = 0;
+
+    static DSExprParser *MakeDefaultParser() {
+	return DSExprParserFactory::GetDefaultParserFactory().make();
+    }
+    
+protected:
+    DSExprParser() {}
+};
+
+class DSExpr : boost::noncopyable {
 public:
     typedef std::vector<DSExpr *> List;
 
-    virtual ~DSExpr();
+    virtual ~DSExpr() {}
 
     // t_Numeric is double or int64 or bool
     typedef enum { t_Unknown, t_Numeric, t_Bool, t_String } expr_type_t;
@@ -35,9 +84,10 @@ public:
 
     virtual void dump(std::ostream &) = 0;
 
-    static DSExpr *make(ExtentSeries &series, std::string &expr);
-
-    static const std::string usage;
+    // deprecated
+    static DSExpr *make(ExtentSeries &series, std::string &expr_string);
+    // deprecated
+    static std::string usage();
 };
 
 #endif
