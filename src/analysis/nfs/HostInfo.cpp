@@ -113,6 +113,49 @@ template<class Tuple> struct TupleHash {
     }
 };
 
+// Could make this a pair, but this makes it more obvious what's going on.
+template<typename T>
+struct AnyPair {
+    bool any;
+    T val;
+    AnyPair() : any(true) { }
+    AnyPair(const T &v) : any(false), val(v) { }
+    void set(const T &v) { val = v; any = false; }
+    
+    bool operator ==(const AnyPair<T> &rhs) const {
+	if (any != rhs.any) {
+	    return false;
+	} else if (any) {
+	    return true;
+	} else {
+	    return val == rhs.val;
+	}
+    }
+    bool operator <(const AnyPair<T> &rhs) const {
+	if (any && rhs.any) {
+	    return false;
+	} else if (any && !rhs.any) {
+	    return false;
+	} else if (!any && rhs.any) {
+	    return true;
+	} else if (!any && !rhs.any) {
+	    return val < rhs.val;
+	}
+	FATAL_ERROR("?");
+    }
+};
+
+template<class T>
+inline uint32_t hash(const AnyPair<T> &v) {
+    if (v.any) {
+	return 0;
+    } else {
+	using boost::tuples::hash;
+	return hash(v.val);
+    }
+}
+
+
 //                   host,   is_send,   time, operation, is_request
 typedef boost::tuple<int32_t, bool,   int32_t,  uint8_t,    bool> 
     HostInfoTuple;
@@ -197,15 +240,6 @@ struct TupleToHashUniqueTuple
   : ConsToHashUniqueCons<typename T::head_type, typename T::tail_type> {
 };
 
-// Could make this a pair, but this makes it more obvious what's going on.
-template<typename T>
-struct AnyPair {
-    bool any;
-    T val;
-    AnyPair() : any(true) { }
-    AnyPair(const T &v) : any(false), val(v) { }
-};
-
 template<class T0, class T1>
 struct ConsToAnyPairCons {
     typedef ConsToAnyPairCons<typename T1::head_type,
@@ -231,6 +265,10 @@ public:
 
     static bool cubeAll() {
 	return true;
+    }
+
+    static bool cubeHadFalse(bool had_false) {
+	return had_false;
     }
 
     static void addFullStats(Stats &into, const Stats &val) {
@@ -301,11 +339,10 @@ void zeroWalk(const null_type, const null_type, KeyBase &key_base,
 	      const Function &fn) {
     typedef typename BaseData::const_iterator iterator;
     iterator i = base_data.find(key_base);
-    //    typename StatsCube::MyPartial tmp_partial(key_base);
     if (i == base_data.end()) {
-	//	fn(key_base, null_stat); // cube.cubeAddOne(tmp_partial, 0, false, null_stat);
+	fn(key_base, null_stat); 
     } else {
-	//	fn(key_base, *(i->second)); // cube.cubeAddOne(tmp_partial, 0, false, *(i->second));
+	fn(key_base, *(i->second)); 
     }
 }
 
@@ -384,10 +421,10 @@ public:
 
 	fillHashUniqueTuple(hut);
 
-	walkZeroes(walk_fn, hut);
+	walkZeros(walk_fn, hut);
     }
 
-    void walkZeroes(const WalkFn &walk_fn, const HashUniqueTuple &hut) {
+    void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut) const {
 	double expected_hut = zeroCubeBaseCount(hut);
 
 	uint32_t tuple_len = boost::tuples::length<Tuple>::value;
@@ -435,7 +472,8 @@ public:
     typedef boost::function<void (Tuple &key, StatsT *value)> PrintBaseFn;
     typedef boost::function<void (Tuple &key, typename MyPartial::UsedT, 
 				  StatsT *value)> PrintCubeFn;
-    typedef boost::function<bool (const typename MyPartial::UsedT &used)>
+    typedef boost::function<bool (bool had_false,
+				  const typename MyPartial::UsedT &used)>
        OptionalCubePartialFn;
     typedef boost::function<void (StatsT &into, const StatsT &val)>
        CubeStatsAddFn;
@@ -443,7 +481,7 @@ public:
     explicit StatsCube(const StatsFactoryFn &fn1
 		       = boost::bind(&StatsCubeFns::createStats),
 		       const OptionalCubePartialFn &fn2 
-		       = boost::bind(&StatsCubeFns::cubeAll),
+		       = boost::bind(&StatsCubeFns::cubeHadFalse, _1),
 		       const CubeStatsAddFn &fn3
 		       = boost::bind(&StatsCubeFns::addFullStats, _1, _2)) 
 	: stats_factory_fn(fn1), optional_cube_partial_fn(fn2),
@@ -451,7 +489,7 @@ public:
     { }
 
     void setOptionalCubePartialFn(const OptionalCubePartialFn &fn2 
-				  = boost::bind(&StatsCubeFns::cubeAll)) {
+				  = boost::bind(&StatsCubeFns::cubeHadFalse, _1)) {
 	optional_cube_partial_fn = fn2;
     }
 
@@ -465,8 +503,13 @@ public:
 			     this, _1, _2));
     }
 
+    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
+    typedef typename HUTConvert::type HashUniqueTuple;
+
     void add(const HashTupleStats<Tuple, StatsT> &hts,
-	     const TupleToHashUniqueTuple<Tuple> &hut) {
+	     const HashUniqueTuple &hut) {
+	hts.walkZeros(boost::bind(&StatsCube<Tuple, StatsT>::cubeAddOne, 
+				  this, _1, _2), hut);
     }
 
     void cubeAddOne(const Tuple &key, StatsT &value) {
@@ -478,7 +521,7 @@ public:
     void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
 		    const StatsT &value) {
 	if (pos == key.length) {
-	    if (had_false && optional_cube_partial_fn(key.used)) {
+	    if (optional_cube_partial_fn(had_false, key.used)) {
 		cube_stats_add_fn(getPartialEntry(key), value);
 	    }
 	} else {
@@ -490,21 +533,13 @@ public:
 	}
     }
 
-    void zeroCube() {
-	FATAL_ERROR("broken");
-#if 0
-	if (false) { hutPrint(hut, 0); }
-
-	Tuple key;
-
-	StatsT *tmp_empty = stats_factory_fn();
-	zeroCubeAll(hut, key, key, base_data, *tmp_empty, *this);
-
-	delete tmp_empty;
-#endif
+    void walk(const PrintCubeFn fn) {
+	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
+	    fn(i->first.data, i->first.used, i->second);
+	}
     }
 
-    void print(const PrintCubeFn fn) {
+    void walkOrdered(const PrintCubeFn fn) {
 	PTCMValueVector sorted;
 
 	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
@@ -756,19 +791,93 @@ public:
 	using boost::bind; 
 
 	if (options["cube_time"] && options["cube_host"]) {
-	    cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeAll));
+	    cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeHadFalse, _1));
 	} else if (options["cube_time"] && !options["cube_host"]) {
 	    cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptHost, _1));
+		(bind(&HostInfo::cubeExceptHost, _2));
 	} else if (!options["cube_time"] && options["cube_host"]) {
 	    cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptTime, _1));
+		(bind(&HostInfo::cubeExceptTime, _2));
 	} else if (!options["cube_time"] && !options["cube_host"]) {
 	    cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptTimeOrHost, _1));
+		(bind(&HostInfo::cubeExceptTimeOrHost, _2));
 	}
 
 	cube.setCubeStatsAddFn(bind(&StatsCubeFns::addFullStats, _1, _2));
+    }
+
+    //                    host  is_send operation is_req
+    typedef boost::tuple<int32_t, bool, uint8_t, bool> RateRollupTupleBase;
+    typedef TupleToAnyTuple<RateRollupTupleBase>::type RateRollupTuple;
+
+    void rateRollupAdd(const Tuple &t, const bitset<5> &used, Stats *v) {
+	if (!used[time_index]) {
+	    return; // Ignore the time rollup
+	}
+	if (true) {
+	    cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
+		% host(t,used) % time(t,used) % isSendStr(t,used) 
+		% operationStr(t,used) % isRequestStr(t,used) 
+		% v->countll() % v->mean();
+	}
+
+	RateRollupTuple rrt;
+	if (used[host_index]) {
+	    rrt.get<0>().set(t.get<host_index>());
+	}
+	if (used[is_send_index]) {
+	    rrt.get<1>().set(t.get<is_send_index>());
+	}
+	if (used[operation_index]) {
+	    rrt.get<2>().set(t.get<operation_index>());
+	}
+	if (used[is_request_index]) {
+	    rrt.get<3>().set(t.get<is_request_index>());
+	}
+
+	rate_hts.add(rrt, static_cast<double>(v->countll()));
+    }
+
+    static string hostStr(const RateRollupTuple &t) {
+	if (t.get<0>().any) {
+	    return str_star;
+	} else {
+	    return str(format("%08x") % t.get<0>().val);
+	}
+    }
+
+    static string isSendStr(const RateRollupTuple &t) {
+	if (t.get<1>().any) {
+	    return str_star;
+	} else if (t.get<1>().val) {
+	    return str_send;
+	} else {
+	    return str_recv;
+	}
+    }
+	    
+    static string operationStr(const RateRollupTuple &t) {
+	if (t.get<2>().any) {
+	    return str_star;
+	} else {
+	    return unifiedIdToName(t.get<2>().val);
+	}
+    }
+	
+    static string isRequestStr(const RateRollupTuple &t) {
+	if (t.get<3>().any) {
+	    return str_star;
+	} else if (t.get<3>().val) {
+	    return str_request;
+	} else {
+	    return str_response;
+	}
+    }
+	
+    static void printRate(const RateRollupTuple &t, Stats &v) {
+	cout << format("%8s %4s %8s %8s %d %.3f\n") 
+	    % hostStr(t) % isSendStr(t) % operationStr(t) % isRequestStr(t)
+	    % v.count() % v.mean();
     }
 
     virtual void printResult() {
@@ -787,14 +896,20 @@ public:
 	    // ... fill in missing values in time ...
 	    StatsCube<Tuple> cube;
 
-	    base_data.walkZeroes(boost::bind(&StatsCube<Tuple>::cubeAddOne, 
-					     &cube, _1, _2),
-				 hut);
-	    //	    cube.add(base_data, hut);
-	    
-	    //	    cube.zeroCube();
+	    cube.setOptionalCubePartialFn(boost::bind(&StatsCubeFns::cubeAll));
+
+	    cube.setCubeStatsAddFn(boost::bind
+				   (&HostInfo::addFullStats, _1, _2));
+	    cube.add(base_data, hut);
+
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
-	    cube.print(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+
+	    cube.walkOrdered(boost::bind(&HostInfo::rateRollupAdd, 
+					 this, _1, _2, _3));
+
+	    cout << "\n\n";
+	    rate_hts.walkOrdered(boost::bind(&HostInfo::printRate, _1, _2));
+	    
 	    return;
 	}
 
@@ -805,7 +920,8 @@ public:
 	}
 	if (options["print_cube"]) {
 	    cube.add(base_data);
-	    cube.print(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+	    cube.walkOrdered(boost::bind(&HostInfo::printPartialRow, 
+					 _1, _2, _3));
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
@@ -828,6 +944,8 @@ public:
 
     typedef TupleToAnyTuple<Tuple>::type AnyTuple;
     HashTupleStats<AnyTuple> cube_data;
+
+    HashTupleStats<RateRollupTuple> rate_hts;
 };
 
 double HostInfo::afs_count;
