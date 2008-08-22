@@ -301,11 +301,10 @@ void zeroWalk(const null_type, const null_type, KeyBase &key_base,
 	      const Function &fn) {
     typedef typename BaseData::const_iterator iterator;
     iterator i = base_data.find(key_base);
-    //    typename StatsCube::MyPartial tmp_partial(key_base);
     if (i == base_data.end()) {
-	//	fn(key_base, null_stat); // cube.cubeAddOne(tmp_partial, 0, false, null_stat);
+	fn(key_base, null_stat); 
     } else {
-	//	fn(key_base, *(i->second)); // cube.cubeAddOne(tmp_partial, 0, false, *(i->second));
+	fn(key_base, *(i->second)); 
     }
 }
 
@@ -384,10 +383,10 @@ public:
 
 	fillHashUniqueTuple(hut);
 
-	walkZeroes(walk_fn, hut);
+	walkZeros(walk_fn, hut);
     }
 
-    void walkZeroes(const WalkFn &walk_fn, const HashUniqueTuple &hut) {
+    void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut) const {
 	double expected_hut = zeroCubeBaseCount(hut);
 
 	uint32_t tuple_len = boost::tuples::length<Tuple>::value;
@@ -465,8 +464,13 @@ public:
 			     this, _1, _2));
     }
 
+    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
+    typedef typename HUTConvert::type HashUniqueTuple;
+
     void add(const HashTupleStats<Tuple, StatsT> &hts,
-	     const TupleToHashUniqueTuple<Tuple> &hut) {
+	     const HashUniqueTuple &hut) {
+	hts.walkZeros(boost::bind(&StatsCube<Tuple, StatsT>::cubeAddOne, 
+				  this, _1, _2), hut);
     }
 
     void cubeAddOne(const Tuple &key, StatsT &value) {
@@ -490,21 +494,13 @@ public:
 	}
     }
 
-    void zeroCube() {
-	FATAL_ERROR("broken");
-#if 0
-	if (false) { hutPrint(hut, 0); }
-
-	Tuple key;
-
-	StatsT *tmp_empty = stats_factory_fn();
-	zeroCubeAll(hut, key, key, base_data, *tmp_empty, *this);
-
-	delete tmp_empty;
-#endif
+    void walk(const PrintCubeFn fn) {
+	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
+	    fn(i->first.data, i->first.used, i->second);
+	}
     }
 
-    void print(const PrintCubeFn fn) {
+    void walkOrdered(const PrintCubeFn fn) {
 	PTCMValueVector sorted;
 
 	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
@@ -787,14 +783,14 @@ public:
 	    // ... fill in missing values in time ...
 	    StatsCube<Tuple> cube;
 
-	    base_data.walkZeroes(boost::bind(&StatsCube<Tuple>::cubeAddOne, 
-					     &cube, _1, _2),
-				 hut);
-	    //	    cube.add(base_data, hut);
-	    
-	    //	    cube.zeroCube();
+	    cube.setCubeStatsAddFn(boost::bind
+				   (&HostInfo::addFullStats, _1, _2));
+	    cube.add(base_data, hut);
+
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
-	    cube.print(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+
+	    cube.walkOrdered(boost::bind(&HostInfo::printPartialRow, 
+					 _1, _2, _3));
 	    return;
 	}
 
@@ -805,7 +801,8 @@ public:
 	}
 	if (options["print_cube"]) {
 	    cube.add(base_data);
-	    cube.print(boost::bind(&HostInfo::printPartialRow, _1, _2, _3));
+	    cube.walkOrdered(boost::bind(&HostInfo::printPartialRow, 
+					 _1, _2, _3));
 	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
