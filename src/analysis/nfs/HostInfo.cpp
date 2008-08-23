@@ -15,6 +15,7 @@
 
 using namespace std;
 using boost::format;
+using dataseries::TFixedField;
 
 namespace boost { namespace tuples {
     inline uint32_t hash(const null_type &) { return 0; }
@@ -441,7 +442,6 @@ public:
 	delete zero;
     }
 
-private:
     StatsT &getHashEntry(const Tuple &key) {
 	StatsT * &v = data[key];
 
@@ -451,6 +451,7 @@ private:
 	}
 	return *v;
     }
+private:
 
     HTSMap data;
     StatsFactoryFn stats_factory_fn;
@@ -551,7 +552,7 @@ public:
 	    fn(i->first.data, i->first.used, i->second);
 	}
     }
-private:
+
     Stats &getPartialEntry(const MyPartial &key) {
 	Stats * &v = cube_data[key];
 
@@ -561,6 +562,7 @@ private:
 	return *v;
     }
 
+private:
     StatsFactoryFn stats_factory_fn;
     OptionalCubePartialFn optional_cube_partial_fn;
     CubeStatsAddFn cube_stats_add_fn;
@@ -600,6 +602,21 @@ namespace {
 
 class HostInfo : public RowAnalysisModule {
 public:
+    typedef HostInfoTuple Tuple;
+    typedef bitset<5> Used;
+
+    struct Rates {
+	Stats ops_rate;
+	Stats bytes_rate;
+	Rates() { }
+	void add(double ops, double bytes) {
+	    ops_rate.add(ops);
+	    bytes_rate.add(bytes);
+	}
+    };
+
+    typedef TupleToAnyTuple<Tuple>::type AnyTuple;
+
     HostInfo(DataSeriesModule &_source, const std::string &arg) 
 	: RowAnalysisModule(_source),
 	  packet_at(series, ""),
@@ -608,7 +625,10 @@ public:
 	  nfs_version(series, "", Field::flag_nullable),
 	  source_ip(series,"source"), 
 	  dest_ip(series, "dest"),
-	  is_request(series, "")
+	  is_request(series, ""),
+	  rate_hts(boost::bind(HostInfo::createRates)),
+	  min_group_seconds(numeric_limits<int32_t>::max()),
+	  max_group_seconds(numeric_limits<int32_t>::min())
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -635,8 +655,6 @@ public:
 
     virtual ~HostInfo() { }
 
-    typedef HostInfoTuple Tuple;
-    typedef bitset<5> Used;
     static int32_t host(const Tuple &t) {
 	return t.get<host_index>();
     }
@@ -738,7 +756,7 @@ public:
     }
 
     virtual void processRow() {
-	uint32_t seconds = packet_at.valSec();
+	int32_t seconds = packet_at.valSec();
 	seconds -= seconds % group_seconds;
 	uint8_t operation = opIdToUnifiedId(nfs_version.val(), op_id.val());
 
@@ -751,6 +769,21 @@ public:
 	cube_key.get<host_index>() = dest_ip.val();
 	cube_key.get<is_send_index>() = false;
 	base_data.add(cube_key, payload_length.val());
+
+	min_group_seconds = min(seconds, min_group_seconds);
+	if (seconds != max_group_seconds) {
+	    // skip counting the first and last groups; we prune these
+	    // because we can't calculate the rates properly on them.
+	    SINVARIANT(seconds > max_group_seconds);
+	    if (min_group_seconds != max_group_seconds) { // past first
+		payload_overall.add(next_group_stats);
+	    }
+	    max_group_seconds = seconds;
+	    next_group_stats.reset();
+	}
+	// redundant calculation, but useful for checking that all the
+	// cube rollup stuff is working properly.
+	next_group_stats.add(payload_length.val());
     }
 
     static void printFullRow(const Tuple &t, Stats &v) {
@@ -814,7 +847,9 @@ public:
 	if (!used[time_index]) {
 	    return; // Ignore the time rollup
 	}
-	if (true) {
+	SINVARIANT(t.get<time_index>() > min_group_seconds &&
+		   t.get<time_index>() < max_group_seconds); 
+	if (false) {
 	    cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
 		% host(t,used) % time(t,used) % isSendStr(t,used) 
 		% operationStr(t,used) % isRequestStr(t,used) 
@@ -835,7 +870,11 @@ public:
 	    rrt.get<3>().set(t.get<is_request_index>());
 	}
 
-	rate_hts.add(rrt, static_cast<double>(v->countll()));
+	double count = v->countll();
+	double ops_per_sec = count / group_seconds;
+	double bytes_per_sec = (count * v->mean()) / group_seconds;
+	
+	rate_hts.getHashEntry(rrt).add(ops_per_sec, bytes_per_sec);
     }
 
     static string hostStr(const RateRollupTuple &t) {
@@ -874,10 +913,13 @@ public:
 	}
     }
 	
-    static void printRate(const RateRollupTuple &t, Stats &v) {
-	cout << format("%8s %4s %8s %8s %d %.3f\n") 
+    static void printRate(const RateRollupTuple &t, Rates &v) {
+	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
+	
+	cout << format("%8s %4s %8s %8s %.3fkops/s %.3fMiB/s\n") 
 	    % hostStr(t) % isSendStr(t) % operationStr(t) % isRequestStr(t)
-	    % v.count() % v.mean();
+	    % (v.ops_rate.mean()/1000.0) 
+	    % (v.bytes_rate.mean()/(1024.0*1024.0));
     }
 
     virtual void printResult() {
@@ -896,6 +938,19 @@ public:
 	    // ... fill in missing values in time ...
 	    StatsCube<Tuple> cube;
 
+	    HashUnique<int32_t> &group_seconds = hut.get<time_index>();
+
+	    for(HashUnique<int32_t>::iterator i = group_seconds.begin();
+		i != group_seconds.end(); ++i) {
+		min_group_seconds = min(*i, min_group_seconds);
+		max_group_seconds = max(*i, max_group_seconds);
+	    }
+
+	    if (!options["keep_first_last_group"]) {
+		group_seconds.remove(min_group_seconds);
+		group_seconds.remove(max_group_seconds);
+	    }
+		    
 	    cube.setOptionalCubePartialFn(boost::bind(&StatsCubeFns::cubeAll));
 
 	    cube.setCubeStatsAddFn(boost::bind
@@ -909,6 +964,22 @@ public:
 
 	    cout << "\n\n";
 	    rate_hts.walkOrdered(boost::bind(&HostInfo::printRate, _1, _2));
+
+	    // sanity checks
+	    PartialTuple<Tuple> tmp(Tuple(0,true,0,0,true));
+	    tmp.used[is_send_index] = true;
+	    Stats &v = cube.getPartialEntry(tmp);
+	    SINVARIANT(v.countll() == payload_overall.countll());
+	    SINVARIANT(Double::eq(v.mean(), payload_overall.mean()));
+	    SINVARIANT(Double::eq(v.stddev(), payload_overall.stddev()));
+	    
+	    tmp.used[is_send_index] = false;
+	    Stats w = cube.getPartialEntry(tmp);
+	    // Complete rollup sees everything twice since we add it as
+	    // both send and receive
+	    SINVARIANT(w.countll() == 2*payload_overall.countll()
+		       && Double::eq(w.mean(), payload_overall.mean())
+		       && Double::eq(w.stddev(), payload_overall.stddev()));
 	    
 	    return;
 	}
@@ -931,9 +1002,9 @@ public:
     }
 
     Int64TimeField packet_at;
-    Int32Field payload_length;
+    TFixedField<int32_t> payload_length;
     ByteField op_id, nfs_version;
-    Int32Field source_ip, dest_ip;
+    TFixedField<int32_t> source_ip, dest_ip;
     BoolField is_request;
     uint32_t group_seconds;
 
@@ -942,10 +1013,15 @@ public:
 
     HashTupleStats<Tuple> base_data;
 
-    typedef TupleToAnyTuple<Tuple>::type AnyTuple;
     HashTupleStats<AnyTuple> cube_data;
 
-    HashTupleStats<RateRollupTuple> rate_hts;
+    static Rates *createRates() {
+	return new Rates();
+    }
+
+    HashTupleStats<RateRollupTuple, Rates> rate_hts;
+    Stats payload_overall, next_group_stats;
+    int32_t min_group_seconds, max_group_seconds;
 };
 
 double HostInfo::afs_count;
