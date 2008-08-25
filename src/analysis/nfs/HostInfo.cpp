@@ -643,10 +643,11 @@ public:
 	  dest_ip(series, "dest"),
 	  is_request(series, ""),
 	  group_seconds(1),
-	  incremental_batch_size(10000000),
+	  incremental_batch_size(1),
 	  rate_hts(boost::bind(HostInfo::createRates)),
 	  min_group_seconds(numeric_limits<int32_t>::max()),
-	  max_group_seconds(numeric_limits<int32_t>::min())
+	  max_group_seconds(numeric_limits<int32_t>::min()),
+	  group_count(0)
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -809,6 +810,9 @@ public:
 	    return; // nothing has been added yet.
 	}
 	SINVARIANT(seconds == (max_group_seconds + group_seconds));
+	if (seconds > min_group_seconds) {
+	    ++group_count;
+	}
 	if (base_data.size() > incremental_batch_size) {
 	    cout << format("should incremental ]%d,%d] %d\n") 
 		% min_group_seconds % max_group_seconds % base_data.size();
@@ -832,7 +836,15 @@ public:
     }
 
     void finalGroup() {
+	--group_count;
+	int32_t elapsed_seconds = max_group_seconds - min_group_seconds;
+	SINVARIANT((elapsed_seconds % group_seconds) == 0);
+	// Total group count is elapsed / group_seconds + 1, but we 
+	// ignore the first and last groups, so we end up with -1
+	SINVARIANT(elapsed_seconds / group_seconds - 1 == group_count);
 	base_data.fillHashUniqueTuple(unique_vals_tuple);
+	base_data.prune
+	    (boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
 	unique_vals_tuple.get<time_index>().remove(min_group_seconds, false);
 	unique_vals_tuple.get<time_index>().remove(max_group_seconds);
 	rates_cube.add(base_data, unique_vals_tuple);
@@ -970,6 +982,22 @@ public:
 	rate_hts.getHashEntry(rrt).add(ops_per_sec, bytes_per_sec);
     }
 
+    void addMissingZeroRates(const RateRollupTuple &t, Rates &v) {
+	int64_t count = v.ops_rate.countll();
+	SINVARIANT(count == static_cast<int64_t>(v.bytes_rate.countll()));
+	while (count < group_count) {
+	    // Entry was late to the rollup, so is missing some of the
+	    // early rate-rollup entries.  TODO: consider printing out 
+	    // a warning about this; it should only be happening to hosts,
+	    // and possibly but unlikely to operation types.
+	    ++count;
+	    v.ops_rate.add(0);
+	    v.bytes_rate.add(0);
+	}
+	SINVARIANT(count == group_count && count == v.ops_rate.countll() 
+		   && count == v.bytes_rate.countll());
+    }
+
     static string hostStr(const RateRollupTuple &t) {
 	if (t.get<0>().any) {
 	    return str_star;
@@ -1049,9 +1077,12 @@ public:
 #endif
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
 
-	    rates_cube.walkOrdered(boost::bind(&HostInfo::rateRollupAdd, 
-					       this, _1, _2, _3));
+	    SINVARIANT(base_data.size() == 0)
+	    rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, 
+					this, _1, _2, _3));
 
+	    rate_hts.walk
+		(boost::bind(&HostInfo::addMissingZeroRates, this, _1, _2));
 	    cout << "\n\n";
 	    rate_hts.walkOrdered(boost::bind(&HostInfo::printRate, _1, _2));
 
@@ -1119,6 +1150,7 @@ public:
     HashTupleStats<RateRollupTuple, Rates> rate_hts;
     Stats payload_overall, next_group_stats;
     int32_t min_group_seconds, max_group_seconds;
+    int64_t group_count;
 
 };
 
