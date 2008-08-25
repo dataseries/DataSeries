@@ -14,12 +14,13 @@
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/LintelAssert.hpp> // TODO: remove-this
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/ConstantString.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/RotatingHashMap.hpp>
 #include <Lintel/Stats.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -1257,6 +1258,7 @@ void setupInputs(int first, int argc, char *argv[], TypeIndexModule *sourcea,
 int main(int argc, char *argv[]) {
     registerUnitsEpoch();
 
+    LintelLog::parseEnv();
     // TODO: make sources an array/vector.
     TypeIndexModule *sourcea = new TypeIndexModule("NFS trace: common");
     sourcea->setSecondMatch("Trace::NFS::common");

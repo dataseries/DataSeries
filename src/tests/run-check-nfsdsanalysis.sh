@@ -44,7 +44,7 @@ do_check nfs-2.set-0.20k
 do_check nfs-2.set-1.20k
 
 if [ `whoami` = anderse -a -f ../analysis/nfs/set-5/subset.500k.ds ]; then
-    ../analysis/nfs/nfsdsanalysis -c 2,no_print_base,test ../analysis/nfs/set-5/subset.500k.ds | perl $SRC/check-data/clean-timing.pl >subset.500k.out
+    ../analysis/nfs/nfsdsanalysis -c 2,no_print_base,test,print_zero_rates ../analysis/nfs/set-5/subset.500k.ds | perl $SRC/check-data/clean-timing.pl >subset.500k.out
     cmp subset.500k.out ../analysis/nfs/set-5/subset.500k.out
 fi
 
