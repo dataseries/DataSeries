@@ -380,6 +380,7 @@ public:
     // functions
     typedef boost::function<StatsT *()> StatsFactoryFn;
     typedef boost::function<void (const Tuple &key, StatsT &value)> WalkFn;
+    typedef boost::function<bool (const Tuple &key)> PruneFn;
 
     explicit HashTupleStats(const StatsFactoryFn &fn1 
 			    = boost::bind(&StatsCubeFns::createStats))
@@ -430,9 +431,9 @@ public:
 
 	uint32_t tuple_len = boost::tuples::length<Tuple>::value;
 
-	cout << format("Expecting to cube %.6g * 2^%d -1 = %.6g\n")
+	cout << format("Expecting to cube %.6g * 2^%d = %.0f\n")
 	    % expected_hut % tuple_len 
-	    % (expected_hut * (pow(2.0, tuple_len) - 1));
+	    % (expected_hut * pow(2.0, tuple_len));
 
 	StatsT *zero = stats_factory_fn();
 
@@ -450,6 +451,21 @@ public:
 	    SINVARIANT(v != NULL);
 	}
 	return *v;
+    }
+
+    size_t size() {
+	return data.size();
+    }
+
+    void prune(PruneFn fn) {
+	for(HTSiterator i = data.begin(); i != data.end(); ) {
+	    if (fn(i->first)) {
+		data.remove(i->first);
+		i.partialReset();
+	    } else {
+		++i;
+	    }
+	}
     }
 private:
 
@@ -473,9 +489,9 @@ public:
     typedef boost::function<void (Tuple &key, StatsT *value)> PrintBaseFn;
     typedef boost::function<void (Tuple &key, typename MyPartial::UsedT, 
 				  StatsT *value)> PrintCubeFn;
-    typedef boost::function<bool (bool had_false,
-				  const typename MyPartial::UsedT &used)>
-       OptionalCubePartialFn;
+
+    typedef boost::function<bool (bool had_false, const MyPartial &)> 
+        OptionalCubePartialFn;
     typedef boost::function<void (StatsT &into, const StatsT &val)>
        CubeStatsAddFn;
 
@@ -522,7 +538,7 @@ public:
     void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
 		    const StatsT &value) {
 	if (pos == key.length) {
-	    if (optional_cube_partial_fn(had_false, key.used)) {
+	    if (optional_cube_partial_fn(had_false, key)) { // , key)) {
 		cube_stats_add_fn(getPartialEntry(key), value);
 	    }
 	} else {
@@ -626,6 +642,8 @@ public:
 	  source_ip(series,"source"), 
 	  dest_ip(series, "dest"),
 	  is_request(series, ""),
+	  group_seconds(1),
+	  incremental_batch_size(10000000),
 	  rate_hts(boost::bind(HostInfo::createRates)),
 	  min_group_seconds(numeric_limits<int32_t>::max()),
 	  max_group_seconds(numeric_limits<int32_t>::min())
@@ -633,12 +651,13 @@ public:
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
 	vector<string> args = split(arg, ",");
-	group_seconds = stringToUInt32(args[0]);
+	group_seconds = stringToInt32(args[0]);
 	SINVARIANT(group_seconds > 0);
 	options["cube_time"] = true;
 	options["cube_host"] = true;
 	options["print_base"] = true;
 	options["print_cube"] = true;
+	options["incremental"] = true;
 	options["test"] = false;
 	for(unsigned i = 1; i < args.size(); ++i) {
 	    if (prefixequal(args[i], "no_")) {
@@ -651,9 +670,18 @@ public:
 		options[args[i]] = true;
 	    }
 	}
+	rates_cube.setOptionalCubePartialFn
+	    (boost::bind(&HostInfo::cubeInBoundsGroups, this, _2));
+
+	rates_cube.setCubeStatsAddFn
+	    (boost::bind(&HostInfo::addFullStats, _1, _2));
     }
 
     virtual ~HostInfo() { }
+
+    static Rates *createRates() {
+	return new Rates();
+    }
 
     static int32_t host(const Tuple &t) {
 	return t.get<host_index>();
@@ -755,10 +783,88 @@ public:
 	}
     }
 
+    bool cubeInBoundsGroups(const PartialTuple<Tuple> &partial) {
+	if (!partial.used[time_index]) {
+	    return true;
+	}
+	int32_t time_val = partial.data.get<time_index>();
+	SINVARIANT(time_val > min_group_seconds &&
+		   time_val <= max_group_seconds);
+	return true;
+    }
+
+    static bool timeLessEqual(const Tuple &t, int32_t max_group_seconds) {
+	SINVARIANT(t.get<time_index>() <= max_group_seconds);
+	
+	return true;
+    }
+									 
+    void processGroup(int32_t seconds) {
+	if (!options["test"]) {
+	    return;
+	}
+
+	if (max_group_seconds < min_group_seconds) {
+	    SINVARIANT(base_data.size() == 0);
+	    return; // nothing has been added yet.
+	}
+	SINVARIANT(seconds == (max_group_seconds + group_seconds));
+	if (base_data.size() > incremental_batch_size) {
+	    cout << format("should incremental ]%d,%d] %d\n") 
+		% min_group_seconds % max_group_seconds % base_data.size();
+	    if (min_group_seconds == (seconds - group_seconds)) {
+		cout << format("should prune min_secs\n");
+	    }
+
+	    base_data.fillHashUniqueTuple(unique_vals_tuple);
+	    unique_vals_tuple.get<time_index>()
+		.remove(min_group_seconds, false);
+	    rates_cube.add(base_data, unique_vals_tuple);
+	    // Very slow and inefficient way of clearing the table.
+	    // TODO: just clear it, this is only verifying pruneing
+	    // works right.
+
+	    base_data.prune
+		(boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
+	    SINVARIANT(base_data.size() == 0);
+	    unique_vals_tuple.get<time_index>().clear();
+	}
+    }
+
+    void finalGroup() {
+	base_data.fillHashUniqueTuple(unique_vals_tuple);
+	unique_vals_tuple.get<time_index>().remove(min_group_seconds, false);
+	unique_vals_tuple.get<time_index>().remove(max_group_seconds);
+	rates_cube.add(base_data, unique_vals_tuple);
+    }
+
+    void nextSecondsGroup(int32_t next_group_seconds) {
+	// skip counting the first and last groups; we prune these
+	// because we can't calculate the rates properly on them.
+	SINVARIANT(next_group_seconds > max_group_seconds);
+	if (min_group_seconds != max_group_seconds) { // past first
+	    payload_overall.add(next_group_stats);
+	}
+	processGroup(next_group_seconds);
+	max_group_seconds = next_group_seconds;
+	next_group_stats.reset();
+    }
+
     virtual void processRow() {
 	int32_t seconds = packet_at.valSec();
 	seconds -= seconds % group_seconds;
 	uint8_t operation = opIdToUnifiedId(nfs_version.val(), op_id.val());
+
+	// Lets see if we've moved onto the next time group...
+	min_group_seconds = min(seconds, min_group_seconds);
+	if (seconds != max_group_seconds) {
+	    nextSecondsGroup(seconds);
+	}
+	// redundant calculation, but useful for checking that all the
+	// cube rollup stuff is working properly.
+	next_group_stats.add(payload_length.val());
+
+
 
 	// sender...
 	Tuple cube_key(source_ip.val(), true, 
@@ -770,20 +876,7 @@ public:
 	cube_key.get<is_send_index>() = false;
 	base_data.add(cube_key, payload_length.val());
 
-	min_group_seconds = min(seconds, min_group_seconds);
-	if (seconds != max_group_seconds) {
-	    // skip counting the first and last groups; we prune these
-	    // because we can't calculate the rates properly on them.
-	    SINVARIANT(seconds > max_group_seconds);
-	    if (min_group_seconds != max_group_seconds) { // past first
-		payload_overall.add(next_group_stats);
-	    }
-	    max_group_seconds = seconds;
-	    next_group_stats.reset();
-	}
-	// redundant calculation, but useful for checking that all the
-	// cube rollup stuff is working properly.
-	next_group_stats.add(payload_length.val());
+
     }
 
     static void printFullRow(const Tuple &t, Stats &v) {
@@ -800,17 +893,17 @@ public:
 	    % v->countll() % v->mean();
     }
 
-    typedef StatsCube<Tuple>::MyPartial::UsedT UsedT;
-    static bool cubeExceptTime(const UsedT &used) {
-	return used[time_index] == false;
+    static bool cubeExceptTime(const PartialTuple<Tuple> &partial) {
+	return partial.used[time_index] == false;
     }
 
-    static bool cubeExceptHost(const UsedT &used) {
-	return used[host_index] == false;
+    static bool cubeExceptHost(const PartialTuple<Tuple> &partial) {
+	return partial.used[host_index] == false;
     }
 
-    static bool cubeExceptTimeOrHost(const UsedT &used) {
-	return used[time_index] == false && used[host_index] == false;
+    static bool cubeExceptTimeOrHost(const PartialTuple<Tuple> &partial) {
+	return partial.used[time_index] == false 
+	    && partial.used[host_index] == false;
     }
 
     static double afs_count;
@@ -916,9 +1009,9 @@ public:
     static void printRate(const RateRollupTuple &t, Rates &v) {
 	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
 	
-	cout << format("%8s %4s %8s %8s %.3fkops/s %.3fMiB/s\n") 
+	cout << format("%8s %4s %8s %8s %d %.3fkops/s %.3fMiB/s\n") 
 	    % hostStr(t) % isSendStr(t) % operationStr(t) % isRequestStr(t)
-	    % (v.ops_rate.mean()/1000.0) 
+	    % v.ops_rate.count() % (v.ops_rate.mean()/1000.0) 
 	    % (v.bytes_rate.mean()/(1024.0*1024.0));
     }
 
@@ -928,39 +1021,36 @@ public:
 	
 	if (options["test"]) {
 // ds data -> hash_tuple_stats(host, is_send, time, op, is_request, stat)
-// -> cube(h,i,t,o,i, sum(stat))
+// -> zero-cube(h,i,t,o,i, sum(stat))
 // hut(any(h), any(i), any(o), any(i), quantile(stat.count()/time_chunk), 
 //     quantile(stats.mean()/time_chunk))
 
-	    HashTupleStats<Tuple>::HashUniqueTuple hut;
-
-	    base_data.fillHashUniqueTuple(hut);
+	    finalGroup();
 	    // ... fill in missing values in time ...
+#if 0
 	    StatsCube<Tuple> cube;
 
-	    HashUnique<int32_t> &group_seconds = hut.get<time_index>();
+	    base_data.fillHashUniqueTuple(unique_vals_tuple);
 
-	    for(HashUnique<int32_t>::iterator i = group_seconds.begin();
-		i != group_seconds.end(); ++i) {
-		min_group_seconds = min(*i, min_group_seconds);
-		max_group_seconds = max(*i, max_group_seconds);
-	    }
+	    HashUnique<int32_t> &group_seconds 
+		= unique_vals_tuple.get<time_index>();
 
 	    if (!options["keep_first_last_group"]) {
-		group_seconds.remove(min_group_seconds);
-		group_seconds.remove(max_group_seconds);
+		group_seconds.remove(min_group_seconds, false);
+		group_seconds.remove(max_group_seconds, false);
 	    }
 		    
 	    cube.setOptionalCubePartialFn(boost::bind(&StatsCubeFns::cubeAll));
 
 	    cube.setCubeStatsAddFn(boost::bind
 				   (&HostInfo::addFullStats, _1, _2));
-	    cube.add(base_data, hut);
+	    cube.add(base_data, unique_vals_tuple);
 
+#endif
 	    cout << format("Actual afs_count = %.0f\n") % afs_count;
 
-	    cube.walkOrdered(boost::bind(&HostInfo::rateRollupAdd, 
-					 this, _1, _2, _3));
+	    rates_cube.walkOrdered(boost::bind(&HostInfo::rateRollupAdd, 
+					       this, _1, _2, _3));
 
 	    cout << "\n\n";
 	    rate_hts.walkOrdered(boost::bind(&HostInfo::printRate, _1, _2));
@@ -968,13 +1058,17 @@ public:
 	    // sanity checks
 	    PartialTuple<Tuple> tmp(Tuple(0,true,0,0,true));
 	    tmp.used[is_send_index] = true;
-	    Stats &v = cube.getPartialEntry(tmp);
-	    SINVARIANT(v.countll() == payload_overall.countll());
-	    SINVARIANT(Double::eq(v.mean(), payload_overall.mean()));
+	    Stats &v = rates_cube.getPartialEntry(tmp);
+	    INVARIANT(v.countll() == payload_overall.countll(),
+		      format("%d != %d") % v.countll() 
+		      % payload_overall.countll());
+	    INVARIANT(Double::eq(v.mean(), payload_overall.mean()),
+		      format("%.20g != %.20g") 
+		      % v.mean() % payload_overall.mean());
 	    SINVARIANT(Double::eq(v.stddev(), payload_overall.stddev()));
 	    
 	    tmp.used[is_send_index] = false;
-	    Stats w = cube.getPartialEntry(tmp);
+	    Stats w = rates_cube.getPartialEntry(tmp);
 	    // Complete rollup sees everything twice since we add it as
 	    // both send and receive
 	    SINVARIANT(w.countll() == 2*payload_overall.countll()
@@ -1006,22 +1100,26 @@ public:
     ByteField op_id, nfs_version;
     TFixedField<int32_t> source_ip, dest_ip;
     BoolField is_request;
-    uint32_t group_seconds;
+    int32_t group_seconds;
 
     HashMap<string, bool> options;
-    StatsCube<Tuple> cube;
+    uint32_t incremental_batch_size;
 
     HashTupleStats<Tuple> base_data;
 
-    HashTupleStats<AnyTuple> cube_data;
+    StatsCube<Tuple> cube;
 
-    static Rates *createRates() {
-	return new Rates();
-    }
+    //    HashTupleStats<AnyTuple> cube_data;
+
+    // Won't have all the time values in it, they are done incrementally.
+    HashTupleStats<Tuple>::HashUniqueTuple unique_vals_tuple;
+    // Will be incrementally processed.
+    StatsCube<Tuple> rates_cube;
 
     HashTupleStats<RateRollupTuple, Rates> rate_hts;
     Stats payload_overall, next_group_stats;
     int32_t min_group_seconds, max_group_seconds;
+
 };
 
 double HostInfo::afs_count;
