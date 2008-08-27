@@ -704,7 +704,7 @@ public:
 	    }
 	}
 	rates_cube.setOptionalCubePartialFn
-	    (boost::bind(&HostInfo::cubeInBounds, this, _2));
+	    (boost::bind(&StatsCubeFns::cubeAll));
 
 	rates_cube.setCubeStatsAddFn
 	    (boost::bind(&HostInfo::addFullStats, _1, _2));
@@ -816,7 +816,8 @@ public:
 	}
     }
 
-    bool cubeInBounds(const PartialTuple<Tuple> &partial) {
+#if 0
+    bool cubeInBoundsSkipMin(const PartialTuple<Tuple> &partial) {
 	int32_t time_val = partial.data.get<time_index>();
 	if (time_val == min_group_seconds) {
 	    return false;
@@ -825,11 +826,11 @@ public:
 	    return true;
 	}
 	SINVARIANT(time_val > min_group_seconds &&
-		   time_val <= max_group_seconds);
+		   time_val < max_group_seconds);
 	return true;
     }
 
-    bool cubeInBoundsExclusive(const PartialTuple<Tuple> &partial) {
+    bool cubeInBoundsSkipMinMax(const PartialTuple<Tuple> &partial) {
 	int32_t time_val = partial.data.get<time_index>();
 	if (time_val == min_group_seconds || time_val == max_group_seconds) {
 	    return false;
@@ -841,6 +842,7 @@ public:
 		   time_val < max_group_seconds);
 	return true;
     }
+#endif
 
     static bool timeLessEqual(const PartialTuple<Tuple> &t, 
 			      int32_t max_group_seconds) {
@@ -907,13 +909,12 @@ public:
 	    SINVARIANT(base_data.size() == 0);
 	    return; // nothing has been added yet.
 	}
-	SINVARIANT(seconds == (max_group_seconds + group_seconds));
 	if (seconds > min_group_seconds) {
 	    ++group_count;
 	}
 	if (base_data.size() >= incremental_batch_size) {
 	    LintelLogDebug
-		("HostInfo", format("should incremental ]%d,%d] bd=%d cube=%d ratescube=%d rate_hts=%d") 
+		("HostInfo", format("should incremental ]%d,%d[ bd=%d cube=%d ratescube=%d rate_hts=%d") 
 		 % min_group_seconds % max_group_seconds % base_data.size()
 		 % cube.size() % rates_cube.size() % rate_hts.size());
 
@@ -932,9 +933,6 @@ public:
 	// ignore the first and last groups, so we end up with -1
 	SINVARIANT(elapsed_seconds / group_seconds - 1 == group_count);
 
-	rates_cube.setOptionalCubePartialFn
-	    (boost::bind(&HostInfo::cubeInBoundsExclusive, this, _2));
-
 	rollupOneGroup(true);
 	if (options["print_cube"]) {
 	    rates_cube.walkOrdered
@@ -948,12 +946,11 @@ public:
 	// skip counting the first and last groups; we prune these
 	// because we can't calculate the rates properly on them.
 	SINVARIANT(next_group_seconds > max_group_seconds);
-	if (min_group_seconds != max_group_seconds) { // past first
-	    payload_overall.add(next_group_stats);
-	}
-	processGroup(next_group_seconds);
+	
+	SINVARIANT(max_group_seconds == numeric_limits<int32_t>::min() ||
+		   next_group_seconds == (max_group_seconds + group_seconds));
 	max_group_seconds = next_group_seconds;
-	next_group_stats.reset();
+	processGroup(next_group_seconds);
     }
 
     virtual void processRow() {
@@ -968,7 +965,7 @@ public:
 	}
 	// redundant calculation, but useful for checking that all the
 	// cube rollup stuff is working properly.
-	next_group_stats.add(payload_length.val());
+	payload_overall.add(payload_length.val());
 
 	// sender...
 	Tuple cube_key(source_ip.val(), true, 
@@ -1005,6 +1002,10 @@ public:
 
     void printCubeIncremental(const Tuple &t, const bitset<5> &used, 
 			      Stats *v) {
+	if ((~used).none()) {
+	    return; // all bits used, don't print, covered in the base data.
+	}
+	
 	cout << format("HostInfo %ds cube: %8s %10s %4s %12s %8s %6lld %8.2f\n")
 	    % group_seconds % host(t,used) % time(t,used) % isSendStr(t,used) 
 	    % operationStr(t,used) % isRequestStr(t,used) 
@@ -1072,7 +1073,8 @@ public:
 	if (!used[time_index]) {
 	    return; // Ignore unless time is set, this is all we will prune.
 	}
-	if (t.get<time_index>() == min_group_seconds) {
+	if (t.get<time_index>() == min_group_seconds ||
+	    t.get<time_index>() == max_group_seconds) {
 	    return;
 	}
 	// TODO: don't we need to skip the max_group_seconds also once we
@@ -1080,8 +1082,8 @@ public:
 	// we don't but only because we're skipping cubing the last bit of
 	// the data, which will make us wrong in the cube output.
 	INVARIANT(t.get<time_index>() > min_group_seconds &&
-		  t.get<time_index>() <= max_group_seconds,
-		  format("%d \not in ]%d, %d]") % t.get<time_index>() 
+		  t.get<time_index>() < max_group_seconds,
+		  format("%d \not in ]%d, %d[") % t.get<time_index>() 
 		  % min_group_seconds % max_group_seconds); 
 	if (false) {
 	    cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
@@ -1230,11 +1232,22 @@ public:
 
 	    sanityCheckRates();
 
-	    rate_hts.walk
-		(boost::bind(&HostInfo::addMissingZeroRates, this, _1, _2));
-	    rate_hts.walkOrdered
-		(boost::bind(&HostInfo::printRate, this, _1, _2));
-
+	    if (group_count > 0) {
+		rate_hts.walk(boost::bind
+			      (&HostInfo::addMissingZeroRates, this, _1, _2));
+		    
+		rate_hts.walkOrdered
+		    (boost::bind(&HostInfo::printRate, this, _1, _2));
+		cout  << "# Note that the all * rollup double counts"
+  	   	         " operations since we count both the\n"
+		      << "# send and the receive\n";
+	    }
+	    
+	    cout << format("# Processed %d complete groups of size %d\n")
+		% group_count % group_seconds;
+	    cout << "# (ignored the partial first and last groups)";
+	    cout << format("# Total time range was [%d..%d]\n")
+		% min_group_seconds % max_group_seconds;
 	    return;
 	}
 
@@ -1280,7 +1293,7 @@ public:
     StatsCube<Tuple> rates_cube;
 
     HashTupleStats<RateRollupTuple, Rates> rate_hts;
-    Stats payload_overall, next_group_stats;
+    Stats payload_overall;
     int32_t min_group_seconds, max_group_seconds;
     int64_t group_count;
 
