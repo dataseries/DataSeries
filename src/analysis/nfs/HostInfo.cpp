@@ -677,7 +677,8 @@ public:
 	  rate_hts(boost::bind(HostInfo::createRates)),
 	  min_group_seconds(numeric_limits<int32_t>::max()),
 	  max_group_seconds(numeric_limits<int32_t>::min()),
-	  group_count(0)
+	  group_count(0), printed_base_header(false), 
+	  printed_cube_header(false), printed_rates_header(false)
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -688,7 +689,6 @@ public:
 	options["cube_host"] = true;
 	options["print_base"] = true;
 	options["print_cube"] = true;
-	options["test"] = false;
 	for(unsigned i = 1; i < args.size(); ++i) {
 	    if (prefixequal(args[i], "no_")) {
 		INVARIANT(options.exists(args[i].substr(3)),
@@ -901,10 +901,6 @@ public:
     }
 
     void processGroup(int32_t seconds) {
-	if (!options["test"]) {
-	    return;
-	}
-
 	if (max_group_seconds < min_group_seconds) {
 	    SINVARIANT(base_data.size() == 0);
 	    return; // nothing has been added yet.
@@ -987,6 +983,10 @@ public:
     }	
 
     void printBaseIncremental(const Tuple &t, Stats &v) {
+	if (!printed_base_header) {
+	    cout << format("HostInfo %ds base: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
+	    printed_base_header = true;
+	}
 	cout << format("HostInfo %ds base: %08x %10d %s %12s %8s %6lld %8.2f\n")
 	    % group_seconds % host(t) % time(t) % isSendStr(t) 
 	    % operationStr(t) % isRequestStr(t) % v.countll() % v.mean();
@@ -1006,6 +1006,10 @@ public:
 	    return; // all bits used, don't print, covered in the base data.
 	}
 	
+	if (!printed_cube_header) {
+	    cout << format("HostInfo %ds cube: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
+	    printed_cube_header = true;
+	}
 	cout << format("HostInfo %ds cube: %8s %10s %4s %12s %8s %6lld %8.2f\n")
 	    % group_seconds % host(t,used) % time(t,used) % isSendStr(t,used) 
 	    % operationStr(t,used) % isRequestStr(t,used) 
@@ -1167,14 +1171,18 @@ public:
     }
 	
     void printRate(const RateRollupTuple &t, Rates &v) {
+	if (!printed_rates_header) {
+	    cout << format("HostInfo %ds rates: host     dir      op    op-dir  ops/s payload-MiB/s\n") % group_seconds;
+	    printed_rates_header = true;
+	}
 	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
 	SINVARIANT(v.ops_rate.count() == group_count);
 	SINVARIANT(v.ops_rate.mean() > 0);
 
-	cout << format("HostInfo %ds rates: %8s %4s %8s %8s %d %.2fops/s %.3fMiB/s\n") 
+	cout << format("HostInfo %ds rates: %8s %4s %8s %8s %10.2f %8.3f\n") 
 	    % group_seconds % hostStr(t) % isSendStr(t) % operationStr(t) 
-	    % isRequestStr(t) % v.ops_rate.count() 
-	    % v.ops_rate.mean() % (v.bytes_rate.mean()/(1024.0*1024.0));
+	    % isRequestStr(t) % v.ops_rate.mean() 
+	    % (v.bytes_rate.mean()/(1024.0*1024.0));
     }
 
     void sanityCheckRates() {
@@ -1202,65 +1210,56 @@ public:
 	// Check that we have the right number of entries in the
 	// rollups of the rates table.
 
-	RateRollupTuple rrt;
-	SINVARIANT(rate_hts[rrt].ops_rate.countll() 
-		   == static_cast<uint64_t>(group_count));
-	rrt.get<1>().set(true);
-	SINVARIANT(rate_hts[rrt].ops_rate.countll() 
-		   == static_cast<uint64_t>(group_count));
-	rrt.get<1>().set(false);
-	SINVARIANT(rate_hts[rrt].ops_rate.countll() 
-		   == static_cast<uint64_t>(group_count));
+	if (group_count > 0) {
+	    RateRollupTuple rrt;
+	    INVARIANT(rate_hts[rrt].ops_rate.countll() 
+		      == static_cast<uint64_t>(group_count),
+		      format("%d != %d") % rate_hts[rrt].ops_rate.countll()
+		      % group_count);
+	    rrt.get<1>().set(true);
+	    SINVARIANT(rate_hts[rrt].ops_rate.countll() 
+		       == static_cast<uint64_t>(group_count));
+	    rrt.get<1>().set(false);
+	    SINVARIANT(rate_hts[rrt].ops_rate.countll() 
+		       == static_cast<uint64_t>(group_count));
+	}
     }
 
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
 	configCube();
 	
-	if (options["test"]) {
 // ds data -> hash_tuple_stats(host, is_send, time, op, is_request, stat)
 // -> zero-cube(h,i,t,o,i, sum(stat))
 // hut(any(h), any(i), any(o), any(i), quantile(stat.count()/time_chunk), 
 //     quantile(stats.mean()/time_chunk))
 
-	    finalGroup();
+	finalGroup();
 
-	    LintelLogDebug("HostInfo", 
-			   format("Actual afs_count = %.0f\n") % afs_count);
-
-	    SINVARIANT(base_data.size() == 0)
-
-	    sanityCheckRates();
-
-	    if (group_count > 0) {
-		rate_hts.walk(boost::bind
-			      (&HostInfo::addMissingZeroRates, this, _1, _2));
-		    
-		rate_hts.walkOrdered
-		    (boost::bind(&HostInfo::printRate, this, _1, _2));
-		cout  << "# Note that the all * rollup double counts"
-  	   	         " operations since we count both the\n"
-		      << "# send and the receive\n";
-	    }
+	LintelLogDebug("HostInfo", 
+		       format("Actual afs_count = %.0f\n") % afs_count);
+	
+	SINVARIANT(base_data.size() == 0);
 	    
-	    cout << format("# Processed %d complete groups of size %d\n")
-		% group_count % group_seconds;
-	    cout << "# (ignored the partial first and last groups)";
-	    cout << format("# Total time range was [%d..%d]\n")
-		% min_group_seconds % max_group_seconds;
-	    return;
+	sanityCheckRates();
+	
+	if (group_count > 0) {
+	    rate_hts.walk(boost::bind
+			  (&HostInfo::addMissingZeroRates, this, _1, _2));
+	    
+	    rate_hts.walkOrdered
+		(boost::bind(&HostInfo::printRate, this, _1, _2));
+	    cout  << "# Note that the all * rollup double counts"
+		" operations since we count both the\n"
+		  << "# send and the receive\n";
 	}
+	
+	cout << format("# Processed %d complete groups of size %d\n")
+	    % group_count % group_seconds;
+	cout << "# (ignored the partial first and last groups)\n";
+	cout << format("# Total time range was [%d..%d]\n")
+	    % min_group_seconds % max_group_seconds;
 
-	cout << "host     time        dir          op    op-dir   count mean-payload\n";
-	if (options["print_base"]) {
-	    base_data.walkOrdered
-		(boost::bind(&HostInfo::printFullRow, _1, _2));
-	}
-	if (options["print_cube"]) {
-	    cube.add(base_data);
-	    cube.walkOrdered(boost::bind(&HostInfo::printPartialRow, 
-					 _1, _2, _3));
-	}
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
@@ -1296,6 +1295,8 @@ public:
     Stats payload_overall;
     int32_t min_group_seconds, max_group_seconds;
     int64_t group_count;
+
+    bool printed_base_header, printed_cube_header, printed_rates_header;
 
 };
 
