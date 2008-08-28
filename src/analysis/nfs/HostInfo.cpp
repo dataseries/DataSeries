@@ -645,6 +645,7 @@ namespace {
     const string str_request("request");
     const string str_response("response");
     const string str_star("*");
+    const string str_null("null");
 }
 
 class HostInfo : public RowAnalysisModule {
@@ -693,10 +694,18 @@ public:
 	SINVARIANT(group_seconds > 0);
 	options["cube_time"] = true;
 	options["cube_host"] = true;
+
+	// Cubing over the unique_vals_tuple; is very expensive -- ~6x on
+	// some simple initial testing.  Calculating the unique tuple is 
+	// very cheap (overlappping runtimes, <1% instruction count difference),
+	// but if we're not going to use it, then there isn't any point.
+	options["zero_cube"] = false;
 	options["print_base"] = true;
 	options["print_cube"] = true;
 	options["print_rates"] = true;
 	options["print_rates_quantiles"] = true;
+	options["sql_output"] = false;
+	options["sql_create_table"] = false;
 	for(unsigned i = 1; i < args.size(); ++i) {
 	    if (prefixequal(args[i], "no_")) {
 		INVARIANT(options.exists(args[i].substr(3)),
@@ -711,11 +720,20 @@ public:
 		options[args[i]] = true;
 	    }
 	}
-	rates_cube.setOptionalCubePartialFn
-	    (boost::bind(&StatsCubeFns::cubeAll));
-
-	rates_cube.setCubeStatsAddFn
-	    (boost::bind(&HostInfo::addFullStats, _1, _2));
+	INVARIANT(!options["print_rates"] || options["cube_time"],
+		  "HostInfo: Can't print_rates unless we have cube_time enabled.");
+	if (!options["print_rates"]) {
+	    options["print_rates_quantiles"] = false;
+	}
+	print_rates_quantiles = options["print_rates_quantiles"];
+	sql_output = options["sql_output"];
+	configCube();
+	if (options["sql_create_table"]) {
+	    printCreateTables();
+	}
+	zero_cube = options["zero_cube"];
+	print_base = options["print_base"];
+	print_cube = options["print_cube"];
     }
 
     virtual ~HostInfo() { }
@@ -734,6 +752,27 @@ public:
 	    return str(format("%08x") % host(t));
 	}
     }
+    static string sqlHost(const Tuple &t, const Used &used) {
+	if (used[host_index] == false) {
+	    return str_null;
+	} else {
+	    return str(format("0x%08x") % host(t));
+	}
+    }
+
+    static int32_t time(const Tuple &t) {
+	return t.get<time_index>();
+    }
+
+    static string time(const Tuple &t, const Used &used,
+		       const std::string &unused_str = str_star) {
+	if (used[time_index] == false) {
+	    return unused_str;
+	} else {
+	    return str(format("%d") % time(t));
+	}
+    }
+
     static bool isSend(const Tuple &t) {
 	return t.get<is_send_index>();
     }
@@ -746,18 +785,6 @@ public:
 	    return str_star;
 	} else {
 	    return isSendStr(t);
-	}
-    }
-
-    static int32_t time(const Tuple &t) {
-	return t.get<time_index>();
-    }
-
-    static string time(const Tuple &t, const Used &used) {
-	if (used[time_index] == false) {
-	    return str_star;
-	} else {
-	    return str(format("%d") % time(t));
 	}
     }
 
@@ -782,12 +809,19 @@ public:
     static const string &isRequestStr(const Tuple &t) {
 	return isRequest(t) ? str_request : str_response;
     }
-
     static const string &isRequestStr(const Tuple &t, const Used &used) {
 	if (used[4] == false) {
 	    return str_star;
 	} else {
 	    return isRequestStr(t);
+	}
+    }
+
+    static string sqlify(const string &basestr) {
+	if (basestr == str_star) {
+	    return str_null;
+	} else {
+	    return str(format("'%s'") % basestr);
 	}
     }
 
@@ -824,34 +858,6 @@ public:
 	}
     }
 
-#if 0
-    bool cubeInBoundsSkipMin(const PartialTuple<Tuple> &partial) {
-	int32_t time_val = partial.data.get<time_index>();
-	if (time_val == min_group_seconds) {
-	    return false;
-	}
-	if (!partial.used[time_index]) {
-	    return true;
-	}
-	SINVARIANT(time_val > min_group_seconds &&
-		   time_val < max_group_seconds);
-	return true;
-    }
-
-    bool cubeInBoundsSkipMinMax(const PartialTuple<Tuple> &partial) {
-	int32_t time_val = partial.data.get<time_index>();
-	if (time_val == min_group_seconds || time_val == max_group_seconds) {
-	    return false;
-	}
-	if (!partial.used[time_index]) {
-	    return true;
-	}
-	SINVARIANT(time_val > min_group_seconds &&
-		   time_val < max_group_seconds);
-	return true;
-    }
-#endif
-
     static bool timeLessEqual(const PartialTuple<Tuple> &t, 
 			      int32_t max_group_seconds) {
 	if (t.used[time_index]) {
@@ -863,30 +869,17 @@ public:
 	}
     }
 									 
-    // Cubing over the unique_vals_tuple; is very expensive -- ~6x on
-    // some simple initial testing.  Calculating the unique tuple is 
-    // very cheap (overlappping runtimes, <1% instruction count difference),
-    // but if we're not going to use it, then there isn't any point.
-    static const bool enable_hash_unique_tuple = false;
-
-    void rollupOneGroup(bool final = false) {
-	if (enable_hash_unique_tuple) {
+    void rollupOneGroup() {
+	if (zero_cube) {
 	    base_data.fillHashUniqueTuple(unique_vals_tuple);
-	    unique_vals_tuple.get<time_index>()
-		.remove(min_group_seconds, false);
-	    if (final) {
-		unique_vals_tuple.get<time_index>().remove(max_group_seconds);
-	    }
-	}
-	rates_cube.add(base_data);
-	if (false) {
-	    PartialTuple<Tuple> tmp(Tuple(0,true,0,0,true));
-	    tmp.used[is_send_index] = true;
-	    Stats &v = rates_cube.getPartialEntry(tmp);
-	    cout << format("Check %d\n") % v.countll();
+	    rates_cube.add(base_data, unique_vals_tuple);
+	    unique_vals_tuple.get<time_index>().clear();
+	} else {
+	    rates_cube.add(base_data);
 	}
 
-	if (options["print_base"]) {
+
+	if (print_base && !zero_cube) {
 	    base_data.walkOrdered
 		(boost::bind(&HostInfo::printBaseIncremental, 
 			     this, _1, _2));
@@ -895,7 +888,7 @@ public:
 
 	rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, 
 				    this, _1, _2, _3));
-	if (options["print_cube"]) {
+	if (print_cube || zero_cube) {
 	    rates_cube.walkOrdered
 		(boost::bind(&HostInfo::printCubeIncrementalTime,
 			     this, _1, _2, _3));
@@ -903,9 +896,6 @@ public:
 	rates_cube.prune
 	    (boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
 	SINVARIANT(base_data.size() == 0);
-	if (enable_hash_unique_tuple) {
-	    unique_vals_tuple.get<time_index>().clear();
-	}
     }
 
     void processGroup(int32_t seconds) {
@@ -920,7 +910,7 @@ public:
 	    LintelLogDebug
 		("HostInfo", format("should incremental ]%d,%d[ bd=%d cube=%d ratescube=%d rate_hts=%d") 
 		 % min_group_seconds % max_group_seconds % base_data.size()
-		 % cube.size() % rates_cube.size() % rate_hts.size());
+		 % rates_cube.size() % rates_cube.size() % rate_hts.size());
 
 	    rollupOneGroup();
 	} else {
@@ -937,8 +927,8 @@ public:
 	// ignore the first and last groups, so we end up with -1
 	SINVARIANT(elapsed_seconds / group_seconds - 1 == group_count);
 
-	rollupOneGroup(true);
-	if (options["print_cube"]) {
+	rollupOneGroup();
+	if (print_cube) {
 	    rates_cube.walkOrdered
 		(boost::bind(&HostInfo::printCubeIncrementalNonTime,
 			     this, _1, _2, _3));
@@ -980,48 +970,93 @@ public:
 	cube_key.get<host_index>() = dest_ip.val();
 	cube_key.get<is_send_index>() = false;
 	base_data.add(cube_key, payload_length.val());
-
-
     }
 
-    static void printFullRow(const Tuple &t, Stats &v) {
-	cout << format("%08x %10d %s %12s %8s %6lld %8.2f\n")
-	    % host(t) % time(t) % isSendStr(t) % operationStr(t) 
-	    % isRequestStr(t) % v.countll() % v.mean();
-    }	
+    void printCreateTables() {
+	cout
+	    << "--- The cube 'any' field is represented as null\n"
+	    << "--- note that there is a 'null' operation which is different than null\n"
+	    << "create table nfs_hostinfo_cube (group_seconds int null,\n"
+	    << "                                host int null,\n"
+	    << "                                group_time int null,\n"
+	    << "                                direction enum('send', 'recv') null,\n"
+	    << "                                operation varchar(32) null,\n"
+	    << "                                op_dir enum('request','response') null,\n"
+	    << "                                group_count bigint not null,\n"
+	    << "                                mean_payload_bytes double not null,\n"
+	    << "                                unique key pkey (group_seconds, host, group_time, direction, operation, op_dir)\n"
+	    << ");\n"
+	    << "\n"
+	    << "create table nfs_hostinfo_rates (group_seconds int null,\n"
+	    << "				 host int null,\n"
+	    << "				 direction enum('send', 'recv') null,\n"
+	    << "				 operation varchar(32) null,\n"
+	    << "				 op_dir enum('request', 'response') null,\n"
+	    << "				 mean_operations_per_second double not null,\n"
+	    << "				 mean_payload_bytes_per_second double not null,\n"
+	    << "                                 unique key pkey (group_seconds, host, direction, operation, op_dir)\n"
+	    << ");\n"
+ 	    << "\n"
+	    << "create table nfs_hostinfo_rate_quantiles (group_seconds int null,\n"
+	    << "				          host int null,\n"
+	    << "				          direction enum('send', 'recv') null,\n"
+	    << "				          operation varchar(32) null,\n"
+	    << "				          op_dir enum('request', 'response') null,\n"
+	    << "				          quantile double not null,\n"
+	    << "				          operations_per_second double not null,\n"
+	    << "				          payload_bytes_per_second double not null,\n"
+	    << "                                          unique key pkey (group_seconds, host, direction, operation, op_dir, quantile)\n"
+	    << ");\n"
+	    ;
+	    }
 
     void printBaseIncremental(const Tuple &t, Stats &v) {
-	if (!printed_base_header) {
-	    cout << format("HostInfo %ds base: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
-	    printed_base_header = true;
+	if (sql_output) {
+	    cout << format("insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (%d, %d, %d, '%s', '%s', '%s', %d, %.20g);\n")
+		% group_seconds % host(t) % time(t) % isSendStr(t) 
+		% operationStr(t) % isRequestStr(t) % v.countll() % v.mean();
+	} else {
+	    if (!printed_base_header) {
+		cout << format("HostInfo %ds base: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
+		printed_base_header = true;
+	    }
+	    cout << format("HostInfo %ds base: %08x %10d %s %12s %8s %6lld %8.2f\n")
+		% group_seconds % host(t) % time(t) % isSendStr(t) 
+		% operationStr(t) % isRequestStr(t) % v.countll() % v.mean();
 	}
-	cout << format("HostInfo %ds base: %08x %10d %s %12s %8s %6lld %8.2f\n")
-	    % group_seconds % host(t) % time(t) % isSendStr(t) 
-	    % operationStr(t) % isRequestStr(t) % v.countll() % v.mean();
     }	
     
-    static void printPartialRow(const Tuple &t, const bitset<5> &used, 
-				Stats *v) {
-	cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
-	    % host(t,used) % time(t,used) % isSendStr(t,used) 
-	    % operationStr(t,used) % isRequestStr(t,used) 
-	    % v->countll() % v->mean();
-    }
-
     void printCubeIncremental(const Tuple &t, const bitset<5> &used, 
 			      Stats *v) {
 	if ((~used).none()) {
-	    return; // all bits used, don't print, covered in the base data.
+	    // all bits used
+	    if (!zero_cube) {
+		return;
+	    } else {
+		// zero cubing; we print "base" bits here to fill in the zeros
+	    }
+	} else {
+	    if (!print_cube) {
+		SINVARIANT(zero_cube);
+		return;
+	    }
 	}
 	
-	if (!printed_cube_header) {
-	    cout << format("HostInfo %ds cube: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
-	    printed_cube_header = true;
+	if (sql_output) {
+	    cout << format("insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (%d, %d, %d, %s, %s, %s, %d, %.20g);\n")
+		% group_seconds % sqlHost(t, used) % time(t, used, str_null) 
+		% sqlify(isSendStr(t, used)) % sqlify(operationStr(t, used)) 
+		% sqlify(isRequestStr(t, used)) % v->countll() % v->mean();
+	} else {
+	    if (!printed_cube_header) {
+		cout << format("HostInfo %ds cube: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
+		printed_cube_header = true;
+	    }
+	    cout << format("HostInfo %ds cube: %8s %10s %4s %12s %8s %6lld %8.2f\n")
+		% group_seconds % host(t,used) % time(t,used) % isSendStr(t,used) 
+		% operationStr(t,used) % isRequestStr(t,used) 
+		% v->countll() % v->mean();
 	}
-	cout << format("HostInfo %ds cube: %8s %10s %4s %12s %8s %6lld %8.2f\n")
-	    % group_seconds % host(t,used) % time(t,used) % isSendStr(t,used) 
-	    % operationStr(t,used) % isRequestStr(t,used) 
-	    % v->countll() % v->mean();
     }
 
     void printCubeIncrementalTime(const Tuple &t, const bitset<5> &used, 
@@ -1062,19 +1097,19 @@ public:
 	using boost::bind; 
 
 	if (options["cube_time"] && options["cube_host"]) {
-	    cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeHadFalse, _1));
+	    rates_cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeAll));
 	} else if (options["cube_time"] && !options["cube_host"]) {
-	    cube.setOptionalCubePartialFn
+	    rates_cube.setOptionalCubePartialFn
 		(bind(&HostInfo::cubeExceptHost, _2));
 	} else if (!options["cube_time"] && options["cube_host"]) {
-	    cube.setOptionalCubePartialFn
+	    rates_cube.setOptionalCubePartialFn
 		(bind(&HostInfo::cubeExceptTime, _2));
 	} else if (!options["cube_time"] && !options["cube_host"]) {
-	    cube.setOptionalCubePartialFn
+	    rates_cube.setOptionalCubePartialFn
 		(bind(&HostInfo::cubeExceptTimeOrHost, _2));
 	}
 
-	cube.setCubeStatsAddFn(bind(&StatsCubeFns::addFullStats, _1, _2));
+	rates_cube.setCubeStatsAddFn(bind(&StatsCubeFns::addFullStats, _1, _2));
     }
 
     //                    host  is_send operation is_req
@@ -1142,11 +1177,11 @@ public:
 		   && static_cast<uint64_t>(count) == v.bytes_rate.countll());
     }
 
-    static string hostStr(const RateRollupTuple &t) {
+    static string hostStr(const RateRollupTuple &t, bool sql = false) {
 	if (t.get<0>().any) {
-	    return str_star;
+	    return sql ? str_null : str_star;
 	} else {
-	    return str(format("%08x") % t.get<0>().val);
+	    return str(format(sql ? "0x%08x" : "%08x") % t.get<0>().val);
 	}
     }
 
@@ -1190,25 +1225,47 @@ public:
     }
 
     void printRate(const RateRollupTuple &t, Rates &v) {
-	if (!printed_rates_header) {
-	    cout << format("HostInfo %ds rates: host     dir      op    op-dir  ops/s payload-MiB/s\n") % group_seconds;
-	    if (options["print_rates_quantiles"]) {
-		cout << format("HostInfo %ds rates-quantiles: 5%% 10%% 25%% 50%% 75%% 90%% 95%% ops/s : 5%% 10%% 25%% 50%% 75%% 90%% 95%% MiB/s\n") % group_seconds;
-	    }
-	    printed_rates_header = true;
-	}
 	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
 	SINVARIANT(v.ops_rate.count() == group_count);
 	SINVARIANT(v.ops_rate.mean() > 0);
 
-	cout << format("HostInfo %ds rates: %8s %4s %8s %8s %10.2f %8.3f\n") 
-	    % group_seconds % hostStr(t) % isSendStr(t) % operationStr(t) 
-	    % isRequestStr(t) % v.ops_rate.mean() 
-	    % (v.bytes_rate.mean()/(1024.0*1024.0));
-	if (options["print_rates_quantiles"]) {
-	    cout << format("HostInfo %ds rates-quantiles: %s : %s\n")
-		% group_seconds % humanQuantiles(v.ops_rate, 1)
-		% humanQuantiles(v.bytes_rate, 1024 * 1024);
+	if (sql_output) {
+	    cout << format("insert into nfs_hostinfo_rates (group_seconds, host, direction, operation, op_dir, mean_operations_per_second, mean_payload_bytes_per_second) values (%d, %s, %s, %s, %s, %.20g, %.20g);\n")
+		% group_seconds % hostStr(t, true) % sqlify(isSendStr(t))
+		% sqlify(operationStr(t)) % sqlify(isRequestStr(t))
+		% v.ops_rate.mean() % v.bytes_rate.mean();
+	    
+	    if (print_rates_quantiles) {
+		static const double quantile_step = 0.01;
+		cout << format("insert into nfs_hostinfo_rate_quantiles (group_seconds, host, direction, operation, op_dir, quantile, operations_per_second, payload_bytes_per_second) values ");
+		for(double q = 0; q < 1.0000000001; q += quantile_step) {
+		    if (q > 0) { cout << ", "; }
+		    if (q > 1) { q = 1; } // doubles can have slight overflow
+		    cout << format("(%d, %s, %s, %s, %s, %.5f, %.20g, %.20g)")
+			% group_seconds % hostStr(t, true) % sqlify(isSendStr(t))
+			% sqlify(operationStr(t)) % sqlify(isRequestStr(t))
+			% q % v.ops_rate.getQuantile(q) % v.bytes_rate.getQuantile(q);
+		}
+		cout << ";\n";
+	    }
+	} else {
+	    if (!printed_rates_header) {
+		cout << format("HostInfo %ds rates: host     dir      op    op-dir  ops/s payload-MiB/s\n") % group_seconds;
+		if (print_rates_quantiles) {
+		    cout << format("HostInfo %ds rates-quantiles: 5%% 10%% 25%% 50%% 75%% 90%% 95%% ops/s : 5%% 10%% 25%% 50%% 75%% 90%% 95%% MiB/s\n") % group_seconds;
+		}
+		printed_rates_header = true;
+	    }
+	    
+	    cout << format("HostInfo %ds rates: %8s %4s %8s %8s %10.2f %8.3f\n") 
+		% group_seconds % hostStr(t) % isSendStr(t) % operationStr(t) 
+		% isRequestStr(t) % v.ops_rate.mean() 
+		% (v.bytes_rate.mean()/(1024.0*1024.0));
+	    if (print_rates_quantiles) {
+		cout << format("HostInfo %ds rates-quantiles: %s : %s\n")
+		    % group_seconds % humanQuantiles(v.ops_rate, 1)
+		    % humanQuantiles(v.bytes_rate, 1024 * 1024);
+	    }
 	}
     }
 
@@ -1254,7 +1311,6 @@ public:
 
     virtual void printResult() {
 	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	configCube();
 	
 // ds data -> hash_tuple_stats(host, is_send, time, op, is_request, stat)
 // -> zero-cube(h,i,t,o,i, sum(stat))
@@ -1311,10 +1367,6 @@ public:
 
     HashTupleStats<Tuple> base_data;
 
-    StatsCube<Tuple> cube;
-
-    //    HashTupleStats<AnyTuple> cube_data;
-
     // Won't have all the time values in it, they are done incrementally.
     // only has anything in it if the constant enable_hash_unique_tuple is
     // true.
@@ -1330,6 +1382,7 @@ public:
 
     bool printed_base_header, printed_cube_header, printed_rates_header;
 
+    bool print_rates_quantiles, sql_output, zero_cube, print_base, print_cube;
 };
 
 double HostInfo::afs_count;
