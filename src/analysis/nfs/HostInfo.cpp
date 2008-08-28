@@ -11,6 +11,7 @@
 #include <Lintel/HashMap.hpp>
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
+#include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/GeneralField.hpp>
 
@@ -651,10 +652,15 @@ public:
     typedef HostInfoTuple Tuple;
     typedef bitset<5> Used;
 
+    static const double rate_quantile_maxerror = 0.005;
+    // about 1/3 of a year with 1 second datapoints
+    static const unsigned rate_quantile_maxgroups = 10*1000*1000;
     struct Rates {
-	Stats ops_rate;
-	Stats bytes_rate;
-	Rates() { }
+	StatsQuantile ops_rate;
+	StatsQuantile bytes_rate;
+	Rates() : ops_rate(rate_quantile_maxerror, rate_quantile_maxgroups), 
+		  bytes_rate(rate_quantile_maxerror, rate_quantile_maxgroups)
+	{ }
 	void add(double ops, double bytes) {
 	    ops_rate.add(ops);
 	    bytes_rate.add(bytes);
@@ -689,6 +695,8 @@ public:
 	options["cube_host"] = true;
 	options["print_base"] = true;
 	options["print_cube"] = true;
+	options["print_rates"] = true;
+	options["print_rates_quantiles"] = true;
 	for(unsigned i = 1; i < args.size(); ++i) {
 	    if (prefixequal(args[i], "no_")) {
 		INVARIANT(options.exists(args[i].substr(3)),
@@ -1169,10 +1177,24 @@ public:
 	    return str_response;
 	}
     }
-	
+    
+    string humanQuantiles(StatsQuantile &q, double divide) {
+	return str(format("%.8g %.8g %.8g %.8g %.8g %.8g %.8g")
+		   % (q.getQuantile(0.05)/divide) 
+		   % (q.getQuantile(0.1)/divide)
+		   % (q.getQuantile(0.25)/divide)
+		   % (q.getQuantile(0.5)/divide)
+		   % (q.getQuantile(0.75)/divide)
+		   % (q.getQuantile(0.9)/divide)
+		   % (q.getQuantile(0.95)/divide));
+    }
+
     void printRate(const RateRollupTuple &t, Rates &v) {
 	if (!printed_rates_header) {
 	    cout << format("HostInfo %ds rates: host     dir      op    op-dir  ops/s payload-MiB/s\n") % group_seconds;
+	    if (options["print_rates_quantiles"]) {
+		cout << format("HostInfo %ds rates-quantiles: 5%% 10%% 25%% 50%% 75%% 90%% 95%% ops/s : 5%% 10%% 25%% 50%% 75%% 90%% 95%% MiB/s\n") % group_seconds;
+	    }
 	    printed_rates_header = true;
 	}
 	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
@@ -1183,6 +1205,11 @@ public:
 	    % group_seconds % hostStr(t) % isSendStr(t) % operationStr(t) 
 	    % isRequestStr(t) % v.ops_rate.mean() 
 	    % (v.bytes_rate.mean()/(1024.0*1024.0));
+	if (options["print_rates_quantiles"]) {
+	    cout << format("HostInfo %ds rates-quantiles: %s : %s\n")
+		% group_seconds % humanQuantiles(v.ops_rate, 1)
+		% humanQuantiles(v.bytes_rate, 1024 * 1024);
+	}
     }
 
     void sanityCheckRates() {
@@ -1243,7 +1270,7 @@ public:
 	    
 	sanityCheckRates();
 	
-	if (group_count > 0) {
+	if (group_count > 0 && options["print_rates"]) {
 	    rate_hts.walk(boost::bind
 			  (&HostInfo::addMissingZeroRates, this, _1, _2));
 	    
@@ -1254,6 +1281,11 @@ public:
 		  << "# send and the receive\n";
 	}
 	
+	if (group_count == -1) { 
+	    // special case for when we had no full groups, the calculation
+	    // ends up at -1, but we want to print 0.
+	    ++group_count;
+	}
 	cout << format("# Processed %d complete groups of size %d\n")
 	    % group_count % group_seconds;
 	cout << "# (ignored the partial first and last groups)\n";
