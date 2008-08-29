@@ -5,6 +5,8 @@
 #
 #  See the file named COPYING for license details
 #
+# TODO: sort the DataSeries: and Info::Repack extents at the end so people
+# see the ones they want first.
 use strict;
 use FileHandle;
 use XML::Parser;

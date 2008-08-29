@@ -696,6 +696,7 @@ public:
 	SINVARIANT(group_seconds > 0);
 	options["cube_time"] = true;
 	options["cube_host"] = true;
+	options["cube_host_detail"] = true;
 
 	// Cubing over the unique_vals_tuple; is very expensive -- ~6x on
 	// some simple initial testing.  Calculating the unique tuple is 
@@ -736,6 +737,9 @@ public:
 	zero_cube = options["zero_cube"];
 	print_base = options["print_base"];
 	print_cube = options["print_cube"];
+	skip_cube_time = !options["cube_time"];
+	skip_cube_host = !options["cube_host"];
+	skip_cube_host_detail = !options["cube_host_detail"];
     }
 
     virtual ~HostInfo() { }
@@ -1086,6 +1090,23 @@ public:
 	}
     }
 
+    bool cubeOptional(const PartialTuple<Tuple> &partial) {
+	if (skip_cube_time && partial.used[time_index] == true) {
+	    return false;
+	}
+	if (skip_cube_host && partial.used[host_index] == true) {
+	    return false;
+	}
+	if (skip_cube_host_detail && partial.used[host_index] == true) {
+	    PartialTuple<Tuple>::UsedT used = partial.used;
+	    used[host_index] = false;
+	    if (used.any()) {
+		return false;
+	    }
+	}
+	return true;
+    }
+
     static bool cubeExceptTime(const PartialTuple<Tuple> &partial) {
 	return partial.used[time_index] == false;
     }
@@ -1109,20 +1130,16 @@ public:
     void configCube() {
 	using boost::bind; 
 
-	if (options["cube_time"] && options["cube_host"]) {
+	if (options["cube_time"] && options["cube_host"]
+	    && options["cube_host_detail"]) {
 	    rates_cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeAll));
-	} else if (options["cube_time"] && !options["cube_host"]) {
+	} else {
 	    rates_cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptHost, _2));
-	} else if (!options["cube_time"] && options["cube_host"]) {
-	    rates_cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptTime, _2));
-	} else if (!options["cube_time"] && !options["cube_host"]) {
-	    rates_cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeExceptTimeOrHost, _2));
+		(bind(&HostInfo::cubeOptional, this, _2));
 	}
 
-	rates_cube.setCubeStatsAddFn(bind(&StatsCubeFns::addFullStats, _1, _2));
+	rates_cube.setCubeStatsAddFn
+	    (bind(&StatsCubeFns::addFullStats, _1, _2));
     }
 
     //                    host  is_send operation is_req
@@ -1397,6 +1414,8 @@ public:
 
     bool print_rates_quantiles, sql_output, zero_cube, print_base, print_cube;
     uint32_t zero_groups;
+    
+    bool skip_cube_time, skip_cube_host, skip_cube_host_detail;
 };
 
 double HostInfo::afs_count;
