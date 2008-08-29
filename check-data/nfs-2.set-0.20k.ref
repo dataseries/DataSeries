@@ -1985,7 +1985,7 @@ HostInfo 1s cube:        *          *    *            *  request  20066    47.00
 HostInfo 1s cube:        *          *    *            *        *  40000  7377.50
 # Processed 0 complete groups of size 1
 # (ignored the partial first and last groups)
-# Total time range was [1170089647..1170089647]
+# Total time range was [1170089647..1170089647], 0 groups with no nfs ops
 End-virtual void HostInfo::printResult()
 
 Begin-virtual void ServerLatency::printResult()

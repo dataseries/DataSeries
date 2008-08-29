@@ -685,7 +685,9 @@ public:
 	  min_group_seconds(numeric_limits<int32_t>::max()),
 	  max_group_seconds(numeric_limits<int32_t>::min()),
 	  group_count(0), printed_base_header(false), 
-	  printed_cube_header(false), printed_rates_header(false)
+	  printed_cube_header(false), printed_rates_header(false),
+	  print_rates_quantiles(true), sql_output(false), zero_cube(false),
+	  print_base(true), print_cube(true), zero_groups(0)
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -941,10 +943,21 @@ public:
 	// because we can't calculate the rates properly on them.
 	SINVARIANT(next_group_seconds > max_group_seconds);
 	
-	SINVARIANT(max_group_seconds == numeric_limits<int32_t>::min() ||
-		   next_group_seconds == (max_group_seconds + group_seconds));
-	max_group_seconds = next_group_seconds;
-	processGroup(next_group_seconds);
+	if (max_group_seconds == numeric_limits<int32_t>::min()) {
+	    max_group_seconds = next_group_seconds - group_seconds;
+	}
+	for(max_group_seconds += group_seconds; 
+	    max_group_seconds < next_group_seconds; 
+	    max_group_seconds += group_seconds) {
+	    // Rarely we have no operations in some groups.
+	    LintelLogDebug("HostInfo", format("empty seconds @%d")
+			   % max_group_seconds);
+	    ++zero_groups;
+	    unique_vals_tuple.get<time_index>().add(max_group_seconds);
+	    processGroup(max_group_seconds);
+	}
+	SINVARIANT(max_group_seconds == next_group_seconds);
+	processGroup(max_group_seconds);
     }
 
     virtual void processRow() {
@@ -1296,15 +1309,15 @@ public:
 
 	if (group_count > 0) {
 	    RateRollupTuple rrt;
-	    INVARIANT(rate_hts[rrt].ops_rate.countll() 
+	    INVARIANT(rate_hts[rrt].ops_rate.countll() + zero_groups
 		      == static_cast<uint64_t>(group_count),
 		      format("%d != %d") % rate_hts[rrt].ops_rate.countll()
 		      % group_count);
 	    rrt.get<1>().set(true);
-	    SINVARIANT(rate_hts[rrt].ops_rate.countll() 
+	    SINVARIANT(rate_hts[rrt].ops_rate.countll() + zero_groups
 		       == static_cast<uint64_t>(group_count));
 	    rrt.get<1>().set(false);
-	    SINVARIANT(rate_hts[rrt].ops_rate.countll() 
+	    SINVARIANT(rate_hts[rrt].ops_rate.countll() + zero_groups
 		       == static_cast<uint64_t>(group_count));
 	}
     }
@@ -1345,8 +1358,8 @@ public:
 	cout << format("# Processed %d complete groups of size %d\n")
 	    % group_count % group_seconds;
 	cout << "# (ignored the partial first and last groups)\n";
-	cout << format("# Total time range was [%d..%d]\n")
-	    % min_group_seconds % max_group_seconds;
+	cout << format("# Total time range was [%d..%d], %d groups with no nfs ops\n")
+	    % min_group_seconds % max_group_seconds % zero_groups;
 
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
@@ -1383,6 +1396,7 @@ public:
     bool printed_base_header, printed_cube_header, printed_rates_header;
 
     bool print_rates_quantiles, sql_output, zero_cube, print_base, print_cube;
+    uint32_t zero_groups;
 };
 
 double HostInfo::afs_count;

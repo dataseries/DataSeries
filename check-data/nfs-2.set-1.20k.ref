@@ -12723,7 +12723,7 @@ HostInfo 1s rates-quantiles: 1768 1768 1768 1844 7132 14120 14120 : 3.4429321 3.
 # send and the receive
 # Processed 4 complete groups of size 1
 # (ignored the partial first and last groups)
-# Total time range was [1172236403..1172236408]
+# Total time range was [1172236403..1172236408], 0 groups with no nfs ops
 End-virtual void HostInfo::printResult()
 
 Begin-virtual void ServerLatency::printResult()
