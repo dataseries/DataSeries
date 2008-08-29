@@ -1,4 +1,0 @@
-#!/bin/sh
-echo "DataSeries has switched from using autoconf to cmake."
-echo "You need to run ccmake _top-lintel-source-dir_ instead of configure"
-echo "top-lintel-source-dir is probably `dirname $0`"
