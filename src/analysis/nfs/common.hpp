@@ -84,9 +84,9 @@ inline std::string *fnByFileHandle(const std::string &fh) {
     return fnByFileHandle(ConstantString(fh));
 }
 
-unsigned char opIdToUnifiedId(unsigned nfs_version, unsigned char op_id);
-const std::string &unifiedIdToName(unsigned char unified_id);
-bool validateUnifiedId(unsigned nfs_version, unsigned char op_id, 
+uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id);
+const std::string &unifiedIdToName(uint8_t unified_id);
+bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id, 
 		       const std::string &op_name);
 unsigned getMaxUnifiedId();
 

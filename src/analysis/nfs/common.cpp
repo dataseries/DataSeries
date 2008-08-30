@@ -287,9 +287,7 @@ static const opinfo nfsv3ops[] = {
 
 static unsigned n_nfsv3ops = sizeof(nfsv3ops) / sizeof(opinfo);
 
-unsigned char
-opIdToUnifiedId(unsigned nfs_version, unsigned char op_id)
-{
+uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id) {
     if (nfs_version == 2) {
 	SINVARIANT(op_id < n_nfsv2ops);
 	return nfsv2ops[op_id].unified_id;
@@ -303,18 +301,14 @@ opIdToUnifiedId(unsigned nfs_version, unsigned char op_id)
     }
 }
 
-const std::string &
-unifiedIdToName(unsigned char unified_id)
-{
+const std::string &unifiedIdToName(uint8_t unified_id) {
     SINVARIANT(unified_id < n_unified);
     return unified_ops[unified_id];
 }
 
-bool
-validateUnifiedId(unsigned nfs_version, unsigned char op_id,
-		  const std::string &op_name)
-{
-    unsigned char unified_id = opIdToUnifiedId(nfs_version, op_id);
+bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
+		       const std::string &op_name) {
+    uint8_t unified_id = opIdToUnifiedId(nfs_version, op_id);
     SINVARIANT(op_name == unifiedIdToName(unified_id)
 	       || (nfs_version == 2 && op_id == 17 &&
 		   op_name == nfsv2ops[17].name));
