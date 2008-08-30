@@ -39,8 +39,14 @@
 #include <analysis/nfs/ServerLatency.hpp>
 #include "process/sourcebyrange.hpp"
 
+namespace NFSDSAnalysisMod {
+    RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
+}
+
+using namespace NFSDSAnalysisMod;    
 using namespace std;
 using boost::format;
+using dataseries::TFixedField;
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -464,7 +470,8 @@ public:
     OperationByFileHandle(DataSeriesModule &_source)
 	: RowAnalysisModule(_source),
 	  server(series,"server"),
-	  operation(series,"operation"), filehandle(series,"filehandle"),
+	  unified_op_id(series,"unified-op-id"), 
+	  filehandle(series,"filehandle"),
 	  request_at(series,"request-at"), reply_at(series,"reply-at"),
 	  payload_len(series,"payload-length"), 
 	  min_time(numeric_limits<int64_t>::max()),
@@ -477,7 +484,8 @@ public:
     struct hteData {
 	ExtentType::int32 server;
 	uint32_t opcount;
-	ConstantString filehandle, operation;
+	ConstantString filehandle;
+	uint8_t unified_op_id;
 	int64_t payload_sum, latency_sum_raw;
 	void zero() { opcount = 0; payload_sum = 0; latency_sum_raw = 0; }
     };
@@ -491,8 +499,9 @@ public:
 	    if (a.data.filehandle != b.data.filehandle) {
 		return a.data.filehandle < b.data.filehandle;
 	    }
-	    if (a.data.operation != b.data.operation) {
-		return a.data.operation < b.data.operation;
+	    if (a.data.unified_op_id != b.data.unified_op_id) {
+		return unifiedIdToName(a.data.unified_op_id)
+		    < unifiedIdToName(b.data.unified_op_id);
 	    }
 	    return false;
 	}
@@ -500,15 +509,16 @@ public:
 
     struct fhOpHash {
 	unsigned operator()(const hteData &k) const {
-	    unsigned ret = HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
-	    return HashTable_hashbytes(k.operation.data(),k.operation.size(),ret);
+	    unsigned a = HashTable_hashbytes(k.filehandle.data(),
+					     k.filehandle.size(), 1492);
+	    return BobJenkinsHashMix3(a, k.server, k.unified_op_id);
 	}
     };
 
     struct fhOpEqual {
 	bool operator()(const hteData &a, const hteData &b) const {
-	    return a.server == b.server && 
-		a.filehandle == b.filehandle && a.operation == b.operation;
+	    return a.server == b.server && a.filehandle == b.filehandle 
+		&& a.unified_op_id == b.unified_op_id;
 	}
     };
 
@@ -549,7 +559,7 @@ public:
 	INVARIANT(k.filehandle.compare(filehandle.stringval()) == 0, 
 		  boost::format("bad %s != %s") 
 		  % maybehexstring(k.filehandle) % maybehexstring(filehandle.stringval()));
-	k.operation = operation.stringval();
+	k.unified_op_id = unified_op_id.val();
 	hteData *v = fhOpRollup.lookup(k);
 	if (v == NULL) {
 	    k.zero();
@@ -657,10 +667,10 @@ public:
 	    double lat_sum_sec = 
 		request_at.rawToDoubleSeconds(d.latency_sum_raw, false);
 	    double avglat_us = 1.0e6 * lat_sum_sec / d.opcount;
-	    printf("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
-		   ipv4tostring(d.server).c_str(),d.operation.c_str(),
-		   maybehexstring(d.filehandle).c_str(),
-		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us);
+	    cout << format("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n")
+		% ipv4tostring(d.server) % unifiedIdToName(d.unified_op_id)
+		% maybehexstring(d.filehandle)
+		% d.opcount % (d.payload_sum/(1024.0*1024.0)) % avglat_us;
 	}
     }
 
@@ -679,10 +689,11 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
-    Int32Field server;
-    Variable32Field operation, filehandle;
+    TFixedField<int32_t> server;
+    TFixedField<uint8_t> unified_op_id;
+    Variable32Field filehandle;
     Int64TimeField request_at, reply_at;
-    Int32Field payload_len;
+    TFixedField<int32_t> payload_len;
 
     int64_t min_time, max_time;
     uint64_t out_of_bounds_count;
@@ -944,7 +955,7 @@ public:
 	  client(series,"client"),
 	  server(series,"server"),
 	  replyat(series,"reply-at"),
-	  operation(series,"operation"),
+	  unified_op_id(series,"unified-op-id"),
 	  type(series,"type"),
 	  printed_header(false)
     {
@@ -962,7 +973,7 @@ public:
 		% replyat.valStrSecNano() % ipv4tostring(client.val()) 
 		% ipv4tostring(server.val()) 
 
-		% operation.stringval() % type.stringval() 
+		% unifiedIdToName(unified_op_id.val()) % type.stringval() 
 		% hexstring(filehandle.stringval()) 
 		% maybehexstring(filename.stringval())
 
@@ -992,11 +1003,12 @@ public:
     }
 	
     Variable32Field filename, filehandle;
-    Int64Field file_size;
+    TFixedField<int64_t> file_size;
     Int64TimeField modify_time;
-    Int32Field client, server;
+    TFixedField<int32_t> client, server;
     Int64TimeField replyat;
-    Variable32Field operation, type;
+    TFixedField<uint8_t> unified_op_id;
+    Variable32Field type;
 
     bool printed_header;
     static HashUnique<string> wanted;    
@@ -1027,6 +1039,7 @@ usage(char *progname)
     cerr << "    -c <seconds> # Host analysis\n";
     cerr << "    -d <fh|fh-list pathname> # directory path lookup\n";
     cerr << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+    cerr << "    -f # Read/Write Extent analysis\n";
 
 //    cerr << "    #-b # Unique bytes in file handles analysis\n";
 //    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
@@ -1066,7 +1079,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     bool add_file_handle_operation_lookup = false;
 
     while (1) {
-	int opt = getopt(argc, argv, "abc:d:e:h");
+	int opt = getopt(argc, argv, "abc:d:e:fh");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -1094,7 +1107,10 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	    // will add module once at the end of processing arguments
 	    add_file_handle_operation_lookup = true;
 	    break;
-
+	case 'f':
+	    rwSequence.addModule
+		(newReadWriteExtentAnalysis(rwSequence.tail()));
+	    break;
 
 #if UNTESTED_ANALYSIS_DISABLED
 	case 'b': FATAL_ERROR("untested");options[Unique] = 1; break;
@@ -1265,6 +1281,7 @@ int main(int argc, char *argv[]) {
     TypeIndexModule *sourceb = new TypeIndexModule("NFS trace: attr-ops");
     sourceb->setSecondMatch("Trace::NFS::attr-ops");
     TypeIndexModule *sourcec = new TypeIndexModule("NFS trace: read-write");
+    sourcec->setSecondMatch("Trace::NFS::read-write");
     TypeIndexModule *sourced = new TypeIndexModule("NFS trace: mount");
     sourced->setSecondMatch("Trace::NFS::mount");
 

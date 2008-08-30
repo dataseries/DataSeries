@@ -8,6 +8,9 @@
     Templated simple fixed-size fields (uint8_t, int32_t, int64_t, double)
 */
 
+#ifndef DATASERIES_TFIXEDFIELD_HPP
+#define DATASERIES_TFIXEDFIELD_HPP
+
 #include <DataSeries/ExtentType.hpp>
 #include <DataSeries/FixedField.hpp>
 
@@ -139,3 +142,4 @@ namespace dataseries {
     
 };
 		    
+#endif

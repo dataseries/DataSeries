@@ -10191,7 +10191,7 @@ a63c6021c20f0300200000000117721df1e3040064000000400000009a871600: FH:a63c6021c20
 End-virtual void DirectoryPathLookup::printResult()
 
 Begin-virtual void AttrOpsCommonJoin::printResult()
-  generated 0.007 million records, 0.95 MB of extent output
+  generated 0.007 million records, 0.87 MB of extent output
   0 records, or 0.0000% forced to 1us turnaround from previous 0 or negative turnaround
   2628 skipped common, 0 skipped attrops, 0 semi-duplicate attrops, first keep 1063931188.266179000s
 End-virtual void AttrOpsCommonJoin::printResult()
