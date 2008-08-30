@@ -390,6 +390,10 @@ public:
 	: stats_factory_fn(fn1)
     { }
 
+    ~HashTupleStats() {
+	clear();
+    }
+
     void add(const Tuple &key, double value) {
 	getHashEntry(key).add(value);
     }
@@ -478,6 +482,9 @@ public:
     }
     
     void clear() {
+	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
+	    delete i->second;
+	}
 	data.clear();
     }
 
@@ -519,6 +526,10 @@ public:
 	: stats_factory_fn(fn1), optional_cube_partial_fn(fn2),
 	  cube_stats_add_fn(fn3) 
     { }
+
+    ~StatsCube() {
+	clear();
+    }
 
     void setOptionalCubePartialFn(const OptionalCubePartialFn &fn2 
 				  = boost::bind(&StatsCubeFns::cubeHadFalse, _1)) {
@@ -607,6 +618,13 @@ public:
 		++i;
 	    }
 	}
+    }
+
+    void clear() {
+	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
+	    delete i->second;
+	}
+	cube_data.clear();
     }
 
 private:

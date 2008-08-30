@@ -70,6 +70,7 @@ IndexSourceModule::~IndexSourceModule()
 	for(vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
 	    i != prefetch->unpack_threads.end(); ++i) {
 	    (**i).join();
+	    delete *i;
 	}
 	while (prefetch->compressed.empty() == false) {
 	    delete prefetch->compressed.getFront();
