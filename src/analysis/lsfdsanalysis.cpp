@@ -1177,22 +1177,25 @@ public:
 		    if (cur_reserved_jobs < cur_reserved_cap) {
 			tmp->jobclass = jcReserved;
 			++cur_reserved_jobs;
-			if (debug)
+			if (debug) {
 			    printf("  start %d.%d at %d as reserved (%d total)\n",
 				   tmp->job_id,tmp->job_idx,tmp->starttime - base_time,
 				   cur_reserved_jobs);
+			}
 		    } else if (cur_best_effort_jobs < cur_best_effort_cap) {
 			tmp->jobclass = jcBestEffort;
 			++cur_best_effort_jobs;
-			if (debug)
+			if (debug) {
 			    printf("  start %d.%d at %d as best effort (%d total)\n",
 				   tmp->job_id,tmp->job_idx,tmp->starttime - base_time,
 				   cur_best_effort_jobs);
+			}
 		    } else {
-			if (debug)
+			if (debug) {
 			    printf("  start %d.%d at %d as excess (%d/%d)\n",
 				   tmp->job_id,tmp->job_idx,tmp->starttime - base_time,
 				   cur_reserved_jobs,cur_best_effort_jobs);
+			}
 			tmp->jobclass = jcExcess;
 		    }
 		    starts.pop();
@@ -1208,22 +1211,26 @@ public:
 		    if (tmp->jobclass == jcReserved) {
 			--cur_reserved_jobs;
 			reserved_seconds += window_job_end - window_job_start;
-			if (debug)
-			    printf("  finish %d.%d at %d as reserved (%d total) %lld cum secs\n",
-				   tmp->job_id,tmp->job_idx,tmp->endtime - base_time,
-				   cur_reserved_jobs, reserved_seconds);
+			if (debug) {
+			    cout << format("  finish %d.%d at %d as reserved (%d total) %d cum secs\n")
+				% tmp->job_id % tmp->job_idx % (tmp->endtime - base_time)
+				% cur_reserved_jobs % reserved_seconds;
+			}
 		    } else if (tmp->jobclass == jcBestEffort) {
 			--cur_best_effort_jobs;
 			best_effort_seconds += window_job_end - window_job_start;
-			if (debug)
-			    printf("  finish %d.%d at %d as best_effort (%d total) %lld cum secs\n",
-				   tmp->job_id,tmp->job_idx,tmp->endtime - base_time,
-				   cur_best_effort_jobs, best_effort_seconds);
+			if (debug) {
+			    cout << format("  finish %d.%d at %d as best_effort (%d total) %lld cum secs\n")
+				% tmp->job_id % tmp->job_idx % (tmp->endtime - base_time)
+				% cur_best_effort_jobs % best_effort_seconds;
+			}
 		    } else if (tmp->jobclass == jcExcess) {
 			excess_seconds += window_job_end - window_job_start;
-			if (debug)
-			    printf("  finish %d.%d at %d as excess (%lld cum secs)\n",
-				   tmp->job_id,tmp->job_idx,tmp->endtime - base_time,excess_seconds);
+			if (debug) {
+			    cout << format("  finish %d.%d at %d as excess (%lld cum secs)\n")
+				% tmp->job_id % tmp->job_idx 
+				% (tmp->endtime - base_time) % excess_seconds;
+			}
 		    } else {
 			FATAL_ERROR("internal");
 		    }
@@ -1236,10 +1243,10 @@ public:
 	    printf("window was %d .. %d\n",window_start,window_end);
 	    printf("job counts: non-ers=%d, ers=%d, out-of-window-ers=%d, zero-length-ers=%d, ers-test=%d\n",
 		   non_ers_job_count, ers_job_count, out_of_window_jobs, zero_length_jobs,ers_test_job);
-	    printf("usage-seconds: reserved=%lld, best-effort=%lld, excess=%lld\n",
-		   reserved_seconds, best_effort_seconds, excess_seconds);
+	    cout << format("usage-seconds: reserved=%d, best-effort=%d, excess=%d\n")
+		% reserved_seconds % best_effort_seconds % excess_seconds;
 	}
-		
+			
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 

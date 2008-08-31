@@ -21,6 +21,7 @@ sub new {
     my $this = bless {
 	'compress' => [],
 	'verbose_level' => 1,
+	'ignore_missing_files' => 0,
     }, $class;
     while (@_ > 0) {
 	$_ = shift @_;
@@ -83,6 +84,8 @@ sub new {
 	    die "Can't set multiple ignoress" 
 		if defined $this->{ignore_re};
 	    $this->{ignore_re} = $1;
+	} elsif (/^ignore-missing-files$/o) {
+	    $this->{ignore_missing_files} = 1;
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '$_'";
 	}
@@ -126,7 +129,7 @@ sub usage {
     print <<'END_OF_USAGE';
 batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [compress-level=0-9]
   [extent-size=#[km]] [mode=split:#kmg] [mode=merge[:#:perl-expr]]
-  [transform={perl-expr}|subdir] 
+  [transform={perl-expr}|subdir] [ignore-missing-files]
   [ignore=regex] [require=regex]
   -- file/directory...
 
@@ -162,6 +165,8 @@ batch-parallel dsrepack [compress={bz2,lzf,gz,lzo}] [compress-level=0-9]
         either numerically or alphabetically. Finally the transform is set to
         create files named <transform-output>.$first-$last.ds where
         $first and $last are the first and last $1's of each group.
+     If there are any missing files in the list of numbers, a warning will
+     be printed.  This can be skipped with the ignore-missing-files option.
 
 Examples:
 
@@ -257,9 +262,13 @@ sub find_things_to_build {
 		    ++$prev;
 		    if ($prev != $source2order{$src}) {
 			print "Warning, expected to find file $prev, instead found $src, file $source2order{$src}.\n";
-			print "Continue [y]?";
-			$_ = <STDIN>;
-			exit(1) unless /^$/o || /^y/io;
+			print "Continue [y]? ";
+			if ($this->{ignore_missing_files}) {
+			    print " [yes, ignoring warning]\n";
+			} else {
+			    $_ = <STDIN>;
+			    exit(1) unless /^$/o || /^y/io;
+			}
 			$prev = $source2order{$src};
 		    }
 		}
@@ -329,6 +338,15 @@ sub rebuild_thing_message {
     $thing->rebuild_thing_message();
 }
     
+sub getResourceUsage {
+    my($this, $scheduler) = @_;
+
+    # Assume we will consume 100% of the cpu through parallel repack
+    return "rusage[ut=1]" if $scheduler eq 'lsf';
+    warn "Do not know how to specify resource utilization for scheduler '$scheduler'";
+    return '';
+}
+
 package DSRepackThing;
 
 use File::Path;
