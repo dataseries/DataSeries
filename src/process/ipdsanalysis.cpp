@@ -109,7 +109,7 @@ public:
     }
 
     void printInterval() {
-	if (false) printf("interval ending %lld\n",interval_end);
+	if (false) cout << format("interval ending %d\n") % interval_end;
 	double iend = (double)interval_end / 1.0e9;
 	double ilen = (double)interval_ns / 1.0e9;
 	if (iend > 0) {

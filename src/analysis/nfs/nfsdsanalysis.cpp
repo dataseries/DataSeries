@@ -192,12 +192,11 @@ public:
 		    if (filename == NULL) filename = &v->filehandle;
 		    if (offset.val() > filesize.val()) {
 			AssertAlways(bytes.val() == 0,("whoa, read beyond file size got bytes"));
-			printf("tolerating weird over %s on %s at %lld from %08x? %lld > %lld ; %d\n",
-			       v->is_read ? "read" : "write",
-			       maybehexstring(*filename).c_str(),
-			       packetat.val(), clientip.val(),
-			       offset.val(),filesize.val(),
-			       bytes.val());
+			cout << format("tolerating weird over %s on %s at %lld from %08x? %lld > %lld ; %d\n")
+			    % (v->is_read ? "read" : "write")
+			    % maybehexstring(*filename) % packetat.val()
+			    % clientip.val() % offset.val() % filesize.val()
+			    % bytes.val();
 		    }
 		}
 		v->cur_offset = filesize.val();
@@ -1345,17 +1344,25 @@ int main(int argc, char *argv[]) {
 
     // only pull through what we actually need to pull through.
     if (merge123Sequence.size() > 1) {
+	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
 	DataSeriesModule::getAndDelete(merge123Sequence);
     } else if (merge12Sequence.size()> 1) {
+	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	DataSeriesModule::getAndDelete(merge12Sequence);
     } else {
 	if (commonSequence.size() > 1) {
+	    sourcea->startPrefetching(8*32*1024*1024, 8*96*1024*1024);
 	    DataSeriesModule::getAndDelete(commonSequence);
 	}
 	if (attrOpsSequence.size() > 1) {
+	    sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	    DataSeriesModule::getAndDelete(attrOpsSequence);
 	}
 	if (rwSequence.size() > 1) {
+	    sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
 	    DataSeriesModule::getAndDelete(rwSequence);
 	}
     }

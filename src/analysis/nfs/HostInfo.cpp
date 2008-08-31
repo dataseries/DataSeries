@@ -488,6 +488,9 @@ public:
 	data.clear();
     }
 
+    size_t memoryUsage() const {
+	return data.memoryUsage() + sizeof(*this);
+    }
 private:
 
     HTSMap data;
@@ -627,6 +630,9 @@ public:
 	cube_data.clear();
     }
 
+    size_t memoryUsage() const {
+	return cube_data.memoryUsage() + sizeof(*this);
+    }
 private:
     StatsFactoryFn stats_factory_fn;
     OptionalCubePartialFn optional_cube_partial_fn;
@@ -679,11 +685,17 @@ public:
 	StatsQuantile bytes_rate;
 	Rates() : ops_rate(rate_quantile_maxerror, rate_quantile_maxgroups), 
 		  bytes_rate(rate_quantile_maxerror, rate_quantile_maxgroups)
-	{ }
+	{ 
+	    if (memory_usage == 0) {
+		memory_usage = 2*ops_rate.memoryUsage();
+	    }
+	}
 	void add(double ops, double bytes) {
 	    ops_rate.add(ops);
 	    bytes_rate.add(bytes);
 	}
+
+	static size_t memory_usage;
     };
 
     typedef TupleToAnyTuple<Tuple>::type AnyTuple;
@@ -705,7 +717,8 @@ public:
 	  group_count(0), printed_base_header(false), 
 	  printed_cube_header(false), printed_rates_header(false),
 	  print_rates_quantiles(true), sql_output(false), zero_cube(false),
-	  print_base(true), print_cube(true), zero_groups(0)
+	  print_base(true), print_cube(true), zero_groups(0),
+	  last_reported_memory_usage(0)
     {
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
@@ -894,6 +907,8 @@ public:
     }
 									 
     void rollupOneGroup() {
+	size_t memory_usage = base_data.memoryUsage()
+	    + rates_cube.memoryUsage();
 	if (zero_cube) {
 	    base_data.fillHashUniqueTuple(unique_vals_tuple);
 	    rates_cube.add(base_data, unique_vals_tuple);
@@ -901,7 +916,6 @@ public:
 	} else {
 	    rates_cube.add(base_data);
 	}
-
 
 	if (print_base && !zero_cube) {
 	    base_data.walkOrdered
@@ -920,6 +934,16 @@ public:
 	rates_cube.prune
 	    (boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
 	SINVARIANT(base_data.size() == 0);
+	
+	memory_usage += rate_hts.memoryUsage()
+	    + Rates::memory_usage * rate_hts.size();
+	if (memory_usage > (last_reported_memory_usage + 4*1024*1024)) {
+	    LintelLogDebug("HostInfo",
+			   format("# HostInfo-%ds: memory usage %d bytes @ %ds\n")
+			   % group_seconds % memory_usage 
+			   % (max_group_seconds - min_group_seconds));
+	    last_reported_memory_usage = memory_usage;
+	}
     }
 
     void processGroup(int32_t seconds) {
@@ -1274,7 +1298,7 @@ public:
 
     void printRate(const RateRollupTuple &t, Rates &v) {
 	SINVARIANT(v.ops_rate.count() == v.bytes_rate.count());
-	SINVARIANT(v.ops_rate.count() == group_count);
+	SINVARIANT(v.ops_rate.count() == static_cast<uint64_t>(group_count));
 	SINVARIANT(v.ops_rate.mean() > 0);
 
 	if (sql_output) {
@@ -1434,6 +1458,7 @@ public:
     uint32_t zero_groups;
     
     bool skip_cube_time, skip_cube_host, skip_cube_host_detail;
+    size_t last_reported_memory_usage;
 };
 
 double HostInfo::afs_count;
@@ -1443,3 +1468,4 @@ NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg) {
     return new HostInfo(prev, arg);
 }
 
+size_t HostInfo::Rates::memory_usage;

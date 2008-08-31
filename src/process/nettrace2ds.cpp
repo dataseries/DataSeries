@@ -750,6 +750,9 @@ public:
 #define ShortDataAssertMsg(condition,rpc_type,message) \
   ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
 
+#define ShortDataAssertBoost(condition,rpc_type,message) \
+  ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), str(message), __FILE__, __LINE__) )
+
 
 class RPCRequest : public RPC {
 public:
@@ -1300,9 +1303,9 @@ getLookupFilename(const uint32_t *xdr, int remain_len)
     INVARIANT(remain_len >= 4, format("bad1 %d") % remain_len);
     uint32_t strlen = ntohl(xdr[0]);
     // Changed to an assertion to handle set-6/cqracks.19352
-    RPCParseAssertMsg(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
-		      ("bad2 %d != roundup4(%d) @ record %lld\n",
-		       remain_len,strlen,cur_record_id));
+    RPCParseAssertBoost(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
+			format("bad2 %d != roundup4(%d) @ record %d\n")
+			% remain_len % strlen % cur_record_id);
     string ret((char *)(xdr + 1),strlen);
     if (enable_encrypt_filenames) {
 	string enc_ret = encryptString(ret);
@@ -2192,10 +2195,9 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		if (false) cout << format("v3GetAttr %lld %8x -> %8x; %d\n")
 			       % time % d.client % d.server % actual_len;
-		ShortDataAssertMsg(actual_len >= 8,"NFSv3 getattr request",
-				   ("bad getattr in %s request @%lld: %d",
-				    tracename.c_str(), cur_record_id,
-				    actual_len));
+		ShortDataAssertBoost(actual_len >= 8,"NFSv3 getattr request",
+				     format("bad getattr in %s request @%lld: %d")
+				     % tracename % cur_record_id % actual_len);
 		int fhlen = ntohl(xdr[0]);
 		SINVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64);
 		ShortDataAssertMsg(actual_len == 4+fhlen,"NFSv3 getattr request",("bad"));
@@ -2514,9 +2516,8 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 		 hval->client == d.client &&
 		 hval->xid == d.xid,("internal error\n"));
     if (warn_duplicate_reqs) { // disabled because of tons of them showing up in set-8
-	printf("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%lld duped by #%lld\n",
-	       hval->server, hval->client, hval->xid, 
-	       hval->request_id,d.request_id);
+	cout << format("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%d duped by #%d\n")
+	    % hval->server % hval->client % hval->xid % hval->request_id % d.request_id;
 	printf("  Checksums are %d/%d vs %d/%d\n",
 	       hval->ipchecksum,hval->l4checksum,d.ipchecksum,d.l4checksum);
 	fflush(stdout);
