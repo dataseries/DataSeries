@@ -152,6 +152,8 @@ public:
     const std::string &getFilename() const {
 	return filename;
     }
+
+    void setMaxBytesInProgress(size_t nbytes);
 private:
     struct toCompress {
 	Extent extent;

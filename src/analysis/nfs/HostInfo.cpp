@@ -987,7 +987,9 @@ public:
     void nextSecondsGroup(int32_t next_group_seconds) {
 	// skip counting the first and last groups; we prune these
 	// because we can't calculate the rates properly on them.
-	SINVARIANT(next_group_seconds > max_group_seconds);
+	INVARIANT(next_group_seconds > max_group_seconds,
+		  format("out of order %d <= %d")
+		  % next_group_seconds % max_group_seconds);
 	
 	if (max_group_seconds == numeric_limits<int32_t>::min()) {
 	    max_group_seconds = next_group_seconds - group_seconds;
@@ -1353,7 +1355,9 @@ public:
 	INVARIANT(Double::eq(v.mean(), payload_overall.mean()),
 		  format("%.20g != %.20g") 
 		  % v.mean() % payload_overall.mean());
-	SINVARIANT(Double::eq(v.stddev(), payload_overall.stddev()));
+	INVARIANT(Double::eq(v.stddev(), payload_overall.stddev()),
+		  format("%.20g != %.20g") % v.stddev() 
+		  % payload_overall.stddev());
 	    
 	tmp.used[is_send_index] = false;
 	Stats &w = rates_cube.getPartialEntry(tmp);

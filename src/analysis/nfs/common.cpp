@@ -11,6 +11,7 @@
 #include "common.hpp"
 
 using namespace std;
+using boost::format;
 
 NFSDSModule::~NFSDSModule()
 { }
@@ -294,8 +295,12 @@ uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id) {
     } else if (nfs_version == 3) {
 	SINVARIANT(op_id < n_nfsv3ops);
 	return nfsv3ops[op_id].unified_id;
+    } else if (nfs_version == 1) {
+	INVARIANT(op_id == 0, format("unknown opid %d") 
+		  % static_cast<uint32_t>(op_id));
+	return 0;
     } else {
-	FATAL_ERROR(boost::format("unhandled nfs version %d\n")
+	FATAL_ERROR(format("unhandled nfs version %d op %d\n")
 		    % static_cast<unsigned>(nfs_version));
 	return 0;
     }

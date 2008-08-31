@@ -70,7 +70,8 @@ FilterModule::getExtent()
 }
 
 OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
-			   const ExtentType *_outputtype, int _target_extent_size)
+			   const ExtentType *_outputtype, 
+			   int _target_extent_size)
     : outputtype(_outputtype),
       target_extent_size(_target_extent_size),
       sink(_sink), series(_series)

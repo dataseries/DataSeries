@@ -78,8 +78,9 @@ dataseries(7), dsselect(1)
 
 #include <boost/format.hpp>
 
-#include <Lintel/StringUtil.hpp>
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelLog.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/commonargs.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
@@ -281,9 +282,9 @@ void usage(const string argv0, const string &error) {
 
 // TODO: Split up main(), it's getting a bit large
 const string target_file_size_arg("--target-file-size=");
-int
-main(int argc, char *argv[])
-{
+
+int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
     uint64_t target_file_bytes = 0;
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
@@ -389,10 +390,15 @@ main(int argc, char *argv[])
     }
 
     DataSeriesModule *from = &source;
-    source.startPrefetching(16*1024*1024, 112*1024*1024); // 128MiB total
-    if (getenv("DISABLE_PREFETCHING") == NULL) {
-	from = new PrefetchBufferModule(source, 64*1024*1024);
-    }
+
+    // TODO: look at the number of cores we have and set these values
+    // more appropriately based on that, in particular, we want
+    // maxBytesInProgress =~ (ncpus+1) * output-extent-size * 2
+    // Make some assumption along the lines of 0.5-1GB of memory/core
+    source.startPrefetching(32*1024*1024, 224*1024*1024); // 256MiB total
+    // want a fair bit here in case we are writing big extents since 
+    // during compression they use 2x the size.
+    output->setMaxBytesInProgress(512*1024*1024); 
     output->writeExtentLibrary(library);
 
     DataSeriesSink::Stats all_stats;
