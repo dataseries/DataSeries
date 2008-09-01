@@ -1040,6 +1040,7 @@ usage(char *progname)
     cerr << "    -d <fh|fh-list pathname> # directory path lookup\n";
     cerr << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
     cerr << "    -f # Read/Write Extent analysis\n";
+    cerr << "    -g # Attr-Ops Extent analysis\n";
     cerr << "    -Z <series-to-print> # common, attr-ops, rw, merge12, merge123\n";
 
 //    cerr << "    #-b # Unique bytes in file handles analysis\n";
