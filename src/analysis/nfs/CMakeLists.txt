@@ -14,6 +14,7 @@ DATASERIES_PROGRAM(nfsdsanalysis
 	HostInfo.cpp 
 	ReadWriteExtent.cpp
 	ServerLatency.cpp 
+	UniqueFileHandles.cpp
         ../../process/sourcebyrange.cpp)
 
 

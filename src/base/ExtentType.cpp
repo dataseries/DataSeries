@@ -626,7 +626,8 @@ ExtentType::getColumnNumber(const ParsedRepresentation &rep,
     if (debug_getcolnum) {
 	cout << boost::format("column %s -> -1\n") % column;
     }
-    INVARIANT(missing_ok, boost::format("Unknown column '%s'") % column);
+    INVARIANT(missing_ok, boost::format("Unknown column '%s' in type '%s'") 
+	      % column % rep.name);
     return -1;
 }
 
