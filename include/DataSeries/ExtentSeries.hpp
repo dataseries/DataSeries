@@ -83,13 +83,14 @@ public:
     
     void setType(const ExtentType &type);
     const ExtentType *getType() { return type; }
-    // setExtent will automatically reset the pos iterator to the
-    // beginning of the extent; it is valid to call with NULL, that is
-    // equivalent to a call to clearExtent()
+    /// setExtent will automatically reset the pos iterator to the
+    /// beginning of the extent; it is valid to call with NULL, that is
+    /// equivalent to a call to clearExtent()
     void setExtent(Extent *e);
     void setExtent(Extent &e) {
 	setExtent(&e);
     }
+    /// exactly equivalent to setExtent(NULL)
     void clearExtent() { setExtent(NULL); }
 
     Extent *extent() { 

@@ -4,6 +4,7 @@
 #include <DataSeries/RowAnalysisModule.hpp>
 
 using namespace std;
+using boost::format;
 using dataseries::TFixedField;
 
 class ReadWriteExtentAnalysis : public RowAnalysisModule {
@@ -14,7 +15,10 @@ public:
           is_read(series, ""),
           offset(series, "offset"),
           bytes(series, "bytes"),
-	  read_size(0.005, static_cast<uint64_t>(1.0e10))
+	  read_size(0.005, static_cast<uint64_t>(1.0e10)),
+	  write_size(0.005, static_cast<uint64_t>(1.0e10)),
+	  read_offset(0.001, static_cast<uint64_t>(1.0e10)),
+	  write_offset(0.001, static_cast<uint64_t>(1.0e10))
     {
     }
 
@@ -44,21 +48,30 @@ public:
     virtual void processRow() {
 	if (is_read.val()) {
 	    read_size.add(bytes.val());
+	    read_offset.add(offset.val());
 	} else {
 	    write_size.add(bytes.val());
+	    write_offset.add(offset.val());
 	}
     }
 
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	
 	cout << "Read size:\n";
 	read_size.printTextRanges(cout, 100);
 	read_size.printTextTail(cout);
+
+	cout << "Read offset:\n";
+	read_offset.printTextRanges(cout, 500);
+
 	cout << "Write size:\n";
 	write_size.printTextRanges(cout, 100);
 	write_size.printTextTail(cout);
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+
+	cout << "Write offset:\n";
+	write_offset.printTextRanges(cout, 500);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
 private:
@@ -68,6 +81,7 @@ private:
     TFixedField<int32_t> bytes;
 
     StatsQuantile read_size, write_size;
+    StatsQuantile read_offset, write_offset;
 };
 
 namespace NFSDSAnalysisMod {
