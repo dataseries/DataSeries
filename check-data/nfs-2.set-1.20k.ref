@@ -8373,6 +8373,7 @@ HostInfo 1s cube:        *          *    *       access        *   8168    68.00
 HostInfo 1s cube:        *          *    *            * response  20000  6061.16
 HostInfo 1s cube:        *          *    *            *  request  20000    44.51
 HostInfo 1s cube:        *          *    *            *        *  40000  3052.84
+unique entries: 6 time, 130 host, 8 operation
 HostInfo 1s rates: host     dir      op    op-dir  ops/s payload-MiB/s
 HostInfo 1s rates-quantiles: 5% 10% 25% 50% 75% 90% 95% ops/s : 5% 10% 25% 50% 75% 90% 95% MiB/s
 HostInfo 1s rates: 0a40290b recv  getattr response       0.75    0.000

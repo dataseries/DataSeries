@@ -7136,6 +7136,7 @@ HostInfo 1s cube:        *          *    *       fsstat        *   6952    28.00
 HostInfo 1s cube:        *          *    *            * response  20000  3023.94
 HostInfo 1s cube:        *          *    *            *  request  20000    67.41
 HostInfo 1s cube:        *          *    *            *        *  40000  1545.67
+unique entries: 5 time, 68 host, 6 operation
 HostInfo 1s rates: host     dir      op    op-dir  ops/s payload-MiB/s
 HostInfo 1s rates-quantiles: 5% 10% 25% 50% 75% 90% 95% ops/s : 5% 10% 25% 50% 75% 90% 95% MiB/s
 HostInfo 1s rates: 0a0b0825 recv  getattr  request       0.67    0.000

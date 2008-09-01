@@ -465,7 +465,7 @@ public:
 	return getHashEntry(key);
     }
 
-    size_t size() {
+    size_t size() const {
 	return data.size();
     }
 
@@ -700,6 +700,11 @@ public:
 
     typedef TupleToAnyTuple<Tuple>::type AnyTuple;
 
+    Rates *createRates() {
+	checkMemoryUsage();
+	return new Rates();
+    }
+
     HostInfo(DataSeriesModule &_source, const std::string &arg) 
 	: RowAnalysisModule(_source),
 	  packet_at(series, ""),
@@ -711,9 +716,10 @@ public:
 	  is_request(series, ""),
 	  group_seconds(1),
 	  incremental_batch_size(100000),
-	  rate_hts(boost::bind(HostInfo::createRates)),
+	  rate_hts(boost::bind(&HostInfo::createRates, this)),
 	  min_group_seconds(numeric_limits<int32_t>::max()),
 	  max_group_seconds(numeric_limits<int32_t>::min()),
+	  last_rollup_at(numeric_limits<int32_t>::min()),
 	  group_count(0), printed_base_header(false), 
 	  printed_cube_header(false), printed_rates_header(false),
 	  print_rates_quantiles(true), sql_output(false), zero_cube(false),
@@ -774,10 +780,6 @@ public:
     }
 
     virtual ~HostInfo() { }
-
-    static Rates *createRates() {
-	return new Rates();
-    }
 
     static int32_t host(const Tuple &t) {
 	return t.get<host_index>();
@@ -906,11 +908,33 @@ public:
 	}
     }
 									 
-    void rollupOneGroup() {
+    void checkMemoryUsage() {
+	static LintelLog::Category category("HostInfo");
+
+	if (!LintelLog::wouldDebug(category)) {
+	    return;
+	}
+
 	size_t memory_usage = base_data.memoryUsage()
 	    + rates_cube.memoryUsage();
+	memory_usage += rate_hts.memoryUsage()
+	    + Rates::memory_usage * rate_hts.size();
+	if (memory_usage > (last_reported_memory_usage + 32*1024*1024)) {
+	    LintelLogDebug
+		("HostInfo", format("# HostInfo-%ds: memory usage %d bytes"
+				    " (%d + %d + %d + %d * %d) @ %ds")
+		 % group_seconds % memory_usage 
+		 % base_data.memoryUsage() % rates_cube.memoryUsage()
+		 % rate_hts.memoryUsage() 
+		 % Rates::memory_usage %  rate_hts.size()
+		 % (max_group_seconds - min_group_seconds));
+	    last_reported_memory_usage = memory_usage;
+	}
+    }
+
+    void rollupBatch() {
+	base_data.fillHashUniqueTuple(unique_vals_tuple);
 	if (zero_cube) {
-	    base_data.fillHashUniqueTuple(unique_vals_tuple);
 	    rates_cube.add(base_data, unique_vals_tuple);
 	    unique_vals_tuple.get<time_index>().clear();
 	} else {
@@ -924,8 +948,10 @@ public:
 	}
 	base_data.clear();
 
-	rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, 
-				    this, _1, _2, _3));
+	if (options["print_rates"]) {
+	    rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, 
+					this, _1, _2, _3));
+	}
 	if (print_cube || zero_cube) {
 	    rates_cube.walkOrdered
 		(boost::bind(&HostInfo::printCubeIncrementalTime,
@@ -934,23 +960,11 @@ public:
 	rates_cube.prune
 	    (boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
 	SINVARIANT(base_data.size() == 0);
-	
-	memory_usage += rate_hts.memoryUsage()
-	    + Rates::memory_usage * rate_hts.size();
-	if (memory_usage > (last_reported_memory_usage + 4*1024*1024)) {
-	    LintelLogDebug("HostInfo",
-			   format("# HostInfo-%ds: memory usage %d bytes @ %ds\n")
-			   % group_seconds % memory_usage 
-			   % (max_group_seconds - min_group_seconds));
-	    last_reported_memory_usage = memory_usage;
-	}
+	checkMemoryUsage();
     }
 
     void processGroup(int32_t seconds) {
-	if (max_group_seconds < min_group_seconds) {
-	    SINVARIANT(base_data.size() == 0);
-	    return; // nothing has been added yet.
-	}
+	SINVARIANT(max_group_seconds >= min_group_seconds);
 	if (seconds > min_group_seconds) {
 	    ++group_count;
 	}
@@ -960,7 +974,8 @@ public:
 		 % min_group_seconds % max_group_seconds % base_data.size()
 		 % rates_cube.size() % rates_cube.size() % rate_hts.size());
 
-	    rollupOneGroup();
+	    last_rollup_at = max_group_seconds;
+	    rollupBatch();
 	} else {
 	    LintelLogDebug("HostInfo", format("skip incremental %d < %d")
 			   % base_data.size() % incremental_batch_size);
@@ -975,7 +990,7 @@ public:
 	// ignore the first and last groups, so we end up with -1
 	SINVARIANT(elapsed_seconds / group_seconds - 1 == group_count);
 
-	rollupOneGroup();
+	rollupBatch();
 	if (print_cube) {
 	    rates_cube.walkOrdered
 		(boost::bind(&HostInfo::printCubeIncrementalNonTime,
@@ -985,6 +1000,20 @@ public:
     }
 
     void nextSecondsGroup(int32_t next_group_seconds) {
+	if (next_group_seconds <= max_group_seconds) {
+	    
+	    cout << format("# HostInfo-%ds: WARNING, out of order requests, %d <= %d\n")
+		% group_seconds % next_group_seconds % max_group_seconds;
+	    INVARIANT(next_group_seconds == max_group_seconds - group_seconds,
+		      "Only allowing rollback by one group");
+	    INVARIANT(last_rollup_at < (next_group_seconds - 2*group_seconds),
+		      format("LRA=%d >= %d - %d; safety unclear")
+		      % last_rollup_at % next_group_seconds 
+		      % (2*group_seconds));
+	    INVARIANT(base_data.size() < incremental_batch_size, 
+		      "Size overflow, disallowing");
+	    return;
+	}
 	// skip counting the first and last groups; we prune these
 	// because we can't calculate the rates properly on them.
 	INVARIANT(next_group_seconds > max_group_seconds,
@@ -1164,11 +1193,8 @@ public:
 	    && partial.used[host_index] == false;
     }
 
-    static double afs_count;
-
     static void addFullStats(Stats &into, const Stats &val) {
 	into.add(val);
-	++afs_count;
     }
 
     void configCube() {
@@ -1370,7 +1396,7 @@ public:
 	// Check that we have the right number of entries in the
 	// rollups of the rates table.
 
-	if (group_count > 0) {
+	if (group_count > 0 && options["print_rates"]) {
 	    RateRollupTuple rrt;
 	    INVARIANT(rate_hts[rrt].ops_rate.countll() + zero_groups
 		      == static_cast<uint64_t>(group_count),
@@ -1395,8 +1421,10 @@ public:
 
 	finalGroup();
 
-	LintelLogDebug("HostInfo", 
-		       format("Actual afs_count = %.0f\n") % afs_count);
+	cout << format("unique entries: %d time, %d host, %d operation\n")
+	    % (1+(max_group_seconds - min_group_seconds)/group_seconds)
+	    % unique_vals_tuple.get<host_index>().size()
+	    % unique_vals_tuple.get<operation_index>().size();
 	
 	SINVARIANT(base_data.size() == 0);
 	    
@@ -1453,7 +1481,7 @@ public:
 
     HashTupleStats<RateRollupTuple, Rates> rate_hts;
     Stats payload_overall;
-    int32_t min_group_seconds, max_group_seconds;
+    int32_t min_group_seconds, max_group_seconds, last_rollup_at;
     int64_t group_count;
 
     bool printed_base_header, printed_cube_header, printed_rates_header;
@@ -1464,8 +1492,6 @@ public:
     bool skip_cube_time, skip_cube_host, skip_cube_host_detail;
     size_t last_reported_memory_usage;
 };
-
-double HostInfo::afs_count;
 
 RowAnalysisModule *
 NFSDSAnalysisMod::newHostInfo(DataSeriesModule &prev, char *arg) {
