@@ -306,6 +306,15 @@ const std::string &unifiedIdToName(uint8_t unified_id) {
     return unified_ops[unified_id];
 }
 
+uint8_t nameToUnifiedId(const std::string &name) {
+    for(unsigned i = 0; i < n_unified; ++i) {
+	if (unified_ops[i] == name) {
+	    return static_cast<uint8_t>(i);
+	}
+    }
+    FATAL_ERROR(boost::format("unable to find operation named '%s'") % name);
+}
+
 bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
 		       const std::string &op_name) {
     uint8_t unified_id = opIdToUnifiedId(nfs_version, op_id);

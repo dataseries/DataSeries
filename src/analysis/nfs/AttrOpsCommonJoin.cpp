@@ -16,7 +16,7 @@ const string attropscommonjoin_xml_in(
   "  <field type=\"int32\" name=\"server\" />\n"
   "  <field type=\"int32\" name=\"client\" />\n"
   "  <field type=\"byte\" name=\"unified-op-id\" />\n"
-  "  <field type=\"int64\" name=\"record-id\" />\n"
+  "  <field type=\"int64\" name=\"reply-id\" note=\"sorted by this\" />\n"
   "  <field type=\"variable32\" name=\"filename\" opt_nullable=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_maybehex=\"yes\" />\n"
   "  <field type=\"variable32\" name=\"type\" />\n"
@@ -49,9 +49,9 @@ public:
 	  in_nfs_version(es_common, "", Field::flag_nullable),
 	  out_unified_op_id(es_out,"unified-op-id"),
 	  in_recordid(es_common,""),
-	  out_recordid(es_out,"record-id"),
 	  in_requestid(es_attrops,""),
 	  in_replyid(es_attrops,""),
+	  out_replyid(es_out,"reply-id"),
 	  in_filename(es_attrops,"filename",Field::flag_nullable),
 	  out_filename(es_out,"filename",Field::flag_nullable),
 	  in_filehandle(es_attrops,"filehandle"),
@@ -337,7 +337,7 @@ public:
 		}
 		out_server.set(in_source.val());
 		out_client.set(in_dest.val());
-		out_recordid.set(in_requestid.val());
+		out_replyid.set(in_replyid.val());
 		if (in_filename.isNull()) {
 		    out_filename.setNull(true);
 		} else {
@@ -386,7 +386,7 @@ private:
     Int32Field in_dest, out_client;
     BoolField in_is_request;
     ByteField in_op_id, in_nfs_version, out_unified_op_id;
-    Int64Field in_recordid, out_recordid, in_requestid, in_replyid;
+    Int64Field in_recordid, in_requestid, in_replyid, out_replyid;
 
     Variable32Field in_filename, out_filename, in_filehandle, out_filehandle, in_type, out_type;
     Int64Field in_filesize, out_filesize, in_modifytime, out_modifytime;

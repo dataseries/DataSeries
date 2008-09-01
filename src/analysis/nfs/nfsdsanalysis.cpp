@@ -41,6 +41,7 @@
 
 namespace NFSDSAnalysisMod {
     RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
+    RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
 }
 
 using namespace NFSDSAnalysisMod;    
@@ -1040,6 +1041,7 @@ usage(char *progname)
     cerr << "    -d <fh|fh-list pathname> # directory path lookup\n";
     cerr << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
     cerr << "    -f # Read/Write Extent analysis\n";
+    cerr << "    -Z <series-to-print> # common, attr-ops, rw, merge12, merge123\n";
 
 //    cerr << "    #-b # Unique bytes in file handles analysis\n";
 //    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
@@ -1064,6 +1066,10 @@ usage(char *progname)
     exit(1);
 }
 
+void addDSToText(SequenceModule &to) {
+    to.addModule(new DStoTextModule(to.tail()));
+}
+
 int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	      SequenceModule &attrOpsSequence, SequenceModule &rwSequence,
 	      SequenceModule &merge12Sequence, 
@@ -1079,7 +1085,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     bool add_file_handle_operation_lookup = false;
 
     while (1) {
-	int opt = getopt(argc, argv, "abc:d:e:fh");
+	int opt = getopt(argc, argv, "abc:d:e:fghZ:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -1111,7 +1117,28 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	    rwSequence.addModule
 		(newReadWriteExtentAnalysis(rwSequence.tail()));
 	    break;
-
+	case 'g':
+	    attrOpsSequence.addModule
+		(newUniqueFileHandles(attrOpsSequence.tail()));
+	    break;
+	case 'Z': {
+	    string arg = optarg;
+	    if (arg == "common") {
+		addDSToText(commonSequence);
+	    } else if (arg == "attr-ops") {
+		addDSToText(attrOpsSequence);
+	    } else if (arg == "rw") {
+		addDSToText(rwSequence);
+	    } else if (arg == "merge12") {
+		addDSToText(merge12Sequence);
+	    } else if (arg == "merge123") {
+		addDSToText(merge123Sequence);
+	    } else {
+		FATAL_ERROR(format("Unknown choice to print '%s'") % arg);
+	    }
+	    break;
+	}
+	    
 #if UNTESTED_ANALYSIS_DISABLED
 	case 'b': FATAL_ERROR("untested");options[Unique] = 1; break;
 	case 'c': FATAL_ERROR("untested");{
@@ -1348,6 +1375,9 @@ int main(int argc, char *argv[]) {
 	DataSeriesModule::getAndDelete(merge123Sequence);
     } else if (merge12Sequence.size()> 1) {
 	DataSeriesModule::getAndDelete(merge12Sequence);
+	if (rwSequence.size() > 1) {
+	    DataSeriesModule::getAndDelete(rwSequence);
+	}
     } else {
 	if (commonSequence.size() > 1) {
 	    DataSeriesModule::getAndDelete(commonSequence);
