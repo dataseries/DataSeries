@@ -1,4 +1,6 @@
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
+#include <Lintel/RotatingHashMap.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/ExtentField.hpp>
@@ -25,8 +27,10 @@ public:
           modify_time(series, "modify_time", Field::flag_nullable),
           offset(series, "offset"),
           bytes(series, "bytes"),
+	  last_rotate_time_raw(numeric_limits<int64_t>::min()),
 	  reset_interval_raw(0),
-	  skip_distribution(0.001, static_cast<uint64_t>(1.0e10))
+	  skip_distribution(0.001, static_cast<uint64_t>(1.0e10)),
+	  last_reported_memory_usage(0)
     { 
 	ignore_client = false;
 	ignore_server = false;
@@ -42,6 +46,10 @@ public:
 		FATAL_ERROR("?");
 	    }
 	}
+	if (LintelLog::wouldDebug("memory_usage")) {
+	    last_reported_memory_usage = 1;
+	    reportMemoryUsage();
+	} 
     }
 
     virtual ~Sequentiality() { }
@@ -87,7 +95,29 @@ public:
 	state.reset();
     }
 
+    void reportMemoryUsage() {
+	size_t a = states.memoryUsage();
+	size_t b = skip_distribution.memoryUsage();
+	LintelLogDebug("memory_usage",
+		       format("# Memory-Usage: Sequentiality %d = %d + %d") % (a + b) % a % b);
+	last_reported_memory_usage = a + b;
+    }
+	
+    virtual void newExtentHook(const Extent &e) {
+	if (last_reported_memory_usage > 0) {
+	    size_t memory_usage = states.memoryUsage() + skip_distribution.memoryUsage();
+	    if (memory_usage > (last_reported_memory_usage  + 4 * 1024 * 1024)) {
+		reportMemoryUsage();
+	    }
+	}
+    }
+
     virtual void processRow() {
+	if (reply_at.valRaw() > last_rotate_time_raw + reset_interval_raw) {
+	    // TODO: verify they are clean.
+	    states.rotate();
+	    last_rotate_time_raw = reply_at.valRaw();
+	}
 	FHState &state = states[Key(md5FileHash(filehandle),
 				    ignore_server ? 0 : server.val(), 
 				    ignore_client ? 0 : client.val())];
@@ -122,6 +152,7 @@ public:
 
     virtual void printResult() {
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	reportMemoryUsage();
 	cout << "Analysis configuration: ";
 	if (ignore_client) {
 	    cout << "ignore client, ";
@@ -152,12 +183,14 @@ private:
     TFixedField<int64_t> offset;
     TFixedField<int32_t> bytes;
 
-    HashMap<Key, FHState, TupleHash<Key> > states;
-
+    RotatingHashMap<Key, FHState, TupleHash<Key> > states;
+    int64_t last_rotate_time_raw;
     int64_t reset_interval_raw;
 
     bool ignore_client, ignore_server;
     StatsQuantile skip_distribution;
+
+    size_t last_reported_memory_usage;
 };
 
 namespace NFSDSAnalysisMod {

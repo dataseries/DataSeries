@@ -41,6 +41,12 @@ public:
     // field names, and for that, you only need to hook on the first
     // Extent.
 
+    // TODO: probably should redo the next two hooks; in practice, we
+    // need 1 right at the beginning before any extents have been set,
+    // but with the extent, a second right after that first extent is
+    // set.  And a second one that gets called after the extent is
+    // set on every row.
+
     /** Called right after each extent is retrieved, but before the 
 	extent is set in the series.  Serves two purposes: 1) infrequent
 	statistics/processing; and 2) setting up fields with unknown 

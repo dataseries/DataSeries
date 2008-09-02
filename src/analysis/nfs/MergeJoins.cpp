@@ -90,8 +90,13 @@ public:
 	  enable_side_data(false),
 	  unified_read_id(nameToUnifiedId("read")),
 	  unified_write_id(nameToUnifiedId("write")),
-	  last_side_data_rotate(numeric_limits<int64_t>::min())
-    { }
+	  last_side_data_rotate(numeric_limits<int64_t>::min()),
+	  last_reported_memory_usage(0)
+    { 
+	if (LintelLog::wouldDebug("memory_usage")) {
+	    last_reported_memory_usage = 1;
+	} 
+    }
 
     virtual ~AttrOpsCommonJoin() { 
 	delete prevreqht;
@@ -198,15 +203,35 @@ public:
 	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
     }
 
+    void reportMemoryUsage() {
+	size_t a = curreqht->memoryUsage();
+	size_t b = prevreqht->memoryUsage();
+	size_t c = rw_side_data.memoryUsage();
+	LintelLogDebug("memory_usage", 
+		       format("# Memory-Usage: AttrOpsCommonJoin %d = %d + %d + %d")
+		       % (a + b + c) % a % b % c);
+	last_reported_memory_usage = a + b + c;
+    }
+	
     virtual Extent *getExtent() {
-	if (all_done)
+	if (all_done) {
+	    reportMemoryUsage();
 	    return NULL;
+	}
+	if (last_reported_memory_usage > 0) {
+	    size_t memory_usage = curreqht->memoryUsage()
+		+ prevreqht->memoryUsage() + rw_side_data.memoryUsage();
+	    if (memory_usage > (last_reported_memory_usage + 4*1024*1024)) {
+		reportMemoryUsage();
+	    }
+	}
 	if(es_common.curExtent() == NULL) {
 	    Extent *tmp = nfs_common->getExtent();
 	    if (tmp == NULL) {
 		all_done = true;
 		delete es_attrops.curExtent();
 		es_attrops.clearExtent();
+		reportMemoryUsage();
 		return NULL;
 	    }
 
@@ -225,6 +250,7 @@ public:
 	    delete es_common.curExtent();
 	    es_common.clearExtent();
 	    all_done = true;
+	    reportMemoryUsage();
 	    return NULL;
 	}
 	
@@ -474,6 +500,8 @@ private:
     pthread_t rw_side_data_thread; // safety
     uint8_t unified_read_id, unified_write_id;
     int64_t last_side_data_rotate; // raw units
+
+    size_t last_reported_memory_usage;
 };
 	
 namespace NFSDSAnalysisMod {
@@ -687,8 +715,9 @@ public:
 		}
 	    }
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
-		// This can happen because with NFSv3, read-write operations are not
-		// required to have any attributes in them.
+		// This can happen because with NFSv3, read-write
+		// operations are not required to have any attributes
+		// in them.
 		const AttrOpsCommonJoin::RWSideData &request 
 		    = common_attr_join->getRWSideData(in_rw_request_id.val());
 		const AttrOpsCommonJoin::RWSideData &reply
