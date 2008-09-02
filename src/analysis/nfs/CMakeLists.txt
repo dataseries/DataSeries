@@ -9,9 +9,8 @@ DATASERIES_PROGRAM(nfssubset)
 
 DATASERIES_PROGRAM(nfsdsanalysis 
 	common.cpp mod1.cpp mod2.cpp mod3.cpp mod4.cpp 
-	AttrOpsCommonJoin.cpp
-	CommonAttrRWJoin.cpp
 	HostInfo.cpp 
+	MergeJoins.cpp
 	ReadWriteExtent.cpp
 	ServerLatency.cpp 
 	Sequentiality.cpp

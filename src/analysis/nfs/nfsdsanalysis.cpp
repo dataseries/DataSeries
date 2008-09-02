@@ -1125,6 +1125,11 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 		(newUniqueFileHandles(attrOpsSequence.tail()));
 	    break;
 	case 'i':
+#if 0
+	    // experiment, <10% difference
+	    merge123Sequence.addModule
+		(new PrefetchBufferModule(merge123Sequence.tail(), 1024*1024));
+#endif
 	    merge123Sequence.addModule
 		(newSequentiality(merge123Sequence.tail(), optarg));
 	    break;
@@ -1235,7 +1240,8 @@ printResult(DataSeriesModule *mod)
     } else if (rowmod != NULL) {
 	rowmod->printResult();
     } else {
-	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL,
+	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL
+		  || dynamic_cast<PrefetchBufferModule *>(mod) != NULL,
 		  "Found unexpected module in chain");
     }
 

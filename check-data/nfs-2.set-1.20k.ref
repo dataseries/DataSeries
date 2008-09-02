@@ -19237,7 +19237,7 @@ Begin-virtual void FileHandleOperationLookup::printResult()
 End-virtual void FileHandleOperationLookup::printResult()
 
 Begin-virtual void CommonAttrRWJoin::printResult()
-  skipped 0 records in join -- no match found
+  skipped 0 records in join -- not read or write
   generated 0.00 MB of extent output
 End-virtual void CommonAttrRWJoin::printResult()
 

@@ -1,12 +1,15 @@
 #include <string>
 
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/PointerUtil.hpp>
+#include <Lintel/RotatingHashMap.hpp>
 
 #include <DataSeries/SequenceModule.hpp>
 #include <analysis/nfs/common.hpp>
 
 using namespace std;
 using boost::format;
+using dataseries::TFixedField;
 
 // not intended for writing, leaves out packing options
 const string attropscommonjoin_xml_in( 
@@ -87,6 +90,7 @@ public:
     }
 
     void prepFields(Extent *e) {
+	rw_side_data_thread = pthread_self();
 	const ExtentType &type = e->getType();
 	if (type.getName() == "NFS trace: common") {
 	    SINVARIANT(type.getNamespace() == "" &&
@@ -378,6 +382,19 @@ public:
 	}
     }
 
+    struct RWSideData {
+	int64_t at;
+	int32_t source_ip, dest_ip;
+	bool is_read;
+    };
+
+    const RWSideData &getRWSideData(int64_t record_id) {
+	SINVARIANT(rw_side_data_thread == pthread_self());
+	RWSideData *ret = rw_side_data.lookup(record_id);
+	SINVARIANT(ret != NULL);
+	return *ret;
+    }
+
 private:
     DataSeriesModule *nfs_common, *nfs_attrops;
     ExtentSeries es_common, es_attrops, es_out;
@@ -405,6 +422,9 @@ private:
     uint64_t skipped_common_count, skipped_attrops_count, 
 	      skipped_duplicate_attr_count;
     int64_t last_reply_id;
+
+    RotatingHashMap<int64_t, RWSideData> rw_side_data;
+    pthread_t rw_side_data_thread; // safety
 };
 	
 namespace NFSDSAnalysisMod {
@@ -417,6 +437,278 @@ namespace NFSDSAnalysisMod {
 			   SequenceModule &attrops_seq) {
 	lintel::safeDownCast<AttrOpsCommonJoin>(join)
 	    ->setInputs(common_seq.tail(), attrops_seq.tail());
+    }
+}
+
+
+// not intended for writing, leaves out packing options
+const string commonattrrw_xml_in( 
+  "<ExtentType name=\"common-attr-rw-join\">\n"
+  "  <field type=\"int64\" %1% name=\"request_at\" />\n"
+  "  <field type=\"int64\" %1% name=\"reply_at\" note=\"sorted by this\" />\n"
+  "  <field type=\"int32\" name=\"server\" />\n"
+  "  <field type=\"int32\" name=\"client\" />\n"
+  "  <field type=\"variable32\" name=\"filehandle\" print_hex=\"yes\" />\n"
+  "  <field type=\"bool\" name=\"is_read\" />\n"
+  "  <field type=\"int64\" name=\"file_size\" />\n"
+  "  <field type=\"int64\" name=\"modify_time\" />\n"
+  "  <field type=\"int64\" name=\"offset\" />\n"
+  "  <field type=\"int32\" name=\"bytes\" />\n"
+  "</ExtentType>\n"
+);
+
+// Old implementation in 87e66db0041a3b1ffa81b0865efc06772e325c23 and
+// prior revisions.
+class CommonAttrRWJoin: public NFSDSModule {
+public:
+    CommonAttrRWJoin()
+	: commonattr(NULL), rw(NULL),
+	  es_commonattr(ExtentSeries::typeExact),
+	  es_rw(ExtentSeries::typeExact),
+	  in_request_at(es_commonattr,"request-at"),
+	  out_request_at(es_out,"request_at"),
+	  in_reply_at(es_commonattr,"reply-at"),
+	  out_reply_at(es_out,"reply_at"),
+	  in_server(es_commonattr,"server"),
+	  out_server(es_out,"server"),
+	  in_client(es_commonattr,"client"),
+	  out_client(es_out,"client"),
+	  in_unified_op_id(es_commonattr,"unified-op-id"),
+	  in_ca_reply_id(es_commonattr, "reply-id"),
+	  in_rw_reply_id(es_rw, ""),
+	  in_filehandle(es_commonattr,"filehandle"),
+	  out_filehandle(es_out,"filehandle"),
+	  in_filesize(es_commonattr,"file-size"),
+	  out_filesize(es_out,"file_size"),
+	  in_modifytime(es_commonattr,"modify-time"),
+	  out_modifytime(es_out,"modify_time"),
+	  in_offset(es_rw,"offset"),
+	  out_offset(es_out,"offset"),
+	  in_bytes(es_rw,"bytes"),
+	  out_bytes(es_out,"bytes"),
+	  in_is_read(es_rw,""),
+	  out_is_read(es_out,"is_read"),
+	  rw_done(false), commonattr_done(false),
+	  skip_count(0), last_reply_id(-1), 
+	  read_unified_id(nameToUnifiedId("read")),
+	  write_unified_id(nameToUnifiedId("write")),
+	  output_bytes(0), missing_attr_ops_in_join(0),
+	  did_field_names_init(false)
+    { }
+
+    virtual ~CommonAttrRWJoin() { }
+
+    void initOutType() {
+	SINVARIANT(es_commonattr.getType() != NULL &&
+		   es_out.getType() == NULL);
+
+	xmlNodePtr ftype 
+	    = es_commonattr.getType()->xmlNodeFieldDesc("request-at");
+	string units = ExtentType::strGetXMLProp(ftype, "units");
+	string epoch = ExtentType::strGetXMLProp(ftype, "epoch");
+	
+	string repl = str(format("units=\"%s\" epoch=\"%s\"") % units % epoch);
+	string tmp = str(format(commonattrrw_xml_in) % repl);
+	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
+    }
+
+    void setInputs(DataSeriesModule &common_attr_mod, 
+		   DataSeriesModule &rw_mod) {
+	commonattr = &common_attr_mod;
+	rw = &rw_mod;
+    }
+
+    void doFieldNameInit(Extent &e) {
+	did_field_names_init = true;
+
+	const ExtentType &type = e.getType();
+	if (type.getName() == "NFS trace: read-write") {
+	    SINVARIANT(type.getNamespace() == "" &&
+		       type.majorVersion() == 0 &&
+		       type.minorVersion() == 0);
+	    in_rw_reply_id.setFieldName("reply-id");
+	    in_is_read.setFieldName("is-read");
+	} else if (type.getName() == "Trace::NFS::read-write"
+		   && type.versionCompatible(1,0)) {
+	    in_rw_reply_id.setFieldName("reply-id");
+	    in_is_read.setFieldName("is-read");
+	} else if (type.getName() == "Trace::NFS::read-write"
+		   && type.versionCompatible(2,0)) {
+	    in_rw_reply_id.setFieldName("reply_id");
+	    in_is_read.setFieldName("is_read");
+	} else {
+	    FATAL_ERROR("?");
+	}
+
+    }
+
+    void nextRWExtent() {
+	if (rw_done) {
+	    return;
+	}
+	delete es_rw.extent();
+	Extent *tmp = rw->getExtent();
+	if (tmp == NULL) {
+	    rw_done = true;
+	} 
+	if (!did_field_names_init) {
+	    doFieldNameInit(*tmp);
+	}
+	es_rw.setExtent(tmp);
+    }
+
+    void nextCommonAttrExtent() {
+	if (commonattr_done) {
+	    return;
+	}
+	delete es_commonattr.extent();
+	Extent *tmp = commonattr->getExtent();
+	if (tmp == NULL) {
+	    commonattr_done = true;
+	} 
+	es_commonattr.setExtent(tmp);
+    }
+
+    void finishCheck() {
+	// should be at end of rw extents
+	if (!rw_done) {
+	    SINVARIANT(!es_rw.morerecords());
+	    nextRWExtent();
+	    SINVARIANT(rw_done);
+	}
+	if (!commonattr_done && !es_commonattr.morerecords()) {
+	    nextCommonAttrExtent();
+	}
+	// may have more attr ops, but no read/write ones.
+	while(!commonattr_done) {
+	    SINVARIANT(es_commonattr.morerecords());
+	    SINVARIANT(in_unified_op_id.val() != read_unified_id &&
+		       in_unified_op_id.val() != write_unified_id);
+	    ++es_commonattr;
+	    if (!es_commonattr.morerecords()) {
+		nextCommonAttrExtent();
+	    }
+	}
+    }
+
+    virtual Extent *getExtent() { 
+	if (commonattr_done && rw_done) {
+	    return NULL;
+	}
+	if (es_out.getType() == NULL) {
+	    SINVARIANT(es_commonattr.extent() == NULL
+		       && es_rw.extent() == NULL);
+	    nextCommonAttrExtent();
+	    nextRWExtent();
+	    initOutType();
+	}
+	Extent *outextent = new Extent(*es_out.getType());
+	es_out.setExtent(outextent);
+
+	while(outextent->extentsize() < 128*1024) {
+	restart:
+	    if (es_rw.extent() == NULL || es_rw.morerecords() == false) {
+		nextRWExtent();
+	    }
+	    if (es_commonattr.extent() == NULL 
+		|| es_commonattr.morerecords() == false) {
+		nextCommonAttrExtent();
+	    }
+	    if (rw_done || commonattr_done) {
+		finishCheck();
+		break;
+	    }
+
+	    while (in_ca_reply_id.val() < in_rw_reply_id.val()) {
+		SINVARIANT(in_unified_op_id.val() != read_unified_id &&
+			   in_unified_op_id.val() != write_unified_id);
+		++skip_count;
+		++es_commonattr;
+		if (!es_commonattr.morerecords()) {
+		    goto restart;
+		}
+	    }
+	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
+		LintelLogDebug("CommonAttrRWJoin", 
+			       format("missing attr-ops for reply %d, got %d")
+			       % in_rw_reply_id.val() % in_ca_reply_id.val());
+		// Dunno why this happens, but saw it once in set-0/001000-001499
+		++missing_attr_ops_in_join;
+		SINVARIANT(missing_attr_ops_in_join < 1000);
+		++es_rw;
+		goto restart;
+	    }
+	    INVARIANT(in_ca_reply_id.val() == in_rw_reply_id.val(),
+		      format("%d != %d") % in_ca_reply_id.val()
+		      % in_rw_reply_id.val());
+	    
+	    es_out.newRecord();
+	    out_request_at.set(in_request_at.val());
+	    out_reply_at.set(in_reply_at.val());
+	    out_server.set(in_server.val());
+	    out_client.set(in_client.val());
+	    out_filehandle.set(in_filehandle);
+	    out_filesize.set(in_filesize.val());
+	    out_modifytime.set(in_modifytime.val());
+	    out_offset.set(in_offset.val());
+	    out_bytes.set(in_bytes.val());
+	    out_is_read.set(in_is_read.val());
+	    ++es_commonattr;
+	    ++es_rw;
+	}
+
+	output_bytes += outextent->extentsize();
+	return outextent;
+    }
+
+    virtual void printResult() {
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	cout << format("  skipped %d records in join -- not read or write\n") % skip_count;
+	if (missing_attr_ops_in_join) {
+	    cout << format("  WARNING: skipped %d rw rows, could not find matching attr-op row")
+		% missing_attr_ops_in_join;
+	    cout << "Enable LINTEL_LOG_DEBUG=CommonAttrRWJoin to debug\n";
+	}
+	cout << format("  generated %.2f MB of extent output\n")
+	    % (static_cast<double>(output_bytes)/(1024.0*1024.0));
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
+    }
+private:
+    DataSeriesModule *commonattr, *rw;
+    ExtentSeries es_commonattr, es_rw, es_out;
+    TFixedField<int64_t> in_request_at, out_request_at;
+    TFixedField<int64_t> in_reply_at, out_reply_at;
+    TFixedField<int32_t> in_server, out_server;
+    TFixedField<int32_t> in_client, out_client;
+    TFixedField<uint8_t> in_unified_op_id;
+    TFixedField<int64_t> in_ca_reply_id, in_rw_reply_id;
+    Variable32Field in_filehandle, out_filehandle; 
+    TFixedField<int64_t> in_filesize, out_filesize;
+    TFixedField<int64_t> in_modifytime, out_modifytime;
+    TFixedField<int64_t> in_offset, out_offset;
+    TFixedField<int32_t> in_bytes, out_bytes;
+    BoolField in_is_read, out_is_read;
+
+    bool rw_done, commonattr_done;
+    int skip_count;
+    int64_t last_reply_id;
+
+    uint8_t read_unified_id, write_unified_id;
+    ExtentType::int64 output_bytes;
+    uint32_t missing_attr_ops_in_join;
+    bool did_field_names_init;
+};
+
+namespace NFSDSAnalysisMod {
+    NFSDSModule *newCommonAttrRWJoin() {
+	return new CommonAttrRWJoin();
+    }
+
+    void setCommonAttrRWSources(DataSeriesModule *join, 
+				SequenceModule &commonattr_seq,
+				SequenceModule &attrops_seq) {
+	lintel::safeDownCast<CommonAttrRWJoin>(join)
+	    ->setInputs(commonattr_seq.tail(), attrops_seq.tail());
     }
 }
 
