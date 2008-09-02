@@ -39,15 +39,17 @@
 #include <analysis/nfs/ServerLatency.hpp>
 #include "process/sourcebyrange.hpp"
 
-namespace NFSDSAnalysisMod {
-    RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
-    RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
-}
-
 using namespace NFSDSAnalysisMod;    
 using namespace std;
 using boost::format;
 using dataseries::TFixedField;
+
+namespace NFSDSAnalysisMod {
+    RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
+    RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
+    RowAnalysisModule *newSequentiality(DataSeriesModule &prev, 
+					const string &arg);
+}
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -1023,25 +1025,26 @@ static bool late_filename_by_filehandle_ok = true;
 void
 usage(char *progname) 
 {
-    cerr << "Usage: " << progname << " flags... (file...)|(index.ds start-time end-time)\n";
-    cerr << " flags\n";
-    cerr << "    Note, most of the options are disabled because they haven't been tested.\n";
-    cerr << "    However, it is trivial to change the source to re-enable them, but people\n";
-    cerr << "    doing so should make an effort to verify the code and results.\n";
-    cerr << "    It's probably also worth cleaning up the code at the same time, e.g.\n";
-    cerr << "    replacing printfs with boost::format, int with [u]int{32,64}_t as\n";
-    cerr << "    appropriate, and any other cleanups that seem appropriate.\n";
-    cerr << "    please send in patches (software@cello.hpl.hp.com) if you do this.\n";
+    cout << "Usage: " << progname << " flags... (file...)|(index.ds start-time end-time)\n";
+    cout << " flags\n";
+    cout << "    Note, most of the options are disabled because they haven't been tested.\n";
+    cout << "    However, it is trivial to change the source to re-enable them, but people\n";
+    cout << "    doing so should make an effort to verify the code and results.\n";
+    cout << "    It's probably also worth cleaning up the code at the same time, e.g.\n";
+    cout << "    replacing printfs with boost::format, int with [u]int{32,64}_t as\n";
+    cout << "    appropriate, and any other cleanups that seem appropriate.\n";
+    cout << "    please send in patches (software@cello.hpl.hp.com) if you do this.\n";
 	
-    cerr << "    -h # display this help\n";
-    cerr << "    -a # Operation count by filehandle\n";
-    cerr << "    -b # Server latency analysis\n";
-    cerr << "    -c <seconds> # Host analysis\n";
-    cerr << "    -d <fh|fh-list pathname> # directory path lookup\n";
-    cerr << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
-    cerr << "    -f # Read/Write Extent analysis\n";
-    cerr << "    -g # Attr-Ops Extent analysis\n";
-    cerr << "    -Z <series-to-print> # common, attr-ops, rw, merge12, merge123\n";
+    cout << "    -h # display this help\n";
+    cout << "    -a # Operation count by filehandle\n";
+    cout << "    -b # Server latency analysis\n";
+    cout << "    -c <seconds> # Host analysis\n";
+    cout << "    -d <fh|fh-list pathname> # directory path lookup\n";
+    cout << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+    cout << "    -f # Read/Write Extent analysis\n";
+    cout << "    -g # Attr-Ops Extent analysis\n";
+    cout << "    -i # Sequentiality analysis\n";
+    cout << "    -Z <series-to-print> # common, attr-ops, rw, merge12, merge123\n";
 
 //    cerr << "    #-b # Unique bytes in file handles analysis\n";
 //    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
@@ -1085,7 +1088,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     bool add_file_handle_operation_lookup = false;
 
     while (1) {
-	int opt = getopt(argc, argv, "abc:d:e:fghZ:");
+	int opt = getopt(argc, argv, "habc:d:e:fgi:Z:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -1120,6 +1123,10 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	case 'g':
 	    attrOpsSequence.addModule
 		(newUniqueFileHandles(attrOpsSequence.tail()));
+	    break;
+	case 'i':
+	    merge123Sequence.addModule
+		(newSequentiality(merge123Sequence.tail(), optarg));
 	    break;
 	case 'Z': {
 	    string arg = optarg;

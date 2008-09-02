@@ -6,6 +6,8 @@
 
 #include <ctype.h>
 
+#include <openssl/md5.h>
+
 #include <Lintel/StringUtil.hpp>
 
 #include "common.hpp"
@@ -327,4 +329,19 @@ bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
 	       || (nfs_version == 2 && op_id == 17 &&
 		   op_name == nfsv2ops[17].name));
     return true;
+}
+
+uint64_t md5FileHash(const Variable32Field &filehandle) {
+    union MD5Union {
+	unsigned char digest[16];
+	uint64_t u64Digest[2];
+    };
+
+    MD5_CTX ctx;
+    MD5Union tmp;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, filehandle.val(), filehandle.size());
+    MD5_Final(tmp.digest, &ctx);
+    
+    return tmp.u64Digest[0];
 }

@@ -43,9 +43,9 @@ do_check nfs-2.set-0.20k
     $SRC/check-data/nfs-2.set-1.20k.ds >nfs-2.set-1.20k.tmp 
 do_check nfs-2.set-1.20k
 
-if [ `whoami` = anderse -a -f ../analysis/nfs/set-5/subset.500k.ds ]; then
-    ../analysis/nfs/nfsdsanalysis -c 2,no_print_base,no_print_cube,incremental=1 ../analysis/nfs/set-5/subset.500k.ds | perl $SRC/check-data/clean-timing.pl >subset.500k.out
-    cmp subset.500k.out ../analysis/nfs/set-5/subset.500k.out
+if [ `whoami` = anderse -a -f ../analysis/nfs/set-5/cqracks.00000-00049.ds ]; then
+    ../analysis/nfs/nfsdsanalysis -i ignore_server,ignore_client -i ignore_server -i ignore_client -i '' ../analysis/nfs/set-5/cqracks.000*ds | perl $SRC/check-data/clean-timing.pl >sequentiality.out
+    cmp sequentiality.out ../analysis/nfs/set-5/sequentiality.out
 fi
 
 exit 0

@@ -1,9 +1,9 @@
-#include <openssl/md5.h>
-
 #include <Lintel/ConstantString.hpp>
 #include <Lintel/HashUnique.hpp>
 
 #include <DataSeries/RowAnalysisModule.hpp>
+
+#include <analysis/nfs/common.hpp>
 
 using namespace std;
 using boost::format;
@@ -50,22 +50,9 @@ public:
 
 #define USE_MD5 1
 
-#if USE_MD5
-    union MD5Union {
-	unsigned char digest[16];
-	uint64_t u64Digest[2];
-    };
-#endif
-
     void addEntry(Variable32Field &f) {
 #if USE_MD5
-	MD5_CTX ctx;
-	MD5Union tmp;
-	MD5_Init(&ctx);
-	MD5_Update(&ctx, f.val(), f.size());
-	MD5_Final(tmp.digest, &ctx);
-	
-	unique_filehandles.add(tmp.u64Digest[0]);
+	unique_filehandles.add(md5FileHash(f));
 #else
 	ConstantString tmp(f.val(), f.size());
 	unique_filehandles.add(tmp);

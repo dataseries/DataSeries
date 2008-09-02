@@ -17,14 +17,14 @@ const string commonattrrw_xml_in(
   "  <field type=\"int64\" %1% name=\"reply_at\" note=\"sorted by this\" />\n"
   "  <field type=\"int32\" name=\"server\" />\n"
   "  <field type=\"int32\" name=\"client\" />\n"
-  "  <field type=\"byte\" name=\"unified_op_id\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_hex=\"yes\" />\n"
   "  <field type=\"bool\" name=\"is_read\" />\n"
   "  <field type=\"int64\" name=\"file_size\" />\n"
   "  <field type=\"int64\" name=\"modify_time\" />\n"
   "  <field type=\"int64\" name=\"offset\" />\n"
   "  <field type=\"int32\" name=\"bytes\" />\n"
-  "</ExtentType>\n");
+  "</ExtentType>\n"
+);
 
 class CommonAttrRWJoin: public NFSDSModule {
 public:
@@ -41,7 +41,6 @@ public:
 	  in_client(es_commonattr,"client"),
 	  out_client(es_out,"client"),
 	  in_unified_op_id(es_commonattr,"unified-op-id"),
-	  out_unified_op_id(es_out,"unified_op_id"),
 	  in_ca_reply_id(es_commonattr, "reply-id"),
 	  in_rw_reply_id(es_rw, "reply-id"),
 	  in_filehandle(es_commonattr,"filehandle"),
@@ -174,7 +173,6 @@ public:
 	    out_reply_at.set(in_reply_at.val());
 	    out_server.set(in_server.val());
 	    out_client.set(in_client.val());
-	    out_unified_op_id.set(in_unified_op_id.val());
 	    out_filehandle.set(in_filehandle);
 	    out_filesize.set(in_filesize.val());
 	    out_modifytime.set(in_modifytime.val());
@@ -202,7 +200,7 @@ private:
     TFixedField<int64_t> in_reply_at, out_reply_at;
     TFixedField<int32_t> in_server, out_server;
     TFixedField<int32_t> in_client, out_client;
-    TFixedField<uint8_t> in_unified_op_id, out_unified_op_id;
+    TFixedField<uint8_t> in_unified_op_id;
     TFixedField<int64_t> in_ca_reply_id, in_rw_reply_id;
     Variable32Field in_filehandle, out_filehandle; 
     TFixedField<int64_t> in_filesize, out_filesize;

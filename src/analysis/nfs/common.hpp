@@ -91,4 +91,5 @@ bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
 		       const std::string &op_name);
 unsigned getMaxUnifiedId();
 
+uint64_t md5FileHash(const Variable32Field &filehandle);
 #endif
