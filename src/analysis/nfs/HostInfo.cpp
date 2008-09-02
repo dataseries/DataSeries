@@ -1209,17 +1209,31 @@ public:
 	INVARIANT(Double::eq(v.mean(), payload_overall.mean()),
 		  format("%.20g != %.20g") 
 		  % v.mean() % payload_overall.mean());
-	INVARIANT(Double::eq(v.stddev(), payload_overall.stddev()),
-		  format("%.20g != %.20g") % v.stddev() 
-		  % payload_overall.stddev());
+	// Increase the tolerance to error on this value; we are summing
+	// up squared values potentially over a very very large number of
+	// entries (billions), hence the difference between adding in
+	// batches (v) and one-by-one (payload_overall) can become 
+	// substantial.  Observed error was .00000011079687316312; this
+	// is 5x the tolerance.  Assuming it was fine as count, mean were
+	// equal and given stddev was ~3575, the two values were pretty
+	// close.
+	INVARIANT(Double::eq(v.stddev(), payload_overall.stddev(), .0000005),
+		  format("%.20g != %.20g; %d ents") % v.stddev() 
+		  % payload_overall.stddev() % payload_overall.countll());
 	    
 	tmp.used[is_send_index] = false;
 	Stats &w = rates_cube.getPartialEntry(tmp);
 	// Complete rollup sees everything twice since we add it as
 	// both send and receive
-	SINVARIANT(w.countll() == 2*payload_overall.countll()
-		   && Double::eq(w.mean(), payload_overall.mean())
-		   && Double::eq(w.stddev(), payload_overall.stddev()));
+	INVARIANT(w.countll() == 2*payload_overall.countll(),
+		  format("%d != %d") % w.countll() 
+		  % (2*payload_overall.countll()));
+	INVARIANT(Double::eq(w.mean(), payload_overall.mean()),
+		  format("%.20g != %.20g") 
+		  % w.mean() % payload_overall.mean());
+	INVARIANT(Double::eq(w.stddev(), payload_overall.stddev(), .0000005),
+		  format("%.20g != %.20g; %d ents") % w.stddev() 
+		  % payload_overall.stddev() % payload_overall.countll());
 
 	// Check that we have the right number of entries in the
 	// rollups of the rates table.
