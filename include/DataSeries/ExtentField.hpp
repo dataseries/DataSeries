@@ -191,6 +191,16 @@ public:
 	    return false;
 	return memcmp(to.data(),val(),to.size()) == 0;
     }
+
+    bool equal(const Variable32Field &to) {
+	if (isNull()) {
+	    return to.isNull();
+	}
+	if (to.isNull()) {
+	    return false;
+	}
+	return size() == to.size() && memcmp(val(), to.val(), size()) == 0;
+    }
     std::string default_value;
 protected:
     virtual void newExtentType();

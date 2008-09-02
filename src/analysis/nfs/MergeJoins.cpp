@@ -34,6 +34,13 @@ const string attropscommonjoin_xml_in(
 // sort module here.
 
 // TODO: redo-with rotating hash map.
+
+// Note this join and the next one are tied together by a rw_side
+// variable that is used because we really ought to be doing some sort
+// of outer join on the attributes because we can end up having
+// entries that only show up in the rw table rather than the common
+// table, but we want to extract file size and modify time from it if
+// possible.  This is kinda hacky.
 class AttrOpsCommonJoin : public NFSDSModule {
 public:
     AttrOpsCommonJoin()
@@ -79,10 +86,19 @@ public:
 	  first_keep_time_raw(0),
 	  skipped_common_count(0), skipped_attrops_count(0), 
 	  skipped_duplicate_attr_count(0), 
-	  last_reply_id(numeric_limits<int64_t>::min())
+	  last_reply_id(numeric_limits<int64_t>::min()),
+	  enable_side_data(false),
+	  unified_read_id(nameToUnifiedId("read")),
+	  unified_write_id(nameToUnifiedId("write")),
+	  last_side_data_rotate(numeric_limits<int64_t>::min())
     { }
 
-    virtual ~AttrOpsCommonJoin() { }
+    virtual ~AttrOpsCommonJoin() { 
+	delete prevreqht;
+	prevreqht = NULL;
+	delete curreqht;
+	curreqht = NULL;
+    }
 
     void setInputs(DataSeriesModule &common, DataSeriesModule &attr_ops) {
 	nfs_common = &common;
@@ -234,12 +250,24 @@ public:
 		    return outextent;
 		}
 		es_common.setExtent(tmp);
+		if (enable_side_data) {
+		    if (last_side_data_rotate < (in_packetat.valRaw() - rotate_interval_raw)) {
+			rw_side_data.rotate();
+			last_side_data_rotate = in_packetat.valRaw();
+		    }
+		    LintelLogDebug("AttrOpsCommonJoin", format("side-data mem %d")
+				   % rw_side_data.memoryUsage());
+		}
 	    }
 	    INVARIANT(in_replyid.val() >= prev_replyid, 
 		      format("needsort %lld %lld") 
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
+		SINVARIANT(!in_nfs_version.isNull() &&
+			   !in_op_id.isNull());
+		uint8_t unified_id = opIdToUnifiedId(in_nfs_version.val(),
+						     in_op_id.val());
 		if (in_is_request.val()) {
 		    if (last_rotate_time_raw 
 			< (in_packetat.valRaw() - rotate_interval_raw)) {
@@ -253,10 +281,7 @@ public:
 		    reqData d;
 		    d.request_id = in_recordid.val();
 		    d.request_at_raw = in_packetat.valRaw();
-		    SINVARIANT(!in_nfs_version.isNull() &&
-			       !in_op_id.isNull());
-		    d.unified_op_id = opIdToUnifiedId(in_nfs_version.val(),
-						      in_op_id.val());
+		    d.unified_op_id = unified_id;
 		    curreqht->add(d);
 		} else {
 		    // reply common record entry that occurs before
@@ -265,7 +290,13 @@ public:
 		    // attr-ops.
 		    ++skipped_common_count;
 		}
-		++es_common.pos;
+		if (enable_side_data && 
+		    (unified_id == unified_read_id || unified_id == unified_write_id)) {
+		    rw_side_data[in_recordid.val()] 
+			= RWSideData(in_packetat.valRaw(), in_source.val(),
+				     in_dest.val(), unified_id == unified_read_id);
+		}
+		++es_common;
 	    } else if (in_initial_skip_mode && in_replyid.val() < in_recordid.val()) {
 		// because we now prune some of the initial entries in
 		// the common record extents so as to match exactly
@@ -353,6 +384,10 @@ public:
 		out_modifytime.set(in_modifytime.val());
 		out_payloadlen.set(in_payloadlen.val());
 
+		if (enable_side_data &&(d->unified_op_id == unified_read_id 
+					|| d->unified_op_id == unified_write_id)) {
+		    rw_side_data.remove(in_requestid.val());
+		}
 		++es_common.pos;
 		++es_attrops.pos;
 	    }
@@ -386,13 +421,24 @@ public:
 	int64_t at;
 	int32_t source_ip, dest_ip;
 	bool is_read;
+	RWSideData() : at(0), source_ip(0), dest_ip(0), is_read(false) { }
+	RWSideData(int64_t a, int32_t b, int32_t c, bool d)
+	    : at(a), source_ip(b), dest_ip(c), is_read(d) { }
     };
 
     const RWSideData &getRWSideData(int64_t record_id) {
 	SINVARIANT(rw_side_data_thread == pthread_self());
 	RWSideData *ret = rw_side_data.lookup(record_id);
-	SINVARIANT(ret != NULL);
+	INVARIANT(ret != NULL, format("unable to find rw record id %d in side data") % record_id);
 	return *ret;
+    }
+
+    void removeRWSideData(int64_t record_id) {
+	rw_side_data.remove(record_id);
+    }
+
+    void enableSideData() {
+	enable_side_data = true;
     }
 
 private:
@@ -423,8 +469,11 @@ private:
 	      skipped_duplicate_attr_count;
     int64_t last_reply_id;
 
+    bool enable_side_data;
     RotatingHashMap<int64_t, RWSideData> rw_side_data;
     pthread_t rw_side_data_thread; // safety
+    uint8_t unified_read_id, unified_write_id;
+    int64_t last_side_data_rotate; // raw units
 };
 	
 namespace NFSDSAnalysisMod {
@@ -450,8 +499,8 @@ const string commonattrrw_xml_in(
   "  <field type=\"int32\" name=\"client\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_hex=\"yes\" />\n"
   "  <field type=\"bool\" name=\"is_read\" />\n"
-  "  <field type=\"int64\" name=\"file_size\" />\n"
-  "  <field type=\"int64\" name=\"modify_time\" />\n"
+  "  <field type=\"int64\" name=\"file_size\" opt_nullable=\"yes\" />\n"
+  "  <field type=\"int64\" name=\"modify_time\" opt_nullable=\"yes\" />\n"
   "  <field type=\"int64\" name=\"offset\" />\n"
   "  <field type=\"int32\" name=\"bytes\" />\n"
   "</ExtentType>\n"
@@ -475,13 +524,15 @@ public:
 	  out_client(es_out,"client"),
 	  in_unified_op_id(es_commonattr,"unified-op-id"),
 	  in_ca_reply_id(es_commonattr, "reply-id"),
+	  in_rw_request_id(es_rw, ""),
 	  in_rw_reply_id(es_rw, ""),
-	  in_filehandle(es_commonattr,"filehandle"),
+	  in_ca_filehandle(es_commonattr,"filehandle"),
+	  in_rw_filehandle(es_rw,"filehandle"),
 	  out_filehandle(es_out,"filehandle"),
 	  in_filesize(es_commonattr,"file-size"),
-	  out_filesize(es_out,"file_size"),
+	  out_filesize(es_out,"file_size", Field::flag_nullable),
 	  in_modifytime(es_commonattr,"modify-time"),
-	  out_modifytime(es_out,"modify_time"),
+	  out_modifytime(es_out,"modify_time", Field::flag_nullable),
 	  in_offset(es_rw,"offset"),
 	  out_offset(es_out,"offset"),
 	  in_bytes(es_rw,"bytes"),
@@ -493,7 +544,8 @@ public:
 	  read_unified_id(nameToUnifiedId("read")),
 	  write_unified_id(nameToUnifiedId("write")),
 	  output_bytes(0), missing_attr_ops_in_join(0),
-	  did_field_names_init(false)
+	  did_field_names_init(false),
+	  common_attr_join(NULL)
     { }
 
     virtual ~CommonAttrRWJoin() { }
@@ -512,8 +564,11 @@ public:
 	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
     }
 
-    void setInputs(DataSeriesModule &common_attr_mod, 
+    void setInputs(DataSeriesModule *ca_join,
+		   DataSeriesModule &common_attr_mod, 
 		   DataSeriesModule &rw_mod) {
+	common_attr_join = lintel::safeDownCast<AttrOpsCommonJoin>(ca_join);
+	common_attr_join->enableSideData();
 	commonattr = &common_attr_mod;
 	rw = &rw_mod;
     }
@@ -526,14 +581,17 @@ public:
 	    SINVARIANT(type.getNamespace() == "" &&
 		       type.majorVersion() == 0 &&
 		       type.minorVersion() == 0);
+	    in_rw_request_id.setFieldName("request-id");
 	    in_rw_reply_id.setFieldName("reply-id");
 	    in_is_read.setFieldName("is-read");
 	} else if (type.getName() == "Trace::NFS::read-write"
 		   && type.versionCompatible(1,0)) {
+	    in_rw_request_id.setFieldName("request-id");
 	    in_rw_reply_id.setFieldName("reply-id");
 	    in_is_read.setFieldName("is-read");
 	} else if (type.getName() == "Trace::NFS::read-write"
 		   && type.versionCompatible(2,0)) {
+	    in_rw_request_id.setFieldName("request_id");
 	    in_rw_reply_id.setFieldName("reply_id");
 	    in_is_read.setFieldName("is_read");
 	} else {
@@ -629,32 +687,53 @@ public:
 		}
 	    }
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
-		LintelLogDebug("CommonAttrRWJoin", 
-			       format("missing attr-ops for reply %d, got %d")
-			       % in_rw_reply_id.val() % in_ca_reply_id.val());
-		// Dunno why this happens, but saw it once in set-0/001000-001499
+		// This can happen because with NFSv3, read-write operations are not
+		// required to have any attributes in them.
+		const AttrOpsCommonJoin::RWSideData &request 
+		    = common_attr_join->getRWSideData(in_rw_request_id.val());
+		const AttrOpsCommonJoin::RWSideData &reply
+		    = common_attr_join->getRWSideData(in_rw_reply_id.val());
+		
 		++missing_attr_ops_in_join;
-		SINVARIANT(missing_attr_ops_in_join < 1000);
+
+		SINVARIANT(request.at < reply.at);
+		SINVARIANT(request.source_ip == reply.dest_ip);
+		SINVARIANT(request.dest_ip == reply.source_ip);
+		SINVARIANT(request.is_read == reply.is_read);
+
+		es_out.newRecord();
+		out_request_at.set(request.at);
+		out_reply_at.set(reply.at);
+		out_server.set(request.dest_ip);
+		out_client.set(request.source_ip);
+		out_filehandle.set(in_rw_filehandle);
+		out_filesize.setNull();
+		out_modifytime.setNull();
+		out_offset.set(in_offset.val());
+		out_bytes.set(in_bytes.val());
+		out_is_read.set(request.is_read);
+
+		common_attr_join->removeRWSideData(in_rw_request_id.val());
+		common_attr_join->removeRWSideData(in_rw_reply_id.val());
 		++es_rw;
-		goto restart;
+
+
+	    } else {
+		SINVARIANT(in_rw_filehandle.equal(in_ca_filehandle));
+		es_out.newRecord();
+		out_request_at.set(in_request_at.val());
+		out_reply_at.set(in_reply_at.val());
+		out_server.set(in_server.val());
+		out_client.set(in_client.val());
+		out_filehandle.set(in_ca_filehandle);
+		out_filesize.set(in_filesize.val());
+		out_modifytime.set(in_modifytime.val());
+		out_offset.set(in_offset.val());
+		out_bytes.set(in_bytes.val());
+		out_is_read.set(in_is_read.val());
+		++es_commonattr;
+		++es_rw;
 	    }
-	    INVARIANT(in_ca_reply_id.val() == in_rw_reply_id.val(),
-		      format("%d != %d") % in_ca_reply_id.val()
-		      % in_rw_reply_id.val());
-	    
-	    es_out.newRecord();
-	    out_request_at.set(in_request_at.val());
-	    out_reply_at.set(in_reply_at.val());
-	    out_server.set(in_server.val());
-	    out_client.set(in_client.val());
-	    out_filehandle.set(in_filehandle);
-	    out_filesize.set(in_filesize.val());
-	    out_modifytime.set(in_modifytime.val());
-	    out_offset.set(in_offset.val());
-	    out_bytes.set(in_bytes.val());
-	    out_is_read.set(in_is_read.val());
-	    ++es_commonattr;
-	    ++es_rw;
 	}
 
 	output_bytes += outextent->extentsize();
@@ -681,10 +760,12 @@ private:
     TFixedField<int32_t> in_server, out_server;
     TFixedField<int32_t> in_client, out_client;
     TFixedField<uint8_t> in_unified_op_id;
-    TFixedField<int64_t> in_ca_reply_id, in_rw_reply_id;
-    Variable32Field in_filehandle, out_filehandle; 
-    TFixedField<int64_t> in_filesize, out_filesize;
-    TFixedField<int64_t> in_modifytime, out_modifytime;
+    TFixedField<int64_t> in_ca_reply_id, in_rw_request_id, in_rw_reply_id;
+    Variable32Field in_ca_filehandle, in_rw_filehandle, out_filehandle; 
+    TFixedField<int64_t> in_filesize;
+    Int64Field out_filesize;
+    TFixedField<int64_t> in_modifytime;
+    Int64Field out_modifytime;
     TFixedField<int64_t> in_offset, out_offset;
     TFixedField<int32_t> in_bytes, out_bytes;
     BoolField in_is_read, out_is_read;
@@ -697,6 +778,7 @@ private:
     ExtentType::int64 output_bytes;
     uint32_t missing_attr_ops_in_join;
     bool did_field_names_init;
+    AttrOpsCommonJoin *common_attr_join;
 };
 
 namespace NFSDSAnalysisMod {
@@ -708,7 +790,8 @@ namespace NFSDSAnalysisMod {
 				SequenceModule &commonattr_seq,
 				SequenceModule &attrops_seq) {
 	lintel::safeDownCast<CommonAttrRWJoin>(join)
-	    ->setInputs(commonattr_seq.tail(), attrops_seq.tail());
+	    ->setInputs(*commonattr_seq.begin(), 
+			commonattr_seq.tail(), attrops_seq.tail());
     }
 }
 

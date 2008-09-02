@@ -21,8 +21,8 @@ public:
           client(series, "client"),
           filehandle(series, "filehandle"),
           is_read(series, "is_read"),
-          file_size(series, "file_size"),
-          modify_time(series, "modify_time"),
+          file_size(series, "file_size", Field::flag_nullable),
+          modify_time(series, "modify_time", Field::flag_nullable),
           offset(series, "offset"),
           bytes(series, "bytes"),
 	  reset_interval_raw(0),
@@ -147,8 +147,8 @@ private:
     TFixedField<int32_t> client;
     Variable32Field filehandle;
     BoolField is_read;
-    TFixedField<int64_t> file_size;
-    TFixedField<int64_t> modify_time;
+    Int64Field file_size;
+    Int64Field modify_time;
     TFixedField<int64_t> offset;
     TFixedField<int32_t> bytes;
 
