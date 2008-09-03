@@ -77,7 +77,9 @@ public:
 	  all_done(false), prev_replyid(-1),
 	  curreqht(new reqHashTable()),
 	  prevreqht(new reqHashTable()),
+	  prune_entries_after_use(false),
 	  last_rotate_time_raw(0),
+	  rotate_interval_seconds(5*60),
 	  rotate_interval_raw(0), 
 	  output_record_count(0), 
 	  force_1us_turnaround_count(0),
@@ -117,6 +119,14 @@ public:
 	    SINVARIANT(type.getNamespace() == "" &&
 		       type.majorVersion() == 0 &&
 		       type.minorVersion() == 0);
+	    // This version of the converter could generate duplicate
+	    // entries in the attr-ops table because it matched
+	    // replies to the last request.  However, the conversion
+	    // was over short files, so we don't have to keep things
+	    // for very long (although it would be better to rotate on
+	    // counts rather than time).
+	    prune_entries_after_use = false;
+	    rotate_interval_seconds = 5*60;
 	    in_packetat.setFieldName("packet-at");
 	    in_is_request.setFieldName("is-request");
 	    in_op_id.setFieldName("op-id");
@@ -129,6 +139,12 @@ public:
 	    in_payloadlen.setFieldName("payload-length");
 	} else if (type.getName() == "Trace::NFS::common"
 		   && type.versionCompatible(1,0)) {
+	    // Later versions of the converter matched each reply to
+	    // exactly one request, so we can quickly prune entries,
+	    // however we can get longer delays because we processed
+	    // over more files.
+	    prune_entries_after_use = true;
+	    rotate_interval_seconds = 20*60;
 	    in_packetat.setFieldName("packet-at");
 	    in_is_request.setFieldName("is-request");
 	    in_op_id.setFieldName("op-id");
@@ -141,6 +157,14 @@ public:
 	    in_payloadlen.setFieldName("payload-length");
 	} else if (type.getName() == "Trace::NFS::common"
 		   && type.versionCompatible(2,0)) {
+	    // Later versions of the converter matched each reply to
+	    // exactly one request, so we can quickly prune entries,
+	    // however we can get longer delays because we processed
+	    // over more files. (Saw a delay of ~9 minutes between the
+	    // request and the reply in nfs-2/set-3/117500-117999.ds
+	    // for req=87245463576,rep=87245497839)
+	    prune_entries_after_use = true;
+	    rotate_interval_seconds = 20*60;
 	    in_packetat.setFieldName("packet_at");
 	    in_is_request.setFieldName("is_request");
 	    in_op_id.setFieldName("op_id");
@@ -241,7 +265,7 @@ public:
 
 	    es_common.setExtent(tmp);
 	    if (rotate_interval_raw == 0) {
-		rotate_interval_raw = in_packetat.secNanoToRaw(5*60,0);
+		rotate_interval_raw = in_packetat.secNanoToRaw(rotate_interval_seconds,0);
 	    }
 	}
 
@@ -375,7 +399,8 @@ public:
 		    INVARIANT(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
 			      (in_packetat.valRaw() - first_keep_time_raw) 
 			      < in_packetat.secNanoToRaw(30,0),
-			      format("bad missing request %d - %d = %d")
+			      format("bad missing request %d for reply %d, too old %d - %d = %d")
+			      % in_requestid.val() % in_replyid.val() 
 			      % in_packetat.valRaw() % first_keep_time_raw  
 			      % (in_packetat.valRaw() - first_keep_time_raw));
 		    ++es_common.pos;
@@ -413,6 +438,10 @@ public:
 		if (enable_side_data &&(d->unified_op_id == unified_read_id 
 					|| d->unified_op_id == unified_write_id)) {
 		    rw_side_data.remove(in_requestid.val());
+		}
+		if (prune_entries_after_use) {
+		    curreqht->remove(k, false);
+		    prevreqht->remove(k, false);
 		}
 		++es_common.pos;
 		++es_attrops.pos;
@@ -484,7 +513,9 @@ private:
     ExtentType::int64 prev_replyid;
     vector<string> ignore_filehandles;
     reqHashTable *curreqht, *prevreqht;
+    bool prune_entries_after_use;
     Int64TimeField::Raw last_rotate_time_raw;
+    uint32_t rotate_interval_seconds;
     Int64TimeField::Raw rotate_interval_raw;
 
     ExtentType::int64 output_record_count, force_1us_turnaround_count, 
