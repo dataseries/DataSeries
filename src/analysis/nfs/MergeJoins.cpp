@@ -93,7 +93,9 @@ public:
 	  unified_read_id(nameToUnifiedId("read")),
 	  unified_write_id(nameToUnifiedId("write")),
 	  last_side_data_rotate(numeric_limits<int64_t>::min()),
-	  last_reported_memory_usage(0)
+	  last_reported_memory_usage(0),
+	  readdirplus_unified_id(nameToUnifiedId("readdirplus")),
+	  readdirplus_missing_request_count(0)
     { 
 	if (LintelLog::wouldDebug("memory_usage")) {
 	    last_reported_memory_usage = 1;
@@ -396,13 +398,24 @@ public:
 		    // because of the initial common pruning, we can
 		    // now get the case where the reply was in the
 		    // acceptable set, but the request wasn't.
-		    INVARIANT(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
-			      (in_packetat.valRaw() - first_keep_time_raw) 
-			      < in_packetat.secNanoToRaw(30,0),
-			      format("bad missing request %d for reply %d, too old %d - %d = %d")
-			      % in_requestid.val() % in_replyid.val() 
-			      % in_packetat.valRaw() % first_keep_time_raw  
-			      % (in_packetat.valRaw() - first_keep_time_raw));
+		    if (opIdToUnifiedId(in_nfs_version.val(), in_op_id.val()) 
+			== readdirplus_unified_id) {
+			// For reasons I don't fully understand,
+			// readdirplus entries can have duplicates in
+			// the tables.  I believe this was a
+			// conversion bug.  See revision
+			// 5af64aa9862eb4a9918c9c87704bb11bf794dafd
+			// of nettrace2ds.cpp for discussion.
+			++readdirplus_missing_request_count;
+		    } else {
+			INVARIANT(// assume request took at most 30 seconds to process; rare so we don't try to be efficient
+				  (in_packetat.valRaw() - first_keep_time_raw) 
+				  < in_packetat.secNanoToRaw(30,0),
+				  format("bad missing request %d for reply %d, too old %d - %d = %d")
+				  % in_requestid.val() % in_replyid.val() 
+				  % in_packetat.valRaw() % first_keep_time_raw  
+				  % (in_packetat.valRaw() - first_keep_time_raw));
+		    }
 		    ++es_common.pos;
 		    ++es_attrops.pos;
 		    continue;
@@ -435,8 +448,8 @@ public:
 		out_modifytime.set(in_modifytime.val());
 		out_payloadlen.set(in_payloadlen.val());
 
-		if (enable_side_data &&(d->unified_op_id == unified_read_id 
-					|| d->unified_op_id == unified_write_id)) {
+		if (enable_side_data && prune_entries_after_use
+		    && (d->unified_op_id == unified_read_id || d->unified_op_id == unified_write_id)) {
 		    rw_side_data.remove(in_requestid.val());
 		}
 		if (prune_entries_after_use) {
@@ -468,8 +481,11 @@ public:
 	    cout << format("  %d skipped common, %d skipped attrops, %d semi-duplicate attrops, first keep %ss\n")
 		% skipped_common_count % skipped_attrops_count % skipped_duplicate_attr_count
 		% in_packetat.rawToStrSecNano(first_keep_time_raw);
-	    cout << format("End-%s\n") % __PRETTY_FUNCTION__;
 	}
+	if (readdirplus_missing_request_count > 0) {
+	    cout << format("  %d missing readdir plus requests (all tested cases were duplicates)\n");
+	}
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
     struct RWSideData {
@@ -533,6 +549,8 @@ private:
     int64_t last_side_data_rotate; // raw units
 
     size_t last_reported_memory_usage;
+    uint8_t readdirplus_unified_id;
+    uint32_t readdirplus_missing_request_count;
 };
 	
 namespace NFSDSAnalysisMod {
