@@ -2618,6 +2618,7 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
     RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid(),source_port));
 	
     if (req != NULL) {
+	FATAL_ERROR("TODO: make this do a try, catch, rethrow bit so we can always cleanup the rpcHashTable.  We want to guarantee that each request is used exactly once, but if the reply processing finds a short message or a parse error, it can throw an exception avoiding cleanup.  Could also make a CleanupRPCRequest class, which is probably the better way to do this; may want to combine this with checksum verification, we saw this problem in nfs-2/set-5/000000-000499.ds with request 122897542333, responses 122897542350, 122897542357; also in nfs-2/set-4/001000-001499.ds with request 107266700514, responses 107266700523, 107266714386; both were on readdirplus, unknown what exactly is going on.");
 	if (req->program == RPCRequest::host_prog_nfs) {
 	    handleNFSReply(time,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,reply);
 	} else if (req->program == RPCRequest::host_prog_mount) {
@@ -3207,9 +3208,8 @@ void testBWRolling()
     exit(0);
 }
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+    FATAL_ERROR("TODO: stamp the revision into the output file");
     if (false) testBWRolling();
     if (argc == 4 && strcmp(argv[1],"--uncompress") == 0) {
 	uncompressFile(argv[2],argv[3]);
