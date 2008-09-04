@@ -345,3 +345,9 @@ uint64_t md5FileHash(const Variable32Field &filehandle) {
     
     return tmp.u64Digest[0];
 }
+
+double doubleModArg(const string &optname, const string &arg) {
+    SINVARIANT(prefixequal(arg, optname));
+    SINVARIANT(arg.size() > optname.size() && arg[optname.size()] == '=');
+    return stringToDouble(arg.substr(optname.size()+1));
+}

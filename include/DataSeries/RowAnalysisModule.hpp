@@ -44,7 +44,7 @@ public:
     // TODO: probably should redo the next two hooks; in practice, we
     // need 1 right at the beginning before any extents have been set,
     // but with the extent, a second right after that first extent is
-    // set.  And a second one that gets called after the extent is
+    // set, and a third one that gets called after the extent is
     // set on every row.
 
     /** Called right after each extent is retrieved, but before the 
