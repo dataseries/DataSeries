@@ -580,6 +580,7 @@ public:
 			  format("unknown option '%s'") % args[i]);
 		options[args[i].substr(3)] = false;
 	    } else if (prefixequal(args[i], "incremental=")) {
+		// TODO: make uint32ModArg in common.hpp, use it.
 		incremental_batch_size = stringToUInt32(args[i].substr(12));
 		LintelLogDebug("HostInfo", format("ibs=%d") % incremental_batch_size);
 	    } else {
