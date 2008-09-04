@@ -35,6 +35,8 @@ const string attropscommonjoin_xml_in(
 
 // TODO: redo-with rotating hash map.
 
+#warning "Stupid hack in here to try to figure out what is going wrong in -i analysis"
+static bool tmp_have_it;
 // Note this join and the next one are tied together by a rw_side
 // variable that is used because we really ought to be doing some sort
 // of outer join on the attributes because we can end up having
@@ -239,9 +241,37 @@ public:
 	last_reported_memory_usage = a + b + c;
     }
 	
+    void finalCommonSideData() {
+	LintelLogDebug("AttrOpsCommonJoin", "finalCommonSideData");
+	if (!es_common.morerecords()) {
+	    delete es_common.extent();
+	    es_common.setExtent(nfs_common->getExtent());
+	}
+	while(es_common.getExtent() != NULL) {
+	    if (es_common.morerecords()) {
+		
+		uint8_t unified_id = opIdToUnifiedId(in_nfs_version.val(),
+						     in_op_id.val());
+		if (unified_id == unified_read_id || unified_id == unified_write_id) {
+		    rw_side_data[in_recordid.val()] 
+			= RWSideData(in_packetat.valRaw(), in_source.val(),
+				     in_dest.val(), unified_id == unified_read_id);
+		}
+		++es_common;
+	    } else {
+		delete es_common.extent();
+		es_common.setExtent(nfs_common->getExtent());
+	    }
+	}
+    }
+
     virtual Extent *getExtent() {
+	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	    cout << "still there start\n";
+	}
 	if (all_done) {
 	    reportMemoryUsage();
+	    LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-1");
 	    return NULL;
 	}
 	if (last_reported_memory_usage > 0) {
@@ -258,6 +288,10 @@ public:
 		delete es_attrops.curExtent();
 		es_attrops.clearExtent();
 		reportMemoryUsage();
+		if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+		    cout << "still there ad2\n";
+		}
+		LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-2");
 		return NULL;
 	    }
 
@@ -273,10 +307,15 @@ public:
 
 	Extent *attrextent = nfs_attrops->getExtent();
 	if (attrextent == NULL) {
+	    if (enable_side_data) {
+		finalCommonSideData();
+		SINVARIANT(es_common.curExtent() == NULL);
+	    }
 	    delete es_common.curExtent();
 	    es_common.clearExtent();
 	    all_done = true;
 	    reportMemoryUsage();
+	    LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-3");
 	    return NULL;
 	}
 	
@@ -304,7 +343,14 @@ public:
 		es_common.setExtent(tmp);
 		if (enable_side_data) {
 		    if (last_side_data_rotate < (in_packetat.valRaw() - rotate_interval_raw)) {
+			LintelLogDebug("AttrOpsCommonJoin", "rotate-side-data");
+			if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+			    cout << "still there pre-rotate\n";
+			}
 			rw_side_data.rotate();
+			if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+			    cout << "still there pre-rotate\n";
+			}
 			last_side_data_rotate = in_packetat.valRaw();
 		    }
 		    LintelLogDebug("AttrOpsCommonJoin", format("side-data mem %d")
@@ -344,6 +390,10 @@ public:
 		}
 		if (enable_side_data && 
 		    (unified_id == unified_read_id || unified_id == unified_write_id)) {
+		    if (in_recordid.val() == 59777665137) {
+			cout << "HI 59777665137\n";
+			tmp_have_it = true;
+		    }
 		    rw_side_data[in_recordid.val()] 
 			= RWSideData(in_packetat.valRaw(), in_source.val(),
 				     in_dest.val(), unified_id == unified_read_id);
@@ -450,6 +500,9 @@ public:
 
 		if (enable_side_data && prune_entries_after_use
 		    && (d->unified_op_id == unified_read_id || d->unified_op_id == unified_write_id)) {
+		    if (in_recordid.val() == 59777665137) {
+			cout << "Remove 59777665137\n";
+		    }
 		    rw_side_data.remove(in_requestid.val());
 		}
 		if (prune_entries_after_use) {
@@ -461,6 +514,9 @@ public:
 	    }
 	}
 
+	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	    cout << "still there return\n";
+	}
 	delete es_attrops.curExtent();
 	es_attrops.clearExtent();
 	output_bytes += outextent->extentsize();
@@ -483,7 +539,8 @@ public:
 		% in_packetat.rawToStrSecNano(first_keep_time_raw);
 	}
 	if (readdirplus_missing_request_count > 0) {
-	    cout << format("  %d missing readdir plus requests (all tested cases were duplicates)\n");
+	    cout << format("  %d missing readdir plus requests (all tested cases were duplicates)\n")
+		% readdirplus_missing_request_count;
 	}
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
@@ -497,14 +554,19 @@ public:
 	    : at(a), source_ip(b), dest_ip(c), is_read(d) { }
     };
 
-    const RWSideData &getRWSideData(int64_t record_id) {
+    const RWSideData *getRWSideData(int64_t record_id) {
+	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	    cout << "still there return\n";
+	}
 	SINVARIANT(rw_side_data_thread == pthread_self());
 	RWSideData *ret = rw_side_data.lookup(record_id);
-	INVARIANT(ret != NULL, format("unable to find rw record id %d in side data") % record_id);
-	return *ret;
+	return ret;
     }
 
     void removeRWSideData(int64_t record_id) {
+	if (record_id == 59777665137) {
+	    cout << "RWRemove 59777665137\n";
+	}
 	rw_side_data.remove(record_id);
     }
 
@@ -705,12 +767,24 @@ public:
     }
 
     void finishCheck() {
-	// should be at end of rw extents
-	if (!rw_done) {
-	    SINVARIANT(!es_rw.morerecords());
+	LintelLogDebug("CommonAttrRWJoin", format("finishCheck %d %d") 
+		       % commonattr_done % rw_done);
+	// should only have unmatched remaining RW entries.
+	if (!rw_done && !es_rw.morerecords()) {
 	    nextRWExtent();
-	    SINVARIANT(rw_done);
 	}
+	while (!rw_done) {
+	    SINVARIANT(es_rw.morerecords());
+	    LintelLogDebug("CommonAttrRWJoin", format("rw-unmatched-finish %d %d")
+			   % in_rw_request_id.val() % in_rw_reply_id.val());
+	    handleRWUnmatched();
+	    ++es_rw;
+	    if (!es_rw.morerecords()) {
+		nextRWExtent();
+	    }
+	}
+
+
 	if (!commonattr_done && !es_commonattr.morerecords()) {
 	    nextCommonAttrExtent();
 	}
@@ -724,6 +798,53 @@ public:
 		nextCommonAttrExtent();
 	    }
 	}
+    }
+
+    void handleRWUnmatched() {
+	// This can happen because with NFSv3, read-write
+	// operations are not required to have any attributes
+	// in them.
+	const AttrOpsCommonJoin::RWSideData *_request 
+	    = common_attr_join->getRWSideData(in_rw_request_id.val());
+	const AttrOpsCommonJoin::RWSideData *_reply
+	    = common_attr_join->getRWSideData(in_rw_reply_id.val());
+	if (_request == NULL || _reply == NULL) {
+	    if (in_rw_request_id.val() == 90869686608) {
+		// hack, work around duplicate rw entry in nfs-2/set-3/140500-140999.ds
+		// means we don't generate the second entry, but it's a duplicate anyway.
+		++es_rw;
+		return;
+	    }
+	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d")
+			% in_rw_request_id.val() % static_cast<const void *>(_request)
+			% in_rw_reply_id.val() % static_cast<const void *>(_reply)
+			% hexstring(in_rw_filehandle.stringval()) % in_offset.val() % in_bytes.val() % in_is_read.val());
+	}
+	const AttrOpsCommonJoin::RWSideData &request(*_request);
+	const AttrOpsCommonJoin::RWSideData &reply(*_reply);
+
+	++missing_attr_ops_in_join;
+
+	SINVARIANT(request.at < reply.at);
+	SINVARIANT(request.source_ip == reply.dest_ip);
+	SINVARIANT(request.dest_ip == reply.source_ip);
+	SINVARIANT(request.is_read == reply.is_read);
+
+	es_out.newRecord();
+	out_request_at.set(request.at);
+	out_reply_at.set(reply.at);
+	out_server.set(request.dest_ip);
+	out_client.set(request.source_ip);
+	out_filehandle.set(in_rw_filehandle);
+	out_filesize.setNull();
+	out_modifytime.setNull();
+	out_offset.set(in_offset.val());
+	out_bytes.set(in_bytes.val());
+	out_is_read.set(request.is_read);
+
+	common_attr_join->removeRWSideData(in_rw_request_id.val());
+	common_attr_join->removeRWSideData(in_rw_reply_id.val());
+	++es_rw;
     }
 
     virtual Extent *getExtent() { 
@@ -764,38 +885,7 @@ public:
 		}
 	    }
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
-		// This can happen because with NFSv3, read-write
-		// operations are not required to have any attributes
-		// in them.
-		const AttrOpsCommonJoin::RWSideData &request 
-		    = common_attr_join->getRWSideData(in_rw_request_id.val());
-		const AttrOpsCommonJoin::RWSideData &reply
-		    = common_attr_join->getRWSideData(in_rw_reply_id.val());
-		
-		++missing_attr_ops_in_join;
-
-		SINVARIANT(request.at < reply.at);
-		SINVARIANT(request.source_ip == reply.dest_ip);
-		SINVARIANT(request.dest_ip == reply.source_ip);
-		SINVARIANT(request.is_read == reply.is_read);
-
-		es_out.newRecord();
-		out_request_at.set(request.at);
-		out_reply_at.set(reply.at);
-		out_server.set(request.dest_ip);
-		out_client.set(request.source_ip);
-		out_filehandle.set(in_rw_filehandle);
-		out_filesize.setNull();
-		out_modifytime.setNull();
-		out_offset.set(in_offset.val());
-		out_bytes.set(in_bytes.val());
-		out_is_read.set(request.is_read);
-
-		common_attr_join->removeRWSideData(in_rw_request_id.val());
-		common_attr_join->removeRWSideData(in_rw_reply_id.val());
-		++es_rw;
-
-
+		handleRWUnmatched();
 	    } else {
 		SINVARIANT(in_rw_filehandle.equal(in_ca_filehandle));
 		es_out.newRecord();
@@ -822,7 +912,7 @@ public:
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	cout << format("  skipped %d records in join -- not read or write\n") % skip_count;
 	if (missing_attr_ops_in_join) {
-	    cout << format("  WARNING: skipped %d rw rows, could not find matching attr-op row")
+	    cout << format("  %d rw rows w/o attr-ops (not unusual for NFSv3)\n")
 		% missing_attr_ops_in_join;
 	    cout << "Enable LINTEL_LOG_DEBUG=CommonAttrRWJoin to debug\n";
 	}
