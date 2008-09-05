@@ -164,9 +164,9 @@ Extent::setReadChecksFromEnv(bool defval)
 static int lzo_init = 0;
 #endif
 
-void
-Extent::init()
-{
+const std::string Extent::in_memory_str("in-memory");
+
+void Extent::init() {
 #if DATASERIES_ENABLE_LZO
     if (lzo_init == 0) {
 	INVARIANT(lzo_init() == LZO_E_OK, "lzo_init() failed ?!");
@@ -180,6 +180,8 @@ Extent::init()
     // slightly incestuous interaction between Variable32Field and
     // Extent, but probably ok.
     *(int32 *)variabledata.begin() = 0;
+    extent_source = in_memory_str;
+    extent_source_offset = -1;
 }
 
 Extent::Extent(ExtentTypeLibrary &library, 

@@ -92,9 +92,10 @@ public:
 	const ExtentType *type;
 	Extent *unpacked;
 	bool need_bitflip;
-	std::string uncompressed_type;
+	std::string uncompressed_type, extent_source;
+	int64_t extent_source_offset;
 	PrefetchExtent() 
-	    : type(NULL), unpacked(NULL), need_bitflip(false) { }
+	    : type(NULL), unpacked(NULL), need_bitflip(false), extent_source_offset(-1) { }
     };
 
 protected:

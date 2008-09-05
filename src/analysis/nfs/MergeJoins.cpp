@@ -36,7 +36,8 @@ const string attropscommonjoin_xml_in(
 // TODO: redo-with rotating hash map.
 
 #warning "Stupid hack in here to try to figure out what is going wrong in -i analysis"
-static bool tmp_have_it;
+static bool tmp_have_it = true;
+// Glitched data is in nfs-2/set-2/1200*; it's not a read or write though.
 static int64_t tmp_have_it_id = 59777665137LL;
 
 // Note this join and the next one are tied together by a rw_side
@@ -359,11 +360,17 @@ public:
 				   % rw_side_data.memoryUsage());
 		}
 	    }
+	    if (tmp_have_it && in_recordid.val() == tmp_have_it_id) {
+		cout << "found tmp_have_it_id\n";
+	    }
 	    INVARIANT(in_replyid.val() >= prev_replyid, 
 		      format("needsort %lld %lld") 
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
+		if (tmp_have_it && in_recordid.val() == tmp_have_it_id) {
+		    cout << "record < reply tmp_have_it_id\n";
+		}
 		SINVARIANT(!in_nfs_version.isNull() &&
 			   !in_op_id.isNull());
 		uint8_t unified_id = opIdToUnifiedId(in_nfs_version.val(),
@@ -749,7 +756,10 @@ public:
 	Extent *tmp = rw->getExtent();
 	if (tmp == NULL) {
 	    rw_done = true;
-	} 
+	} else {
+	    LintelLogDebug("CommonAttrRWJoin", format("got rw extent %s:%d") % tmp->extent_source
+			   % tmp->extent_source_offset);
+	}
 	if (!did_field_names_init) {
 	    doFieldNameInit(*tmp);
 	}
@@ -811,12 +821,30 @@ public:
 	const AttrOpsCommonJoin::RWSideData *_reply
 	    = common_attr_join->getRWSideData(in_rw_reply_id.val());
 	if (_request == NULL || _reply == NULL) {
+	    SINVARIANT(es_rw.morerecords());
 	    if (in_rw_request_id.val() == 90869686608LL) {
 		// hack, work around duplicate rw entry in nfs-2/set-3/140500-140999.ds
 		// means we don't generate the second entry, but it's a duplicate anyway.
 		++es_rw;
 		return;
 	    }
+	    if (in_rw_request_id.val() == tmp_have_it_id) {
+		cout << format("TMP_HAVE_IT_UNMATCHED %s:%d %s")
+		     % es_rw.getExtent()->extent_source % es_rw.getExtent()->extent_source_offset
+		     % es_rw.getExtent()->getType().getName() << endl;
+		const void *cur_pos = es_rw.pos.getPos();
+		cout << format("more debugging recnum %d %d\n") % es_rw.pos.currecnum()
+		    % es_rw.pos.morerecords();
+		es_rw.pos.reset(es_rw.getExtent());
+		for(;es_rw.pos.morerecords(); ++es_rw.pos) {
+		    cout << format("record %d: %d %d %s %d %d\n") % es_rw.pos.currecnum() 
+			% in_rw_request_id.val() 
+			% in_rw_reply_id.val() % hexstring(in_rw_filehandle.stringval())
+			% in_offset.val() % in_bytes.val();
+		}
+		es_rw.pos.setPos(cur_pos);
+	    }
+		
 	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d")
 			% in_rw_request_id.val() % static_cast<const void *>(_request)
 			% in_rw_reply_id.val() % static_cast<const void *>(_reply)

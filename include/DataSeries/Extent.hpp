@@ -258,6 +258,18 @@ public:
     Extent::ByteArray fixeddata;
     Extent::ByteArray variabledata;
 
+
+    /// For read-in extents, this will be the filename, for just created
+    /// extents this will be in_memory_str.
+    std::string extent_source;
+
+    /// Default extent_source
+    static const std::string in_memory_str;
+
+    /// For read-in extents, this will be the offset, for just created
+    /// extents this will be -1.
+    int64_t extent_source_offset;
+
     // This function is here to verify that we got the right
     // flip4bytes when we compiled DataSeries, it's used by
     // DataSeries/src/test.C

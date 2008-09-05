@@ -46,8 +46,7 @@ public:
 	  operation_count(0), process_count(0), reset_count(0), continue_count(0),
 	  reorder_count(0),
 	  overlapping_reorder_slop_seconds(0), overlapping_reorder_slop_raw(0),
-	  mode(OverlappingReorder)
-	// mode(ReplyOrder)
+	  mode(RequestOrder)
     { 
 	ignore_client = false;
 	ignore_server = false;

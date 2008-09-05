@@ -18,12 +18,10 @@ TypeIndexModule::TypeIndexModule(const string &_type_match)
       extentType(indexSeries,"extenttype"),
       cur_file(0), cur_source(NULL),
       my_type(NULL)
-{
-}
+{ }
 
 TypeIndexModule::~TypeIndexModule()
-{
-}
+{ }
 
 void
 TypeIndexModule::setMatch(const string &_type_match)

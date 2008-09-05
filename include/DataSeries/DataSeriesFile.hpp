@@ -42,6 +42,8 @@ public:
     ExtentTypeLibrary mylibrary;
     Extent *indexExtent; 
     bool needBitflip() { return need_bitflip; }
+
+    const std::string &getFilename() { return filename; }
 private:
     const std::string filename;
     typedef ExtentType::byte byte;
