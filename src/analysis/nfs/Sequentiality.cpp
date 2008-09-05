@@ -96,22 +96,24 @@ public:
 	}
     };
 
+    typedef vector<Operation>::iterator OpsIterator;
+
+    static size_t memUsage(const vector<Operation> &ops) {
+	return ops.capacity() * sizeof(Operation);
+    }
+
     struct FHState {
-	int64_t last_end_offset;
-	int64_t last_operation_at;
+	int64_t last_end_offset, latest_reply_at;
 	uint32_t write_count, read_count;
 	uint32_t random_count, sequential_count;
 	uint64_t write_bytes, read_bytes;
 	uint32_t reorder_count;
 
-	vector<Operation> ops;
-	typedef vector<Operation>::iterator iterator;
-
 	FHState() { reset(); }
 
 	void reset() {
 	    last_end_offset = numeric_limits<int64_t>::min();
-	    last_operation_at = numeric_limits<int64_t>::min();
+	    latest_reply_at = numeric_limits<int64_t>::min();
 	    write_count = 0; 
 	    read_count = 0; 
 	    random_count = 0;
@@ -119,9 +121,6 @@ public:
 	    read_bytes = 0;
 	    write_bytes = 0;
 	    reorder_count = 0;
-	}
-	size_t opsMemUsage() {
-	    return ops.capacity() * sizeof(Operation);
 	}
     };
 
@@ -136,39 +135,35 @@ public:
 	SINVARIANT(overlapping_reorder_slop_raw < reset_interval_raw / 2);
     }
 
-    void reportMemoryUsage() {
-	size_t a = states.memoryUsage();
+    void reportMemoryUsage(bool always = false) {
+	if (last_reported_memory_usage == 0) {
+	    return;
+	}
+	size_t a = key_to_ops.memoryUsage();
 	size_t b = skip_distribution.memoryUsage();
-	LintelLogDebug("memory_usage",
-		       format("# Memory-Usage: Sequentiality %d = %d + %d") % (a + b) % a % b);
-	last_reported_memory_usage = a + b;
+	size_t sum = a + b + operations_memory_usage;
+	if (sum > last_reported_memory_usage + 1 * 1024 * 1024 || always) {
+	    LintelLogDebug("memory_usage",
+			   format("# Memory-Usage: Sequentiality %d = %d + %d + %d") 
+			   % sum % a % b % operations_memory_usage);
+	    last_reported_memory_usage = sum;
+	}
     }
 	
     virtual void newExtentHook(const Extent &e) {
-	if (last_reported_memory_usage > 0) {
-	    size_t memory_usage = states.memoryUsage() + skip_distribution.memoryUsage();
-	    if (memory_usage > (last_reported_memory_usage  + 4 * 1024 * 1024)) {
-		reportMemoryUsage();
-	    }
-	}
+	reportMemoryUsage();
     }
 
-    void completeOpRun(FHState &state) {
+    void completeOpAccessGroup(FHState &state, vector<Operation> &ops) {
 	state.reset();
+	operations_memory_usage -= memUsage(ops);
+	vector<Operation> tmp;
+	ops.swap(tmp); // clear the memory
     }
 
     void processOneOp(FHState &state, Operation &op) {
 	++process_count;
-	if (state.last_operation_at + reset_interval_raw < op.reply_at
-	    && (state.write_count + state.read_count) > 0) {
-	    completeOpRun(state);
-	}
 
-	if (state.last_end_offset == op.start_offset) {
-	    ++state.sequential_count;
-	} else {
-	    ++state.random_count;
-	}
 	if (op.is_read) {
 	    ++state.read_count;
 	    state.read_bytes += op.len;
@@ -176,58 +171,59 @@ public:
 	    ++state.write_count;
 	    state.write_bytes += op.len;
 	}
+	if (state.last_end_offset == op.start_offset) {
+	    ++state.sequential_count;
+	} else if (state.last_end_offset != numeric_limits<int64_t>::min()) {
+	    ++state.random_count;
+	}
 	if (state.last_end_offset != numeric_limits<int64_t>::min()) {
 	    skip_distribution.add(op.start_offset - state.last_end_offset);
 	}
 	state.last_end_offset = op.start_offset + op.len;
-	state.last_operation_at = max(state.last_operation_at, op.reply_at);
+	state.latest_reply_at = max(state.latest_reply_at, op.reply_at);
 	op.reply_at = numeric_limits<int64_t>::min();
     }
 
-    void eraseOpsPrefix(FHState &state, FHState::iterator end) {
-	operations_memory_usage -= state.opsMemUsage();
-	state.ops.erase(state.ops.begin(), end);
-	operations_memory_usage += state.opsMemUsage();
-    }
-
-    void processOpsORReset(FHState &state, uint32_t first) {
+    void overlappingReorderReset(FHState &state, vector<Operation> &ops) {
+	SINVARIANT(state.read_count == 0 && state.write_count == 0);
 	++reset_count;
 	// Restarting runs, pick the operation with the least offset
-	int64_t min_offset = state.ops[first].start_offset;
-	int64_t max_request_time = state.ops[first].reply_at + overlapping_reorder_slop_raw;
-	uint32_t selected = first;
-	for(uint32_t i = first + 1;
-	    i < state.ops.size() && min_offset > 0 
-		&& state.ops[i].request_at < max_request_time; ++i) {
-	    INVARIANT(state.ops[i].reply_at > numeric_limits<int64_t>::min(),
+	OpsIterator selected = ops.begin();
+	int64_t min_offset = selected->start_offset;
+	int64_t max_request_time = selected->reply_at + overlapping_reorder_slop_raw;
+	for(OpsIterator i = selected + 1; i < ops.end() && min_offset > 0
+		&& i->request_at < max_request_time; ++i) {
+	    INVARIANT(i->reply_at > numeric_limits<int64_t>::min(),
 		      "should not see ignored op during reset");
-	    if (state.ops[i].start_offset < min_offset) {
-		min_offset = state.ops[i].start_offset;
+	    if (i->start_offset < min_offset) {
+		min_offset = i->start_offset;
 		selected = i;
 	    }
 	}
 	LintelLogDebug("Sequentiality::po", format("reset selected #%d @ %d") 
-		       % selected % min_offset);
-	processOneOp(state, state.ops[selected]);
-	if (selected != first) {
+		       % (selected - ops.begin()) % min_offset);
+
+	processOneOp(state, *selected);
+	if (selected != ops.begin()) {
 	    ++state.reorder_count;
 	}
     }
 
-    void processOpsORContinue(FHState &state, uint32_t first) {
+    void overlappingReorderContinue(FHState &state, vector<Operation> &ops,
+				    OpsIterator first) {
 	++continue_count;
-	SINVARIANT(state.last_operation_at > numeric_limits<int64_t>::min());
+	SINVARIANT(state.latest_reply_at > numeric_limits<int64_t>::min());
 
 	// select the next most sequential operation within the window
-	int64_t closest_skip = state.ops[first].start_offset - state.last_end_offset;
-	int64_t max_request_time = state.ops[first].reply_at + overlapping_reorder_slop_raw;
-	uint32_t selected = first;
-	for(uint32_t i = first + 1; i < state.ops.size() && closest_skip != 0 
-		&& state.ops[i].request_at < max_request_time; ++i) {
-	    if (state.ops[i].reply_at == numeric_limits<int64_t>::min()) {
+	int64_t closest_skip = first->start_offset - state.last_end_offset;
+	int64_t max_request_time = first->reply_at + overlapping_reorder_slop_raw;
+	OpsIterator selected = first;
+	for(OpsIterator i = first + 1; i < ops.end() && closest_skip != 0 
+		&& i->request_at < max_request_time; ++i) {
+	    if (i->reply_at == numeric_limits<int64_t>::min()) {
 		continue; // already used this operation.
 	    }
-	    int64_t skip = state.ops[i].start_offset - state.last_end_offset;
+	    int64_t skip = i->start_offset - state.last_end_offset;
 	    if (skip == 0 || skip < closest_skip) { 
 		// preferentially skip backwards; this means that if
 		// we are at pos 100, and we get I/Os for 94,96,95,97;
@@ -239,128 +235,144 @@ public:
 		selected = i;
 	    }
 	}
-	int64_t skip = state.ops[selected].start_offset - state.last_end_offset;
+	int64_t skip = selected->start_offset - state.last_end_offset;
 	LintelLogDebug("Sequentiality::po", format("continue selected #%d(%d) skip %d") 
-		       % selected % first % skip);
-	processOneOp(state, state.ops[selected]);
+		       % (selected - ops.begin()) % (first - ops.begin()) % skip);
+	SINVARIANT(selected->request_at < max_request_time);
+	processOneOp(state, *selected);
 	if (selected != first) {
 	    ++reorder_count;
 	    ++state.reorder_count;
 	}
     }
 
-    void processOpsOverlappingReorder(const Key &key, FHState &state, int64_t cur_reply_at) {
+    void processGroupOverlappingReorder(const Key &key, vector<Operation> &ops, 
+					int64_t cur_reply_at) {
 	LintelLogDebug("Sequentiality::po", format("CRA %d for %x") % cur_reply_at % key.get<0>());
-	sort(state.ops.begin(), state.ops.end());
+	sort(ops.begin(), ops.end());
 	if (false) {
-	    for(FHState::iterator i = state.ops.begin(); 
-		i != state.ops.end(); ++i) {
-		if (i->reply_at < cur_reply_at - reset_interval_raw) {
-		    LintelLogDebug("Sequentiality::po", format("Entry [%d,%d] %d %d") 
-				   % i->request_at % i->reply_at % i->start_offset 
-				   % (i->start_offset + i->len));
-		} else { 
-		    LintelLogDebug("Sequentiality::po", format("... %d more beyond cutoff ...")
-				   % (state.ops.end() - i));
-		    break;
-		}
+	    for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
+		LintelLogDebug("Sequentiality::po", format("Entry [%d,%d] %d %d") 
+			       % i->request_at % i->reply_at % i->start_offset 
+			       % (i->start_offset + i->len));
 	    }
 	}
 
-	uint32_t first = 0;
-	while(first < state.ops.size() 
-	      && state.ops[first].reply_at < cur_reply_at - reset_interval_raw) {
-	    SINVARIANT(state.ops[first].reply_at != numeric_limits<int64_t>::min());
-	    if (state.last_operation_at + reset_interval_raw < state.ops[first].request_at) {
-		LintelLogDebug("Sequentiality::po", format("reset %d + %d < %d")
-			       % state.last_operation_at % reset_interval_raw 
-			       % state.ops[first].request_at);
-		processOpsORReset(state, first);
-	    } else {
-		processOpsORContinue(state, first);
-	    }
-	    while(first < state.ops.size() 
-		  && state.ops[first].reply_at == numeric_limits<int64_t>::min()) {
-		++first;
+	FHState state;
+
+	OpsIterator i = ops.begin();
+	overlappingReorderReset(state, ops);
+	if (i->reply_at == numeric_limits<int64_t>::min()) {
+	    ++i;
+	}
+	while(i < ops.end()) {
+	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
+	    SINVARIANT(i->reply_at != numeric_limits<int64_t>::min());
+	    overlappingReorderContinue(state, ops, i);
+	    while(i < ops.end() && i->reply_at == numeric_limits<int64_t>::min()) {
+		++i;
 	    }
 	}
-	for(unsigned i = 0; i < first; ++i) {
-	    SINVARIANT(state.ops[i].reply_at == numeric_limits<int64_t>::min());
+	for(OpsIterator j = ops.begin(); j != ops.end(); ++j) {
+	    SINVARIANT(j->reply_at == numeric_limits<int64_t>::min());
 	}
 
-	eraseOpsPrefix(state, state.ops.begin() + first);
-	
+	completeOpAccessGroup(state, ops);
+
 	LintelLogDebug("Sequentiality::po", "");
     }
-
-    void processOpsRequestOrder(const Key &key, FHState &state, int64_t cur_reply_at) {
-	sort(state.ops.begin(), state.ops.end());
-	FHState::iterator i = state.ops.begin();
-	for(; i != state.ops.end() && i->reply_at < cur_reply_at - reset_interval_raw; ++i) {
+    
+    void processGroupRequestOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
+	sort(ops.begin(), ops.end());
+	
+	FHState state;
+	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
+	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
 	    processOneOp(state, *i);
 	}
-
-	eraseOpsPrefix(state, i);
+	completeOpAccessGroup(state, ops);
     }
 
-    void processOps(const Key &key, FHState &state, int64_t cur_reply_at) {
+    void processGroupReplyOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
+	FHState state;
+	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
+	    SINVARIANT(state.latest_reply_at < i->reply_at);
+	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
+	    processOneOp(state, *i);
+	}
+	completeOpAccessGroup(state, ops);
+    }	
+
+    void processGroup(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
 	switch(mode)
 	    {
-	    case ReplyOrder: SINVARIANT(state.ops.empty());
+	    case ReplyOrder: processGroupReplyOrder(key, ops, cur_reply_at);
 		break;
-	    case OverlappingReorder: processOpsOverlappingReorder(key, state, cur_reply_at);
+	    case OverlappingReorder: processGroupOverlappingReorder(key, ops, cur_reply_at);
 		break;
-	    case RequestOrder: processOpsRequestOrder(key, state, cur_reply_at);
+	    case RequestOrder: processGroupRequestOrder(key, ops, cur_reply_at);
 		break;
 	    default: FATAL_ERROR("?");
 	    }
     }
 
-    void rotateEntry(int64_t cur_reply_at, const Key &key, FHState &val) {
-	processOps(key, val, cur_reply_at);
-	SINVARIANT(val.ops.empty());
+    void rotateEntry(int64_t cur_reply_at, const Key &key, vector<Operation> * &ops) {
+	processGroup(key, *ops, cur_reply_at);
+	operations_memory_usage -= memUsage(*ops);
+	delete ops;
+	ops = NULL;
+	LintelLogDebug("omu", format("omu %d") % operations_memory_usage);
+    }
+
+    static void addit(size_t *size, const Key &key, vector<Operation> *ops) {
+	*size += memUsage(*ops);
+    }
+
+    void checkOMU() {
+	size_t tmp = 0;
+	key_to_ops.walk(boost::bind(&Sequentiality::addit, &tmp, _1, _2));
+	INVARIANT(tmp == operations_memory_usage, format("%d %d") 
+		  % operations_memory_usage % tmp);
     }
 
     virtual void processRow() {
 	if (reply_at.valRaw() > last_rotate_time_raw + reset_interval_raw) {
 	    // TODO: verify they are clean.
-	    states.rotate(boost::bind(&Sequentiality::rotateEntry, this, reply_at.valRaw(), 
-				      _1, _2));
+	    key_to_ops.rotate(boost::bind(&Sequentiality::rotateEntry, this, reply_at.valRaw(), 
+					  _1, _2));
 	    last_rotate_time_raw = reply_at.valRaw();
 	}
 	Key tmp(md5FileHash(filehandle), ignore_server ? 0 : server.val(), 
 		ignore_client ? 0 : client.val());
-	FHState &state = states[tmp];
+	vector<Operation> *&ops = key_to_ops[tmp];
+	if (ops == NULL) {
+	    ops = new vector<Operation>();
+	}
 
 	++operation_count;
-	if (mode == ReplyOrder) {
-	    // Can do something special here to go faster.
-	    Operation tmp(request_at.valRaw(), reply_at.valRaw(),
-			  offset.val(), bytes.val(), is_read.val());
-	    processOneOp(state, tmp);
-	} else {
-	    operations_memory_usage -= state.opsMemUsage();
-	    state.ops.push_back(Operation(request_at.valRaw(), reply_at.valRaw(),
-					  offset.val(), bytes.val(), is_read.val()));
-	    operations_memory_usage += state.opsMemUsage();
-	    
-	    if (state.ops.front().reply_at + reset_interval_raw < 
-		reply_at.valRaw()) {
-		processOps(tmp, state, reply_at.valRaw());
-	    }
+
+	if (!ops->empty() && ops->back().reply_at + reset_interval_raw < request_at.valRaw()) {
+	    processGroup(tmp, *ops, reply_at.valRaw());
+	    SINVARIANT(ops->empty());
 	}
+
+	operations_memory_usage -= memUsage(*ops);
+	ops->push_back(Operation(request_at.valRaw(), reply_at.valRaw(),
+				 offset.val(), bytes.val(), is_read.val()));
+	operations_memory_usage += memUsage(*ops);
+	LintelLogDebug("omu", format("omu %d") % operations_memory_usage);
     }
 
     virtual void printResult() {
-	states.flushRotate(boost::bind(&Sequentiality::rotateEntry, this, 
-				       numeric_limits<int64_t>::max(), _1, _2));
+	key_to_ops.flushRotate(boost::bind(&Sequentiality::rotateEntry, this, 
+					   numeric_limits<int64_t>::max(), _1, _2));
 	INVARIANT(operation_count == process_count,
 		  format("%d != %d") % operation_count % process_count);
 	INVARIANT(mode != OverlappingReorder || process_count == reset_count + continue_count,
 		  format("%d != %d + %d") % process_count % reset_count % continue_count);
 	    
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
-	reportMemoryUsage();
+	reportMemoryUsage(true);
 	cout << "Analysis configuration: ";
 	if (ignore_client) {
 	    cout << "ignore client, ";
@@ -378,6 +390,7 @@ public:
 	cout << "Skip distribution:\n";
 	skip_distribution.printTextRanges(cout, 1000);
 
+	SINVARIANT(operations_memory_usage == 0);
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
@@ -393,7 +406,7 @@ private:
     TFixedField<int64_t> offset;
     TFixedField<int32_t> bytes;
 
-    RotatingHashMap<Key, FHState, TupleHash<Key> > states;
+    RotatingHashMap<Key, vector<Operation> *, TupleHash<Key> > key_to_ops;
     int64_t last_rotate_time_raw;
     int64_t reset_interval_raw;
 

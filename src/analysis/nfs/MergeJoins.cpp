@@ -37,6 +37,8 @@ const string attropscommonjoin_xml_in(
 
 #warning "Stupid hack in here to try to figure out what is going wrong in -i analysis"
 static bool tmp_have_it;
+static int64_t tmp_have_it_id = 59777665137LL;
+
 // Note this join and the next one are tied together by a rw_side
 // variable that is used because we really ought to be doing some sort
 // of outer join on the attributes because we can end up having
@@ -266,7 +268,7 @@ public:
     }
 
     virtual Extent *getExtent() {
-	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 	    cout << "still there start\n";
 	}
 	if (all_done) {
@@ -288,7 +290,7 @@ public:
 		delete es_attrops.curExtent();
 		es_attrops.clearExtent();
 		reportMemoryUsage();
-		if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+		if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 		    cout << "still there ad2\n";
 		}
 		LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-2");
@@ -344,11 +346,11 @@ public:
 		if (enable_side_data) {
 		    if (last_side_data_rotate < (in_packetat.valRaw() - rotate_interval_raw)) {
 			LintelLogDebug("AttrOpsCommonJoin", "rotate-side-data");
-			if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+			if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 			    cout << "still there pre-rotate\n";
 			}
 			rw_side_data.rotate();
-			if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+			if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 			    cout << "still there pre-rotate\n";
 			}
 			last_side_data_rotate = in_packetat.valRaw();
@@ -390,8 +392,8 @@ public:
 		}
 		if (enable_side_data && 
 		    (unified_id == unified_read_id || unified_id == unified_write_id)) {
-		    if (in_recordid.val() == 59777665137) {
-			cout << "HI 59777665137\n";
+		    if (in_recordid.val() == tmp_have_it_id) {
+			cout << "HI tmp_have_it_id\n";
 			tmp_have_it = true;
 		    }
 		    rw_side_data[in_recordid.val()] 
@@ -500,8 +502,8 @@ public:
 
 		if (enable_side_data && prune_entries_after_use
 		    && (d->unified_op_id == unified_read_id || d->unified_op_id == unified_write_id)) {
-		    if (in_recordid.val() == 59777665137) {
-			cout << "Remove 59777665137\n";
+		    if (in_recordid.val() == tmp_have_it_id) {
+			cout << "Remove tmp_have_it_id\n";
 		    }
 		    rw_side_data.remove(in_requestid.val());
 		}
@@ -514,7 +516,7 @@ public:
 	    }
 	}
 
-	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 	    cout << "still there return\n";
 	}
 	delete es_attrops.curExtent();
@@ -555,7 +557,7 @@ public:
     };
 
     const RWSideData *getRWSideData(int64_t record_id) {
-	if (tmp_have_it && rw_side_data.existsNoPromote(59777665137)) {
+	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
 	    cout << "still there return\n";
 	}
 	SINVARIANT(rw_side_data_thread == pthread_self());
@@ -564,8 +566,8 @@ public:
     }
 
     void removeRWSideData(int64_t record_id) {
-	if (record_id == 59777665137) {
-	    cout << "RWRemove 59777665137\n";
+	if (record_id == tmp_have_it_id) {
+	    cout << "RWRemove tmp_have_it_id\n";
 	}
 	rw_side_data.remove(record_id);
     }
@@ -809,7 +811,7 @@ public:
 	const AttrOpsCommonJoin::RWSideData *_reply
 	    = common_attr_join->getRWSideData(in_rw_reply_id.val());
 	if (_request == NULL || _reply == NULL) {
-	    if (in_rw_request_id.val() == 90869686608) {
+	    if (in_rw_request_id.val() == 90869686608LL) {
 		// hack, work around duplicate rw entry in nfs-2/set-3/140500-140999.ds
 		// means we don't generate the second entry, but it's a duplicate anyway.
 		++es_rw;
