@@ -10,12 +10,20 @@
 
 // TODO: update this to handle the newer style trace files.
 
+// Examine set-0/051000-051499.ds-log; should have impossible values
+// with this program calculating the rates at 2x the mbits of the
+// reported numbers.
+
+// set-2/011000-011499.ds-log: ~864 seconds; 500 files @128MiB each
+// 67108864000 bytes, 536870912000 bits, 621,378,370 bits/s
+
 #include <iostream>
 
-#include <Lintel/HashTable.hpp>
-#include <Lintel/StatsQuantile.hpp>
-#include <Lintel/PriorityQueue.hpp>
 #include <Lintel/Deque.hpp>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/LintelLog.hpp>
+#include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StatsQuantile.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/TypeIndexModule.hpp>
@@ -24,7 +32,7 @@
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/DStoTextModule.hpp>
 
-#include "sourcebyrange.hpp"
+#include "process/sourcebyrange.hpp"
 
 using namespace std;
 using boost::format;
@@ -196,172 +204,220 @@ public:
     IPRollingPacketStatistics(DataSeriesModule &_source,
 			      const string &args)
 	: RowAnalysisModule(_source),
-	  max_packettime(0),
-	  packet_at(series,"packet-at"),
-	  wire_len(series,"wire-length")
+	  max_packettime_raw(0),
+	  measurement_reorder_seconds(0),
+	  measurement_reorder_raw(0),
+	  sum_wire_len(0),
+	  packet_at(series, ""),
+	  wire_len(series, "")
     { 
+	// interval_seconds(,interval_seconds)*[:reorder_seconds]
 	vector<string> subargs;
 	split(args,":",subargs);
 
-	INVARIANT(subargs.size() <= 3,
-		  "too many arguments to iprollingpacketstatistics");
-	vector<string> interval_secs;
-	split(subargs[0],",",interval_secs);
-	double reorder_seconds = subargs.size() >= 2 ? atof(subargs[1].c_str()) : 1;
-	INVARIANT(reorder_seconds >= 1, format("reorder_seconds too small"
-					       " %.2f < 1") % reorder_seconds);
-	measurement_reorder_ns = (long long)(reorder_seconds * 1.0e9);
-	base_update_check_interval = subargs.size() >= 3 ? atoi(subargs[2].c_str()) : 100000;
-	update_check_interval = base_update_check_interval;
-	INVARIANT(update_check_interval >= 10000,
-		  format("update_check_interval too small %d < 10000")
-		  % update_check_interval);
+	INVARIANT(subargs.size() <= 3, "too many arguments to iprollingpacketstatistics");
+		  
+	interval_seconds = split(subargs[0], ","); 
 
-	measurement_intervals_ns.reserve(interval_secs.size());
-	for(unsigned i = 0; i < interval_secs.size(); ++i) {
-	    double dbl_secs = atof(interval_secs[i].c_str());
-	    INVARIANT(dbl_secs >= 1e-6, format("invalid interval seconds"
-					       " %.4g < 1e-6") % dbl_secs);
-	    long long time_ns = (long long)(dbl_secs * 1.0e9); 
-	    measurement_intervals_ns.push_back(time_ns);
-	}
+	measurement_reorder_seconds = subargs.size() >= 2 ? stringToDouble(subargs[1]) : 0;
+	INVARIANT(measurement_reorder_seconds >= 0, "invalid reorder-seconds, < 0");
     }
 
     virtual ~IPRollingPacketStatistics() { };
     
+    virtual void firstExtent(const Extent &e) {
+	const ExtentType &type = e.getType();
+	if (type.getName() == "Network trace: IP packets") {
+	    packet_at.setFieldName("packet-at");
+	    wire_len.setFieldName("wire-len");
+	} else if (type.getName() == "Trace::Network::IP" &&
+		   type.versionCompatible(1,0)) {
+	    packet_at.setFieldName("packet-at");
+	    wire_len.setFieldName("wire-length");
+	} else if (type.getName() == "Trace::Network::IP" &&
+		   type.versionCompatible(2,0)) {
+	    packet_at.setFieldName("packet_at");
+	    wire_len.setFieldName("wire_length");
+	} else {
+	    FATAL_ERROR("?");
+	}
+    }
+    
+    void initBWRolling(int64_t first_timestamp) {
+	bw_info.reserve(interval_seconds.size());
+	for(unsigned i = 0; i < interval_seconds.size(); ++i) {
+	    double seconds = stringToDouble(interval_seconds[i]);
+	    bw_info.push_back(new BandwidthRolling(packet_at.doubleSecondsToRaw(seconds),
+						   seconds, first_timestamp,
+						   2 * 7 * 86400));
+	}
+    }
+
+    virtual void prepareForProcessing() {
+	measurement_reorder_raw = packet_at.doubleSecondsToRaw(measurement_reorder_seconds);
+	if (measurement_reorder_raw == 0) {
+	    initBWRolling(packet_at.valRaw());
+	}
+    }
+
     // arrival time of the packet assuming an arrival entirely
     // within the smallest measurement interval
     virtual void processRow() {
-	pending_packets.push(packetTimeSize(packet_at.val(), wire_len.val()));
-	if (packet_at.val() > max_packettime) {
-	    max_packettime = packet_at.val();
+	sum_wire_len += wire_len.val();
+	if (measurement_reorder_raw == 0) {
+	    processOnePacket(packet_at.valRaw(), wire_len.val());
+	} else {
+	    reorderProcessRow();
 	}
-	if (pending_packets.size() > update_check_interval) {
-	    if ((max_packettime - pending_packets.top().timestamp_ns) < measurement_reorder_ns) {
-		// not enough time has passed to try updating packet time stuff
-		update_check_interval += base_update_check_interval;
-	    } else {
-		int start_size = pending_packets.size();
-		processPendingPackets(max_packettime - measurement_reorder_ns);
-		INVARIANT(pending_packets.empty() == false,
-			  format("internal %lld %lld")
-			  % max_packettime % measurement_reorder_ns);
-		int end_size = pending_packets.size();
-		if ((start_size - end_size) < start_size / 2) {
-		    // didn't process enough packets, increase update_check_interval a bit.
-		    update_check_interval += base_update_check_interval/10;
-		}
+    }
+
+    void reorderProcessRow() {
+	pending_packets.push(packetTimeSize(packet_at.valRaw(), wire_len.val()));
+	if (packet_at.valRaw() > max_packettime_raw) {
+	    max_packettime_raw = packet_at.valRaw();
+	}
+	if ((max_packettime_raw - pending_packets.top().timestamp_raw) 
+	    >= 2*measurement_reorder_raw) {
+	    if (bw_info.empty()) {
+		initBWRolling(pending_packets.top().timestamp_raw);
 	    }
+	    processPendingPackets(max_packettime_raw - measurement_reorder_raw);
+	    INVARIANT(pending_packets.empty() == false,
+		      format("internal %lld %lld")
+		      % max_packettime_raw % measurement_reorder_raw);
 	}
     }
 
     virtual void completeProcessing() {
-	processPendingPackets(max_packettime);
-	SINVARIANT(pending_packets.empty() == true);
+	if (measurement_reorder_raw > 0) {
+	    processPendingPackets(max_packettime_raw);
+	}
+	SINVARIANT(pending_packets.empty());
     }
 
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 
+	cout << format("sum-wire-len=%d\n") % sum_wire_len;
+	static const double MIBtoMbps = 1024*1024 * 8 / 1.0e6;
+	static const unsigned nranges = 10;
 	for(unsigned i = 0;i<bw_info.size();++i) {
 	    if (bw_info[i]->MiB_per_second.count() > 0) {
-		printf("MiB/s for interval len of %.4gs with samples every %.4gs\n",
-		       (double)bw_info[i]->interval_width/1.0e9, 
-		       (double)bw_info[i]->update_step/1.0e9);
-		bw_info[i]->MiB_per_second.printFile(stdout);
-		bw_info[i]->MiB_per_second.printTail(stdout);
-		printf("kpps for interval len of %.4gs with samples every %.4gs\n",
-		       (double)bw_info[i]->interval_width/1.0e9, 
-		       (double)bw_info[i]->update_step/1.0e9);
-		bw_info[i]->kpackets_per_second.printFile(stdout);
-		bw_info[i]->kpackets_per_second.printTail(stdout);
-		printf("\n");
+		cout << format("MiB/s for interval len of %.4gs with samples every %.4gs\n")
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->interval_width_raw)
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->update_step_raw);
+		bw_info[i]->MiB_per_second.printTextRanges(cout, nranges);
+		bw_info[i]->MiB_per_second.printTextTail(cout);
+		cout << format("Mbps for interval len of %.4gs with samples every %.4gs\n")
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->interval_width_raw)
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->update_step_raw);
+		bw_info[i]->MiB_per_second.printTextRanges(cout, nranges, MIBtoMbps);
+		bw_info[i]->MiB_per_second.printTextTail(cout, MIBtoMbps);
+
+		cout << format("kpps for interval len of %.4gs with samples every %.4gs\n")
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->interval_width_raw)
+		    % packet_at.rawToDoubleSeconds(bw_info[i]->update_step_raw);
+		bw_info[i]->kpackets_per_second.printTextRanges(cout, nranges);
+		bw_info[i]->kpackets_per_second.printTextTail(cout);
+		cout << "\n";
 	    }
 	}
 	
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 private:
-    void processPendingPackets(long long max_to_process) {
-	if (bw_info.size() == 0) {
-	    bw_info.reserve(measurement_intervals_ns.size());
-	    for(unsigned i = 0; i < measurement_intervals_ns.size(); ++i) {
-		bw_info.push_back(new bandwidth_rolling(measurement_intervals_ns[i],
-							pending_packets.top().timestamp_ns));
-	    }
+    void processOnePacket(int64_t timestamp_raw, int32_t packet_size) {
+	SINVARIANT(!bw_info.empty());
+	for(unsigned i=0; i < bw_info.size(); ++i) {
+	    bw_info[i]->update(timestamp_raw, packet_size);
 	}
-
-	while (!pending_packets.empty() && pending_packets.top().timestamp_ns <= max_to_process) {
-	    for(unsigned i=0; i < bw_info.size(); ++i) {
-		bw_info[i]->update(pending_packets.top().timestamp_ns,
-				   pending_packets.top().packetsize);
-	    }
+    }	
+    void processPendingPackets(int64_t max_process_raw) {
+	while (!pending_packets.empty() 
+	       && pending_packets.top().timestamp_raw <= max_process_raw) {
+	    processOnePacket(pending_packets.top().timestamp_raw, 
+			     pending_packets.top().packetsize);
 	    pending_packets.pop();
 	}
     }
 
     struct packetTimeSize {
-	long long timestamp_ns;
+	int64_t timestamp_raw;
 	int packetsize;
-	packetTimeSize(ExtentType::int64 a, int b)
-	    : timestamp_ns(a), packetsize(b) { }
+	packetTimeSize(int64_t a, int b)
+	    : timestamp_raw(a), packetsize(b) { }
 	packetTimeSize()
-	    : timestamp_ns(0), packetsize(0) { }
+	    : timestamp_raw(0), packetsize(0) { }
     };
     
     struct packetTimeSizeGeq {
 	bool operator()(const packetTimeSize &a, const packetTimeSize &b) const {
-	    return a.timestamp_ns >= b.timestamp_ns;
+	    return a.timestamp_raw >= b.timestamp_raw;
 	}
     };
 
-    struct bandwidth_rolling {
-	long long interval_width, update_step, cur_time;
+    struct BandwidthRolling {
+	int64_t interval_width_raw, update_step_raw, cur_time_raw;
 	double MiB_per_second_convert, kpackets_per_second_convert, cur_bytes_in_queue;
+	int64_t quantile_nbound;
 	Deque<packetTimeSize> packets_in_flight;
 	StatsQuantile MiB_per_second, kpackets_per_second;
 
-      	void update(long long packet_ns, int packet_size) {
-	    SINVARIANT(packets_in_flight.empty() || 
-		       packet_ns >= packets_in_flight.back().timestamp_ns);
-	    while ((packet_ns - cur_time) > interval_width) {
+      	void update(int64_t packet_raw, int packet_size) {
+	    LintelLogDebug("IPRolling::packet", format("UPD %d %d") % packet_raw % packet_size);
+	    INVARIANT(packets_in_flight.empty() || 
+		      packet_raw >= packets_in_flight.back().timestamp_raw,
+		      format("out of order %d < %d") % packet_raw 
+		      % packets_in_flight.back().timestamp_raw);
+	    while ((packet_raw - cur_time_raw) > interval_width_raw) {
 		// update statistics for the interval from cur_time to cur_time + interval_width
 		// all packets in p_i_f must have been recieved in that interval
-		MiB_per_second.add(cur_bytes_in_queue*MiB_per_second_convert);
-		kpackets_per_second.add(packets_in_flight.size()*kpackets_per_second_convert);
-		cur_time += update_step;
-		while(packets_in_flight.empty() == false &&
-		      packets_in_flight.front().timestamp_ns < cur_time) {
+		double bw = cur_bytes_in_queue * MiB_per_second_convert;
+		MiB_per_second.add(bw);
+		double pps = packets_in_flight.size() * kpackets_per_second_convert;
+		kpackets_per_second.add(pps);
+		LintelLogDebug("IPRolling::detail", format("[%d..%d[: %.0f, %d -> %.6g %.6g")
+			       % cur_time_raw % (cur_time_raw + update_step_raw)
+			       % cur_bytes_in_queue % packets_in_flight.size() % bw % pps);
+		cur_time_raw += update_step_raw;
+		while(! packets_in_flight.empty() &&
+		      packets_in_flight.front().timestamp_raw < cur_time_raw) {
 		    cur_bytes_in_queue -= packets_in_flight.front().packetsize;
 		    packets_in_flight.pop_front();
 		}
 	    }
-	    packets_in_flight.push_back(packetTimeSize(packet_ns, packet_size));
+	    packets_in_flight.push_back(packetTimeSize(packet_raw, packet_size));
 	    cur_bytes_in_queue += packet_size;
 	}
-	bandwidth_rolling(ExtentType::int64 interval_ns, 
-			  ExtentType::int64 start_time, 
-			  int substep_count = 20) 
-	    : interval_width(interval_ns), update_step(interval_ns/substep_count), 
-	    cur_time(start_time), 
-	    MiB_per_second_convert((1/(1024.0*1024.0)) * (1.0e9/(double)interval_ns)),
-	    kpackets_per_second_convert((1/1000.0) * (1.0e9/(double)interval_ns)),
-	    cur_bytes_in_queue(0), MiB_per_second(0.001), 
-	    kpackets_per_second(0.001) { 
+
+	BandwidthRolling(int64_t interval_raw, double interval_seconds,
+			 int64_t start_time_raw, double max_total_seconds,
+			 int substep_count = 20) 
+	    : interval_width_raw(interval_raw), update_step_raw(interval_raw/substep_count), 
+	      cur_time_raw(start_time_raw), 
+	      MiB_per_second_convert((1/(1024.0*1024.0)) * (1.0/interval_seconds)),
+	      //	      MiB_per_second_convert((8/1.0e6) * (1.0/interval_seconds)),
+	      kpackets_per_second_convert((1/1000.0) * (1.0/interval_seconds)),
+	      cur_bytes_in_queue(0), 
+	      quantile_nbound(static_cast<int64_t>(round(substep_count * max_total_seconds 
+							 / interval_seconds))),
+	      MiB_per_second(0.001, quantile_nbound), kpackets_per_second(0.001, quantile_nbound)
+	{ 
 	    SINVARIANT(substep_count > 0);
 	}
     };
 
-    unsigned base_update_check_interval, update_check_interval;
-
     PriorityQueue<packetTimeSize, packetTimeSizeGeq> pending_packets;
-    long long max_packettime;
+    int64_t max_packettime_raw;
 
-    std::vector<bandwidth_rolling *> bw_info;
-    std::vector<long long> measurement_intervals_ns;
-    long long measurement_reorder_ns;
+    vector<BandwidthRolling *> bw_info;
+    vector<string> interval_seconds;
 
-    Int64Field packet_at;
+    double measurement_reorder_seconds;
+    int64_t measurement_reorder_raw;
+
+    uint64_t sum_wire_len;
+    Int64TimeField packet_at;
     Int32Field wire_len;
 };
 
@@ -503,9 +559,22 @@ printResult(DataSeriesModule *mod)
     printf("\n");
 }
 
-int
-main(int argc, char *argv[]) 
-{
+void registerUnitsEpoch() {
+    // Register time types for some of the old traces so we don't have to
+    // do it in each of the modules.
+    Int64TimeField::registerUnitsEpoch("packet-at", "Network trace: IP packets", "", 0,
+				       "nanoseconds", "unix");
+    Int64TimeField::registerUnitsEpoch("packet-at", "Trace::Network::IP", 
+				       "ssd.hpl.hp.com", 1, "2^-32 seconds", 
+				       "unix");
+    Int64TimeField::registerUnitsEpoch("packet_at", "Trace::Network::IP", 
+				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
+				       "unix");
+}
+
+int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
+    registerUnitsEpoch();
     int first = parseopts(argc, argv);
 
     if (argc - first < 1) {
@@ -513,7 +582,8 @@ main(int argc, char *argv[])
     }
     TypeIndexModule *ipsource = 
 	new TypeIndexModule("Network trace: IP packets");
-
+    ipsource->setSecondMatch("Trace::Network::IP");
+    
     if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
 	sourceByIndex(ipsource,argv[first],atoi(argv[first+1]),atoi(argv[first+2]));
     } else {

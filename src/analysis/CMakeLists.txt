@@ -8,6 +8,7 @@
 DATASERIES_PROGRAM(wcanalysis)
 DATASERIES_PROGRAM(lsfdsanalysis 
 	lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
+DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
     LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)

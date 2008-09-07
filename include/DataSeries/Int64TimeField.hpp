@@ -126,6 +126,9 @@ public:
     /// the raw units.
     double rawToDoubleSeconds(Raw raw, bool precision_check = true) const;
 
+    /// convert a double measured in seconds into a raw value
+    Raw doubleSecondsToRaw(double seconds) const;
+
     /// Some old files may not include the necessary units and epoch
     /// fields.  This function provides a back-door for specifying
     /// these values.  A call to this will override any specification

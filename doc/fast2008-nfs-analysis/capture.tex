@@ -1,0 +1,44 @@
+\section{Capture}
+
+The first stage in analyzing an NFS workload is capturing the data.
+There are three places that the workload could be captured: the
+client, the server, or the server.  Capturing the workload on the
+clients is very parallel, but is difficult to configure and can
+interfere with the actual workload.  Capturing the workload on the
+server is straightfoward if the server supports capture, such as on a
+unix server, or a NetApp Filer, but impacts the performance of the
+server.  Capturing the workload on the network through port mirroring
+is about as convinient as capture on the server, and given that most
+switches implement mirroring in hardware, has no impact on network or
+workload performance.  On fibre networks, even the potential impact of
+port mirroring can be eliminated through the use of fiber
+splitters\cite{...}. Therefore, we have always chosen to capture the
+data through the use of port mirroring.
+
+One complication with port mirroring is that usually you are mirroring
+both the send and recieve directions of full-duplex ports onto a
+single mirror port, meaning that the mirror port bandwidth is half the
+bandwidth of the server's port.  This problem, and the related problem
+of mirroring multiple ports bonded using etherchannel can be handled
+on advanced switches that can selectively mirror each direction of a
+particular port onto specific mirror port.  We used this functionality
+in our 2003 tracing to spread 2-4 1 gigabit links over 2 1 gigabit
+mirror ports.
+
+A second complication that can occur when tracing is buffering on the
+switch.  Even if the 1 second byte averages are low enough to fit onto
+the mirror ports, if the switch has insufficient buffering, packets
+can still be dropped.  We faced this problem in 2004 at a second
+customer that used switches that only had per-port buffering rather
+than shared per-card buffering as on the 2003 customer.  While
+examination of the SNMP statistics led us to believe that the same
+split mirroring technique we used previously would be sufficient, the
+lack of buffering turned out to be a problem and drove us to use
+10Gbit ethernet cards for our packet capture to reduce the need for
+switch-side buffering.
+
+A third complication for network capture is overrun of the capture
+device.  While at low data rates (50-100MB/s, 30-70kpps), it is not
+difficult to capture using tcpdump and standard hardware.  However, at
+high data rates (800MB/s, 600-1,200kpps), traditional approaches are
+insufficient.

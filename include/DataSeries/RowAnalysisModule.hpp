@@ -53,6 +53,11 @@ public:
 	field names */
     virtual void newExtentHook(const Extent &e);
 
+
+    /** this function will be called once, with the first extent 
+	that will be processed by the module */
+    virtual void firstExtent(const Extent &e);
+
     /** this function will be called once after the first extent has been
 	retrieved, but before processRow() has been called; it will not 
 	be called if there were no extents to process */

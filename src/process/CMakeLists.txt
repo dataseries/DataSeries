@@ -19,7 +19,6 @@ DATASERIES_PROGRAM(ds2wcweb)
 DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(indexnfscommon)
 DATASERIES_PROGRAM(lvpvprocessusage)
-DATASERIES_PROGRAM(ipdsanalysis sourcebyrange.cpp)
 
 IF(CRYPTO_ENABLED)
     DATASERIES_PROGRAM(iphost2ds)

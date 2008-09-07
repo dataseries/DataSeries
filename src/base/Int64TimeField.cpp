@@ -153,6 +153,20 @@ Int64TimeField::rawToDoubleSeconds(Raw raw, bool precision_check) const {
     return 0; // unreached
 }
 
+// TODO: should be able to get better precision by doing type-specific
+// conversions.
+Int64TimeField::Raw Int64TimeField::doubleSecondsToRaw(double seconds) const {
+    SINVARIANT(seconds > numeric_limits<int32_t>::min() && 
+	       seconds < numeric_limits<int32_t>::max());
+    int32_t i_seconds = static_cast<int32_t>(floor(seconds));
+    uint32_t nanosec = static_cast<uint32_t>(round(1.0e9 * (seconds - i_seconds)));
+    if (nanosec == 1000000000) {
+	++i_seconds;
+	nanosec = 0;
+    }
+    return secNanoToRaw(i_seconds, nanosec);
+}
+
 void Int64TimeField::newExtentType()
 {
     Int64Field::newExtentType();

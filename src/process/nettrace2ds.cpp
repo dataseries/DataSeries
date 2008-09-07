@@ -1239,7 +1239,6 @@ incrementalBandwidthInformation()
 		  "too much out of orderness");
 	max_incremental_processed = packet_bw_rolling_info.top().timestamp_us;
 	doBandwidthProcessPacket();
-	packet_bw_rolling_info.pop();
     }
 }
 
@@ -3180,28 +3179,29 @@ void checkERFEqual(const string &src1, const string &src2)
     exit(0);
 }
 
-
-void testBWRolling()
-{
+void testBWRolling() {
     prepareBandwidthInformation();
+    // Add 1000 to packet times to keep the from starting at 0, which is 
+    // used as a sentinal value.
+    // TODO: test out the incremental code; that's where the bug was.
     if (true) {
 	// 1000 bytes/333us = 24.024 Mbits
 	for(unsigned i = 0; i<10000000; i+= 333) {
-	    packet_bw_rolling_info.push(packetTimeSize(i,1000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000,1000));
 	}
     }
 
     if (true) {
 	// 2000 bytes/100us = 160 (+24 = 184) Mbits for 10% of the time
 	for(unsigned i = 5000000; i<6000000; i+= 100) {
-	    packet_bw_rolling_info.push(packetTimeSize(i, 2000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000, 2000));
 	}
     }
     
     if (true) {
 	// 3000 bytes/25us = 960 (+24+160=1144) Mbits for 1% of the time
 	for(unsigned i = 5500000; i<5600000; i+= 25) {
-	    packet_bw_rolling_info.push(packetTimeSize(i, 3000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000, 3000));
 	}
     }
     summarizeBandwidthInformation();
