@@ -295,8 +295,10 @@ public:
     void processGroupReplyOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
 	FHState state;
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
-	    INVARIANT(state.latest_reply_at <= i->reply_at, format("%d > %d") 
-		      % state.latest_reply_at % i->reply_at);
+	    INVARIANT(state.latest_reply_at <= i->reply_at, format("%d > %d around %s:%d")
+		      % state.latest_reply_at % i->reply_at 
+		      % (series.getExtent() ? series.getExtent()->extent_source : "eof")
+		      % (series.getExtent() ? series.getExtent()->extent_source_offset : 0));
 	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
 	    processOneOp(state, *i);
 	}

@@ -229,7 +229,7 @@ public:
 	const ExtentType &type = e.getType();
 	if (type.getName() == "Network trace: IP packets") {
 	    packet_at.setFieldName("packet-at");
-	    wire_len.setFieldName("wire-len");
+	    wire_len.setFieldName("wire-length");
 	} else if (type.getName() == "Trace::Network::IP" &&
 		   type.versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");

@@ -332,6 +332,10 @@ public:
 	Extent *outextent = new Extent(*es_out.getType());
 	es_out.setExtent(outextent);
 
+	outextent->extent_source = str(format("(join around %s + %s)") 
+				       % es_common.extent()->extent_source
+				       % es_attrops.extent()->extent_source);
+
 	string fh;
 	while(es_attrops.pos.morerecords()) {
 	    if (es_common.pos.morerecords() == false) {
@@ -845,10 +849,12 @@ public:
 		es_rw.pos.setPos(cur_pos);
 	    }
 		
-	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d")
+	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d; around %s:%d")
 			% in_rw_request_id.val() % static_cast<const void *>(_request)
 			% in_rw_reply_id.val() % static_cast<const void *>(_reply)
-			% hexstring(in_rw_filehandle.stringval()) % in_offset.val() % in_bytes.val() % in_is_read.val());
+			% hexstring(in_rw_filehandle.stringval()) % in_offset.val() 
+			% in_bytes.val() % in_is_read.val() % es_rw.extent()->extent_source
+			% es_rw.extent()->extent_source_offset);
 	}
 	const AttrOpsCommonJoin::RWSideData &request(*_request);
 	const AttrOpsCommonJoin::RWSideData &reply(*_reply);
@@ -890,6 +896,9 @@ public:
 	}
 	Extent *outextent = new Extent(*es_out.getType());
 	es_out.setExtent(outextent);
+	outextent->extent_source = str(format("(join around %s + %s)") 
+				       % es_commonattr.extent()->extent_source
+				       % es_rw.extent()->extent_source);
 
 	while(outextent->extentsize() < 128*1024) {
 	restart:
