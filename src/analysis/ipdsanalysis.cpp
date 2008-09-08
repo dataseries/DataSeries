@@ -10,13 +10,6 @@
 
 // TODO: update this to handle the newer style trace files.
 
-// Examine set-0/051000-051499.ds-log; should have impossible values
-// with this program calculating the rates at 2x the mbits of the
-// reported numbers.
-
-// set-2/011000-011499.ds-log: ~864 seconds; 500 files @128MiB each
-// 67108864000 bytes, 536870912000 bits, 621,378,370 bits/s
-
 #include <iostream>
 
 #include <Lintel/Deque.hpp>

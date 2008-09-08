@@ -292,7 +292,14 @@ public:
 	completeOpAccessGroup(state, ops);
     }
 
+    struct ByReplyId {
+	bool operator() (const Operation &a, const Operation &b) const {
+	    return a.reply_at < b.reply_at;
+	}
+    };
+
     void processGroupReplyOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
+	sort(ops.begin(), ops.end(), ByReplyId());
 	FHState state;
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
 	    INVARIANT(state.latest_reply_at <= i->reply_at, format("%d > %d around %s:%d")

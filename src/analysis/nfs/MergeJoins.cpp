@@ -646,7 +646,7 @@ namespace NFSDSAnalysisMod {
 const string commonattrrw_xml_in( 
   "<ExtentType name=\"common-attr-rw-join\">\n"
   "  <field type=\"int64\" %1% name=\"request_at\" />\n"
-  "  <field type=\"int64\" %1% name=\"reply_at\" note=\"sorted by this\" />\n"
+  "  <field type=\"int64\" %1% name=\"reply_at\" note=\"almost sorted by this\" />\n"
   "  <field type=\"int32\" name=\"server\" />\n"
   "  <field type=\"int32\" name=\"client\" />\n"
   "  <field type=\"variable32\" name=\"filehandle\" print_hex=\"yes\" />\n"
@@ -692,7 +692,7 @@ public:
 	  in_is_read(es_rw,""),
 	  out_is_read(es_out,"is_read"),
 	  rw_done(false), commonattr_done(false),
-	  skip_count(0), last_reply_id(-1), 
+	  skip_count(0), last_reply_id(-1),
 	  read_unified_id(nameToUnifiedId("read")),
 	  write_unified_id(nameToUnifiedId("write")),
 	  output_bytes(0), missing_attr_ops_in_join(0),
