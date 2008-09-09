@@ -93,6 +93,7 @@ public:
 	  first_keep_time_raw(0),
 	  skipped_common_count(0), skipped_attrops_count(0), 
 	  skipped_duplicate_attr_count(0), 
+	  last_record_id(numeric_limits<int64_t>::min()),
 	  last_reply_id(numeric_limits<int64_t>::min()),
 	  enable_side_data(false),
 	  unified_read_id(nameToUnifiedId("read")),
@@ -368,9 +369,11 @@ public:
 		cout << "found tmp_have_it_id\n";
 	    }
 	    INVARIANT(in_replyid.val() >= prev_replyid, 
-		      format("needsort %lld %lld") 
+		      format("attr-ops not sorted by reply id? %lld < %lld") 
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
+	    SINVARIANT(last_record_id < in_recordid.val());
+	    last_record_id = in_recordid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
 		if (tmp_have_it && in_recordid.val() == tmp_have_it_id) {
 		    cout << "record < reply tmp_have_it_id\n";
@@ -615,7 +618,7 @@ private:
     ExtentType::int64 first_keep_time_raw;
     uint64_t skipped_common_count, skipped_attrops_count, 
 	      skipped_duplicate_attr_count;
-    int64_t last_reply_id;
+    int64_t last_record_id, last_reply_id;
 
     bool enable_side_data;
     RotatingHashMap<int64_t, RWSideData> rw_side_data;
@@ -692,7 +695,7 @@ public:
 	  in_is_read(es_rw,""),
 	  out_is_read(es_out,"is_read"),
 	  rw_done(false), commonattr_done(false),
-	  skip_count(0), last_reply_id(-1),
+	  skip_count(0), last_rw_reply_id(-1),
 	  read_unified_id(nameToUnifiedId("read")),
 	  write_unified_id(nameToUnifiedId("write")),
 	  output_bytes(0), missing_attr_ops_in_join(0),
@@ -923,6 +926,9 @@ public:
 		    goto restart;
 		}
 	    }
+	    INVARIANT(last_rw_reply_id < in_rw_reply_id.val(), 
+		      "read-write extent not sorted by reply-id?");
+	    last_rw_reply_id = in_rw_reply_id.val();
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
 		handleRWUnmatched();
 	    } else {
@@ -979,7 +985,7 @@ private:
 
     bool rw_done, commonattr_done;
     int skip_count;
-    int64_t last_reply_id;
+    int64_t last_rw_reply_id;
 
     uint8_t read_unified_id, write_unified_id;
     ExtentType::int64 output_bytes;

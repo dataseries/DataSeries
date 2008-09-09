@@ -200,6 +200,7 @@ public:
 	  max_packettime_raw(0),
 	  measurement_reorder_seconds(0),
 	  measurement_reorder_raw(0),
+	  last_process_time_raw(numeric_limits<int64_t>::min()),
 	  sum_wire_len(0),
 	  packet_at(series, ""),
 	  wire_len(series, "")
@@ -258,13 +259,16 @@ public:
     virtual void processRow() {
 	sum_wire_len += wire_len.val();
 	if (measurement_reorder_raw == 0) {
-	    processOnePacket(packet_at.valRaw(), wire_len.val());
+	    processOnePacket(packet_at.valRaw(), wire_len.val(), series.extent()->extent_source);
 	} else {
 	    reorderProcessRow();
 	}
     }
 
     void reorderProcessRow() {
+	INVARIANT(packet_at.valRaw() > last_process_time_raw,
+		  format("bad ordering %d <= %d in %s") % packet_at.valRaw() 
+		  % last_process_time_raw % series.getExtent()->extent_source);
 	pending_packets.push(packetTimeSize(packet_at.valRaw(), wire_len.val()));
 	if (packet_at.valRaw() > max_packettime_raw) {
 	    max_packettime_raw = packet_at.valRaw();
@@ -275,6 +279,7 @@ public:
 		initBWRolling(pending_packets.top().timestamp_raw);
 	    }
 	    processPendingPackets(max_packettime_raw - measurement_reorder_raw);
+	    last_process_time_raw = max_packettime_raw - measurement_reorder_raw;
 	    INVARIANT(pending_packets.empty() == false,
 		      format("internal %lld %lld")
 		      % max_packettime_raw % measurement_reorder_raw);
@@ -288,12 +293,12 @@ public:
 	SINVARIANT(pending_packets.empty());
     }
 
+    static const unsigned nranges = 100;
     virtual void printResult() {
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 
 	cout << format("sum-wire-len=%d\n") % sum_wire_len;
 	static const double MIBtoMbps = 1024*1024 * 8 / 1.0e6;
-	static const unsigned nranges = 10;
 	for(unsigned i = 0;i<bw_info.size();++i) {
 	    if (bw_info[i]->MiB_per_second.count() > 0) {
 		cout << format("MiB/s for interval len of %.4gs with samples every %.4gs\n")
@@ -319,17 +324,19 @@ public:
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 private:
-    void processOnePacket(int64_t timestamp_raw, int32_t packet_size) {
+    void processOnePacket(int64_t timestamp_raw, int32_t packet_size, const string &file) {
 	SINVARIANT(!bw_info.empty());
 	for(unsigned i=0; i < bw_info.size(); ++i) {
-	    bw_info[i]->update(timestamp_raw, packet_size);
+	    bw_info[i]->update(timestamp_raw, packet_size, packet_at, file);
 	}
     }	
     void processPendingPackets(int64_t max_process_raw) {
+	const string &file = series.getExtent() == NULL ? "END" 
+	    : series.getExtent()->extent_source;
 	while (!pending_packets.empty() 
 	       && pending_packets.top().timestamp_raw <= max_process_raw) {
 	    processOnePacket(pending_packets.top().timestamp_raw, 
-			     pending_packets.top().packetsize);
+			     pending_packets.top().packetsize, file);
 	    pending_packets.pop();
 	}
     }
@@ -356,12 +363,14 @@ private:
 	Deque<packetTimeSize> packets_in_flight;
 	StatsQuantile MiB_per_second, kpackets_per_second;
 
-      	void update(int64_t packet_raw, int packet_size) {
+      	void update(int64_t packet_raw, int packet_size, const Int64TimeField &packet_at,
+		    const string &filename) {
 	    LintelLogDebug("IPRolling::packet", format("UPD %d %d") % packet_raw % packet_size);
-	    INVARIANT(packets_in_flight.empty() || 
-		      packet_raw >= packets_in_flight.back().timestamp_raw,
-		      format("out of order %d < %d") % packet_raw 
-		      % packets_in_flight.back().timestamp_raw);
+	    int64_t cur_back_ts_raw = packets_in_flight.back().timestamp_raw;
+	    INVARIANT(packets_in_flight.empty() || packet_raw >= cur_back_ts_raw,
+		      format("out of order by %.4fs in %s; %d < %d") 
+		      % packet_at.rawToDoubleSeconds(cur_back_ts_raw - packet_raw) % filename
+		      % packet_raw % cur_back_ts_raw);
 	    while ((packet_raw - cur_time_raw) > interval_width_raw) {
 		// update statistics for the interval from cur_time to cur_time + interval_width
 		// all packets in p_i_f must have been recieved in that interval
@@ -382,24 +391,24 @@ private:
 	    packets_in_flight.push_back(packetTimeSize(packet_raw, packet_size));
 	    cur_bytes_in_queue += packet_size;
 	}
-
+    
 	BandwidthRolling(int64_t interval_raw, double interval_seconds,
 			 int64_t start_time_raw, double max_total_seconds,
 			 int substep_count = 20) 
 	    : interval_width_raw(interval_raw), update_step_raw(interval_raw/substep_count), 
 	      cur_time_raw(start_time_raw), 
 	      MiB_per_second_convert((1/(1024.0*1024.0)) * (1.0/interval_seconds)),
-	      //	      MiB_per_second_convert((8/1.0e6) * (1.0/interval_seconds)),
 	      kpackets_per_second_convert((1/1000.0) * (1.0/interval_seconds)),
 	      cur_bytes_in_queue(0), 
 	      quantile_nbound(static_cast<int64_t>(round(substep_count * max_total_seconds 
 							 / interval_seconds))),
-	      MiB_per_second(0.001, quantile_nbound), kpackets_per_second(0.001, quantile_nbound)
+	      MiB_per_second(1.0/(2*nranges), quantile_nbound), 
+	      kpackets_per_second(1.0/(2*nranges), quantile_nbound)
 	{ 
 	    SINVARIANT(substep_count > 0);
 	}
     };
-
+    
     PriorityQueue<packetTimeSize, packetTimeSizeGeq> pending_packets;
     int64_t max_packettime_raw;
 
@@ -408,6 +417,7 @@ private:
 
     double measurement_reorder_seconds;
     int64_t measurement_reorder_raw;
+    int64_t last_process_time_raw;
 
     uint64_t sum_wire_len;
     Int64TimeField packet_at;
@@ -497,12 +507,9 @@ usage(char *argv0)
 }
 
 double ippair_interval = 60.0;
-char *ip_rolling_packet_statistics_arg;
 char *ip_time_series_bandwidth_packets_per_second_arg;
 
-int
-parseopts(int argc, char *argv[])
-{
+int parseopts(int argc, char *argv[], SequenceModule &ipSequence) {
     bool any_selected;
 
     any_selected = false;
@@ -516,8 +523,9 @@ parseopts(int argc, char *argv[])
 	    INVARIANT(ippair_interval >= 0.001,
 		      "bad option to -a, expect interval seconds");
 	    break;
-	case 'b': options[optIPRollingPacketStatistics] = 1;
-	    ip_rolling_packet_statistics_arg = optarg;
+	case 'b': 
+	    ipSequence.addModule(new PrefetchBufferModule(ipSequence.tail(), 1024*1024));
+	    ipSequence.addModule(new IPRollingPacketStatistics(ipSequence.tail(), optarg));
 	    break;
 	case 'c': options[optIPTimeSeriesBandwidthPacketsPerSecond] = 1;
 	    ip_time_series_bandwidth_packets_per_second_arg = optarg;
@@ -568,15 +576,18 @@ void registerUnitsEpoch() {
 int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
     registerUnitsEpoch();
-    int first = parseopts(argc, argv);
 
-    if (argc - first < 1) {
-	usage(argv[0]);
-    }
     TypeIndexModule *ipsource = 
 	new TypeIndexModule("Network trace: IP packets");
     ipsource->setSecondMatch("Trace::Network::IP");
+
+    SequenceModule ipSequence(ipsource);
     
+    int first = parseopts(argc, argv, ipSequence);
+    if (argc - first < 1) {
+	usage(argv[0]);
+    }
+
     if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
 	sourceByIndex(ipsource,argv[first],atoi(argv[first+1]),atoi(argv[first+2]));
     } else {
@@ -586,17 +597,10 @@ int main(int argc, char *argv[]) {
     }
 
     ipsource->startPrefetching();
-    PrefetchBufferModule *ipprefetch = 
-	new PrefetchBufferModule(*ipsource,32*1024*1024);
-    
-    SequenceModule ipSequence(ipprefetch);
+
     if (options[optIPUsage]) {
 	ipSequence.addModule(new IPUsage(ipSequence.tail(),
 					 ippair_interval));
-    }
-    if (options[optIPRollingPacketStatistics]) {
-	ipSequence.addModule(new IPRollingPacketStatistics(ipSequence.tail(),
-							   ip_rolling_packet_statistics_arg));
     }
 
     if (options[optIPTimeSeriesBandwidthPacketsPerSecond]) {
