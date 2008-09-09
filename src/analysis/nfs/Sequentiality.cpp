@@ -25,6 +25,7 @@ using dataseries::TFixedField;
 
 class Sequentiality : public RowAnalysisModule {
 public:
+    static const uint64_t nvals = static_cast<uint64_t>(1.0e10);
     enum Mode { ReplyOrder, OverlappingReorder, RequestOrder };
     Sequentiality(DataSeriesModule &source, const string &arg_str)
         : RowAnalysisModule(source),
@@ -40,13 +41,18 @@ public:
           bytes(series, "bytes"),
 	  last_rotate_time_raw(numeric_limits<int64_t>::min()),
 	  reset_interval_raw(0), 
-	  skip_distribution(0.001, static_cast<uint64_t>(1.0e10)),
 	  operations_memory_usage(0),
 	  last_reported_memory_usage(0),
 	  operation_count(0), process_count(0), reset_count(0), continue_count(0),
 	  reorder_count(0),
 	  overlapping_reorder_slop_seconds(0), overlapping_reorder_slop_raw(0),
-	  mode(RequestOrder)
+	  mode(RequestOrder),
+	  skip_distribution(0.005, nvals), count_stat(0.005, nvals), bytes_stat(0.005, nvals),
+	  op_bytes_fraction(0.005, nvals), file_bytes_fraction(0.005, nvals), 
+	  reorder_count_stat(0.005, nvals), reorder_fraction(0.005, nvals),
+	  sequentiality_count_fraction(0.005, nvals), sequentiality_bytes_fraction(0.005, nvals),
+	  in_random_sequential_run_count(0.005, nvals), 
+	  in_random_sequential_run_bytes(0.005, nvals), eof_count(0.005, nvals)
     { 
 	ignore_client = false;
 	ignore_server = false;
@@ -79,6 +85,8 @@ public:
 
     virtual ~Sequentiality() { }
 
+    static const double eof_reset_fraction = 0.5;
+
     struct Operation {
 	// reply_at == min() --> unused entry
 	int64_t request_at, reply_at;
@@ -104,22 +112,36 @@ public:
     struct FHState {
 	int64_t last_end_offset, latest_reply_at;
 	uint32_t write_count, read_count;
-	uint32_t random_count, sequential_count;
 	uint64_t write_bytes, read_bytes;
+	uint32_t random_count, sequential_count;
+	uint64_t random_bytes, sequential_bytes;
 	uint32_t reorder_count;
+	int32_t initial_bytes;
+	uint32_t cur_sequential_run_count;
+	uint64_t cur_sequential_run_bytes;
+	uint32_t eof_count;
 
-	FHState() { reset(); }
+	// eof is not a per-run statistic.
+	FHState() { reset(); eof_count = 0; }
 
 	void reset() {
 	    last_end_offset = numeric_limits<int64_t>::min();
 	    latest_reply_at = numeric_limits<int64_t>::min();
 	    write_count = 0; 
 	    read_count = 0; 
+	    write_bytes = 0;
+	    read_bytes = 0;
+
 	    random_count = 0;
 	    sequential_count = 0;
-	    read_bytes = 0;
-	    write_bytes = 0;
+	    random_bytes = 0;
+	    sequential_bytes = 0;
+
 	    reorder_count = 0;
+	    initial_bytes = numeric_limits<int32_t>::min();
+
+	    cur_sequential_run_count = 0;
+	    cur_sequential_run_bytes = 0;
 	}
     };
 
@@ -153,14 +175,55 @@ public:
 	reportMemoryUsage();
     }
 
-    void completeOpAccessGroup(FHState &state, vector<Operation> &ops) {
+    void completeRun(FHState &state, int64_t file_size) {
+	if (state.sequential_count == 0 && state.random_count == 0) {
+	    if (state.initial_bytes == numeric_limits<int32_t>::min()) {
+		SINVARIANT(state.eof_count > 0);
+		return; 
+	    }
+		    
+	    SINVARIANT(state.initial_bytes > 0);
+	    ++state.random_count;
+	    state.random_bytes += state.initial_bytes;
+	}
+
+	SINVARIANT(state.random_count + state.sequential_count
+		   == state.read_count + state.write_count);
+	SINVARIANT(state.random_bytes + state.sequential_bytes
+		   == state.read_bytes + state.write_bytes);
+		   
+	count_stat.add(state.read_count, state.write_count);
+	bytes_stat.add(state.read_bytes, state.write_bytes);
+	double divisor = state.read_bytes + state.write_bytes;
+	op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	divisor = file_size;
+	file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	reorder_count_stat.add(state.reorder_count);
+	divisor = state.read_count + state.write_count;
+	reorder_fraction.add(state.reorder_count / divisor);
+	divisor = state.sequential_count + state.random_count;
+	sequentiality_count_fraction.add(state.sequential_count / divisor);
+	divisor = state.random_bytes + state.sequential_bytes;
+	sequentiality_bytes_fraction.add(state.sequential_bytes / divisor);
+
+	if (state.random_count > 0 && (state.sequential_count + state.random_count >= 2)) {
+	    // If it's only the initial 1 I/O or it was entirely
+	    // sequential, then ignore it.
+	    SINVARIANT(state.cur_sequential_run_count > 0);
+	    in_random_sequential_run_count.add(state.cur_sequential_run_count);
+	    in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	}
 	state.reset();
+    }
+	
+    void completeOpAccessGroup(FHState &state, vector<Operation> &ops, int64_t file_size) {
+	completeRun(state, file_size);
 	operations_memory_usage -= memUsage(ops);
 	vector<Operation> tmp;
 	ops.swap(tmp); // clear the memory
     }
 
-    void processOneOp(FHState &state, Operation &op) {
+    void processOneOp(FHState &state, Operation &op, int64_t file_size) {
 	++process_count;
 
 	if (op.is_read) {
@@ -171,27 +234,69 @@ public:
 	    state.write_bytes += op.len;
 	}
 	if (state.last_end_offset == op.start_offset) {
+	    if (state.sequential_count == 0 && state.random_count == 0) { // second after initial
+		SINVARIANT(state.initial_bytes != numeric_limits<int32_t>::min());
+		++state.sequential_count;
+		state.sequential_bytes += state.initial_bytes;
+	    }
 	    ++state.sequential_count;
+	    state.sequential_bytes += op.len;
+	    ++state.cur_sequential_run_count;
+	    state.cur_sequential_run_bytes += op.len;
 	} else if (state.last_end_offset != numeric_limits<int64_t>::min()) {
+	    if (state.sequential_count == 0 && state.random_count == 0) { // second after initial
+		SINVARIANT(state.initial_bytes != numeric_limits<int32_t>::min());
+		++state.random_count;
+		state.random_bytes += state.initial_bytes;
+	    }
 	    ++state.random_count;
+	    state.random_bytes += op.len;
+	    if (state.cur_sequential_run_count > 0) {
+		in_random_sequential_run_count.add(state.cur_sequential_run_count);
+		in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	    }
+	    state.cur_sequential_run_count = 1;
+	    state.cur_sequential_run_bytes = op.len;
+	} else {
+	    SINVARIANT(state.initial_bytes == numeric_limits<int32_t>::min());
+	    state.initial_bytes = op.len;
+	    state.cur_sequential_run_count = 1;
+	    state.cur_sequential_run_bytes = op.len;
 	}
+
 	if (state.last_end_offset != numeric_limits<int64_t>::min()) {
 	    skip_distribution.add(op.start_offset - state.last_end_offset);
 	}
 	state.last_end_offset = op.start_offset + op.len;
 	state.latest_reply_at = max(state.latest_reply_at, op.reply_at);
 	op.reply_at = numeric_limits<int64_t>::min();
+	if (state.last_end_offset == file_size) {
+	    if ((state.read_bytes + state.write_bytes) >= eof_reset_fraction * file_size) {
+		completeRun(state, file_size);
+		++state.eof_count;
+	    }
+	}
     }
 
-    void overlappingReorderReset(FHState &state, vector<Operation> &ops) {
+    void overlappingReorderReset(FHState &state, vector<Operation> &ops, OpsIterator i,
+				 int64_t file_size, bool partially_done) {
 	SINVARIANT(state.read_count == 0 && state.write_count == 0);
 	++reset_count;
 	// Restarting runs, pick the operation with the least offset
-	OpsIterator selected = ops.begin();
+	OpsIterator selected = i;
+	if (partially_done) {
+	    while(selected->reply_at == numeric_limits<int64_t>::min()) {
+		++selected;
+		SINVARIANT(selected < ops.end());
+	    }
+	}
 	int64_t min_offset = selected->start_offset;
 	int64_t max_request_time = selected->reply_at + overlapping_reorder_slop_raw;
 	for(OpsIterator i = selected + 1; i < ops.end() && min_offset > 0
 		&& i->request_at < max_request_time; ++i) {
+	    if (partially_done && i->reply_at == numeric_limits<int64_t>::min()) {
+		continue;
+	    }
 	    INVARIANT(i->reply_at > numeric_limits<int64_t>::min(),
 		      "should not see ignored op during reset");
 	    if (i->start_offset < min_offset) {
@@ -202,14 +307,14 @@ public:
 	LintelLogDebug("Sequentiality::po", format("reset selected #%d @ %d") 
 		       % (selected - ops.begin()) % min_offset);
 
-	processOneOp(state, *selected);
+	processOneOp(state, *selected, file_size);
 	if (selected != ops.begin()) {
 	    ++state.reorder_count;
 	}
     }
 
     void overlappingReorderContinue(FHState &state, vector<Operation> &ops,
-				    OpsIterator first) {
+				    OpsIterator first, int64_t file_size) {
 	++continue_count;
 	SINVARIANT(state.latest_reply_at > numeric_limits<int64_t>::min());
 
@@ -238,10 +343,37 @@ public:
 	LintelLogDebug("Sequentiality::po", format("continue selected #%d(%d) skip %d") 
 		       % (selected - ops.begin()) % (first - ops.begin()) % skip);
 	SINVARIANT(selected->request_at < max_request_time);
-	processOneOp(state, *selected);
+	processOneOp(state, *selected, file_size);
 	if (selected != first) {
 	    ++reorder_count;
 	    ++state.reorder_count;
+	}
+    }
+
+    void processOROneRun(FHState &state, OpsIterator &i, vector<Operation> &ops, 
+			 int64_t file_size, uint32_t run_count, int64_t reply_at_bound) {
+	SINVARIANT(i < ops.end());
+	overlappingReorderReset(state, ops, i, file_size, run_count > 0);
+	while (i < ops.end() && i->reply_at == numeric_limits<int64_t>::min()) {
+	    ++i;
+	}
+
+	if (state.latest_reply_at == numeric_limits<int64_t>::min()) {
+	    SINVARIANT(state.eof_count == run_count + 1);
+	    return; // single I/O run
+	}
+	
+	while(i < ops.end()) {
+	    SINVARIANT(i->reply_at < reply_at_bound);
+	    SINVARIANT(i->reply_at != numeric_limits<int64_t>::min());
+	    overlappingReorderContinue(state, ops, i, file_size);
+	    while(i < ops.end() && i->reply_at == numeric_limits<int64_t>::min()) {
+		++i;
+	    }
+	    if (state.latest_reply_at == numeric_limits<int64_t>::min()) {
+		SINVARIANT(state.eof_count == run_count + 1);
+		return;
+	    }
 	}
     }
 
@@ -257,26 +389,24 @@ public:
 	    }
 	}
 
+	int64_t file_size = key_to_size[key].size;
+	OpsIterator i = ops.begin();
+	uint32_t run_count = 0;
+	
 	FHState state;
 
-	OpsIterator i = ops.begin();
-	overlappingReorderReset(state, ops);
-	if (i->reply_at == numeric_limits<int64_t>::min()) {
-	    ++i;
+	while(i != ops.end()) {
+	    processOROneRun(state, i, ops, file_size, run_count, 
+			    cur_reply_at - reset_interval_raw);
+	    ++run_count;
 	}
-	while(i < ops.end()) {
-	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
-	    SINVARIANT(i->reply_at != numeric_limits<int64_t>::min());
-	    overlappingReorderContinue(state, ops, i);
-	    while(i < ops.end() && i->reply_at == numeric_limits<int64_t>::min()) {
-		++i;
-	    }
-	}
+
 	for(OpsIterator j = ops.begin(); j != ops.end(); ++j) {
 	    SINVARIANT(j->reply_at == numeric_limits<int64_t>::min());
 	}
 
-	completeOpAccessGroup(state, ops);
+	completeOpAccessGroup(state, ops, file_size);
+	eof_count.add(state.eof_count);
 
 	LintelLogDebug("Sequentiality::po", "");
     }
@@ -285,11 +415,12 @@ public:
 	sort(ops.begin(), ops.end());
 	
 	FHState state;
+	int64_t file_size = key_to_size[key].size;
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
 	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
-	    processOneOp(state, *i);
+	    processOneOp(state, *i, file_size);
 	}
-	completeOpAccessGroup(state, ops);
+	completeOpAccessGroup(state, ops, file_size);
     }
 
     struct ByReplyId {
@@ -301,15 +432,16 @@ public:
     void processGroupReplyOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
 	sort(ops.begin(), ops.end(), ByReplyId());
 	FHState state;
+	int64_t file_size = key_to_size[key].size;
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
 	    INVARIANT(state.latest_reply_at <= i->reply_at, format("%d > %d around %s:%d")
 		      % state.latest_reply_at % i->reply_at 
 		      % (series.getExtent() ? series.getExtent()->extent_source : "eof")
 		      % (series.getExtent() ? series.getExtent()->extent_source_offset : 0));
 	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
-	    processOneOp(state, *i);
+	    processOneOp(state, *i, file_size);
 	}
-	completeOpAccessGroup(state, ops);
+	completeOpAccessGroup(state, ops, file_size);
     }	
 
     void processGroup(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
@@ -357,6 +489,9 @@ public:
 	if (ops == NULL) {
 	    ops = new vector<Operation>();
 	}
+	if (!file_size.isNull()) {
+	    key_to_size[tmp] = FileSize(file_size.val());
+	}
 
 	++operation_count;
 
@@ -396,12 +531,55 @@ public:
 
 	cout << format("Reorder count: %d/%d, %.3f%%\n")
 	    % reorder_count % operation_count % (100.0 * reorder_count / operation_count);
-	cout << "Skip distribution:\n";
-	skip_distribution.printTextRanges(cout, 1000);
+	
+	printStat("Skip distribution", skip_distribution);
+
+	count_stat.print("count");
+	bytes_stat.print("bytes");
+	op_bytes_fraction.print("op_bytes_fraction");
+	file_bytes_fraction.print("file_bytes_fraction");
+	printStat("reorder_count", reorder_count_stat);
+	printStat("reorder_fraction", reorder_fraction);
+	printStat("sequentiality_count_fraction", sequentiality_count_fraction);
+	printStat("sequentiality_bytes_fraction", sequentiality_bytes_fraction);
+	printStat("in_random_sequential_run_count", in_random_sequential_run_count);
+	printStat("in_random_sequential_run_bytes", in_random_sequential_run_bytes);
+	printStat("eof_count", eof_count);
 
 	SINVARIANT(operations_memory_usage == 0);
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
+
+    void printStat(const string &description, StatsQuantile &stat) {
+	cout << description << ":\n";
+	stat.printTextRanges(cout, 100);
+    }
+
+    struct FileSize {
+	int64_t size;
+	FileSize() : size(-1) { }
+	FileSize(int64_t a) : size(a) { }
+    };
+
+    struct StatsRW {
+	StatsRW(double epsilon, uint64_t nvals) 
+	    : read(epsilon, nvals), write(epsilon, nvals), total(epsilon, nvals) 
+	{ }
+	StatsQuantile read, write, total;
+	void add(double read_val, double write_val) {
+	    read.add(read_val);
+	    write.add(write_val);
+	    total.add(write_val + read_val);
+	}
+	void print(const string &stat_name) {
+	    cout << format("read %s distribution:\n") % stat_name;
+	    read.printTextRanges(cout, 100);
+	    cout << format("write %s distribution:\n") % stat_name;
+	    write.printTextRanges(cout, 100);
+	    cout << format("total %s distribution:\n") % stat_name;
+	    total.printTextRanges(cout, 100);
+	}
+    };
 
 private:
     Int64TimeField request_at;
@@ -416,11 +594,11 @@ private:
     TFixedField<int32_t> bytes;
 
     RotatingHashMap<Key, vector<Operation> *, TupleHash<Key> > key_to_ops;
+    RotatingHashMap<Key, FileSize, TupleHash<Key> > key_to_size;
     int64_t last_rotate_time_raw;
     int64_t reset_interval_raw;
 
     bool ignore_client, ignore_server;
-    StatsQuantile skip_distribution;
 
     size_t operations_memory_usage, last_reported_memory_usage;
     uint64_t operation_count, process_count, reset_count, continue_count, reorder_count;
@@ -428,6 +606,12 @@ private:
     double overlapping_reorder_slop_seconds;
     int64_t overlapping_reorder_slop_raw;
     Mode mode;
+
+    StatsQuantile skip_distribution;
+    StatsRW count_stat, bytes_stat, op_bytes_fraction, file_bytes_fraction;
+    StatsQuantile reorder_count_stat, reorder_fraction, sequentiality_count_fraction, 
+		    sequentiality_bytes_fraction, in_random_sequential_run_count, 
+		    in_random_sequential_run_bytes, eof_count;
 };
     
 namespace NFSDSAnalysisMod {
