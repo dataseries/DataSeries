@@ -1,0 +1,160 @@
+\section{Analysis techniques}
+
+Analyzing the very large amount of data that we collected meant that
+we had to adopt and develop new techniques for analyzing this data.
+The most important property that we aimed for was bounded memory,
+which meant that we needed to have streaming analysis.  The second
+property that we wanted was efficiency, because without efficiency, we
+would not be able to analyze complete datasets.
+
+\subsection{Approximate quantiles}
+
+Simple statistics over storage traces often provide misleading
+results.  For example, the calculating the mean latency of an I/O will
+result in a value that occurs rarely as it will average the cache hit
+time and the disk I/O time.  Histograms provide a better way to
+understand the distribution of latencies, but require the user to
+pre-emptively determine the buckets for the histogram.  If there are
+multiple types of cache hits, they could easily be put into the same
+histogram bucket resulting in loss of important information.
+
+The gold standard for calculating these types of statistics would be a
+quantile.  The $q-$quantile of a set of $n$ data elements is the
+element at position $\lceil q*n\rceil$ in the sorted list of elements
+indexed from 1 to n.  Unfortunately calculating exact quantiles
+requires buffering all of the operations in memory.  Since we can have
+billions of data elements, it is not likely that we would be able to
+calculate exact quantiles.
+
+Luckily, there is an algorithm for calculating approximate quantiles
+in bounded memory~\cite{Manku98approximatemedians}.  The basic idea is
+that the user specifies two numbers $\epsilon$, the maximum error, and
+$N$, the maximum number of elements.  Then when the program calculates
+quantile $q$, it actually gets a quantile in the range
+$[q-\epsilon,q+\epsilon]$.  Provided that the total number of elements
+was less than $N$, the bound is guaranteed.  The approximate quantile
+algorithm works essentially by keeping a collection of $c$ buffers
+each containing $k$ elements.  Until we fill up all our buffers, we
+just add values into a buffer.  Once all the buffers are full we need
+to collapse two buffers together into a single buffer.  In the
+simplest case, we pick two buffers, sort the combined elements, select
+every other element to create a new buffer, and assign a weight $w$ to
+the new buffer of 2 since each element in the buffer is logically
+representing two values.  As the algorithm progresses, it may combine
+buffers of differing weights, so it will pick values from a logically
+sorted list where each element is repeated $w$ times.  The complexity
+in the algorithm is in selecting appropriate values for $c$ and $k$
+based on $\epsilon$ and $N$; selecting the right buffers for collapse;
+and proving that the resulting buffers at the end provide enough
+values to select the approximate quantiles.
+
+The approximate quantile algorithm dramatically reduces the required
+memory.  For example, with $\epsilon$ = 0.01, and $N = 10^9$, a
+standard quantile would need about 8GB of memory to store the billion
+doubles, while the approximate quantile only uses about 60KB.  We
+generally chose to output 100 evenly spaced quantiles since we are
+going to make graphs from them.  We set $\epsilon = 1/(2*100)$ so we
+were guaranteed to have non-overlapping ranges for our 100 output
+values.  In testing we have found the approximate quantiles to
+generate results about $10$x better than the bound.
+
+\subsection{Cube}
+
+Calculating aggregate or roll-up statistics is an important part of
+analyzing a workload.  For example, consider the information in the
+common NFS table, we have a time, operation, client-id, and server-id
+fields.  We may want to calculate the total number of operations
+performed by client 5, in which case we want to count the number of
+rows that match *, *, 5, *; or we might want to calculate the number
+of read operations, in which case we want to count the number of rows
+that match *, read, *, *.  
+
+The cube\cite{gray97cube} is a generalization of the group-by
+operations described above.  Given a collection of rows, it calculates
+the set of unique values for each column $U(c)$, adds the special
+value 'ANY' to the set, and then generates one row for each member of
+the cross-product $U(1) x U(2) x ... U(n)$.
+
+We implemented a very efficient templated version of the cube operator
+for use in data analysis.  We added three features to deal with memory
+usage.  First, we separate between the cube that only includes rows
+with actual values in it, and the cube with all rows in the
+cross-product (the zero-cube).  The zero-cube can have a very large
+number of entries in it, and if we are using an approximate quantile
+for those values we can easily waste a large amount of memory.
+Second, we added support to dynamically determine which members of the
+cross-product will be cubed.  For example, we have a large number of
+client id's, and so we can avoid cubing over entries with the client
+specified and also the operation to reduce the number of statistics
+calculated.  Third, we added the ability to prune values out of the
+cube, for example, once all the packets in second 1 have been
+processed, we will not add any additional values there, so we can
+immediately output the cube values for that part of the cube and
+remove the entries from the data structure.
+
+The cube allows us to easily calculate a wide variety of summary
+statistics.  We had previously manually implemented some of the
+summary statistics by doing explicit roll-ups for some of the
+aggregates described in the example.  We discovered that the general
+implementation was actually more efficient than our manual one because
+it used a single hash table for all of the data rather than nested
+data structures, and because we tuned the hash function over the tuple
+of values to be efficiently calculated.
+
+\subsection{HashTable}
+
+Our hash-table implementation is a straightforward chained-hashing
+implementation.  It uses somewhat more memory than the google sparse
+hash, but performs almost as well as the dense hash.  Because it uses
+chaining, it does not need any special sentinal values.  We discuss it
+briefly because it has three features not normally found in hash-table
+implementations.  First, it has a function to report on the memory
+usage of the hash table; this is important because tracking memory
+usage allows us to determine what we need to optimize.  Second it
+includes a function to partially reset an iterator.  Normally after an
+erase() operation, all iterators to a data-structure may be
+invalidated.  We include a partialReset() function that will restart
+an iterator at the beginning of the chain.  This allows us to walk the
+hash table and remove values using a single iterator.  Finally, we
+provide access to the underlying hash-data.  Sometimes at the end of a
+program, we want to output all the values in a hash-table in order.
+Normally, you would have to copy the data to a vector and sort the
+vector.  However our hash-table allows the program to get access to
+the underlying data vector and sort the vector.  While this operation
+destroys the hash table, that is generally not a problem since the
+program is about to stop.  This does reduce the memory used by a
+factor of two since the data values do not need to be copied into a
+separate vector.
+
+\subsection{Rotating hash-map}
+
+One of the problems during analysis is that you can need to age out
+old (key,value) pairs, but you don't know how long you will need to
+keep around particular values any given key.  For example,
+sequentiality is a per-file statistic.  So long as accesses are active
+to the file, we want to continue to update the run information.  Once
+the file becomes inactive for long enough, we want to calculate
+summary statistics and remove the general statistics from memory.  One
+option would be to keep the values in a LRU datastructure, however if
+our analysis only needs to keep a file id and last offset, then we
+could easily double the size of our datastructure by keeping the
+forward and backward pointers needed for LRU.  Alternately, we could
+use a clock-style algorithm, but this would require a full scan over
+the entire datastructure on a regular basis.
+
+We chose to solve this problem by keeping two hash-maps, the {\it
+recent} and {\it old} hash-maps.  Any time a value is accessed, it is
+moved to the recent hash-map if it is not already there.  From time to
+time, the program will call the rotate(fn) operation which will apply
+fn to all of the key,value pairs in the old hash map, delete that map,
+assign the recent map to the old map and create a new recent map.
+
+Therefore, if the analysis wants to guarentee any gap of up to 60
+seconds will be considered part of the same run, it just needs to call
+rotate() every 60 seconds.  Any value accessed in the last 60 seconds
+will remain present in the hash-map.  We could reduce the memory
+overhead somewhat by keeping more than two hash-maps at the cost of
+additional lookups, but we have so far found that the rotating
+hash-map provides a good tradeoff between minimizing memory usage and
+maximizing performance.
+

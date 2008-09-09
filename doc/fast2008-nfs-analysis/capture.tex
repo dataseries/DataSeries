@@ -11,8 +11,8 @@ server.  Capturing the workload on the network through port mirroring
 is about as convinient as capture on the server, and given that most
 switches implement mirroring in hardware, has no impact on network or
 workload performance.  On fibre networks, even the potential impact of
-port mirroring can be eliminated through the use of fiber
-splitters\cite{...}. Therefore, we have always chosen to capture the
+port mirroring can be eliminated through the use of optical fiber
+splitters. Therefore, we have always chosen to capture the
 data through the use of port mirroring.
 
 One complication with port mirroring is that usually you are mirroring
@@ -41,4 +41,128 @@ A third complication for network capture is overrun of the capture
 device.  While at low data rates (50-100MB/s, 30-70kpps), it is not
 difficult to capture using tcpdump and standard hardware.  However, at
 high data rates (800MB/s, 600-1,200kpps), traditional approaches are
-insufficient.
+insufficient. Indeed, Leung\cite{LeungUsenix08} notes that they 
+% pg 215 ``when tcpdump dropped a few packets''
+had difficulties with packet loss using tcpdump on a 1 Gbit mirror
+port.  We have developed three separate techniques for packet capture,
+all of which work better than tcpdump: {\it lindump}, {\it
+driverdump}, and {\it endacedump}.
+
+\subsection{Lindump}
+
+When we first started packet capture in 2003, we tried to use tcpdump,
+as that was the standard approach.  However, we quickly discovered it
+was unable to capture packets at the bandwidth that we expected to
+see.  We considered adding a faster transport between the kernel and
+user space, and while examining the kernel discovered that linux
+already has support for a memory mapped shared ring buffer between
+kernel and user space, and an associated example program called {\tt
+lindump} for handling the ring buffer.  We modified lindump to write
+out pcap files, and to be able to capture from more than one interface
+at the same time.  We used mmap to write the output files to {\tt
+tmpfs}, an in-memory filesystem, and from there we copied and
+compressed the files in parallel to disk.  Using an HP DL580G2, a
+state of the art 4-way machine circa 2003, lindump was able to capture
+about 3x the packets per second as tcpdump and about 1.25x the
+bandwidth.  Combined with a somewhat higher burst rate while the
+kernel and network card buffered data, this was sufficient for mostly
+loss free captures at our animation customer, and was the technique we
+used for all of the nfs-1 set of traces.
+
+Once our packets are captured into files in tmpfs, we have to save
+them out to disk.  The primary goal here is to maximize the effective
+disk space through the use of compression.  Therefore, we created an
+adaptive compression scheme.  If the tracing host is mostly idle, we
+compress with {\tt gzip -9}, as we increase the backlog of pending
+files, we reduce the compression algorithm to {\tt gzip -6}, and then
+to {\tt gzip -1}.  If we continue to fall behind, we will eventually
+fall back to just copying the files out to disk.  In practice this
+approach increased the effective disk size by 1.5-2.5x in our
+experience as the data was somewhat compressible, but at higher input
+rates we had to fall back to reduced compression.
+
+\subsection{Driverdump}
+
+When we went to a second customer, we attempted to simply re-use our
+existing technology for the packet capture.  We first tried using our
+existing technology, however we discovered that because the customer
+was using 10GbE while the sustained 1-second rates from the network
+were low enough that we should be able to handle them, we lost packets
+on bursts.  When we tried replacing our dual 1Gbit cards with a 10GbE
+card, but we discovered that we would simply move the bottleneck to
+the host and the packets would be dropped on the card before they
+could be consumed by the kernel.
+
+We therefore decided that we needed a faster approach.  We modified
+the network driver so that instead of passing packets up the network
+stack, it would instead copy the packets in pcap format to a file
+entirely in the kernel, and immediately recycle the packet buffer with
+the kernel.  A user space program prepared files for capture, and
+closed the files on completion.  Since the files were written into
+tmpfs, we were able to re-use our technology for compressing and
+copying the files out to disk.  We called our solution {\tt
+driverdump} since it performed all of the packet dumping in the
+driver.  Because it was avoiding the entire kernel IP stack,
+driverdump could actually capture packets faster than the kernel could
+drop them.\footnote{tcpdump host 1.2.3.4 and watch the rate of packets
+received} We increased the sustained capture rate by 2.25x in packets
+per second to 676,000 packets per second, and 1.5x in bandwidth to
+170MiB/s.  We could handle one second bursts up to 900,000 packets per
+second, and 215 MiB/s.  This approach was sufficient for nearly
+lossless capture to memory at the second customer so we decided this
+was a sufficient approach.  Because we wrote the data out to tmpfs, we
+were able to simply re-use our previous techniques for compressing the
+data out to disk.
+
+\subsection{Endacedump}
+
+In 2007 we were starting another project, and decided that we wanted
+recent NFS traces to support our project.  We therefore returned to
+our animation customer and asked if we could take traces again.  Since
+2003, they had moved to 10GbE, and had substantially increased the
+performance of their NFS backends.  We briefly considered updating our
+driverdump approach with modern cards, but decided that we did not
+want to have problems with packet capture, so we instead decided to
+purchase a Endace DAG 8.2X capture card.  The Endace card is an FPGA
+capture card that takes the packets directly from a 10GbE network and
+copies them directly into memory without invoving the CPU.  The
+capture card can capture minimal size packets at full bandwidth, and
+is intended for doing in-memory analysis of networks.
+
+Therefore, our main challenge is getting the data out from memory to
+disk.  The technical contacts at Endace did not expect that we would
+be able to get the data written out to disk quickly enough to keep up.
+We integrated our adaptive compression techinque into the capture
+program, and added one more compression option, lzf, which compresses
+at about 100MB/s on modern hardware.  We put a backstop algorithm in
+to directly write data out to disk, but we were never able to get the
+algorithm to kick in without explicitly delaying the write out
+process.  We also upgraded our hardware to an HP DL585g2 with 4 dual
+core 2.8GhZ opteron, and 6 14 disk SCSI trays, 4 with 300GB drives,
+and 2 with 147GB drives.  Because of the compression, despite having
+only about 20TiB of disk space, we could usually capture about 30TiB
+of data.
+
+We experienced a very small number of packet drops because we did not
+understand that our capture card needed to be configured to split the
+traffic into two streams because each stream was limited to PCI-X
+bandwidth.  The updated cards capture 10GbE in a single stream.
+
+\subsection{Discussion}
+
+Our capture techniques are directly applicable to anyone attempting to
+capture data from a networked storage service such as NFS, CIFS, or
+iSCSI.  Our most advanced techniques are capable of lossless
+full-packet capture at 10GbE, although they require the use of special
+hardware.  Our simplest technique allows capture at over twice the
+rate of tcpdump, and expands the effective size of the disks by 1.5x
+through adaptive compression. Our intermediate technique increases the
+capture rates by a factor of 2-3x at the cost of development time for
+fixing the network driver.  Both the lindump and driverdump code are
+available in the DataSeries
+distribution~\cite{DSOpenSource}.  While at the time we
+chose high-end servers, today's mid-range servers are the equivalent
+of our servers, so there is no reason that everyone should not be able
+to do lossless data capture.
+
+
