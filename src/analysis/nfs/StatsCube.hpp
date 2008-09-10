@@ -7,6 +7,8 @@
 #ifndef TMP_STATS_CUBE_HPP
 #define TMP_STATS_CUBE_HPP
 
+#include <analysis/nfs/HashTupleStats.hpp>
+
 template<class Tuple, class StatsT = Stats>
 class StatsCube {
 public:

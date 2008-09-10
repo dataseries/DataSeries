@@ -6,12 +6,11 @@
 #include <DataSeries/GeneralField.hpp>
 
 #include <analysis/nfs/common.hpp>
-#include <analysis/nfs/ServerLatency.hpp>
 
 using namespace std;
 using boost::format;
 
-// TODO: re-do this with the rotating hash-map.
+// TODO: re-do this with the rotating hash-map, re-do with cube for rollup.
 
 // TODO: add code to every so often throw away any old requests to
 // limit excessive memory fillup; one of the other analysis does this
@@ -30,9 +29,14 @@ using boost::format;
 // we do this, some of the code in printResult that tracks
 // missing replies needs to get moved here so it runs on rotation.
 
+namespace {
+    string str_star("*");
+    string str_null("null");
+}
+
 class ServerLatency : public RowAnalysisModule {
 public:
-    ServerLatency(DataSeriesModule &source) 
+    ServerLatency(DataSeriesModule &source, const string &arg)
 	: RowAnalysisModule(source),
 	  reqtime(series,""),
 	  sourceip(series,"source"), 
@@ -41,19 +45,23 @@ public:
 	  transaction_id(series, ""),
 	  op_id(series,"",Field::flag_nullable),
 	  operation(series,"operation"),
-	  pending1(NULL), pending2(NULL),
+	  pending1(NULL), 
 	  duplicate_request_delay(0.001),
 	  missing_request_count(0),
 	  duplicate_reply_count(0),
 	  min_packet_time_raw(numeric_limits<int64_t>::max()),
 	  max_packet_time_raw(numeric_limits<int64_t>::min()),
-	  duplicate_request_min_retry_raw(numeric_limits<int64_t>::max())
+	  duplicate_request_min_retry_raw(numeric_limits<int64_t>::max()),
+	  output_text(true)
     {
 	pending1 = new pendingT;
-	pending2 = new pendingT;
+	if (!arg.empty()) {
+	    SINVARIANT(arg == "output_sql");
+	    output_text = false;
+	}
     }
 
-    // TODO: mak this options and configurable.
+    // TODO: make these configurable options.
     static const bool enable_first_latency_stat = true; // Estimate the latency seen by client
     static const bool enable_last_latency_stat = false; // Estimate the latency for the reply by the server
 
@@ -70,10 +78,7 @@ public:
     ByteField op_id;
     Variable32Field operation;
 
-    void newExtentHook(const Extent &e) {
-	if (series.getType() != NULL) {
-	    return; // already did this
-	}
+    void firstExtent(const Extent &e) {
 	const ExtentType &type = e.getType();
 	if (type.versionCompatible(0,0) || type.versionCompatible(1,0)) {
 	    reqtime.setFieldName("packet-at");
@@ -193,7 +198,7 @@ public:
     statsT stats_table;
 
     typedef HashTable<TidData, TidHash, TidEqual> pendingT;
-    pendingT *pending1,*pending2;
+    pendingT *pending1;
 
     void updateDuplicateRequest(TidData *t) {
 	// this check is here in case we are somehow getting duplicate
@@ -221,19 +226,10 @@ public:
 		      sourceip.val()); 
 	TidData *t = pending1->lookup(dummy);
 	if (t == NULL) {
-	    t = pending2->lookup(dummy);
-	    if (t == NULL) {
-		// add request to list of pending requests (requests without a response yet)
-		dummy.first_reqtime_raw = dummy.last_reqtime_raw 
-		    = reqtime.valRaw();
-		t = pending1->add(dummy);
-	    } else {
-		// wow, long enough delay that we've rotated the entry; add it to pending1, 
-		// delete from pending2
-		pending1->add(*t);
-		pending2->remove(*t);
-		updateDuplicateRequest(t);
-	    }
+	    // add request to list of pending requests (requests without a response yet)
+	    dummy.first_reqtime_raw = dummy.last_reqtime_raw 
+		= reqtime.valRaw();
+	    t = pending1->add(dummy);
 	} else {
 	    updateDuplicateRequest(t);
 	}
@@ -244,13 +240,6 @@ public:
 	// row is a response, so address of server = sourceip
 	TidData dummy(transaction_id.val(), sourceip.val(), destip.val());
 	TidData *t = pending1->lookup(dummy);
-	bool in_pending2 = false;
-	if (t == NULL) {
-	    t = pending2->lookup(dummy);
-	    if (t != NULL) {
-		in_pending2 = true;
-	    }
-	}
 
 	if (t == NULL) {
 	    ++missing_request_count;
@@ -285,11 +274,7 @@ public:
 		    t->seen_reply = true;
 		}
 	    } else {
-		if (in_pending2) {
-		    pending2->remove(*t);
-		} else {
-		    pending1->remove(*t);
-		}
+		pending1->remove(*t);
 	    }
 	}
     }
@@ -334,6 +319,37 @@ public:
 		% v->mean() % v->getQuantile(0.5)
 		% v->getQuantile(0.9);
 	}
+    }
+
+    void printSQLVector(vector<StatsData *> &vals) {
+	SINVARIANT(enable_first_latency_stat);
+	for(vector<StatsData *>::iterator i = vals.begin();
+	    i != vals.end();++i) {
+	    StatsData &j = **i;
+	    string serverip;
+	    if (j.serverip == 0) {
+		serverip = str_null;
+	    } else {
+		serverip = str(format("%d") % j.serverip);
+	    }
+	    string operation;
+	    if (j.operation == str_star) {
+		operation = str_null;
+	    } else {
+		operation = str(format("'%s'") % j.operation);
+	    }
+
+	    cout << format("insert into server_latency_basic (server, operation, op_count, dup_count, mean_lat, stddev_lat, min_lat, max_lat) values (%s, %s, %d, %d, %.8g, %.8g, %.8g, %.8g);\n")
+		% serverip % operation % j.first_latency_ms->countll() % j.duplicates->countll()
+		% j.first_latency_ms->mean() % j.first_latency_ms->stddev() 
+		% j.first_latency_ms->min() % j.first_latency_ms->max();
+
+	    for(double quantile = 0.01; quantile < 0.995; quantile += 0.01) {
+		cout << format("insert into server_latency_quantile (server, operation, quantile, latency) values (%s, %s, %.2f, %.8g);\n")
+		% serverip % operation % quantile % j.first_latency_ms->getQuantile(quantile);
+	    }
+	}
+	
     }
 
     void printVector(vector<StatsData *> &vals, 
@@ -425,7 +441,7 @@ public:
 	
 	HashMap<uint32_t, StatsData> server_rollup;
 	HashMap<ConstantString, StatsData> operation_rollup;
-	StatsData overall(0, "*");
+	StatsData overall(0, str_star);
 	for(vector<StatsData *>::iterator i = all_vals.begin();
 	    i != all_vals.end(); ++i) {
 	    StatsData &d(**i);
@@ -449,7 +465,7 @@ public:
 	    i != server_rollup.end(); ++i) {
 	    StatsData *tmp = &i->second;
 	    tmp->serverip = i->first;
-	    tmp->operation = "*";
+	    tmp->operation = str_star;
 	    server_vals.push_back(tmp);
 	}
 
@@ -491,14 +507,21 @@ public:
 	    % duplicate_request_delay.min();
 	duplicate_request_delay.printFile(stdout,20);
 
-	printVector(all_vals, serverip_to_shortid, 
-		    "Grouped by (Server,Operation) pair");
-	printVector(server_vals, serverip_to_shortid,
-		    "Grouped by Server");
-	printVector(operation_vals, serverip_to_shortid,
-		    "Grouped by Operation");
-	printVector(overall_vals, serverip_to_shortid,
-		    "Complete rollup");
+	if (output_text) {
+	    printVector(all_vals, serverip_to_shortid, 
+			"Grouped by (Server,Operation) pair");
+	    printVector(server_vals, serverip_to_shortid,
+			"Grouped by Server");
+	    printVector(operation_vals, serverip_to_shortid,
+			"Grouped by Operation");
+	    printVector(overall_vals, serverip_to_shortid,
+			"Complete rollup");
+	} else {
+	    printSQLVector(all_vals);
+	    printSQLVector(server_vals);
+	    printSQLVector(operation_vals);
+	    printSQLVector(overall_vals);
+	}
 
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
@@ -509,12 +532,13 @@ public:
     int64_t min_packet_time_raw, max_packet_time_raw;
 
     int64_t duplicate_request_min_retry_raw;
+    bool output_text;
 };
 
-RowAnalysisModule *
-NFSDSAnalysisMod::newServerLatency(DataSeriesModule &prev)
-{
-    return new ServerLatency(prev);
+namespace NFSDSAnalysisMod {
+    RowAnalysisModule *newServerLatency(DataSeriesModule &prev, const string &arg) {
+	return new ServerLatency(prev, arg);
+    }
 }
 
 

@@ -353,7 +353,7 @@ public:
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
 	    if (last_record_id > in_recordid.val()) {
-		if (in_recordid.val() == 37315642835 && last_record_id == 37315642836) {
+		if (in_recordid.val() == 37315642835LL && last_record_id == 37315642836LL) {
 		    // set-17, beginning of 06349 vs. end of 06348; tolerate
 		} else {
 		    FATAL_ERROR(format("%d > %d in %s") % last_record_id
