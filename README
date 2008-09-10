@@ -11,12 +11,8 @@ COMPILATION:
 
 1) You need to build and install Lintel.
 
-2) If you have a checked out a copy of DataSeries, install autoconf and 
-   libtool.  Then run: 
-   % lintel-acinclude && autoreconf --install
+2) configure the package, e.g. in ~/build/optimize/DataSeries:
+   % ccmake .../path/to/source/DataSeries/configure 
 
-3) configure the package, e.g. in ~/build/optimize/DataSeries:
-   % .../path/to/source/DataSeries/configure --enable-optmode=optimize
-
-4) build and install the package, e.g. in ~/build/optimize/DataSeries:
-   % make && make check && make install
+3) build and install the package, e.g. in ~/build/optimize/DataSeries:
+   % make && make test && make install
