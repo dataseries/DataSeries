@@ -1,3 +1,9 @@
+/* -*-C++-*-
+   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
 #include <vector>
 
 #include <boost/bind.hpp>
@@ -11,7 +17,8 @@
 #include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/GeneralField.hpp>
-#include <analysis/nfs/Tuples.hpp>
+#include <analysis/nfs/HashTupleStats.hpp>
+#include <analysis/nfs/StatsCube.hpp>
 
 using namespace std;
 using boost::format;
@@ -56,23 +63,6 @@ template<> struct PartialTupleHash<HostInfoTuple> {
 using boost::tuples::null_type;
 
 template<class T0, class T1>
-struct ConsToHashUniqueCons {
-    typedef ConsToHashUniqueCons<typename T1::head_type, 
-				 typename T1::tail_type> tail;
-    typedef boost::tuples::cons<HashUnique<T0>, typename tail::type> type;
-};
-
-template<class T0>
-struct ConsToHashUniqueCons<T0, null_type> {
-    typedef boost::tuples::cons<HashUnique<T0>, null_type> type;
-};
-
-template<class T>
-struct TupleToHashUniqueTuple 
-  : ConsToHashUniqueCons<typename T::head_type, typename T::tail_type> {
-};
-
-template<class T0, class T1>
 struct ConsToAnyPairCons {
     typedef ConsToAnyPairCons<typename T1::head_type,
 			      typename T1::tail_type> tail;
@@ -88,29 +78,6 @@ template<class T>
 struct TupleToAnyTuple 
   : ConsToAnyPairCons<typename T::head_type, typename T::tail_type> 
 { };
-
-class StatsCubeFns {
-public:
-    static Stats *createStats() {
-	return new Stats();
-    }
-
-    static bool cubeAll() {
-	return true;
-    }
-
-    static bool cubeHadFalse(bool had_false) {
-	return had_false;
-    }
-
-    static void addFullStats(Stats &into, const Stats &val) {
-	into.add(val);
-    }
-    
-    static void addMean(Stats &into, const Stats &val) {
-	into.add(val.mean());
-    }
-};
 
 template<> struct HashMap_hash<const bool> {
     uint32_t operator()(const bool x) const {
@@ -193,281 +160,6 @@ void zeroWalk(const HUT &hut, KeyTail &key_tail, KeyBase &key_base,
 		 base_data, null_stat, fn);
     }
 }
-
-template<class Tuple, class StatsT = Stats>
-class HashTupleStats {
-public:
-    // base types
-    typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > HTSMap;
-    typedef typename HTSMap::iterator HTSiterator;
-    typedef typename HTSMap::const_iterator HTSconst_iterator;
-    typedef vector<typename HTSMap::value_type> HTSValueVector;
-    typedef typename HTSValueVector::iterator HTSVViterator;
-
-    // zero cubing types
-    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
-    typedef typename HUTConvert::type HashUniqueTuple;
-
-    // functions
-    typedef boost::function<StatsT *()> StatsFactoryFn;
-    typedef boost::function<void (const Tuple &key, StatsT &value)> WalkFn;
-    typedef boost::function<bool (const Tuple &key)> PruneFn;
-
-    explicit HashTupleStats(const StatsFactoryFn &fn1 
-			    = boost::bind(&StatsCubeFns::createStats))
-	: stats_factory_fn(fn1)
-    { }
-
-    ~HashTupleStats() {
-	clear();
-    }
-
-    void add(const Tuple &key, double value) {
-	getHashEntry(key).add(value);
-    }
-
-    void walk(const WalkFn &walk_fn) const {
-	for(HTSconst_iterator i = data.begin(); i != data.end(); ++i) {
-	    walk_fn(i->first, *i->second);
-	}
-    }
-
-    void walkOrdered(const WalkFn &walk_fn) const {
-	HTSValueVector sorted;
-
-	sorted.reserve(data.size());
-	// TODO: figure out why the below doesn't work.
-	//	sorted.push_back(base_data.begin(), base_data.end());
-	for(HTSconst_iterator i = data.begin(); i != data.end(); ++i) {
-	    sorted.push_back(*i);
-	}
-	sort(sorted.begin(), sorted.end());
-	for(HTSVViterator i = sorted.begin(); i != sorted.end(); ++i) {
-	    walk_fn(i->first, *i->second);
-	}
-    }
-
-    void fillHashUniqueTuple(HashUniqueTuple &hut) {
-	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
-	    zeroAxisAdd(hut, i->first);
-	}
-    }
-
-    void walkZeros(const WalkFn &walk_fn) const {
-	HashUniqueTuple hut;
-
-	fillHashUniqueTuple(hut);
-
-	walkZeros(walk_fn, hut);
-    }
-
-    void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut) const {
-	double expected_hut = zeroCubeBaseCount(hut);
-
-	uint32_t tuple_len = boost::tuples::length<Tuple>::value;
-
-	LintelLogDebug("HostInfo",
-		       format("Expecting to cube %.6g * 2^%d = %.0f")
-		       % expected_hut % tuple_len 
-		       % (expected_hut * pow(2.0, tuple_len)));
-
-	StatsT *zero = stats_factory_fn();
-
-	Tuple tmp_key;
-	zeroWalk(hut, tmp_key, tmp_key, data, *zero, walk_fn);
-	
-	delete zero;
-    }
-
-    StatsT &getHashEntry(const Tuple &key) {
-	StatsT * &v = data[key];
-
-	if (v == NULL) {
-	    v = stats_factory_fn();
-	    SINVARIANT(v != NULL);
-	}
-	return *v;
-    }
-
-    StatsT &operator[](const Tuple &key) {
-	return getHashEntry(key);
-    }
-
-    size_t size() const {
-	return data.size();
-    }
-
-    void prune(PruneFn fn) {
-	for(HTSiterator i = data.begin(); i != data.end(); ) {
-	    if (fn(i->first)) {
-		delete i->second;
-		data.remove(i->first);
-		i.partialReset();
-	    } else {
-		++i;
-	    }
-	}
-    }
-    
-    void clear() {
-	for(HTSiterator i = data.begin(); i != data.end(); ++i) {
-	    delete i->second;
-	}
-	data.clear();
-    }
-
-    size_t memoryUsage() const {
-	return data.memoryUsage() + sizeof(*this);
-    }
-private:
-
-    HTSMap data;
-    StatsFactoryFn stats_factory_fn;
-};
-
-template<class Tuple, class StatsT = Stats>
-class StatsCube {
-public:
-    // partial tuple types
-    typedef PartialTuple<Tuple> MyPartial;
-    typedef HashMap<MyPartial, StatsT *, PartialTupleHash<Tuple> > 
-        PartialTupleCubeMap;
-    typedef typename PartialTupleCubeMap::iterator PTCMIterator;
-    typedef vector<typename PartialTupleCubeMap::value_type> PTCMValueVector;
-    typedef typename PTCMValueVector::iterator PTCMVVIterator;
-
-    // functions controlling cubing...
-    typedef boost::function<StatsT *()> StatsFactoryFn;
-    typedef boost::function<void (Tuple &key, StatsT *value)> PrintBaseFn;
-    typedef boost::function<void (Tuple &key, typename MyPartial::UsedT, 
-				  StatsT *value)> PrintCubeFn;
-
-    typedef boost::function<bool (bool had_false, const MyPartial &)> 
-        OptionalCubePartialFn;
-    typedef boost::function<void (StatsT &into, const StatsT &val)>
-       CubeStatsAddFn;
-    typedef boost::function<bool (const MyPartial &partial)> PruneFn;
-
-    explicit StatsCube(const StatsFactoryFn &fn1
-		       = boost::bind(&StatsCubeFns::createStats),
-		       const OptionalCubePartialFn &fn2 
-		       = boost::bind(&StatsCubeFns::cubeHadFalse, _1),
-		       const CubeStatsAddFn &fn3
-		       = boost::bind(&StatsCubeFns::addFullStats, _1, _2)) 
-	: stats_factory_fn(fn1), optional_cube_partial_fn(fn2),
-	  cube_stats_add_fn(fn3) 
-    { }
-
-    ~StatsCube() {
-	clear();
-    }
-
-    void setOptionalCubePartialFn(const OptionalCubePartialFn &fn2 
-				  = boost::bind(&StatsCubeFns::cubeHadFalse, _1)) {
-	optional_cube_partial_fn = fn2;
-    }
-
-    void setCubeStatsAddFn(const CubeStatsAddFn &fn3
-			   = boost::bind(&StatsCubeFns::addFullStats)) {
-	cube_stats_add_fn = fn3;
-    }
-
-    void add(const HashTupleStats<Tuple, StatsT> &hts) {
-	hts.walk(boost::bind(&StatsCube<Tuple, StatsT>::cubeAddOne, 
-			     this, _1, _2));
-    }
-
-    typedef TupleToHashUniqueTuple<Tuple> HUTConvert;
-    typedef typename HUTConvert::type HashUniqueTuple;
-
-    void add(const HashTupleStats<Tuple, StatsT> &hts,
-	     const HashUniqueTuple &hut) {
-	hts.walkZeros(boost::bind(&StatsCube<Tuple, StatsT>::cubeAddOne, 
-				  this, _1, _2), hut);
-    }
-
-    void cubeAddOne(const Tuple &key, StatsT &value) {
-	MyPartial tmp_key(key);
-
-	cubeAddOne(tmp_key, 0, false, value);
-    }
-
-    void cubeAddOne(MyPartial &key, size_t pos, bool had_false, 
-		    const StatsT &value) {
-	if (pos == key.length) {
-	    if (optional_cube_partial_fn(had_false, key)) {
-		cube_stats_add_fn(getPartialEntry(key), value);
-	    }
-	} else {
-	    DEBUG_SINVARIANT(pos < key.length);
-	    key.used[pos] = true;
-	    cubeAddOne(key, pos + 1, had_false, value);
-	    key.used[pos] = false;
-	    cubeAddOne(key, pos + 1, true, value);
-	}
-    }
-
-    void walk(const PrintCubeFn fn) {
-	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
-	    fn(i->first.data, i->first.used, i->second);
-	}
-    }
-
-    void walkOrdered(const PrintCubeFn fn) {
-	PTCMValueVector sorted;
-
-	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
-	    sorted.push_back(*i);
-	}
-	sort(sorted.begin(), sorted.end());
-
-	for(PTCMVVIterator i = sorted.begin(); i != sorted.end(); ++i) {
-	    fn(i->first.data, i->first.used, i->second);
-	}
-    }
-
-    Stats &getPartialEntry(const MyPartial &key) {
-	Stats * &v = cube_data[key];
-
-	if (v == NULL) {
-	    v = stats_factory_fn();
-	}
-	return *v;
-    }
-
-    size_t size() {
-	return cube_data.size();
-    }
-
-    void prune(PruneFn fn) {
-	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ) {
-	    if (fn(i->first)) {
-		delete i->second;
-		cube_data.remove(i->first);
-		i.partialReset();
-	    } else {
-		++i;
-	    }
-	}
-    }
-
-    void clear() {
-	for(PTCMIterator i = cube_data.begin(); i != cube_data.end(); ++i) {
-	    delete i->second;
-	}
-	cube_data.clear();
-    }
-
-    size_t memoryUsage() const {
-	return cube_data.memoryUsage() + sizeof(*this);
-    }
-private:
-    StatsFactoryFn stats_factory_fn;
-    OptionalCubePartialFn optional_cube_partial_fn;
-    CubeStatsAddFn cube_stats_add_fn;
-
-    PartialTupleCubeMap cube_data;
-};
 
 // We do the rollup internal to this module rather than an external
 // program so if we switch to using statsquantile the rollup will
