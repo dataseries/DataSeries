@@ -181,8 +181,8 @@ public:
 		SINVARIANT(state.eof_count > 0);
 		return; 
 	    }
-		    
-	    SINVARIANT(state.initial_bytes > 0);
+	    
+	    SINVARIANT(state.initial_bytes >= 0);
 	    ++state.random_count;
 	    state.random_bytes += state.initial_bytes;
 	}
@@ -195,23 +195,33 @@ public:
 	count_stat.add(state.read_count, state.write_count);
 	bytes_stat.add(state.read_bytes, state.write_bytes);
 	double divisor = state.read_bytes + state.write_bytes;
-	op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
-	divisor = file_size;
-	file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
-	reorder_count_stat.add(state.reorder_count);
-	divisor = state.read_count + state.write_count;
-	reorder_fraction.add(state.reorder_count / divisor);
-	divisor = state.sequential_count + state.random_count;
-	sequentiality_count_fraction.add(state.sequential_count / divisor);
-	divisor = state.random_bytes + state.sequential_bytes;
-	sequentiality_bytes_fraction.add(state.sequential_bytes / divisor);
+	if (divisor > 0) {
+	    op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    divisor = file_size;
+	    INVARIANT(divisor > 0, format("file size = %d, rb = %d, wb = %d") % file_size
+		      % state.read_bytes % state.write_bytes);
+	    file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    reorder_count_stat.add(state.reorder_count);
 
-	if (state.random_count > 0 && (state.sequential_count + state.random_count >= 2)) {
-	    // If it's only the initial 1 I/O or it was entirely
-	    // sequential, then ignore it.
-	    SINVARIANT(state.cur_sequential_run_count > 0);
-	    in_random_sequential_run_count.add(state.cur_sequential_run_count);
-	    in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	    divisor = state.read_count + state.write_count;
+	    SINVARIANT(divisor > 0);
+	    reorder_fraction.add(state.reorder_count / divisor);
+
+	    divisor = state.sequential_count + state.random_count;
+	    SINVARIANT(divisor > 0);
+	    sequentiality_count_fraction.add(state.sequential_count / divisor);
+
+	    divisor = state.random_bytes + state.sequential_bytes;
+	    SINVARIANT(divisor > 0);
+	    sequentiality_bytes_fraction.add(state.sequential_bytes / divisor);
+	    
+	    if (state.random_count > 0 && (state.sequential_count + state.random_count >= 2)) {
+		// If it's only the initial 1 I/O or it was entirely
+		// sequential, then ignore it.
+		SINVARIANT(state.cur_sequential_run_count > 0);
+		in_random_sequential_run_count.add(state.cur_sequential_run_count);
+		in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	    }
 	}
 	state.reset();
     }
@@ -490,7 +500,8 @@ public:
 	    ops = new vector<Operation>();
 	}
 	if (!file_size.isNull()) {
-	    key_to_size[tmp] = FileSize(file_size.val());
+	    FileSize &fs = key_to_size[tmp];
+	    fs.size = max(fs.size, file_size.val());
 	}
 
 	++operation_count;
