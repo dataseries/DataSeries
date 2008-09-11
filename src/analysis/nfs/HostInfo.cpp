@@ -694,6 +694,7 @@ public:
 	if (skip_cube_host_detail && partial.used[host_index] == true) {
 	    PartialTuple<Tuple>::UsedT used = partial.used;
 	    used[host_index] = false;
+	    used[time_index] = false;
 	    if (used.any()) {
 		return false;
 	    }
