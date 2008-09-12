@@ -1,6 +1,7 @@
 #include <vector>
 
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/GeneralField.hpp>
@@ -47,8 +48,8 @@ public:
 	  operation(series,"operation"),
 	  pending1(NULL), 
 	  duplicate_request_delay(0.001),
-	  missing_request_count(0),
-	  duplicate_reply_count(0),
+	  missing_request_count(0), duplicate_reply_count(0),
+	  row_count(0), last_prune_at(0),
 	  min_packet_time_raw(numeric_limits<int64_t>::max()),
 	  max_packet_time_raw(numeric_limits<int64_t>::min()),
 	  duplicate_request_min_retry_raw(numeric_limits<int64_t>::max()),
@@ -93,6 +94,37 @@ public:
 	} else {
 	    FATAL_ERROR(format("can only handle v[0,1,2].*; not %d.%d")
 			% type.majorVersion() % type.minorVersion());
+	}
+    }
+
+    void newExtentHook(const Extent &e) {
+	// Really should do rotating hash map.
+	if (row_count > last_prune_at + 100*1000*1000) {
+	    uint32_t prune_count = 0;
+	    uint32_t no_reply_prune = 0;
+	    uint32_t duplicate_request_prune = 0;
+	    int64_t gap_time_raw = reqtime.secNanoToRaw(30,0);
+	    for(pendingT::iterator i = pending1->begin(); i != pending1->end(); ++i) {
+		if (i->last_reqtime_raw + gap_time_raw < max_packet_time_raw) {
+		    if (i->duplicate_count > 0) {
+			++duplicate_request_prune;
+		    } 
+		    if (!i->seen_reply) {
+			++no_reply_prune;
+		    }
+		    pending1->remove(*i);
+		    i.partialReset();
+		    ++prune_count;
+		    if (i == pending1->end()) {
+			break;
+		    }
+		}
+	    }
+	    last_prune_at = row_count;
+	    LintelLogDebug("ServerLatency", format("prune %d, noreply %d, dup req %d") 
+			   % prune_count % no_reply_prune % duplicate_request_prune);
+	    LintelLogDebug("memory_usage", format("ServerLatency: %d + %d (missing stat data)") 
+			   % pending1->memoryUsage() % stats_table.memoryUsage());
 	}
     }
 
@@ -286,6 +318,7 @@ public:
     }
 
     virtual void processRow() {
+	++row_count;
 	if (op_id.isNull()) {
 	    return;
 	}
@@ -527,8 +560,7 @@ public:
     }
     
     StatsQuantile duplicate_request_delay;
-    uint64_t missing_request_count;
-    uint64_t duplicate_reply_count;
+    uint64_t missing_request_count, duplicate_reply_count, row_count, last_prune_at;
     int64_t min_packet_time_raw, max_packet_time_raw;
 
     int64_t duplicate_request_min_retry_raw;

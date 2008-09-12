@@ -52,7 +52,8 @@ public:
 	  reorder_count_stat(0.005, nvals), reorder_fraction(0.005, nvals),
 	  sequentiality_count_fraction(0.005, nvals), sequentiality_bytes_fraction(0.005, nvals),
 	  in_random_sequential_run_count(0.005, nvals), 
-	  in_random_sequential_run_bytes(0.005, nvals), eof_count(0.005, nvals)
+	  in_random_sequential_run_bytes(0.005, nvals), eof_count(0.005, nvals),
+	  unknown_file_size_count(0)
     { 
 	ignore_client = false;
 	ignore_server = false;
@@ -197,10 +198,13 @@ public:
 	double divisor = state.read_bytes + state.write_bytes;
 	if (divisor > 0) {
 	    op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
-	    divisor = file_size;
-	    INVARIANT(divisor > 0, format("file size = %d, rb = %d, wb = %d") % file_size
-		      % state.read_bytes % state.write_bytes);
-	    file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    if (file_size > 0) {
+		divisor = file_size;
+		file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    } else {
+		++unknown_file_size_count;
+		SINVARIANT(file_size == -1);
+	    }
 	    reorder_count_stat.add(state.reorder_count);
 
 	    divisor = state.read_count + state.write_count;
@@ -548,6 +552,7 @@ public:
 	count_stat.print("count");
 	bytes_stat.print("bytes");
 	op_bytes_fraction.print("op_bytes_fraction");
+	cout << format("unknown file size count %d\n") % unknown_file_size_count;
 	file_bytes_fraction.print("file_bytes_fraction");
 	printStat("reorder_count", reorder_count_stat);
 	printStat("reorder_fraction", reorder_fraction);
@@ -623,6 +628,7 @@ private:
     StatsQuantile reorder_count_stat, reorder_fraction, sequentiality_count_fraction, 
 		    sequentiality_bytes_fraction, in_random_sequential_run_count, 
 		    in_random_sequential_run_bytes, eof_count;
+    uint64_t unknown_file_size_count;
 };
     
 namespace NFSDSAnalysisMod {
