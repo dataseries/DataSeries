@@ -71,24 +71,43 @@ and analysis system for structured serial data:
 \begin{enumerate}
 
 \item \textbf{Storage efficiency}: the data should be stored in as few
-bytes as possible.
+bytes as possible. There are several driving factors behind this
+requirement. Firstly, the amount of data stored can be large (we have
+I/O traces comprising billions of records), and despite rapidly
+decreasing storage prices, the cost to store data can still be
+considerable, particularly when the data must be kept for long periods
+of time. Secondly, we have learnt that one of the primary factors
+behind analysis efficiency is the speed at which data can be
+retrieved. Regarldess of the storage technology used, more highly
+compressed data can substantially speed access times.
 
 \item \textbf{Access efficiency}: accessing, interpreting and encoding
 trace data, whether reading or writing, should make efficient use of
-CPU and memory resources.
+CPU and memory resources. From experience and experimental analysis, we
+have learnt that the second major factor determining analysis efficiency is the
+CPU overheads of intepreting data once it has been read off disk. 
 
 \item \textbf{Flexibility}: adding additional fields should not affect
 users of the trace data.  Removing or modifying data fields should
 only affect users who use those fields and the system should support
 catching incorrect usage.  Further, the format should not constrain
 the type of data being stored, and should allow multiple record types
-in a single file.
+in a single file. Again, experience has taught us that formats that
+are not flexible lead to severe maintenance issues for both the format
+interpretation code and analysis systems.
 
 \item \textbf{Self-describing}: the data set should contain the
-metadata that describes the data.
+metadata that describes the data. This is another experience-driven
+requirement, as we have had problems in trying to interpret and use
+trace data from other organizations, and maintaining organizational
+knowledge of our own metadata over time.
 
-\item \textbf{(Re)Usability}: the data format should have an associated
-programming interface that is both expressive and easy to use.
+\item \textbf{(Re)Usability}: the data format should have an
+associated programming interface that is both expressive and easy to
+use. In particular the user model of the data and its analysis should
+be easy to describe and the interface to it should easily allow for
+common operations (e.g. scanning an entire data set, and processing
+specific fields only).
 
 \end{enumerate}
 
@@ -100,6 +119,8 @@ related work (Section~\ref{sec:related}).
 We provide four primary contributions in this paper.  First, we
 introduce DataSeries, a data format and associated library, which was
 specifically designed to meet the five key properties discussed above.
+and relate some of the experiences that led us to make various
+design decisions. 
 Second, we discuss how DataSeries can support very large data sets
 (e.g., hundreds of billions of records) on modest systems.  Third, we
 describe how we have used DataSeries in practice to store a wide
@@ -121,7 +142,7 @@ The remainder of this paper is organized as follows.
 Section~\ref{sec:related} describes the strengths and weaknesses of
 existing storage technologies relative to DataSeries.
 Section~\ref{sec:design} describes the design of DataSeries, including
-on-disk and in-memory formats.
+on-disk and in-memory formats, and introduces the programming model.
 Section~\ref{sec:results} presents empirical and benchmark results
 from our use of DataSeries to illustrate and quantify the benefits of
 DataSeries. Section~\ref{sec:conclusions} concludes the
