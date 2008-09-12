@@ -48,6 +48,7 @@ namespace NFSDSAnalysisMod {
     RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
     RowAnalysisModule *newSequentiality(DataSeriesModule &prev, const string &arg);
     RowAnalysisModule *newServerLatency(DataSeriesModule &prev, const string &arg);
+    RowAnalysisModule *newMissingOps(DataSeriesModule &prev);
 }
 
 // needed to make g++-3.3 not suck.
@@ -1087,7 +1088,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     bool add_file_handle_operation_lookup = false;
 
     while (1) {
-	int opt = getopt(argc, argv, "hab:c:d:e:fgi:Z:");
+	int opt = getopt(argc, argv, "hab:c:d:e:fgi:jZ:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -1131,6 +1132,9 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 #endif
 	    merge123Sequence.addModule
 		(newSequentiality(merge123Sequence.tail(), optarg));
+	    break;
+	case 'j':
+	    commonSequence.addModule(newMissingOps(commonSequence.tail()));
 	    break;
 	case 'Z': {
 	    string arg = optarg;
