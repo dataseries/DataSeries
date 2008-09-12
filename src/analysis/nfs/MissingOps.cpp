@@ -4,6 +4,8 @@
 #include <DataSeries/SequenceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
+#include <analysis/nfs/common.hpp>
+
 using namespace std;
 using boost::format;
 
@@ -18,6 +20,8 @@ public:
           source(series, "source"),
 	  dest(series, "dest"),
           is_request(series, ""),
+	  op_id(series, "", Field::flag_nullable),
+	  nfs_version(series, "", Field::flag_nullable),
           transaction_id(series, ""),
 	  payload_length(series, ""),
           record_id(series, ""),
@@ -29,16 +33,22 @@ public:
     virtual ~MissingOps() { }
 
     virtual void firstExtent(const Extent &e) {
+	skip_after_count.resize(getMaxUnifiedId()+1);
+	skip_after_skip.resize(getMaxUnifiedId() +1);
 	const ExtentType &type = e.getType();
 	if (type.versionCompatible(0,0) || type.versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");
 	    is_request.setFieldName("is-request");
+	    op_id.setFieldName("op-id");
+	    nfs_version.setFieldName("nfs-version");
 	    transaction_id.setFieldName("transaction-id");
 	    payload_length.setFieldName("payload-length");
 	    record_id.setFieldName("record-id");
 	} else if (type.versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    is_request.setFieldName("is_request");
+	    op_id.setFieldName("op_id");
+	    nfs_version.setFieldName("nfs_version");
 	    transaction_id.setFieldName("transaction_id");
 	    payload_length.setFieldName("payload_length");
 	    record_id.setFieldName("record_id");
@@ -60,8 +70,9 @@ public:
     struct XactInfo {
 	uint32_t xact_id;
 	int64_t at;
-	XactInfo() : xact_id(0), at(0) { }
-	XactInfo(uint32_t a, int64_t b) : xact_id(a), at(b) { }
+	int32_t operation;
+	XactInfo() : xact_id(0), at(0), operation(-1) { }
+	XactInfo(uint32_t a, int64_t b, uint8_t c) : xact_id(a), at(b), operation(c) { }
 	bool operator <(const XactInfo &rhs) const {
 	    return xact_id < rhs.xact_id;
 	}
@@ -159,6 +170,9 @@ public:
 		if (false) cout << format("skip %x: %d\n") % client_id % skip;
 		skip_count += skip;
 		++skip_rec_count;
+		SINVARIANT(i->operation >= 0);
+		++skip_after_count[i->operation];
+		skip_after_skip[i->operation] += skip;
 	    } else if (i->at < now - age_out_raw) {
 		++old_count;
 	    } else {
@@ -189,17 +203,18 @@ public:
 	}
 	++request_count;
 
+	uint8_t operation = opIdToUnifiedId(nfs_version.val(), op_id.val());
 	Info &info = client_to_info[source.val()];
 	switch(info.flipmode) 
 	    {
 	    case Unknown: 
 	    case NoFlip:
 		info.last_xact_ids.push_back(XactInfo(static_cast<uint32_t>(transaction_id.val()),
-						      packet_at.valRaw()));
+						      packet_at.valRaw(), operation));
 		break;
 	    case Flip:
 		info.last_xact_ids.push_back(XactInfo(Extent::flip4bytes(transaction_id.val()),
-						      packet_at.valRaw()));
+						      packet_at.valRaw(), operation));
 		break;
 	    default:
 		FATAL_ERROR("?");
@@ -215,6 +230,19 @@ public:
 	    % request_count % good_count % (100.0*good_count / request_count)
 	    % skip_count % (100.0*skip_count / (good_count + skip_count))
 	    % backwards_count % old_count % unknown_count;
+	cout << "skip-after: ";
+	bool not_first = false;
+	for(unsigned i = 0; i < skip_after_count.size(); ++i) {
+	    if (skip_after_count[i] > 0) {
+		if (not_first) {
+		    cout << ", ";
+		}
+		not_first = true;
+		cout << format("%s: %d/%d") % unifiedIdToName(i) % skip_after_count[i]
+		    % skip_after_skip[i];
+	    }
+	}
+	cout << "\n";
     }
 
     virtual void printResult() {
@@ -237,13 +265,15 @@ private:
     Int32Field dest;
     //    BoolField is_udp;
     BoolField is_request;
-    //    ByteField nfs_version;
+    ByteField op_id, nfs_version;
     Int32Field transaction_id;
     Int32Field payload_length;
     Int64Field record_id;
     uint64_t good_count, skip_count, skip_rec_count, backwards_count, request_count, old_count;
     int64_t age_out_raw;
     uint64_t last_report_count;
+    vector<uint64_t> skip_after_count;
+    vector<uint64_t> skip_after_skip;
 };
 
 namespace NFSDSAnalysisMod {
