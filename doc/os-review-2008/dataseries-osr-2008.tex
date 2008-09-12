@@ -205,14 +205,28 @@ A single DataSeries file comprises a collection of extents
 extent-type extent at the beginning of the file, and an index extent
 and trailer at the end of the file. The header on a DataSeries file 
 contains the DataSeries
-file version, and endianness encodings of the data types.  The
+file version, and check values that enable the reader to determine the
+endianness encodings of the data types.  DataSeries files are always
+written out using the native formats of the writing system. This 
+typically minimizes byte-swapping overheads, as the architecture 
+reading the files is almost always the same as the architecture reading
+the files. The library transparently converts in the rare cases this
+is not true, and DataSeries files can be explicitly ``repacked'' if desired. 
+
+The
 extent-type extent contains records with a single string-valued field,
 each of which contains an XML specification that defines the
-extent-types of all the other extents in the file. The trailer
+extent-types of all the other extents in the file. 
+{\bf TODO: say why XML}
+
+The trailer
 consists of the offset and size (after compression) of the index
 extent.  The offset is used to read the index extent, which has two
 fields, an extent-type and an offset, to allow direct access to
-extents of a single type.
+extents of a single type. Storing the index and trailer at the end
+of the file enable efficient writing, since writing applications will
+often not know, a priori, what the final extent sizes will be, so space 
+for the index cannot be allocated until after the extents have been written.
 
 The data extents themselves consist of a header, followed by the fixed
 size data and the variable sized data.  Both fixed and variable sized
@@ -226,6 +240,16 @@ after compression to guard against hardware and software errors.
 Checksum validation can be disabled during extent reading to improve
 performance at the cost of reduced reliability.
 
+As we initially built DataSeries prototypes, we realized the need to
+add options that control various aspects of the field and extent
+descriptions in order to increase flexibility or compressability (which
+affects performance and storage costs). While space precludes a full
+description (see~\cite{DSTechnicalReportSnapshot}), we describe 
+some of the more significant below:
+
+
+{\bf TODO: expound further on options, delete below para}
+
 DataSeries supports a number of options that control either the
 interpretation of a field (e.g., can it be null), or the way the field
 is represented prior to compression ({\em packed}, e.g., relative to
@@ -234,8 +258,14 @@ of entire extents (e.g., ordering of the fields in a record).
 Detailed explanation of the options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
+\subsection{Programming model}
+{\bf TODO: maybe this should be a section}
+
 \section{Performance Results}\label{sec:results}
 
+{\bf TODO: I wonder if we should rename these ``Harvard'' traces
+rather than Ellard?}
+{\bf TODO: add sections here to fill up space somewhat
 We performed various experiments to measure the effectiveness of
 DataSeries' compression techniques, and then further compared
 DataSeries to data encoding and analysis using MySQL, CSV, CStore,
