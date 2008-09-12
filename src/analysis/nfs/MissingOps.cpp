@@ -26,9 +26,11 @@ public:
 	  payload_length(series, ""),
           record_id(series, ""),
 	  good_count(0), skip_count(0), skip_rec_count(0), backwards_count(0), request_count(0),
-	  old_count(0),
+	  old_count(0), bad_guess_count(0),
 	  age_out_raw(0), last_report_count(0)
     { }
+
+    static const unsigned batch_size = 2000;
 
     virtual ~MissingOps() { }
 
@@ -109,20 +111,29 @@ public:
     }
 
     void determineFlipMode(int32_t client_id, Info &info) {
-	static const double required_skip1 = 0.5;
+	static const double required_skip1 = 0.75;
+	static const double max_opposite_skip1 = 0.1;
 	vector<XactInfo> tmp = info.last_xact_ids;
 
 	sort(tmp.begin(), tmp.end());
 	uint32_t skip1_count = countOneSkip(tmp);
-	if (skip1_count > tmp.size() * required_skip1) {
-	    info.flipmode = NoFlip;
-	    return;
-	} 
 	tmp = info.last_xact_ids;
 	flipVec(tmp);
 	sort(tmp.begin(), tmp.end());
 	uint32_t skipf_count = countOneSkip(tmp);
-	if (skipf_count > tmp.size() * required_skip1) {
+
+	cout << format("select flipmode (%d,%d) for %08x:")
+	    % skip1_count % skipf_count % client_id;
+
+	if (skip1_count > tmp.size() * required_skip1 &&
+	    skipf_count < tmp.size() * max_opposite_skip1) {
+	    cout << "noflip\n";
+	    info.flipmode = NoFlip;
+	    return;
+	} 
+	if (skipf_count > tmp.size() * required_skip1 &&
+	    skip1_count < tmp.size() * max_opposite_skip1) {
+	    cout << "flip\n";
 	    if (false) {
 		cout << format("flip %d > %d\n") % skipf_count % (tmp.size() * required_skip1);
 		dumpVec(tmp);
@@ -132,9 +143,12 @@ public:
 	    info.flipmode = Flip;
 	    return;
 	} 
+	cout << "unknown\n";
 	cout << format("Badness guessing on %08x: %d,%d vs %d\n") % client_id
 	    % skip1_count % skipf_count % (tmp.size() * required_skip1);
 	dumpVec(info.last_xact_ids);
+	bad_guess_count += info.last_xact_ids.size();
+	info.last_xact_ids.clear();
 	cout << "\n";
     }
 
@@ -148,7 +162,10 @@ public:
 	    if (info.flipmode == Unknown) {
 		return;
 	    }
-	    if (false) cout << format("%x select %d\n") % client_id % info.flipmode;
+	    if (false) {
+		cout << format("select flipmode for %08x as %d\n")
+		    % client_id % info.flipmode;
+	    }
 	} 
 	sort(info.last_xact_ids.begin(), info.last_xact_ids.end());
 	
@@ -189,13 +206,16 @@ public:
 	    cout << format("Badness on %08x(%d) %d vs %d: ") 
 		% client_id % info.flipmode % new_vec.size() % info.last_xact_ids.size();
 	    dumpVec(new_vec);
-	    FATAL_ERROR("no");
+	    if (info.flipmode == Flip) {
+		flipVec(new_vec);
+	    }
+	    info.flipmode = Unknown;
+	    cout.flush();
 	}
 
 	info.last_xact_ids.swap(new_vec);
 	//	cout << format("PB %x %d %d; %d\n") % client_id % request_count % good_count % info.last_xact_ids.size();
     }
-
 
     virtual void processRow() {
 	if (!is_request.val()) {
@@ -220,16 +240,16 @@ public:
 		FATAL_ERROR("?");
 	    }
 
-	if (info.last_xact_ids.size() >= 1000) {
+	if (info.last_xact_ids.size() >= batch_size) {
 	    processBatch(source.val(), info, packet_at.valRaw());
 	}
     }
 
     void report(uint64_t unknown_count) {
-	cout << format("request %d; good %d %.2f%%; skip %d (%.4f%%); backwards %d; old %d; unknown %d\n") 
+	cout << format("request %d; good %d %.2f%%; skip %d (%.4f%%); backwards %d; old %d; bad-endianess-guess %d, unknown %d\n") 
 	    % request_count % good_count % (100.0*good_count / request_count)
 	    % skip_count % (100.0*skip_count / (good_count + skip_count))
-	    % backwards_count % old_count % unknown_count;
+	    % backwards_count % old_count % bad_guess_count % unknown_count;
 	cout << "skip-after: ";
 	bool not_first = false;
 	for(unsigned i = 0; i < skip_after_count.size(); ++i) {
@@ -243,6 +263,7 @@ public:
 	    }
 	}
 	cout << "\n";
+	cout.flush();
     }
 
     virtual void printResult() {
@@ -269,7 +290,7 @@ private:
     Int32Field transaction_id;
     Int32Field payload_length;
     Int64Field record_id;
-    uint64_t good_count, skip_count, skip_rec_count, backwards_count, request_count, old_count;
+    uint64_t good_count, skip_count, skip_rec_count, backwards_count, request_count, old_count, bad_guess_count;
     int64_t age_out_raw;
     uint64_t last_report_count;
     vector<uint64_t> skip_after_count;
