@@ -78,7 +78,7 @@ decreasing storage prices, the cost to store data can still be
 considerable, particularly when the data must be kept for long periods
 of time. Secondly, we have learnt that one of the primary factors
 behind analysis efficiency is the speed at which data can be
-retrieved. Regarldess of the storage technology used, more highly
+retrieved. Regardless of the storage technology used, more highly
 compressed data can substantially speed access times.
 
 \item \textbf{Access efficiency}: accessing, interpreting and encoding
@@ -106,7 +106,7 @@ knowledge of our own metadata over time.
 associated programming interface that is both expressive and easy to
 use. In particular the user model of the data and its analysis should
 be easy to describe and the interface to it should easily allow for
-common operations (e.g. scanning an entire data set, and processing
+common operations (e.g., scanning an entire data set, and processing
 specific fields only).
 
 \end{enumerate}
@@ -118,7 +118,7 @@ related work (Section~\ref{sec:related}).
 
 We provide four primary contributions in this paper.  First, we
 introduce DataSeries, a data format and associated library, which was
-specifically designed to meet the five key properties discussed above.
+specifically designed to meet the five key properties discussed above,
 and relate some of the experiences that led us to make various
 design decisions. 
 Second, we discuss how DataSeries can support very large data sets
@@ -154,6 +154,8 @@ paper with a summary of our work.
 We classify the related work into three categories:
 those that use a customized binary format, those that use a
 text-based format, and relational database systems. 
+For more complete comparisons including performance
+results, please refer to~\cite{DSTechnicalReportSnapshot}.
 
 Custom binary formats are usually serialized or directly written
 versions of an in-memory data structure.  As such, they usually
@@ -168,8 +170,9 @@ they fail to achieve property 1, and can fail property 2 by multiple
 orders of magnitude.  Even very tuned CSV
 implementations can only get to within 2-7x the
 access-efficiency of DataSeries, and 4-7x for the storage
-efficiency (See the DataSeries technical 
-report~\cite{DSTechnicalReportSnapshot} for these results.)
+efficiency.
+% (See the DataSeries technical 
+%report~\cite{DSTechnicalReportSnapshot} for these results.)
 %{\bf TODO: need to re-do these experiments at least to
 %measure the file sizes, and potentially with Tfrac text files,
 %although I suspect people would use sec.usec in a block I/O trace}
@@ -190,6 +193,7 @@ calculation on the client would further slow the relative performance.
 
 \section{Design}\label{sec:design}
 
+\subsection{Data Format}
 DataSeries' data model is conceptually very similar to that used by
 relational databases.  Logically, a DataSeries file is composed of an
 ordered sequence of {\it records}, where each record is composed from
@@ -259,7 +263,58 @@ Detailed explanation of the options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Programming model}
-{\bf TODO: maybe this should be a section}
+%{\bf TODO: maybe this should be a section}
+Four general functionalities are supported by DataSeries:
+reading a DataSeries file, 
+analyzing the data in a DataSeries file,
+writing a DataSeries file,
+and writing an alternative output format (e.g., CSV).
+These functionalities meet all of the typical needs for
+users of structured serial data, and thus facilitate
+the usability (property 5) of DataSeries.
+
+There are two key concepts in the C++ API provided by DataSeries. The
+first is that of an \textit{ExtentSeries}, which is an iterator over
+the rows in at least one extent-type-compatible extent.  
+%When reading
+%a file, the ExtentSeries is initialized with the extent, each row is
+%iterated over, and then the series is reset to use the next extent.
+The second key concept is that of a \textit{module}, which provides
+functionality similar to the modules in River~\cite{river99}, and the
+iterator model~\cite{graefeQueryProcessing93} in relational databases.
+The ability to add functionality in a modular fashion enhances
+the flexibility (property 3) of DataSeries.
+
+DataSeries also provides modules that enhance the access efficiency
+(property 2).
+With DataSeries, each module processes an extent at a time, and
+iterates over each of the rows in the extent.  In the standard
+iterator model, a tree of modules are created and each module provides
+a {\tt getNext()} operation that reads the next row from that module.
+This model is inefficient as each row is handled as a separate data
+structure.  To address this, DataSeries provides a 
+bulk iterator model which amortizes the cost of reading each
+row by collecting multiple rows together.  The row analysis module
+used above then calls the processRow() function on each row.  For
+efficiency reasons, the transfer of extents between modules is a
+transfer of ownership, i.e., the module that returns an extent must
+not continue to access it, although we are considering relaxing this
+constraint in the future.  
+{\bf TODO: need to explain why, or delete the relaxation comment.}
+%Each module can iterate over the rows in
+%the extent by putting it into a series and using the series iterator
+%to select the row and the fields to access rows in that series.
+DataSeries also provides modules which exploit parallelism in operations,
+such as decompressing and analyzing data or compressing and writing
+extents to disk in parallel, which increases the access effiency
+(property 2) on multi-core and SMP systems.
+
+The DataSeries source distribution contains numerous other built-in 
+general modules as well as many analysis modules, for analyzing
+specific data types such as NFS, LSF and logical/physical disk volume
+traces.  More detailed information on these modules is available 
+in~\cite{DSTechnicalReportSnapshot}, as well as the source distribution.
+A programming example is also provided in~\cite{DSTechnicalReportSnapshot}.
 
 \section{Performance Results}\label{sec:results}
 
