@@ -1,15 +1,25 @@
 \section{Conversion}
 
 Once the data is captured, the second problem is parsing and
-converting that data to a usable format.  Since we have done complete
-capture to disk, we have the opportunity to perform a parallel
-conversion.  First we have to decide how we are going to represent the
-data.  One option is the format used in the Ellard\cite{ellardTraces}
-traces: one line per request or reply in the file with field names to
-identify the different parameters in the RPC.  However, this format
-works poorly for representing things like readdir, which have an
-arbitrary number of response fields, and though we didn't initially
-implement readdir, we knew that we would want to in the future.
+converting that data to a usable format.  There are three main
+challenges in conversion: representation, performance and obfuscation.
+Representation is the challenge of deciding the logical structure of
+the converted data.  Performance is the challenge of making the
+conversion run quickly, hopefully faster than the capture stage.
+Obfuscation is the challenge of hiding important information present
+in the data and is necessary for being able to release traces.
+
+
+\subsection{Representation}
+
+One option for the represetation is the format used in the
+Ellard\cite{ellardTraces} traces: one line per request or reply in the
+file with field names to identify the different parameters in the RPC.
+However, this format works poorly for representing things like
+readdir, which have an arbitrary number of response fields, and though
+we didn't initially implement readdir, we knew that we would want to
+in the future, and since we now have, the ability to associate
+multiple response parts with a single response is important.
 Therefore, we chose to use a more relational data
 structuring~\cite{codd70relational}.  We have a primary data table
 with the common fields present in every request or reply, and an
@@ -18,6 +28,13 @@ request-type specific information, such as a single table for RPC's
 that include attributes, and a single table for read and write
 information.  We then join the common table to the other tables when
 we want to perform an analysis that uses information in both.
+
+The relational structuring improves flexibility, and allows for
+analysis that only need a subset of the data to avoid reading
+unnecessary parts.  For example an analysis only looking at operation
+latency can simply scan the common table.
+
+\subsection{Performance}
 
 In order to perform the conversion in parallel, we need to divide all
 of the collected files into groups and process them in parallel.
@@ -52,7 +69,67 @@ machine, we realized that the 1Gbit network connection the tracing
 machine had would be the bottleneck and would result in slower
 conversion.
 
-... encryption ...
+\subsection{Obfuscation}
+
+In order to release the traces, we have to obscure private data such
+as filenames.  There are three primary ways to perform the obfuscation: 
+
+\begin{enumerate}
+
+\item {\bf map values to unique integers}.  This option results in the
+most compact identifiers.  It presents difficulties in parallelizing
+the conversion since all identical values need to map to identical
+integers.  To maintain consistent mappings between capture sessions,
+the translation table needs to be maintained, which means that the
+size of that table could get very large.  Finally, converting back to
+the original data means that the translation table needs to be preserved.
+
+\item {\bf map values to hash/hmac}.  This option results in larger
+identifiers since secure hash's are 16-20 bytes in length.  It
+eliminates the problem with parallelizing the conversion since the
+hash can be calculated in parallel.  If a simple hash is used, then
+this conversion is open to a dictionary attack, which may or may not
+matter.  The main disadvantage of this approach is that converting
+back to the original data requires that a translation table of hmac ->
+original string needs to be preserved.  There is a potential problem
+of collisions, but this is sufficiently implausable as to be an
+ignorable problem.
+
+\item {\bf map values to encrypted values}.  This option results in
+the longest identifiers since the encrypted value will be at least as
+large as the original value.  It is as parallizable as the hash/hmac
+approach, it is not open to a dictionary attack, and it can be
+reversed provided the key files are kept around.
+
+\end{enumerate}
+
+We chose the last approach becasue we wanted to be able to have
+discussions with the customer about results of analysis, and we needed
+to be able to tell them the actual pathnames involved in what we
+found.  Our encryption process embeds a prefix of the hash in the
+decrypted data so that we can verify that a particular string should
+be decrypted.  This allows us to write a decryption filter that looks
+for hexadecimal strings in output, attempts to decrypt them, and if
+successful substitutes in the decrypted data.  We have used the
+reversable decryption to verify analysis of the data.  For example, a
+collegue analyzed the directory structure, and wanted to identify the
+strings representing '.' and '..'.  We verified through decryption
+that they had identified the correct strings.
+
+A second question is what if any parsing should be done of values
+before they are encrypted.  For example, should a filename and suffix
+be encrypted separately.  This question depends on what analysis will
+be run in the future.  In our case, we chose to encrypt entire
+filenames since the suffixes are specific to the animation process and
+are unlikely to be useful to people.  This was also the most
+conservative position; we could (through decryption) change our
+position on this in the future.
+
+Since most of the other values in our traces were semi-random (IP
+addresses in the 10.* network, filehandles selected by the filers), we
+chose to pass those values through unchanged.  If there were public
+values in the traces, then we would have had to apply more
+sophisticated anonymization~\cite{ruoming07anonymization}.
 
 
 

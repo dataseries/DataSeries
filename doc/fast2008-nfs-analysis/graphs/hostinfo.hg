@@ -1,0 +1,179 @@
+# -*- perl -*-
+
+define
+sub basic_table {
+    my $sth = sql_exec("select dataset, operation, group_count, mean_payload_bytes from xnfs_hostinfo_cube where group_seconds = 3600 and host is null and group_time is null and direction = 'send' and op_dir is null");
+	
+    my %data;
+    my %datasets;
+    while(my @row = $sth->fetchrow_array) { 
+	my ($dataset, $operation, $count, $bytes) = @row;
+	$operation ||= '*';
+	$data{$operation}->{$dataset} = [$count, $bytes];
+	$data{$operation}->{sum_count} += $count;
+	$datasets{$dataset} = 1;
+    }
+
+    my @operations = sort { $data{$a}->{sum_count} <=> $data{$b}->{sum_count} } keys %data;
+
+    my @datasets = sort keys %datasets;
+
+    print " ";
+    foreach my $dataset (@datasets) {
+	print " & \\multicolumn{2}{c|}{$dataset}";
+    }
+    print " \\\\\n   operation";
+    foreach my $dataset (@datasets) {
+	print " &   Mops & bytes/op";
+    }
+    print " \\\\\n";
+    foreach my $operation (@operations) {
+	printf "%12s", $operation;
+       
+	foreach my $dataset (@datasets) {
+	    $data{$operation}->{$dataset} ||= [0,0];
+	    my($count, $bytes) = @{$data{$operation}->{$dataset}};
+
+	    # account for request/response pairs by dividing by 2 for
+	    # count and multiplying by 2 for bytes.  Imperfect, but so
+	    # are all the other choices.
+
+	    printf " & %9.3f & %5.0f", $count / (2*1000*1000), $bytes * 2;
+	}
+	print " \\\\\n";
+    }
+    
+    
+    return '';
+}
+
+sub plot_oprate {
+    my($dataset) = @_;
+    
+    return "plot (group_time-(select min(86400*(floor(group_time/86400))) from xnfs_hostinfo_cube where dataset = '$dataset' and group_time is not null))/86400 as x, (group_count/2)/group_seconds as y from xnfs_hostinfo_cube where dataset = '$dataset' and group_seconds = 3600 and host is null and group_time is not null and direction = 'send' and operation is null and op_dir is null
+plottitle _ $dataset
+plotwith _ linespoints
+";
+}
+
+sub plot_oprate_graph {
+    return qq{
+unplot
+plot_oprate("nfs-1/set-12")
+plot_oprate("nfs-2/set-2")
+plot_oprate("nfs-1/set-5")
+plot_oprate("nfs-2/set-5")
+plotwith _ linespoints lw 2.5
+gnuplot set ylabel "operations/s"
+gnuplot set xlabel "day of trace"
+gnuplot set title "daily usage cycles"
+pngpsplot --nocolor daily-oprate
+}
+}
+
+sub plot_ops_quantile {
+    my ($dataset, $group_seconds, $operation) = @_;
+
+    $group_seconds ||= 1;
+
+    my $opcmp = defined $operation ? " = '$operation'" : "is null";
+    my $optitle = defined $operation ? " $operation op" : "all ops";
+
+    return "plot quantile as x, operations_per_second/2 as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
+plottitle _ $dataset, $group_seconds interval, $optitle
+plotwith _ linespoints
+";
+}
+
+sub plot_allops_quantile_graphs {
+    return q{
+unplot
+plot_ops_quantile('nfs-2/set-2',1)
+plot_ops_quantile('nfs-2/set-2',3600)
+
+plot_ops_quantile('nfs-2/set-5',1)
+plot_ops_quantile('nfs-2/set-5',3600)
+gnuplot set key top left
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Operations/second"
+pngpsplot --nocolor allops-quantile-nfs-2
+
+unplot
+plot_ops_quantile('nfs-1/set-5',1)
+plot_ops_quantile('nfs-1/set-5',3600)
+
+plot_ops_quantile('nfs-1/set-12',1)
+plot_ops_quantile('nfs-1/set-12',3600)
+
+gnuplot set key top left
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Operations/second"
+pngpsplot --nocolor allops-quantile-nfs-1
+
+    }
+};
+
+sub plot_bw_quantile {
+    my ($dataset, $group_seconds, $operation) = @_;
+
+    $group_seconds ||= 1;
+
+    my $opcmp = defined $operation ? " = '$operation'" : "is null";
+    my $optitle = defined $operation ? " $operation bw" : "all bw";
+
+    return "plot quantile as x, payload_bytes_per_second/(1024*1024) as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
+plottitle _ $dataset, $group_seconds interval, $optitle
+plotwith _ linespoints
+";
+}
+
+sub plot_multi_ops_quantile {
+    my($op) = @_;
+
+    return qq{
+unplot
+plot_ops_quantile('nfs-1/set-5', 1, '$op')
+plot_ops_quantile('nfs-1/set-12', 1, '$op')
+plot_ops_quantile('nfs-2/set-2', 1, '$op')
+plot_ops_quantile('nfs-2/set-5', 1, '$op')
+gnuplot set key top left
+gnuplot set xlabel 'Quantile'
+gnuplot set ylabel 'Operations/s'
+gnuplot set title '$op/second'
+pngpsplot --nocolor ops-$op
+}
+}
+
+sub plot_multi_bw_quantile {
+    my($op) = @_;
+
+    return qq{
+unplot
+plot_bw_quantile('nfs-1/set-5', 1, '$op')
+plot_bw_quantile('nfs-1/set-12', 1, '$op')
+plot_bw_quantile('nfs-2/set-2', 1, '$op')
+plot_bw_quantile('nfs-2/set-5', 1, '$op')
+gnuplot set key top left
+gnuplot set xlabel 'Quantile'
+gnuplot set ylabel 'MiB/s'
+gnuplot set title '$op MiB/second'
+pngpsplot --nocolor bw-$op
+}
+}
+
+sub plot_all_multi {
+    my @ret;
+
+    foreach my $op (qw/read write getattr access lookup/) {
+	push(@ret, "plot_multi_ops_quantile('$op')", "plot_multi_bw_quantile('$op')");
+    }
+    return join("\n", @ret, '');
+}
+
+enddefine
+
+# basic_table()
+# plot_oprate_graph()
+# plot_allops_quantile_graphs()
+
+plot_all_multi()

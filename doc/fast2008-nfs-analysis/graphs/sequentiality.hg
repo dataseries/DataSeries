@@ -1,0 +1,120 @@
+# -*- perl -*-
+
+define
+
+sub plot_one_quant {
+    my($dataset, $type, $config) = @_;
+
+    return "
+plot quantile/100 as x, value as y from nfs_sequentiality_quantile where dataset = '$dataset' and type = '$type' and config = '$config'
+plotwith _ linespoints
+plottitle _ $dataset
+";
+}
+
+sub plot_read_group_counts {
+    return q{
+unplot
+plot_one_quant('nfs-1/set-12', 'read count', 'request_order')
+plot_one_quant('nfs-1/set-5', 'read count', 'request_order')
+plot_one_quant('nfs-2/set-3', 'read count', 'request_order')
+plot_one_quant('nfs-2/set-5', 'read count', 'request_order')
+gnuplot set logscale y
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "# reads in a group"
+gnuplot set yrange [1:300]
+gnuplot set key top left
+pngpsplot --nocolor seq-read-group-counts
+};
+}
+
+sub plot_read_group_bytes {
+    return q{
+unplot
+plot_one_quant('nfs-1/set-12', 'read bytes', 'request_order')
+plot_one_quant('nfs-1/set-5', 'read bytes', 'request_order')
+plot_one_quant('nfs-2/set-3', 'read bytes', 'request_order')
+plot_one_quant('nfs-2/set-5', 'read bytes', 'request_order')
+gnuplot set logscale y
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "# bytes in a group"
+gnuplot set key top left
+pngpsplot --nocolor seq-read-group-bytes
+};
+}
+
+sub seq_bytes_compare_one {
+    my($dataset) = @_;
+
+    return qq{
+plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'overlapping_reorder=0.01')
+plottitle _ 10 ms reorder
+plotwith _ lines
+plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'overlapping_reorder')
+plottitle _ reorder
+#plottitle _ notitle
+plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'request_order')
+plottitle _ $dataset
+plotwith _ lines
+#plottitle _ notitle
+    }
+};
+
+sub seq_bytes_compare {
+    return q{
+unplot
+
+seq_bytes_compare_one('nfs-1/set-12')
+seq_bytes_compare_one('nfs-1/set-5')
+seq_bytes_compare_one('nfs-2/set-3')
+seq_bytes_compare_one('nfs-2/set-5')
+gnuplot set key top left
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Fraction of bytes read sequentially"
+gnuplot set title "Effect of reordering I/Os on estimated sequentiality"
+gnuplot set key 0.25,0.95
+pngpsplot --nocolor --font-size=10 seq-bytes-compare
+    }
+}
+
+sub in_random_seq_count {
+    return q{
+unplot
+plot_one_quant('nfs-1/set-12', 'in_random_sequential_run_count', 'overlapping_reorder')
+plot_one_quant('nfs-1/set-5', 'in_random_sequential_run_count', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-3', 'in_random_sequential_run_count', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-5', 'in_random_sequential_run_count', 'overlapping_reorder')
+gnuplot set yrange [1:300]
+gnuplot set logscale y
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "# seq. reads in a run"
+gnuplot set title "Sequentiality in groups with random reads"
+gnuplot set key top left
+pngpsplot --nocolor seq-in-random-seq-count
+    }
+}
+
+sub in_random_seq_bytes {
+    return q{
+unplot
+plot_one_quant('nfs-1/set-12', 'in_random_sequential_run_bytes', 'overlapping_reorder')
+plot_one_quant('nfs-1/set-5', 'in_random_sequential_run_bytes', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-3', 'in_random_sequential_run_bytes', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-5', 'in_random_sequential_run_bytes', 'overlapping_reorder')
+gnuplot set logscale y
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "# seq. bytes in a run"
+gnuplot set title "Sequentiality in groups with random reads"
+gnuplot set key top left
+pngpsplot --nocolor seq-in-random-seq-bytes
+    }
+}
+
+
+enddefine
+
+plot_read_group_counts()
+plot_read_group_bytes()
+seq_bytes_compare()
+in_random_seq_count()
+in_random_seq_bytes()
