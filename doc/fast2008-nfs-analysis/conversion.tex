@@ -13,7 +13,7 @@ in the data and is necessary for being able to release traces.
 
 \subsection{Representation}
 
-One option for the represetation is the format used in the
+One option for the representation is the format used in the
 Ellard\cite{ellardTraces} traces: one line per request or reply in the
 file with field names to identify the different parameters in the RPC.
 However, this format works poorly for representing things like
@@ -93,18 +93,18 @@ this conversion is open to a dictionary attack, which may or may not
 matter.  The main disadvantage of this approach is that converting
 back to the original data requires that a translation table of hmac ->
 original string needs to be preserved.  There is a potential problem
-of collisions, but this is sufficiently implausable as to be an
+of collisions, but this is sufficiently implausible as to be an
 ignorable problem.
 
 \item {\bf map values to encrypted values}.  This option results in
 the longest identifiers since the encrypted value will be at least as
-large as the original value.  It is as parallizable as the hash/hmac
+large as the original value.  It is as parallelizable as the hash/hmac
 approach, it is not open to a dictionary attack, and it can be
 reversed provided the key files are kept around.
 
 \end{enumerate}
 
-We chose the last approach becasue we wanted to be able to have
+We chose the last approach because we wanted to be able to have
 discussions with the customer about results of analysis, and we needed
 to be able to tell them the actual pathnames involved in what we
 found.  Our encryption process embeds a prefix of the hash in the
@@ -112,8 +112,8 @@ decrypted data so that we can verify that a particular string should
 be decrypted.  This allows us to write a decryption filter that looks
 for hexadecimal strings in output, attempts to decrypt them, and if
 successful substitutes in the decrypted data.  We have used the
-reversable decryption to verify analysis of the data.  For example, a
-collegue analyzed the directory structure, and wanted to identify the
+reversible decryption to verify analysis of the data.  For example, a
+colleague analyzed the directory structure, and wanted to identify the
 strings representing '.' and '..'.  We verified through decryption
 that they had identified the correct strings.
 

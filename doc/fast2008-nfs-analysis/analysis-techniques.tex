@@ -17,7 +17,7 @@ results.  For example, the calculating the mean latency of an I/O will
 result in a value that occurs rarely as it will average the cache hit
 time and the disk I/O time.  Histograms provide a better way to
 understand the distribution of latencies, but require the user to
-pre-emptively determine the buckets for the histogram.  If there are
+preemptively determine the buckets for the histogram.  If there are
 multiple types of cache hits, they could easily be put into the same
 histogram bucket resulting in loss of important information.
 
@@ -76,7 +76,7 @@ The cube\cite{gray97cube} is a generalization of the group-by
 operations described above.  Given a collection of rows, it calculates
 the set of unique values for each column $U(c)$, adds the special
 value 'ANY' to the set, and then generates one row for each member of
-the cross-product $U(1) x U(2) x ... U(n)$.
+the cross-product $U(1) \times U(2) \times ... U(n)$.
 
 We implemented a very efficient templated version of the cube operator
 for use in data analysis.  We added three features to deal with memory
@@ -107,9 +107,9 @@ of values to be efficiently calculated.
 \subsection{HashTable}
 
 Our hash-table implementation is a straightforward chained-hashing
-implementation.  It uses somewhat more memory than the google sparse
+implementation.  It uses somewhat more memory than the Google sparse
 hash, but performs almost as well as the dense hash.  Because it uses
-chaining, it does not need any special sentinal values.  We discuss it
+chaining, it does not need any special sentinel values.  We discuss it
 briefly because it has three features not normally found in hash-table
 implementations.  First, it has a function to report on the memory
 usage of the hash table; this is important because tracking memory
@@ -138,12 +138,12 @@ sequentiality is a per-file statistic.  So long as accesses are active
 to the file, we want to continue to update the run information.  Once
 the file becomes inactive for long enough, we want to calculate
 summary statistics and remove the general statistics from memory.  One
-option would be to keep the values in a LRU datastructure, however if
+option would be to keep the values in a LRU data-structure, however if
 our analysis only needs to keep a file id and last offset, then we
-could easily double the size of our datastructure by keeping the
+could easily double the size of our data-structure by keeping the
 forward and backward pointers needed for LRU.  Alternately, we could
 use a clock-style algorithm, but this would require a full scan over
-the entire datastructure on a regular basis.
+the entire data-structure on a regular basis.
 
 We chose to solve this problem by keeping two hash-maps, the {\it
 recent} and {\it old} hash-maps.  Any time a value is accessed, it is
@@ -152,7 +152,7 @@ time, the program will call the rotate(fn) operation which will apply
 fn to all of the key,value pairs in the old hash map, delete that map,
 assign the recent map to the old map and create a new recent map.
 
-Therefore, if the analysis wants to guarentee any gap of up to 60
+Therefore, if the analysis wants to guarantee any gap of up to 60
 seconds will be considered part of the same run, it just needs to call
 rotate() every 60 seconds.  Any value accessed in the last 60 seconds
 will remain present in the hash-map.  We could reduce the memory

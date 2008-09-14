@@ -6,14 +6,14 @@ binary format enables efficient analysis, and our analysis techniques
 are efficient, it can still take 4-8 hours to analyze a single set of
 the 2007 traces.  In practice, we analyze the traces in parallel on a
 small cluster of 4 core 2.4GhZ Opterons.  Our analysis typically
-becomes bottlenecked on the fileservers that serve up to 200MB/s each
+becomes bottle-necked on the fileservers that serve up to 200MB/s each
 once an analysis is running on more than 20 machines.
 
 \subsection{Capture performance}
 
 We start our analysis by looking at the performance of our capture
 tool.  We examine the capture rate of the tool by calculating the
-megabits/s (Mbps) and kilopackets/s (kpps) for overlapping intervals
+megabits/s (Mbps) and kilo-packets/s (kpps) for overlapping intervals
 of a specified length.  For example if our interval length is 60
 seconds, then we will calculate the bandwidth for the interval 0s-60s,
 3s-63s, 6s-66s, ... end-of-trace.  We chose to calculate the bandwidth
@@ -21,9 +21,9 @@ for overlapping intervals so that if there is any aligned cyclicality
 in the trace data we will not be confused by it.  We divide an
 interval into 20 sub-intervals.  We then take the data and put it into
 an approximate quantile so that we can understand the distribution of
-rates even for small intervals.  For example, we have 11.6 bilion
+rates even for small intervals.  For example, we have 11.6 billion
 measurements for nfs-2/set-0 at a 1ms interval length.  This
-corresponsd to the 6.7 days of that trace.
+correspond to the 6.7 days of that trace.
 % 11.6 * 10^9 * 0.001 / 20 = 580,000 / 86400 = 6.7
 
 Figure~\ref{fig:bwrolling-mbps}(a) shows the cdf of bandwidth for the
@@ -47,7 +47,7 @@ interval lengths.  This graph emphasizes how bursty the traffic was
 during this trace. While 50\% of the intervals were above 500Mbits for
 60s intervals, only 30\% of the intervals were above 500Mbits for 1ms
 intervals.  This burstiness is not completely unsurprising given that
-general ethernet traffic and filesystem
+general Ethernet traffic and filesystem
 traffic~\cite{Gribble98selfsimilar} has been shown to be
 self-similar~\cite{Leland94selfsimilar}, which implies it is bursty.
 It does make it clear that we need to look at short time intervals in
@@ -209,7 +209,7 @@ nfs-2/set-5 showed 98.4\%, and counting the skips of 128 transactions
 or less, we found only 0.21\% and 0.50\% respectively (the remaining
 entries were duplicates or ones that we could not positively tell if
 they were in sequence or a skip).  However, when we looked one level
-deeper at the operation that preceeded a skip in the sequence, we
+deeper at the operation that preceded a skip in the sequence, we
 found that 95\% of the skips followed a write operation for set-2, and
 45\% for set-5.  The skips in set-2 could increase the write workload
 by a factor of 1.5x if all missing skips after writes are associated
@@ -294,7 +294,7 @@ the workload.
 
 \begin{figure}
 \epsfig{width=2.1in, angle=0, file=graphs/seq-bytes-compare.ps}
-\caption{Negligable effect of reordering I/Os to improve estimated sequentiality.}
+\caption{Negligible effect of reordering I/Os to improve estimated sequentiality.}
 \label{fig:seq-bytes-compare}
 \end{figure}
 

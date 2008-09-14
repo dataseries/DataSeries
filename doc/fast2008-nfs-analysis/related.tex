@@ -14,7 +14,9 @@ that our workload was so much more intense that his tools would be
 insufficient, and so we ended up building our own.  When we later
 translated some of his traces to use our tools, we discovered our
 tools were about 100x faster on a four core machine and used 25x less
-CPU time for analysis.
+CPU time for analysis.  Our 2003 traces were about 20x more intense
+than Ellard's as we saw over 650 million operations/day, and Ellard
+saw about 30.
 
 Leung, et.al. traced a pair of NetApp filers on the NetApp campus.
 Since the clients were entirely windows clients, his traces were of
@@ -23,7 +25,11 @@ convert the traces.  Leung's traces were of comparable intensity to
 Ellard's traces, and they noted that they had some small packet drops
 during high load as they just used tcpdump for capture.  Leung found
 complicated sequentiality patterns and provided an extensive analysis
-of this.
+of this.  Our 2007 traces were about 95x more intense than Leung's
+traces as they saw a peak of 19.1 million operations/day and we saw an
+average of about 1.8 billion.  This comparison is slightly misleading
+as NFS tends to have more operations than CIFS because NFS is a
+stateless protocol.
 
 Tcpdump~\cite{tcpdump} is the tool that almost all papers use to capture packet
 traces.  We initially tried using tcpdump, but experienced massive

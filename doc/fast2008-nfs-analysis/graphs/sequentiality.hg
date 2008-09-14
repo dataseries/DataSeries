@@ -17,7 +17,7 @@ sub plot_read_group_counts {
 unplot
 plot_one_quant('nfs-1/set-12', 'read count', 'request_order')
 plot_one_quant('nfs-1/set-5', 'read count', 'request_order')
-plot_one_quant('nfs-2/set-3', 'read count', 'request_order')
+plot_one_quant('nfs-2/set-2', 'read count', 'request_order')
 plot_one_quant('nfs-2/set-5', 'read count', 'request_order')
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
@@ -34,7 +34,7 @@ sub plot_read_group_bytes {
 unplot
 plot_one_quant('nfs-1/set-12', 'read bytes', 'request_order')
 plot_one_quant('nfs-1/set-5', 'read bytes', 'request_order')
-plot_one_quant('nfs-2/set-3', 'read bytes', 'request_order')
+plot_one_quant('nfs-2/set-2', 'read bytes', 'request_order')
 plot_one_quant('nfs-2/set-5', 'read bytes', 'request_order')
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
@@ -67,7 +67,7 @@ unplot
 
 seq_bytes_compare_one('nfs-1/set-12')
 seq_bytes_compare_one('nfs-1/set-5')
-seq_bytes_compare_one('nfs-2/set-3')
+seq_bytes_compare_one('nfs-2/set-2')
 seq_bytes_compare_one('nfs-2/set-5')
 gnuplot set key top left
 gnuplot set xlabel "Quantile"
@@ -83,7 +83,7 @@ sub in_random_seq_count {
 unplot
 plot_one_quant('nfs-1/set-12', 'in_random_sequential_run_count', 'overlapping_reorder')
 plot_one_quant('nfs-1/set-5', 'in_random_sequential_run_count', 'overlapping_reorder')
-plot_one_quant('nfs-2/set-3', 'in_random_sequential_run_count', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-2', 'in_random_sequential_run_count', 'overlapping_reorder')
 plot_one_quant('nfs-2/set-5', 'in_random_sequential_run_count', 'overlapping_reorder')
 gnuplot set yrange [1:300]
 gnuplot set logscale y
@@ -100,7 +100,7 @@ sub in_random_seq_bytes {
 unplot
 plot_one_quant('nfs-1/set-12', 'in_random_sequential_run_bytes', 'overlapping_reorder')
 plot_one_quant('nfs-1/set-5', 'in_random_sequential_run_bytes', 'overlapping_reorder')
-plot_one_quant('nfs-2/set-3', 'in_random_sequential_run_bytes', 'overlapping_reorder')
+plot_one_quant('nfs-2/set-2', 'in_random_sequential_run_bytes', 'overlapping_reorder')
 plot_one_quant('nfs-2/set-5', 'in_random_sequential_run_bytes', 'overlapping_reorder')
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
@@ -115,7 +115,7 @@ pngpsplot --nocolor seq-in-random-seq-bytes
 enddefine
 
 plot_read_group_counts()
-# plot_read_group_bytes()
-# seq_bytes_compare()
-# in_random_seq_count()
-# in_random_seq_bytes()
+plot_read_group_bytes()
+seq_bytes_compare()
+in_random_seq_count()
+in_random_seq_bytes()
