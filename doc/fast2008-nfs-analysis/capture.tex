@@ -1,4 +1,5 @@
 \section{Capture}
+\label{sec:capture}
 
 The first stage in analyzing an NFS workload is capturing the data.
 There are three places that the workload could be captured: the
@@ -159,10 +160,9 @@ rate of tcpdump, and expands the effective size of the disks by 1.5x
 through adaptive compression. Our intermediate technique increases the
 capture rates by a factor of 2-3x at the cost of development time for
 fixing the network driver.  Both the lindump and driverdump code are
-available in the DataSeries
-distribution~\cite{DSOpenSource}.  While at the time we
-chose high-end servers, today's mid-range servers are the equivalent
-of our servers, so there is no reason that everyone should not be able
-to do lossless data capture.
+available in our source distribution~\cite{DSOpenSource}.  While at
+the time we chose high-end servers, today's mid-range servers are the
+equivalent of our servers, so there is no reason that everyone should
+not be able to do lossless data capture.
 
 

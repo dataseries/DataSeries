@@ -1,4 +1,67 @@
 \section{Related work}
+\label{sec:related}
 
-related work goes here
+The two closest pieces of related work are Ellard's 2001 NFS
+study~\cite{EllardFast03}, and Leung's 2007 CIFS
+study~\cite{LeungUsenix08}.  These papers also summarize the earlier
+decade of filesystem tracing, so we refer interested readers to those
+papers.  Ellard, et.al. captured NFS traces from a number of NetApp
+filers on the Harvard campus, analyzed the traces and presented new
+results looking at the sequentiality of the workload, and comparing
+his results to earlier traces.  Ellard made his tools available, so we
+initially considered building on top of them, but quickly discovered
+that our workload was so much more intense that his tools would be
+insufficient, and so we ended up building our own.  When we later
+translated some of his traces to use our tools, we discovered our
+tools were about 100x faster on a four core machine and used 25x less
+CPU time for analysis.
+
+Leung, et.al. traced a pair of NetApp filers on the NetApp campus.
+Since the clients were entirely windows clients, his traces were of
+CIFS data, and so he used the wireshark tools~\cite{wireshark} to
+convert the traces.  Leung's traces were of comparable intensity to
+Ellard's traces, and they noted that they had some small packet drops
+during high load as they just used tcpdump for capture.  Leung found
+complicated sequentiality patterns and provided an extensive analysis
+of this.
+
+Tcpdump~\cite{tcpdump} is the tool that almost all papers use to capture packet
+traces.  We initially tried using tcpdump, but experienced massive
+packet loss using it in 2003, and so developed new techniques.  We
+re-used the pcap file format that tcpdump uses for our raw captured
+data.  When we captured our second set of traces in 2007, we needed to
+capture at even higher rates, and so we ended up adopting a
+specialized capture card, and wrote new capture software using
+techniques we had developed in 2003 to allow us to capture above
+5Gbits/s.
+
+% capture.out a random capture from our nfs fileserver
+% tcpdump -r capture.out| wc   
+% 1,953,679 22682938 288138719
+% ./nettrace2ds --convert --pcap --compress-lzf 0 160877 /tmp/foo.ds   4.74s user 0.45s system 124% cpu 4.159 total
+% tshark -r /tmp/capture.out > /dev/null  44.25s user 0.30s system 99% cpu 44.564 total
+
+Tcpdump also includes limited support for conversion of NFS packets.
+The wireshark~\cite{wireshark} tool provides a graphical interface to
+packet analysis, and the tshark tool provides conversion to text.  We
+were not aware of wireshark at the time of our first capture, and we
+simply adjusted our earlier tools when we did our 2007 tracing.  We
+may consider using the wireshark converter in the future provided we
+can determine how to make it run a lot faster.  Running tshark on a
+sample 2 million packet capture took about 45 seconds whereas our
+converter ran in about 5 seconds.  Given conversion takes 2-3 days for
+a 5 day trace, we can't afford conversion to slow down by a factor of
+9x.
+
+Some of the analysis techniques we use are derived from the database
+community, namely the work on cubes~\cite{gray97cube} and approximate
+quantiles~\cite{Manku98approximatemedians}.  We considered using a
+standard SQL database for our storage and analysis, but abandoned that
+quickly because a database that can hold 100 billion rows tends to be
+very expensive.  We do use SQL databases for analysis and graphing
+once we have reduced the data size down to a few million rows using
+our tools.
+
+
+
 

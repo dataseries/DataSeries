@@ -143,4 +143,4 @@ default table ip_bw_rolling
 # plot_data_multiple('Mbps', 60, 'nfs-2/set-[0-5]')
 #plot_data_multiple('Mbps', 60, 'nfs-1/set-[12-20]')
 
-plot_selected_data_c()
+#plot_selected_data_c()

@@ -1,0 +1,30 @@
+# -*- perl -*-
+default table nfs_filesize_quantile
+
+define
+
+sub plot_one {
+    my($dataset) = @_;
+
+    return qq{
+plot quantile as x, value as y where dataset = '$dataset'
+plottitle _ $dataset
+plotwith _ linespoints
+}
+}
+
+enddefine
+
+unplot
+plot_one('nfs-1/set-5')
+plot_one('nfs-2/set-3')
+plot_one('nfs-2/set-5')
+plot_one('nfs-1/set-12')
+fnplot 8192
+fnplot 16384
+gnuplot set logscale y
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "File size (log scale)"
+gnuplot set key top left
+gnuplot set title "All accessed file size"
+pngpsplot --nocolor file-size

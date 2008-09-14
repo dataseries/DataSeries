@@ -1,11 +1,14 @@
 \section{Analysis techniques}
+\label{sec:analysis-techniques}
 
 Analyzing the very large amount of data that we collected meant that
 we had to adopt and develop new techniques for analyzing this data.
 The most important property that we aimed for was bounded memory,
 which meant that we needed to have streaming analysis.  The second
 property that we wanted was efficiency, because without efficiency, we
-would not be able to analyze complete datasets.
+would not be able to analyze complete datasets.  One of our lessons is
+that these techniques allow us to handle the much larger datasets that
+we have collected.
 
 \subsection{Approximate quantiles}
 
@@ -156,8 +159,27 @@ will remain present in the hash-map.  We could reduce the memory
 overhead somewhat by keeping more than two hash-maps at the cost of
 additional lookups, but we have so far found that the rotating
 hash-map provides a good tradeoff between minimizing memory usage and
-maximizing performance.
+maximizing performance.  We believe that the LRU approach would be
+more effective if the size of the data stored in the hash map were
+larger.
 
 \subsection{mercury-plot}
 
-...
+Once we have analyzed the data from our binary format using the cube
+and quantile techniques, we need to graph and subset the data.  For
+this purpose we use a combination of SQL, perl, and gnuplot.  The use
+of SQL makes it very easy to take subsets of the data, for example if
+we have data on 60 second intervals, it is easy to calculate
+min/mean/max for 3600 second intervals, or with the cube to select out
+the subset of the data that we want to use.  We use perl to handle
+operations that the database can't handle, for example, in the cube,
+we represent the 'ANY' value as null, but SQL requires different
+syntax to select for null vs. a specific value.  We hide this
+difference in the perl functions.  In practice, this allows us to
+write very simple commands such as {\tt plot quantile as x, value as y
+from nfs\_hostinfo\_cube where operation = 'read' and direction =
+'send'} to generate a portion of the graph.  Some of our analysis
+explicitly generate SQL as output to make this later analysis easier.
+This is one of our lessons, all analysis should include an SQL output
+mode that can be used to generate derived graphs and further analyze
+the data.

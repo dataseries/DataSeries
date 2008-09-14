@@ -22,6 +22,7 @@ plot_one_quant('nfs-2/set-5', 'read count', 'request_order')
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "# reads in a group"
+gnuplot set title "Reads between 30s gaps in accesses"
 gnuplot set yrange [1:300]
 gnuplot set key top left
 pngpsplot --nocolor seq-read-group-counts
@@ -88,7 +89,7 @@ gnuplot set yrange [1:300]
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "# seq. reads in a run"
-gnuplot set title "Sequentiality in groups with random reads"
+gnuplot set title "Sequential runs in groups with random reads"
 gnuplot set key top left
 pngpsplot --nocolor seq-in-random-seq-count
     }
@@ -104,7 +105,7 @@ plot_one_quant('nfs-2/set-5', 'in_random_sequential_run_bytes', 'overlapping_reo
 gnuplot set logscale y
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "# seq. bytes in a run"
-gnuplot set title "Sequentiality in groups with random reads"
+gnuplot set title "Sequential runs in groups with random reads"
 gnuplot set key top left
 pngpsplot --nocolor seq-in-random-seq-bytes
     }
@@ -114,7 +115,7 @@ pngpsplot --nocolor seq-in-random-seq-bytes
 enddefine
 
 plot_read_group_counts()
-plot_read_group_bytes()
-seq_bytes_compare()
-in_random_seq_count()
-in_random_seq_bytes()
+# plot_read_group_bytes()
+# seq_bytes_compare()
+# in_random_seq_count()
+# in_random_seq_bytes()
