@@ -48,11 +48,10 @@ value is null.  The rows are grouped into extents and compressed as a
 unit.  Prior to compression, various transforms are applied to reduce
 the size of the data.  First, duplicate strings in the same extent are
 collapsed down to a single string.  Second values are delta compressed
-relative to either the same value in the previous row.  For example,
-the packet time values are delta compressed changing them from large
-random numbers to smaller random numbers.  Our format supports a few
-other transforms, but they are not relevant to these traces and are
-discussed in the TR.
+relative to either the same value in the previous row or another value
+in the same row.  For example, the packet time values are delta
+compressed changing them from large random numbers to smaller random
+numbers.  
 
 The format is designed for efficient access. Values are packed so that
 once an extent is read in, an analysis can iterate over the rows
@@ -68,12 +67,11 @@ only read a selected subset of the data.
 The format is designed for generality. It supports versioning on the
 table types so that an analysis can properly interpret data that may
 have changed in meaning.  It has special support for time fields so
-that raw values can be stored in seconds, microseconds, nanoseconds,
-or whatever the appropriate native format, and accessors to that column
-can convert to and from the raw format to a few selected formats.
+that analysis can convert to and from different raw formats.
 
-The format is designed for reliability.  It has internal checksums on
+The format is designed for integrity.  It has internal checksums on
 both the compressed and the uncompressed data to validate that the
 data has been processed appropriately.  Additional details on the
-format and comparisons to a wide variety of alternatives can be found
-in the technical report~\cite{DSTechnicalReportSnapshot}.
+format, additional transforms, and comparisons to a wide variety of
+alternatives can be found in the technical
+report~\cite{DSTechnicalReportSnapshot}.

@@ -2,14 +2,27 @@
 \label{sec:conversion}
 
 Once the data is captured, the second problem is parsing and
-converting that data to a usable format.  There are three main
+converting that data to a easily usable format.  The raw packet format
+contains a large amount of unnecessary data, and would require
+repeated parsing to be used for NFS analysis.  There are three main
 challenges in conversion: representation, performance and obfuscation.
 Representation is the challenge of deciding the logical structure of
 the converted data.  Performance is the challenge of making the
 conversion run quickly, hopefully faster than the capture stage.
-Obfuscation is the challenge of hiding important information present
+Obfuscation is the challenge of hiding sensitive information present
 in the data and is necessary for being able to release traces.
 
+One lesson we learned after conversion is that the converter's version
+number should be included in the trace.  As with most programs, there
+can be bugs.  Having the version number in the trace makes it easy to
+determine which flaws need to be handled.  We recommend the version
+control revision ID as a suitable version number.  Related to this is
+preservation of data.  An NFS parser will discard data both for space
+reasons and for obfuscation.  Keeping underlying information, such as
+per packet conversion in addition to per NFS-request conversion can
+enable cross checking between analysis.  We caught an early bug in our
+converter that failed to record packet fragments by comparing the
+packet rates and the NFS rates.  
 
 \subsection{Representation}
 
@@ -17,14 +30,11 @@ One option for the representation is the format used in the
 Ellard\cite{ellardTraces} traces: one line per request or reply in the
 file with field names to identify the different parameters in the RPC.
 However, this format works poorly for representing things like
-readdir, which have an arbitrary number of response fields, and though
-we didn't initially implement readdir, we knew that we would want to
-in the future, and since we now have, the ability to associate
-multiple response parts with a single response is important.
+readdir, which have an arbitrary number of response fields.
 Therefore, we chose to use a more relational data
 structuring~\cite{codd70relational}.  We have a primary data table
 with the common fields present in every request or reply, and an
-identifier for each rpc.  We then have secondary tables that contain
+identifier for each RPC.  We then have secondary tables that contain
 request-type specific information, such as a single table for RPC's
 that include attributes, and a single table for read and write
 information.  We then join the common table to the other tables when
@@ -32,43 +42,44 @@ we want to perform an analysis that uses information in both.
 
 The relational structuring improves flexibility, and allows for
 analysis that only need a subset of the data to avoid reading
-unnecessary parts.  For example an analysis only looking at operation
+unnecessary data.  For example, an analysis only looking at operation
 latency can simply scan the common table.
 
 \subsection{Performance}
 
 In order to perform the conversion in parallel, we need to divide all
-of the collected files into groups and process them in parallel.
-Since we need to assign each request or reply a unique id, we actually
+of the collected files into groups and process them in parallel.  We
 make two passes through the data.  First we parse the data and count
-the number of requests or replies, we then use those counts to
-determine the first number for each group, and hence we can process
-the data in parallel.  Since NFS parsing requires the request to parse
-the reply, we currently do not parse any request-reply pairs that
-cross a group boundary.  Similarly, we do not do full TCP
-reconstruction, so for NFS over TCP, we can fail to parse requests or
-replies that are not aligned with the start of a packet.  We will
-parse multiple request or replies in a single packet.  These
-limitations are similar to earlier work, so we found them acceptable.
-The 8x speedup we get by converting in parallel means that we can
-complete the conversion of a full data set (30TiB) in about 3 days.
+the number of requests or replies.  Second we use those counts to
+determine the first record-id for each group, and write the converted files.
+Since NFS parsing requires the request to parse the
+reply, we currently do not parse any request-reply pairs that cross a
+group boundary.  Similarly, we do not do full TCP reconstruction, so
+for NFS over TCP, we can fail to parse requests or replies that are
+not aligned with the start of a packet.  We will parse multiple
+request or replies in a single packet though.  These limitations are similar
+to earlier work, so we found them acceptable.  The 8x speedup we get
+by converting in parallel means that we can complete the conversion of
+a full data set (30TiB) in about 3 days.
 
-We also chose to convert from disk files rather than try to convert
-data on the fly.  We did this for simplicity, but it had the side
-benefit that we could write our converter to be paranoid and
-conservative, rather than have it try to recover from conversion
-problems.  This helped greatly when we were handling new trace files
-with new failure modes in the underlying data, and has helped reduce
-the number of glitches in our converted data.  The next time we
-convert data, we plan to extend our conversion tools to work
-incrementally, such that we can process the first set of files while
-the capture is still running, delete those files, and therefore
-capture a theoretically unbounded length of trace.  We briefly
-considered parallelizing the conversion across multiple machines, but
-when we examined the conversion rate we were getting on our 8 core
-machine, we realized that the 1Gbit network connection the tracing
-machine had would be the bottleneck and would result in slower
-conversion.
+We chose to convert from disk files rather than try to convert data on
+the fly.  We did this for simplicity, but it had the side benefit that
+we could write our converter to be paranoid and conservative, rather
+than have it try to recover from conversion problems.  This allowed us
+to fix the converter when it was mis-parsing, and properly ignore data
+when the underlying data was bad (for example from mis-interpreting
+the start of an RPC).  The next time we convert data, we plan to
+extend our conversion tools to work incrementally, such that we can
+process the first set of files while the capture is still running,
+delete those files, and therefore capture a theoretically unbounded
+length of trace.
+
+% We briefly
+% considered parallelizing the conversion across multiple machines, but
+% when we examined the conversion rate we were getting on our 8 core
+% machine, we realized that the 1Gbit network connection the tracing
+% machine had would be the bottleneck and would result in slower
+% conversion.
 
 \subsection{Obfuscation}
 
@@ -79,22 +90,22 @@ as filenames.  There are three primary ways to perform the obfuscation:
 
 \item {\bf map values to unique integers}.  This option results in the
 most compact identifiers.  It presents difficulties in parallelizing
-the conversion since all identical values need to map to identical
-integers.  To maintain consistent mappings between capture sessions,
-the translation table needs to be maintained, which means that the
-size of that table could get very large.  Finally, converting back to
-the original data means that the translation table needs to be preserved.
+the conversion since all identical values should map to
+identical integers.  To maintain consistent mappings between capture
+sessions, the translation table needs to be maintained, which means
+that the size of that table could get very large.  Finally, converting
+back to the original data means that the translation table needs to be
+preserved.
 
 \item {\bf map values to hash/hmac}.  This option results in larger
-identifiers since secure hash's are 16-20 bytes in length.  It
-eliminates the problem with parallelizing the conversion since the
-hash can be calculated in parallel.  If a simple hash is used, then
-this conversion is open to a dictionary attack, which may or may not
-matter.  The main disadvantage of this approach is that converting
-back to the original data requires that a translation table of hmac ->
-original string needs to be preserved.  There is a potential problem
-of collisions, but this is sufficiently implausible as to be an
-ignorable problem.
+identifiers since secure hash's are 16-20 bytes in length, but it
+enables parallel conversion.  Using an HMAC protects against
+dictionary attacks.  Reversing this mapping requires preserving a
+translation table.
+
+% There is a potential problem
+% of collisions, but this is sufficiently implausible as to be an
+% ignorable problem.
 
 \item {\bf map values to encrypted values}.  This option results in
 the longest identifiers since the encrypted value will be at least as
@@ -105,7 +116,7 @@ reversed provided the key files are kept around.
 \end{enumerate}
 
 We chose the last approach because we wanted to be able to have
-discussions with the customer about results of analysis, and we needed
+discussions with the company about results of analysis, and we needed
 to be able to tell them the actual pathnames involved in what we
 found.  Our encryption process embeds a prefix of the hash in the
 decrypted data so that we can verify that a particular string should
@@ -114,7 +125,7 @@ for hexadecimal strings in output, attempts to decrypt them, and if
 successful substitutes in the decrypted data.  We have used the
 reversible decryption to verify analysis of the data.  For example, a
 colleague analyzed the directory structure, and wanted to identify the
-strings representing '.' and '..'.  We verified through decryption
+strings representing `.' and `..'.  We verified through decryption
 that they had identified the correct strings.
 
 A second question is what if any parsing should be done of values

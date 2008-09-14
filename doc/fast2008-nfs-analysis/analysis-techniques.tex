@@ -13,7 +13,7 @@ we have collected.
 \subsection{Approximate quantiles}
 
 Simple statistics over storage traces often provide misleading
-results.  For example, the calculating the mean latency of an I/O will
+results.  For example, calculating the mean latency of an I/O will
 result in a value that occurs rarely as it will average the cache hit
 time and the disk I/O time.  Histograms provide a better way to
 understand the distribution of latencies, but require the user to
@@ -29,11 +29,12 @@ requires buffering all of the operations in memory.  Since we can have
 billions of data elements, it is not likely that we would be able to
 calculate exact quantiles.
 
-Luckily, there is an algorithm for calculating approximate quantiles
-in bounded memory~\cite{Manku98approximatemedians}.  The basic idea is
-that the user specifies two numbers $\epsilon$, the maximum error, and
-$N$, the maximum number of elements.  Then when the program calculates
-quantile $q$, it actually gets a quantile in the range
+There is an algorithm from the database field for calculating
+approximate quantiles in bounded
+memory~\cite{Manku98approximatemedians}.  The basic idea is that the
+user specifies two numbers $\epsilon$, the maximum error, and $N$, the
+maximum number of elements.  Then when the program calculates quantile
+$q$, it actually gets a quantile in the range
 $[q-\epsilon,q+\epsilon]$.  Provided that the total number of elements
 was less than $N$, the bound is guaranteed.  The approximate quantile
 algorithm works essentially by keeping a collection of $c$ buffers
@@ -65,22 +66,23 @@ generate results about $10$x better than the bound.
 
 Calculating aggregate or roll-up statistics is an important part of
 analyzing a workload.  For example, consider the information in the
-common NFS table, we have a time, operation, client-id, and server-id
-fields.  We may want to calculate the total number of operations
-performed by client 5, in which case we want to count the number of
-rows that match *, *, 5, *; or we might want to calculate the number
-of read operations, in which case we want to count the number of rows
-that match *, read, *, *.  
+common NFS table: $\langle$time, operation, client-id, and
+server-id$\rangle$.  We may want to calculate the total number of
+operations performed by client 5, in which case we want to count the
+number of rows that match $\langle$*, *, 5, *$\rangle$; or we might
+want to calculate the number of read operations, in which case we want
+to count the number of rows that match $\langle$*, read, *,
+*$\rangle$.
 
 The cube\cite{gray97cube} is a generalization of the group-by
 operations described above.  Given a collection of rows, it calculates
 the set of unique values for each column $U(c)$, adds the special
-value 'ANY' to the set, and then generates one row for each member of
+value `ANY' to the set, and then generates one row for each member of
 the cross-product $U(1) \times U(2) \times ... U(n)$.
 
 We implemented a very efficient templated version of the cube operator
 for use in data analysis.  We added three features to deal with memory
-usage.  First, we separate between the cube that only includes rows
+usage.  First, we distinguish between the cube that only includes rows
 with actual values in it, and the cube with all rows in the
 cross-product (the zero-cube).  The zero-cube can have a very large
 number of entries in it, and if we are using an approximate quantile
@@ -90,10 +92,9 @@ cross-product will be cubed.  For example, we have a large number of
 client id's, and so we can avoid cubing over entries with the client
 specified and also the operation to reduce the number of statistics
 calculated.  Third, we added the ability to prune values out of the
-cube, for example, once all the packets in second 1 have been
-processed, we will not add any additional values there, so we can
-immediately output the cube values for that part of the cube and
-remove the entries from the data structure.
+cube. For example, we can output cube values for earlier time values
+and remove them from the data structure once we reach later time
+values since we know the data is sorted by time.
 
 The cube allows us to easily calculate a wide variety of summary
 statistics.  We had previously manually implemented some of the
@@ -106,11 +107,14 @@ of values to be efficiently calculated.
 
 \subsection{HashTable}
 
-Our hash-table implementation is a straightforward chained-hashing
-implementation.  It uses somewhat more memory than the Google sparse
-hash, but performs almost as well as the dense hash.  Because it uses
-chaining, it does not need any special sentinel values.  We discuss it
-briefly because it has three features not normally found in hash-table
+Our hash-table implementation~\cite{DSOpenSource} is a straightforward
+chained-hashing implementation.  In our experiments it is strictly
+better in both performance and memory than the C++ hash table.  It
+uses somewhat more memory than the Google sparse
+hash~\cite{google-sparse-hash}, but performs almost as well as the
+dense hash.  Because it uses chaining, it does not need any special
+sentinel values as used in the google hash.  
+It has three features not normally found in hash-table
 implementations.  First, it has a function to report on the memory
 usage of the hash table; this is important because tracking memory
 usage allows us to determine what we need to optimize.  Second it
@@ -125,20 +129,20 @@ Normally, you would have to copy the data to a vector and sort the
 vector.  However our hash-table allows the program to get access to
 the underlying data vector and sort the vector.  While this operation
 destroys the hash table, that is generally not a problem since the
-program is about to stop.  This does reduce the memory used by a
-factor of two since the data values do not need to be copied into a
-separate vector.
+program is about to stop.  This reduces the memory used by a factor of
+two since the data values do not need to be copied into a separate
+vector.
 
 \subsection{Rotating hash-map}
 
 One of the problems during analysis is that you can need to age out
 old (key,value) pairs, but you don't know how long you will need to
-keep around particular values any given key.  For example,
+keep around particular values for any given key.  For example,
 sequentiality is a per-file statistic.  So long as accesses are active
 to the file, we want to continue to update the run information.  Once
 the file becomes inactive for long enough, we want to calculate
 summary statistics and remove the general statistics from memory.  One
-option would be to keep the values in a LRU data-structure, however if
+option would be to keep the values in an LRU data-structure, however if
 our analysis only needs to keep a file id and last offset, then we
 could easily double the size of our data-structure by keeping the
 forward and backward pointers needed for LRU.  Alternately, we could
@@ -149,7 +153,7 @@ We chose to solve this problem by keeping two hash-maps, the {\it
 recent} and {\it old} hash-maps.  Any time a value is accessed, it is
 moved to the recent hash-map if it is not already there.  From time to
 time, the program will call the rotate(fn) operation which will apply
-fn to all of the key,value pairs in the old hash map, delete that map,
+fn to all of the (key,value) pairs in the old hash map, delete that map,
 assign the recent map to the old map and create a new recent map.
 
 Therefore, if the analysis wants to guarantee any gap of up to 60
@@ -173,7 +177,7 @@ we have data on 60 second intervals, it is easy to calculate
 min/mean/max for 3600 second intervals, or with the cube to select out
 the subset of the data that we want to use.  We use perl to handle
 operations that the database can't handle, for example, in the cube,
-we represent the 'ANY' value as null, but SQL requires different
+we represent the `ANY' value as null, but SQL requires different
 syntax to select for null vs. a specific value.  We hide this
 difference in the perl functions.  In practice, this allows us to
 write very simple commands such as {\tt plot quantile as x, value as y

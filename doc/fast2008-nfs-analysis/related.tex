@@ -5,7 +5,7 @@ The two closest pieces of related work are Ellard's 2001 NFS
 study~\cite{EllardFast03}, and Leung's 2007 CIFS
 study~\cite{LeungUsenix08}.  These papers also summarize the earlier
 decade of filesystem tracing, so we refer interested readers to those
-papers.  Ellard, et.al. captured NFS traces from a number of NetApp
+papers.  Ellard et al. captured NFS traces from a number of NetApp
 filers on the Harvard campus, analyzed the traces and presented new
 results looking at the sequentiality of the workload, and comparing
 his results to earlier traces.  Ellard made his tools available, so we
@@ -18,7 +18,7 @@ CPU time for analysis.  Our 2003 traces were about 20x more intense
 than Ellard's as we saw over 650 million operations/day, and Ellard
 saw about 30.
 
-Leung, et.al. traced a pair of NetApp filers on the NetApp campus.
+Leung et al. traced a pair of NetApp filers on the NetApp campus.
 Since the clients were entirely windows clients, his traces were of
 CIFS data, and so he used the wireshark tools~\cite{wireshark} to
 convert the traces.  Leung's traces were of comparable intensity to
@@ -57,7 +57,7 @@ can determine how to make it run a lot faster.  Running tshark on a
 sample 2 million packet capture took about 45 seconds whereas our
 converter ran in about 5 seconds.  Given conversion takes 2-3 days for
 a 5 day trace, we can't afford conversion to slow down by a factor of
-9x.
+$9\times$.
 
 Some of the analysis techniques we use are derived from the database
 community, namely the work on cubes~\cite{gray97cube} and approximate

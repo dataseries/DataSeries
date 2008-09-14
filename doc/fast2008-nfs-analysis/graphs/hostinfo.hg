@@ -80,7 +80,7 @@ sub plot_ops_quantile {
     my $optitle = defined $operation ? " $operation op" : "all ops";
 
     return "plot quantile as x, operations_per_second/2 as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
-plottitle _ $dataset, $group_seconds interval, $optitle
+plottitle _ $dataset, ${group_seconds}s interval, $optitle
 plotwith _ linespoints
 ";
 }
@@ -122,7 +122,7 @@ sub plot_bw_quantile {
     my $optitle = defined $operation ? " $operation bw" : "all bw";
 
     return "plot quantile as x, payload_bytes_per_second/(1024*1024) as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
-plottitle _ $dataset, $group_seconds interval, $optitle
+plottitle _ $dataset, ${group_seconds}s interval, $optitle
 plotwith _ linespoints
 ";
 }

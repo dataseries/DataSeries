@@ -60,7 +60,7 @@ plotwith _ linespoints pt 8
 plottitle _ 60 s intervals
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Mbps"
-gnuplot set title "set-5 at different intervals"
+gnuplot set title "nfs-2/set-5 at different intervals"
 gnuplot set key top left
 pngpsplot --nocolor --fontsize=14 Mbps-nfs-2-set-5
 };
@@ -143,4 +143,4 @@ default table ip_bw_rolling
 # plot_data_multiple('Mbps', 60, 'nfs-2/set-[0-5]')
 #plot_data_multiple('Mbps', 60, 'nfs-1/set-[12-20]')
 
-#plot_selected_data_c()
+plot_selected_data_c()
