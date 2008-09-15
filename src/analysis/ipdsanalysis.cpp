@@ -26,9 +26,12 @@
 #include <DataSeries/DStoTextModule.hpp>
 
 #include "process/sourcebyrange.hpp"
+#include <analysis/nfs/HashTupleStats.hpp>
+#include <analysis/nfs/StatsCube.hpp>
 
 using namespace std;
 using boost::format;
+using dataseries::TFixedField;
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -495,6 +498,162 @@ private:
     Int32Field wire_len;
 };
 
+namespace {
+    static string str_star("*");
+    static string str_udp("udp");
+    static string str_tcp("tcp");
+    static string str_other("other");
+}
+
+class IPTransmitCube : public RowAnalysisModule {
+public:
+    IPTransmitCube(DataSeriesModule &_source, char *arg) 
+	: RowAnalysisModule(_source),
+	  min_packet_at(numeric_limits<int64_t>::max()), 
+	  max_packet_at(numeric_limits<int64_t>::min()),
+	  packet_at(series, ""), wire_len(series, ""),
+	  is_udp(series, "", Field::flag_nullable),
+	  source(series, "source"), dest(series, "destination"), 
+	  source_port(series, "", Field::flag_nullable), 
+	  dest_port(series, "", Field::flag_nullable),
+	  top_fraction(1.0), min_bytes(0), bytes_stat(NULL) 
+    { 
+	top_fraction = stringToDouble(arg);
+	SINVARIANT(top_fraction > 0 && top_fraction <= 1.0);
+    }
+
+    virtual ~IPTransmitCube() { };
+    
+    virtual void firstExtent(const Extent &e) {
+	const ExtentType &type = e.getType();
+	if (type.getName() == "Network trace: IP packets"
+	    || (type.getName() == "Trace::Network::IP" && type.versionCompatible(1,0))) {
+	    packet_at.setFieldName("packet-at");
+	    wire_len.setFieldName("wire-length");
+	    is_udp.setFieldName("udp-tcp");
+	    source_port.setFieldName("source-port");
+	    dest_port.setFieldName("destination-port");
+	} else if (type.getName() == "Trace::Network::IP" &&
+		   type.versionCompatible(2,0)) {
+	    packet_at.setFieldName("packet_at");
+	    wire_len.setFieldName("wire_length");
+	    is_udp.setFieldName("udp_tcp");
+	    source_port.setFieldName("source_port");
+	    dest_port.setFieldName("destination_port");
+	} else {
+	    FATAL_ERROR("?");
+	}
+    }
+
+    enum TcpUdpOther { Tcp, Udp, Other };
+
+    static const int source_idx = 0;
+    static const int source_port_idx = 1;
+    static const int dest_idx = 2;
+    static const int dest_port_idx = 3;
+    static const int packet_type_idx = 4;
+
+    typedef boost::tuple<int32_t, int32_t, int32_t, int32_t, TcpUdpOther> Key;
+
+    virtual void processRow() {
+	min_packet_at = min(min_packet_at, packet_at.val());
+	max_packet_at = max(max_packet_at, packet_at.val());
+
+	TcpUdpOther tcp_udp_other;
+	if (is_udp.isNull()) {
+	    tcp_udp_other = Other;
+	} else if (is_udp.val()) {
+	    tcp_udp_other = Udp;
+	} else {
+	    tcp_udp_other = Tcp;
+	}
+
+	int32_t v_source_port = source_port.isNull() ? -1 : source_port.val();
+	int32_t v_dest_port = dest_port.isNull() ? -1 : dest_port.val();
+	Key key(source.val(), v_source_port, dest.val(), v_dest_port, tcp_udp_other);
+	base_data.add(key, wire_len.val());
+    }
+
+    virtual void completeProcessing() {
+    }
+
+    static const string host32Str(int32_t v, bool used) {
+	if (used) {
+	    return str(format("%08x") % v);
+	} else {
+	    return str_star;
+	}
+    }
+
+    static const string int32Str(int32_t v, bool used) {
+	if (used) {
+	    return str(format("%d") % v);
+	} else {
+	    return str_star;
+	}
+    }
+
+    static const string &tuoStr(TcpUdpOther v, bool used) {
+	if (used) {
+	    switch(v) 
+		{
+		case Tcp: return str_tcp;
+		case Udp: return str_udp;
+		case Other: return str_other;
+		default: FATAL_ERROR("?");
+		}
+	} else {
+	    return str_star;
+	}
+    }
+
+    void addCubeStat(const Stats *val) {
+	bytes_stat->add(val->mean() * val->countll());
+    }
+
+    void printCubeEntry(const Key &key, const bitset<5> &used, const Stats *val) {
+	double bytes = val->mean() * val->countll();
+	if (bytes < min_bytes) {
+	    return;
+	}
+	cout << format("%8s:%-5s %8s:%-5s %5s %d packets %.2f MiB\n") 
+	    % host32Str(key.get<0>(), used[0])
+	    % int32Str(key.get<1>(), used[1]) % host32Str(key.get<2>(), used[2])
+	    % int32Str(key.get<3>(), used[3]) % tuoStr(key.get<4>(), used[4])
+	    % val->countll() % (val->mean() * val->countll() / (1024.0*1024));
+    }
+	
+    virtual void printResult() {
+	cube_data.setOptionalCubePartialFn(boost::bind(&StatsCubeFns::cubeAll));
+	cube_data.add(base_data);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	if (top_fraction < 1.0) {
+	    bytes_stat = new StatsQuantile(0.001, cube_data.size());
+	    cube_data.walk(boost::bind(&IPTransmitCube::addCubeStat, this, _3));
+	    min_bytes = bytes_stat->getQuantile(1-top_fraction);
+	    cout << format("# Set min bytes to %.0f to select top %.2f\n") % min_bytes 
+		% top_fraction;
+	}
+	cube_data.walkOrdered(boost::bind(&IPTransmitCube::printCubeEntry, this, _1, _2, _3));
+
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
+    }
+
+private:
+    int64_t min_packet_at, max_packet_at;
+    
+    TFixedField<int64_t> packet_at;
+    TFixedField<int32_t> wire_len;
+    BoolField is_udp;
+    TFixedField<int32_t> source, dest;
+    Int32Field source_port, dest_port;
+
+    HashTupleStats<Key> base_data;
+    StatsCube<Key> cube_data;
+    double top_fraction, min_bytes;
+    StatsQuantile *bytes_stat;
+};
+
 void
 usage(char *argv0)
 {
@@ -514,7 +673,7 @@ int parseopts(int argc, char *argv[], SequenceModule &ipSequence) {
 
     any_selected = false;
     while (1) {
-	int opt = getopt(argc, argv, "a:b:c:h");
+	int opt = getopt(argc, argv, "ha:b:c:d:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -529,6 +688,9 @@ int parseopts(int argc, char *argv[], SequenceModule &ipSequence) {
 	    break;
 	case 'c': options[optIPTimeSeriesBandwidthPacketsPerSecond] = 1;
 	    ip_time_series_bandwidth_packets_per_second_arg = optarg;
+	    break;
+	case 'd':
+	    ipSequence.addModule(new IPTransmitCube(ipSequence.tail(), optarg));
 	    break;
 	case 'h': usage(argv[0]);
 	    break;

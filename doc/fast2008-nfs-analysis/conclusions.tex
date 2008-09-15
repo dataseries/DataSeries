@@ -1,1 +1,32 @@
-conclusions goes here
+\section{Conclusions}
+\label{sec:conclusion}
+
+We have described three improved techniques for packet capture on
+networks.  The easily adopted technique should allow anyone capturing
+NFS, CIFS, or iSCSI traffic from moderate performance storage systems
+($\leq$1Gbit) to capture traffic with no losses.  The most advanced
+technique allows lossless capture for 5-10Gbit storage systems, which
+is at the high end of most file storage systems. 
+
+We have provided guidelines for conversion, namely in terms of
+parallelizing the conversion, retaining low level information, using
+reversible anonymization when possible, and most importantly tagging
+the trace data with version information to handle conversion bugs.
+
+We have described our binary storage format that uses chunked
+compression with multiple possible compression techniques, the use of
+typed relational-style data structuring, the use of delta encoding,
+and the use of type-safe, high-speed accessors.
+
+We have explained the cube, and approximate quantile techniques that
+we adopted from the database literature to handle analysis of very
+large data sets.  We have also explained our hashtable, rotating
+hash-map, and plotting techniques that we use for analyzing the data.
+
+We have analyzed our NFS workload examining some of the different
+properties found in a feature animation workload and demonstrating
+that our techniques are effective.  Finally, we have made our traces
+and tools available at http://anonymous.example.com
+
+% Thank Alistair, Jay
+

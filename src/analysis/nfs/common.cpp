@@ -331,6 +331,10 @@ bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
     return true;
 }
 
+unsigned getMaxUnifiedId() {
+    return n_unified;
+}
+
 uint64_t md5FileHash(const Variable32Field &filehandle) {
     union MD5Union {
 	unsigned char digest[16];

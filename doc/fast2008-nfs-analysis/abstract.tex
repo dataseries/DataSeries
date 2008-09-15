@@ -1,1 +1,17 @@
-abstract goes here
+We describe the challenges of capturing, converting, storing and
+analyzing NFS workloads that are 20-100$\times$ more intense than previous
+workloads.  For capture we describe three techniques that provide
+either a moderate ($\approx{}2\times$) improvement over traditional
+techniques with very easy implementation to an advanced technique
+using specialized hardware that provides a substantial ($>10\times$)
+improvement, but is more difficult to implement.  For conversion we
+provide a number of guidelines for future trace collection that we
+wish we had been told before collecting our traces.  For storage we
+briefly discuss a custom binary format that uses a relational data
+model and provides efficient access to compressed trace data.  For
+analysis, we both describe a number of techniques adopted from the
+database community, and some that we created that allow us to analyze
+these much larger traces.  Finally, we analyze a commercial feature
+animation (movie) workload using these techniques and discuss the
+properties of the workload.  To aid future researchers we make our
+tools and data available.

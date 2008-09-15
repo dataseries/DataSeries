@@ -36,7 +36,6 @@
 #include "analysis/nfs/mod3.hpp"
 #include "analysis/nfs/mod4.hpp"
 #include <analysis/nfs/HostInfo.hpp>
-#include <analysis/nfs/ServerLatency.hpp>
 #include "process/sourcebyrange.hpp"
 
 using namespace NFSDSAnalysisMod;    
@@ -47,8 +46,9 @@ using dataseries::TFixedField;
 namespace NFSDSAnalysisMod {
     RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
     RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
-    RowAnalysisModule *newSequentiality(DataSeriesModule &prev, 
-					const string &arg);
+    RowAnalysisModule *newSequentiality(DataSeriesModule &prev, const string &arg);
+    RowAnalysisModule *newServerLatency(DataSeriesModule &prev, const string &arg);
+    RowAnalysisModule *newMissingOps(DataSeriesModule &prev);
 }
 
 // needed to make g++-3.3 not suck.
@@ -1037,7 +1037,7 @@ usage(char *progname)
 	
     cout << "    -h # display this help\n";
     cout << "    -a # Operation count by filehandle\n";
-    cout << "    -b # Server latency analysis\n";
+    cout << "    -b {,output_sql} # Server latency analysis\n";
     cout << "    -c <seconds> # Host analysis\n";
     cout << "    -d <fh|fh-list pathname> # directory path lookup\n";
     cout << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
@@ -1088,7 +1088,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     bool add_file_handle_operation_lookup = false;
 
     while (1) {
-	int opt = getopt(argc, argv, "habc:d:e:fgi:Z:");
+	int opt = getopt(argc, argv, "hab:c:d:e:fgi:jZ:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
@@ -1099,7 +1099,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	    break;
 	case 'b': 
 	    commonSequence.addModule
-		(NFSDSAnalysisMod::newServerLatency(commonSequence.tail()));
+		(NFSDSAnalysisMod::newServerLatency(commonSequence.tail(), optarg));
 	    break;
 	case 'c': 
 	    commonSequence.addModule
@@ -1132,6 +1132,9 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 #endif
 	    merge123Sequence.addModule
 		(newSequentiality(merge123Sequence.tail(), optarg));
+	    break;
+	case 'j':
+	    commonSequence.addModule(newMissingOps(commonSequence.tail()));
 	    break;
 	case 'Z': {
 	    string arg = optarg;

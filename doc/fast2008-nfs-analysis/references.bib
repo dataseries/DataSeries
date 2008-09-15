@@ -1,7 +1,27 @@
+@misc{animation-bear-traces,
+   key="animation-bear",
+   note="http://anonymous.example.com"
+}
+
+@misc{DSOpenSource,
+   key="dsopensource",
+   note="http://anonymous.example.com"
+}
+
+@misc{DSTechnicalReportSnapshot,
+   key="dstr",
+   note="http://anonymous.example.com"
+}
+
+@misc{snia-iotta-microsoft,
+   author="Microsoft",
+   note="http://iotta.snia.org/traces/list/SystemCall, accessed Sep 2008"
+}
+
 @inproceedings{LeungUsenix08,
     author = "Andrew W. Leung and Shankar Pasupathy and Garth Goodson and Ethan L. Miller",
     title = "Measurement and Analysis of Large-Scale Network File System Workloads",
-    booktitle = "USENIX Refereed Paper",
+    booktitle = "USENIX technical conference",
     pages = "213--226",
     month = "June",
     year = "2008"
@@ -10,7 +30,7 @@
 @INPROCEEDINGS{Manku98approximatemedians,
     author = {Gurmeet Singh Manku and Sridhar Rajagopalan and Bruce G. Lindsay},
     title = {Approximate medians and other quantiles in one pass and with limited memory},
-    booktitle = {SIGMOD},
+    booktitle = {Special Interest Group on Management Of Data (SIGMOD)},
     year = {1998},
     pages = {426--435}
 }
@@ -31,4 +51,143 @@
     volume = 13,
     year = 1970,
     pages = {377-387}
+}
+
+@article{ruoming07anonymization,
+	address = {New York, NY, USA},
+	author = {Ruoming Pang and Mark Allman and Vern Paxson and Jason Lee },
+	doi = {http://dx.doi.org/10.1145/1111322.1111330},
+	issn = {0146-4833},
+	journal = {SIGCOMM Comput. Commun. Rev.},
+	keywords = {anonymization, tools},
+	month = {January},
+	number = {1},
+	pages = {29--38},
+	posted-at = {2007-07-11 19:11:20},
+	priority = {0},
+	publisher = {ACM Press},
+	title = {The devil and packet trace anonymization},
+	url = {http://dx.doi.org/10.1145/1111322.1111330},
+	volume = {36},
+	year = {2006}
+}
+
+
+@article{ousterhout85,
+ author = {John K. Ousterhout and Herv\'{e} Da Costa and David Harrison and John A. Kunze and Mike Kupfer and James G. Thompson},
+ title = {A trace-driven analysis of the UNIX 4.2 BSD file system},
+ journal = {SIGOPS Oper. Syst. Rev.},
+ volume = {19},
+ number = {5},
+ year = {1985},
+ issn = {0163-5980},
+ pages = {15--24},
+ doi = {http://doi.acm.org/10.1145/323627.323631},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+}
+
+@misc{ellardTraces,
+    author = "Daniel Ellard",
+    note = "http://www.eecs.harvard.edu/sos/traces.html, accessed January 2008."
+}
+
+@inproceedings{EllardFast03,
+    author= "Daniel Ellard and Jonathon Ledlie and Pia Malkani and Margo Seltzer",
+    title = "Passive {NFS} tracing of email and research workloads",
+    booktitle = "Proceedings of the 2nd USENIX Conference on File and Storage Technologies (FAST 2003)",
+    publisher = "USENIX",
+    address = "San Francisco, CA",
+    pages = "203-216",
+    year = "2003",
+}
+
+@misc{wireshark,
+    note = "http://www.wireshark.org/, accessed Sept 2008.",
+    key = "wireshark"
+}
+
+@inproceedings{NingningFast05,
+ author = {Ningning Zhu and Jiawu Chen and Tzi-Cker Chiueh},
+ title = {TBBT: scalable and accurate trace replay for file server evaluation},
+ booktitle = {FAST'05: Proceedings of the 4th conference on USENIX Conference on File and Storage Technologies},
+ year = {2005},
+ pages = {24--24},
+ location = {San Francisco, CA},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+ }
+
+@inproceedings{AndersonFast04,
+ author = {Eric Anderson and Mahesh Kallahalla and Mustafa Uysal and Ram Swaminathan},
+ title = "{Buttress: A Toolkit for Flexible and High Fidelity I/O Benchmarking}",
+ booktitle = {FAST '04: Proceedings of the 3rd USENIX Conference on File and Storage Technologies},
+ year = {2004},
+ pages = {45--58},
+ location = {San Francisco, CA},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+ }
+
+@misc{tcpdump,
+  note = "http://www.tcpdump.org/, accessed Sept 2008.",
+  key = "tcpdump",
+}
+
+@inproceedings{Kawaguchi95aflash-memory,
+    author = {Atsuo Kawaguchi and Shingo Nishioka and Hiroshi Motoda},
+    title = {A flash-memory based file system},
+    booktitle = {In Proceedings of the Winter 1995 USENIX Technical Conference},
+    year = {1995},
+    pages = {155--164}
+}
+
+
+@inproceedings{SchlosserFast04,
+ author = {Steven W. Schlosser and Gregory R. Ganger},
+ title = {MEMS-based Storage Devices and Standard Disk Interfaces: A Square Peg in a Round Hole?},
+ booktitle = {FAST '04: Proceedings of the 3rd USENIX Conference on File and Storage Technologies},
+ year = {2004},
+ pages = {87--100},
+ location = {San Francisco, CA},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+ }
+
+@ARTICLE{Leland94selfsimilar,
+    author = {Will E. Leland and Murad S. Taqqu and Walter Willinger and Daniel V. Wilson},
+    title = {On the Self-Similar Nature of Ethernet Traffic (Extended Version)},
+    journal = {IEEE/ACM Transactions on Networking},
+    year = {1994},
+    volume = {2},
+    pages = {1--15}
+}
+
+@article{Gribble98selfsimilar,
+ author = {Steven D. Gribble and Gurmeet Singh Manku and Drew Roselli and Eric A. Brewer and Timothy J. Gibson and Ethan L. Miller},
+ title = {Self-similarity in file systems},
+ journal = {SIGMETRICS Perform. Eval. Rev.},
+ volume = {26},
+ number = {1},
+ year = {1998},
+ issn = {0163-5999},
+ pages = {141--150},
+ doi = {http://doi.acm.org/10.1145/277858.277894},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ }
+
+@misc{LZF,
+    note = "lzf compression library, http://www.goof.com/pcg/marc/liblzf.html, accessed September 2007.",
+    key = "lzf",
+}
+
+@misc{endace-cards,
+    note = "http://www.endace.com/our-products/dag-network-monitoring-cards/ethernet",
+    key = "endace",
+}
+
+@misc{google-sparse-hash,
+    note = "http://goog-sparsehash.sourceforge.net/",
+    key = "google"
 }

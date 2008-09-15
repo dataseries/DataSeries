@@ -1,3 +1,98 @@
 \section{Introduction}
 
-intro goes here
+Storage tracing and analysis has a long history.  Some of the earliest
+filesystem traces were captured in 1985~\cite{ousterhout85}, and there
+has been ongoing tracing effort since then summarized in
+~\cite{LeungUsenix08}.  Block I/O traces have also been collected with
+recent papers still using the Cello92 traces.  One of the problems
+with trace analysis is that old traces inherently have to be scaled up
+to be used when evaluating newer storage systems because the
+underlying performance of the newer systems has increased.  Therefore,
+the community benefits from regularly capturing traces from multiple
+sources, and if possible, traces that put a heavy load on the storage
+system, reducing the need to scale the workload.
+
+Most traces, since they are performed by academics, are captured in
+academic settings.  This means that the workloads captured are
+somewhat comparable, but it also means that commercial workloads are
+under-emphasized.  Microsoft is working to correct this by capturing
+commercial enterprise traces from their internal
+servers~\cite{snia-iotta-microsoft}.  Our work focuses on commercial
+NFS workloads, in particular from a feature animation company.  The
+last publically available NFS traces that we are aware of were
+collected in 2001.  Our 2003 and 2007
+traces~\cite{animation-bear-traces} provide recent NFS traces for use
+by the community.
+
+The datasets we have collected were collected at a feature animation
+(movie) company\footnote{The company name will remain blinded as part
+of the agreement to publish the traces.} during two other projects.
+The first dataset (nfs-1) was collected in Aug 2003 - Feb 2004.  We
+returned later to collect data (nfs-2) in Jan 2007 - Oct 2007 using an
+improved version of our technology.  We collected data using mirror
+ports on the companies network, and we mirrored a variety of different
+places in the network.  The companies network design is
+straightforward: They have a redundant core set of routers, an
+optional mid-tier of switches to increase the effective port count of
+the core, and then a collection of edge switches that each cover one
+or two racks of rendering machines.  Most of our traces were taken by
+mirroring at those rendering clients.
+
+One difference between our traces and other ones is the data rates that
+we measured.  One of our 2003 client traces saw about 750 million
+operations per day.  In comparison, the 2001 Ellard
+traces~\cite{EllardFast03} saw about 30 million NFS operations per day
+in their busier traces, and the 2007 Leung traces~\cite{LeungUsenix08}
+saw a peak of 19 million CIFS operations/day.  Our 2007 traces saw
+about 2.4 billion operations/day.  This difference required us to
+develop and adopt new techniques to capture, convert, store and
+analyze the traces.
+
+Since our traces were captured in such a different environment than
+prior traces, we make limited comparisons to their workloads, and we
+do not attempt to make any claims about trends.  We believe that
+unless we, as a community, collect traces from hundreds of different
+sites, we will not have sufficient data to make claims stronger than
+``this workload is different from other ones in these ways.''  In
+fact, we make limited comparison in the trends between our 2003 and
+2007 traces for similar reasons.  The underlying workload has changed
+as the rendering techniques improve to generate higher quality output,
+the operating system generating the request has changed, the NFS
+protocol version has changed, and the configuration of the clients has
+changed because of the standard technology trends.
+
+Our work has five main contributions:
+
+\begin{enumerate}
+\item The development of techniques for lossless packet capture up to
+5Gbit/s, and with the hardware improvements since our work, likely to
+10Gbit/s.  These techniques are applicable to anyone wanting to capture
+a network storage service such as NFS, CIFS, or iSCSI.
+
+\item A series of guidelines for the conversion and storage of the traces.
+Many of these guidelines are things that we wish we had known when we
+were converting our traces.
+
+\item Improved techniques for analyzing very large traces that allow
+us to look at the burstiness in workloads, and an examination of how
+long averaging intervals in prior analysis can obscure workload
+properties.
+
+\item The analysis of an intense NFS workload demonstrating that our
+techniques are successful.
+
+\item The agreement with the animation company to allow the roughly
+100 billion operation anonymized traces to be published, along with
+the complete set of tools to perform all the analysis presented in
+this paper and to generate the graphs.  This publication allows other
+researchers to build on our tools for further analysis, and allows
+simulation studies using the animation traces.
+\end{enumerate}
+
+We examine related work in section~\ref{sec:related}.  We describe our
+capture techniques in section~\ref{sec:capture}, followed by the
+conversion (section~\ref{sec:conversion}) and storage
+techniques (section~\ref{sec:storage}).  We describe our adopted and
+new analysis techniques in section~\ref{sec:analysis-techniques} and
+use them to analyze the workload in section~\ref{sec:analysis}.
+Finally we conclude in section~\ref{sec:conclusion}.

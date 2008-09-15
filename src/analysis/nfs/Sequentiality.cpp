@@ -52,7 +52,8 @@ public:
 	  reorder_count_stat(0.005, nvals), reorder_fraction(0.005, nvals),
 	  sequentiality_count_fraction(0.005, nvals), sequentiality_bytes_fraction(0.005, nvals),
 	  in_random_sequential_run_count(0.005, nvals), 
-	  in_random_sequential_run_bytes(0.005, nvals), eof_count(0.005, nvals)
+	  in_random_sequential_run_bytes(0.005, nvals), eof_count(0.005, nvals),
+	  unknown_file_size_count(0)
     { 
 	ignore_client = false;
 	ignore_server = false;
@@ -181,8 +182,8 @@ public:
 		SINVARIANT(state.eof_count > 0);
 		return; 
 	    }
-		    
-	    SINVARIANT(state.initial_bytes > 0);
+	    
+	    SINVARIANT(state.initial_bytes >= 0);
 	    ++state.random_count;
 	    state.random_bytes += state.initial_bytes;
 	}
@@ -195,23 +196,36 @@ public:
 	count_stat.add(state.read_count, state.write_count);
 	bytes_stat.add(state.read_bytes, state.write_bytes);
 	double divisor = state.read_bytes + state.write_bytes;
-	op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
-	divisor = file_size;
-	file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
-	reorder_count_stat.add(state.reorder_count);
-	divisor = state.read_count + state.write_count;
-	reorder_fraction.add(state.reorder_count / divisor);
-	divisor = state.sequential_count + state.random_count;
-	sequentiality_count_fraction.add(state.sequential_count / divisor);
-	divisor = state.random_bytes + state.sequential_bytes;
-	sequentiality_bytes_fraction.add(state.sequential_bytes / divisor);
+	if (divisor > 0) {
+	    op_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    if (file_size > 0) {
+		divisor = file_size;
+		file_bytes_fraction.add(state.read_bytes / divisor, state.write_bytes / divisor);
+	    } else {
+		++unknown_file_size_count;
+		SINVARIANT(file_size == -1);
+	    }
+	    reorder_count_stat.add(state.reorder_count);
 
-	if (state.random_count > 0 && (state.sequential_count + state.random_count >= 2)) {
-	    // If it's only the initial 1 I/O or it was entirely
-	    // sequential, then ignore it.
-	    SINVARIANT(state.cur_sequential_run_count > 0);
-	    in_random_sequential_run_count.add(state.cur_sequential_run_count);
-	    in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	    divisor = state.read_count + state.write_count;
+	    SINVARIANT(divisor > 0);
+	    reorder_fraction.add(state.reorder_count / divisor);
+
+	    divisor = state.sequential_count + state.random_count;
+	    SINVARIANT(divisor > 0);
+	    sequentiality_count_fraction.add(state.sequential_count / divisor);
+
+	    divisor = state.random_bytes + state.sequential_bytes;
+	    SINVARIANT(divisor > 0);
+	    sequentiality_bytes_fraction.add(state.sequential_bytes / divisor);
+	    
+	    if (state.random_count > 0 && (state.sequential_count + state.random_count >= 2)) {
+		// If it's only the initial 1 I/O or it was entirely
+		// sequential, then ignore it.
+		SINVARIANT(state.cur_sequential_run_count > 0);
+		in_random_sequential_run_count.add(state.cur_sequential_run_count);
+		in_random_sequential_run_bytes.add(state.cur_sequential_run_bytes);
+	    }
 	}
 	state.reset();
     }
@@ -490,7 +504,8 @@ public:
 	    ops = new vector<Operation>();
 	}
 	if (!file_size.isNull()) {
-	    key_to_size[tmp] = FileSize(file_size.val());
+	    FileSize &fs = key_to_size[tmp];
+	    fs.size = max(fs.size, file_size.val());
 	}
 
 	++operation_count;
@@ -537,6 +552,7 @@ public:
 	count_stat.print("count");
 	bytes_stat.print("bytes");
 	op_bytes_fraction.print("op_bytes_fraction");
+	cout << format("unknown file size count %d\n") % unknown_file_size_count;
 	file_bytes_fraction.print("file_bytes_fraction");
 	printStat("reorder_count", reorder_count_stat);
 	printStat("reorder_fraction", reorder_fraction);
@@ -612,6 +628,7 @@ private:
     StatsQuantile reorder_count_stat, reorder_fraction, sequentiality_count_fraction, 
 		    sequentiality_bytes_fraction, in_random_sequential_run_count, 
 		    in_random_sequential_run_bytes, eof_count;
+    uint64_t unknown_file_size_count;
 };
     
 namespace NFSDSAnalysisMod {

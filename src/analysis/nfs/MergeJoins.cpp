@@ -35,11 +35,6 @@ const string attropscommonjoin_xml_in(
 
 // TODO: redo-with rotating hash map.
 
-#warning "Stupid hack in here to try to figure out what is going wrong in -i analysis"
-static bool tmp_have_it = true;
-// Glitched data is in nfs-2/set-2/1200*; it's not a read or write though.
-static int64_t tmp_have_it_id = 59777665137LL;
-
 // Note this join and the next one are tied together by a rw_side
 // variable that is used because we really ought to be doing some sort
 // of outer join on the attributes because we can end up having
@@ -270,9 +265,6 @@ public:
     }
 
     virtual Extent *getExtent() {
-	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-	    cout << "still there start\n";
-	}
 	if (all_done) {
 	    reportMemoryUsage();
 	    LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-1");
@@ -292,9 +284,6 @@ public:
 		delete es_attrops.curExtent();
 		es_attrops.clearExtent();
 		reportMemoryUsage();
-		if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-		    cout << "still there ad2\n";
-		}
 		LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-2");
 		return NULL;
 	    }
@@ -352,32 +341,29 @@ public:
 		if (enable_side_data) {
 		    if (last_side_data_rotate < (in_packetat.valRaw() - rotate_interval_raw)) {
 			LintelLogDebug("AttrOpsCommonJoin", "rotate-side-data");
-			if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-			    cout << "still there pre-rotate\n";
-			}
 			rw_side_data.rotate();
-			if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-			    cout << "still there pre-rotate\n";
-			}
 			last_side_data_rotate = in_packetat.valRaw();
 		    }
 		    LintelLogDebug("AttrOpsCommonJoin", format("side-data mem %d")
 				   % rw_side_data.memoryUsage());
 		}
 	    }
-	    if (tmp_have_it && in_recordid.val() == tmp_have_it_id) {
-		cout << "found tmp_have_it_id\n";
-	    }
 	    INVARIANT(in_replyid.val() >= prev_replyid, 
 		      format("attr-ops not sorted by reply id? %lld < %lld") 
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
-	    SINVARIANT(last_record_id < in_recordid.val());
+	    if (last_record_id > in_recordid.val()) {
+		if (in_recordid.val() == 37315642835LL && last_record_id == 37315642836LL ||
+		    in_recordid.val() == 38615056294LL && last_record_id == 38615056295LL) {
+		    // first one nfs-1/set-17, beginning of 06349 vs. end of 06348; tolerate
+		    // second one nfs-1/set-17, beginning of 09170 vs end of 09169
+		} else {
+		    FATAL_ERROR(format("%d > %d in %s") % last_record_id
+				% in_recordid.val() % es_common.extent()->extent_source); 
+		}
+	    }
 	    last_record_id = in_recordid.val();
 	    if (in_recordid.val() < in_replyid.val()) {
-		if (tmp_have_it && in_recordid.val() == tmp_have_it_id) {
-		    cout << "record < reply tmp_have_it_id\n";
-		}
 		SINVARIANT(!in_nfs_version.isNull() &&
 			   !in_op_id.isNull());
 		uint8_t unified_id = opIdToUnifiedId(in_nfs_version.val(),
@@ -406,10 +392,6 @@ public:
 		}
 		if (enable_side_data && 
 		    (unified_id == unified_read_id || unified_id == unified_write_id)) {
-		    if (in_recordid.val() == tmp_have_it_id) {
-			cout << "HI tmp_have_it_id\n";
-			tmp_have_it = true;
-		    }
 		    rw_side_data[in_recordid.val()] 
 			= RWSideData(in_packetat.valRaw(), in_source.val(),
 				     in_dest.val(), unified_id == unified_read_id);
@@ -516,9 +498,6 @@ public:
 
 		if (enable_side_data && prune_entries_after_use
 		    && (d->unified_op_id == unified_read_id || d->unified_op_id == unified_write_id)) {
-		    if (in_recordid.val() == tmp_have_it_id) {
-			cout << "Remove tmp_have_it_id\n";
-		    }
 		    rw_side_data.remove(in_requestid.val());
 		}
 		if (prune_entries_after_use) {
@@ -530,9 +509,6 @@ public:
 	    }
 	}
 
-	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-	    cout << "still there return\n";
-	}
 	delete es_attrops.curExtent();
 	es_attrops.clearExtent();
 	output_bytes += outextent->extentsize();
@@ -571,18 +547,12 @@ public:
     };
 
     const RWSideData *getRWSideData(int64_t record_id) {
-	if (tmp_have_it && rw_side_data.existsNoPromote(tmp_have_it_id)) {
-	    cout << "still there return\n";
-	}
 	SINVARIANT(rw_side_data_thread == pthread_self());
 	RWSideData *ret = rw_side_data.lookup(record_id);
 	return ret;
     }
 
     void removeRWSideData(int64_t record_id) {
-	if (record_id == tmp_have_it_id) {
-	    cout << "RWRemove tmp_have_it_id\n";
-	}
 	rw_side_data.remove(record_id);
     }
 
@@ -834,22 +804,6 @@ public:
 		// means we don't generate the second entry, but it's a duplicate anyway.
 		++es_rw;
 		return;
-	    }
-	    if (in_rw_request_id.val() == tmp_have_it_id) {
-		cout << format("TMP_HAVE_IT_UNMATCHED %s:%d %s")
-		     % es_rw.getExtent()->extent_source % es_rw.getExtent()->extent_source_offset
-		     % es_rw.getExtent()->getType().getName() << endl;
-		const void *cur_pos = es_rw.pos.getPos();
-		cout << format("more debugging recnum %d %d\n") % es_rw.pos.currecnum()
-		    % es_rw.pos.morerecords();
-		es_rw.pos.reset(es_rw.getExtent());
-		for(;es_rw.pos.morerecords(); ++es_rw.pos) {
-		    cout << format("record %d: %d %d %s %d %d\n") % es_rw.pos.currecnum() 
-			% in_rw_request_id.val() 
-			% in_rw_reply_id.val() % hexstring(in_rw_filehandle.stringval())
-			% in_offset.val() % in_bytes.val();
-		}
-		es_rw.pos.setPos(cur_pos);
 	    }
 		
 	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d; around %s:%d")
