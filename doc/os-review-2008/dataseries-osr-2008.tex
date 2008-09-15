@@ -246,20 +246,50 @@ performance at the cost of reduced reliability.
 
 As we initially built DataSeries prototypes, we realized the need to
 add options that control various aspects of the field and extent
-descriptions in order to increase flexibility or compressability (which
-affects performance and storage costs). While space precludes a full
-description (see~\cite{DSTechnicalReportSnapshot}), we describe 
-some of the more significant below:
+descriptions in order to meet the storage and access efficiency and
+flexibility requirements.  While space precludes a full description
+(see~\cite{DSTechnicalReportSnapshot}), we describe some of the more
+significant below:
 
+{\bf TODO: this probably shouldn't be an enumerated list}
 
-{\bf TODO: expound further on options, delete below para}
+\begin{enumerate}
 
-DataSeries supports a number of options that control either the
-interpretation of a field (e.g., can it be null), or the way the field
-is represented prior to compression ({\em packed}, e.g., relative to
-another field).  DataSeries also has some options for representation
-of entire extents (e.g., ordering of the fields in a record).  
-Detailed explanation of the options can be found in the DataSeries
+\item \textbf{nullable fields}: there are many instances when a field
+value may or may not be present, and we found it useful to be able to
+indicate that a given value is null. This option is implemented by
+generating a boolean column that determines if the value is null.
+
+\item \textbf{field base value}: applicable only to double fields,
+this was used to gain precision for double values. This extra degree
+of flexibility was introduced when we realized that storing nanosecond
+precision time values, using the unix epoch (00:00:00 UTC on January
+1, 1970), was not possible with a single double. Using this option, it
+is possible to specific a base value that indicates the time the
+events in the data file start, and the value stored indicates the time
+in nanoseconds since.
+
+\item \textbf{double scale}: often, the full precision of double
+values is not needed. In this case, it is possible to get
+significantly more compression by zeroing the pseudo-random lower
+order bits by scaling and rounding. This option lets the user specify
+a specific scale factor for the values stored.
+
+\item \textbf{relative packing}: specify that a given field be packed
+relative to another, using delta encoding. This option is also useful
+for timestamps and index values that may be large, but are only small
+relative to each other. This enables fewer bits to be used to store a
+given value.
+
+\item \textbf{unique packing}: ensures that every string (arbitrary
+length binary data) field is stored only once. If a given data set
+contains many repeated values, this option can significantly increase
+the effective compression ratio (compression algorithms only partially
+remove duplicate data).
+
+\end{enumerate}
+
+Detailed explanation of all options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Programming model}
