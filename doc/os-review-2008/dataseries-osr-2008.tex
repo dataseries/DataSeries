@@ -193,7 +193,6 @@ calculation on the client would further slow the relative performance.
 
 \section{Design}\label{sec:design}
 
-\subsection{Data Format}
 DataSeries' data model is conceptually very similar to that used by
 relational databases.  Logically, a DataSeries file is composed of an
 ordered sequence of {\it records}, where each record is composed from
@@ -203,6 +202,8 @@ analogous to a row in a conventional relational database. We call the
 type of a row the {\it extent-type} because an {\it extent} contains a
 collection of rows with the same fields and field-types. An extent is
 analagous to a database table.
+
+\subsection{Data Format}
 
 A single DataSeries file comprises a collection of extents
 (potentially with different extent-types), plus a header and
@@ -246,20 +247,50 @@ performance at the cost of reduced reliability.
 
 As we initially built DataSeries prototypes, we realized the need to
 add options that control various aspects of the field and extent
-descriptions in order to increase flexibility or compressability (which
-affects performance and storage costs). While space precludes a full
-description (see~\cite{DSTechnicalReportSnapshot}), we describe 
-some of the more significant below:
+descriptions in order to meet the storage and access efficiency and
+flexibility requirements.  While space precludes a full description
+(see~\cite{DSTechnicalReportSnapshot}), we describe some of the more
+significant below:
 
+{\bf TODO: this probably shouldn't be an enumerated list}
 
-{\bf TODO: expound further on options, delete below para}
+\begin{enumerate}
 
-DataSeries supports a number of options that control either the
-interpretation of a field (e.g., can it be null), or the way the field
-is represented prior to compression ({\em packed}, e.g., relative to
-another field).  DataSeries also has some options for representation
-of entire extents (e.g., ordering of the fields in a record).  
-Detailed explanation of the options can be found in the DataSeries
+\item \textbf{nullable fields}: there are many instances when a field
+value may or may not be present, and we found it useful to be able to
+indicate that a given value is null. This option is implemented by
+generating a boolean column that determines if the value is null.
+
+\item \textbf{field base value}: applicable only to double fields,
+this was used to gain precision for double values. This extra degree
+of flexibility was introduced when we realized that storing nanosecond
+precision time values, using the unix epoch (00:00:00 UTC on January
+1, 1970), was not possible with a single double. Using this option, it
+is possible to specific a base value that indicates the time the
+events in the data file start, and the value stored indicates the time
+in nanoseconds since.
+
+\item \textbf{double scale}: often, the full precision of double
+values is not needed. In this case, it is possible to get
+significantly more compression by zeroing the pseudo-random lower
+order bits by scaling and rounding. This option lets the user specify
+a specific scale factor for the values stored.
+
+\item \textbf{relative packing}: specify that a given field be packed
+relative to another, using delta encoding. This option is also useful
+for timestamps and index values that may be large, but are only small
+relative to each other. This enables fewer bits to be used to store a
+given value.
+
+\item \textbf{unique packing}: ensures that every string (arbitrary
+length binary data) field is stored only once. If a given data set
+contains many repeated values, this option can significantly increase
+the effective compression ratio (compression algorithms only partially
+remove duplicate data).
+
+\end{enumerate}
+
+Detailed explanation of all options can be found in the DataSeries
 technical report~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Programming model}
@@ -318,24 +349,156 @@ A programming example is also provided in~\cite{DSTechnicalReportSnapshot}.
 
 \section{Performance Results}\label{sec:results}
 
-{\bf TODO: I wonder if we should rename these ``Harvard'' traces
-rather than Ellard?}
-{\bf TODO: add sections here to fill up space somewhat
-We performed various experiments to measure the effectiveness of
-DataSeries' compression techniques, and then further compared
-DataSeries to data encoding and analysis using MySQL, CSV, CStore,
-Dan Ellard's NFS traces~\cite{ellard03}, and the 1998 World Cup Web
-traces~\cite{ita-wcweb98} for compression ratio and analysis execution speed.
-Due to space constraints we give example results from our
-comparison with Ellard and comment on highlights of our other results.
-  More complete coverage can be found in the
+%{\bf TODO: I wonder if we should rename these ``Harvard'' traces
+%rather than Ellard?}
+%{\bf TODO: add sections here to fill up space somewhat}
+%We performed various experiments to measure the effectiveness of
+%DataSeries' compression techniques, and then further compared
+%DataSeries to data encoding and analysis using MySQL, CSV, CStore,
+%Dan Ellard's NFS traces~\cite{ellard03}, and the 1998 World Cup Web
+%traces~\cite{ita-wcweb98} for compression ratio and analysis execution speed.
+%Due to space constraints we give example results from our
+%comparison with Ellard and comment on highlights of our other results.
+
+% added by Martin
+In this section we provide examples to illustrate quantitatively the 
+effectiveness of DataSeries.  
+Section~\ref{sec:scale} describes how we have used DataSeries to store 
+and analyze a large dataset on a modest system.
+Section~\ref{sec:efficiency} demonstrates the flexibility provided
+by DataSeries for selecting between storage and access efficiency needs.
+Section~\ref{sec:ellard} provides a case study which illustrates
+both the reusability of DataSeries and its access efficiency compared
+to existing work.
+Additional examples and comparisons can be found in the
 DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
-\subsection{Ellard Traces}\label{sec:ellard}
+\subsection{Scalability}\label{sec:scale}
+
+The largest dataset we have is a trace n of NFS traffic to and from a 
+busy enterprise file server.
+The primary extent type 
+in this data is the common records which store information about each
+of the 200 billion request and reply messages. We have secondary tables that
+store information about each packet captured, operations that included
+file attributes, read and write requests and mount requests.  The total dataset
+is about 5TB in size.
+
+As a demonstration of the real-life performance of
+DataSeries, consider the following example.  Utilizing our NFS
+trace, we performed an analysis of the throughput
+%effects if servers were instead accessed across a WAN.
+% MFA: need to change above description of trace if we say servers
+effects if the server was instead accessed across a WAN.
+The analysis read in 45.5 GB of data (406 GB when uncompressed), and
+processed 7.6 billion records (each record corresponds to an NFS
+transaction).  Using a 2003 model two-way 2.8 GHz Xeon server, the
+entire data set was processed in 11,263 wall clock seconds (about 3
+hours), or roughly 675,000 rows per second performing a set of complex
+analyses.
+
+
+
+\subsection{Examining Storage and Access Efficiency}\label{sec:efficiency}
+
+%MFA: from \subsubsection{Compression microbenchmark}
+
+DataSeries currently supports four different compression algorithms
+(bzip2~\cite{BZIP}, gzip~\cite{GZIP}, lzf~\cite{LZF} and lzo~\cite{LZO}),
+and an arbitrary extent size for record data.  Empirical knowledge and
+algorithm author data seem to indicate that the algorithms are
+optimized for different usages.  For example, bzip2 is commonly
+believed to compress better than gzip, albeit more slowly.  Also,
+all compression algorithms in common use today use a compression
+window, giving the impression that compression ratio and perhaps
+compression and decompression rate are optimized for files above a
+certain size (i.e., the window size).  
+We evaluated the compression ratio, compression rate, 
+and decompression rate for each of these algorithms
+using various extent sizes.
+
+Several of the compression algorithms (bzip2 and gzip)
+have tunable parameters, which trade 
+off compression rate for increased compression ratio.
+We evaluated a range of settings for each of these algorithms.  
+For the remainder of this section, we utilize bzip2 level 9 as
+the representative for bzip2, and gzip level 6 as the representative
+for gzip.  We found these levels provide reasonable tradeoffs
+between the compression rate and ratio for each algorithm respectively.
+
+Extent size determines the maximum window of data a compression
+algorithm can look at.  For very small extent sizes, we expected to
+see poor compression ratios because redundancy that would have been
+within any algorithm's window size was artificially being blocked.
+For very large extent sizes, we expected to see differentiation among
+algorithms based on their window sizes.
+
+The microbenchmark consisted of reading each DataSeries file
+and recompressing with the compression
+algorithm under study.  The uncompressed data size was divided by the CPU time for the compression
+operation  to compute {\em
+Compression Rate}.  Next, the same file was decompressed and its
+content thrown away.  The uncompressed data size was divided by the CPU time 
+to compute the {\em Decompression Rate}.  
+Finally, the compressed DataSeries file size was
+divided by the uncompressed DataSeries file size to determine the {\em
+Compression Ratio}.  The decompression and compression operations were
+performed three times for each data file in each dataset.  All microbenchmark 
+measurements were taken with checksum validation enabled.
+
+Tradeoffs exist between storage and access efficiency.  We
+explore these tradeoffs, and the flexibility of DataSeries, via
+several experiments.
+For online creation of DataSeries files we care about the compression
+rate and the compression ratio.
+Figure~\ref{fig:comRateRatios} compares these metrics
+with one point for each extent size.  The compression rate is shown
+in log-scale because the different algorithms have vastly different rates.
+This figure shows that lzf dominates
+with regard to compression rate, but gzip is a good tradeoff between
+compression ratio and rate, sacrificing 10x the rate to get 2x
+the compression.  bzip2 is useful if very high compression
+ratios are desired, while lzo is dominated by all others on this graph.
+Neither bzip2 nor lzo is likely to be suitable for online file creation.
+
+
+\begin{figure}[tbh]
+\epsfig{width=2.5in, angle=270, file=graphs/amd/plotComRateRatio-srt.ps}
+\caption{ Compression rate versus compression ratio results for disk trace data.}
+\label{fig:comRateRatios}
+\end{figure}
+
+Figure~\ref{fig:decomRateRatios} compares the algorithms by the
+compression ratio and decompression rate metrics.  This is important
+for repeated analysis of data, a very common use case for
+DataSeries.  In this case, lzo dominates the other algorithms in
+terms of decompression rate (\~175 MB/s), while still keeping a
+reasonable compression ratio (\~6:1). lzo is strictly superior to lzf.
+bzip2 achieves 
+%$2\times$
+2x increase in compression ratio, but at a 
+%$10\times$
+10x
+reduction in decompression rate.  gzip achieves negligibly higher
+compression ratios at a 
+%$1.3\times$ 
+1.3x reduction in decompression ratio.
+Thus, gzip might only be considered if
+lzo's compression time is too excessive.
+
+\begin{figure}[tbh]
+\epsfig{width=2.5in, angle=270, file=graphs/amd/plotDecomRateRatio-srt.ps}
+\caption{ Decompression rate versus compression ratio results for disk data.}
+\label{fig:decomRateRatios}
+\end{figure}
+
+%\subsection{Ellard Traces}\label{sec:ellard}
+\subsection{A Case Study}\label{sec:ellard}
 
 In an effort to experiment with using DataSeries to represent and
-analyze traces generated by other people, we converted the Ellard NFS
-traces into DataSeries.  These traces
+analyze traces generated by other people, we converted the NFS
+traces used by Ellard \textit{et al.}~\cite{ellard03} into DataSeries.  
+The ``Ellard traces''
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
 set of key-value pairs, and finally some debugging information.  As
@@ -346,7 +509,10 @@ Our evaluation came in two parts.  First, we wrote programs that
 converted between the two formats.  The reversable conversion
 guaranteed that we were properly preserving all of the information.
 We found that the DataSeries files were on average 0.77x the size of
-the original files when both were compressed using gzip.  Second, we
+the original files when both were compressed using gzip.  
+{\bf TO DO: should clarify why}
+
+Second, we
 wrote an analysis program that implemented the first three examples in
 the README that came with the tools.  We found that our analysis
 program ran about 76x faster on those data files than the text
@@ -360,18 +526,6 @@ efficient analysis). The detailed experimental setup can be found in
 the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
 
-% \subsubsection{Performance comparison}
-%
-% For the performance comparison, we implemented a subset of the
-% analysis performed by Ellard's \texttt{nfsscan} program. In particular one
-% that can perform the first three of the five example questions
-% presented in the EXAMPLES file that comes with Ellard's trace tools.
-% This analysis turned out to be very simple, it is just counting the
-% number of requests performed of each client of each type.  We chose to
-% implement this over the integer operation id, rather than the string,
-% and so wrote a short table that converted NFSv2 and NFSv3 operation
-% id's into a common space. The detailed experimental setup can be found in the DataSeries
-% technical report~\cite{DSTechnicalReportSnapshot}.
  
 \begin{table*}
 \centering
@@ -417,8 +571,6 @@ with large extents for bzip2 is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
 mmap/munmap calls to the kernel and hence a substantial about of page
 zeroing in the kernel.  
-% The detailed measurements can be found 
-% in the DataSeries distribution in \texttt{doc/tr/ellard-details.tex}.
 
 \subsection{Other results}\label{sec:otherresults}
 
