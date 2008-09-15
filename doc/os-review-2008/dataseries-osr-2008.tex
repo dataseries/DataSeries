@@ -218,11 +218,13 @@ reading the files is almost always the same as the architecture reading
 the files. The library transparently converts in the rare cases this
 is not true, and DataSeries files can be explicitly ``repacked'' if desired. 
 
-The
-extent-type extent contains records with a single string-valued field,
-each of which contains an XML specification that defines the
-extent-types of all the other extents in the file. 
-{\bf TODO: say why XML}
+The extent-type extent contains records with a single string-valued
+field, each of which contains an XML specification that defines the
+extent-types of all the other extents in the file. We chose to use XML
+to define our extent types because we saw no point in creating a new
+grammar for representing this information, and SQL create table
+statements did not have a representation for the packing options we
+wanted to specify.
 
 The trailer
 consists of the offset and size (after compression) of the index
@@ -329,9 +331,10 @@ row by collecting multiple rows together.  The row analysis module
 used above then calls the processRow() function on each row.  For
 efficiency reasons, the transfer of extents between modules is a
 transfer of ownership, i.e., the module that returns an extent must
-not continue to access it, although we are considering relaxing this
-constraint in the future.  
-{\bf TODO: need to explain why, or delete the relaxation comment.}
+not continue to access it. We are considering relaxing this
+constraint in the future to allow multiple modules to read-share a single
+extent at the same time so that we can increase the available parallelism
+for analysis without increasing the memory requirements.
 %Each module can iterate over the rows in
 %the extent by putting it into a series and using the series iterator
 %to select the row and the fields to access rows in that series.
@@ -509,8 +512,10 @@ Our evaluation came in two parts.  First, we wrote programs that
 converted between the two formats.  The reversable conversion
 guaranteed that we were properly preserving all of the information.
 We found that the DataSeries files were on average 0.77x the size of
-the original files when both were compressed using gzip.  
-{\bf TO DO: should clarify why}
+the original files when both were compressed using gzip.  The
+compression improvements came as a result of the duplicate
+elimination, the delta encoding, and the usual improvement of binary
+encoding of text data.
 
 Second, we
 wrote an analysis program that implemented the first three examples in
