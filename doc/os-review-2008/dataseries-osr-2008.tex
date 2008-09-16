@@ -76,7 +76,7 @@ requirement. Firstly, the amount of data stored can be large (we have
 I/O traces comprising billions of records), and despite rapidly
 decreasing storage prices, the cost to store data can still be
 considerable, particularly when the data must be kept for long periods
-of time. Secondly, we have learnt that one of the primary factors
+of time. Secondly, we have learned that one of the primary factors
 behind analysis efficiency is the speed at which data can be
 retrieved. Regardless of the storage technology used, more highly
 compressed data can substantially speed access times.
@@ -84,7 +84,7 @@ compressed data can substantially speed access times.
 \item \textbf{Access efficiency}: accessing, interpreting and encoding
 trace data, whether reading or writing, should make efficient use of
 CPU and memory resources. From experience and experimental analysis, we
-have learnt that the second major factor determining analysis efficiency is the
+have learned that the second major factor determining analysis efficiency is the
 CPU overheads of intepreting data once it has been read off disk. 
 
 \item \textbf{Flexibility}: adding additional fields should not affect
@@ -263,15 +263,6 @@ value may or may not be present, and we found it useful to be able to
 indicate that a given value is null. This option is implemented by
 generating a boolean column that determines if the value is null.
 
-\item \textbf{field base value}: applicable only to double fields,
-this was used to gain precision for double values. This extra degree
-of flexibility was introduced when we realized that storing nanosecond
-precision time values, using the unix epoch (00:00:00 UTC on January
-1, 1970), was not possible with a single double. Using this option, it
-is possible to specific a base value that indicates the time the
-events in the data file start, and the value stored indicates the time
-in nanoseconds since.
-
 \item \textbf{double scale}: often, the full precision of double
 values is not needed. In this case, it is possible to get
 significantly more compression by zeroing the pseudo-random lower
@@ -341,7 +332,7 @@ for analysis without increasing the memory requirements.
 DataSeries also provides modules which exploit parallelism in operations,
 such as decompressing and analyzing data or compressing and writing
 extents to disk in parallel, which increases the access effiency
-(property 2) on multi-core and SMP systems.
+(property 2) on multi-core systems.
 
 The DataSeries source distribution contains numerous other built-in 
 general modules as well as many analysis modules, for analyzing
@@ -378,7 +369,7 @@ DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Scalability}\label{sec:scale}
 
-The largest dataset we have is a trace n of NFS traffic to and from a 
+The largest dataset we have is a trace of NFS traffic to and from a 
 busy enterprise file server.
 The primary extent type 
 in this data is the common records which store information about each
@@ -485,7 +476,7 @@ bzip2 achieves
 reduction in decompression rate.  gzip achieves negligibly higher
 compression ratios at a 
 %$1.3\times$ 
-1.3x reduction in decompression ratio.
+1.3x reduction in decompression rate.
 Thus, gzip might only be considered if
 lzo's compression time is too excessive.
 
@@ -574,7 +565,7 @@ compression and a 512 KB extent size.
 The substantial increase in system time for dealing
 with large extents for bzip2 is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
-mmap/munmap calls to the kernel and hence a substantial about of page
+mmap/munmap calls to the kernel and hence a substantial amount of page
 zeroing in the kernel.  
 
 \subsection{Other results}\label{sec:otherresults}
@@ -587,6 +578,57 @@ space utilization; stored in DataSeries, the trace consumed 1.9GB of
 disk space, but 14GB in CSV format and 8.5GB as a MySQL
 database. Using the same trace in a series of analyses showed that
 DataSeries delivers results 6-7x faster than both formats.
+
+\section{Lessons Learned}\label{sec:lessonslearned}
+
+{\bf TODO: to tease out the design decisions that lead to performance improvement I added this section.  Perhaps the issues presented her could go further forward in the paper.}
+
+Trick with cast to make data access fast: The format is designed for
+efficient access. Values are packed so that once an extent is read in,
+an analysis can iterate over the rows simply by increasing a single
+counter, as if for an array of a structure.  Individual values are
+accessed by an offset from that counter and a C++ cast.  
+
+Making data analyses type specific improves performance greatly.
+Consider the analyses of NFS data.  When new accessors were added that
+did not support nullable fields, performance improved by x amount.
+Compared to SQL, and dsstatgroupby type specific performance can be as
+much as x faster.  However, writing type specific accessors is more
+time consuming, so for one shot analyses it may not be worth the
+effort.
+
+Delta encoding via the pack\_relative field option saves space
+sometimes a lot, with x cost.
+
+Unique packing saves strings only once, improving on runlength
+compression by having effectively an infinite window size for specific
+strings.
+
+Parallel compression and decompression improves performance
+dramatically on multicore machines as evidenced by the ellard
+comparison.
+
+Bulk processing of extents amortizes compression and decompression
+costs over a fixed configurable amount of space.
+
+Byte swapping if necessary is automatically performed.
+
+Someplace we need to talk about integrity functionality and its importance.
+
+Discuss time field issues and why the field base value was a bad idea
+and where we are with archival time representation and functional time
+representation now.
+
+field base value: applicable only to double fields,
+this was used to gain precision for double values. This extra degree
+of flexibility was introduced when we realized that storing nanosecond
+precision time values, using the unix epoch (00:00:00 UTC on January
+1, 1970), was not possible with a single double. Using this option, it
+is possible to specific a base value that indicates the time the
+events in the data file start, and the value stored indicates the time
+in nanoseconds since.
+
+
 
 \section{Conclusions}\label{sec:conclusions}
 
