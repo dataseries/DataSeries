@@ -1,4 +1,7 @@
 \documentclass{acm_proc_article-sp}
+\makeatletter
+\let\@copyrightspace\relax
+\makeatother
 
 \begin{document}
 % replace the name to unblind
@@ -20,13 +23,15 @@ Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
 % \category{H.4}{Information Systems Applications}{Miscellaneous}
 % %A category including the fourth, optional field follows...
 % \category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
+\category{H.3.2}{Information Storage}{}[]
  
 % \terms{Structured serial data}
+\terms{Design, Performance}
 
 % \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
-{\bf TODO: Abstract}
+\keywords{data format, compression, performance}
 
-{\bf TODO: Use the right style file}
+{\bf TODO: Abstract}
 
 \section{Introduction}\label{sec:intro}
 
@@ -115,11 +120,18 @@ common operations (e.g., scanning an entire data set, and processing
 specific fields only).
 
 \item \textbf{Integrity}: many structured serial data files contain
-data that needs to be maintained archivally. To protect against media
-errors or incorrect software systems, data should be capable of being
-integrity checked.
+information that needs to be maintained archivally. To protect against media
+errors or incorrect software systems, DataSeries files need to be
+self-contained and contain internal checksums that enable
+integrity checking.
 
 \end{enumerate}
+
+There are, inevitably, tradeoffs to be made in these requirements. For
+instance, XML is an extremely flexible data format, but is not very
+efficient. In the course of our work (which tends towards the analysis
+of very large data sets), and the design of DataSeries, we have chosen
+to prioritize efficiency over many of the other properties.
 
 Although numerous tracing and measurement systems have been developed
 over the last 20-30 years, we are not aware of any that meet all of
@@ -136,7 +148,8 @@ Second, we discuss how DataSeries can support very large data sets
 describe how we have used DataSeries in practice to store a wide
 variety of data types.  Fourth, we demonstrate the performance and
 storage efficiency of DataSeries in a set of controlled experiments,
-using empirical data sets. 
+using empirical data sets. Throughout, we have tried to emphasize the
+lessons learned and how they might be applied to other fields.
 
 Since DataSeries software is publicly available (under a BSD software
 license), and given the benefits of DataSeries that we demonstrate, we
@@ -144,7 +157,7 @@ argue that DataSeries should be considered for use by any application
 that needs to store large amounts of structured serial data. Indeed
 the Storage Networking Industry Association (SNIA) I/O traces tools
 and analysis (IOTTA) technical working group~\cite{iotta-website} has
-chosen DataSeries as a standard format for I/O trace data.
+proposed DataSeries as the standard format for I/O trace data.
 % and is
 % currently specifying the semantics for I/O traces encoded using DataSeries.
 
@@ -159,7 +172,7 @@ DataSeries. Section~\ref{sec:conclusions} concludes the
 paper with a summary of our work.
 % and a list of future directions.
 
-\section{Related Work}\label{sec:related}
+\section{Related work}\label{sec:related}
 
 We classify the related work into three categories:
 those that use a customized binary format, those that use a
@@ -213,7 +226,7 @@ type of a row the {\it extent-type} because an {\it extent} contains a
 collection of rows with the same fields and field-types. A collection
 of extents is analagous to a database table.
 
-\subsection{Data Format}
+\subsection{Data format}
 
 A single DataSeries file comprises a collection of extents
 (potentially with different extent-types), plus a header and
@@ -248,7 +261,7 @@ of the file enable efficient writing, since writing applications will
 often not know, a priori, what the final extent sizes will be, so space 
 for the index cannot be allocated until after the extents have been written.
 
-Each extents consists of a header, followed by the fixed
+Each extent consists of a header, followed by the fixed
 size data and the variable sized data.  Both fixed and variable sized
 data may be compressed, using any one of a number of standard
 compression algorithms~\cite{GZIP,BZIP,LZF,LZO}.  The extent header contains
@@ -259,6 +272,14 @@ the extent-type of the extent, and checksums of the extent before and
 after compression to guard against hardware and software errors.
 Checksum validation is usually disabled during extent reading to improve
 performance at the cost of reduced integrity.
+
+The extent format is designed for efficient access. Values are packed
+so that once an extent is read into memory, an analysis can iterate
+over the rows simply by increasing a single counter, as if for an
+array containing structures.  Individual values are accessed by an
+offset from that counter and a C++ cast operation. This technique
+could be applicable to anyone storing similar data, e.g. RPC fields or
+a streaming RDBMS.
 
 As we initially built DataSeries prototypes, we realized the need to
 add options that control various aspects of the field and extent
@@ -311,7 +332,7 @@ the usability (property 5) of DataSeries.
 
 There are two key concepts in the C++ API provided by DataSeries. The
 first is that of an \textit{ExtentSeries}, which is an iterator over
-the rows in at least one extent-type-compatible extent.  
+the rows in at least one extent.  
 %When reading
 %a file, the ExtentSeries is initialized with the extent, each row is
 %iterated over, and then the series is reset to use the next extent.
@@ -343,17 +364,17 @@ for analysis without increasing the memory requirements.
 %to select the row and the fields to access rows in that series.
 DataSeries also provides modules which exploit parallelism in operations,
 such as decompressing or compressing and writing
-extents to disk in parallel, which increases the access effiency
+extents to disk in parallel, which increases the access efficency
 (property 2) on multi-core systems.
 
 The DataSeries source distribution contains numerous other built-in 
 general modules as well as many analysis modules, for analyzing
 specific data types such as NFS, LSF and logical/physical disk volume
-traces.  More detailed information on these modules is available 
-in~\cite{DSTechnicalReportSnapshot}, as well as the source distribution.
-A programming example is also provided in~\cite{DSTechnicalReportSnapshot}.
+traces.  More detailed information on these modules and programming
+examples are available 
+in~\cite{DSTechnicalReportSnapshot} and the source distribution.
 
-\section{Performance Results}\label{sec:results}
+\section{Performance results}\label{sec:results}
 
 %{\bf TODO: I wonder if we should rename these ``Harvard'' traces
 %rather than Ellard?}
@@ -400,12 +421,17 @@ The analysis read in 45.5 GB of data (406 GB when uncompressed), and
 processed 7.6 billion records (each record corresponds to an NFS
 transaction).  Using a 2003 model two-way 2.8 GHz Xeon server, the
 entire data set was processed in 11,263 wall clock seconds (about 3
-hours), or roughly 675,000 rows per second performing a set of complex
+hours), or roughly 675,000 rows per second while performing a set of complex
 analyses.
 
 
 
-\subsection{Examining Storage and Access Efficiency}\label{sec:efficiency}
+\subsection{Examining storage and access efficiency}\label{sec:efficiency}
+
+{\bf TODO: Jeff thinks we spend too much time on this topic. I tend to 
+agree with him. Need to reduce this section, and select some other results,
+and make sure they match with claims from earlier in paper about performance,
+space efficiency etc. AV }
 
 %MFA: from \subsubsection{Compression microbenchmark}
 
@@ -499,7 +525,7 @@ lzo's compression time is too excessive or space is critical.
 \end{figure}
 
 %\subsection{Ellard Traces}\label{sec:ellard}
-\subsection{A Case Study}\label{sec:ellard}
+\subsection{A case study}\label{sec:ellard}
 
 In an effort to experiment with using DataSeries to represent and
 analyze traces generated by other people, we converted the NFS
@@ -591,29 +617,18 @@ disk space, but 14GB in CSV format and 8.5GB as a MySQL
 database. Using the same trace in a series of analyses showed that
 DataSeries delivers results 6-7x faster than both formats.
 
-\section{Lessons Learned}\label{sec:lessonslearned}
+\section{Lessons learned}\label{sec:lessonslearned}
 
-{\bf TODO: to tease out the design decisions that lead to performance
-improvement I added this section.  Perhaps the issues presented here
-could go further forward in the paper.}
-
-{\bf TODO: several of these are discussed. Need to double-check and
-add applicablility to other uses (e.g. cast trickery applicable to
-anyone storing similar data (RPC, streaming DB...))}
+{\bf TODO: this needs to become a summary section of highlights from lessons
+learned. The list below are just ideas for this - all of them are discussed
+in (varying) detail in the body of the paper}
 
 Trick with cast to make data access fast: The format is designed for
 efficient access. Values are packed so that once an extent is read in,
 an analysis can iterate over the rows simply by increasing a single
 counter, as if for an array of a structure.  Individual values are
-accessed by an offset from that counter and a C++ cast.  
-
-Making data analyses type specific improves performance greatly.
-Consider the analyses of NFS data.  When new accessors were added that
-did not support nullable fields, performance improved by x amount.
-Compared to SQL, and dsstatgroupby type specific performance can be as
-much as x faster.  However, writing type specific accessors is more
-time consuming, so for one shot analyses it may not be worth the
-effort.
+accessed by an offset from that counter and a C++ cast.  applicable to
+anyone storing similar data (RPC, streaming DB...)
 
 Delta encoding via the pack\_relative field option saves space
 sometimes a lot, with x cost.
@@ -631,7 +646,16 @@ costs over a fixed configurable amount of space.
 
 Byte swapping if necessary is automatically performed.
 
-Someplace we need to talk about integrity functionality and its importance.
+{\bf TODO: This point and the next one (about time values) are not
+currently covered in the main text}. 
+
+Making data analyses type specific improves performance greatly.
+Consider the analyses of NFS data.  When new accessors were added that
+did not support nullable fields, performance improved by x amount.
+Compared to SQL, and dsstatgroupby type specific performance can be as
+much as x faster.  However, writing type specific accessors is more
+time consuming, so for one shot analyses it may not be worth the
+effort.
 
 Discuss time field issues and why the field base value was a bad idea
 and where we are with archival time representation and functional time
@@ -650,6 +674,8 @@ in nanoseconds since.
 
 \section{Conclusions}\label{sec:conclusions}
 
+{\bf TODO: need to incorporate lessons learned into conclusions}
+
 We have described DataSeries, a data format that enables the efficient
 and flexible storage of structured serial data. This type of data is
 used in numerous applications in all areas of computing and
@@ -657,8 +683,9 @@ science. We have identified the properties required for a system that
 processes such data, and shown through a series of experiements and
 comparisons to other systems that DataSeries meets satisfies these
 properties. In particular, DataSeries offers significant performance
-and storage efficiency benefits.  For these reasons, DataSeries is the
-recommended trace for the SNIA IOTTA technical working group.
+and storage efficiency benefits.  
+% For these reasons, DataSeries is the
+% recommended trace for the SNIA IOTTA technical working group.
 
 \bibliographystyle{abbrv}
 {\small
