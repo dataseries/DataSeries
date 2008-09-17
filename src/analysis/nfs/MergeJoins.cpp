@@ -328,6 +328,7 @@ public:
 
 	string fh;
 	while(es_attrops.pos.morerecords()) {
+	restart:
 	    if (es_common.pos.morerecords() == false) {
 		delete es_common.curExtent();
 		Extent *tmp = nfs_common->getExtent();
@@ -346,6 +347,24 @@ public:
 		    }
 		    LintelLogDebug("AttrOpsCommonJoin", format("side-data mem %d")
 				   % rw_side_data.memoryUsage());
+		}
+	    }
+	    if (in_replyid.val() < prev_replyid) {
+		if (in_replyid.val() == 59777664992LL && prev_replyid == 70490468000LL) {
+		    // nfs-2/set-2/214000
+		    prev_replyid = in_replyid.val();
+		
+		    INVARIANT(in_recordid.val() == 70490468001LL, format("? %d") % in_recordid.val());
+		    ++es_common; // one record to skip
+		    last_record_id = 59777664985LL;
+		    SINVARIANT(!es_common.morerecords());
+		    goto restart;
+		}
+		if (in_replyid.val() == 60191872278LL && prev_replyid == 70904675286LL) {
+		    // nfs-2/set-2/217500
+		    prev_replyid = in_replyid.val();
+		    INVARIANT(in_recordid.val() == 60191872270LL, format("? %d") % in_recordid.val());
+		    last_record_id = 60191872270LL;
 		}
 	    }
 	    INVARIANT(in_replyid.val() >= prev_replyid, 
@@ -806,12 +825,13 @@ public:
 		return;
 	    }
 		
-	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d; around %s:%d")
+	    FATAL_ERROR(format("Unable to find rw record entries in side data for %d (%p)/%d (%p) -- %s, %d, %d, %d; around %s:%d; ca_reply=%d")
 			% in_rw_request_id.val() % static_cast<const void *>(_request)
 			% in_rw_reply_id.val() % static_cast<const void *>(_reply)
 			% hexstring(in_rw_filehandle.stringval()) % in_offset.val() 
 			% in_bytes.val() % in_is_read.val() % es_rw.extent()->extent_source
-			% es_rw.extent()->extent_source_offset);
+			% es_rw.extent()->extent_source_offset 
+			% (es_commonattr.extent() != NULL ? in_ca_reply_id.val() : 0));
 	}
 	const AttrOpsCommonJoin::RWSideData &request(*_request);
 	const AttrOpsCommonJoin::RWSideData &reply(*_reply);
@@ -880,8 +900,26 @@ public:
 		    goto restart;
 		}
 	    }
-	    INVARIANT(last_rw_reply_id < in_rw_reply_id.val(), 
-		      "read-write extent not sorted by reply-id?");
+	    if (last_rw_reply_id > in_rw_reply_id.val() 
+		&& ((last_rw_reply_id == 70490467989LL // nfs-2/set-2/214000
+		     && in_rw_reply_id.val() == 59777665194LL)
+		    || (last_rw_reply_id == 70904675283LL // nfs-2/set-2/217500
+			&& in_rw_reply_id.val() == 60191872300LL))
+		) {
+		cout << format("# tolerating backwardness %d > %d") % last_rw_reply_id % in_rw_reply_id.val();
+		while(in_unified_op_id.val() != read_unified_id &&
+		      in_unified_op_id.val() != write_unified_id) {
+		    ++skip_count;
+		    ++es_commonattr;
+		    if (!es_commonattr.morerecords()) {
+			goto restart;
+		    }
+		}
+	    } else {
+		INVARIANT(last_rw_reply_id < in_rw_reply_id.val(), 
+			  format("read-write extent not sorted by reply-id? %d >= %d in %s")
+			  % last_rw_reply_id % in_rw_reply_id.val() % es_rw.getExtent()->extent_source);
+	    }
 	    last_rw_reply_id = in_rw_reply_id.val();
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {
 		handleRWUnmatched();
