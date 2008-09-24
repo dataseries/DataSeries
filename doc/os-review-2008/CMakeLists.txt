@@ -8,9 +8,10 @@ ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
     ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/references.bib
       ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib)
 
+# ditto
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-fig
     COMMAND ln 
-    ARGS -s ${CMAKE_CURRENT_SOURCE_DIR}/../tr/fig
+    ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/fig
       ${CMAKE_CURRENT_BINARY_DIR}/tr-fig)
 
 SET(dataseries-osr-2008_EXTRA_DEPENDS 
