@@ -1346,6 +1346,7 @@ struct RPCRequestData {
     uint32_t program, version, procnum;
     unsigned int rpcreqhashval; // for sanity checking of duplicate requests
     unsigned int ipchecksum, l4checksum;
+    RPCRequestData() : reqdata(NULL), replyhandler(NULL) { }
     RPCRequestData(uint32_t a, uint32_t b, uint32_t c, uint16_t d) 
       : client(a), server(b), xid(c), server_port(d) {}
 };
