@@ -15,7 +15,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/PThread.hpp>
-#include <Lintel/HashTable.hpp>
+#include <Lintel/HashMap.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/ExtentType.hpp>
@@ -869,56 +869,51 @@ ExtentTypeLibrary::getTypeMatch(const std::string &match,
 
 // This optimization to only have one extent type object for each xml
 // description is here for when you are handling a whole lot of small
-// files.
+// files.  This is a memory usage optimization not a performance one
+// although it happens to improve the performance.
 
-struct xmlDecodeInfo {
-    string xmldesc;
-    ExtentType *extenttype;
-};
+namespace dataseries {
+    bool in_tilde_xml_decode;
 
-struct xmlDecodeInfoHash {
-    unsigned operator()(const xmlDecodeInfo *k) const {
-	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
+    struct xmlDecode {
+	typedef HashMap<string, ExtentType *> HTType;
+
+	HTType table;
+	PThreadMutex mutex;
+	~xmlDecode() { // called exactly once.
+	    SINVARIANT(!in_tilde_xml_decode);
+	    in_tilde_xml_decode = true;
+	    for(HTType::iterator i = table.begin(); i != table.end(); ++i) {
+		delete i->second;
+	    }
+	    table.clear();
+	}
+    };
+
+    static xmlDecode &decodeInfo() {
+	// C++ semantics say this will be initialized the first time we
+	// pass through this call
+	static xmlDecode decode_info;
+	return decode_info;
     }
-};
-
-struct xmlDecodeInfoEqual {
-    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) const {
-	return a->xmldesc == b->xmldesc;
-    }
-};
-
-struct xmlDecode {
-    HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> table;
-    PThreadMutex mutex;
-};
-
-static xmlDecode &decodeInfo()
-{
-    // C++ semantics say this will be initialized the first time we
-    // pass through this call
-    static xmlDecode decode_info;
-    return decode_info;
 }
 
-const ExtentType &
-ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
-{
-    xmlDecodeInfo k;
-    k.xmldesc = xmldesc;
+const ExtentType &ExtentTypeLibrary::sharedExtentType(const string &xmldesc) {
+    using dataseries::decodeInfo;
     PThreadAutoLocker lock(decodeInfo().mutex);
 
-    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
-    if (d != NULL) {
-	INVARIANT((**d).extenttype != NULL, "internal");
-	// should be common case, just return the value
-	return *(**d).extenttype;
+    ExtentType **d = decodeInfo().table.lookup(xmldesc);
+    if (d != NULL) { // should be common case, just return the value
+	SINVARIANT(*d != NULL);
+	return **d;
     }
 
-    xmlDecodeInfo *tmp = new xmlDecodeInfo();
-    tmp->xmldesc = xmldesc;
-    tmp->extenttype = new ExtentType(xmldesc);
-    decodeInfo().table.add(tmp);
-    return *tmp->extenttype;
+    ExtentType *tmp = new ExtentType(xmldesc);
+    decodeInfo().table[xmldesc] = tmp;
+    return *tmp;
 }
 
+ExtentType::~ExtentType() { 
+    SINVARIANT(dataseries::in_tilde_xml_decode);
+    xmlFreeDoc(field_desc_doc);
+}
