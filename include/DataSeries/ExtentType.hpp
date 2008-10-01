@@ -26,6 +26,9 @@
 #include <Lintel/Double.hpp>
 #include <Lintel/StringUtil.hpp>
 
+namespace dataseries { 
+    struct xmlDecode; // Internal class for caching extent type translations.
+}
 /** \brief This class describes the format of records in an @c Extent.
 
   * Provides the mapping from the DataSeries XML descriptions to 
@@ -443,6 +446,7 @@ private:
     friend class Variable32Field;
     friend class Extent;
     friend class ExtentTypeLibrary;
+    friend class dataseries::xmlDecode;
 
     ExtentType(const std::string &xmldesc);
     ~ExtentType();

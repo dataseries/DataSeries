@@ -210,6 +210,8 @@ public:
 	uint32_t tid, server, client, duplicate_count;
 	int64_t first_reqtime_raw, last_reqtime_raw;
 	bool seen_reply;
+	TidData() { }
+
 	TidData(uint32_t tid_in, uint32_t server_in, uint32_t client_in)
 	    : tid(tid_in), server(server_in), client(client_in), 
 	      duplicate_count(0), first_reqtime_raw(0), 

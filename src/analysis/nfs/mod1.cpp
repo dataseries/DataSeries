@@ -358,6 +358,7 @@ public:
 	string operation;
 	long long reqtime;
 
+	tidData() { }
 	tidData(unsigned tid_in, unsigned c_in, unsigned s_in)
 	    : clientip(c_in), serverip(s_in), is_udp(0),
 	       transaction_id(tid_in), op_id(0),
