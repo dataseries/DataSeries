@@ -360,7 +360,28 @@ the extent type, extent version and field names.
 
 \item \textbf{versioning}: ...
 
-\end{itemize}
+One addition we did try, and later rejected, was that of extending a
+double fields precision by allowing the specification of a base value.
+This was introduced when we realized that storing nanosecond precision
+time values, using the unix epoch (00:00:00 UTC on January 1, 1970),
+was not possible with a single double. Using this option, it became
+possible to specific a base value that indicated the time the events
+in the data file start, with the value stored indicating the time in
+nanoseconds since. Unfortunately, experience showed that this option
+was less useful than hoped for. It proved difficult and confusing for
+those developing analyses to deal with, particularly in the case where
+multiple files, each with different bases, were being used. Arithmetic
+on values of this type was complicated and inefficient. Ultimately, we
+deprecated this option, in favor of other time representations,
+dependant on the domain. For many of our purposes (traces derived from
+computer systems), we have found a single 64-bit integer value, with
+the top 32 bits representing seconds, and the lower 32 bits
+representing fractional seconds (in $2^{-32}$ increments) to be
+effective. In theory, if one wished to represent all possible time
+values (Plank time granularity over the age of the universe), over 200
+bits would be necessary, but we have not yet had to introduce
+measurements with this level of precision!
+
 
 \subsection{Programming model}
 %{\bf TODO: maybe this should be a section}
@@ -618,6 +639,27 @@ DataSeries delivers results 6-7x faster than both formats.
 
 \fix{add world cup, something about nfs, something about dsstatgroupby vs srt.}
 
+Our results and experience with DataSeries have also illustrated some
+of the tradeoffs between generality and performance. We have found
+that by adding various type-specific functionality, we can
+significantly improve performance. For instance, for the analysis of
+the World Cup traces, we added new accessors that did not check for
+nullable fields, and found that we decreased CPU time by
+8\%. Similarly, we found that we could ``group'' multiple analyses
+into a single routine (therefore only needing to pass over the data
+once), which can decrease the overall time taken by the same
+factor. This si especially effective when compared to the time taken
+in a more general solution (e.g. SQL queries) which cannot be combined
+in this manner. The primary tradeoff is the added complexity, effort
+and time and time involved in writing and using such type-specific
+accessors, which may not be worth while for one-shot analyses.
+
+% The lessons learned are scattered throughout the text, so this
+% section was removed. 
+
+%%%%%%% Beginning of removed section
+\iffalse
+
 \section{Lessons learned}\label{sec:lessonslearned}
 
 \fix{this needs to become a summary section of highlights from lessons
@@ -647,9 +689,6 @@ costs over a fixed configurable amount of space.
 
 Byte swapping if necessary is automatically performed.
 
-\fix{This point and the next one (about time values) are not
-currently covered in the main text}. 
-
 Making data analyses type specific improves performance greatly.
 Consider the analyses of NFS data.  When new accessors were added that
 did not support nullable fields, performance improved by x amount.
@@ -671,22 +710,33 @@ is possible to specific a base value that indicates the time the
 events in the data file start, and the value stored indicates the time
 in nanoseconds since.
 
+\fi
+%%%%%%% End of removed section
 
 
 \section{Conclusions}\label{sec:conclusions}
-
-\fix{need to incorporate lessons learned into conclusions}
 
 We have described DataSeries, a data format that enables the efficient
 and flexible storage of structured serial data. This type of data is
 used in numerous applications in all areas of computing and
 science. We have identified the properties required for a system that
-processes such data, and shown through a series of experiements and
+processes such data, and shown through a series of experiments and
 comparisons to other systems that DataSeries meets satisfies these
 properties. In particular, DataSeries offers significant performance
 and storage efficiency benefits.  
 % For these reasons, DataSeries is the
 % recommended trace for the SNIA IOTTA technical working group.
+
+We have also described the various lessons learned while designing and
+implementing DataSeries. A general theme from this has been that, when
+dealing with very large quantities of data, with a particular workload,
+there are huge performance, efficiency and reliability gains to be made
+by giving up a relatively small amount of generality and flexibility. 
+
+Overall, we believe that DataSeries should be considered for use in
+any application that processes structured serial data. DataSeries is
+open source, and available for download from
+http://tesla.hpl.hp.com/opensource/.
 
 \bibliographystyle{abbrv}
 {\small
