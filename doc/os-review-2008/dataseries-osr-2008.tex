@@ -3,6 +3,9 @@
 \let\@copyrightspace\relax
 \makeatother
 
+% \newcommand{\fix}[1]{\marginpar{\LARGE\ensuremath{\bullet}}\textbf{[#1]}}
+\newcommand{\fix}[1]{{\LARGE\ensuremath{\bullet}}\textbf{#1}}
+
 \begin{document}
 % replace the name to unblind
 \newcommand{\DataSeries}{DataSeries}
@@ -74,8 +77,8 @@ from 4x to 8x in test data sets).
 % tables, the need to maintain and analyze such data occurs in a large
 % number of scientific fields.
 
-There are six key properties that are desired of a data format
-and analysis system for structured serial data:
+We desire six key properties of a data format and analysis system for
+structured serial data:
 
 \begin{enumerate}
 
@@ -99,7 +102,7 @@ read off disk.
 
 \item \textbf{Flexibility}: adding additional fields should not affect
 users of the trace data.  Removing or modifying data fields should
-only affect programs that use those fields and the system should
+only affect programs that use those fields, and the system should
 catch incorrect usage.  Further, the format should not constrain
 the type of data being stored, and should allow multiple record types
 in a single file. Again, experience has taught us that formats that
@@ -112,15 +115,15 @@ requirement, as we have had problems in trying to interpret and use
 trace data from other organizations, and maintaining organizational
 knowledge of our own metadata over time.
 
-\item \textbf{(Re)Usability}: the data format should have an
+\item \textbf{Usability}: the data format should have an
 associated programming interface that is both expressive and easy to
 use. In particular the user model of the data and its analysis should
 be easy to describe and the interface to it should easily allow for
 common operations (e.g., scanning an entire data set, and processing
 specific fields only).
 
-\item \textbf{Integrity}: many structured serial data files contain
-information that needs to be maintained archivally. To protect against media
+\item \textbf{Integrity}: many structured serial data files are 
+intended as archival traces. To protect against media
 errors or incorrect software systems, DataSeries files need to be
 self-contained and contain internal checksums that enable
 integrity checking.
@@ -151,8 +154,7 @@ storage efficiency of DataSeries in a set of controlled experiments,
 using empirical data sets. Throughout, we have tried to emphasize the
 lessons learned and how they might be applied to other fields.
 
-Since DataSeries software is publicly available (under a BSD software
-license), and given the benefits of DataSeries that we demonstrate, we
+DataSeries software is publicly available under a BSD license from \texttt{http://tesla.hpl.hp.com/opensource/}. Given the benefits of DataSeries that we demonstrate, we
 argue that DataSeries should be considered for use by any application
 that needs to store large amounts of structured serial data. Indeed
 the Storage Networking Industry Association (SNIA) I/O traces tools
@@ -182,29 +184,31 @@ results, please refer to~\cite{DSTechnicalReportSnapshot}.
 
 Custom binary formats are usually serialized or directly written
 versions of an in-memory data structure.  As such, they usually
-achieve properties 1 and 2, and fail to achieve properties 3-5,
-although as we will show in the results, unless the authors are
-careful they can also fail to achieve property 2.
+achieve storage efficiency and access efficiency, and fail to achieve
+flexibility, self-describing, usability, and integrity, although as we
+will show in the results, unless the authors are careful they can also
+fail to achieve access efficiency.
 
 Text formats such as Column Separated Value (CSV) can
 %often (but far from always)
-achieve properties 3 and 4. XML achieves properties 3-5.  However,
-they fail to achieve property 1, and can fail property 2 by multiple
-orders of magnitude.  Even very tuned CSV
-implementations can only get to within 2-7x the
-access-efficiency of DataSeries, and 4-7x for the storage
-efficiency.
+achieve flexibility and self-describing. XML achieves flexibility,
+self-describing, usability, and mostly integrity.  However, they fail
+to achieve storage efficiency, and can fail access efficiency by
+multiple orders of magnitude.  Even very tuned CSV implementations can
+only get to within 2-7x the access-efficiency of DataSeries, and 4-7x
+for the storage efficiency.
 % (See the DataSeries technical 
 %report~\cite{DSTechnicalReportSnapshot} for these results.)
 %{\bf TODO: need to re-do these experiments at least to
 %measure the file sizes, and potentially with Tfrac text files,
 %although I suspect people would use sec.usec in a block I/O trace}
 
-Relational databases achieve properties 3, 4, and 5. RDBMS's were
-designed to handle updates, so do very limited compression drastically
-hurting their storage efficiency (property 1).  Our results show
-$>$10x improvement on storage efficiency for DataSeries over
-MySQL. 
+Relational databases achieve properties flexibility, self-describing,
+usability, and integrity. RDBMS's were designed to handle updates, so
+do very limited compression drastically hurting their storage
+efficiency.  Our
+results show $>$10x improvement on storage efficiency for DataSeries
+over MySQL.
 %{\bf TODO: check the exact sizes, should be around there.}
 Similarly, the generality of SQL can hurt it.  Even for fairly simple
 queries running entirely on in-memory data, DataSeries runs 2-7x
@@ -221,14 +225,16 @@ relational databases.  Logically, a DataSeries file is composed of an
 ordered sequence of {\it records}, where each record is composed from
 a set of {\it fields}. Each field has a {\it field-type} (e.g.,
 integer, string, double, boolean) and a name. A DataSeries record is
-analogous to a row in a conventional relational database. We call the
-type of a row the {\it extent-type} because an {\it extent} contains a
-collection of rows with the same fields and field-types. A collection
-of extents is analagous to a database table.
+analogous to a row in a conventional relational database. For
+efficiency, we group a set of rows that have the same fields and field
+types into an extent.  We call the type of that extent the {\it
+extent-type}.  Usually an analysis will be run over a collection of
+extents, so a collection of extents of the same type is similar to a
+database table.
 
 \subsection{Data format}
 
-A single DataSeries file comprises a collection of extents
+A single DataSeries file comprises one or more extents
 (potentially with different extent-types), plus a header and
 extent-type extent at the beginning of the file, and an index extent
 and trailer at the end of the file. The header on a DataSeries file 
@@ -261,17 +267,21 @@ of the file enable efficient writing, since writing applications will
 often not know, a priori, what the final extent sizes will be, so space 
 for the index cannot be allocated until after the extents have been written.
 
-Each extent consists of a header, followed by the fixed
-size data and the variable sized data.  Both fixed and variable sized
-data may be compressed, using any one of a number of standard
-compression algorithms~\cite{GZIP,BZIP,LZF,LZO}.  The extent header contains
+Each extent consists of a header, followed by the fixed sized fields
+and separately the variable sized data.  A reference to the variable
+sized data from the fixed size fields allows for variable sized
+fields.  This separation allows for direct access to fixed sized
+fields since they will be at a known offset, and one indirection to
+get at the variable sized data.  Both fixed and variable sized data
+may be compressed, using any one of a number of standard compression
+algorithms~\cite{BZIP,GZIP,LZF,LZO}.  The extent header contains
 metadata about the data in the extent, such as the compressed sizes of
 the fixed and variable data, the number of records in the extent, the
 uncompressed size of the variable length data, the compression mode,
 the extent-type of the extent, and checksums of the extent before and
 after compression to guard against hardware and software errors.
-Checksum validation is usually disabled during extent reading to improve
-performance at the cost of reduced integrity.
+Programs usually disable checksum validation during extent reading to
+improve performance at the cost of reduced integrity.
 
 The extent format is designed for efficient access. Values are packed
 so that once an extent is read into memory, an analysis can iterate
@@ -298,7 +308,7 @@ generating a hidden boolean column that determines if the value is null.
 
 \item \textbf{double scale}: often, the full precision of double
 values is not needed. In this case, it is possible to get
-significantly more compression by zeroing the pseudo-random lower
+significantly more compression by zeroing unimportant lower
 order bits by scaling and rounding. This option lets the user specify
 a specific scale factor for the values stored.
 
@@ -314,8 +324,41 @@ contains many repeated values, this option can significantly increase
 the effective compression ratio (compression algorithms only partially
 remove duplicate data).
 
-\item \textbf{time handling}: {\bf TODO: describe experiences
-and solutions here}
+\item \textbf{time handling}: dealing with time turns out to be very
+challenging.  One of our initial attempts involved using doubles to
+store time values because they were logically represented that way in
+one of the traces.  Unfortunately, we discovered that while time
+values that are zero based work very well, as in the original format,
+once those values are scaled to use the UNIX epoch, there is no longer
+enough remaining precision to store the time in microseconds.  We
+attempted to work around this problem by storing double values offset
+from some base value, but this approach meant that writing analysis
+programs was very difficult as they had to handle base values that
+potentially changed across files.  Our second approach was to use 64
+bit or 32 bit fixed point values in units native to the source data,
+e.g. nanoseconds for NFS attribute times, or microseconds for packet
+times from pcap.  While this meant we could easily have sufficient
+precision to represent the source data, analysis had to interpret a
+comment field intended for human consumption to determine the time
+representation.  This became a problem when we got improved packet
+capture technology that captured time in units of $2^{-32}$
+seconds\footnote{The maximum precision possible that can represent the
+full range of UNIX time values}.  Lately, we have added explicit
+support for units and epoch to the dataseries format, and a time field
+that can use the units and epoch to do conversions.  Analysis are
+written to operate over the ``raw'' time format, and then they use the
+field to convert to more normal formats for printing.  If the analysis
+needs to calculate windows, it can convert a normal format to a
+``raw'' format.  For example to calculate mean bytes per 30 second
+window, an analysis would first convert 30 seconds into the raw
+format, it would then accumulate values for that interval, output the
+mean and reset the statistic.  The use of units and epoch also allows
+us to print out time values in a nicer human readable form regardless
+of the input type.  To deal with older files that are missing units
+and epoch, we added the ability to specify units and epochs based on
+the extent type, extent version and field names.
+
+\item \textbf{versioning}: ...
 
 \end{itemize}
 
@@ -330,49 +373,58 @@ These functionalities meet all of the typical needs for
 users of structured serial data, and thus facilitate
 the usability (property 5) of DataSeries.
 
-There are two key concepts in the C++ API provided by DataSeries. The
-first is that of an \textit{ExtentSeries}, which is an iterator over
-the rows in at least one extent.  
-%When reading
-%a file, the ExtentSeries is initialized with the extent, each row is
-%iterated over, and then the series is reset to use the next extent.
-The second key concept is that of a \textit{module}, which provides
-functionality similar to the modules in River~\cite{river99}, and the
-iterator model~\cite{graefeQueryProcessing93} in relational databases.
-The ability to add functionality in a modular fashion enhances
-the flexibility (property 3) of DataSeries.
+There are three key concepts in the C++ API provided by
+DataSeries. The first is that of an \textit{ExtentSeries}, which is an
+iterator over the rows in at least one extent.  Iterators in
+dataseries are similar to iterators in relational
+databases~\cite{graefeQueryProcessing93}, but they typically operate
+in bulk over an entire extent in a single pass to improve access
+efficiency.  Iterators in dataseries are also not required to operate
+over extents of identical type.  An iterator specifies its
+compatibility for types.  Normally compatibility is exact type
+compatibility, but it can also be loose, which means that the types
+are compatible if all the fields can be found.  The second key concept
+is that of a \textit{module}, which accepts a series of extents
+processes them and passes them to downstream modules.  Similar to
+River~\cite{river99}, modules can have multiple inputs if they are
+joining together two different series.  The ability to add
+functionality in a modular fashion enhances the flexibility (property
+3) of DataSeries.  
 
-DataSeries also provides modules that enhance the access efficiency
-(property 2).
-With DataSeries, each module processes an extent at a time, and
-iterates over each of the rows in the extent.  In the standard
-iterator model, a tree of modules are created and each module provides
-a {\tt getNext()} operation that reads the next row from that module.
-This model is inefficient as each row is handled as a separate data
-structure.  To address this, DataSeries provides a 
-bulk iterator model which amortizes the cost of reading each
-row by collecting multiple rows together.  The row analysis module
-used above then calls the processRow() function on each row.  For
-efficiency reasons, the transfer of extents between modules is a
-transfer of ownership, i.e., the module that returns an extent must
-not continue to access it. We are considering relaxing this
-constraint in the future to allow multiple modules to read-share a single
-extent at the same time so that we can increase the available parallelism
-for analysis without increasing the memory requirements.
+
+Analysis programs generally have a main program that builds a sequence
+of modules to perform multiple analysis in a single pass over the
+data. Each module processes an extent at a time, and iterates over
+each of the rows in the extent.  For easier usability, a row analysis
+module can be used that will call a processRow() function on each row.
+The {\tt dstypes2cxx} program will automatically generate the boilerplate
+needed for a module to be used as a row analysis module.
+For efficiency reasons, the transfer of extents between
+modules is a transfer of ownership, i.e., the module that returns an
+extent must not continue to access it. We are considering relaxing
+this constraint in the future to allow multiple modules to read-share
+a single extent at the same time so that we can increase the available
+parallelism for analysis without increasing the memory requirements.
 %Each module can iterate over the rows in
 %the extent by putting it into a series and using the series iterator
 %to select the row and the fields to access rows in that series.
-DataSeries also provides modules which exploit parallelism in operations,
-such as decompressing or compressing and writing
-extents to disk in parallel, which increases the access efficency
-(property 2) on multi-core systems.
+DataSeries also provides modules which exploit parallelism in
+operations, such as decompressing or compressing and writing extents
+to disk in parallel, which increases the access efficency on
+multi-core systems.  This improvement is very important for
+compression, which is usually slow, but can also be important for
+simple analysis that run faster than a single core can decompress.
 
-The DataSeries source distribution contains numerous other built-in 
-general modules as well as many analysis modules, for analyzing
-specific data types such as NFS, LSF and logical/physical disk volume
-traces.  More detailed information on these modules and programming
-examples are available 
-in~\cite{DSTechnicalReportSnapshot} and the source distribution.
+The DataSeries source distribution contains numerous other built-in
+general modules, for example, ones that convert extents to text, and
+ones that perform simple versions of the SQL select/group-by
+statement.  We also have converters from various input formats (pcap,
+log file, SRT~\cite{SRT}) into a DataSeries representation.  Finally
+there are type specific analysis for converted NFS~\cite{NFS},
+LSF~\cite{LSF} and logical/physical disk volume traces.  More detailed
+information on these modules and programming examples are available in
+the DataSeries technical report~\cite{DSTechnicalReportSnapshot} and
+the source distribution.
 
 \section{Performance results}\label{sec:results}
 
@@ -409,7 +461,7 @@ in this data is the common records which store information about each
 of the 200 billion request and reply messages. We have secondary tables that
 store information about each packet captured, operations that included
 file attributes, read and write requests and mount requests.  The total dataset
-is about 5TB in size.
+is about 5TB.
 
 As a demonstration of the real-life performance of
 DataSeries, consider the following example.  Utilizing our NFS
@@ -422,107 +474,48 @@ processed 7.6 billion records (each record corresponds to an NFS
 transaction).  Using a 2003 model two-way 2.8 GHz Xeon server, the
 entire data set was processed in 11,263 wall clock seconds (about 3
 hours), or roughly 675,000 rows per second while performing a set of complex
-analyses.
-
-
+analyses. \fix{need to get current performance numbers}
 
 \subsection{Examining storage and access efficiency}\label{sec:efficiency}
 
-{\bf TODO: Jeff thinks we spend too much time on this topic. I tend to 
-agree with him. Need to reduce this section, and select some other results,
-and make sure they match with claims from earlier in paper about performance,
-space efficiency etc. AV }
+We have performed extensive experiments on the effect of compression
+on the performance of analysis~\cite{DSTechnicalReportSnapshot}.  We
+summarize the results below:
 
-%MFA: from \subsubsection{Compression microbenchmark}
+\begin{itemize}
 
-DataSeries currently supports four different compression algorithms
-(bzip2~\cite{BZIP}, gzip~\cite{GZIP}, lzf~\cite{LZF} and lzo~\cite{LZO}),
-and an arbitrary extent size for record data.  Empirical knowledge and
-algorithm author data seem to indicate that the algorithms are
-optimized for different usages.  For example, bzip2 is commonly
-believed to compress better than gzip, albeit more slowly.  Also,
-all compression algorithms in common use today use a compression
-window, giving the impression that compression ratio and perhaps
-compression and decompression rate are optimized for files above a
-certain size (i.e., the window size).  
-We evaluated the compression ratio, compression rate, 
-and decompression rate for each of these algorithms
-using various extent sizes.
+\item For archival storage, or preparation for network distribution,
+bzip2~\cite{BZIP} compression with large extents (16-64MB) makes the
+most sense.  Keeping the size at most 64MB allows for some parallelism
+during compression, and later decompression, but extracts almost all
+of the potential compression available.  It may be useful to leave on
+gzip compression as gzip occasionally gets better compression that
+BZIP.
 
-Several of the compression algorithms (bzip2 and gzip)
-have tunable parameters, which trade 
-off compression rate for increased compression ratio.
-We evaluated a range of settings for each of these algorithms.  
-For the remainder of this section, we utilize bzip2 level 9 as
-the representative for bzip2, and gzip level 6 as the representative
-for gzip.  We found these levels provide reasonable tradeoffs
-between the compression rate and ratio for each algorithm respectively.
+\item For analysis with sufficient disk bandwidth, lzo~\cite{LZO} with
+small extents (96-128KB) gets the maximum performance.  The size of
+the extents is somewhat below the L2 cache size as there needs to be
+sufficient cache space to hold the entire uncompressed extent, some of
+the compressed data while it is uncompressed, and any additional
+program state.
 
-Extent size determines the maximum window of data a compression
-algorithm can look at.  For very small extent sizes, we expected to
-see poor compression ratios because redundancy that would have been
-within any algorithm's window size was artificially being blocked.
-For very large extent sizes, we expected to see differentiation among
-algorithms based on their window sizes.
+\item With more constrained disk bandwidth, gzip~\cite{GZIP} with
+small extents is better than lzo as it trades a 10-30% reduction in
+decompression rate for a 10-40% improvement in compression; if disk
+bandwidth is a limiter than the improved compression is more valuable.
+The additional compression from longer extents is minimal, and bzip2
+while compressing much faster, decompresses so much slower that only a
+highly imbalanced system would benefit from bzip2 decompression.
 
-The microbenchmark consisted of reading each DataSeries file
-and recompressing with the compression
-algorithm under study.  The uncompressed data size was divided by the CPU time for the compression
-operation  to compute {\em
-Compression Rate}.  Next, the same file was decompressed and its
-content thrown away.  The uncompressed data size was divided by the CPU time 
-to compute the {\em Decompression Rate}.  
-Finally, the compressed DataSeries file size was
-divided by the uncompressed DataSeries file size to determine the {\em
-Compression Ratio}.  The decompression and compression operations were
-performed three times for each data file in each dataset.  All microbenchmark 
-measurements were taken with checksum validation enabled.
+\item For online compression of data, lzf~\cite{LZF} with small to
+moderate size extents is the only choice.  Lzf compresses at roughly
+100MB/s which is about 10$\times$ faster than gzip at level 1.
+Moderate sized extents may be a benefit if the data has unique strings
+as the unique packing option is very fast and gets very good
+compression.  Otherwise staying within the L2 cache remains a
+priority.
 
-Tradeoffs exist between storage and access efficiency.  We
-explore these tradeoffs, and the flexibility of DataSeries, via
-several experiments.
-For online creation of DataSeries files we care about the compression
-rate and the compression ratio.
-Figure~\ref{fig:comRateRatios} compares these metrics
-with one point for each extent size.  The compression rate is shown
-in log-scale because the different algorithms have vastly different rates.
-This figure shows that lzf dominates
-with regard to compression rate, but gzip is a good tradeoff between
-compression ratio and rate, sacrificing 10x the rate to get 2x
-the compression.  bzip2 is useful if very high compression
-ratios are desired, while lzo is dominated by all others on this graph.
-Neither bzip2 nor lzo is likely to be suitable for online file creation.
-
-
-\begin{figure}[tbh]
-\epsfig{width=2.5in, angle=270, file=graphs/amd/plotComRateRatio-srt.ps}
-\caption{ Compression rate versus compression ratio results for disk trace data.}
-\label{fig:comRateRatios}
-\end{figure}
-
-Figure~\ref{fig:decomRateRatios} compares the algorithms by the
-compression ratio and decompression rate metrics.  This is important
-for repeated analysis of data, a very common use case for
-DataSeries.  In this case, lzo dominates the other algorithms in
-terms of decompression rate (\~175 MB/s), while still keeping a
-reasonable compression ratio (\~6:1). lzo is strictly superior to lzf.
-bzip2 achieves 
-%$2\times$
-2x increase in compression ratio, but at a 
-%$10\times$
-10x
-reduction in decompression rate.  gzip achieves negligibly higher
-compression ratios at a 
-%$1.3\times$ 
-1.3x reduction in decompression rate.
-Thus, gzip might only be considered if
-lzo's compression time is too excessive or space is critical.
-
-\begin{figure}[tbh]
-\epsfig{width=2.5in, angle=270, file=graphs/amd/plotDecomRateRatio-srt.ps}
-\caption{ Decompression rate versus compression ratio results for disk data.}
-\label{fig:decomRateRatios}
-\end{figure}
+\end{itemize}
 
 %\subsection{Ellard Traces}\label{sec:ellard}
 \subsection{A case study}\label{sec:ellard}
@@ -534,7 +527,7 @@ The ``Ellard traces''
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
 set of key-value pairs, and finally some debugging information.  As
-part of the tools, there is also a scanning program which reads the
+part of their tools, there is also a scanning program which reads the
 trace files and outputs summary information for a trace.
 
 Our evaluation came in two parts.  First, we wrote programs that
@@ -542,16 +535,19 @@ converted between the two formats.  The reversable conversion
 guaranteed that we were properly preserving all of the information.
 We found that the DataSeries files were on average 0.77x the size of
 the original files when both were compressed using gzip.  The
-compression improvements came as a result of the duplicate
-elimination, the delta encoding, and the usual improvement of binary
-encoding of text data.
+compression improvements came as a result of the unique string
+packing, delta encoding, and the elimination of the key fields through
+the use of fixed field names and representing null fields in a single
+bit before generic compression.
 
 Second, we
 wrote an analysis program that implemented the first three examples in
-the README that came with the tools.  We found that our analysis
+the README that came with the tools.  The first three examples were
+all variants of a ``select count(*) group by field'' query.
+We found that our analysis
 program ran about 76x faster on those data files than the text
 analysis program that came with the distribution.  We also found that
-if we utilized lzo compression which decompresses more quickly than
+if we utilized lzo compression, which decompresses more quickly than
 gzip, our analysis program ran about 107x faster, in exchange for
 slightly larger (1.14x) data files.  This also illustrates how
 DataSeries can be optimized for a given purpose (e.g., greater
@@ -566,14 +562,14 @@ the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 \begin{tabular}{|r|r|r|r|r|r|r|} \hline
             & mean     & mean       & mean     & CPU     & mean     & Wall time \\
 algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
-ellard-gz   & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
-ellard-bz2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
+ellard-gzip & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
+ellard-bzip2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
 \hline
-ds-gz-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
-ds-gz-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
-ds-gz-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+ds-gzip-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
+ds-gzip-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
+ds-gzip-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
 \hline
-ds-bz2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+ds-bzip2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
 \hline
 ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
 ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
@@ -584,16 +580,17 @@ ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \
 Summary of performance results for the two analysis programs
 operating on a variety of input files.  The analysis was run over the
 anon-home04-011118-* files.  For the ellard {\tt nfsscan} program
-the text files were compressed with either gz or bz2.  For the
+the text files were compressed with either gzip or bz2.  For the
 DataSeries {\tt ellardanalysis} program, the DataSeries files were
-compressed with either gz, bz2, or lzo, and used various extent sizes
-as specified.  CPU and wall time are both relative to ellard-gz.
+compressed with either gzip, bzip2, or lzo, and used various extent sizes
+as specified.  CPU and wall time are both relative to ellard-gzip.
 }
 
 \label{tab:summary}
 \end{table*}
 
 
+\fix{Jeff said ``What huh'' next to the beginning of this; dunno what to do about that.}
 Table~\ref{tab:summary} presents the summary results, showing the
 significant speedup and reduction in CPU time that can be achieved by
 using DataSeries.  The different sizes specified after the compression
@@ -603,8 +600,10 @@ compression and a 512 KB extent size.
 The substantial increase in system time for dealing
 with large extents for bzip2 is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
-mmap/munmap calls to the kernel and hence a substantial amount of page
-zeroing in the kernel.  
+mmap/munmap calls to the kernel, hence a substantial amount of page
+zeroing in the kernel, and hence a large increase in the system time 
+used during the analysis run (e.g. 11.82s vs 1.14s of system time for 
+bz2-16M vs lzo-64k).
 
 \subsection{Other results}\label{sec:otherresults}
 
@@ -617,9 +616,11 @@ disk space, but 14GB in CSV format and 8.5GB as a MySQL
 database. Using the same trace in a series of analyses showed that
 DataSeries delivers results 6-7x faster than both formats.
 
+\fix{add world cup, something about nfs, something about dsstatgroupby vs srt.}
+
 \section{Lessons learned}\label{sec:lessonslearned}
 
-{\bf TODO: this needs to become a summary section of highlights from lessons
+\fix{this needs to become a summary section of highlights from lessons
 learned. The list below are just ideas for this - all of them are discussed
 in (varying) detail in the body of the paper}
 
@@ -631,22 +632,22 @@ accessed by an offset from that counter and a C++ cast.  applicable to
 anyone storing similar data (RPC, streaming DB...)
 
 Delta encoding via the pack\_relative field option saves space
-sometimes a lot, with x cost.
+with small cost.
 
 Unique packing saves strings only once, improving on runlength
 compression by having effectively an infinite window size for specific
 strings.
 
 Parallel compression and decompression improves performance
-dramatically on multicore machines as evidenced by the ellard
-comparison.
+dramatically on multicore machines as shown by the 4x lower wall clock
+time compared to cpu time on a 4 core machine in the ellard experiments.
 
 Bulk processing of extents amortizes compression and decompression
 costs over a fixed configurable amount of space.
 
 Byte swapping if necessary is automatically performed.
 
-{\bf TODO: This point and the next one (about time values) are not
+\fix{This point and the next one (about time values) are not
 currently covered in the main text}. 
 
 Making data analyses type specific improves performance greatly.
@@ -674,7 +675,7 @@ in nanoseconds since.
 
 \section{Conclusions}\label{sec:conclusions}
 
-{\bf TODO: need to incorporate lessons learned into conclusions}
+\fix{need to incorporate lessons learned into conclusions}
 
 We have described DataSeries, a data format that enables the efficient
 and flexible storage of structured serial data. This type of data is
