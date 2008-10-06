@@ -47,6 +47,10 @@
    -i 2 lzo-96k: 31.38 2.51 8.61 ; 31.29 2.51 8.58 ; 31.55 2.35 8.61
    -i 9 lzo-96k: 32.38 2.39 8.84 ; 32.44 2.57 8.93 ; 32.52 2.64 8.99
 
+   dsstatgroupby HP-UX basic 'leave_driver - enter_driver' group by logical_volume_number from lzo-96k/hourly.00*
+   38.58 2.45 14.50 ; 38.63 2.49 14.59 ; 38.65 2.42 14.58
+   
+
    Debian etch-32bit
 
    -d 2 gz-96k: 46.79 3.36 12.60 ; 46.70 3.00 13.08 ; 46.67 3.16 12.67
