@@ -324,67 +324,64 @@ contains many repeated values, this option can significantly increase
 the effective compression ratio (compression algorithms only partially
 remove duplicate data).
 
-\item \textbf{time handling}: dealing with time turns out to be very
-challenging.  One of our initial attempts involved using doubles to
-store time values because they were logically represented that way in
-one of the traces.  Unfortunately, we discovered that while time
-values that are zero based work very well, as in the original format,
-once those values are scaled to use the UNIX epoch, there is no longer
-enough remaining precision to store the time in microseconds.  We
-attempted to work around this problem by storing double values offset
-from some base value, but this approach meant that writing analysis
-programs was very difficult as they had to handle base values that
-potentially changed across files.  Our second approach was to use 64
-bit or 32 bit fixed point values in units native to the source data,
-e.g. nanoseconds for NFS attribute times, or microseconds for packet
-times from pcap.  While this meant we could easily have sufficient
-precision to represent the source data, analysis had to interpret a
-comment field intended for human consumption to determine the time
-representation.  This became a problem when we got improved packet
-capture technology that captured time in units of $2^{-32}$
-seconds\footnote{The maximum precision possible that can represent the
-full range of UNIX time values}.  Lately, we have added explicit
-support for units and epoch to the dataseries format, and a time field
-that can use the units and epoch to do conversions.  Analysis are
-written to operate over the ``raw'' time format, and then they use the
-field to convert to more normal formats for printing.  If the analysis
-needs to calculate windows, it can convert a normal format to a
-``raw'' format.  For example to calculate mean bytes per 30 second
-window, an analysis would first convert 30 seconds into the raw
-format, it would then accumulate values for that interval, output the
-mean and reset the statistic.  The use of units and epoch also allows
-us to print out time values in a nicer human readable form regardless
-of the input type.  To deal with older files that are missing units
-and epoch, we added the ability to specify units and epochs based on
-the extent type, extent version and field names.
+\item \textbf{versioning}: since our format is archival, we expect
+changes in the fields used in a dataset over time.  To handle these
+changes we have introducted a version number associated with a type.
+A program compatible with version $n.m$ of the format will operate
+properly on any file with version $n.m', m' >= m$.  Programs can also
+detect the version number and adapt appropriately.
 
-\item \textbf{versioning}: ...
+\end{itemize}
 
 One addition we did try, and later rejected, was that of extending a
 double fields precision by allowing the specification of a base value.
-This was introduced when we realized that storing nanosecond precision
+This was introduced when we realized that storing microsecond precision
 time values, using the unix epoch (00:00:00 UTC on January 1, 1970),
-was not possible with a single double. Using this option, it became
-possible to specific a base value that indicated the time the events
-in the data file start, with the value stored indicating the time in
-nanoseconds since. Unfortunately, experience showed that this option
+was not possible with a single double. We added an option to
+specify a base value for the double fields, and then stored the actual
+value relative to that base value.
+Unfortunately, experience showed that this option
 was less useful than hoped for. It proved difficult and confusing for
 those developing analyses to deal with, particularly in the case where
 multiple files, each with different bases, were being used. Arithmetic
 on values of this type was complicated and inefficient. Ultimately, we
 deprecated this option, in favor of other time representations,
-dependant on the domain. For many of our purposes (traces derived from
-computer systems), we have found a single 64-bit integer value, with
-the top 32 bits representing seconds, and the lower 32 bits
-representing fractional seconds (in $2^{-32}$ increments) to be
-effective. In theory, if one wished to represent all possible time
-values (Plank time granularity over the age of the universe), over 200
-bits would be necessary, but we have not yet had to introduce
-measurements with this level of precision!
+dependant on the domain. 
+
+We have now chosen to explicitly represent the units and the epoch for
+time values.  The units are chosen based on the original precision,
+e.g. nanoseconds for NFS attribute values, or microseconds for pcap
+trace files.  We then use a 64-bit integer to store the time value,
+and have a special field that can translate in and out of the raw
+units from input formats such as a double, or a second, nanosecond
+pair.  Analysis are written to operate over the ``raw'' time format,
+and then they use the field to convert to more normal formats for
+printing.  If the analysis needs to calculate windows, it can convert
+a normal format to a ``raw'' format.  For example to calculate mean
+bytes per 30 second window, an analysis would first convert 30 seconds
+into the raw format, it would then accumulate values for that
+interval, output the mean and reset the statistic.  The use of units
+and epoch also allows us to print out time values in a nicer human
+readable form regardless of the input type.  To deal with older files
+that are missing units and epoch, we added the ability to specify
+units and epochs based on the extent type, extent version and field
+names.
+
+If there is no natural unit for a set of traces, for example because
+they have cycle counter times, then we recommend units of $2^{-32}$
+seconds.  This choice allows for the maximum precision possible when
+providing the same range as a unix timevalue since the unix timevalue
+uses 32 bits to represent the seconds.  We expect at some point to
+need to move to a 128 bit fixed or floating point representation to
+deal with the continually increasing range of times for trace data and
+the increasing precision of the clocks measuring the times.  The
+maximum required bits would be around 200 since that would be
+sufficient bits to represent all times for the age of the universe
+using the Plank time granularity.
 
 
 \subsection{Programming model}
-%{\bf TODO: maybe this should be a section}
+
 Four general functionalities are supported by DataSeries:
 reading a DataSeries file, 
 analyzing the data in a DataSeries file,
@@ -441,11 +438,11 @@ general modules, for example, ones that convert extents to text, and
 ones that perform simple versions of the SQL select/group-by
 statement.  We also have converters from various input formats (pcap,
 log file, SRT~\cite{SRT}) into a DataSeries representation.  Finally
-there are type specific analysis for converted NFS~\cite{NFS},
-LSF~\cite{LSF} and logical/physical disk volume traces.  More detailed
-information on these modules and programming examples are available in
-the DataSeries technical report~\cite{DSTechnicalReportSnapshot} and
-the source distribution.
+there are type specific analysis for converted NFS, LSF batch
+jobs~\cite{PlatformLSF} and logical/physical disk volume traces.  More
+detailed information on these modules and programming examples are
+available in the DataSeries technical
+report~\cite{DSTechnicalReportSnapshot} and the source distribution.
 
 \section{Performance results}\label{sec:results}
 
@@ -501,7 +498,7 @@ analyses. \fix{need to get current performance numbers}
 
 We have performed extensive experiments on the effect of compression
 on the performance of analysis~\cite{DSTechnicalReportSnapshot}.  We
-summarize the results below:
+summarize the results on storage efficiency below:
 
 \begin{itemize}
 
@@ -521,8 +518,8 @@ the compressed data while it is uncompressed, and any additional
 program state.
 
 \item With more constrained disk bandwidth, gzip~\cite{GZIP} with
-small extents is better than lzo as it trades a 10-30% reduction in
-decompression rate for a 10-40% improvement in compression; if disk
+small extents is better than lzo as it trades a 10-30\% reduction in
+decompression rate for a 10-40\% improvement in compression; if disk
 bandwidth is a limiter than the improved compression is more valuable.
 The additional compression from longer extents is minimal, and bzip2
 while compressing much faster, decompresses so much slower that only a
@@ -537,6 +534,58 @@ compression.  Otherwise staying within the L2 cache remains a
 priority.
 
 \end{itemize}
+
+Access efficiency turns out to be more difficult to measure.  Our most
+extensive analysis of this occurred using the 1998 World cup
+traces~\cite{ita-wcweb98}.  These traces came with a sample analysis
+program that calculated operations/server, minimum and maximum object
+ids, and other simple statistics.  Since the raw format of the data
+was a binary structure, we expected that the dataseries version would
+have a faster wall clock time (because of parallel decompression), but
+a slower cpu time.  We were surprised to learn that we actually used
+less cpu time.  The reason turned out to be a combination of fread
+inefficiency when used one record at a time, and a slow byte-swap
+routine used by the sample program.  DataSeries avoids the former by
+doing bulk processing and the latter by switching the ordering to the
+native order when a file is written or repacked.  Further
+investigation indicated that DataSeries was also executing unnecessary
+instructions because our field accessors supported nullable fields,
+but this happened to be unused in this format.  We added C++ template
+based fields, but this did not reduce the penalty for access to the
+data because the g++-3.3 compiler used with RHEL4 is fairly poor at
+optimizing templated code.  However, with the g++-4.3 compiler, the
+penalty is removed and the analysis code uses the same number of 
+instructions on both sides.
+
+% see src/paper/srtstat.cpp for data
+This experience highlights the tradeoff between general and specific
+code.  Above we saw the difference in performance that results from
+having fields that handle nullable and non-nullable data.  We
+experimented further with this for the HP-UX block I/O traces.  We
+compared the same analysis using special case fields, templated
+fields, basic fields, general fields, and general purpose program.  We
+implemented special cases of the fields to work around the compiler
+difficulties, and found that templated fields were 2\% slower than the
+special case fields, the basic fields were another 1\% slower, and the
+general fields were yet another 1\% slower.  The relatively minor
+difference between the performance was because each field was used
+exactly once, so most of the cost was in the memory access to the
+field, which was usually not in cache as a different thread performed
+decompression.  Conversely, the fully general program was
+substantially slower (20\%) as it determines the expression at
+runtime, and is capable of grouping on any field type while the
+specific case programs can only group by 32-bit integer fields.  We
+expect that if we added prefetching code to the row analysis module we
+would see a larger difference in the performance as we measured a
+roughly 10x difference in access time through the basic and the
+special case fields when using a program that repeatedly accessed the
+same field and just accumulated the sum.  This is likely because of
+the extra branch instructions interfering with the CPU's ability to
+fully pipeline the code with the basic fields while the special case
+fields reduce the access down to a single instruction which can be
+combined with the add instruction.  The general fields on in cache
+data are about 2.5x slower than the basic fields, showing the overhead
+of the additional virtual function call.
 
 %\subsection{Ellard Traces}\label{sec:ellard}
 \subsection{A case study}\label{sec:ellard}
@@ -636,8 +685,6 @@ space utilization; stored in DataSeries, the trace consumed 1.9GB of
 disk space, but 14GB in CSV format and 8.5GB as a MySQL
 database. Using the same trace in a series of analyses showed that
 DataSeries delivers results 6-7x faster than both formats.
-
-\fix{add world cup, something about nfs, something about dsstatgroupby vs srt.}
 
 Our results and experience with DataSeries have also illustrated some
 of the tradeoffs between generality and performance. We have found
