@@ -27,6 +27,8 @@
    -c 2 lzo-96k: 33.69 2.97 9.572 ; 33.74 2.94 9.509 ; 33.68 3.08 9.530
    -b 2 lzo-96k: 33.01 2.92 9.233 ; 33.15 3.07 9.333 ; 32.45 2.80 8.979
    -a 2 lzo-96k: 33.32 2.89 9.313 ; 33.18 2.90 9.262 ; 33.34 2.91 9.316
+   -j 2 lzo-96k: 32.54 2.87 9.08 ; 32.43 2.68 8.95 ; 32.43 2.66 8.96
+
 
    // ~4us/access
    -e 2 lzo-96k: 33.76 2.96 9.66 ; 33.09 3.09 9.36 ; 33.14 3.18 9.38
@@ -359,6 +361,53 @@ public:
     }
 };
 
+class LatencyGroupByIntNN : public RowAnalysisModule {
+public:
+    LatencyGroupByIntNN(DataSeriesModule &source, const string &_start_field, 
+			const string &_end_field, const string &_groupby_field)
+	: RowAnalysisModule(source), 
+	  start_field(_start_field),
+	  end_field(_end_field),
+	  groupby_field(_groupby_field),
+	  start_time(series, start_field), 
+	  end_time(series, end_field), 
+	  groupby(series, groupby_field)
+    { }
+
+    typedef HashMap<ExtentType::int32, Stats *, HashMap_hashintfast> mytableT;
+
+    virtual void processRow() {
+	Stats *stat = mystats[groupby.val()];
+	if (stat == NULL) {
+	    stat = new Stats();
+	    mystats[groupby.val()] = stat;
+	}
+	stat->add(end_time.val() - start_time.val());
+    }
+
+    double toSec(double v) {
+	Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
+	// Ought to check units here
+	return Clock::TfracToDouble(raw);
+    }
+
+    virtual void printResult() {
+	cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
+	    % groupby_field % end_field % start_field << endl;
+	for(mytableT::iterator i = mystats.begin(); 
+	    i != mystats.end(); ++i) {
+	    cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
+		% i->first % i->second->count() % toSec(i->second->mean()) 
+		% toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
+	}
+    }
+
+    mytableT mystats;
+    string start_field, end_field, groupby_field;
+    NNInt64Field start_time, end_time;
+    NNInt32Field groupby;
+};
+
 class LatencyGroupByAccessNN : public RowAnalysisModule {
 public:
     LatencyGroupByAccessNN(DataSeriesModule &source, const string &_start_field, 
@@ -485,7 +534,7 @@ int main(int argc, char *argv[]) {
 
     SequenceModule seq(source);
     while(1) {
-	int opt = getopt(argc, argv, "a:b:c:d:e:f:g:i:");
+	int opt = getopt(argc, argv, "a:b:c:d:e:f:g:i:j:");
 	if (opt == -1) break;
 	int variant = stringToInteger<int32_t>(optarg);
 	string start_field, end_field, groupby_field;
@@ -543,6 +592,10 @@ int main(int argc, char *argv[]) {
 	    case 'i': seq.addModule(new LatencyGroupByAccessNN
 				    (seq.tail(), "enter_driver", "leave_driver",
 				     "logical_volume_number", variant-1));
+		break;
+	    case 'j':
+		seq.addModule(new LatencyGroupByIntNN(seq.tail(), start_field, 
+						      end_field, groupby_field));
 		break;
 	    default:
 		FATAL_ERROR("?");
