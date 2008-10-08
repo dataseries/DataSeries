@@ -708,54 +708,84 @@ experimental setup
 %the DataSeries technical report~\cite{DSTechnicalReportSnapshot}.
 is described in~\cite{DSTechnicalReportSnapshot}.
 
- 
+% ORIGINAL TABLE 
+%\begin{table*}
+%\centering
+%\begin{tabular}{|r|r|r|r|r|r|r|} \hline
+%            & mean     & mean       & mean     & CPU     & mean     & Wall time \\
+%algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
+%ellard-gzip & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
+%ellard-bzip2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
+%\hline
+%ds-gzip-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
+%ds-gzip-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
+%ds-gzip-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+%\hline
+%ds-bzip2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+%\hline
+%ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
+%ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
+%ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
+%\end{tabular}
+
+%\caption{
+%Summary of performance results for the two analysis programs
+%operating on a variety of input files.  The analysis was run over the
+%anon-home04-011118-* files.  For the ellard {\tt nfsscan} program
+%the text files were compressed with either gzip or bz2.  For the
+%DataSeries {\tt ellardanalysis} program, the DataSeries files were
+%compressed with either gzip, bzip2, or lzo, and used various extent sizes
+%as specified.  CPU and wall time are both relative to ellard-gzip.
+%}
+
 \begin{table*}
 \centering
-\begin{tabular}{|r|r|r|r|r|r|r|} \hline
-            & mean     & mean       & mean     & CPU     & mean     & Wall time \\
-algorithm   & user (s) & system (s) & CPU (s)  & speedup & wall (s) & speedup  \\ \hline
-ellard-gzip & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
-ellard-bzip2  & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
+\begin{tabular}{|c|r|r|r|r|r|r|r|r|} \hline
+  & \multicolumn{1}{c|}{compression} & \multicolumn{1}{c|}{extent}  & \multicolumn{3}{c|}{mean CPU time (s)}     & \multicolumn{1}{c|}{CPU}     & \multicolumn{1}{c|}{mean wall}    & \multicolumn{1}{c|}{wall time} \\ \cline{4-6}
+tool & \multicolumn{1}{c|}{algorithm} & \multicolumn{1}{c|}{size}  & user & system & total  & \multicolumn{1}{c|}{speedup} & \multicolumn{1}{c|}{time (s)} & \multicolumn{1}{c|}{speedup}  \\ \hline
+Ellard & gzip &  & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
+Ellard & bzip2 & & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
 \hline
-ds-gzip-512k  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
-ds-gzip-64k   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
-ds-gzip-128k  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+DataSeries & gzip & 64KB   &  21.45    &  1.14     &  22.59   & 24.147x &   5.81   &  93.945x \\
+DataSeries & gzip & 128KB  &  23.30    &  1.19     &  24.49   & 22.268x &   6.30   &  86.604x \\
+DataSeries & gzip & 512KB  &  22.91    &  3.62     &  26.53   & 20.557x &   7.16   &  76.186x \\
 \hline
-ds-bzip2-16M  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
+DataSeries & bzip2 &16MB  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
 \hline
-ds-lzo-64k  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
-ds-lzo-128k &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
-ds-lzo-512k &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
+DataSeries & lzo & 64KB  &  18.71    &  1.14     &  19.85   & 27.472x &   5.10   & 106.897x \\
+DataSeries & lzo &128KB &  21.15    &  1.10     &  22.25   & 24.514x &   5.74   &  95.022x \\
+DataSeries & lzo &512KB &  24.07    &  4.07     &  28.14   & 19.382x &   7.40   &  73.762x \\ \hline
 \end{tabular}
 
 \caption{
-Summary of performance results for the two analysis programs
-operating on a variety of input files.  The analysis was run over the
-anon-home04-011118-* files.  For the ellard {\tt nfsscan} program
-the text files were compressed with either gzip or bz2.  For the
-DataSeries {\tt ellardanalysis} program, the DataSeries files were
-compressed with either gzip, bzip2, or lzo, and used various extent sizes
-as specified.  CPU and wall time are both relative to ellard-gzip.
-}
+Detailed performance comparison for Ellard and DataSeries analysis programs.}
+
 
 \label{tab:summary}
 \end{table*}
 
 
-\fix{Jeff said ``What huh'' next to the beginning of this; dunno what to do about that.}
-Table~\ref{tab:summary} presents the summary results, showing the
-significant speedup and reduction in CPU time that can be achieved by
-using DataSeries.  The different sizes specified after the compression
-algorithm for the DataSeries rows are the extent sizes. 
-For example, ds-gz-512k corresponds to DataSeries with gzip
-compression and a 512 KB extent size.
-The substantial increase in system time for dealing
-with large extents for bzip2 is a result of glibc's use of mmap/munmap
+%\fix{Jeff said ``What huh'' next to the beginning of this; dunno what to do about that.}
+
+Table~\ref{tab:summary} presents our experimental results, which
+show the
+significant speedup and reduction in CPU time 
+%that can be 
+achieved 
+using DataSeries.  
+%The different sizes specified after the compression
+%algorithm for the DataSeries rows are the extent sizes. 
+%For example, ds-gz-512k corresponds to DataSeries with gzip
+%compression and a 512 KB extent size.
+Table~\ref{tab:summary} provides several interestin observations.
+For example, the substantial increase in system time 
+%for dealing
+for bzip2 with large extents is a result of glibc's use of mmap/munmap
 for large allocations.  Every extent results in a separate pair of
 mmap/munmap calls to the kernel, hence a substantial amount of page
 zeroing in the kernel, and hence a large increase in the system time 
 used during the analysis run (e.g., 11.82s vs 1.14s of system time for 
-bz2-16M vs lzo-64k).
+bz2 with 16MB extents versus lzo with 64KB extents).
 
 \subsection{Other results}\label{sec:otherresults}
 
