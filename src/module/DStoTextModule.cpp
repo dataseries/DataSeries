@@ -24,7 +24,8 @@ DStoTextModule::DStoTextModule(DataSeriesModule &_source,
       source(_source), stream_text_dest(&text_dest),
       text_dest(NULL), print_index(true),
       print_extent_type(true), print_extent_fieldnames(true), 
-      csvEnabled(false), separator(" ")
+      csvEnabled(false), separator(" "), 
+      header_only_once(false), header_printed(false)
 {
 }
 
@@ -142,6 +143,12 @@ DStoTextModule::enableCSV(void)
     print_extent_type = false;
 }
 
+void 
+DStoTextModule::setHeaderOnlyOnce()
+{
+    header_only_once = true;
+}
+
 void
 DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
 {
@@ -204,6 +211,9 @@ DStoTextModule::PerTypeState::~PerTypeState()
 void
 DStoTextModule::getExtentPrintHeaders(PerTypeState &state) 
 {
+    if (header_only_once && header_printed) return;
+    header_printed = true;
+
     const string &type_name = state.series.type->name;
     if (print_extent_type) {
 	if (text_dest == NULL) {
