@@ -365,10 +365,12 @@ sub setup_dest_dir {
 
     my $destdir = $this->{dest};
     die "??" unless defined $destdir;
-    $destdir =~ s!/[^/]+$!!o;
-    eval { mkpath($destdir); };
-    die "Unable to create $destdir: $@" 
-	unless -d $destdir;
+    if ($destdir =~ m!/!o) { # only mkpath if we have a path at all.
+	$destdir =~ s!/[^/]+$!!o;
+	eval { mkpath($destdir); };
+	die "Unable to create $destdir: $@" 
+	    unless -d $destdir;
+    }
 }    
 
 sub rebuild_thing_do {
@@ -520,5 +522,13 @@ sub rebuild_thing_message {
     print "Should rebuild $this->{dest} from $sources\n";
 }
      
+sub rebuild_thing_fail {
+    my($this) = @_;
+
+    my $nsources = @{$this->{src}};
+    my $sources = "$this->{src}->[0] .. $this->{src}->[$nsources-1]";
+    print "Rebuilding $this->{dest}-new from $sources failed: $!";
+}
+
 1;
 
