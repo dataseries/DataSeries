@@ -277,6 +277,7 @@ void Int64TimeField::setUnitsEpoch(const std::string &units,
 }
 
 static string str_unix("unix");
+static string str_unknown("unknown");
 static string str_tfrac_seconds("2^-32 seconds");
 static string str_nanoseconds("nanoseconds");
 static string str_microseconds("microseconds");
@@ -290,7 +291,7 @@ Int64TimeField::convertUnitsEpoch(const std::string &units,
     if (epoch != str_unix && unknown_return_ok) {
 	return Unknown;
     }
-    INVARIANT(epoch == str_unix,
+    INVARIANT(epoch == str_unix || epoch == str_unknown,
 	      format("only handle unix epoch, not '%s' for field %s")
 	      % epoch % field_name);
     if (units == str_tfrac_seconds) {

@@ -68,9 +68,9 @@ const std::string srt_ioflags(
 
 
 const std::string srt_timefields(
-  "  <field type=\"int64\" name=\"enter_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" />\n"
-  "  <field type=\"int64\" name=\"leave_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
-  "  <field type=\"int64\" name=\"return_to_driver\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"enter_driver\" units=\"2^-32 seconds\" epoch=\"unknown\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" />\n"
+  "  <field type=\"int64\" name=\"leave_driver\" units=\"2^-32 seconds\" epoch=\"unknown\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
+  "  <field type=\"int64\" name=\"return_to_driver\" units=\"2^-32 seconds\" epoch=\"unknown\" pack_relative=\"enter_driver\" print_format=\"sec.nsec\" print_offset=\"relativeto:enter_driver\" />\n"
   );
 
 
@@ -119,7 +119,7 @@ const std::string srt_v7fields(
   "  <field type=\"int32\" name=\"thread_id\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"queue_length\"/>\n"
   "  <field type=\"int32\" name=\"pid\"/>\n"
-  "  <field type=\"int32\" name=\"logical_volume_number\"/>\n"
+  "  <field type=\"int32\" name=\"logical_volume_number\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int64\" name=\"disk_offset\" pack_relative=\"disk_offset\"/>\n"
   "  <field type=\"int64\" name=\"lv_offset\" pack_relative=\"lv_offset\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"byte\" name=\"buffertype\"/>\n"
@@ -149,7 +149,7 @@ main(int argc, char *argv[])
     */
     AssertAlways(argc == 3 || argc == 4,
 		 ("Usage: %s in-file ds-filename [minor_version]'- allowed for stdin/stdout'\n",
-		  argv[0],argv[0]));
+		  argv[0]));
     /*
     std::string in_name(argv[2]);
     */
@@ -327,7 +327,13 @@ main(int argc, char *argv[])
     std::string srttype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::HP-UX";
     srttype_xml.append("\" version=\"");
     srttype_xml.append(trace_version_string);
-    srttype_xml.append("\" >\n");
+    srttype_xml.append("\" ");
+    if (trace_minor < 7) {
+	srttype_xml.append("comment=\"Time fields have an unknown epoch somewhere close to the first IO of each trace file, and have microsecond precision.\" ");
+    } else {
+	srttype_xml.append("comment=\"Time fields in this directory share a single unknown epoch some time prior to the start of the first trace file in this directory and have precision equal to the cycle counter of the source machine, that is to say 1/440,000,000th of a second.  Different directories may share the same epoch if tracing was restarted without rebooting the machine (and zeroing the cycle counter).\" ");
+    }
+    srttype_xml.append(">\n");
     srttype_xml.append(srt_timefields);
     printf("trace_minor %d\n", trace_minor);
     if (trace_minor < 7) {
@@ -354,6 +360,10 @@ main(int argc, char *argv[])
     } else if (trace_minor == 7) {
 	printf("Adding fields for version 7\n");
 	srttype_xml.append(srt_v7fields);
+    } else if (trace_minor == 8) {
+	printf("Adding fields for version 7\n");
+	srttype_xml.append(srt_v7fields);
+	printf("No new fields needed for version 8\n");
     } else {
 	AssertFatal(("missing support for srt trace version %d\n",trace_minor));
     }
@@ -430,7 +440,7 @@ main(int argc, char *argv[])
     }
     Int32Field *logical_volume_number = NULL;
     if (trace_minor >= 6) {
-	logical_volume_number = new Int32Field(srtseries,"logical_volume_number");
+	logical_volume_number = new Int32Field(srtseries,"logical_volume_number",Field::flag_nullable);
     }
     Int32Field *machine_id = NULL;
     Int32Field *thread_id = NULL;
@@ -502,7 +512,7 @@ main(int argc, char *argv[])
 	    enter_kernel.set(tr->tfrac_created());
 	    leave_driver.set(tr->tfrac_started());
 	    return_to_driver.set(tr->tfrac_finished());
-	    AssertAlways(tr->tfrac_created() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_started() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_finished() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0), ("even the cycle counter tfracs had to be less than 1 year in time.  This is a bad convert!\n"));
+	    AssertAlways(tr->tfrac_created() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_started() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_finished() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0), ("even the cycle counter tfracs had to be less than 1 year in time.  This is a bad convert:%lld %lld %lld!\n", tr->tfrac_created(), tr->tfrac_started(), tr->tfrac_finished()));
 	}
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
@@ -569,8 +579,12 @@ main(int argc, char *argv[])
 	    pid->set(tr->pid());
 	}
 	if (logical_volume_number) {
-	    AssertAlways(trace_minor < 7 || tr->noLvDevNo() == false,("?!"));
-	    logical_volume_number->set(tr->lvdevno());
+	    //AssertAlways(trace_minor < 7 || tr->noLvDevNo() == false,("?!"));
+	    if (tr->noLvDevNo()) {
+		logical_volume_number->setNull(true);
+	    } else {
+		logical_volume_number->set(tr->lvdevno());
+	    }
 	}
 	if (machine_id) {
 	    AssertAlways(tr->noMachineID() == false,("?!"));
