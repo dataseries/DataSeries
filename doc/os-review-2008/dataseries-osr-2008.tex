@@ -35,7 +35,7 @@ Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
 \keywords{data format, compression, performance}
 
 \begin{abstract}
-\textit{Structure serial data} is used in many scientific fields;
+\textit{Structured serial data} is used in many scientific fields;
 such data sets consist of a series of records, and are typically
 written once, read many times, chronologically ordered, and read
 sequentially.
@@ -212,10 +212,11 @@ versions of an in-memory data structure.  As such, they usually
 achieve storage 
 %efficiency 
 and access efficiency, 
-but fail to achieve
+but fail to a\-chieve
 flexibility, self-describing, usability, and integrity.
 However, as we
-will show in the results, unless the authors are careful they can also
+show in Section~\ref{sec:efficiency}, 
+unless the authors are careful they can also
 fail to achieve access efficiency.
 
 Text formats such as Column Separated Value (CSV) can
@@ -232,7 +233,7 @@ for the storage efficiency.
 %measure the file sizes, and potentially with Tfrac text files,
 %although I suspect people would use sec.usec in a block I/O trace}
 
-Relational databases achieve properties flexibility, self-describing,
+Relational databases achieve properties flexibility, self-de\-scrib\-ing,
 usability, and integrity. RDBMS's were designed to handle updates, so
 do very limited compression drastically hurting their storage
 efficiency.  Our
@@ -266,7 +267,7 @@ database table.
 \subsection{Data format}
 
 A single DataSeries file comprises one or more extents
-(potentially with different extent-types), plus a header and
+(potentially with different extent-types), a header and
 extent-type extent at the beginning of the file, and an index extent
 and trailer at the end of the file. The header on a DataSeries file 
 contains the DataSeries
@@ -354,7 +355,7 @@ a specific scale factor for the values stored.
 
 \item \textbf{relative packing}: specify that a given field be packed
 relative to another, using delta encoding. This option is also useful
-for timestamps and index values that may be large, but are only small
+for timestamps and index values that may be large, but are small
 relative to each other. This enables fewer bits to be used to store a
 given value.
 
@@ -382,7 +383,7 @@ detect the version number and adapt appropriately.
 One addition we did try, and later rejected, was that of extending a
 double fields precision by allowing the specification of a base value.
 This was introduced when we realized that storing microsecond precision
-time values, using the unix epoch (00:00:00 UTC on January 1, 1970),
+time values, using the UNIX epoch (00:00:00 UTC on January 1, 1970),
 was not possible with a single double. We added an option to
 specify a base value for the double fields, and then stored the actual
 value relative to that base value.
@@ -399,7 +400,7 @@ time values.  The units are chosen based on the original precision,
 e.g., nanoseconds for NFS attribute values, or microseconds for pcap
 trace files.  We then use a 64-bit integer to store the time value,
 and have a special field that can translate in and out of the raw
-units from input formats such as a double, or a second, nanosecond
+units from input formats such as a double, or a (second, nanosecond)
 pair.  Analysis are written to operate over the ``raw'' time format,
 and then they use the field to convert to more normal formats for
 printing.  If the analysis needs to calculate windows, it can convert
@@ -416,7 +417,7 @@ names.
 If there is no natural unit for a set of traces, for example because
 they have cycle counter times, then we recommend units of $2^{-32}$
 seconds.  This choice allows for the maximum precision possible when
-providing the same range as a unix timevalue since the unix timevalue
+providing the same range as a UNIX timevalue since the UNIX timevalue
 uses 32 bits to represent the seconds.  We expect at some point to
 need to move to a 128 bit fixed or floating point representation to
 deal with the continually increasing range of times for trace data and
@@ -547,7 +548,8 @@ analyses. \fix{need to get current performance numbers}
 
 \subsection{Examining storage and access efficiency}\label{sec:efficiency}
 
-We have performed extensive experiments on the effect of compression
+We have performed extensive experiments on the effect 
+of compression
 on the performance of analysis~\cite{DSTechnicalReportSnapshot}.  We
 summarize the results on storage efficiency below:
 
@@ -562,9 +564,9 @@ gzip~\cite{GZIP} compression
 as gzip occasionally gets better compression that
 bzip2.
 
-\item For analysis with sufficient disk bandwidth, lzo~\cite{LZO} with
-small extents (96-128KB) gets the maximum performance.  The size of
-the extents is somewhat below the L2 cache size as there needs to be
+\item For analyses with sufficient disk bandwidth, lzo~\cite{LZO} with
+small extents (96-128KB) gets the maximum performance.  The optimal
+extent size is somewhat below the L2 cache size as there needs to be
 sufficient cache space to hold the entire uncompressed extent, some of
 the compressed data while it is uncompressed, and any additional
 program state.
@@ -603,11 +605,11 @@ is more difficult to measure.  Our most
 extensive analysis of this occurred using the 1998 World cup
 traces~\cite{ita-wcweb98}.  These traces came with a sample analysis
 program that calculated operations/server, minimum and maximum object
-ids, and other simple statistics.  Since the raw format of the data
+IDs, and other simple statistics.  Since the raw format of the data
 was a binary structure, we expected that the DataSeries version would
 have a faster wall clock time (because of parallel decompression), but
-a slower cpu time.  We were surprised to learn that we actually used
-less cpu time.  The reason 
+a slower CPU time.  We were surprised to learn that we actually used
+less CPU time.  The reason 
 %turned out to be 
 was a combination of fread
 inefficiency when used one record at a time, and a slow byte-swap
@@ -639,19 +641,20 @@ implemented special cases of the fields to work around the compiler
 difficulties, and found that templated fields were 2\% slower than the
 special case fields, the basic fields were another 1\% slower, and the
 general fields were yet another 1\% slower.  The 
-%relatively 
 minor
 performance differences
-% between the performance 
-was because each field was used
+were because each field was used
 exactly once, so most of the cost was in the memory access to the
 field, which was usually not in cache as a different thread performed
 decompression.  Conversely, the fully general program was
 substantially slower (20\%) as it determines the expression at
 runtime, and is capable of grouping on any field type while the
-specific case programs can only group by 32-bit integer fields.  We
+specific case programs can only group by 32-bit integer fields.  
+
+We
 expect that if we added prefetching code to the row analysis module we
-would see a larger difference in the performance as we measured a
+would see a larger difference in the performance. 
+We measured a
 roughly 10x difference in access time through the basic and the
 special case fields when using a program that repeatedly accessed the
 same field and just accumulated the sum.  This is likely because of
@@ -671,8 +674,8 @@ traces used by Ellard \textit{et al.}~\cite{ellard03} into DataSeries.
 The ``Ellard traces''
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
-set of key-value pairs, and finally some debugging information.  As
-part of their tools, there is also a scanning program which reads the
+set of key-value pairs, and finally some debugging information.  
+Their tools include a scanning program which reads the
 trace files and outputs summary information for a trace.
 
 Our evaluation consists of two parts.
@@ -724,7 +727,8 @@ slightly larger (1.14x) data files.  This also illustrates how
 DataSeries can be optimized for a given purpose (e.g., greater
 compression for archival storage versus faster decompression for more
 efficient analysis). 
-The slowest speedup with our tool occurred with the bzip2 compression
+
+The least speedup with our tool occurred with the bzip2 compression
 algorithm and large extent size (row 9).
 Although this configuration was still 20x faster than the Ellard tool,
 it is noticeably slower than our other configurations.  The substantial
@@ -868,7 +872,7 @@ strings.
 
 Parallel compression and decompression improves performance
 dramatically on multicore machines as shown by the 4x lower wall clock
-time compared to cpu time on a 4 core machine in the ellard experiments.
+time compared to CPU time on a 4 core machine in the ellard experiments.
 
 Bulk processing of extents amortizes compression and decompression
 costs over a fixed configurable amount of space.
@@ -890,7 +894,7 @@ representation now.
 field base value: applicable only to double fields,
 this was used to gain precision for double values. This extra degree
 of flexibility was introduced when we realized that storing nanosecond
-precision time values, using the unix epoch (00:00:00 UTC on January
+precision time values, using the UNIX epoch (00:00:00 UTC on January
 1, 1970), was not possible with a single double. Using this option, it
 is possible to specific a base value that indicates the time the
 events in the data file start, and the value stored indicates the time
@@ -920,11 +924,12 @@ dealing with very large quantities of structured serial data,
 %with a particular workload,
 there are significant performance, efficiency and reliability gains to be made
 by giving up a relatively small amount of generality and flexibility. 
-
+%
 Overall, we believe that DataSeries should be considered for use in
-any application that processes structured serial data. DataSeries is
-open source, and available for download from
-http://tesla.hpl.hp.com/opensource/.
+any application that processes structured serial data. 
+%DataSeries is
+%open source, and available for download from
+%http://tesla.hpl.hp.com/opensource/.
 
 \bibliographystyle{abbrv}
 {\small
