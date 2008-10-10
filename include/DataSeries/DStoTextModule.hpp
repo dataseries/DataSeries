@@ -58,6 +58,8 @@ public:
 
     void enableCSV();
     void setSeparator(const std::string &s);    
+    
+    void setHeaderOnlyOnce();
 
     // need to keep around state because relative printing should be
     // done relative to the first row of the first extent, not the
@@ -104,6 +106,8 @@ private:
     bool print_index, print_extent_type, print_extent_fieldnames;
     bool csvEnabled;
     std::string separator; 
+    bool header_only_once;
+    bool header_printed;
 };
 
 #endif

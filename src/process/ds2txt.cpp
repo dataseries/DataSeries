@@ -60,6 +60,8 @@ main(int argc, char *argv[])
 	    }
 	} else if (strncmp(argv[1],"--header=",9)==0) {
 	    toText.setHeader(argv[1] + 9);
+	} else if (strncmp(argv[1],"--header-only-once",18)==0) {
+	    toText.setHeaderOnlyOnce();
 	} else if (strncmp(argv[1],"--fields=",9)==0) {
 	    toText.setFields(argv[1] + 9);
 	} else if (strcmp(argv[1],"--skip-index")==0) {
@@ -104,7 +106,8 @@ main(int argc, char *argv[])
     }
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
-	      format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
+	      format("Usage: %s [--csv] [--separator=...]\n"
+		     "  [--header=...] [--header-only-once]\n"
 		     "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
 		     "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
 // put in the <printSpec ... /> version into man page
