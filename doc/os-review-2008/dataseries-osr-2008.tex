@@ -11,7 +11,8 @@
 \newcommand{\DataSeries}{DataSeries}
 \newcommand{\DS}{DS}
 
-\title{DataSeries: an efficient, flexible data format for structured serial data}
+%\title{DataSeries: an efficient, flexible data format for structured serial data}
+\title{DataSeries: An Efficient, Flexible Data Format for Structured Serial Data}
 % Pretend we have one author, minimizes the space we waste on that.
 \numberofauthors{1} 
 \author{
@@ -101,11 +102,15 @@ structured serial data:
 
 \item \textbf{Storage efficiency}: the data should be stored in as few
 bytes as possible. There are several driving factors behind this
-requirement. Firstly, the amount of data stored can be large (we have
+requirement. 
+%Firstly, the 
+The amount of data stored can be large (we have
 I/O traces comprising billions of records), and despite rapidly
 decreasing storage prices, the cost to store data can still be
 considerable, particularly when the data must be kept for long periods
-of time. Secondly, we have learned that one of the primary factors
+of time. 
+% Secondly, we 
+We have learned that one of the primary factors
 behind analysis efficiency is the speed at which data can be
 retrieved. Regardless of the storage technology used, more highly
 compressed data can substantially speed access times.
@@ -114,7 +119,7 @@ compressed data can substantially speed access times.
 trace data, whether reading or writing, should make efficient use of
 CPU and memory resources. From experience and experimental analysis,
 we have learned that the second major factor determining analysis
-efficiency is the CPU overheads of interpreting data once it has been
+efficiency is the CPU overhead of interpreting data once it has been
 read off disk.
 
 \item \textbf{Flexibility}: adding additional fields should not affect
@@ -127,8 +132,10 @@ in a single file.
 Experience 
 %has taught 
 tells us that formats that
-are not flexible lead to severe maintenance issues for both the format
-interpretation code and analysis systems.
+are not flexible lead to severe maintenance issues for 
+%both 
+the format
+interpretation code and for analysis systems.
 
 \item \textbf{Self-describing}: the data set should contain the
 metadata that describes the data. This is another experience-driven
@@ -160,7 +167,7 @@ of very large data sets), and the design of DataSeries, we have chosen
 to prioritize efficiency over many of the other properties.
 
 Although numerous tracing and measurement systems have been developed
-over the last 20-30 years, we are not aware of any that meet all of
+over the last 20--30 years, we are not aware of any that meet all of
 these requirements. We analyze some of these in our description of
 related work (Section~\ref{sec:related}).
 
@@ -219,13 +226,13 @@ show in Section~\ref{sec:efficiency},
 unless the authors are careful they can also
 fail to achieve access efficiency.
 
-Text formats such as Column Separated Value (CSV) can
+Text formats such as Comma-Separated Value (CSV) can
 %often (but far from always)
 achieve flexibility and self-describing. XML achieves flexibility,
 self-describing, usability, and mostly integrity.  However, they fail
 to achieve storage efficiency, and can fail access efficiency by
-multiple orders of magnitude.  Even very tuned CSV implementations can
-only get to within 2-7x the access-efficiency of DataSeries, and 4-7x
+multiple orders of magnitude.  Even very-tuned CSV implementations can
+only get to within 2--7x the access-efficiency of DataSeries, and 4--7x
 for the storage efficiency.
 % (See the DataSeries technical 
 %report~\cite{DSTechnicalReportSnapshot} for these results.)
@@ -241,7 +248,7 @@ results show $>$10x improvement on storage efficiency for DataSeries
 over MySQL.
 %{\bf TODO: check the exact sizes, should be around there.}
 Similarly, the generality of SQL can hurt it.  Even for fairly simple
-queries running entirely on in-memory data, DataSeries runs 2-7x
+queries running entirely on in-memory data, DataSeries runs 2--7x
 faster than MySQL. 
 %{\bf TODO: re-do these numbers with parallel
 %decompression, etc.}  
@@ -306,17 +313,17 @@ the final extent sizes \textit{a priori},
 so space 
 for the index cannot be allocated until after the extents have been written.
 
-Each extent consists of a header, followed by the fixed sized fields
-and separately the variable sized data.  A reference to the variable
-sized data from the fixed size fields allows for variable sized
-fields.  This separation allows for direct access to fixed sized
+Each extent consists of a header, followed by the fixed-sized fields
+and separately the variable-sized data.  A reference to the 
+variable-sized data from the fixed-size fields allows for variable-sized
+fields.  This separation allows for direct access to fixed-sized
 fields since they will be at a known offset, and one indirection to
-get at the variable sized data.  Both fixed and variable sized data
+get at the variable-sized data.  Both fixed- and variable-sized data
 may be compressed, using any one of a number of standard compression
 algorithms~\cite{BZIP,GZIP,LZF,LZO}.  The extent header contains
 metadata about the data in the extent, such as the compressed sizes of
 the fixed and variable data, the number of records in the extent, the
-uncompressed size of the variable length data, the compression mode,
+uncompressed size of the variable-length data, the compression mode,
 the extent-type of the extent, and checksums of the extent before and
 after compression to guard against hardware and software errors.
 Programs usually disable checksum validation during extent reading to
@@ -349,8 +356,9 @@ generating a hidden boolean column that determines if the value is null.
 
 \item \textbf{double scale}: often, the full precision of double
 values is not needed. In this case, it is possible to get
-significantly more compression by zeroing unimportant lower
-order bits by scaling and rounding. This option lets the user specify
+significantly more compression by zeroing unimportant 
+lower-order bits 
+by scaling and rounding. This option lets the user specify
 a specific scale factor for the values stored.
 
 \item \textbf{relative packing}: specify that a given field be packed
@@ -359,8 +367,8 @@ for timestamps and index values that may be large, but are small
 relative to each other. This enables fewer bits to be used to store a
 given value.
 
-\item \textbf{unique packing}: ensures that every string (arbitrary
-length binary data) field is stored only once. If a 
+\item \textbf{unique packing}: ensures that every string 
+(arbitrary-length binary data) field is stored only once. If a 
 %given 
 data set
 contains many repeated values, this option can significantly increase
@@ -380,8 +388,10 @@ detect the version number and adapt appropriately.
 
 \end{itemize}
 
-One addition we did try, and later rejected, was that of extending a
-double fields precision by allowing the specification of a base value.
+One addition we tried, and later rejected, was that of extending a
+double 
+%fields 
+precision by allowing the specification of a base value.
 This was introduced when we realized that storing microsecond precision
 time values, using the UNIX epoch (00:00:00 UTC on January 1, 1970),
 was not possible with a single double. We added an option to
@@ -401,7 +411,7 @@ e.g., nanoseconds for NFS attribute values, or microseconds for pcap
 trace files.  We then use a 64-bit integer to store the time value,
 and have a special field that can translate in and out of the raw
 units from input formats such as a double, or a (second, nanosecond)
-pair.  Analysis are written to operate over the ``raw'' time format,
+pair.  Analyses are written to operate over the ``raw'' time format,
 and then they use the field to convert to more normal formats for
 printing.  If the analysis needs to calculate windows, it can convert
 a normal format to a ``raw'' format.  For example to calculate mean
@@ -423,8 +433,8 @@ need to move to a 128 bit fixed or floating point representation to
 deal with the continually increasing range of times for trace data and
 the increasing precision of the clocks measuring the times.  The
 maximum required bits would be around 200 since that would be
-sufficient bits to represent all times for the age of the universe
-using the Plank time granularity.
+sufficient bits to represent all times for the age of the universe.
+%using the Plank time granularity.
 
 
 \subsection{Programming model}
@@ -442,14 +452,16 @@ There are three key concepts in the C++ API provided by
 DataSeries. The first is that of an \textit{ExtentSeries}, which is an
 iterator over the rows in at least one extent.  Iterators in
 dataseries are similar to iterators in relational
-databases~\cite{graefeQueryProcessing93}, but they typically operate
+Databases~\cite{graefeQueryProcessing93}, but they typically operate
 in bulk over an entire extent in a single pass to improve access
-efficiency.  Iterators in dataseries are also not required to operate
+efficiency.  Iterators 
+%in Dataseries 
+are also not required to operate
 over extents of identical type.  An iterator specifies its
 compatibility for types.  Normally compatibility is exact type
 compatibility, but it can also be loose, which means that the types
 are compatible if all the fields can be found.  The second key concept
-is that of a \textit{module}, which accepts a series of extents
+is that of a \textit{module}, which accepts a series of extents,
 processes them and passes them to downstream modules.  Similar to
 River~\cite{river99}, modules can have multiple inputs if they are
 joining together two different series.  The ability to add
@@ -487,10 +499,11 @@ The DataSeries source distribution contains numerous other built-in
 general modules, for example, ones that convert extents to text, and
 ones that perform simple versions of the SQL select/group-by
 statement.  We also have converters from various input formats (pcap,
-log file, SRT~\cite{SRT}) into a DataSeries representation.  Lastly,
-there are type specific analysis for converted NFS, LSF batch
+log file, SRT~\cite{SRT}) into a DataSeries representation. 
+% Lastly, there 
+There are type-specific analyses for converted NFS, LSF batch
 jobs~\cite{PlatformLSF} and logical/physical disk volume traces.  More
-detailed information on these modules and programming examples are
+detailed information on these modules and programming examples is
 available 
 % in the DataSeries technicalreport
 in~\cite{DSTechnicalReportSnapshot} and the source distribution.
@@ -529,8 +542,11 @@ busy enterprise file servers.
 The primary extent type 
 in this data is the common records which store information about each
 of the 200 billion request and reply messages. We have secondary tables that
-store information about each packet captured, operations that included
-file attributes, read and write requests and mount requests.  The total dataset
+store information about each packet captured, as well as 
+information on NFS operations 
+%that included file attributes, 
+like read and write requests and mount requests.  
+The total dataset
 is about 5TB.
 
 As a demonstration of the real-life performance of
@@ -556,16 +572,16 @@ summarize the results on storage efficiency below:
 \begin{itemize}
 
 \item For archival storage, or preparation for network distribution,
-bzip2~\cite{BZIP} compression with large extents (16-64MB) makes the
+bzip2~\cite{BZIP} compression with large extents (16--64MB) makes the
 most sense.  Keeping the size at most 64MB allows for some parallelism
 during compression, and later decompression, but extracts almost all
 of the potential compression available.  It may be useful to leave on
 gzip~\cite{GZIP} compression 
-as gzip occasionally gets better compression that
+as gzip occasionally gets better compression than
 bzip2.
 
 \item For analyses with sufficient disk bandwidth, lzo~\cite{LZO} with
-small extents (96-128KB) gets the maximum performance.  The optimal
+small extents (96--128KB) gets the maximum performance.  The optimal
 extent size is somewhat below the L2 cache size as there needs to be
 sufficient cache space to hold the entire uncompressed extent, some of
 the compressed data while it is uncompressed, and any additional
@@ -574,17 +590,17 @@ program state.
 \item With more constrained disk bandwidth, gzip
 %~\cite{GZIP} 
 with
-small extents is better than lzo as it trades a 10-30\% reduction in
-decompression rate for a 10-40\% improvement in compression; if disk
+small extents is better than lzo as it trades a 10--30\% reduction in
+decompression rate for a 10--40\% improvement in compression; if disk
 bandwidth is a 
 %limiter 
 bottleneck then the improved compression is more valuable.
-The additional compression from longer extents is minimal, and bzip2
+The additional compression from longer extents is minimal, and bzip2,
 while compressing much faster, decompresses so much slower that only a
 highly imbalanced system would benefit from bzip2 decompression.
 
 \item For online compression of data, lzf~\cite{LZF} with small to
-moderate size extents is 
+moderate-sized extents is 
 %the only choice.  Lzf compresses at roughly
 best, as it compresses at roughly 100MB/s (about 10x
 %100MB/s which is about 10$\times$ 
@@ -594,15 +610,15 @@ faster than gzip at level 1).
 %compression.  Otherwise staying within the L2 cache remains a
 %priority.
 If the data has many unique strings, the unique packing option
-is very fast and improves compression when combined with moderate
-sized extents.
+is very fast and improves compression when combined with 
+moderate-sized extents.
 Otherwise, staying within the L2 cache remains a priority.
 \end{itemize}
 
 Access efficiency 
 %turns out to be 
 is more difficult to measure.  Our most
-extensive analysis of this occurred using the 1998 World cup
+extensive analysis of this occurred using the 1998 World Cup
 traces~\cite{ita-wcweb98}.  These traces came with a sample analysis
 program that calculated operations/server, minimum and maximum object
 IDs, and other simple statistics.  Since the raw format of the data
@@ -618,8 +634,9 @@ doing bulk processing and the latter by switching the ordering to the
 native order when a file is written or repacked.  Further
 investigation indicated that DataSeries was also executing unnecessary
 instructions because our field accessors supported nullable fields,
-but this happened to be unused in this format.  We added C++ template
-based fields, but this did not reduce the penalty for access to the
+but this happened to be unused in this format.  We added C++ 
+template-based fields, 
+but this did not reduce the penalty for access to the
 data because the g++-3.3 compiler used with RHEL4 is fairly poor at
 optimizing templated code.  However, with the g++-4.3 compiler, the
 penalty is removed and the analysis code uses the same number of 
@@ -635,9 +652,9 @@ we examined the performance difference for fields
 that handle nullable and non-nullable data. 
 %for the HP-UX block I/O traces.  
 We
-compared the same analysis using special case fields, templated
-fields, basic fields, general fields, and general purpose program.  We
-implemented special cases of the fields to work around the compiler
+compared the same analysis using special-case fields, templated
+fields, basic fields, general fields, and general-purpose program.  We
+implemented special-cases of the fields to work around the compiler
 difficulties, and found that templated fields were 2\% slower than the
 special case fields, the basic fields were another 1\% slower, and the
 general fields were yet another 1\% slower.  The 
@@ -648,18 +665,18 @@ exactly once, so most of the cost was in the memory access to the
 field, which was usually not in cache as a different thread performed
 decompression.  Conversely, the fully general program was
 substantially slower (20\%) as it determines the expression at
-runtime, and is capable of grouping on any field type while the
-specific case programs can only group by 32-bit integer fields.  
+runtime, and is capable of grouping on any field type, while the
+specific-case programs can only group by 32-bit integer fields.  
 
 We
 expect that if we added prefetching code to the row analysis module we
 would see a larger difference in the performance. 
 We measured a
 roughly 10x difference in access time through the basic and the
-special case fields when using a program that repeatedly accessed the
+special-case fields when using a program that repeatedly accessed the
 same field and just accumulated the sum.  This is likely because of
 the extra branch instructions interfering with the CPU's ability to
-fully pipeline the code with the basic fields while the special case
+fully pipeline the code with the basic fields while the special-case
 fields reduce the access down to a single instruction which can be
 combined with the add instruction.  The general fields on in cache
 data are about 2.5x slower than the basic fields, showing the overhead
@@ -718,15 +735,15 @@ is described in~\cite{DSTechnicalReportSnapshot}).
 The first two rows of Table~\ref{tab:summary} show the performance
 of the Ellard tool.  The choice of compression algorithm (gzip or bzip2)
 has only a minor effect in this case.
-With gzip, ur analysis program ran about 76x faster on those data files 
+With gzip, our analysis program ran about 76x faster on those data files 
 (row 5).
 We also found that
 if we utilized lzo compression, which decompresses more quickly than
 gzip, our analysis program ran about 107x faster (row 6), in exchange for
 slightly larger (1.14x) data files.  This also illustrates how
 DataSeries can be optimized for a given purpose (e.g., greater
-compression for archival storage versus faster decompression for more
-efficient analysis). 
+compression for archival storage versus faster decompression for 
+more-efficient analysis). 
 
 The least speedup with our tool occurred with the bzip2 compression
 algorithm and large extent size (row 9).
@@ -773,6 +790,8 @@ zeroing in the kernel, and hence a large increase in the system time.
 
 \begin{table*}
 \centering
+\caption{
+Detailed performance comparison for Ellard and DataSeries analysis programs.}
 \begin{tabular}{|r||c|r|r|r|r|r|r|r|r|} \hline
  &  & \multicolumn{1}{c|}{compression} & \multicolumn{1}{c|}{extent}  & \multicolumn{3}{c|}{mean CPU time (s)}     & \multicolumn{1}{c|}{CPU}     & \multicolumn{1}{c|}{mean wall}    & \multicolumn{1}{c|}{wall time} \\ \cline{4-6}
 row & tool & \multicolumn{1}{c|}{algorithm} & \multicolumn{1}{c|}{size}  & user & system & total  & \multicolumn{1}{c|}{speedup} & \multicolumn{1}{c|}{time (s)} & \multicolumn{1}{c|}{speedup}  \\ \hline
@@ -789,10 +808,6 @@ row & tool & \multicolumn{1}{c|}{algorithm} & \multicolumn{1}{c|}{size}  & user 
 9 & DataSeries & bzip2 &16MB  &  94.38    & 11.82     & 106.20   &  5.136x &  27.66   &  19.732x \\
 \hline
 \end{tabular}
-
-\caption{
-Detailed performance comparison for Ellard and DataSeries analysis programs.}
-
 
 \label{tab:summary}
 \end{table*}
@@ -821,13 +836,13 @@ Detailed performance comparison for Ellard and DataSeries analysis programs.}
 \subsection{Other results}\label{sec:otherresults}
 
 We have performed a number of other experiments that demonstrate
-DataSeries' benefits. Due to space considerations, we will only
+DataSeries' benefits. Due to space considerations, we only
 describe them briefly. One study of data compression showed that for a
 relatively large disk I/O trace, DataSeries provides superior disk
 space utilization; stored in DataSeries, the trace consumed 1.9GB of
 disk space, but 14GB in CSV format and 8.5GB as a MySQL
 database. Using the same trace in a series of analyses showed that
-DataSeries delivers results 6-7x faster than both formats.
+DataSeries delivers results 6--7x faster than both formats.
 
 Our results and experience with DataSeries have also illustrated some
 of the tradeoffs between generality and performance. We have found
@@ -841,8 +856,8 @@ once), which can decrease the overall time taken by the same
 factor. This is especially effective when compared to the time taken
 in a more general solution (e.g., SQL queries) which cannot be combined
 in this manner. The primary tradeoff is the added complexity, effort
-and time and time involved in writing and using such type-specific
-accessors, which may not be worth while for one-shot analyses.
+and time involved in writing and using such type-specific
+accessors, which may not be worthwhile for one-shot analyses.
 
 % The lessons learned are scattered throughout the text, so this
 % section was removed. 
