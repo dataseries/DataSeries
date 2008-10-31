@@ -66,11 +66,11 @@ extremely useful for fault-finding, auditing and debugging purposes
 determine system reliability~\cite{ReliabilityRef, Schroeder07,
 Pinheiro07}. Trend analyses of performance information is a core
 operation of various management tools~\cite{MgmtRef}. Scientific and
-medical instrumentation can also generate large amounts of
+medical instrumentation can generate very large amounts of
 data~\cite{SciRef}, which also needs to be stored, filtered and
 analyzed.
 
-The data stored in each of these diverse uses is {\it structured
+The data stored in each of these diverse cases is {\it structured
 serial data}, which we define as a series of records, each record
 having a specified structure (i.e., containing the same set of
 variables or fields). Structured serial data has four defining characteristics:
@@ -135,7 +135,7 @@ are not flexible lead to severe maintenance issues for
 the format
 interpretation code and for analysis systems.
 
-\item \textbf{Self-describing}: the data set should contain the
+\item \textbf{Self-description}: the data set should contain the
 metadata that describes the data. This is another experience-driven
 requirement, as we have had problems in trying to interpret and use
 trace data from other organizations, and maintaining organizational
@@ -158,7 +158,7 @@ integrity checking.
 
 \end{enumerate}
 
-There are, inevitably, tradeoffs to be made in these requirements. For
+There are, inevitably, tradeoffs to be made in satisfying these properties. For
 instance, XML is an extremely flexible data format, but is not very
 efficient. In the course of our work (which tends towards the analysis
 of very large data sets), and the design of DataSeries, we have chosen
@@ -166,7 +166,7 @@ to prioritize efficiency over many of the other properties.
 
 Although numerous tracing and measurement systems have been developed
 over the last 20--30 years, we are not aware of any that meet all of
-these requirements. We analyze some of these in our description of
+these properties. We analyze some of these in our description of
 related work (Section~\ref{sec:related}).
 
 We provide four primary contributions in this paper.  First, we
@@ -187,7 +187,7 @@ argue that DataSeries should be considered for use by any application
 that needs to store large amounts of structured serial data. Indeed
 the Storage Networking Industry Association (SNIA) I/O traces tools
 and analysis (IOTTA) technical working group~\cite{iotta-website} has
-proposed DataSeries as the standard format for I/O trace data.
+proposed DataSeries as the basis for a standard I/O trace data format.
 % and is
 % currently specifying the semantics for I/O traces encoded using DataSeries.
 
@@ -218,7 +218,7 @@ achieve storage
 %efficiency 
 and access efficiency, 
 but fail to a\-chieve
-flexibility, self-describing, usability, and integrity.
+flexibility, self-description, usability, and integrity.
 However, as we
 show in Section~\ref{sec:efficiency}, 
 unless the authors are careful they can also
@@ -226,32 +226,32 @@ fail to achieve access efficiency.
 
 Text formats such as Comma-Separated Value (CSV) can
 %often (but far from always)
-achieve flexibility and self-describing. XML achieves flexibility,
-self-describing, usability, and mostly integrity.  However, they fail
-to achieve storage efficiency, and can fail access efficiency by
-multiple orders of magnitude.  Even very-tuned CSV implementations can
-only get to within 2--7x the access-efficiency of DataSeries, and 4--7x
-for the storage efficiency.
+achieve flexibility and self-description. XML achieves flexibility,
+self-description and usability.  However, they fail
+to achieve storage efficiency and integrity, and can fail access efficiency by
+multiple orders of magnitude.  A highly-tuned CSV implementation
+only got to within 2--7x the access-efficiency of DataSeries, and 4--7x
+the storage efficiency~\cite{DSTechnicalReportSnapshot}.
 % (See the DataSeries technical 
 %report~\cite{DSTechnicalReportSnapshot} for these results.)
 %{\bf TODO: need to re-do these experiments at least to
 %measure the file sizes, and potentially with Tfrac text files,
 %although I suspect people would use sec.usec in a block I/O trace}
 
-Relational databases achieve properties flexibility, self-de\-scrib\-ing,
+Relational databases achieve flexibility, self-description,
 usability, and integrity. RDBMS's were designed to handle updates, so
 do very limited compression drastically hurting their storage
 efficiency.  Our
 results show $>$10x improvement on storage efficiency for DataSeries
 over MySQL.
 %{\bf TODO: check the exact sizes, should be around there.}
-Similarly, the generality of SQL can hurt it.  Even for fairly simple
+Similarly, the generality of SQL can be detrimental.  Even for fairly simple
 queries running entirely on in-memory data, DataSeries runs 2--7x
 faster than MySQL. 
 %{\bf TODO: re-do these numbers with parallel
 %decompression, etc.}  
 Retrieving the data for a more complicated
-calculation on the client would further slow the relative performance.
+calculation on the client further slows the relative performance.
 
 \section{Design}\label{sec:design}
 
@@ -292,7 +292,7 @@ extent-types of all the other extents in the file. We chose to use XML
 as we saw no point in creating a new
 grammar 
 %for representing 
-to represent this information, it is flexible (for
+to represent this information, as it is flexible (for
 instance, it easily allows the addition of options describing
 fields) and allows embedded comments.
 %% and SQL create table
@@ -340,7 +340,7 @@ offset from that counter and a C++ cast operation.
 As we initially built DataSeries prototypes, we realized the need to
 add options that control various aspects of the field and extent
 descriptions in order to meet the storage and access efficiency and
-flexibility requirements.  While space precludes a full description
+flexibility properties.  While space precludes a full description
 (see~\cite{DSTechnicalReportSnapshot}), we describe some of the more
 significant below:
 
@@ -360,7 +360,7 @@ by scaling and rounding. This option lets the user specify
 a specific scale factor for the values stored.
 
 \item \textbf{relative packing}: specify that a given field be packed
-relative to another, using delta encoding. This option is also useful
+relative to another, using delta encoding. This option is useful
 for timestamps and index values that may be large, but are small
 relative to each other. This enables fewer bits to be used to store a
 given value.
@@ -399,7 +399,7 @@ was less useful than hoped for. It proved difficult and confusing for
 those developing analyses to deal with, particularly in the case where
 multiple files, each with different bases, were being used. Arithmetic
 on values of this type was complicated and inefficient. Ultimately, we
-deprecated this option, in favor of other time representations,
+deprecated this option in favor of other time representations,
 dependent on the domain. 
 
 We have now chosen to explicitly represent the units and the epoch for
@@ -413,7 +413,7 @@ and then they use the field to convert to more normal formats for
 printing.  If the analysis needs to calculate windows, it can convert
 a normal format to a ``raw'' format.  For example to calculate mean
 bytes per 30 second window, an analysis would first convert 30 seconds
-into the raw format, it would then accumulate values for that
+into the raw format, then accumulate values for that
 interval, output the mean and reset the statistic.  The use of units
 and epoch also allows us to print out time values in a nicer human
 readable form regardless of the input type.  To deal with older files
@@ -428,9 +428,9 @@ providing the same range as a UNIX timevalue since the UNIX timevalue
 uses 32 bits to represent the seconds.  We expect at some point to
 need to move to a 128 bit fixed or floating point representation to
 deal with the continually increasing range of times for trace data and
-the increasing precision of the clocks measuring the times.  The
-maximum required bits would be around 200 since that would be
-sufficient bits to represent all times for the age of the universe
+the increasing precision of the clocks measuring the times.  Theoretically,
+the maximum required bits would be around 200 since that would be
+sufficient to represent all times for the age of the universe
 using the Planck time granularity.
 
 
@@ -445,15 +445,15 @@ These functionalities meet all of the typical needs for
 users of structured serial data, and thus facilitate
 the usability (property 5) of DataSeries.
 
-There are three key concepts in the C++ API provided by
+There are two key concepts in the C++ API provided by
 DataSeries. The first is that of an \textit{ExtentSeries}, which is an
 iterator over the rows in at least one extent.  Iterators in
 DataSeries are similar to iterators in relational
-Databases~\cite{graefeQueryProcessing93}, but they typically operate
+databases~\cite{graefeQueryProcessing93}, but they typically operate
 in bulk over an entire extent in a single pass to improve access
 efficiency.  Iterators in DataSeries 
 are also not required to operate
-over extents of identical type.  An iterator specifies its
+over extents of identical type, instead an iterator specifies its
 compatibility for types.  Normally compatibility is exact type
 compatibility, but it can also be loose, which means that the types
 are compatible if all the fields can be found.  The second key concept
@@ -478,7 +478,7 @@ extent must not continue to access it. We are considering relaxing
 this constraint in the future to allow multiple modules to read-share
 a single extent at the same time so that we can increase the 
 %available
-parallelism for analysis without increasing the memory requirements.
+parallelism for analysis without increasing memory requirements.
 %Each module can iterate over the rows in
 %the extent by putting it into a series and using the series iterator
 %to select the row and the fields to access rows in that series.
@@ -492,8 +492,8 @@ compression, which is usually slow, but can also be important for
 simple analyses that run faster than a single core can decompress.
 
 The DataSeries source distribution contains numerous other built-in
-general modules, for example, ones that convert extents to text, and
-ones that perform simple versions of the SQL select/group-by
+general modules, for example, some that convert extents to text, and
+others that perform simple versions of the SQL select/group-by
 statement.  We also have converters from various input formats (pcap,
 log file, SRT~\cite{SRT}) into a DataSeries representation. 
 Last, there are type-specific analyses for converted NFS, LSF batch
@@ -555,13 +555,14 @@ processed 7.6 billion records (each record corresponds to an NFS
 transaction).  Using a 2003 model two-way 2.8 GHz Xeon server, the
 entire data set was processed in 11,263 wall clock seconds (about 3
 hours), or roughly 675,000 rows per second while performing a set of complex
-analyses. \fix{need to get current performance numbers}
+analyses. 
+%\fix{need to get current performance numbers}
 
 \subsection{Examining storage and access efficiency}\label{sec:efficiency}
 
 We have performed extensive experiments on the effect 
 of compression
-on the performance of analysis~\cite{DSTechnicalReportSnapshot}.  We
+on analysis performance~\cite{DSTechnicalReportSnapshot}.  We
 summarize the results on storage efficiency below:
 
 \begin{itemize}
@@ -642,7 +643,7 @@ This experience highlights the tradeoff between general and specific
 code.  
 %Above we saw the difference in performance that results from
 %having fields that handle nullable and non-nullable data.  
-Using the HP-UX block I/O traces,
+Using HP-UX block I/O traces,
 we examined the performance difference for fields
 that handle nullable and non-nullable data. 
 %for the HP-UX block I/O traces.  
@@ -683,12 +684,12 @@ of the additional virtual function call.
 In an effort to experiment with using DataSeries to represent and
 analyze traces generated by other people, we converted the NFS
 traces used by Ellard \textit{et al.}~\cite{ellard03} into DataSeries.  
-The ``Ellard traces''
+These ``Ellard traces''
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
 set of key-value pairs, and finally some debugging information.  
-Their tools include a scanning program which reads the
-trace files and outputs summary information for a trace.
+Tools included a scanning program which reads
+trace files and outputs summary information.
 
 Our evaluation consisted of two parts.
 %we wrote programs that
