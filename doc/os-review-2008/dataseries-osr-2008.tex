@@ -544,20 +544,38 @@ like read and write requests and mount requests.
 The total dataset
 is about 5TB.
 
-As a demonstration of the real-life performance of
-DataSeries, consider the following example.  Utilizing our NFS
-trace, we performed an analysis of the throughput
-%effects if servers were instead accessed across a WAN.
-% MFA: need to change above description of trace if we say servers
-effects if the server was instead accessed across a WAN.
-The analysis read in 45.5 GB of data (406 GB when uncompressed), and
-processed 7.6 billion records (each record corresponds to an NFS
-transaction).  Using a 2003 model two-way 2.8 GHz Xeon server, the
-entire data set was processed in 11,263 wall clock seconds (about 3
-hours), or roughly 675,000 rows per second while performing a set of complex
-analyses. 
+As a demonstration of the real-life performance of DataSeries,
+consider the following example.  Utilizing our NFS traces, we
+calculated a cube~\cite{gray97cube} over the common data in NFS
+operations.  We ran the analysis over datasets with 16-2,600 million
+rows.  Using a 2.4 GhZ 2-cpu 2-core machine, we found the analysis ran
+at 2.11 Mrows/s for user time, 1.77 Mrows/s for total CPU time, and
+3.32 Mrows/s for elapsed time.  Analysis over larger datasets got
+somewhat better (3.55 Mrows/s) wall clock time because the startup,
+shutdown overhead are more amortized and prefetching had more time to
+take effect.
 %\fix{need to get current performance numbers}
 
+% set                         Mrows  Mrows/user-s Mrows/cpu-s Mrows/wall-s
+% hostinfo.nfs-1.set-0.timed:  15.72   2.05 1.62 2.83
+% hostinfo.nfs-1.set-10.timed: 1645.35 2.24 1.95 4.01
+% hostinfo.nfs-1.set-11.timed: 362.97  2.18 1.84 3.71
+% hostinfo.nfs-1.set-12.timed: 1536.11 2.03 1.80 3.73
+% hostinfo.nfs-1.set-15.timed: 820.89  2.05 1.70 3.29
+% hostinfo.nfs-1.set-16.timed: 1848.10 2.10 1.82 3.38
+% hostinfo.nfs-1.set-19.timed: 2518.19 2.08 1.82 3.53
+% hostinfo.nfs-1.set-1.timed:  13.58   2.11 1.66 3.01
+% hostinfo.nfs-1.set-20.timed: 81.65   2.16 1.88 2.18
+% hostinfo.nfs-1.set-2.timed:  18.38   2.10 1.69 3.23
+% hostinfo.nfs-1.set-3.timed:  12.98   1.98 1.62 3.13
+% hostinfo.nfs-1.set-4.timed:  380.21  2.01 1.66 3.39
+% hostinfo.nfs-1.set-5.timed:  2602.73 2.10 1.69 3.21
+% hostinfo.nfs-1.set-8.timed:  964.49  2.23 1.91 3.72
+% hostinfo.nfs-1.set-9.timed:  596.35  2.22 1.83 3.49
+% mean                         -       2.11 1.77 3.32
+% mean, Mrows < 100            -       2.08 1.69 2.88
+% mean, Mrows >= 100           -       2.12 1.80 3.55
+% mean, Mrows >= 1000          -       2.11 1.82 3.57
 \subsection{Examining storage and access efficiency}\label{sec:efficiency}
 
 We have performed extensive experiments on the effect 
