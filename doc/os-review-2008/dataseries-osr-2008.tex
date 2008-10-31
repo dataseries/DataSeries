@@ -103,14 +103,12 @@ structured serial data:
 \item \textbf{Storage efficiency}: the data should be stored in as few
 bytes as possible. There are several driving factors behind this
 requirement. 
-%Firstly, the 
-The amount of data stored can be large (we have
+First, the amount of data stored can be large (we have
 I/O traces comprising billions of records), and despite rapidly
 decreasing storage prices, the cost to store data can still be
 considerable, particularly when the data must be kept for long periods
 of time. 
-% Secondly, we 
-We have learned that one of the primary factors
+Second, we have learned that one of the primary factors
 behind analysis efficiency is the speed at which data can be
 retrieved. Regardless of the storage technology used, more highly
 compressed data can substantially speed access times.
@@ -268,7 +266,7 @@ types into an extent.  We call the type of that extent the {\it
 extent-type}.  Usually an analysis 
 %will be run 
 runs over a collection of
-extents, so a collection of extents of the same type is similar to a
+extents, so one or more extents of the same type is similar to a
 database table.
 
 \subsection{Data format}
@@ -354,8 +352,8 @@ value may or may not be present, and we found it useful to be able to
 indicate that a given value is null. This option is implemented by
 generating a hidden boolean column that determines if the value is null.
 
-\item \textbf{double scale}: often, the full precision of double
-values is not needed. In this case, it is possible to get
+\item \textbf{double scale}: often, the full 53-bit precision of a double
+is not needed. In this case, it is possible to get
 significantly more compression by zeroing unimportant 
 lower-order bits 
 by scaling and rounding. This option lets the user specify
@@ -389,8 +387,7 @@ detect the version number and adapt appropriately.
 \end{itemize}
 
 One addition we tried, and later rejected, was that of extending a
-double 
-%fields 
+double field's
 precision by allowing the specification of a base value.
 This was introduced when we realized that storing microsecond precision
 time values, using the UNIX epoch (00:00:00 UTC on January 1, 1970),
@@ -433,8 +430,8 @@ need to move to a 128 bit fixed or floating point representation to
 deal with the continually increasing range of times for trace data and
 the increasing precision of the clocks measuring the times.  The
 maximum required bits would be around 200 since that would be
-sufficient bits to represent all times for the age of the universe.
-%using the Plank time granularity.
+sufficient bits to represent all times for the age of the universe
+using the Planck time granularity.
 
 
 \subsection{Programming model}
@@ -451,11 +448,10 @@ the usability (property 5) of DataSeries.
 There are three key concepts in the C++ API provided by
 DataSeries. The first is that of an \textit{ExtentSeries}, which is an
 iterator over the rows in at least one extent.  Iterators in
-dataseries are similar to iterators in relational
+DataSeries are similar to iterators in relational
 Databases~\cite{graefeQueryProcessing93}, but they typically operate
 in bulk over an entire extent in a single pass to improve access
-efficiency.  Iterators 
-%in Dataseries 
+efficiency.  Iterators in DataSeries 
 are also not required to operate
 over extents of identical type.  An iterator specifies its
 compatibility for types.  Normally compatibility is exact type
@@ -500,8 +496,7 @@ general modules, for example, ones that convert extents to text, and
 ones that perform simple versions of the SQL select/group-by
 statement.  We also have converters from various input formats (pcap,
 log file, SRT~\cite{SRT}) into a DataSeries representation. 
-% Lastly, there 
-There are type-specific analyses for converted NFS, LSF batch
+Last, there are type-specific analyses for converted NFS, LSF batch
 jobs~\cite{PlatformLSF} and logical/physical disk volume traces.  More
 detailed information on these modules and programming examples is
 available 
@@ -653,7 +648,7 @@ that handle nullable and non-nullable data.
 %for the HP-UX block I/O traces.  
 We
 compared the same analysis using special-case fields, templated
-fields, basic fields, general fields, and general-purpose program.  We
+fields, basic fields, general fields, and a general-purpose program.  We
 implemented special-cases of the fields to work around the compiler
 difficulties, and found that templated fields were 2\% slower than the
 special case fields, the basic fields were another 1\% slower, and the
@@ -678,7 +673,7 @@ same field and just accumulated the sum.  This is likely because of
 the extra branch instructions interfering with the CPU's ability to
 fully pipeline the code with the basic fields while the special-case
 fields reduce the access down to a single instruction which can be
-combined with the add instruction.  The general fields on in cache
+combined with the add instruction.  The general fields on in-cache
 data are about 2.5x slower than the basic fields, showing the overhead
 of the additional virtual function call.
 
@@ -695,7 +690,7 @@ set of key-value pairs, and finally some debugging information.
 Their tools include a scanning program which reads the
 trace files and outputs summary information for a trace.
 
-Our evaluation consists of two parts.
+Our evaluation consisted of two parts.
 %we wrote programs that
 %converted between the two formats.  The reversible conversion
 First, we wrote a reversible conversion program to
@@ -836,8 +831,8 @@ row & tool & \multicolumn{1}{c|}{algorithm} & \multicolumn{1}{c|}{size}  & user 
 \subsection{Other results}\label{sec:otherresults}
 
 We have performed a number of other experiments that demonstrate
-DataSeries' benefits. Due to space considerations, we only
-describe them briefly. One study of data compression showed that for a
+DataSeries' benefits. Due to space considerations, we will describe them only 
+briefly. One study of data compression showed that for a
 relatively large disk I/O trace, DataSeries provides superior disk
 space utilization; stored in DataSeries, the trace consumed 1.9GB of
 disk space, but 14GB in CSV format and 8.5GB as a MySQL
@@ -851,7 +846,7 @@ significantly improve performance. For instance, for the analysis of
 the World Cup traces, we added new accessors that did not check for
 nullable fields, and found that we decreased CPU time by
 8\%. Similarly, we found that we could ``group'' multiple analyses
-into a single routine (therefore only needing to pass over the data
+into a single routine (therefore needing to pass over the data only
 once), which can decrease the overall time taken by the same
 factor. This is especially effective when compared to the time taken
 in a more general solution (e.g., SQL queries) which cannot be combined
