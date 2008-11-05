@@ -33,7 +33,7 @@ Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
 \terms{Design, Performance}
 
 % \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
-\keywords{data format, compression, performance}
+\keywords{data format, trace-analysis, compression, performance}
 
 \begin{abstract}
 \textit{Structured serial data} is used in many scientific fields;
@@ -544,7 +544,8 @@ information on NFS operations
 %that included file attributes, 
 like read and write requests and mount requests.  
 The total data set
-is about 5TB.
+is about 6.3TiB compressed with gzip.
+% much smaller ~3TiB? with bzip2
 
 As a demonstration of the real-life performance of DataSeries,
 consider the following example.  Utilizing our NFS traces, we
