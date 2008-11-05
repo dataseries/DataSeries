@@ -137,9 +137,9 @@ interpretation code and for analysis systems.
 
 \item \textbf{Self-description}: the data set should contain the
 metadata that describes the data. This is another experience-driven
-requirement, as we have had problems in trying to interpret and use
-trace data from other organizations, and maintaining organizational
-knowledge of our own metadata over time.
+requirement. We have had problems in trying to interpret and use trace
+data from other organizations because of missing metadata, and
+maintaining organizational knowledge of our own metadata over time.
 
 \item \textbf{Usability}: the data format should have an
 associated programming interface that is both expressive and easy to
@@ -353,8 +353,8 @@ indicate that a given value is null. This option is implemented by
 generating a hidden boolean column that determines if the value is null.
 
 \item \textbf{double scale}: often, the full 53-bit precision of a double
-is not needed. In this case, it is possible to get
-significantly more compression by zeroing unimportant 
+is not needed. Hence, it is possible to get
+much better compression by zeroing unimportant 
 lower-order bits 
 by scaling and rounding. This option lets the user specify
 a specific scale factor for the values stored.
@@ -404,7 +404,7 @@ dependent on the domain.
 
 We have now chosen to explicitly represent the units and the epoch for
 time values.  The units are chosen based on the original precision,
-e.g., nanoseconds for NFS attribute values, or microseconds for pcap
+e.g., nanoseconds for NFS attribute values, or microseconds for pcap~\cite{libpcap}
 trace files.  We then use a 64-bit integer to store the time value,
 and have a special field that can translate in and out of the raw
 units from input formats such as a double, or a (second, nanosecond)
@@ -547,14 +547,12 @@ is about 5TB.
 As a demonstration of the real-life performance of DataSeries,
 consider the following example.  Utilizing our NFS traces, we
 calculated a cube~\cite{gray97cube} over the common data in NFS
-operations.  We ran the analysis over datasets with 16-2,600 million
-rows.  Using a 2.4 GhZ 2-cpu 2-core machine, we found the analysis ran
-at 2.11 Mrows/s for user time, 1.77 Mrows/s for total CPU time, and
-3.32 Mrows/s for elapsed time.  Analysis over larger datasets got
-somewhat better (3.55 Mrows/s) wall clock time because the startup,
-shutdown overhead are more amortized and prefetching had more time to
-take effect.
-%\fix{need to get current performance numbers}
+operations.  Using a 2.4 GhZ 2-cpu 2-core machine, we found the
+analysis ran at 2.11 Mrows/s for user time, 1.77 Mrows/s for total CPU
+time, and 3.32 Mrows/s for elapsed time.  Analysis over larger
+datasets ($>$100 Mrows) got somewhat better (3.55 Mrows/s) wall clock
+time because the startup and shutdown overhead are more amortized and
+prefetching had more time to take effect.
 
 % set                         Mrows  Mrows/user-s Mrows/cpu-s Mrows/wall-s
 % hostinfo.nfs-1.set-0.timed:  15.72   2.05 1.62 2.83
@@ -688,8 +686,8 @@ would see a larger difference in the performance.
 We measured a
 roughly 10x difference in access time through the basic and the
 special-case fields when using a program that repeatedly accessed the
-same field and just accumulated the sum.  This is likely because of
-the extra branch instructions interfering with the CPU's ability to
+same field and just accumulated the sum.  We believe 
+extra branch instructions are interfering with the CPU's ability to
 fully pipeline the code with the basic fields while the special-case
 fields reduce the access down to a single instruction which can be
 combined with the add instruction.  The general fields on in-cache
@@ -706,7 +704,7 @@ These ``Ellard traces''
 were originally stored as compressed text files, one record per line.
 The first part of each line is a series of fixed fields, followed by a
 set of key-value pairs, and finally some debugging information.  
-Tools included a scanning program which reads
+A scanning program read
 trace files and outputs summary information.
 
 Our evaluation consisted of two parts.
@@ -744,15 +742,14 @@ the README that came with the Ellard tools.
 These examples were
 all variants of a ``select count(*) group by field'' query.
 Table~\ref{tab:summary} presents our experimental results
-(our experimental setup 
-is described in~\cite{DSTechnicalReportSnapshot}).
-The first two rows of Table~\ref{tab:summary} show the performance
-of the Ellard tool.  The choice of compression algorithm (gzip or bzip2)
-has only a minor effect in this case.
+(using 2.4GhZ 2 processor 2 core machines, details 
+in ~\cite{DSTechnicalReportSnapshot}).
+The first two rows of Table~\ref{tab:summary} show that the compression 
+algorithm has little effect on the performance
+of the Ellard tool.  
 With gzip, our analysis program ran about 76x faster on those data files 
 (row 5).
-We also found that
-if we utilized lzo compression, which decompresses more quickly than
+With lzo compression, which decompresses more quickly than
 gzip, our analysis program ran about 107x faster (row 6), in exchange for
 slightly larger (1.14x) data files.  This also illustrates how
 DataSeries can be optimized for a given purpose (e.g., greater
@@ -764,10 +761,8 @@ algorithm and large extent size (row 9).
 Although this configuration was still 20x faster than the Ellard tool,
 it is noticeably slower than our other configurations.  The substantial
 increase in system time for bzip2 (11.82s with 16MB extents versus
-1.14s for lzo with 64KB extents) is a result of glibc's use of
-mmap/munmap
-for large allocations.  Every extent results in a separate pair of
-mmap/munmap calls to the kernel, creating a substantial amount of page
+1.14s for lzo with 64KB extents) occurs because glibc calls
+mmap/munmap for all extent allocations.  This results in a substantial amount of page
 zeroing in the kernel, and hence a large increase in the system time. 
 
 
