@@ -18,7 +18,7 @@
 \author{
 \alignauthor
 Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
- \affaddr{HP Labs. 1501 Page Mill Rd.  Palo Alto, CA} \\
+ \affaddr{HP Labs, 1501 Page Mill Road,  Palo Alto, CA} \\
  \email{\{eric.anderson4, martin.arlitt, brad.morrey, alistair.veitch\}@hp.com}
 }
 
@@ -152,7 +152,9 @@ specific fields only).
 
 \item \textbf{Integrity}: many structured serial data files are 
 intended as archival traces. To protect against media
-errors or incorrect software systems, DataSeries files need to be
+errors or incorrect software systems, 
+%DataSeries
+files need to be
 self-contained and contain internal checksums that enable
 integrity checking.
 
@@ -359,7 +361,7 @@ lower-order bits
 by scaling and rounding. This option lets the user specify
 a specific scale factor for the values stored.
 
-\item \textbf{relative packing}: specify that a given field be packed
+\item \textbf{relative packing}: specifies that a given field be packed
 relative to another, using delta encoding. This option is useful
 for timestamps and index values that may be large, but are small
 relative to each other. This enables fewer bits to be used to store a
@@ -376,7 +378,7 @@ compression ratio, as compression algorithms only partially
 remove duplicate data.
 
 \item \textbf{versioning}: since our format is archival, we expect
-changes in the fields used in a dataset over time.  To handle these
+changes in the fields used in a data set over time.  To handle these
 changes we 
 %have
 introduced a version number associated with a type.
@@ -424,7 +426,7 @@ names.
 If there is no natural unit for a set of traces, for example because
 they have cycle counter times, then we recommend units of $2^{-32}$
 seconds.  This choice allows for the maximum precision possible when
-providing the same range as a UNIX timevalue since the UNIX timevalue
+providing the same range as a UNIX time value since the UNIX time value
 uses 32 bits to represent the seconds.  We expect at some point to
 need to move to a 128 bit fixed or floating point representation to
 deal with the continually increasing range of times for trace data and
@@ -520,7 +522,7 @@ in~\cite{DSTechnicalReportSnapshot} and the source distribution.
 In this section we provide examples to illustrate quantitatively the 
 effectiveness of DataSeries.  
 Section~\ref{sec:scale} describes how we have used DataSeries to store 
-and analyze a large dataset on a modest system.
+and analyze a large data set on a modest system.
 Section~\ref{sec:efficiency} demonstrates the flexibility provided
 by DataSeries for selecting between storage and access efficiency needs.
 Section~\ref{sec:ellard} provides a case study which illustrates
@@ -532,7 +534,7 @@ in~\cite{DSTechnicalReportSnapshot}.
 
 \subsection{Scalability}\label{sec:scale}
 
-The largest dataset we have is a trace of NFS traffic to and from
+The largest data set we have is a trace of NFS traffic to and from
 busy enterprise file servers.
 The primary extent type 
 in this data is the common records which store information about each
@@ -541,16 +543,19 @@ store information about each packet captured, as well as
 information on NFS operations 
 %that included file attributes, 
 like read and write requests and mount requests.  
-The total dataset
+The total data set
 is about 5TB.
 
 As a demonstration of the real-life performance of DataSeries,
 consider the following example.  Utilizing our NFS traces, we
 calculated a cube~\cite{gray97cube} over the common data in NFS
-operations.  Using a 2.4 GhZ 2-cpu 2-core machine, we found the
+operations.  Using a 
+%2.4 GHz 2-cpu 2-core machine, 
+machine with two dual-core 2.4 GHz CPUs,
+we found the
 analysis ran at 2.11 Mrows/s for user time, 1.77 Mrows/s for total CPU
 time, and 3.32 Mrows/s for elapsed time.  Analysis over larger
-datasets ($>$100 Mrows) got somewhat better (3.55 Mrows/s) wall clock
+data sets ($>$100 Mrows) got somewhat better (3.55 Mrows/s) wall clock
 time because the startup and shutdown overhead are more amortized and
 prefetching had more time to take effect.
 
@@ -742,7 +747,8 @@ the README that came with the Ellard tools.
 These examples were
 all variants of a ``select count(*) group by field'' query.
 Table~\ref{tab:summary} presents our experimental results
-(using 2.4GhZ 2 processor 2 core machines, details 
+%(using 2.4GhZ 2 processor 2 core machines, details 
+(using machines with two 2.4GHz dual-core CPUs, details 
 in ~\cite{DSTechnicalReportSnapshot}).
 The first two rows of Table~\ref{tab:summary} show that the compression 
 algorithm has little effect on the performance
@@ -802,7 +808,7 @@ zeroing in the kernel, and hence a large increase in the system time.
 \caption{
 Detailed performance comparison for Ellard and DataSeries analysis programs.}
 \begin{tabular}{|r||c|r|r|r|r|r|r|r|r|} \hline
- &  & \multicolumn{1}{c|}{compression} & \multicolumn{1}{c|}{extent}  & \multicolumn{3}{c|}{mean CPU time (s)}     & \multicolumn{1}{c|}{CPU}     & \multicolumn{1}{c|}{mean wall}    & \multicolumn{1}{c|}{wall time} \\ \cline{4-6}
+ &  & \multicolumn{1}{c|}{compression} & \multicolumn{1}{c|}{extent}  & \multicolumn{3}{c|}{mean CPU time (s)}     & \multicolumn{1}{c|}{CPU}     & \multicolumn{1}{c|}{mean wall}    & \multicolumn{1}{c|}{wall time} \\ \cline{5-7}
 row & tool & \multicolumn{1}{c|}{algorithm} & \multicolumn{1}{c|}{size}  & user & system & total  & \multicolumn{1}{c|}{speedup} & \multicolumn{1}{c|}{time (s)} & \multicolumn{1}{c|}{speedup}  \\ \hline
 1 &Ellard & gzip &  & 537.58    &  7.80     & 545.38   &  1.000x & 545.71   &   1.000x \\
 2 & Ellard & bzip2 & & 638.48    & 12.68     & 651.16   &  0.836x & 571.49   &   0.955x \\
