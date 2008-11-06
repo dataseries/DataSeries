@@ -21,6 +21,10 @@ sub new {
 	#    die "Already have specified mode" 
 	#	if (defined $this->{mode});
 	#    $this->{mode} = $1;
+	} elsif (/^outputDir=(.+)$/o) {
+	    die "Already have specified an output directory" 
+		if (defined $this->{outputDir});
+	    $this->{outputDir} = $1;
 	} elsif (/^compress=(.+)$/o) {
 	    die "Already have specified compression" 
 		if (defined $this->{compress});
@@ -54,6 +58,11 @@ sub destination_file {
     my($this,$prefix,$fullpath) = @_;
     #if  ($this->{mode} eq "convert") {
     $fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/.ds/o;
+    if (defined ($this->{outputDir})) {
+	$outputDir = "$this->{outputDir}";
+	$fullpath =~ s/.+\///o;
+	$fullpath = "$outputDir/$fullpath";
+    }
     #} elsif($this->{mode} eq "info") {
 	#$fullpath =~ s/\.srt(|(\.bz2)|(\.gz)|(\.Z))$/\.srt$1\.info/o;
     #} else {
@@ -80,6 +89,7 @@ sub rebuild {
 	#$command = "srt2ds $compress $mode $fullpath $destpath $new_minor";
     #}	
     #die "??" unless defined $command;
+
     print "$command\n";
     return system($command) == 0;
 }

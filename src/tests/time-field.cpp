@@ -198,6 +198,26 @@ void check_conversion_static()
     cout << "static time checks successful" << endl;
 }
 
+void check_conversion_tfrac_micro()
+{
+}
+void check_conversion_tfrac_epoch_unknown_random()
+{
+    ExtentSeries s;
+    Int64TimeField unknown_epoch(s,"");
+    Int64TimeField unix_epoch(s,"");
+    unknown_epoch.setUnitsEpoch("2^32 seconds", "unknown");
+    unix_epoch.setUnitsEpoch("2^32 seconds", "unix");
+    SecNano sn;
+    sn.seconds = 2543452; // Random palindrome
+    sn.nanoseconds = 875424578; // Random palindrome
+    //unix.
+}
+
+void check_conversion_tfrac_nano_random()
+{
+}
+
 void check_conversion_random()
 {
     ExtentSeries s;
@@ -287,5 +307,6 @@ int main(int argc, char **argv)
 {
     check_conversion_static();
     check_conversion_random();
+    //check_conversion_tfrac_nano_random();
     cout << "Time field checks successful" << endl;
 }
