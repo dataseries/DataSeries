@@ -219,7 +219,7 @@ versions of an in-memory data structure.  As such, they usually
 achieve storage 
 %efficiency 
 and access efficiency, 
-but fail to a\-chieve
+but do not achieve
 flexibility, self-description, usability, and integrity.
 However, as we
 show in Section~\ref{sec:efficiency}, 
@@ -897,7 +897,7 @@ anyone storing similar data (RPC, streaming DB...)
 Delta encoding via the pack\_relative field option saves space
 with small cost.
 
-Unique packing saves strings only once, improving on runlength
+Unique packing saves strings only once, improving on run-length
 compression by having effectively an infinite window size for specific
 strings.
 
