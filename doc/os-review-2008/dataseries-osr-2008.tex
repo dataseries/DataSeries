@@ -17,7 +17,7 @@
 \numberofauthors{1} 
 \author{
 \alignauthor
-Eric Anderson, Martin Arlitt, Brad Morrey, Alistair Veitch  \\
+Eric Anderson, Martin Arlitt, Charles B. Morrey III, Alistair Veitch  \\
  \affaddr{HP Labs, 1501 Page Mill Road,  Palo Alto, CA} \\
  \email{\{eric.anderson4, martin.arlitt, brad.morrey, alistair.veitch\}@hp.com}
 }
@@ -137,8 +137,8 @@ interpretation code and for analysis systems.
 
 \item \textbf{Self-description}: the data set should contain the
 metadata that describes the data. This is another experience-driven
-requirement. We have had problems in trying to interpret and use trace
-data from other organizations because of missing metadata, and
+requirement. We have had problems trying to interpret and use trace
+data from other organizations because of missing metadata, and with
 maintaining organizational knowledge of our own metadata over time.
 
 \item \textbf{Usability}: the data format should have an
@@ -173,7 +173,7 @@ related work (Section~\ref{sec:related}).
 
 We provide four primary contributions in this paper.  First, we
 introduce DataSeries, a data format and associated library, which was
-specifically designed to meet the five key properties discussed above,
+specifically designed to meet the six key properties discussed above,
 and relate some of the experiences that led us to make various
 design decisions. 
 Second, we discuss how DataSeries can support very large data sets
@@ -282,7 +282,7 @@ file version, and check values that enable the reader to determine the
 endianness encodings of the data types.  DataSeries files are always
 written out using the native formats of the writing system. This 
 typically minimizes byte-swapping overheads, as the architecture 
-reading the files is almost always the same as the architecture reading
+reading the files is almost always the same as the architecture writing
 the files. The library transparently converts in the rare cases this
 is not true, and DataSeries files can be explicitly ``repacked'' if desired. 
 
@@ -537,7 +537,7 @@ in~\cite{DSTechnicalReportSnapshot}.
 The largest data set we have is a trace of NFS traffic to and from
 busy enterprise file servers.
 The primary extent type 
-in this data is the common records which store information about each
+in this data is the common records type which stores information about each
 of the 200 billion request and reply messages. We have secondary tables that
 store information about each packet captured, as well as 
 information on NFS operations 
@@ -555,7 +555,7 @@ operations.  Using a
 machine with two dual-core 2.4 GHz CPUs,
 we found the
 analysis ran at 2.11 Mrows/s for user time, 1.77 Mrows/s for total CPU
-time, and 3.32 Mrows/s for elapsed time.  Analysis over larger
+time, and 3.32 Mrows/s for elapsed time.  Analysis over only the larger
 data sets ($>$100 Mrows) got somewhat better (3.55 Mrows/s) wall clock
 time because the startup and shutdown overhead are more amortized and
 prefetching had more time to take effect.
@@ -593,10 +593,10 @@ summarize the results on storage efficiency below:
 bzip2~\cite{BZIP} compression with large extents (16--64MB) makes the
 most sense.  Keeping the size at most 64MB allows for some parallelism
 during compression, and later decompression, but extracts almost all
-of the potential compression available.  It may be useful to leave on
-gzip~\cite{GZIP} compression 
-as gzip occasionally gets better compression than
-bzip2.
+of the potential compression available.  If gzip~\cite{GZIP}
+compression is enabled then it will automatically be used when it
+achieves better compression than bzip2.
+
 
 \item For analyses with sufficient disk bandwidth, lzo~\cite{LZO} with
 small extents (96--128KB) gets the maximum performance.  The optimal
@@ -661,7 +661,7 @@ penalty is removed and the analysis code uses the same number of
 instructions on both sides.
 
 % see src/paper/srtstat.cpp for data
-This experience highlights the tradeoff between general and specific
+The following experience highlights the tradeoff between general and specific
 code.  
 %Above we saw the difference in performance that results from
 %having fields that handle nullable and non-nullable data.  
