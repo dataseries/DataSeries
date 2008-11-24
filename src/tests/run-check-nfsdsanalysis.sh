@@ -25,6 +25,7 @@ do_check() {
     -d e8535201c2cca305200000000079de25139fc708d6390035400000006bfc0800 \
     -e e8535201c2cca3052000000000393dcb82c6fc08d6390035400000006bfc0800 \
     -e $SRC/check-data/nfs.set6.20k.testfhs \
+    -f -g -i reply_order -i request_order -i overlapping_reorder -i overlapping_reorder=0.01 -j \
     $SRC/check-data/nfs.set6.20k.ds >check.nfsdsanalysis.tmp
 do_check check.nfsdsanalysis
 
@@ -33,6 +34,7 @@ do_check check.nfsdsanalysis
     -d 059f13004fb46a0d2000000004de9a890a4af00ebadc0762059f13004fb46a00 \
     -d 059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00 \
     -e 87d874012ece4f0520000000040ba0561d83d10060f8073e87d874012ece4f00 \
+    -f -g -i reply_order -i request_order -i overlapping_reorder -i overlapping_reorder=0.01 -j \
     $SRC/check-data/nfs-2.set-0.20k.ds >nfs-2.set-0.20k.tmp
 do_check nfs-2.set-0.20k
 
@@ -40,6 +42,7 @@ do_check nfs-2.set-0.20k
     -d d5554d0089f4a8052000000000f71819cd080a051aaa0717d5554d0089f4a800 \
     -d b3aace985185f1002000000004521cffd6c2be0afa058e006ceb3200580bf600 \
     -e ee8d3c02707bea0b20000000001603676d27261200fb07e16200000083ecb200 \
+    -f -g -i reply_order -i request_order -i overlapping_reorder -i overlapping_reorder=0.01 -j \
     $SRC/check-data/nfs-2.set-1.20k.ds >nfs-2.set-1.20k.tmp 
 do_check nfs-2.set-1.20k
 
