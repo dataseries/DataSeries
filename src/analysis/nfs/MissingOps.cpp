@@ -134,7 +134,6 @@ public:
 	} 
 	if (skipf_count > tmp.size() * required_skip1 &&
 	    skip1_count < tmp.size() * max_opposite_skip1) {
-	    cout << "flip\n";
 	    if (false) {
 		cout << format("flip %d > %d\n") % skipf_count % (tmp.size() * required_skip1);
 		dumpVec(tmp);

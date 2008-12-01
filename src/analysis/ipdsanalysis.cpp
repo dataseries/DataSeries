@@ -58,6 +58,7 @@ public:
 	  ipdest(series,"destination"),
 	  wire_len(series,"wire-length")
     {
+	FATAL_ERROR("bad time conversion");
 	printf("# ipusage output (ipinterval|ipnode|ippair): <interval-start> <interval-len> [node1 [node2]] packets bytes\n");
     }
 
@@ -437,6 +438,7 @@ public:
 	  packet_at(series,"packet-at"),
 	  wire_len(series,"wire-length")
     { 
+	FATAL_ERROR("incorrect time conversion");
 	interval_nsecs = (long long)(atof(args.c_str()) * 1.0e9);
 	SINVARIANT(interval_nsecs > 0);
     }

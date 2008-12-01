@@ -71,13 +71,13 @@ const string dataseries_index_type_v1_xml =
 const ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
 const ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
 
-string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name)
-{
+string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool empty_ok) {
     xmlChar *option = xmlGetProp(cur, reinterpret_cast<const xmlChar *>(option_name.c_str()));
     if (option == NULL) {
-	return "";
+	return string();
     } else {
-	INVARIANT(*option != '\0', "Can't tell missing property from empty, so disallowing");
+	INVARIANT(empty_ok || *option != '\0', 
+		  format("Invalid specification of empty property '%s'") % option_name);
 	string ret(reinterpret_cast<char *>(option));
 	xmlFree(option);
 	return ret;
@@ -335,7 +335,7 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.minor_version = static_cast<unsigned>(stringToLong(bits[1]));
     }
 
-    ret.type_namespace = strGetXMLProp(cur, "namespace");
+    ret.type_namespace = strGetXMLProp(cur, "namespace", true);
 
     cur = cur->xmlChildrenNode;
     unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0, 
