@@ -370,11 +370,13 @@ private:
       	void update(int64_t packet_raw, int packet_size, const Int64TimeField &packet_at,
 		    const string &filename) {
 	    LintelLogDebug("IPRolling::packet", format("UPD %d %d") % packet_raw % packet_size);
-	    int64_t cur_back_ts_raw = packets_in_flight.back().timestamp_raw;
-	    INVARIANT(packets_in_flight.empty() || packet_raw >= cur_back_ts_raw,
-		      format("out of order by %.4fs in %s; %d < %d") 
-		      % packet_at.rawToDoubleSeconds(cur_back_ts_raw - packet_raw) % filename
-		      % packet_raw % cur_back_ts_raw);
+	    if (!packets_in_flight.empty()) {
+		int64_t cur_back_ts_raw = packets_in_flight.back().timestamp_raw;
+		INVARIANT(packet_raw >= cur_back_ts_raw,
+			  format("out of order by %.4fs in %s; %d < %d") 
+			  % packet_at.rawToDoubleSeconds(cur_back_ts_raw - packet_raw) % filename
+			  % packet_raw % cur_back_ts_raw);
+	    }
 	    while ((packet_raw - cur_time_raw) > interval_width_raw) {
 		// update statistics for the interval from cur_time to cur_time + interval_width
 		// all packets in p_i_f must have been recieved in that interval
@@ -521,7 +523,7 @@ public:
 	  top_fraction(1.0), min_bytes(0), bytes_stat(NULL) 
     { 
 	top_fraction = stringToDouble(arg);
-	SINVARIANT(top_fraction > 0 && top_fraction <= 1.0);
+	SINVARIANT(top_fraction > 0);
     }
 
     virtual ~IPTransmitCube() { };
@@ -633,8 +635,12 @@ public:
 	    bytes_stat = new StatsQuantile(0.001, cube_data.size());
 	    cube_data.walk(boost::bind(&IPTransmitCube::addCubeStat, this, _3));
 	    min_bytes = bytes_stat->getQuantile(1-top_fraction);
-	    cout << format("# Set min bytes to %.0f to select top %.2f\n") % min_bytes 
-		% top_fraction;
+	    cout << format("# Set min bytes to %.0f to only print top %.2f%% of %d entries\n") 
+		% min_bytes % (100.0 * top_fraction) % bytes_stat->countll();
+	} else if (top_fraction > 1) {
+	    min_bytes = top_fraction;
+	    cout << format("# User chose min bytes of %.0f to print subset of %d entries\n") 
+		% min_bytes % cube_data.size();
 	}
 	cube_data.walkOrdered(boost::bind(&IPTransmitCube::printCubeEntry, this, _1, _2, _3));
 

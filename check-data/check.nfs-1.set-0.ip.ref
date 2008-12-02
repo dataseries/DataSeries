@@ -175,17 +175,37 @@ kpps for interval len of 0.001s with samples every 5e-05s
 End-virtual void IPRollingPacketStatistics::printResult()
 
 Begin-virtual void IPTransmitCube::printResult()
-# Set min bytes to 4093008 to select top 0.00
+# User chose min bytes of 4000000 to print subset of 26792 entries
+0a6e010e:2049  0a0c0d2d:763     udp 2692 packets 3.84 MiB
+0a6e010e:2049  0a0c0d2d:763       * 2692 packets 3.84 MiB
+0a6e010e:2049  0a0c0d2d:*       udp 2692 packets 3.84 MiB
+0a6e010e:2049  0a0c0d2d:*         * 2692 packets 3.84 MiB
+0a6e010e:2049         *:763     udp 3071 packets 3.90 MiB
+0a6e010e:2049         *:763       * 3071 packets 3.90 MiB
 0a6e010e:2049         *:*       udp 9737 packets 6.00 MiB
 0a6e010e:2049         *:*         * 9737 packets 6.00 MiB
+0a6e010e:*     0a0c0d2d:763     udp 2692 packets 3.84 MiB
+0a6e010e:*     0a0c0d2d:763       * 2692 packets 3.84 MiB
+0a6e010e:*     0a0c0d2d:*       udp 2692 packets 3.84 MiB
+0a6e010e:*     0a0c0d2d:*         * 2692 packets 3.84 MiB
+0a6e010e:*            *:763     udp 3071 packets 3.90 MiB
+0a6e010e:*            *:763       * 3071 packets 3.90 MiB
 0a6e010e:*            *:*       udp 9737 packets 6.00 MiB
 0a6e010e:*            *:*         * 9737 packets 6.00 MiB
+       *:2049  0a0c0d2d:763     udp 2692 packets 3.84 MiB
+       *:2049  0a0c0d2d:763       * 2692 packets 3.84 MiB
+       *:2049  0a0c0d2d:*       udp 2711 packets 3.85 MiB
+       *:2049  0a0c0d2d:*         * 2711 packets 3.85 MiB
        *:2049         *:763     udp 3104 packets 3.90 MiB
        *:2049         *:763       * 3104 packets 3.90 MiB
        *:2049         *:779     udp 8553 packets 5.96 MiB
        *:2049         *:779       * 8553 packets 5.96 MiB
        *:2049         *:*       udp 27362 packets 14.64 MiB
        *:2049         *:*         * 27368 packets 14.64 MiB
+       *:*     0a0c0d2d:763     udp 2692 packets 3.84 MiB
+       *:*     0a0c0d2d:763       * 2692 packets 3.84 MiB
+       *:*     0a0c0d2d:*       udp 2712 packets 3.85 MiB
+       *:*     0a0c0d2d:*         * 2712 packets 3.85 MiB
        *:*            *:763     udp 3104 packets 3.90 MiB
        *:*            *:763       * 3104 packets 3.90 MiB
        *:*            *:779     udp 8553 packets 5.96 MiB

@@ -132,7 +132,7 @@ kpps for interval len of 0.001s with samples every 5e-05s
 End-virtual void IPRollingPacketStatistics::printResult()
 
 Begin-virtual void IPTransmitCube::printResult()
-# Set min bytes to 5245848 to select top 0.00
+# User chose min bytes of 4000000 to print subset of 9805 entries
 0a6e0b0c:2049         *:*       tcp 4496 packets 5.00 MiB
 0a6e0b0c:2049         *:*         * 4496 packets 5.00 MiB
 0a6e0b0c:*            *:*       tcp 4496 packets 5.00 MiB
