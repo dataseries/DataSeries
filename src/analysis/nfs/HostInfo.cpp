@@ -14,14 +14,18 @@
 #include <Lintel/HashMap.hpp>
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
+#include <Lintel/StatsCube.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/GeneralField.hpp>
-#include <analysis/nfs/HashTupleStats.hpp>
-#include <analysis/nfs/StatsCube.hpp>
 
 using namespace std;
 using boost::format;
+using boost::tuples::null_type;
+using lintel::tuples::AnyPair;
+using lintel::tuples::BitsetAnyTuple;
+using lintel::HashTupleStats;
+using lintel::StatsCube;
 using dataseries::TFixedField;
 
 //                   host,   is_send,   time, operation, is_request
@@ -33,34 +37,30 @@ static const size_t time_index = 2;
 static const size_t operation_index = 3;
 static const size_t is_request_index = 4;
 
-template<> struct TupleHash<HostInfoTuple> {
-    uint32_t operator()(const HostInfoTuple &v) const {
-	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
-	uint32_t a = v.get<host_index>();
-	uint32_t b = v.get<time_index>();
-	uint32_t c = v.get<operation_index>()
-	    | (v.get<is_send_index>() ? 0x100 : 0)
-	    | (v.get<is_request_index>() ? 0x200 : 0);
-	return BobJenkinsHashMix3(a,b,c);
-    }
-};
+namespace lintel { namespace tuples {
+    template<> struct TupleHash<HostInfoTuple> {
+	uint32_t operator()(const HostInfoTuple &v) const {
+	    BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
+	    uint32_t a = v.get<host_index>();
+	    uint32_t b = v.get<time_index>();
+	    uint32_t c = v.get<operation_index>() | (v.get<is_send_index>() ? 0x100 : 0)
+		| (v.get<is_request_index>() ? 0x200 : 0);
+	    return BobJenkinsHashMix3(a,b,c);
+	}
+    };
 	       
-template<> struct PartialTupleHash<HostInfoTuple> {
-    uint32_t operator()(const PartialTuple<HostInfoTuple> &v) const {
-	BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
-	uint32_t a = v.used[host_index] ? v.data.get<host_index>() : 0;
-	uint32_t b = v.used[time_index] ? v.data.get<time_index>() : 0;
-	uint32_t c 
-	    = (v.used[operation_index] ? v.data.get<operation_index>() : 0)
-	    | (v.used[is_send_index] && v.data.get<is_send_index>() 
-	       ? 0x100 : 0)
-	    | (v.used[is_request_index] && v.data.get<is_request_index>() 
-	       ? 0x200 : 0);
-	return BobJenkinsHashMix3(a,b,c);
-    }
-};
-
-using boost::tuples::null_type;
+    template<> struct BitsetAnyTupleHash<HostInfoTuple> {
+	uint32_t operator()(const BitsetAnyTuple<HostInfoTuple> &v) const {
+	    BOOST_STATIC_ASSERT(boost::tuples::length<HostInfoTuple>::value == 5);
+	    uint32_t a = v.any[host_index] ? 0 : v.data.get<host_index>();
+	    uint32_t b = v.any[time_index] ? 0 : v.data.get<time_index>();
+	    uint32_t c = (v.any[operation_index] ? 0 : v.data.get<operation_index>())
+		| (!v.any[is_send_index] && v.data.get<is_send_index>() ? 0x100 : 0)
+		| (!v.any[is_request_index] && v.data.get<is_request_index>() ? 0x200 : 0);
+	    return BobJenkinsHashMix3(a,b,c);
+	}
+    };
+} }
 
 template<class T0, class T1>
 struct ConsToAnyPairCons {
@@ -195,7 +195,7 @@ namespace {
 class HostInfo : public RowAnalysisModule {
 public:
     typedef HostInfoTuple Tuple;
-    typedef bitset<5> Used;
+    typedef StatsCube<Tuple>::MyAny BitsetAnyTuple;
 
     static const double rate_quantile_maxerror = 0.005;
     // about 1/3 of a year with 1 second datapoints
@@ -242,7 +242,7 @@ public:
 	  last_rollup_at(numeric_limits<int32_t>::min()),
 	  group_count(0), printed_base_header(false), 
 	  printed_cube_header(false), printed_rates_header(false),
-	  print_rates_quantiles(true), sql_output(false), zero_cube(false),
+	  print_rates_quantiles(true), sql_output(false), 
 	  print_base(true), print_cube(true), zero_groups(0),
 	  last_reported_memory_usage(0)
     {
@@ -259,7 +259,6 @@ public:
 	// some simple initial testing.  Calculating the unique tuple is 
 	// very cheap (overlappping runtimes, <1% instruction count difference),
 	// but if we're not going to use it, then there isn't any point.
-	options["zero_cube"] = false;
 	options["print_base"] = true;
 	options["print_cube"] = true;
 	options["print_rates"] = true;
@@ -283,16 +282,15 @@ public:
 	}
 	INVARIANT(!options["print_rates"] || options["cube_time"],
 		  "HostInfo: Can't print_rates unless we have cube_time enabled.");
+	print_rates_quantiles = options["print_rates_quantiles"];
 	if (!options["print_rates"]) {
 	    options["print_rates_quantiles"] = false;
 	}
-	print_rates_quantiles = options["print_rates_quantiles"];
 	sql_output = options["sql_output"];
 	configCube();
 	if (options["sql_create_table"]) {
 	    printCreateTables();
 	}
-	zero_cube = options["zero_cube"];
 	print_base = options["print_base"];
 	print_cube = options["print_cube"];
 	skip_cube_time = !options["cube_time"];
@@ -305,18 +303,18 @@ public:
     static int32_t host(const Tuple &t) {
 	return t.get<host_index>();
     }
-    static string host(const Tuple &t, const Used &used) {
-	if (used[host_index] == false) {
+    static string host(const BitsetAnyTuple &atuple) {
+	if (atuple.any[host_index]) {
 	    return str_star;
 	} else {
-	    return str(format("%08x") % host(t));
+	    return str(format("%08x") % host(atuple.data));
 	}
     }
-    static string sqlHost(const Tuple &t, const Used &used) {
-	if (used[host_index] == false) {
+    static string sqlHost(const BitsetAnyTuple &atuple) {
+	if (atuple.any[host_index]) {
 	    return str_null;
 	} else {
-	    return str(format("0x%08x") % host(t));
+	    return str(format("0x%08x") % host(atuple.data));
 	}
     }
 
@@ -324,12 +322,12 @@ public:
 	return t.get<time_index>();
     }
 
-    static string time(const Tuple &t, const Used &used,
+    static string time(const BitsetAnyTuple &atuple,
 		       const std::string &unused_str = str_star) {
-	if (used[time_index] == false) {
+	if (atuple.any[time_index]) {
 	    return unused_str;
 	} else {
-	    return str(format("%d") % time(t));
+	    return str(format("%d") % time(atuple.data));
 	}
     }
 
@@ -340,40 +338,40 @@ public:
 	return isSend(t) ? str_send : str_recv;
     }
 
-    static string isSendStr(const Tuple &t, const Used &used) {
-	if (used[is_send_index] == false) {
+    static string isSendStr(const BitsetAnyTuple &atuple) {
+	if (atuple.any[is_send_index]) {
 	    return str_star;
 	} else {
-	    return isSendStr(t);
+	    return isSendStr(atuple.data);
 	}
     }
 
     static uint8_t operation(const Tuple &t) {
-	return t.get<3>();
+	return t.get<operation_index>();
     }
 
     static const string &operationStr(const Tuple &t) {
 	return unifiedIdToName(operation(t));
     }
-    static string operationStr(const Tuple &t, const Used &used) {
-	if (used[3] == false) {
+    static string operationStr(const BitsetAnyTuple &atuple) {
+	if (atuple.any[operation_index]) {
 	    return str_star;
 	} else {
-	    return operationStr(t);
+	    return operationStr(atuple.data);
 	}
     }
 
     static bool isRequest(const Tuple &t) {
-	return t.get<4>();
+	return t.get<is_request_index>();
     }
     static const string &isRequestStr(const Tuple &t) {
 	return isRequest(t) ? str_request : str_response;
     }
-    static const string &isRequestStr(const Tuple &t, const Used &used) {
-	if (used[4] == false) {
+    static const string &isRequestStr(const BitsetAnyTuple &atuple) {
+	if (atuple.any[is_request_index]) {
 	    return str_star;
 	} else {
-	    return isRequestStr(t);
+	    return isRequestStr(atuple.data);
 	}
     }
 
@@ -418,15 +416,15 @@ public:
 	}
     }
 
-    static bool timeLessEqual(const PartialTuple<Tuple> &t, 
+    static bool timeLessEqual(const BitsetAnyTuple &t, 
 			      int32_t max_group_seconds) {
-	if (t.used[time_index]) {
+	if (t.any[time_index]) {
+	    return false;
+	} else {
 	    SINVARIANT(t.data.get<time_index>() <= max_group_seconds);
 	
 	    return true;
-	} else {
-	    return false;
-	}
+	} 
     }
 									 
     void checkMemoryUsage() {
@@ -455,14 +453,9 @@ public:
 
     void rollupBatch() {
 	base_data.fillHashUniqueTuple(unique_vals_tuple);
-	if (zero_cube) {
-	    rates_cube.add(base_data, unique_vals_tuple);
-	    unique_vals_tuple.get<time_index>().clear();
-	} else {
-	    rates_cube.add(base_data);
-	}
+	rates_cube.cube(base_data);
 
-	if (print_base && !zero_cube) {
+	if (print_base) {
 	    base_data.walkOrdered
 		(boost::bind(&HostInfo::printBaseIncremental, 
 			     this, _1, _2));
@@ -470,16 +463,13 @@ public:
 	base_data.clear();
 
 	if (options["print_rates"]) {
-	    rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, 
-					this, _1, _2, _3));
+	    rates_cube.walk(boost::bind(&HostInfo::rateRollupAdd, this, _1, _2));
 	}
-	if (print_cube || zero_cube) {
+	if (print_cube) {
 	    rates_cube.walkOrdered
-		(boost::bind(&HostInfo::printCubeIncrementalTime,
-			     this, _1, _2, _3));
+		(boost::bind(&HostInfo::printCubeIncrementalTime, this, _1, _2));
 	}
-	rates_cube.prune
-	    (boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
+	rates_cube.prune(boost::bind(&HostInfo::timeLessEqual, _1, max_group_seconds));
 	SINVARIANT(base_data.size() == 0);
 	checkMemoryUsage();
     }
@@ -514,8 +504,7 @@ public:
 	rollupBatch();
 	if (print_cube) {
 	    rates_cube.walkOrdered
-		(boost::bind(&HostInfo::printCubeIncrementalNonTime,
-			     this, _1, _2, _3));
+		(boost::bind(&HostInfo::printCubeIncrementalNonTime, this, _1, _2));
 	}
 	
     }
@@ -637,82 +626,74 @@ public:
 	}
     }	
     
-    void printCubeIncremental(const Tuple &t, const bitset<5> &used, 
-			      Stats *v) {
-	if ((~used).none()) {
-	    // all bits used
-	    if (!zero_cube) {
-		return;
-	    } else {
-		// zero cubing; we print "base" bits here to fill in the zeros
-	    }
+    void printCubeIncremental(const BitsetAnyTuple &atuple, Stats &v) {
+	if (atuple.any.none()) {
+	    return; // all values real, skip
 	} else {
 	    if (!print_cube) {
-		SINVARIANT(zero_cube);
-		return;
+		FATAL_ERROR("?");
 	    }
 	}
 	
 	if (sql_output) {
 	    cout << format("insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (%d, %d, %d, %s, %s, %s, %d, %.20g);\n")
-		% group_seconds % sqlHost(t, used) % time(t, used, str_null) 
-		% sqlify(isSendStr(t, used)) % sqlify(operationStr(t, used)) 
-		% sqlify(isRequestStr(t, used)) % v->countll() % v->mean();
+		% group_seconds % sqlHost(atuple) % time(atuple, str_null) 
+		% sqlify(isSendStr(atuple)) % sqlify(operationStr(atuple)) 
+		% sqlify(isRequestStr(atuple)) % v.countll() % v.mean();
 	} else {
 	    if (!printed_cube_header) {
 		cout << format("HostInfo %ds cube: host     time        dir          op    op-dir   count mean-payload\n") % group_seconds;
 		printed_cube_header = true;
 	    }
 	    cout << format("HostInfo %ds cube: %8s %10s %4s %12s %8s %6lld %8.2f\n")
-		% group_seconds % host(t,used) % time(t,used) % isSendStr(t,used) 
-		% operationStr(t,used) % isRequestStr(t,used) 
-		% v->countll() % v->mean();
+		% group_seconds % host(atuple) % time(atuple) % isSendStr(atuple) 
+		% operationStr(atuple) % isRequestStr(atuple) 
+		% v.countll() % v.mean();
 	}
     }
 
-    void printCubeIncrementalTime(const Tuple &t, const bitset<5> &used, 
-				  Stats *v) {
-	if (used[time_index]) {
-	    printCubeIncremental(t, used, v);
+    void printCubeIncrementalTime(const BitsetAnyTuple &atuple, Stats &v) {
+	if (!atuple.any[time_index]) {
+	    printCubeIncremental(atuple, v);
 	}
     }
 
-    void printCubeIncrementalNonTime(const Tuple &t, const bitset<5> &used, 
-				     Stats *v) {
-	if (!used[time_index]) {
-	    printCubeIncremental(t, used, v);
+    void printCubeIncrementalNonTime(const BitsetAnyTuple &atuple, Stats &v) { 
+	if (atuple.any[time_index]) {
+	    printCubeIncremental(atuple, v);
 	}
     }
 
-    bool cubeOptional(const PartialTuple<Tuple> &partial) {
-	if (skip_cube_time && partial.used[time_index] == true) {
+    bool cubeOptional(const BitsetAnyTuple &partial) {
+	if (skip_cube_time && partial.any[time_index] == false) {
 	    return false;
 	}
-	if (skip_cube_host && partial.used[host_index] == true) {
+	if (skip_cube_host && partial.any[host_index] == false) {
 	    return false;
 	}
-	if (skip_cube_host_detail && partial.used[host_index] == true) {
-	    PartialTuple<Tuple>::UsedT used = partial.used;
-	    used[host_index] = false;
-	    used[time_index] = false;
-	    if (used.any()) {
+	if (skip_cube_host_detail && partial.any[host_index] == false) {
+	    BitsetAnyTuple::AnyT any = partial.any;
+	    any[host_index] = true;
+	    any[time_index] = true;
+	    if ((~any).none()) {
+		return true; // all any, so no detail on the host
+	    } else {
 		return false;
 	    }
 	}
 	return true;
     }
 
-    static bool cubeExceptTime(const PartialTuple<Tuple> &partial) {
-	return partial.used[time_index] == false;
+    static bool cubeExceptTime(const BitsetAnyTuple &partial) {
+	return partial.any[time_index];
     }
 
-    static bool cubeExceptHost(const PartialTuple<Tuple> &partial) {
-	return partial.used[host_index] == false;
+    static bool cubeExceptHost(const BitsetAnyTuple &partial) {
+	return partial.any[host_index];
     }
 
-    static bool cubeExceptTimeOrHost(const PartialTuple<Tuple> &partial) {
-	return partial.used[time_index] == false 
-	    && partial.used[host_index] == false;
+    static bool cubeExceptTimeOrHost(const BitsetAnyTuple &partial) {
+	return partial.any[time_index] && partial.any[host_index];
     }
 
     static void addFullStats(Stats &into, const Stats &val) {
@@ -722,62 +703,59 @@ public:
     void configCube() {
 	using boost::bind; 
 
-	if (options["cube_time"] && options["cube_host"]
-	    && options["cube_host_detail"]) {
-	    rates_cube.setOptionalCubePartialFn(bind(&StatsCubeFns::cubeAll));
+	if (options["cube_time"] && options["cube_host"] && options["cube_host_detail"]) {
+	    rates_cube.setOptionalCubeFn(bind(&lintel::StatsCubeFns::cubeAll));
 	} else {
-	    rates_cube.setOptionalCubePartialFn
-		(bind(&HostInfo::cubeOptional, this, _2));
+	    rates_cube.setOptionalCubeFn(bind(&HostInfo::cubeOptional, this, _2));
 	}
 
-	rates_cube.setCubeStatsAddFn
-	    (bind(&StatsCubeFns::addFullStats, _1, _2));
+	rates_cube.setCubeStatsAddFn(bind(&lintel::StatsCubeFns::addFullStats, _1, _2));
     }
 
     //                    host  is_send operation is_req
     typedef boost::tuple<int32_t, bool, uint8_t, bool> RateRollupTupleBase;
     typedef TupleToAnyTuple<RateRollupTupleBase>::type RateRollupTuple;
 
-    void rateRollupAdd(const Tuple &t, const bitset<5> &used, Stats *v) {
-	if (!used[time_index]) {
+    void rateRollupAdd(const BitsetAnyTuple &atuple, Stats &v) {
+	if (atuple.any[time_index]) {
 	    return; // Ignore unless time is set, this is all we will prune.
 	}
-	if (t.get<time_index>() == min_group_seconds ||
-	    t.get<time_index>() == max_group_seconds) {
+	if (atuple.data.get<time_index>() == min_group_seconds ||
+	    atuple.data.get<time_index>() == max_group_seconds) {
 	    return;
 	}
 	// TODO: don't we need to skip the max_group_seconds also once we
 	// have gotten to the max, i.e. when we do this under finalGroup?
 	// we don't but only because we're skipping cubing the last bit of
 	// the data, which will make us wrong in the cube output.
-	INVARIANT(t.get<time_index>() > min_group_seconds &&
-		  t.get<time_index>() < max_group_seconds,
-		  format("%d \not in ]%d, %d[") % t.get<time_index>() 
+	INVARIANT(atuple.data.get<time_index>() > min_group_seconds &&
+		  atuple.data.get<time_index>() < max_group_seconds,
+		  format("%d \not in ]%d, %d[") % atuple.data.get<time_index>() 
 		  % min_group_seconds % max_group_seconds); 
 	if (false) {
 	    cout << format("%8s %10s %4s %12s %8s %6lld %8.2f\n")
-		% host(t,used) % time(t,used) % isSendStr(t,used) 
-		% operationStr(t,used) % isRequestStr(t,used) 
-		% v->countll() % v->mean();
+		% host(atuple) % time(atuple) % isSendStr(atuple) 
+		% operationStr(atuple) % isRequestStr(atuple) 
+		% v.countll() % v.mean();
 	}
 
 	RateRollupTuple rrt;
-	if (used[host_index]) {
-	    rrt.get<0>().set(t.get<host_index>());
+	if (!atuple.any[host_index]) {
+	    rrt.get<0>().set(atuple.data.get<host_index>());
 	}
-	if (used[is_send_index]) {
-	    rrt.get<1>().set(t.get<is_send_index>());
+	if (!atuple.any[is_send_index]) {
+	    rrt.get<1>().set(atuple.data.get<is_send_index>());
 	}
-	if (used[operation_index]) {
-	    rrt.get<2>().set(t.get<operation_index>());
+	if (!atuple.any[operation_index]) {
+	    rrt.get<2>().set(atuple.data.get<operation_index>());
 	}
-	if (used[is_request_index]) {
-	    rrt.get<3>().set(t.get<is_request_index>());
+	if (!atuple.any[is_request_index]) {
+	    rrt.get<3>().set(atuple.data.get<is_request_index>());
 	}
 
-	double count = v->countll();
+	double count = v.countll();
 	double ops_per_sec = count / group_seconds;
-	double bytes_per_sec = (count * v->mean()) / group_seconds;
+	double bytes_per_sec = (count * v.mean()) / group_seconds;
 	
 	rate_hts.getHashEntry(rrt).add(ops_per_sec, bytes_per_sec);
     }
@@ -893,16 +871,15 @@ public:
 
     void sanityCheckRates() {
 	// sanity checks
-	PartialTuple<Tuple> tmp(Tuple(0,true,0,0,true));
-	tmp.used[is_send_index] = true;
-	Stats &v = rates_cube.getPartialEntry(tmp);
+	BitsetAnyTuple tmp(Tuple(0,true,0,0,true));
+	tmp.any.set();
+	tmp.any[is_send_index] = false;
+	Stats &v = rates_cube.getCubeEntry(tmp);
 
-	INVARIANT(v.countll() == payload_overall.countll(),
-		  format("%d != %d") % v.countll() 
-		  % payload_overall.countll());
+	INVARIANT(v.countll() == payload_overall.countll(), 
+		  format("%s: %d != %d") % tmp % v.countll() % payload_overall.countll());
 	INVARIANT(Double::eq(v.mean(), payload_overall.mean()),
-		  format("%.20g != %.20g") 
-		  % v.mean() % payload_overall.mean());
+		  format("%.20g != %.20g") % v.mean() % payload_overall.mean());
 	// Increase the tolerance to error on this value; we are summing
 	// up squared values potentially over a very very large number of
 	// entries (billions), hence the difference between adding in
@@ -915,8 +892,8 @@ public:
 		  format("%.20g != %.20g; %d ents") % v.stddev() 
 		  % payload_overall.stddev() % payload_overall.countll());
 	    
-	tmp.used[is_send_index] = false;
-	Stats &w = rates_cube.getPartialEntry(tmp);
+	tmp.any[is_send_index] = true;
+	Stats &w = rates_cube.getCubeEntry(tmp);
 	// Complete rollup sees everything twice since we add it as
 	// both send and receive
 	INVARIANT(w.countll() == 2*payload_overall.countll(),
@@ -1022,7 +999,7 @@ public:
 
     bool printed_base_header, printed_cube_header, printed_rates_header;
 
-    bool print_rates_quantiles, sql_output, zero_cube, print_base, print_cube;
+    bool print_rates_quantiles, sql_output, print_base, print_cube;
     uint32_t zero_groups;
     
     bool skip_cube_time, skip_cube_host, skip_cube_host_detail;

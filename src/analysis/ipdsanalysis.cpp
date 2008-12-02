@@ -16,6 +16,7 @@
 #include <Lintel/HashTable.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/PriorityQueue.hpp>
+#include <Lintel/StatsCube.hpp>
 #include <Lintel/StatsQuantile.hpp>
 #include <Lintel/StringUtil.hpp>
 
@@ -26,8 +27,6 @@
 #include <DataSeries/DStoTextModule.hpp>
 
 #include "process/sourcebyrange.hpp"
-#include <analysis/nfs/HashTupleStats.hpp>
-#include <analysis/nfs/StatsCube.hpp>
 
 using namespace std;
 using boost::format;
@@ -509,6 +508,15 @@ namespace {
     static string str_other("other");
 }
 
+enum TcpUdpOther { Tcp, Udp, Other };
+
+namespace lintel {
+    static inline uint32_t hashType(TcpUdpOther tuo) {
+	return static_cast<uint32_t>(tuo);
+    }
+}
+
+
 class IPTransmitCube : public RowAnalysisModule {
 public:
     IPTransmitCube(DataSeriesModule &_source, char *arg) 
@@ -549,8 +557,6 @@ public:
 	}
     }
 
-    enum TcpUdpOther { Tcp, Udp, Other };
-
     static const int source_idx = 0;
     static const int source_port_idx = 1;
     static const int dest_idx = 2;
@@ -558,7 +564,7 @@ public:
     static const int packet_type_idx = 4;
 
     typedef boost::tuple<int32_t, int32_t, int32_t, int32_t, TcpUdpOther> Key;
-
+    
     virtual void processRow() {
 	min_packet_at = min(min_packet_at, packet_at.val());
 	max_packet_at = max(max_packet_at, packet_at.val());
@@ -581,24 +587,26 @@ public:
     virtual void completeProcessing() {
     }
 
-    static const string host32Str(int32_t v, bool used) {
-	if (used) {
+    static const string host32Str(int32_t v, bool any) {
+	if (any) {
+	    return str_star;
+	} else {
 	    return str(format("%08x") % v);
-	} else {
-	    return str_star;
 	}
     }
 
-    static const string int32Str(int32_t v, bool used) {
-	if (used) {
+    static const string int32Str(int32_t v, bool any) {
+	if (any) {
+	    return str_star;
+	} else {
 	    return str(format("%d") % v);
-	} else {
-	    return str_star;
 	}
     }
 
-    static const string &tuoStr(TcpUdpOther v, bool used) {
-	if (used) {
+    static const string &tuoStr(TcpUdpOther v, bool any) {
+	if (any) {
+	    return str_star;
+	} else {
 	    switch(v) 
 		{
 		case Tcp: return str_tcp;
@@ -606,34 +614,34 @@ public:
 		case Other: return str_other;
 		default: FATAL_ERROR("?");
 		}
-	} else {
-	    return str_star;
 	}
     }
 
-    void addCubeStat(const Stats *val) {
-	bytes_stat->add(val->mean() * val->countll());
+    void addCubeStat(const Stats &val) {
+	bytes_stat->add(val.mean() * val.countll());
     }
 
-    void printCubeEntry(const Key &key, const bitset<5> &used, const Stats *val) {
-	double bytes = val->mean() * val->countll();
+    void printCubeEntry(const lintel::StatsCube<Key>::MyAny &atuple, const Stats &val) {
+	double bytes = val.mean() * val.countll();
 	if (bytes < min_bytes) {
 	    return;
 	}
 	cout << format("%8s:%-5s %8s:%-5s %5s %d packets %.2f MiB\n") 
-	    % host32Str(key.get<0>(), used[0])
-	    % int32Str(key.get<1>(), used[1]) % host32Str(key.get<2>(), used[2])
-	    % int32Str(key.get<3>(), used[3]) % tuoStr(key.get<4>(), used[4])
-	    % val->countll() % (val->mean() * val->countll() / (1024.0*1024));
+	    % host32Str(atuple.data.get<0>(), atuple.any[0])
+	    % int32Str(atuple.data.get<1>(), atuple.any[1]) 
+	    % host32Str(atuple.data.get<2>(), atuple.any[2])
+	    % int32Str(atuple.data.get<3>(), atuple.any[3]) 
+	    % tuoStr(atuple.data.get<4>(), atuple.any[4])
+	    % val.countll() % (val.mean() * val.countll() / (1024.0*1024));
     }
 	
     virtual void printResult() {
-	cube_data.setOptionalCubePartialFn(boost::bind(&StatsCubeFns::cubeAll));
-	cube_data.add(base_data);
+	cube_data.setOptionalCubeFn(boost::bind(&lintel::StatsCubeFns::cubeAll));
+	cube_data.cube(base_data);
 	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	if (top_fraction < 1.0) {
 	    bytes_stat = new StatsQuantile(0.001, cube_data.size());
-	    cube_data.walk(boost::bind(&IPTransmitCube::addCubeStat, this, _3));
+	    cube_data.walk(boost::bind(&IPTransmitCube::addCubeStat, this, _2));
 	    min_bytes = bytes_stat->getQuantile(1-top_fraction);
 	    cout << format("# Set min bytes to %.0f to only print top %.2f%% of %d entries\n") 
 		% min_bytes % (100.0 * top_fraction) % bytes_stat->countll();
@@ -642,7 +650,7 @@ public:
 	    cout << format("# User chose min bytes of %.0f to print subset of %d entries\n") 
 		% min_bytes % cube_data.size();
 	}
-	cube_data.walkOrdered(boost::bind(&IPTransmitCube::printCubeEntry, this, _1, _2, _3));
+	cube_data.walkOrdered(boost::bind(&IPTransmitCube::printCubeEntry, this, _1, _2));
 
 	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
@@ -656,8 +664,9 @@ private:
     TFixedField<int32_t> source, dest;
     Int32Field source_port, dest_port;
 
-    HashTupleStats<Key> base_data;
-    StatsCube<Key> cube_data;
+    // TODO: just use the base_data in cube_data.
+    lintel::HashTupleStats<Key> base_data;
+    lintel::StatsCube<Key> cube_data;
     double top_fraction, min_bytes;
     StatsQuantile *bytes_stat;
 };
@@ -665,11 +674,15 @@ private:
 void
 usage(char *argv0)
 {
-    cerr << "Usage: " << argv0 << " flags... (file...)|(index.ds start-time end-time)\n";
-    cerr << " flags\n";
-    cerr << "    -a <interval>; packet and byte counts by (src,dest) and src | dest\n";
-    cerr << "    -b <interval_seconds,...>[:reorder_seconds[:update_check_interval]]\n";
-    cerr << "    -c <interval-width> # time-series pps, bps\n";
+    cerr << "Usage: " << argv0 << " flags... (file...)|(index.ds start-time end-time)\n"
+	 << " flags\n"
+	 << "    -a <interval>; packet and byte counts by (src,dest) and src | dest\n"
+	 << "    -b <interval_seconds,...>[:reorder_seconds[:update_check_interval]]\n"
+	 << "    -c <interval-width> # time-series pps, bps\n"
+	 << "    -d <fraction|min-bytes> # cube of src/dest host-port; either print an\n"
+	 << "       # approximate fraction of the total entries (0 <= arg <= 1), or specify\n" 
+	 << "       # the min number of bytes needed to print out the entries (arg > 1)\n";
+    
     exit(1);
 }
 
