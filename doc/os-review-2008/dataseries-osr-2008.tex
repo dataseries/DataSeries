@@ -27,13 +27,6 @@ Eric Anderson, Martin Arlitt, Charles B. Morrey III, Alistair Veitch  \\
 % \category{H.4}{Information Systems Applications}{Miscellaneous}
 % %A category including the fourth, optional field follows...
 % \category{D.2.8}{Software Engineering}{Metrics}[complexity measures, performance measures]
-\category{H.3.2}{Information Storage}{}[]
- 
-% \terms{Structured serial data}
-\terms{Design, Performance}
-
-% \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
-\keywords{data format, trace-analysis, compression, performance}
 
 \begin{abstract}
 \textit{Structured serial data} is used in many scientific fields;
@@ -50,6 +43,14 @@ through several experiments.  In particular, we demonstrate
 that DataSeries exceeds the performance of common trace formats
 by at least a factor of two.
 \end{abstract}
+
+\category{H.3.2}{Information Storage}{}[]
+ 
+% \terms{Structured serial data}
+\terms{Design, Performance}
+
+% \keywords{ACM proceedings, \LaTeX, text tagging} % NOT required for Proceedings
+\keywords{data format, trace-analysis, compression, performance}
 
 \section{Introduction}\label{sec:intro}
 
@@ -254,6 +255,10 @@ faster than MySQL.
 %decompression, etc.}  
 Retrieving the data for a more complicated
 calculation on the client further slows the relative performance.
+
+% vspace command eliminates widow from end of page, avoiding 
+% \newpage forces latex to make the bottoms match
+\vspace{3pt}
 
 \section{Design}\label{sec:design}
 

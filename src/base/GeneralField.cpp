@@ -417,11 +417,8 @@ void GeneralField::enableCSV(void){
     csvEnabled = true;
 }
 
-void
-GeneralField::deleteFields(vector<GeneralField *> &fields)
-{
-    for(vector<GeneralField *>::iterator i = fields.begin();
-	i != fields.end(); ++i) {
+void GeneralField::deleteFields(vector<GeneralField *> &fields) {
+    for(vector<GeneralField *>::iterator i = fields.begin(); i != fields.end(); ++i) {
 	delete *i;
 	*i = NULL;
     }
@@ -429,9 +426,7 @@ GeneralField::deleteFields(vector<GeneralField *> &fields)
     tmp.swap(fields);
 }
 
-static xmlChar *
-myXmlGetProp(xmlNodePtr xml, const xmlChar *prop)
-{
+static xmlChar *myXmlGetProp(xmlNodePtr xml, const xmlChar *prop) {
     if (xml == NULL) {
 	return NULL;
     } else {
@@ -801,15 +796,12 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
 
 }
 
-GF_Int64::~GF_Int64() 
-{
+GF_Int64::~GF_Int64() {
     delete relative_field;
     delete myfield_time;
 }
 
-void 
-GF_Int64::write(FILE *to) 
-{
+void GF_Int64::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
@@ -831,9 +823,7 @@ GF_Int64::write(FILE *to)
     }
 }
 
-void 
-GF_Int64::write(std::ostream &to) 
-{
+void GF_Int64::write(std::ostream &to) {
     FATAL_ERROR("broken, inconsistent with FILE * version");
     if (myfield.isNull()) {
 	to << "null";

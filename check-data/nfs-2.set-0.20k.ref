@@ -1989,6 +1989,309 @@ unique entries: 1 time, 47 host, 6 operation
 # Total time range was [1170089647..1170089647], 0 groups with no nfs ops
 End-virtual void HostInfo::printResult()
 
+Begin-virtual void HostInfo::printResult()
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976972, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976972, 1170089646, 'recv', 'read', 'response', 194, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976972, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976972, 1170089646, 'send', 'read', 'request', 195, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976976, 1170089646, 'recv', 'getattr', 'response', 2, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976976, 1170089646, 'recv', 'read', 'response', 201, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976976, 1170089646, 'send', 'getattr', 'request', 2, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976976, 1170089646, 'send', 'read', 'request', 202, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976979, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976979, 1170089646, 'recv', 'read', 'response', 197, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976979, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976979, 1170089646, 'send', 'read', 'request', 198, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976987, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976987, 1170089646, 'recv', 'read', 'response', 197, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976987, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976987, 1170089646, 'send', 'read', 'request', 198, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976990, 1170089646, 'recv', 'access', 'response', 1, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976990, 1170089646, 'send', 'access', 'request', 1, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976996, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976996, 1170089646, 'recv', 'read', 'response', 199, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976996, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976996, 1170089646, 'send', 'read', 'request', 200, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976998, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976998, 1170089646, 'recv', 'read', 'response', 200, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976998, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171976998, 1170089646, 'send', 'read', 'request', 201, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977232, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977232, 1170089646, 'recv', 'access', 'response', 2, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977232, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977232, 1170089646, 'send', 'access', 'request', 2, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977239, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977239, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977242, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977242, 1170089646, 'recv', 'read', 'response', 199, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977242, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977242, 1170089646, 'send', 'read', 'request', 200, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977243, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977243, 1170089646, 'recv', 'read', 'response', 202, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977243, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977243, 1170089646, 'send', 'read', 'request', 203, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977249, 1170089646, 'recv', 'read', 'response', 260, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977249, 1170089646, 'send', 'read', 'request', 261, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977250, 1170089646, 'recv', 'read', 'response', 259, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977250, 1170089646, 'send', 'read', 'request', 259, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977255, 1170089646, 'recv', 'getattr', 'response', 2, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977255, 1170089646, 'send', 'getattr', 'request', 2, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977256, 1170089646, 'recv', 'read', 'response', 259, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977256, 1170089646, 'send', 'read', 'request', 259, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977257, 1170089646, 'recv', 'read', 'response', 2, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977257, 1170089646, 'send', 'read', 'request', 2, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977483, 1170089646, 'recv', 'read', 'response', 256, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977483, 1170089646, 'send', 'read', 'request', 257, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977491, 1170089646, 'recv', 'access', 'response', 1, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977491, 1170089646, 'send', 'access', 'request', 1, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977502, 1170089646, 'recv', 'lookup', 'response', 4, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977502, 1170089646, 'recv', 'access', 'response', 2, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977502, 1170089646, 'send', 'lookup', 'request', 4, 56);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977502, 1170089646, 'send', 'access', 'request', 2, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977510, 1170089646, 'recv', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977510, 1170089646, 'send', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977511, 1170089646, 'recv', 'read', 'response', 260, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977511, 1170089646, 'send', 'read', 'request', 261, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977742, 1170089646, 'recv', 'read', 'response', 67, 16243.462686567163473);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977742, 1170089646, 'send', 'read', 'request', 68, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977744, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977744, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977745, 1170089646, 'recv', 'read', 'response', 66, 16239.757575757575978);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977745, 1170089646, 'send', 'read', 'request', 67, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977746, 1170089646, 'recv', 'read', 'response', 66, 16239.757575757575978);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977746, 1170089646, 'send', 'read', 'request', 67, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977747, 1170089646, 'recv', 'read', 'response', 65, 16235.938461538462434);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977747, 1170089646, 'send', 'read', 'request', 66, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'recv', 'lookup', 'response', 10, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'recv', 'access', 'response', 41, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'send', 'lookup', 'request', 10, 61.200000000000002842);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977749, 1170089646, 'send', 'access', 'request', 41, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977762, 1170089646, 'recv', 'read', 'response', 66, 16239.757575757575978);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977762, 1170089646, 'send', 'read', 'request', 67, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977770, 1170089646, 'recv', 'read', 'response', 66, 16239.757575757575978);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977770, 1170089646, 'send', 'read', 'request', 67, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977772, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977772, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977773, 1170089646, 'recv', 'read', 'response', 256, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977773, 1170089646, 'send', 'read', 'request', 256, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977775, 1170089646, 'recv', 'read', 'response', 257, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171977775, 1170089646, 'send', 'read', 'request', 257, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'recv', 'lookup', 'response', 1, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'recv', 'read', 'response', 861, 16464.213704994192085);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'recv', 'access', 'response', 4, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'send', 'lookup', 'request', 1, 64);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'send', 'read', 'request', 877, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979285, 1170089646, 'send', 'access', 'request', 4, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979290, 1170089646, 'recv', 'read', 'response', 1229, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979290, 1170089646, 'recv', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979290, 1170089646, 'send', 'read', 'request', 1230, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979290, 1170089646, 'send', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'recv', 'read', 'response', 241, 16403.020746887967107);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'recv', 'access', 'response', 1, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'send', 'read', 'request', 253, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979292, 1170089646, 'send', 'access', 'request', 1, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'recv', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'recv', 'lookup', 'response', 2, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'recv', 'read', 'response', 76, 15737.052631578946603);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'recv', 'access', 'response', 2, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'send', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'send', 'lookup', 'request', 2, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'send', 'read', 'request', 76, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979293, 1170089646, 'send', 'access', 'request', 2, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979296, 1170089646, 'recv', 'read', 'response', 1210, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979296, 1170089646, 'send', 'read', 'request', 1215, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'recv', 'getattr', 'response', 279, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'recv', 'read', 'response', 283, 16285.371024734982711);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'recv', 'access', 'response', 33, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'send', 'getattr', 'request', 279, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'send', 'read', 'request', 283, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979309, 1170089646, 'send', 'access', 'request', 33, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'recv', 'getattr', 'response', 606, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'recv', 'read', 'response', 18, 15577.777777777777374);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'recv', 'access', 'response', 26, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'send', 'getattr', 'request', 606, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'send', 'read', 'request', 18, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979543, 1170089646, 'send', 'access', 'request', 26, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979548, 1170089646, 'recv', 'read', 'response', 1219, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 171979548, 1170089646, 'send', 'read', 'request', 1234, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'recv', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'recv', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'recv', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'send', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'send', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981393, 1170089646, 'send', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981397, 1170089646, 'recv', 'getattr', 'request', 3, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981397, 1170089646, 'recv', 'access', 'request', 4, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981397, 1170089646, 'send', 'getattr', 'response', 3, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981397, 1170089646, 'send', 'access', 'response', 4, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'recv', 'getattr', 'request', 888, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'recv', 'lookup', 'request', 3, 61.333333333333335702);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'recv', 'read', 'request', 5186, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'recv', 'access', 'request', 66, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'send', 'getattr', 'response', 888, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'send', 'lookup', 'response', 3, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'send', 'read', 'response', 5137, 16454.564142495619308);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981402, 1170089646, 'send', 'access', 'response', 66, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'recv', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'recv', 'lookup', 'request', 10, 61.200000000000002842);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'recv', 'read', 'request', 402, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'recv', 'access', 'request', 41, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'send', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'send', 'lookup', 'response', 10, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'send', 'read', 'response', 396, 16239.757575757575978);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174981408, 1170089646, 'send', 'access', 'response', 41, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983954, 1170089646, 'recv', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983954, 1170089646, 'send', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983972, 1170089646, 'recv', 'getattr', 'request', 9, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983972, 1170089646, 'recv', 'read', 'request', 1597, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983972, 1170089646, 'send', 'getattr', 'response', 9, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983972, 1170089646, 'send', 'read', 'response', 1589, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'recv', 'getattr', 'request', 1, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'recv', 'lookup', 'request', 4, 56);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'recv', 'read', 'request', 1812, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'recv', 'access', 'request', 2, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'send', 'getattr', 'response', 1, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'send', 'lookup', 'response', 4, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'send', 'read', 'response', 1809, 16488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, 174983973, 1170089646, 'send', 'access', 'response', 2, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'null', null, 2, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'getattr', 'response', 904, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'getattr', 'request', 904, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'getattr', null, 1808, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'lookup', 'response', 17, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'lookup', 'request', 17, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'lookup', null, 34, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'read', 'response', 8931, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'read', 'request', 8997, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'read', null, 17928, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'write', null, 2, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'access', 'response', 113, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'access', 'request', 113, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', 'access', null, 226, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', null, 'response', 9967, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', null, 'request', 10033, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'recv', null, null, 20000, 7377.5);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'null', null, 2, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'getattr', 'response', 904, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'getattr', 'request', 904, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'getattr', null, 1808, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'lookup', 'response', 17, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'lookup', 'request', 17, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'lookup', null, 34, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'read', 'response', 8931, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'read', 'request', 8997, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'read', null, 17928, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'write', null, 2, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'access', 'response', 113, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'access', 'request', 113, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', 'access', null, 226, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', null, 'response', 9967, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', null, 'request', 10033, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, 'send', null, null, 20000, 7377.5);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'null', 'response', 2, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'null', 'request', 2, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'null', null, 4, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'getattr', 'response', 1808, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'getattr', 'request', 1808, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'getattr', null, 3616, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'lookup', 'response', 34, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'lookup', 'request', 34, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'lookup', null, 68, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'read', 'response', 17862, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'read', 'request', 17994, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'read', null, 35856, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'write', 'response', 2, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'write', 'request', 2, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'write', null, 4, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'access', 'response', 226, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'access', 'request', 226, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, 'access', null, 452, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, null, 'response', 19934, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, null, 'request', 20066, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, 1170089646, null, null, null, 40000, 7377.5);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'null', null, 2, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'getattr', 'response', 904, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'getattr', 'request', 904, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'getattr', null, 1808, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'lookup', 'response', 17, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'lookup', 'request', 17, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'lookup', null, 34, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'read', 'response', 8931, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'read', 'request', 8997, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'read', null, 17928, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'write', null, 2, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'access', 'response', 113, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'access', 'request', 113, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', 'access', null, 226, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', null, 'response', 9967, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', null, 'request', 10033, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'recv', null, null, 20000, 7377.5);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'null', 'response', 1, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'null', 'request', 1, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'null', null, 2, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'getattr', 'response', 904, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'getattr', 'request', 904, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'getattr', null, 1808, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'lookup', 'response', 17, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'lookup', 'request', 17, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'lookup', null, 34, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'read', 'response', 8931, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'read', 'request', 8997, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'read', null, 17928, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'write', 'response', 1, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'write', 'request', 1, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'write', null, 2, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'access', 'response', 113, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'access', 'request', 113, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', 'access', null, 226, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', null, 'response', 9967, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', null, 'request', 10033, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, 'send', null, null, 20000, 7377.5);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'null', 'response', 2, 4);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'null', 'request', 2, 0);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'null', null, 4, 2);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'getattr', 'response', 1808, 88);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'getattr', 'request', 1808, 36);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'getattr', null, 3616, 62);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'lookup', 'response', 34, 216);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'lookup', 'request', 34, 60);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'lookup', null, 68, 138);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'read', 'response', 17862, 16457.761056992498197);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'read', 'request', 17994, 48);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'read', null, 35856, 8222.6751450245428714);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'write', 'response', 2, 136);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'write', 'request', 2, 1584);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'write', null, 4, 860);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'access', 'response', 226, 96);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'access', 'request', 226, 40);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, 'access', null, 452, 68);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, null, 'response', 19934, 14756.544195846292496);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, null, 'request', 20066, 46.997308880693708488);
+insert into nfs_hostinfo_cube (group_seconds, host, group_time, direction, operation, op_dir, group_count, mean_payload_bytes) values (3, null, null, null, null, null, 40000, 7377.5);
+unique entries: 1 time, 47 host, 6 operation
+# Processed 0 complete groups of size 3
+# (ignored the partial first and last groups)
+# Total time range was [1170089646..1170089646], 0 groups with no nfs ops
+End-virtual void HostInfo::printResult()
+
 Begin-virtual void ServerLatency::printResult()
  id: server ip
 001: 10.110.1.17
@@ -2049,11 +2352,168 @@ server operation   #ops  #dups mean ; firstlat mean 50% 90%
  *          *      9967      0 0.00 ;   6.640  1.988 18.100 
 End-virtual void ServerLatency::printResult()
 
+request 10033; good 0 0.00%; skip 0 (nan%); backwards 0; old 0; bad-endianess-guess 0, unknown 10033
+skip-after: 
+
+Begin-virtual void UniqueFileHandles::printResult()
+found 103 unique filehandles
+file size quantiles:
+103 data points, mean 3.63005e+07 +- 1.09902e+08 [3228,6.24019e+08]
+    quantiles about every 1 data points:
+    1%: 3816, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096
+    11%: 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096
+    21%: 4096, 4096, 4096, 4096, 4096, 7043, 8192, 8192, 8192, 8192
+    31%: 8192, 10806, 12288, 20751, 20751, 35683, 42051, 42051, 70356, 70356
+    41%: 73740, 99830, 107046, 107046, 121790, 225254, 265537, 365421, 365421, 384712
+    51%: 413470, 440041, 440041, 560086, 1820827, 2504074, 3128936, 3792655, 4397274, 4578849
+    61%: 4607465, 4761438, 5479432, 5479432, 6511624, 6511624, 24756496, 24756496, 24756496, 31233072
+    71%: 41233168, 41233168, 50144352, 50144352, 50685024, 50685024, 50791520, 50791520, 51381344, 51381344
+    81%: 51381344, 51381344, 51389536, 51389536, 51389536, 51643488, 51643488, 51643488, 51741792, 51741792
+    91%: 51741792, 52110432, 52110432, 53609568, 53609568, 54183008, 3.7566176e+08, 6.2401853e+08, 6.2401853e+08
+End-virtual void UniqueFileHandles::printResult()
+
 Begin-virtual void DirectoryPathLookup::printResult()
 059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00: FH:059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00
 059f13004fb46a0d2000000004de9a890a4af00ebadc0762059f13004fb46a00: FH:059f13004fb46a0d2000000004de9a85074af00ebadc0762059f13004fb46a00/39fa2b54d00693e9492d3088d0c2f2ea7c1a068974b99b942c3f0c2a563ebb55
 059f13004fb46a0d2000000002725fa8b2c39a0060f8073d059f13004fb46a00: FH:059f13004fb46a0d2000000001e8e87e975e6b0460f8073d059f13004fb46a00/a123adcb5bde804e623cf4bf2f5b66941fd54cd0ea02ac2378943bb7285ec7f4/44f6dec0c8bca5d35f9d2c41e42db996b31b4151ee325088e569d2f46b1745c8
 End-virtual void DirectoryPathLookup::printResult()
+
+Begin-virtual void ReadWriteExtentAnalysis::printResult()
+Read size:
+8997 data points, mean 16354 +- 509.1 [272,16384]
+    quantiles about every 90 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    11%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    21%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    31%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    41%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    51%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    61%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    71%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    81%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    91%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+  tails: 90%: 16384, 95%: 16384, 99%: 16384, 99.5%: 16384
+Read offset:
+8997 data points, mean 8.16254e+07 +- 1.04715e+08 [0,5.62823e+08]
+    quantiles about every 18 data points:
+    0.2%: 65536, 122880, 188416, 249856, 299008, 327680, 380928, 438272, 507904, 536576
+    2.2%: 634880, 684032, 733184, 831488, 929792, 1015808, 1044480, 1142784, 1179648, 1241088
+    4.2%: 1339392, 1388544, 1441792, 1458176, 1474560, 1507328, 1568768, 1667072, 1703936, 1732608
+    6.2%: 1753088, 1847296, 1900544, 1949696, 1966080, 1982464, 1998848, 2043904, 2129920, 2146304
+    8.2%: 2195456, 2228224, 2240512, 2260992, 2293760, 2355200, 2420736, 2453504, 2519040, 2539520
+    10.2%: 2629632, 2654208, 2732032, 2785280, 2801664, 2813952, 2879488, 2916352, 2961408, 2981888
+    12.2%: 3031040, 3063808, 3158016, 3227648, 3244032, 3260416, 3276800, 3293184, 3354624, 3391488
+    14.2%: 3452928, 3469312, 3567616, 3633152, 3682304, 3735552, 3751936, 3813376, 3850240, 3878912
+    16.2%: 3944448, 4026368, 4096000, 4124672, 4173824, 4210688, 4227072, 4325376, 4485120, 4665344
+    18.2%: 4784128, 5009408, 5189632, 5369856, 5664768, 5959680, 6254592, 6549504, 6844416, 7008256
+    20.2%: 7303168, 7598080, 7892992, 8187904, 8482816, 8777728, 9072640, 9367552, 9662464, 9957376
+    22.2%: 10252288, 10514432, 10809344, 10911744, 11042816, 11059200, 11091968, 11268096, 11321344, 11403264
+    24.2%: 11436032, 11501568, 11599872, 11681792, 11747328, 11747328, 11780096, 11841536, 11862016, 11894784
+    26.2%: 12025856, 12075008, 12107776, 12124160, 12234752, 12337152, 12369920, 12431360, 12566528, 12599296
+    28.2%: 12632064, 12693504, 12828672, 12845056, 12894208, 12910592, 12926976, 12943360, 13090816, 13107200
+    30.2%: 13139968, 13172736, 13205504, 13221888, 13418496, 13500416, 13549568, 13643776, 13697024, 13910016
+    32.2%: 13975552, 14057472, 14434304, 14450688, 14696448, 14778368, 14909440, 15319040, 15548416, 15794176
+    34.2%: 16089088, 16465920, 16711680, 16842752, 16941056, 17006592, 17022976, 17235968, 17268736, 17481728
+    36.2%: 17498112, 17547264, 17743872, 17793024, 17842176, 17973248, 18006016, 18055168, 18104320, 18268160
+    38.2%: 18300928, 18530304, 18563072, 18759680, 18792448, 18841600, 18874368, 19070976, 19120128, 19640320
+    40.2%: 19935232, 20164608, 20459520, 20754432, 21049344, 21344256, 21639168, 21901312, 21938176, 22097920
+    42.2%: 22200320, 22265856, 22458368, 22720512, 22822912, 23003136, 23080960, 23232512, 23265280, 23359488
+    44.2%: 23560192, 23621632, 23916544, 24080384, 24182784, 24281088, 24342528, 24592384, 24641536, 24702976
+    46.2%: 24850432, 25145344, 25260032, 25346048, 25456640, 25493504, 25653248, 25935872, 25980928, 26112000
+    48.2%: 26230784, 26308608, 26492928, 26525696, 26800128, 26918912, 27160576, 27230208, 27357184, 27557888
+    50.2%: 27684864, 27717632, 27750400, 27820032, 28061696, 28098560, 28344320, 28377088, 28393472, 28508160
+    52.2%: 28569600, 28639232, 28688384, 28884992, 28917760, 28950528, 29081600, 29147136, 29179904, 29212672
+    54.2%: 29327360, 29388800, 29442048, 29474816, 29523968, 29638656, 29683712, 29786112, 29835264, 29900800
+    56.2%: 29917184, 30097408, 30375936, 30601216, 30896128, 31113216, 31174656, 31260672, 31293440, 31354880
+    58.2%: 31518720, 31686656, 31735808, 31866880, 32092160, 32358400, 32567296, 32800768, 32948224, 33112064
+    60.2%: 33370112, 33435648, 33730560, 33914880, 34058240, 34353152, 34504704, 34680832, 34861056, 34897920
+    62.2%: 35074048, 35254272, 35471360, 35553280, 35778560, 36073472, 36368384, 36438016, 36618240, 36634624
+    64.2%: 36896768, 37060608, 37269504, 37433344, 37711872, 38006784, 38301696, 38596608, 38891520, 39186432
+    66.2%: 42500096, 42762240, 42827776, 42860544, 42958848, 43024384, 43073536, 43286528, 43696128, 43761664
+    68.2%: 43810816, 43892736, 43925504, 43991040, 44023808, 44204032, 44220416, 44253184, 44466176, 45563904
+    70.2%: 46039040, 46186496, 46268416, 46350336, 46432256, 1.7207706e+08, 1.7237197e+08, 1.7265459e+08, 1.7289626e+08, 1.7319117e+08
+    72.2%: 1.7339187e+08, 1.7363354e+08, 1.7392845e+08, 1.7412915e+08, 1.7441997e+08, 1.7471488e+08, 1.748951e+08, 1.7519002e+08, 1.7548493e+08, 1.7566515e+08
+    74.2%: 1.7596006e+08, 1.7625498e+08, 1.7646797e+08, 1.7676288e+08, 1.7700864e+08, 1.7728717e+08, 1.7758208e+08, 1.7787699e+08, 1.781719e+08, 1.7846682e+08
+    76.2%: 1.7876173e+08, 1.7905664e+08, 1.7935155e+08, 1.7964646e+08, 1.7994138e+08, 1.8023629e+08, 1.805312e+08, 1.8082611e+08, 1.8112102e+08, 1.8141594e+08
+    78.2%: 1.8171085e+08, 1.8200576e+08, 1.8230067e+08, 1.8259558e+08, 1.828905e+08, 1.8318541e+08, 1.8348032e+08, 1.8377523e+08, 1.8407014e+08, 1.8436506e+08
+    80.2%: 1.8465997e+08, 1.8495488e+08, 1.8524979e+08, 1.855447e+08, 1.8583962e+08, 1.8613453e+08, 1.8642944e+08, 1.865769e+08, 1.8687181e+08, 1.8716672e+08
+    82.2%: 1.8743296e+08, 1.8762547e+08, 1.8792038e+08, 1.882153e+08, 1.8846106e+08, 1.8875597e+08, 1.8905088e+08, 1.8934579e+08, 1.896407e+08, 1.8993562e+08
+    84.2%: 1.9023053e+08, 1.9052544e+08, 1.9082035e+08, 1.9111526e+08, 1.9141018e+08, 1.9170509e+08, 1.92e+08, 2.7593523e+08, 2.7623014e+08, 2.7652506e+08
+    86.2%: 2.7681997e+08, 2.7711488e+08, 2.7740979e+08, 2.777047e+08, 2.7799962e+08, 2.7829453e+08, 2.7858944e+08, 2.7888435e+08, 2.7917926e+08, 2.7947418e+08
+    88.2%: 2.7976909e+08, 2.80064e+08, 2.8035891e+08, 2.8065382e+08, 2.8094874e+08, 2.8124365e+08, 2.8153856e+08, 2.8183347e+08, 2.8212838e+08, 2.824233e+08
+    90.2%: 2.8271821e+08, 2.8301312e+08, 2.8330803e+08, 2.8360294e+08, 2.8389786e+08, 2.8419277e+08, 2.8448768e+08, 2.8478259e+08, 2.850775e+08, 2.8537242e+08
+    92.2%: 2.8566733e+08, 2.8596224e+08, 2.8625715e+08, 2.8655206e+08, 2.8684698e+08, 2.8714189e+08, 2.874368e+08, 2.8773171e+08, 2.8802662e+08, 2.8832154e+08
+    94.2%: 2.8861645e+08, 2.8891136e+08, 2.8920627e+08, 2.8950118e+08, 2.897961e+08, 2.9009101e+08, 2.9038592e+08, 2.9068083e+08, 2.9097574e+08, 2.9127066e+08
+    96.2%: 2.9156557e+08, 2.9186048e+08, 2.9215539e+08, 2.924503e+08, 2.9274522e+08, 2.9304013e+08, 2.9333504e+08, 2.9362995e+08, 2.9392486e+08, 2.9421978e+08
+    98.2%: 2.9451469e+08, 2.948096e+08, 2.9510451e+08, 2.9539942e+08, 2.9569434e+08, 2.9598925e+08, 3.6896768e+08, 3.7045862e+08, 3.7440717e+08
+Write size:
+1 data points, mean 1526 +- 0 [1526,1526]
+    quantiles about every 0 data points:
+    1%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    11%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    21%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    31%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    41%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    51%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    61%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    71%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    81%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+    91%: 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526, 1526
+  tails: 
+Write offset:
+1 data points, mean 98304 +- 0 [98304,98304]
+    quantiles about every 0 data points:
+    0.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    2.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    4.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    6.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    8.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    10.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    12.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    14.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    16.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    18.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    20.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    22.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    24.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    26.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    28.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    30.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    32.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    34.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    36.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    38.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    40.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    42.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    44.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    46.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    48.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    50.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    52.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    54.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    56.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    58.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    60.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    62.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    64.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    66.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    68.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    70.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    72.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    74.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    76.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    78.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    80.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    82.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    84.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    86.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    88.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    90.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    92.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    94.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    96.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+    98.2%: 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304, 98304
+End-virtual void ReadWriteExtentAnalysis::printResult()
 
 Begin-virtual void AttrOpsCommonJoin::printResult()
   generated 0.010 million records, 0.00 MB of extent output
@@ -2326,13 +2786,1055 @@ Begin-virtual void FileHandleOperationLookup::printResult()
 End-virtual void FileHandleOperationLookup::printResult()
 
 Begin-virtual void CommonAttrRWJoin::printResult()
-  skipped 0 records in join -- not read or write
-  generated 0.00 MB of extent output
+  skipped 1034 records in join -- not read or write
+  generated 0.89 MB of extent output
 End-virtual void CommonAttrRWJoin::printResult()
 
-extents: 0.20 MB -> 1.76 MB in 0.00 secs decode time
+Begin-virtual void Sequentiality::printResult()
+Analysis configuration: distinct client, distinct server
+Reorder count: 0/8932, 0.000%
+Skip distribution:
+8694 data points, mean 388669 +- 3.39888e+07 [-4.7489e+08,3.45014e+08]
+    quantiles about every 87 data points:
+    1%: -32374784, -13041664, -802816, -458752, -311296, -278528, -262144, -245760, -196608, -114688
+    11%: -32768, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 16384, 32768, 49152, 81920, 114688
+    81%: 131072, 163840, 196608, 229376, 245760, 262144, 278528, 311296, 360448, 442368
+    91%: 524288, 589824, 704512, 917504, 1179648, 1523712, 8372224, 27738112, 31604736
+read count distribution:
+238 data points, mean 37.5252 +- 148.044 [0,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+write count distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total count distribution:
+238 data points, mean 37.5294 +- 148.043 [1,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+read bytes distribution:
+238 data points, mean 613678 +- 2.42491e+06 [0,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+write bytes distribution:
+238 data points, mean 6.41176 +- 98.7079 [0,1526]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total bytes distribution:
+238 data points, mean 613685 +- 2.42491e+06 [1526,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+read op_bytes_fraction distribution:
+238 data points, mean 0.995798 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+write op_bytes_fraction distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total op_bytes_fraction distribution:
+238 data points, mean 1 +- 0 [1,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+unknown file size count 0
+read file_bytes_fraction distribution:
+238 data points, mean 0.0233083 +- 0.0947967 [0,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00018378941, 0.00021004505, 0.00026255631, 0.00028881194, 0.00031506757, 0.0003413232, 0.00044634572, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00070890203, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00094994777, 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412
+    51%: 0.0019354412, 0.0019354412, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022317384, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0025505582, 0.0029900909, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0039708366, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.004783059, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0072314119, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+write file_bytes_fraction distribution:
+238 data points, mean 6.42268e-05 +- 0.00098876 [0,0.015286]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total file_bytes_fraction distribution:
+238 data points, mean 0.0233725 +- 0.0947861 [5.25113e-05,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00021004505, 0.00023630068, 0.00028881194, 0.00031506757, 0.0003413232, 0.00036757883, 0.00061123417, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00079470003, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412, 0.0019354412
+    51%: 0.0019354412, 0.0019604202, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022871569, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0028498433, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0031664926, 0.0046326427, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.0052944488, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0074137415, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+reorder_count:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+reorder_fraction:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+sequentiality_count_fraction:
+238 data points, mean 0.315438 +- 0.264729 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.44444444, 0.4516129, 0.4516129, 0.4516129, 0.5, 0.5
+    81%: 0.53333333, 0.53333333, 0.53333333, 0.55555556, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.66666667, 0.78677686, 0.8714402, 0.89663659, 1, 1, 1, 1
+sequentiality_bytes_fraction:
+238 data points, mean 0.316125 +- 0.265285 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.45714286, 0.45901639, 0.45901639, 0.45901639, 0.51428571, 0.51428571
+    81%: 0.53333333, 0.53333333, 0.53333333, 0.55555556, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.66666667, 0.78677686, 0.8714402, 0.91176471, 1, 1, 1, 1
+in_random_sequential_run_count:
+3337 data points, mean 2.65957 +- 5.37453 [1,102]
+    quantiles about every 33 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    61%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    71%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    81%: 2, 2, 2, 3, 3, 3, 3, 3, 3, 4
+    91%: 5, 5, 6, 7, 8, 10, 13, 16, 26
+in_random_sequential_run_bytes:
+3337 data points, mean 43503.4 +- 87885.7 [272,1.65888e+06]
+    quantiles about every 33 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    11%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    21%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    31%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    41%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    51%: 16384, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    61%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    71%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    81%: 32768, 32768, 32768, 40960, 49152, 49152, 49152, 49152, 49152, 65536
+    91%: 81920, 81920, 98304, 114688, 131072, 163840, 212992, 262144, 425984
+eof_count:
+0 data points, mean 0 +- 0 [inf,-inf]
+End-virtual void Sequentiality::printResult()
+
+Begin-virtual void Sequentiality::printResult()
+Analysis configuration: distinct client, distinct server
+Reorder count: 0/8932, 0.000%
+Skip distribution:
+8694 data points, mean 390566 +- 3.39863e+07 [-4.7489e+08,3.45014e+08]
+    quantiles about every 87 data points:
+    1%: -32374784, -6930432, -786432, -458752, -278528, -262144, -229376, -32768, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 16384
+    81%: 32768, 98304, 114688, 147456, 212992, 245760, 262144, 278528, 344064, 442368
+    91%: 516096, 589824, 704512, 917504, 1146880, 1458176, 5984256, 27738112, 31604736
+read count distribution:
+238 data points, mean 37.5252 +- 148.044 [0,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+write count distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total count distribution:
+238 data points, mean 37.5294 +- 148.043 [1,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+read bytes distribution:
+238 data points, mean 613678 +- 2.42491e+06 [0,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+write bytes distribution:
+238 data points, mean 6.41176 +- 98.7079 [0,1526]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total bytes distribution:
+238 data points, mean 613685 +- 2.42491e+06 [1526,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+read op_bytes_fraction distribution:
+238 data points, mean 0.995798 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+write op_bytes_fraction distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total op_bytes_fraction distribution:
+238 data points, mean 1 +- 0 [1,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+unknown file size count 0
+read file_bytes_fraction distribution:
+238 data points, mean 0.0233083 +- 0.0947967 [0,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00018378941, 0.00021004505, 0.00026255631, 0.00028881194, 0.00031506757, 0.0003413232, 0.00044634572, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00070890203, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00094994777, 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412
+    51%: 0.0019354412, 0.0019354412, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022317384, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0025505582, 0.0029900909, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0039708366, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.004783059, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0072314119, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+write file_bytes_fraction distribution:
+238 data points, mean 6.42268e-05 +- 0.00098876 [0,0.015286]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total file_bytes_fraction distribution:
+238 data points, mean 0.0233725 +- 0.0947861 [5.25113e-05,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00021004505, 0.00023630068, 0.00028881194, 0.00031506757, 0.0003413232, 0.00036757883, 0.00061123417, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00079470003, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412, 0.0019354412
+    51%: 0.0019354412, 0.0019604202, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022871569, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0028498433, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0031664926, 0.0046326427, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.0052944488, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0074137415, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+reorder_count:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+reorder_fraction:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+sequentiality_count_fraction:
+238 data points, mean 0.317427 +- 0.268535 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.44444444, 0.4516129, 0.4516129, 0.4516129, 0.5, 0.53333333
+    81%: 0.53333333, 0.53333333, 0.55555556, 0.58333333, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.66666667, 0.84615385, 0.90871369, 0.99834711, 0.99918633, 1, 1, 1
+sequentiality_bytes_fraction:
+238 data points, mean 0.318099 +- 0.269217 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.45714286, 0.45901639, 0.45901639, 0.45901639, 0.51428571, 0.53333333
+    81%: 0.53333333, 0.53333333, 0.55555556, 0.56989247, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.66666667, 0.87034627, 0.91176471, 0.99834711, 0.99918633, 1, 1, 1
+in_random_sequential_run_count:
+2716 data points, mean 3.27651 +- 41.6294 [1,1218]
+    quantiles about every 27 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 2
+    61%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    71%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    81%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    91%: 2, 2, 2, 2, 3, 3, 3, 3, 4
+in_random_sequential_run_bytes:
+2716 data points, mean 53585.9 +- 682048 [272,1.99557e+07]
+    quantiles about every 27 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    11%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    21%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    31%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    41%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    51%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 32768
+    61%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    71%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    81%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    91%: 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 65536
+eof_count:
+0 data points, mean 0 +- 0 [inf,-inf]
+End-virtual void Sequentiality::printResult()
+
+Begin-virtual void Sequentiality::printResult()
+Analysis configuration: distinct client, distinct server
+Reorder count: 44/8932, 0.493%
+Skip distribution:
+8694 data points, mean 390566 +- 3.39863e+07 [-4.7489e+08,3.45014e+08]
+    quantiles about every 87 data points:
+    1%: -32374784, -6930432, -786432, -458752, -278528, -262144, -229376, -32768, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 16384, 81920, 114688, 147456, 212992, 245760, 262144, 278528, 344064, 442368
+    91%: 516096, 589824, 704512, 917504, 1146880, 1458176, 5984256, 27738112, 31604736
+read count distribution:
+238 data points, mean 37.5252 +- 148.044 [0,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+write count distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total count distribution:
+238 data points, mean 37.5294 +- 148.043 [1,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+read bytes distribution:
+238 data points, mean 613678 +- 2.42491e+06 [0,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+write bytes distribution:
+238 data points, mean 6.41176 +- 98.7079 [0,1526]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total bytes distribution:
+238 data points, mean 613685 +- 2.42491e+06 [1526,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+read op_bytes_fraction distribution:
+238 data points, mean 0.995798 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+write op_bytes_fraction distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total op_bytes_fraction distribution:
+238 data points, mean 1 +- 0 [1,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+unknown file size count 0
+read file_bytes_fraction distribution:
+238 data points, mean 0.0233083 +- 0.0947967 [0,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00018378941, 0.00021004505, 0.00026255631, 0.00028881194, 0.00031506757, 0.0003413232, 0.00044634572, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00070890203, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00094994777, 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412
+    51%: 0.0019354412, 0.0019354412, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022317384, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0025505582, 0.0029900909, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0039708366, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.004783059, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0072314119, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+write file_bytes_fraction distribution:
+238 data points, mean 6.42268e-05 +- 0.00098876 [0,0.015286]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total file_bytes_fraction distribution:
+238 data points, mean 0.0233725 +- 0.0947861 [5.25113e-05,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00021004505, 0.00023630068, 0.00028881194, 0.00031506757, 0.0003413232, 0.00036757883, 0.00061123417, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00079470003, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412, 0.0019354412
+    51%: 0.0019354412, 0.0019604202, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022871569, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0028498433, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0031664926, 0.0046326427, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.0052944488, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0074137415, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+reorder_count:
+238 data points, mean 0.184874 +- 1.4579 [0,14]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 10
+reorder_fraction:
+238 data points, mean 0.001735 +- 0.0194991 [0,0.291667]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0.051181102
+sequentiality_count_fraction:
+238 data points, mean 0.319774 +- 0.273236 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.44444444, 0.4516129, 0.4516129, 0.4516129, 0.5, 0.53333333
+    81%: 0.53333333, 0.53333333, 0.55555556, 0.58333333, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.71428571, 0.88888889, 0.99834711, 1, 1, 1, 1, 1
+sequentiality_bytes_fraction:
+238 data points, mean 0.320442 +- 0.273879 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0.090909091, 0.16666667, 0.16666667, 0.16666667, 0.17391304, 0.17391304, 0.17391304
+    31%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    41%: 0.22222222, 0.22222222, 0.22222222, 0.23076923, 0.25, 0.28571429, 0.28571429, 0.28571429, 0.3, 0.3
+    51%: 0.30769231, 0.3220339, 0.3220339, 0.3220339, 0.3220339, 0.32773109, 0.33050847, 0.33333333, 0.33333333, 0.33333333
+    61%: 0.33333333, 0.33333333, 0.33333333, 0.36363636, 0.375, 0.4, 0.4, 0.4, 0.4, 0.4
+    71%: 0.4, 0.42857143, 0.42857143, 0.42857143, 0.45714286, 0.45901639, 0.45901639, 0.45901639, 0.51428571, 0.53333333
+    81%: 0.53333333, 0.53333333, 0.55555556, 0.56989247, 0.6, 0.6, 0.6, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.71428571, 0.91176471, 0.99834711, 1, 1, 1, 1, 1
+in_random_sequential_run_count:
+2646 data points, mean 2.94293 +- 40.7718 [1,1218]
+    quantiles about every 26 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 2, 2
+    61%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    71%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    81%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    91%: 2, 2, 2, 2, 2, 3, 3, 3, 4
+in_random_sequential_run_bytes:
+2646 data points, mean 48144.4 +- 667961 [272,1.99557e+07]
+    quantiles about every 26 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    11%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    21%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    31%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    41%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    51%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 24576, 32768
+    61%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    71%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    81%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    91%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 61440
+eof_count:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+End-virtual void Sequentiality::printResult()
+
+Begin-virtual void Sequentiality::printResult()
+Analysis configuration: distinct client, distinct server
+Reorder count: 800/8932, 8.957%
+Skip distribution:
+8694 data points, mean 732182 +- 2.63187e+07 [-4.7489e+08,3.44818e+08]
+    quantiles about every 87 data points:
+    1%: -28901376, -5111808, -737280, -229376, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 16384, 32768, 65536
+    81%: 98304, 114688, 147456, 163840, 196608, 212992, 229376, 262144, 311296, 360448
+    91%: 458752, 540672, 704512, 770048, 1081344, 1556480, 5799936, 24870912, 31047680
+read count distribution:
+238 data points, mean 37.5252 +- 148.044 [0,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+write count distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total count distribution:
+238 data points, mean 37.5294 +- 148.043 [1,1229]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 2, 2, 2, 2, 2
+    11%: 2, 2, 2, 2, 2, 3, 3, 3, 3, 3
+    21%: 3, 4, 4, 4, 4, 4, 4, 4, 5, 5
+    31%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    41%: 5, 5, 5, 5, 5, 5, 5, 5, 5, 5
+    51%: 6, 6, 6, 6, 6, 7, 7, 7, 7, 7
+    61%: 7, 7, 8, 9, 9, 9, 9, 10, 10, 10
+    71%: 11, 12, 13, 15, 15, 15, 17, 18, 18, 18
+    81%: 23, 23, 23, 24, 26, 31, 31, 31, 75, 75
+    91%: 75, 118, 118, 118, 118, 118, 120, 254, 1210
+read bytes distribution:
+238 data points, mean 613678 +- 2.42491e+06 [0,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+write bytes distribution:
+238 data points, mean 6.41176 +- 98.7079 [0,1526]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total bytes distribution:
+238 data points, mean 613685 +- 2.42491e+06 [1526,2.01359e+07]
+    quantiles about every 2 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 32768, 32768, 32768, 32768, 32768
+    11%: 32768, 32768, 32768, 32768, 32768, 49152, 49152, 49152, 49152, 49152
+    21%: 49152, 65536, 65536, 65536, 65536, 65536, 65536, 65536, 81920, 81920
+    31%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    41%: 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920, 81920
+    51%: 98304, 98304, 98304, 98304, 98304, 114688, 114688, 114688, 114688, 114688
+    61%: 114688, 114688, 131072, 147456, 147456, 147456, 147456, 163840, 163840, 163840
+    71%: 180224, 196608, 212992, 245760, 245760, 245760, 278528, 286720, 286720, 286720
+    81%: 376832, 376832, 376832, 376832, 425984, 499712, 499712, 499712, 1228800, 1228800
+    91%: 1228800, 1933312, 1933312, 1933312, 1933312, 1933312, 1966080, 4136960, 19824640
+read op_bytes_fraction distribution:
+238 data points, mean 0.995798 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+write op_bytes_fraction distribution:
+238 data points, mean 0.00420168 +- 0.0646841 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total op_bytes_fraction distribution:
+238 data points, mean 1 +- 0 [1,1]
+    quantiles about every 2 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    71%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    81%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    91%: 1, 1, 1, 1, 1, 1, 1, 1, 1
+unknown file size count 0
+read file_bytes_fraction distribution:
+238 data points, mean 0.0233083 +- 0.0947967 [0,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00018378941, 0.00021004505, 0.00026255631, 0.00028881194, 0.00031506757, 0.0003413232, 0.00044634572, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00070890203, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00094994777, 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412
+    51%: 0.0019354412, 0.0019354412, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022317384, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0025505582, 0.0029900909, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0039708366, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.004783059, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0072314119, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+write file_bytes_fraction distribution:
+238 data points, mean 6.42268e-05 +- 0.00098876 [0,0.015286]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+total file_bytes_fraction distribution:
+238 data points, mean 0.0233725 +- 0.0947861 [5.25113e-05,0.903493]
+    quantiles about every 2 data points:
+    1%: 0.00021004505, 0.00023630068, 0.00028881194, 0.00031506757, 0.0003413232, 0.00036757883, 0.00061123417, 0.00061123417, 0.00061123417, 0.00061123417
+    11%: 0.00062881843, 0.00062881843, 0.00062881843, 0.00079470003, 0.00079470003, 0.00079470003, 0.00079470003, 0.00094994777, 0.00094994777, 0.00094994777
+    21%: 0.00095175601, 0.00095175601, 0.00095175601, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052, 0.0012930052
+    31%: 0.0015119131, 0.0015119131, 0.0015119131, 0.0015280854, 0.0015280854, 0.0015280854, 0.00158626, 0.00158626, 0.00158626, 0.0015940988
+    41%: 0.0015940988, 0.0015940988, 0.0016128677, 0.0016128677, 0.0016128677, 0.0016336835, 0.0016336835, 0.0016336835, 0.0019354412, 0.0019354412
+    51%: 0.0019354412, 0.0019604202, 0.0019604202, 0.0019867501, 0.0019867501, 0.0019867501, 0.0022317384, 0.0022317384, 0.0022871569, 0.0022871569
+    61%: 0.0025161158, 0.0025161158, 0.0028498433, 0.0029900909, 0.0029900909, 0.0031664926, 0.0031664926, 0.0031664926, 0.0046326427, 0.0046326427
+    71%: 0.0046326427, 0.004783059, 0.004783059, 0.0052944488, 0.0059562549, 0.0059562549, 0.0059562549, 0.0072314119, 0.0072314119, 0.0072314119
+    81%: 0.0074137415, 0.023748694, 0.023748694, 0.023748694, 0.03226817, 0.037620733, 0.037626731, 0.037626731, 0.037626731, 0.037626731
+    91%: 0.038258372, 0.044032026, 0.044032026, 0.044032026, 0.091197774, 0.091197774, 0.091197774, 0.38387492, 0.60323876
+reorder_count:
+238 data points, mean 3.54622 +- 8.14392 [0,43]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 1, 1, 1, 1, 1, 1, 1
+    61%: 1, 1, 1, 1, 1, 1, 1, 1, 2, 2
+    71%: 2, 2, 2, 2, 2, 2, 3, 3, 3, 3
+    81%: 4, 5, 5, 5, 5, 7, 7, 7, 8, 13
+    91%: 15, 16, 16, 23, 23, 23, 23, 39, 39
+reorder_fraction:
+238 data points, mean 0.112836 +- 0.15392 [0,0.6]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0.011990408, 0.043478261, 0.043478261, 0.043478261, 0.055555556, 0.11111111, 0.125
+    61%: 0.15384615, 0.16129032, 0.16129032, 0.16666667, 0.16666667, 0.16666667, 0.18181818, 0.19491525, 0.19491525, 0.19491525
+    71%: 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.21333333, 0.21333333, 0.22222222
+    81%: 0.22222222, 0.25, 0.25, 0.25, 0.25, 0.27272727, 0.27777778, 0.28571429, 0.29166667, 0.32773109
+    91%: 0.33050847, 0.33050847, 0.35833333, 0.38888889, 0.41176471, 0.46153846, 0.6, 0.6, 0.6
+sequentiality_count_fraction:
+238 data points, mean 0.353849 +- 0.269917 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0.13043478, 0.13043478, 0.13043478, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    31%: 0.2, 0.23076923, 0.25, 0.25, 0.25, 0.25, 0.28571429, 0.28571429, 0.29411765, 0.30508475
+    41%: 0.30508475, 0.30508475, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.34453782, 0.34745763
+    51%: 0.34745763, 0.35833333, 0.38461538, 0.38709677, 0.38709677, 0.4, 0.4, 0.4, 0.4, 0.4
+    61%: 0.4, 0.4, 0.4, 0.41666667, 0.42857143, 0.42857143, 0.42857143, 0.42857143, 0.44444444, 0.44444444
+    71%: 0.44444444, 0.45333333, 0.46666667, 0.46666667, 0.48148148, 0.5, 0.5, 0.5, 0.53333333, 0.53333333
+    81%: 0.53333333, 0.55555556, 0.58333333, 0.6, 0.6, 0.6, 0.625, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.71428571, 0.99585062, 0.99917966, 1, 1, 1, 1, 1
+sequentiality_bytes_fraction:
+238 data points, mean 0.354486 +- 0.270407 [0,1]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0.13043478, 0.13043478, 0.13043478, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2
+    31%: 0.2, 0.23076923, 0.25, 0.25, 0.25, 0.25, 0.28571429, 0.28571429, 0.29411765, 0.30508475
+    41%: 0.30508475, 0.30508475, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.33333333, 0.34453782, 0.34745763
+    51%: 0.34745763, 0.35833333, 0.38461538, 0.39344262, 0.39344262, 0.4, 0.4, 0.4, 0.4, 0.4
+    61%: 0.4, 0.4, 0.4, 0.41666667, 0.42857143, 0.42857143, 0.42857143, 0.42857143, 0.44444444, 0.44444444
+    71%: 0.45333333, 0.45714286, 0.46666667, 0.46666667, 0.48148148, 0.5, 0.5, 0.5, 0.53333333, 0.53333333
+    81%: 0.53333333, 0.57142857, 0.57142857, 0.6, 0.6, 0.6, 0.625, 0.66666667, 0.66666667, 0.66666667
+    91%: 0.66666667, 0.71428571, 0.99582899, 0.99917966, 1, 1, 1, 1, 1
+in_random_sequential_run_count:
+2577 data points, mean 3.01475 +- 41.3132 [1,1218]
+    quantiles about every 26 data points:
+    1%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    11%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    21%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    31%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    41%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
+    51%: 1, 1, 1, 1, 1, 1, 1, 1, 1, 2
+    61%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    71%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    81%: 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+    91%: 2, 2, 2, 3, 3, 3, 3, 4, 5
+in_random_sequential_run_bytes:
+2577 data points, mean 49325.4 +- 676833 [272,1.99557e+07]
+    quantiles about every 26 data points:
+    1%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    11%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    21%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    31%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    41%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384
+    51%: 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 16384, 32768
+    61%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    71%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    81%: 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768, 32768
+    91%: 32768, 32768, 32768, 49152, 49152, 49152, 49152, 65536, 81920
+eof_count:
+238 data points, mean 0 +- 0 [0,0]
+    quantiles about every 2 data points:
+    1%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    11%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    21%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    31%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    41%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    51%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    61%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    71%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    81%: 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+    91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
+End-virtual void Sequentiality::printResult()
+
+extents: 0.26 MB -> 2.11 MB in 0.00 secs decode time
                    common  attr-ops read-write  mount
-MB compressed:       0.13     0.07     0.00     0.00
-MB uncompressed:     1.07     0.69     0.00     0.00
+MB compressed:       0.13     0.07     0.06     0.00
+MB uncompressed:     1.07     0.69     0.34     0.00
 decode seconds:      0.00     0.00     0.00     0.00
 wait fraction:       0.00     0.00     0.00     0.00

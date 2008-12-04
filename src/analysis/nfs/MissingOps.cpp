@@ -1,4 +1,5 @@
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/SequenceModule.hpp>
@@ -122,8 +123,8 @@ public:
 	sort(tmp.begin(), tmp.end());
 	uint32_t skipf_count = countOneSkip(tmp);
 
-	cout << format("select flipmode (%d,%d) for %08x:")
-	    % skip1_count % skipf_count % client_id;
+	LintelLogDebug("missing-ops", format("select flipmode (%d,%d) for %08x:")
+		       % skip1_count % skipf_count % client_id);
 
 	if (skip1_count > tmp.size() * required_skip1 &&
 	    skipf_count < tmp.size() * max_opposite_skip1) {
@@ -133,7 +134,6 @@ public:
 	} 
 	if (skipf_count > tmp.size() * required_skip1 &&
 	    skip1_count < tmp.size() * max_opposite_skip1) {
-	    cout << "flip\n";
 	    if (false) {
 		cout << format("flip %d > %d\n") % skipf_count % (tmp.size() * required_skip1);
 		dumpVec(tmp);

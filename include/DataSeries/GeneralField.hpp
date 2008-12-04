@@ -176,8 +176,6 @@ struct HashMap_hash<const GeneralValue> {
 
 class GeneralField {
 public:
-    // see comment in DStoTextModule.H for why we have both
-    // interfaces; summary ostream is very slow
     virtual ~GeneralField();
 
     /** create a new general field for a particular series; assumes that
@@ -190,6 +188,8 @@ public:
     static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
 				const std::string &column);
 
+    // see comment in DStoTextModule.H for why we have both
+    // interfaces; summary ostream is very slow
     virtual void write(FILE *to) = 0;
     virtual void write(std::ostream &to) = 0;
 
