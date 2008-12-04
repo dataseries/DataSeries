@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <math.h>
+#include <arpa/inet.h>
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -47,6 +48,7 @@ main(int argc, char *argv[])
     srtdsheaderin.addSource(argv[2]);
 
     //Get start_time and offset from the info file.
+    /*
     FILE* info_file_ptr = NULL;
 
     string info_file_name(argv[1]);
@@ -57,7 +59,6 @@ main(int argc, char *argv[])
     INVARIANT(info_file_ptr != NULL,
 	      format("Unable to open %s for read: %s")
 	      % info_file_name % strerror(errno));
-
     char info_file_string[1024];
     char *ifs_ptr = info_file_string;
     *ifs_ptr = '\0';
@@ -94,7 +95,7 @@ main(int argc, char *argv[])
     INVARIANT(curtime == base_time, "internal self check failed");
     printf("adjusted basetime %lld\n", base_time);
     printf("used time_offset %lld\n", time_offset);
-
+    */
 
     int trace_major = tracestream->version().major_num();
     int trace_minor = tracestream->version().minor_num();
@@ -106,9 +107,15 @@ main(int argc, char *argv[])
 	printf ("overriding minor with %d\n", trace_minor);
     }
     ExtentSeries srtheaderseries;
-    Variable32Field header_text(srtheaderseries, "header_text");
-    Int64Field start_time_offset(srtheaderseries, "start_time_offset");
-    Int64Field start_time(srtheaderseries, "start_time");
+    /*
+    Int64Field time_adjustment(srtheaderseries, "time_adjustment", Field::flag_nullable);
+    Int64Field first_return_to_driver(srtheaderseries, "first_return_to_driver", Field::flag_nullable);
+    Int64Field last_return_to_driver(srtheaderseries, "last_return_to_driver", Field::flag_nullable);
+
+    //Int64Field start_time_offset(srtheaderseries, "start_time_offset");
+    //Int64Field start_time(srtheaderseries, "start_time");
+    */
+    Variable32Field header_text(srtheaderseries, "header_text", Field::flag_nullable);
 
     ExtentSeries srtseries;
 
@@ -145,6 +152,16 @@ main(int argc, char *argv[])
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
     Int64Field return_to_driver(srtseries,"return_to_driver");
+    BoolField is_suspect(srtseries,"is_suspect");
+    BoolField suspect_bad_BFLAGS(srtseries, "suspect_bad_BFLAGS");
+    BoolField suspect_bad_return_to_driver(srtseries, "suspect_bad_return_to_driver");
+    BoolField suspect_bad_leave_driver(srtseries, "suspect_bad_leave_driver");
+    BoolField suspect_bad_enter_driver(srtseries, "suspect_bad_enter_driver");
+    BoolField suspect_no_return_to_driver(srtseries, "suspect_no_return_to_driver");
+    BoolField suspect_no_leave_or_return(srtseries, "suspect_no_leave_or_return");
+    BoolField suspect_no_enqueue_or_leave(srtseries, "suspect_no_enqueue_or_leave");
+    BoolField suspect_no_leave_driver(srtseries, "suspect_no_leave_driver");
+    BoolField suspect_no_enter_driver(srtseries, "suspect_no_enter_driver");
     Int32Field bytes(srtseries,"bytes");
     Int64Field disk_offset(srtseries,"disk_offset");
     ByteField device_major(srtseries, "device_major");
@@ -154,6 +171,7 @@ main(int argc, char *argv[])
     ByteField device_partition(srtseries, "device_partition");
     Int32Field driver_type(srtseries,"driver_type", Field::flag_nullable);
     ByteField buffertype(srtseries,"buffertype");
+    Variable32Field buffertype_text(srtseries, "buffertype_text");
 
     // could check for these things with hasColumn also, but that will be
     // implicitly checked by trying to create the fields
@@ -162,16 +180,16 @@ main(int argc, char *argv[])
 	cylinder_number = new Int32Field(srtseries,"cylinder_number");
     }
     Int32Field *queue_length = NULL;
-    if (trace_minor >= 4) {
+    if (trace_minor >= 5) {
 	queue_length = new Int32Field(srtseries,"queue_length");
     }
     Int32Field *pid = NULL;
     if (trace_minor >= 5) {
-	pid = new Int32Field(srtseries,"pid");
+	pid = new Int32Field(srtseries,"pid", Field::flag_nullable);
     }
     Int32Field *logical_volume_number = NULL;
     if (trace_minor >= 6) {
-	logical_volume_number = new Int32Field(srtseries,"logical_volume_number");
+	logical_volume_number = new Int32Field(srtseries,"logical_volume_number", Field::flag_nullable);
     }
     Int32Field *machine_id = NULL;
     Int32Field *thread_id = NULL;
@@ -189,6 +207,7 @@ main(int argc, char *argv[])
 		     (const char*)header_text.val()) == 0,
 	      format("header's are NOT equal %s \n******************\n %s")
 	      % tracestream->header() % header_text.stringval());
+    /*
     const char *header = tracestream->header();
     //printf("Header: %s\n", header);
     std::vector<std::string> lines;
@@ -232,6 +251,7 @@ main(int argc, char *argv[])
 		  "Start times DO NOT MATCH!");
 	break;
     }
+    */
 
     Extent *srtextent = srtdsin.getExtent();
     INVARIANT(srtextent != NULL, "can't find srt extents in input file");
@@ -268,6 +288,45 @@ main(int argc, char *argv[])
 	++nrecords;
 	SINVARIANT(trace_minor < 7 || tr->noStart() == false);
 	if (tr->is_suspect()) {
+	    //cout << "enter_kernel:" << enter_kernel.val() << " created:" << tr->tfrac_created() << "\n";
+	    INVARIANT(is_suspect.val(), "suspect SRT but no suspect flag in DS");
+	    if (trace_minor == 6) {
+		/* The flags field appears to have been mangled somewhat.  Just looking at the 1999-01-14 directory of SRT files, the field appears to have been offset by 1 byte, and the bits seem to have been reversed!
+		 */
+		uint32_t uintSuspect = *(uint32_t*)&(((SRTrawSuspectIO_v6*)raw_tr)->suspect);
+		uintSuspect = uintSuspect >> 8;
+		uintSuspect = ntohl(uintSuspect);
+		struct SRTrawSuspectFlags_t *newSuspect = (struct SRTrawSuspectFlags_t*)&uintSuspect;
+		INVARIANT(newSuspect->badBFLAGS == suspect_no_enter_driver.val(), "flag noEnqueue??\n");
+		INVARIANT(newSuspect->badCompletion == suspect_no_leave_driver.val(), "flag noStart\n");
+		INVARIANT(newSuspect->badStart == suspect_no_enqueue_or_leave.val(), "noEnqueueStart\n");
+		INVARIANT(newSuspect->badEnqueue == suspect_no_leave_or_return.val(), "noStartCompletion\n");
+		INVARIANT(newSuspect->noCompletion == suspect_no_return_to_driver.val(), "noCompletion\n");
+		INVARIANT(newSuspect->noStartCompletion == suspect_bad_enter_driver.val(), "badEnqueue\n");
+		INVARIANT(newSuspect->noEnqueueStart == suspect_bad_leave_driver.val(), "badStart\n");
+		INVARIANT(newSuspect->noStart == suspect_bad_return_to_driver.val(), "badCompletion\n");
+		INVARIANT(newSuspect->noEnqueue == suspect_bad_BFLAGS.val(), "badBFlags\n");
+		if (newSuspect->undefined) {
+		    //printf ("undefined is set %X\n", newSuspect->undefined);
+		    //printf("bytes is %X\n", tr->length());
+		    //exit(1);
+		}
+		/*
+		double created_double = tr->created();
+		printf("create %f\n", created_double);
+		double started_double = tr->started();
+		printf("start %f\n", started_double);
+		double finished_double = tr->finished();
+		printf("finish %f\n", finished_double);
+		*/
+		/*
+	    } else if (trace_minor == 7) {
+		suspect_flags.set(((SRTrawSuspectIO_v7*)raw_tr)->suspect);
+		*/
+	    } else {
+		INVARIANT(!(tr->is_suspect()), "got a version other than 6 or 7 and a suspect IO. Fix the comparer to look for those versions.\n");
+	    }
+
 	    INVARIANT(fabs(enter_kernel.val() - (tr->tfrac_created())) < 5e-7,
 		      format("enter_kernel:%lld versus SRT created:%lld")
 		      % enter_kernel.val() % tr->tfrac_created());
@@ -279,21 +338,38 @@ main(int argc, char *argv[])
 		      < 5e-7);
 	} else {
 	    INVARIANT(fabs(enter_kernel.val() - 
-			   (tr->tfrac_created()+base_time+time_offset)) < 5e-7,
+			   (tr->tfrac_created())) < 5e-7,
 		      format("enter_kernel:%lld versus SRT created:%lld")
 		      % enter_kernel.val() % 
-		      (base_time+time_offset+tr->tfrac_created()));
+		      (tr->tfrac_created()));
 	  
 	    // 0.4s == 1717986918 Tfrac (2^-32 seconds)
 	    INVARIANT(fabs(leave_driver.val() 
-			   - (base_time+time_offset+tr->tfrac_started())) 
+			   - (tr->tfrac_started())) 
 		      <= 1717986918,
 		      format("leave_driver:%lld versus SRT started:%lld")
 		      % leave_driver.val() 
-		      % (base_time+time_offset+tr->tfrac_started())); 
+		      % (tr->tfrac_started())); 
 	    SINVARIANT(fabs(return_to_driver.val() 
-			    - (tr->tfrac_finished()+base_time+time_offset)) 
+			    - (tr->tfrac_finished())) 
 		       < 5e-7);
+// 	    INVARIANT(fabs(enter_kernel.val() - 
+
+// 			   (tr->tfrac_created()+base_time+time_offset)) < 5e-7,
+// 		      format("enter_kernel:%lld versus SRT created:%lld")
+// 		      % enter_kernel.val() % 
+// 		      (base_time+time_offset+tr->tfrac_created()));
+	  
+// 	    // 0.4s == 1717986918 Tfrac (2^-32 seconds)
+// 	    INVARIANT(fabs(leave_driver.val() 
+// 			   - (base_time+time_offset+tr->tfrac_started())) 
+// 		      <= 1717986918,
+// 		      format("leave_driver:%lld versus SRT started:%lld")
+// 		      % leave_driver.val() 
+// 		      % (base_time+time_offset+tr->tfrac_started())); 
+// 	    SINVARIANT(fabs(return_to_driver.val() 
+// 			    - (tr->tfrac_finished()+base_time+time_offset)) 
+// 		       < 5e-7);
 	}
 
 	SINVARIANT(bytes.val() == (int32)tr->length());
@@ -362,12 +438,20 @@ main(int argc, char *argv[])
 	    SINVARIANT(queue_length->val() == (int32)tr->qlen());
 	}
 	if (pid) {
-	    SINVARIANT(tr->noPid() == false);
-	    SINVARIANT(pid->val() == (int32)tr->pid());
+	    if (trace_minor >= 7 && tr->noPid()) {
+		//cout << "got a noPid\n";
+		SINVARIANT(pid->isNull());
+	    } else {
+		//cout << "pidval:"<<pid->val()<<" trpid:"<< (int32)tr->pid()<< "\n";
+		SINVARIANT(pid->val() == (int32)tr->pid());
+	    }
 	}
 	if (logical_volume_number) {
-	    SINVARIANT(trace_minor < 7 || tr->noLvDevNo() == false);
-	    SINVARIANT(logical_volume_number->val() == (int32)tr->lvdevno());
+	    if (trace_minor >= 7 && tr->noLvDevNo()) {
+		SINVARIANT(logical_volume_number->isNull());
+	    } else {
+		SINVARIANT(logical_volume_number->val() == (int32)tr->lvdevno());
+	    }
 	}
 	if (machine_id) {
 	    SINVARIANT(tr->noMachineID() == false);
@@ -393,4 +477,11 @@ main(int argc, char *argv[])
 	++srtseries.pos;
     }
     printf("%d records successfully compared\n",nrecords);
+    delete cylinder_number;
+    delete queue_length;
+    delete pid;
+    delete logical_volume_number;
+    delete machine_id;
+    delete thread_id;
+    delete lv_offset;
 }

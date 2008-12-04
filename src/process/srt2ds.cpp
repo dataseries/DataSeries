@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <math.h>
 #include <sstream>
+#include <arpa/inet.h>
 
 #include <Lintel/LintelAssert.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -82,6 +83,16 @@ const std::string srt_timefields(
   );
 */
 const std::string srt_v3fields(
+  "  <field type=\"bool\" name=\"is_suspect\" comment=\"Set if the fields in this operation are suspect.  The suspect_flags MAY then indicate which fields are have errors in them.  is_suspect is a reliable indicator of faulty operations.  The suspect flags are not always reliable.\" />\n"
+  "  <field type=\"bool\" name=\"suspect_bad_BFLAGS\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_return_to_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_leave_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_enter_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_return_to_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_leave_or_return\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_enqueue_or_leave\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_leave_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_enter_driver\"/>\n"
   "  <field type=\"int32\" name=\"bytes\"/>\n"
   "  <field type=\"int64\" name=\"disk_offset\" pack_relative=\"disk_offset\" />\n"
   "  <field type=\"byte\" name=\"device_major\" />\n"
@@ -100,14 +111,24 @@ const std::string srt_v4fields(
   );
 
 const std::string srt_v5fields(
-  "  <field type=\"int32\" name=\"pid\"/>\n"
+  "  <field type=\"int32\" name=\"pid\" opt_nullable=\"yes\"/>\n"
   );
 
 const std::string srt_v6fields(
-  "  <field type=\"int32\" name=\"logical_volume_number\"/>\n"
+  "  <field type=\"int32\" name=\"logical_volume_number\" opt_nullable=\"yes\"/>\n"
   );
 			  
 const std::string srt_v7fields(
+  "  <field type=\"bool\" name=\"is_suspect\" comment=\"Set if the fields in this operation are suspect.  The suspect_flags MAY then indicate which fields are have errors in them.  is_suspect is a reliable indicator of faulty operations.  The suspect flags are not always reliable.\" />\n"
+  "  <field type=\"bool\" name=\"suspect_bad_BFLAGS\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_return_to_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_leave_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_bad_enter_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_return_to_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_leave_or_return\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_enqueue_or_leave\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_leave_driver\"/>\n"
+  "  <field type=\"bool\" name=\"suspect_no_enter_driver\"/>\n"
   "  <field type=\"int32\" name=\"bytes\"/>\n"
   "  <field type=\"int32\" name=\"machine_id\"/>\n"
   "  <field type=\"byte\" name=\"device_major\" />\n"
@@ -118,7 +139,7 @@ const std::string srt_v7fields(
   "  <field type=\"int32\" name=\"driver_type\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"thread_id\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"queue_length\"/>\n"
-  "  <field type=\"int32\" name=\"pid\"/>\n"
+  "  <field type=\"int32\" name=\"pid\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int32\" name=\"logical_volume_number\" opt_nullable=\"yes\"/>\n"
   "  <field type=\"int64\" name=\"disk_offset\" pack_relative=\"disk_offset\"/>\n"
   "  <field type=\"int64\" name=\"lv_offset\" pack_relative=\"lv_offset\" opt_nullable=\"yes\"/>\n"
@@ -383,6 +404,16 @@ main(int argc, char *argv[])
     Int64Field enter_kernel(srtseries,"enter_driver");
     Int64Field leave_driver(srtseries,"leave_driver");
     Int64Field return_to_driver(srtseries,"return_to_driver");
+    BoolField is_suspect(srtseries,"is_suspect");
+    BoolField suspect_bad_BFLAGS(srtseries, "suspect_bad_BFLAGS");
+    BoolField suspect_bad_return_to_driver(srtseries, "suspect_bad_return_to_driver");
+    BoolField suspect_bad_leave_driver(srtseries, "suspect_bad_leave_driver");
+    BoolField suspect_bad_enter_driver(srtseries, "suspect_bad_enter_driver");
+    BoolField suspect_no_return_to_driver(srtseries, "suspect_no_return_to_driver");
+    BoolField suspect_no_leave_or_return(srtseries, "suspect_no_leave_or_return");
+    BoolField suspect_no_enqueue_or_leave(srtseries, "suspect_no_enqueue_or_leave");
+    BoolField suspect_no_leave_driver(srtseries, "suspect_no_leave_driver");
+    BoolField suspect_no_enter_driver(srtseries, "suspect_no_enter_driver");
     Int32Field bytes(srtseries,"bytes");
     Int64Field disk_offset(srtseries,"disk_offset");
     ByteField device_major(srtseries, "device_major");
@@ -436,7 +467,7 @@ main(int argc, char *argv[])
     }
     Int32Field *pid = NULL;
     if (trace_minor >= 5) {
-	pid = new Int32Field(srtseries,"pid");
+	pid = new Int32Field(srtseries,"pid", Field::flag_nullable);
     }
     Int32Field *logical_volume_number = NULL;
     if (trace_minor >= 6) {
@@ -480,7 +511,7 @@ main(int argc, char *argv[])
 	AssertAlways(trace_minor < 7 || tr->noStart() == false,("?!"));
 	outmodule.newRecord();
 	AssertAlways(fabs(tr->created() *1e6 - round(tr->created()*1e6)) < 0.1,
-		     ("bad created %.8f\n",tr->created()));
+		     ("bad created %.8f %.8f\n",tr->created()*1e6, round(tr->created()*1e6)));
 	// IO's that are questionable were marked as suspect IOs, when
 	// they were converted from KI, but they were converted
 	// improperly.  For 1992 traces, there are no suspect IO's.
@@ -490,14 +521,81 @@ main(int argc, char *argv[])
 	// the UNIX epoc but is computed using: 2**32 - create_time
 	// (the times underflowed).
 	if (tr->is_suspect()) {
+	    is_suspect.set(true);
+	    if (trace_minor == 6) {
+		/* The flags field appears to have been mangled somewhat.  Just looking at the 1999-01-14 directory of SRT files, the field appears to have been offset by 1 byte, and the bits seem to have been reversed!
+		 */
+		uint32_t uintSuspect = *(uint32_t*)&(((SRTrawSuspectIO_v6*)raw_tr)->suspect);
+		uintSuspect = uintSuspect >> 8;
+		uintSuspect = ntohl(uintSuspect);
+		struct SRTrawSuspectFlags_t *newSuspect = (struct SRTrawSuspectFlags_t*)&uintSuspect;
+		if (newSuspect->badBFLAGS) {
+		    suspect_no_enter_driver.set(true);
+		    //printf ("SUSnoEnqueue\n");
+		}
+		if (newSuspect->badCompletion) {
+		    suspect_no_leave_driver.set(true);
+		    //printf ("SUSnoStart\n");
+		}
+		if (newSuspect->badStart) {
+		    suspect_no_enqueue_or_leave.set(true);
+		    //printf ("SUSnoEnqueueStart\n");
+		}
+		if (newSuspect->badEnqueue) {
+		    suspect_no_leave_or_return.set(true);
+		    //printf ("SUSnoStartCompletion\n");
+		}
+		if (newSuspect->noCompletion) {
+		    suspect_no_return_to_driver.set(true);
+		    //printf ("SUSnoCompletion\n");
+		}
+		if (newSuspect->noStartCompletion) {
+		    suspect_bad_enter_driver.set(true);
+		    //printf ("SUSbadEnqueue\n");
+		}
+		if (newSuspect->noEnqueueStart) {
+		    suspect_bad_leave_driver.set(true);
+		    //printf ("SUSbadStart\n");
+		}
+		if (newSuspect->noStart) {
+		    suspect_bad_return_to_driver.set(true);
+		    //printf ("SUSbadCompletion\n");
+		}
+		if (newSuspect->noEnqueue) {
+		    suspect_bad_BFLAGS.set(true);
+		    //printf ("badBFlags\n");
+		}
+		if (newSuspect->undefined) {
+		    //printf ("undefined is set %X\n", newSuspect->undefined);
+		    //printf("bytes is %X\n", tr->length());
+		    //exit(1);
+		}
+		/*
+		double created_double = tr->created();
+		printf("create %f\n", created_double);
+		double started_double = tr->started();
+		printf("start %f\n", started_double);
+		double finished_double = tr->finished();
+		printf("finish %f\n", finished_double);
+		*/
+		/*
+	    } else if (trace_minor == 7) {
+		suspect_flags.set(((SRTrawSuspectIO_v7*)raw_tr)->suspect);
+		*/
+	    } else {
+		AssertAlways(!(tr->is_suspect()), ("got a version other than 6 or 7 and a suspect IO. Fix the converter to look for those versions.\n"));
+	    }
 	    double created_double = tr->created();
-	    printf("found a suspect create %f\n", created_double);
-	    uint32_t created_sec = (uint32_t)created_double;
-	    printf("sec part %d\n", created_sec);
+	    //printf("found a suspect create %f\n", created_double);
+	    uint64_t created_sec = (uint64_t)created_double;
+	    //printf("sec part %lld\n", created_sec);
 	    uint32_t created_usec = (uint32_t)((created_double - created_sec)*1e6);
-	    printf("microsec part %d\n", created_usec);
-	    if (created_double > 2147483648LL) { //1998 traces
-		enter_kernel.set(Clock::secMicroToTfrac((4294967296LL - created_sec), (4294967296LL - created_usec)));
+	    //printf("microsec part %d\n", created_usec);
+	    if (0 && created_double > 2147483648LL) { //1998 traces
+		uint64_t temp = Clock::secMicroToTfrac((4294967296LL - created_sec), (4294967296LL - created_usec));
+		//printf("new tfrac %lld\n", temp);
+		
+		enter_kernel.set(temp);
 	    } else {
 		enter_kernel.set(tr->tfrac_created());
 	    }
@@ -512,7 +610,9 @@ main(int argc, char *argv[])
 	    enter_kernel.set(tr->tfrac_created());
 	    leave_driver.set(tr->tfrac_started());
 	    return_to_driver.set(tr->tfrac_finished());
-	    AssertAlways(tr->tfrac_created() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_started() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_finished() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0), ("even the cycle counter tfracs had to be less than 1 year in time.  This is a bad convert:%lld %lld %lld!\n", tr->tfrac_created(), tr->tfrac_started(), tr->tfrac_finished()));
+	    if (trace_minor > 6) {
+		AssertAlways(tr->tfrac_created() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_started() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0) && tr->tfrac_finished() < /* 1 year */ Clock::secMicroToTfrac(31536000, 0), ("even the cycle counter tfracs had to be less than 1 year in time.  This is a bad convert:%lld %lld %lld!\n", tr->tfrac_created(), tr->tfrac_started(), tr->tfrac_finished()));
+	    }
 	}
 	bytes.set(tr->length());
 	disk_offset.set(scale_offset ? (tr->offset() / 1024) : tr->offset());
@@ -575,15 +675,18 @@ main(int argc, char *argv[])
 	    queue_length->set(tr->qlen());
 	}
 	if (pid) {
-	    AssertAlways(tr->noPid() == false,("?!"));
-	    pid->set(tr->pid());
+	    if (trace_minor >= 7 && tr->noPid()) {
+		pid->setNull(true);
+	    } else {
+		pid->set((int32)tr->pid());
+	    }
 	}
 	if (logical_volume_number) {
 	    //AssertAlways(trace_minor < 7 || tr->noLvDevNo() == false,("?!"));
-	    if (tr->noLvDevNo()) {
+	    if (trace_minor >= 7 && tr->noLvDevNo()) {
 		logical_volume_number->setNull(true);
 	    } else {
-		logical_volume_number->set(tr->lvdevno());
+		logical_volume_number->set((int32)tr->lvdevno());
 	    }
 	}
 	if (machine_id) {

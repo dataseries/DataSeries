@@ -56,7 +56,7 @@ sub rebuild {
     $dsfilepath = $fullpath;
     $dsfilepath =~ s/\.srt(|(\.Z)|(\.bz2)|(\.gz))$/.ds/o;
     
-    my $command = "cmpsrtds $fullpath $dsfilepath $new_minor";
+    my $command = "cmpsrtds $fullpath $dsfilepath $new_minor &> $destpath";
     print "$command\n";
     return system($command) == 0;
 }
