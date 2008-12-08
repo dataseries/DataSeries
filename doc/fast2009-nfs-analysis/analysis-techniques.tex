@@ -1,6 +1,8 @@
 \section{Analysis techniques}
 \label{sec:analysis-techniques}
 
+\fix{8. Condense this, discuss with Daniel how much should be retained}
+
 Analyzing the very large amount of data that we collected meant that
 we had to adopt and develop new techniques for analyzing this data.
 The most important property that we aimed for was bounded memory,
@@ -11,6 +13,9 @@ that these techniques allow us to handle the much larger datasets that
 we have collected.
 
 \subsection{Approximate quantiles}
+
+% (90 billion entries \* 8 bytes/entry * 2 sets = 1.31TiB; we need < 10MB)
+\fix{16. Note that exact quantiles are impractical}
 
 Simple statistics over storage traces often provide misleading
 results.  For example, calculating the mean latency of an I/O will
@@ -168,6 +173,8 @@ more effective if the size of the data stored in the hash map were
 larger.
 
 \subsection{mercury-plot}
+
+\fix{12. Use mercury-plot in the text, explain name}
 
 Once we have analyzed the data from our binary format using the cube
 and quantile techniques, we need to graph and subset the data.  For

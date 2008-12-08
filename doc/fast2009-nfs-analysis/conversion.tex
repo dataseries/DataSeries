@@ -39,6 +39,8 @@ request-type specific information, such as a single table for RPC's
 that include attributes, and a single table for read and write
 information.  We then join the common table to the other tables when
 we want to perform an analysis that uses information in both.
+\fix{1. describe how a single request can generate many rows, perhaps
+a little more on the DS format}
 
 The relational structuring improves flexibility, and allows for
 analysis that only need a subset of the data to avoid reading
@@ -47,6 +49,8 @@ latency can simply scan the common table.
 
 \subsection{Performance}
 
+\fix{15. Explain that we only converted on one machine due to network
+performance limits; it is two stage embarrassingly parallel, }
 In order to perform the conversion in parallel, we need to divide all
 of the collected files into groups and process them in parallel.  We
 make two passes through the data.  First we parse the data and count
@@ -81,10 +85,14 @@ length of trace.
 % machine had would be the bottleneck and would result in slower
 % conversion.
 
+\fix{18. rename to anonymization}
+
 \subsection{Obfuscation}
 
 In order to release the traces, we have to obscure private data such
 as filenames.  There are three primary ways to perform the obfuscation: 
+\fix{7. mention uid/gid were ignored since almost all accesses were from
+the same uid}
 
 \begin{enumerate}
 

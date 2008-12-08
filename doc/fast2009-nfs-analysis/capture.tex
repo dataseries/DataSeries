@@ -1,6 +1,9 @@
 \section{Capture}
 \label{sec:capture}
 
+\fix{4. See if we can compress this somewhat, perhaps moving details
+into a TR?}
+
 The first stage in analyzing an NFS workload is capturing the data.
 There are three places that the workload could be captured: the
 client, the server, or the network.  Capturing the workload on the
@@ -54,16 +57,17 @@ was unable to capture packets at the bandwidth that we expected to
 see.  While looking to add a faster kernel-user transport, we
 discovered that Linux already supported a memory mapped shared ring
 buffer for packet capture. We modified the example lindump program to
-write out pcap files, and to be able to capture from more than one
-interface at the same time.  We used mmap to write the output files to
-an in-memory filesystem, and from there we copied and compressed the
-files in parallel to disk.  Using an HP DL580G2, a state of the art
-4 socket machine circa 2003, lindump was able to capture about 3x the
-packets per second as tcpdump and about 1.25x the bandwidth.  Combined
-with a somewhat higher burst rate while the kernel and network card
-buffered data, this was sufficient for mostly loss free captures at
-the animation company, and was the technique we used for all of the
-2003 set of traces.
+write out pcap files~\cite{pcap}, the standard output format from
+tcpdump, and to be able to capture from more than one interface at the
+same time.  We used mmap to write the output files to an in-memory
+filesystem, and from there we copied and compressed the files in
+parallel to disk.  Using an HP DL580G2, a state of the art 4 socket
+machine circa 2003, lindump was able to capture about 3x the packets
+per second as tcpdump and about 1.25x the bandwidth.  Combined with a
+somewhat higher burst rate while the kernel and network card buffered
+data, this was sufficient for mostly loss free captures at the
+animation company, and was the technique we used for all of the 2003
+set of traces.
 
 Once our packets are captured into files in tmpfs, we have to save
 them to disk, maximizing effective disk space through the use of
