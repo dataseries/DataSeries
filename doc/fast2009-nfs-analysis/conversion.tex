@@ -5,11 +5,11 @@ Once the data is captured, the second problem is parsing and
 converting that data to a easily usable format.  The raw packet format
 contains a large amount of unnecessary data, and would require
 repeated parsing to be used for NFS analysis.  There are three main
-challenges in conversion: representation, performance and obfuscation.
+challenges in conversion: representation, performance and anonymization.
 Representation is the challenge of deciding the logical structure of
 the converted data.  Performance is the challenge of making the
 conversion run quickly, hopefully faster than the capture stage.
-Obfuscation is the challenge of hiding sensitive information present
+Anonymization is the challenge of hiding sensitive information present
 in the data and is necessary for being able to release traces.
 
 One lesson we learned after conversion is that the converter's version
@@ -18,7 +18,7 @@ can be bugs.  Having the version number in the trace makes it easy to
 determine which flaws need to be handled.  We recommend the version
 control revision ID as a suitable version number.  Related to this is
 preservation of data.  An NFS parser will discard data both for space
-reasons and for obfuscation.  Keeping underlying information, such as
+reasons and for anonymization.  Keeping underlying information, such as
 per packet conversion in addition to per NFS-request conversion can
 enable cross checking between analysis.  We caught an early bug in our
 converter that failed to record packet fragments by comparing the
@@ -49,107 +49,78 @@ latency can simply scan the common table.
 
 \subsection{Performance}
 
-\fix{15. Explain that we only converted on one machine due to network
-performance limits; it is two stage embarrassingly parallel, }
-In order to perform the conversion in parallel, we need to divide all
-of the collected files into groups and process them in parallel.  We
-make two passes through the data.  First we parse the data and count
-the number of requests or replies.  Second we use those counts to
-determine the first record-id for each group, and write the converted files.
-Since NFS parsing requires the request to parse the
-reply, we currently do not parse any request-reply pairs that cross a
-group boundary.  Similarly, we do not do full TCP reconstruction, so
-for NFS over TCP, we can fail to parse requests or replies that are
-not aligned with the start of a packet.  We will parse multiple
-request or replies in a single packet though.  These limitations are similar
-to earlier work, so we found them acceptable.  The 8x speedup we get
-by converting in parallel means that we can complete the conversion of
-a full data set (30TiB) in about 3 days.
+To perform the conversion in parallel, we divide the collected files
+into groups and process each group separately.  We make two passes
+through the data.  First we parse the data and count the number of
+requests or replies.  Second we use those counts to determine the
+first record-id for each group, and convert the files.  Since NFS
+parsing requires the request to parse the reply, we currently do not
+parse any request-reply pairs that cross a group boundary.  Similarly,
+we do not do full TCP reconstruction, so for NFS over TCP, we only
+parse requests or replies that start aligned with the beginning of a
+packet. These limitations are similar to earlier work, so we found
+them acceptable.  We run the conversion locally on the 8-way tracing
+machine rather than a cluster because conversion runs faster than the
+1Gbit LAN connection we had at the customer site (the tracing card
+does not act as a normal NIC).  Conversion of a full data set (30TiB)
+takes about 3 days.
 
-We chose to convert from disk files rather than try to convert data on
-the fly.  We did this for simplicity, but it had the side benefit that
-we could write our converter to be paranoid and conservative, rather
-than have it try to recover from conversion problems.  This allowed us
-to fix the converter when it was mis-parsing, and properly ignore data
-when the underlying data was bad (for example from mis-interpreting
-the start of an RPC).  The next time we convert data, we plan to
-extend our conversion tools to work incrementally, such that we can
-process the first set of files while the capture is still running,
-delete those files, and therefore capture a theoretically unbounded
-length of trace.
+We convert from trace files rather than on-the-fly primarily for
+simplicity.  However, a side benefit was that our converter could be
+paranoid and conservative, rather than have it try to recover from
+conversion problems since we could fix the converter when it was
+mis-parsing, or was too conservative.  The next time we trace, we plan
+to do more on-the-fly conversion by converting early groups and
+deleting those trace files during capture so that we can capture
+longer traces.
 
-% We briefly
-% considered parallelizing the conversion across multiple machines, but
-% when we examined the conversion rate we were getting on our 8 core
-% machine, we realized that the 1Gbit network connection the tracing
-% machine had would be the bottleneck and would result in slower
-% conversion.
-
-\fix{18. rename to anonymization}
-
-\subsection{Obfuscation}
+\subsection{Anonymization}
 
 In order to release the traces, we have to obscure private data such
-as filenames.  There are three primary ways to perform the obfuscation: 
-\fix{7. mention uid/gid were ignored since almost all accesses were from
-the same uid}
+as filenames.  There are three primary ways to perform the anonymization: 
 
 \begin{enumerate}
 
 \item {\bf map values to unique integers}.  This option results in the
-most compact identifiers.  It presents difficulties in parallelizing
-the conversion since all identical values should map to
-identical integers.  To maintain consistent mappings between capture
-sessions, the translation table needs to be maintained, which means
-that the size of that table could get very large.  Finally, converting
-back to the original data means that the translation table needs to be
-preserved.
+most compact identifiers ($\leq$ 8 bytes), but is difficult to
+calculate in parallel and requires a large translation table to
+maintain persistant mappings and to convert back to the original data.
 
 \item {\bf map values to hash/hmac}.  This option results in larger
-identifiers since secure hash's are 16-20 bytes in length, but it
-enables parallel conversion.  Using an HMAC protects against
-dictionary attacks.  Reversing this mapping requires preserving a
-translation table.
-
-% There is a potential problem
-% of collisions, but this is sufficiently implausible as to be an
-% ignorable problem.
+identifiers (16-20 bytes), but enables parallel conversion.  A HMAC
+protects against dictionary attacks.  Reversing this mapping requires
+preserving a large translation table.
 
 \item {\bf map values to encrypted values}.  This option results in
 the longest identifiers since the encrypted value will be at least as
-large as the original value.  It is as parallelizable as the hash/hmac
-approach, it is not open to a dictionary attack, and it can be
-reversed provided the key files are kept around.
+large as the original value.  It is parallizable and easily reversable
+provided the small keys are maintained.
 
 \end{enumerate}
 
-We chose the last approach because we wanted to be able to have
-discussions with the company about results of analysis, and we needed
-to be able to tell them the actual pathnames involved in what we
-found.  Our encryption process embeds a prefix of the hash in the
-decrypted data so that we can verify that a particular string should
-be decrypted.  This allows us to write a decryption filter that looks
-for hexadecimal strings in output, attempts to decrypt them, and if
-successful substitutes in the decrypted data.  We have used the
-reversible decryption to verify analysis of the data.  For example, a
-colleague analyzed the directory structure, and wanted to identify the
-strings representing `.' and `..'.  We verified through decryption
-that they had identified the correct strings.
+We chose the last approach because it preserved the maximum
+flexibility, and allowed us to easily have discussions with the
+customer about unexpected issues such as writes to what should have
+been a read-only filesystem.  Our encryption includes a self-check, so
+we can convert back to real filenames by decrypting all hexadecimal
+strings and keeping the ones that validate.  We have also used the
+reversability to verify for a colleague that they properly identified
+the '.' and '..' filenames.
 
-A second question is what if any parsing should be done of values
-before they are encrypted.  For example, should a filename and suffix
-be encrypted separately.  This question depends on what analysis will
-be run in the future.  In our case, we chose to encrypt entire
-filenames since the suffixes are specific to the animation process and
-are unlikely to be useful to people.  This was also the most
-conservative position; we could (through decryption) change our
-position on this in the future.
+We chose to encrypt entire filenames since the suffixes are specific
+to the animation process and are unlikely to be useful to people.
+This choice also simplified the discussions about publishing the
+traces.  Since we can decrypt, we could in the future change this
+decision.
 
-Since most of the other values in our traces were semi-random (IP
-addresses in the 10.* network, filehandles selected by the filers), we
-chose to pass those values through unchanged.  If there were public
-values in the traces, then we would have had to apply more
-sophisticated anonymization~\cite{ruoming07anonymization}.
+The remaining values were semi-random (IP addresses in the 10.*
+network, filehandles selected by the filers), so we pass those values
+through unchanged.  All jobs in the customers' cluster were being run
+as a common user, so we did not capture uids.  Since they are
+transitioning away from that model, future traces would include
+unchanged uids and gids.  If there were public values in the traces,
+then we would have had to apply more sophisticated
+anonymization~\cite{ruoming07anonymization}.
 
 
 

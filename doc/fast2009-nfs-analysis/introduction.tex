@@ -5,7 +5,7 @@ from the reviewer refers to}
 \fix{11. Another word rather than intense in title?}
 
 \fix{13. More motivation on why we do tracing}
-\fix{17. rename datasets from nfs-1/nfs-2 to animation-2003, animation-2007}
+\fix{17. rename datasets from nfs-1/nfs-2 to animation-2003, animation-2007; done in text, need to check figures}
 
 Storage tracing and analysis has a long history.  Some of the earliest
 filesystem traces were captured in 1985~\cite{ousterhout85}, and there
@@ -34,8 +34,8 @@ by the community.
 The datasets we have collected were collected at a feature animation
 (movie) company\footnote{The company name will remain blinded as part
 of the agreement to publish the traces.} during two other projects.
-The first dataset (nfs-1) was collected in Aug 2003 - Feb 2004.  We
-returned later to collect data (nfs-2) in Jan 2007 - Oct 2007 using an
+The first dataset (animation-2003) was collected in Aug 2003 - Feb 2004.  We
+returned later to collect data (animation-2007) in Jan 2007 - Oct 2007 using an
 improved version of our technology.  We collected data using mirror
 ports on the companies network, and we mirrored a variety of different
 places in the network.  The companies network design is
@@ -68,8 +68,7 @@ the operating system generating the request has changed, the NFS
 protocol version has changed, and the configuration of the clients has
 changed because of the standard technology trends.
 
-\fix{2. add picture of the overall process to make it clear which
-tools are used where}
+\fix{2. describe figure of overall process}
 
 Our work has five main contributions:
 
@@ -98,6 +97,13 @@ this paper and to generate the graphs.  This publication allows other
 researchers to build on our tools for further analysis, and allows
 simulation studies using the animation traces.
 \end{enumerate}
+
+\begin{figure}
+\center \epsfig{width=2.2in, angle=0, file=overall-process.eps}
+\caption{Overall process; our tools are shown in italics, traditional tools
+after them.}
+\label{fig:overall-process}
+\end{figure}
 
 We examine related work in section~\ref{sec:related}.  We describe our
 capture techniques in section~\ref{sec:capture}, followed by the

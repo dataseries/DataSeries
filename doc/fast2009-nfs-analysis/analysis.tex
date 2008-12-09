@@ -9,11 +9,11 @@ small cluster of 4 core 2.4GhZ Opterons.  Our analysis typically
 becomes bottle-necked on the fileservers that serve up to 200MB/s each
 once an analysis is running on more than 20 machines.
 
-We collected data at two times: 2003 (nfs-1), and 2007 (nfs-2).  During
-each time, we would start the collection process, and let it run
-either until we ran out of disk space, or we had collected all the
-data we wanted.  Each of these runs comprises a set.  We have 21 sets
-from 2003, and 8 sets from 2007.
+We collected data at two times: 2003 (animation-2003), and 2007
+(animation-2007).  During each time, we would start the collection
+process, and let it run either until we ran out of disk space, or we
+had collected all the data we wanted.  Each of these runs comprises a
+set.  We have 21 sets from 2003, and 8 sets from 2007.
 
 \fix{6. Examine whether all the analysis could be done with nfsstat}
 
@@ -31,7 +31,7 @@ is any aligned cyclicality in the trace data we will not be confused
 by it.  We divide an interval into 20 sub-intervals.  We then add the
 interval's rate to an approximate quantile so that we can understand
 the distribution of rates even for small intervals.  For example, we
-have 11.6 billion measurements for nfs-2/set-0 at a 1ms interval
+have 11.6 billion measurements for animation-2007/set-0 at a 1ms interval
 length.  This correspond to the 6.7 days of that trace.
 % 11.6 * 10^9 * 0.001 / 20 = 580,000 / 86400 = 6.7
 
@@ -51,7 +51,7 @@ were taken on a wider variety of places in the network, and are much
 lower because our 2003 capture technology could not capture as much
 data, so we traced fewer machines at a time.
 
-Figure~\ref{fig:bwrolling-mbps}(b) shows nfs-2/set-5 at different
+Figure~\ref{fig:bwrolling-mbps}(b) shows animation-2007/set-5 at different
 interval lengths.  This graph emphasizes how bursty the traffic was
 during this trace. While 50\% of the intervals were above 500Mbits for
 60s intervals, only 30\% of the intervals were above 500Mbits for 1ms
@@ -79,8 +79,8 @@ slightly higher rates, but because of our configuration error for the
 \epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-2-set-5.ps}
 \epsfig{width=2.1in, angle=0, file=graphs/Mbps-tails.ps}
 \caption{Bandwidth measured in the collection process.  In figure (c),
-nfs-2/set-5 at different intervals is the top group of 4 lines, and
-nfs-1/set-12 is the bottom group of 4 lines.  nfs-1/set-12 does not go
+animation-2007/set-5 at different intervals is the top group of 4 lines, and
+animation-2003/set-12 is the bottom group of 4 lines. animation-2003/set-12 does not go
 all the way to the right at 60s intervals because there were
 insufficient data points for the 0.9999 quantile.}
 \label{fig:bwrolling-mbps}
@@ -88,7 +88,7 @@ insufficient data points for the 0.9999 quantile.}
 
 % \begin{figure*}
 % \epsfig{width=2.1in, angle=0, file=graphs/kpps-tails.ps}
-% \caption{Tail of the quantiles in Mbps and kpps for the nfs-2 traces.}
+% \caption{Tail of the quantiles in Mbps and kpps for the animation-2007 traces.}
 % \label{fig:capture-tails}
 % \end{figure*}
 
@@ -107,7 +107,7 @@ insufficient data points for the 0.9999 quantile.}
 \begin{table*}
 \begin{tabular}{|r||r|r||r|r||r|r||r|r|}
 \hline
-  & \multicolumn{2}{c||}{nfs-1/set-12} & \multicolumn{2}{c||}{nfs-1/set-5} & \multicolumn{2}{c||}{nfs-2/set-2} & \multicolumn{2}{c|}{nfs-2/set-5} \\
+  & \multicolumn{2}{c||}{animation-2003/set-12} & \multicolumn{2}{c||}{animation-2003/set-5} & \multicolumn{2}{c||}{animation-2007/set-2} & \multicolumn{2}{c|}{animation-2007/set-5} \\
    operation &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op \\
 %\hline
 %     symlink &     0.008 &   201 &     0.000 &    92 &     0.001 &   415 &     0.000 &   458 \\
@@ -172,7 +172,7 @@ Table~\ref{table:nfs-stats-overview} provides an overview of all the
 operations that occurred in the four traces we are examining in more
 detail.  It shows a number of substantial changes in the workload
 presented to the NFS subsystem.  First, the read and write sizes have
-almost doubled from the nfs-1 to nfs-2 datasets.  This is expected
+almost doubled from the animation-2003 to animation-2007 datasets.  This is expected
 because the company moved from NFSv2 to NFSv3 between the two
 tracing periods, and set the v3 read/write size to 16k.  We asked and
 were told they set it to those sized based on some performance
@@ -203,7 +203,7 @@ that could be used for incremental scrubbing and data reorganization.
 We include figure~\ref{fig:oprates}(a) because it is the traditional
 graph that shows daily cycles.  We do not have quite as strong daily
 cycles because animation companies are good at keeping their compute
-clusters busy overnight, but we can see for nfs-2/set-5 the effect of
+clusters busy overnight, but we can see for animation-2007/set-5 the effect of
 the weekends where the load on the system drops nearly to 0.
 
 Figure~\ref{fig:bw-ops-quantiles} shows the read and write MiB/s and the
@@ -223,8 +223,8 @@ implausible as the frame output size has not increased.  We analyzed
 the traces to look for missing operations in the sequence of
 transaction ids, automatically inferring if the client is using a
 big-endian or little-endian counter.  The initial results looked quite
-good, nfs-2/set-2 showed 99.7\% of the operations were in sequence,
-nfs-2/set-5 showed 98.4\%, and counting the skips of 128 transactions
+good, animation-2007/set-2 showed 99.7\% of the operations were in sequence,
+animation-2007/set-5 showed 98.4\%, and counting the skips of 128 transactions
 or less, we found only 0.21\% and 0.50\% respectively (the remaining
 entries were duplicates or ones that we could not positively tell if
 they were in sequence or a skip).  However, when we looked one level
@@ -271,10 +271,10 @@ used, we do not know how much those traces were affected.
 \hline
 dataset & 1s ops/s & 3600s ops/s & ratio \\
 \hline
-nfs-1/set-5  & 26445  & 15110 & 1.75x \\
-nfs-1/set-12 & 44926 & 19923 & 2.25x \\
-nfs-2/set-2  & 75457 & 54657 & 1.38x \\
-nfs-2/set-5  & 59726.5 & 41550 & 1.44x \\
+animation-2003/set-5  & 26445  & 15110 & 1.75x \\
+animation-2003/set-12 & 44926 & 19923 & 2.25x \\
+animation-2007/set-2  & 75457 & 54657 & 1.38x \\
+animation-2007/set-5  & 59726.5 & 41550 & 1.44x \\
 \hline
 \end{tabular}
 \caption{Ratio between operation rates at 1 second and one hour grouping sizes}

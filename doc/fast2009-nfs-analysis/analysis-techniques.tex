@@ -17,55 +17,59 @@ we have collected.
 % (90 billion entries \* 8 bytes/entry * 2 sets = 1.31TiB; we need < 10MB)
 \fix{16. Note that exact quantiles are impractical}
 
-Simple statistics over storage traces often provide misleading
-results.  For example, calculating the mean latency of an I/O will
-result in a value that occurs rarely as it will average the cache hit
-time and the disk I/O time.  Histograms provide a better way to
-understand the distribution of latencies, but require the user to
-preemptively determine the buckets for the histogram.  If there are
-multiple types of cache hits, they could easily be put into the same
-histogram bucket resulting in loss of important information.
+% 200 billion from biggest at around 90 billion from the ipbwrolling 
+% analysis, but we calculate broader measures at 9 billion, .9 billion 
+% and so on (100 billion).  We calculate both bw and packets/s 
+% so 200 billion.
 
-The gold standard for calculating these types of statistics would be a
-quantile.  The $q-$quantile of a set of $n$ data elements is the
-element at position $\lceil q*n\rceil$ in the sorted list of elements
-indexed from 1 to n.  Unfortunately calculating exact quantiles
-requires buffering all of the operations in memory.  Since we can have
-billions of data elements, it is not likely that we would be able to
-calculate exact quantiles.
+Quantiles are better than simple statistics or histograms because they
+do not accidentally combine separate measurements regardless of
+distribution.  Unfortunately for our data, calculating exact quantiles
+is impractical.  We collect statistics for a single dataset with a
+total of about 200 billion double values, which would require
+$\approx$1.5TiB of memory to keep the raw data in memory.
 
-There is an algorithm from the database field for calculating
+% For us, epsilon 0.005, we calculate 6 Nbounds: 100e9 -> 0.168MiB; 
+% 10e9 -> 0.143; 1e9 -> 0.113; 1e8 -> 0.079; 1e7 -> 0.054; 1e6 -> 0.036
+% sum 0.593 * 2 = 1.186
+However, there is an algorithm from the database field for calculating
 approximate quantiles in bounded
-memory~\cite{Manku98approximatemedians}.  The basic idea is that the
-user specifies two numbers $\epsilon$, the maximum error, and $N$, the
-maximum number of elements.  Then when the program calculates quantile
-$q$, it actually gets a quantile in the range
-$[q-\epsilon,q+\epsilon]$.  Provided that the total number of elements
-was less than $N$, the bound is guaranteed.  The approximate quantile
-algorithm works essentially by keeping a collection of $c$ buffers
-each containing $k$ elements.  Until we fill up all our buffers, we
-just add values into a buffer.  Once all the buffers are full we need
-to collapse two buffers together into a single buffer.  In the
-simplest case, we pick two buffers, sort the combined elements, select
-every other element to create a new buffer, and assign a weight $w$ to
-the new buffer of 2 since each element in the buffer is logically
-representing two values.  As the algorithm progresses, it may combine
-buffers of differing weights, so it will pick values from a logically
-sorted list where each element is repeated $w$ times.  The complexity
-in the algorithm is in selecting appropriate values for $c$ and $k$
-based on $\epsilon$ and $N$; selecting the right buffers for collapse;
-and proving that the resulting buffers at the end provide enough
-values to select the approximate quantiles.
+memory~\cite{Manku98approximatemedians}.  A $q-$quantile of a set of
+$n$ data elements is the element at position $\lceil q*n\rceil$ in the
+sorted list of elements indexed from 1 to n.  For approximate
+quantiles, the user specifies two numbers $\epsilon$, the maximum
+error, and $N$, the maximum number of elements.  Then when the program
+calculates quantile $q$, it actually gets a quantile in the range
+$[q-\epsilon,q+\epsilon]$.  
 
-The approximate quantile algorithm dramatically reduces the required
-memory.  For example, with $\epsilon$ = 0.01, and $N = 10^9$, a
-standard quantile would need about 8GB of memory to store the billion
-doubles, while the approximate quantile only uses about 60KB.  We
-generally chose to output 100 evenly spaced quantiles since we are
-going to make graphs from them.  We set $\epsilon = 1/(2*100)$ so we
-were guaranteed to have non-overlapping ranges for our 100 output
-values.  In testing we have found the approximate quantiles to
-generate results about $10$x better than the bound.
+Provided that the total number of elements
+was less than $N$, the bound is guaranteed.  We have found that
+usually the error is about 10$\times$ better than specified.  For our
+epsilon of 0.005 (sufficient to guarentee all percentiles are
+distinct), instead of needing $\approx$1.5TiB, we only need
+$\approx$1.2MiB, an improvement of $>10^6$.  This dramatic improvement
+means we can run the analysis on one machine, and hence process
+multiple sets in parallel.  The performance cost of the algorithm is
+about the same as sorting since the algorithm does similar sorting of
+subsets and merging of subsets.  Details on how the algorithm works
+can be found in ~\cite{Manku98approximatemedians} or our software
+distribution.
+
+% The approximate quantile
+% algorithm works essentially by keeping a collection of $c$ buffers
+% each containing $k$ elements.  Until we fill up all our buffers, we
+% just add values into a buffer.  Once all the buffers are full we need
+% to collapse two buffers together into a single buffer.  In the
+% simplest case, we pick two buffers, sort the combined elements, select
+% every other element to create a new buffer, and assign a weight $w$ to
+% the new buffer of 2 since each element in the buffer is logically
+% representing two values.  As the algorithm progresses, it may combine
+% buffers of differing weights, so it will pick values from a logically
+% sorted list where each element is repeated $w$ times.  The complexity
+% in the algorithm is in selecting appropriate values for $c$ and $k$
+% based on $\epsilon$ and $N$; selecting the right buffers for collapse;
+% and proving that the resulting buffers at the end provide enough
+% values to select the approximate quantiles.
 
 \subsection{Cube}
 
