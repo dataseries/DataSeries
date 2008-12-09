@@ -1,8 +1,6 @@
 \section{Analysis techniques}
 \label{sec:analysis-techniques}
 
-\fix{8. Condense this, discuss with Daniel how much should be retained}
-
 Analyzing the very large amount of data that we collected meant that
 we had to adopt and develop new techniques for analyzing this data.
 The most important property that we aimed for was bounded memory,
@@ -25,9 +23,9 @@ we have collected.
 Quantiles are better than simple statistics or histograms because they
 do not accidentally combine separate measurements regardless of
 distribution.  Unfortunately for our data, calculating exact quantiles
-is impractical.  We collect statistics for a single dataset with a
-total of about 200 billion double values, which would require
-$\approx$1.5TiB of memory to keep the raw data in memory.
+is impractical.  For a single dataset, we collect multiple statistics
+with a total of about 200 billion values.  Storing all these values
+would require $\approx$1.5TiB of memory.
 
 % For us, epsilon 0.005, we calculate 6 Nbounds: 100e9 -> 0.168MiB; 
 % 10e9 -> 0.143; 1e9 -> 0.113; 1e8 -> 0.079; 1e7 -> 0.054; 1e6 -> 0.036
@@ -72,6 +70,8 @@ distribution.
 % values to select the approximate quantiles.
 
 \subsection{Cube}
+
+\fix{8. Condense this and below}
 
 Calculating aggregate or roll-up statistics is an important part of
 analyzing a workload.  For example, consider the information in the

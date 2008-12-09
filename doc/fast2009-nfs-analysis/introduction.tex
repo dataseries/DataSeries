@@ -45,15 +45,15 @@ the core, and then a collection of edge switches that each cover one
 or two racks of rendering machines.  Most of our traces were taken by
 mirroring at those rendering clients.
 
-One difference between our traces and other ones is the data rates that
-we measured.  One of our 2003 client traces saw about 750 million
+One difference between our traces and other ones is the data rates
+that we measured.  One of our 2003 client traces saw about 750 million
 operations per day.  In comparison, the 2001 Ellard
 traces~\cite{EllardFast03} saw about 30 million NFS operations per day
 in their busier traces, and the 2007 Leung traces~\cite{LeungUsenix08}
 saw a peak of 19 million CIFS operations/day.  Our 2007 traces saw
 about 2.4 billion operations/day.  This difference required us to
-develop and adopt new techniques to capture, convert, store and
-analyze the traces.
+develop and adopt new techniques to capture, convert, and analyze the
+traces.
 
 Since our traces were captured in such a different environment than
 prior traces, we make limited comparisons to their workloads, and we
@@ -68,7 +68,17 @@ the operating system generating the request has changed, the NFS
 protocol version has changed, and the configuration of the clients has
 changed because of the standard technology trends.
 
-\fix{2. describe figure of overall process}
+The overall process of understanding a workload involves four main
+steps, as shown in figure~\ref{fig:overall-process}.  Our tools for
+these steps are shown in italics for each step, as well as some
+traditional tools.  The first step is capturing the workload, usually
+as some type of trace.  The second step is conversion, ususally from
+some raw format into a format designed for analysis.  The third step
+is analysis to reduce the huge amount of converted data down to
+something manageable.  Alternately, this step is a simulation to
+explore some new system architecture.  Finally the fourth step is to
+generate graphs or textual reports from the output of the analysis or
+simulation.
 
 Our work has five main contributions:
 
@@ -107,8 +117,7 @@ after them.}
 
 We examine related work in section~\ref{sec:related}.  We describe our
 capture techniques in section~\ref{sec:capture}, followed by the
-conversion (section~\ref{sec:conversion}) and storage
-techniques (section~\ref{sec:storage}).  We describe our adopted and
+conversion (section~\ref{sec:conversion}). We describe our adopted and
 new analysis techniques in section~\ref{sec:analysis-techniques} and
 use them to analyze the workload in section~\ref{sec:analysis}.
 Finally we conclude in section~\ref{sec:conclusion}.
