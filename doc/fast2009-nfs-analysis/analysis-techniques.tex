@@ -71,8 +71,6 @@ distribution.
 
 \subsection{Cube}
 
-\fix{8. Condense this and below}
-
 Calculating aggregate or roll-up statistics is an important part of
 analyzing a workload.  For example, consider the information in the
 common NFS table: $\langle$time, operation, client-id, and
@@ -89,15 +87,12 @@ the set of unique values for each column $U(c)$, adds the special
 value `ANY' to the set, and then generates one row for each member of
 the cross-product $U(1) \times U(2) \times ... U(n)$.
 
-We implemented a very efficient templated version of the cube operator
-for use in data analysis.  We added three features to deal with memory
-usage.  First, we distinguish between the cube that only includes rows
-with actual values in it, and the cube with all rows in the
-cross-product (the zero-cube).  The zero-cube can have a very large
-number of entries in it, and if we are using an approximate quantile
-for those values we can easily waste a large amount of memory.
-Second, we added support to dynamically determine which members of the
-cross-product will be cubed.  For example, we have a large number of
+We implemented an efficient templated version of the cube operator for
+use in data analysis.  We added three features to deal with memory
+usage.  First, our cube can only include rows with actual values in
+it.  This eliminates the large number of rows from the cross-product
+that match no rows in the base data.  Second, we can further restrict
+which rows are generated.  For example, we have a large number of
 client id's, and so we can avoid cubing over entries with the client
 specified and also the operation to reduce the number of statistics
 calculated.  Third, we added the ability to prune values out of the
@@ -121,28 +116,19 @@ chained-hashing implementation.  In our experiments it is strictly
 better in both performance and memory than the C++ hash table.  It
 uses somewhat more memory than the Google sparse
 hash~\cite{google-sparse-hash}, but performs almost as well as the
-dense hash.  Because it uses chaining, it does not need any special
-sentinel values as used in the google hash.  
-It has three features not normally found in hash-table
-implementations.  First, it has a function to report on the memory
-usage of the hash table; this is important because tracking memory
-usage allows us to determine what we need to optimize.  Second it
-includes a function to partially reset an iterator.  Normally after an
-erase() operation, all iterators to a data-structure may be
-invalidated.  We include a partialReset() function that will restart
-an iterator at the beginning of the chain.  This allows us to walk the
-hash table and remove values using a single iterator.  Finally, we
-provide access to the underlying hash-data.  Sometimes at the end of a
-program, we want to output all the values in a hash-table in order.
-Normally, you would have to copy the data to a vector and sort the
-vector.  However our hash-table allows the program to get access to
-the underlying data vector and sort the vector.  While this operation
-destroys the hash table, that is generally not a problem since the
-program is about to stop.  This reduces the memory used by a factor of
-two since the data values do not need to be copied into a separate
-vector.
+dense hash; it is strictly faster than the g++ STL hash.  We added
+three unusual features.  First, it can calculate its memory usage,
+allowing us to determine what needs to be optimized.  Second it can
+partially reset iterators, which allows for safe mutating operations
+on the hash table during iteration, such as deleting a subset of the
+values.  Third, it can return the underlying hash chains allowing for
+sorting the hash table without copying the values out.  This destroys
+the hash table, but the sort is usually done before deleting the
+table, and reduces memory usage by 2x.
 
 \subsection{Rotating hash-map}
+
+\fix{8. Condense this and below}
 
 One of the problems during analysis is that you can need to age out
 old (key,value) pairs, but you don't know how long you will need to

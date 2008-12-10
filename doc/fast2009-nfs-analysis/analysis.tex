@@ -75,10 +75,10 @@ slightly higher rates, but because of our configuration error for the
 
 \begin{figure*}
 %\epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-1.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-2.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-2-set-5.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/Mbps-tails.ps}
-\caption{Bandwidth measured in the collection process.  In figure (c),
+%\epsfig{width=3.2in, angle=0, file=graphs/Mbps-nfs-2.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/Mbps-nfs-2-set-5.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/Mbps-tails.ps}
+\caption{Bandwidth measured in the collection process.  In figure (b),
 animation-2007/set-5 at different intervals is the top group of 4 lines, and
 animation-2003/set-12 is the bottom group of 4 lines. animation-2003/set-12 does not go
 all the way to the right at 60s intervals because there were
@@ -109,7 +109,7 @@ insufficient data points for the 0.9999 quantile.}
 \hline
   & \multicolumn{2}{c||}{animation-2003/set-12} & \multicolumn{2}{c||}{animation-2003/set-5} & \multicolumn{2}{c||}{animation-2007/set-2} & \multicolumn{2}{c|}{animation-2007/set-5} \\
    operation &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op \\
-%\hline
+\hline
 %     symlink &     0.008 &   201 &     0.000 &    92 &     0.001 &   415 &     0.000 &   458 \\
 %       rmdir &     0.204 &   152 &     0.001 &    64 &     0.020 &   167 &     0.002 &   178 \\
 %       mkdir &     0.173 &   304 &     0.005 &   193 &     0.071 &   336 &     0.004 &   334 \\
@@ -146,18 +146,18 @@ operations}
 \end{table*}
 
 \begin{figure*}
-\epsfig{width=2.1in, angle=0, file=graphs/daily-oprate.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/allops-quantile-nfs-1.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/allops-quantile-nfs-2.ps}
-\caption{Operation rates, grouped into one hour units (a), and quantiles (b), (c).}
+% \epsfig{width=2.1in, angle=0, file=graphs/daily-oprate.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/allops-quantile-nfs-1.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/allops-quantile-nfs-2.ps}
+\caption{Operation rates, as quantiles for anim-2003, anim-2007.}
 \label{fig:oprates}
 \end{figure*}
 
 \begin{figure*}
-\epsfig{width=2.1in, angle=0, file=graphs/bw-read.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/bw-write.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/ops-getattr.ps}
-\caption{Bandwidth for reads and writes, and operation rate for getattrs in the four traces.}
+\epsfig{width=3.3in, angle=0, file=graphs/bw-read.ps}
+%\epsfig{width=2.1in, angle=0, file=graphs/bw-write.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/ops-getattr.ps}
+\caption{Bandwidth for reads and operation rate for getattrs in the four traces.}
 \label{fig:bw-ops-quantiles}
 \end{figure*}
 
@@ -267,14 +267,14 @@ used, we do not know how much those traces were affected.
 
 % select dataset, group_seconds, operations_per_second from xnfs_hostinfo_rate_quantiles where host is null and direction = 'send' and operation is null and op_dir is null and quantile = 0.99
 \begin{table}
-\begin{tabular}{|r|r|r|r|}
+\begin{tabular}{|l|r|r|r|}
 \hline
 dataset & 1s ops/s & 3600s ops/s & ratio \\
 \hline
-animation-2003/set-5  & 26445  & 15110 & 1.75x \\
-animation-2003/set-12 & 44926 & 19923 & 2.25x \\
-animation-2007/set-2  & 75457 & 54657 & 1.38x \\
-animation-2007/set-5  & 59726.5 & 41550 & 1.44x \\
+anim-2003/set-5  & 26,445 & 15,110 & 1.75x \\
+anim-2003/set-12 & 44,926 & 19,923 & 2.25x \\
+anim-2007/set-2  & 75,457 & 54,657 & 1.38x \\
+anim-2007/set-5  & 59,727 & 41,550 & 1.44x \\
 \hline
 \end{tabular}
 \caption{Ratio between operation rates at 1 second and one hour grouping sizes}
@@ -284,7 +284,7 @@ animation-2007/set-5  & 59726.5 & 41550 & 1.44x \\
 \subsection{File sizes}
 
 \begin{figure}
-\epsfig{width=2.1in, angle=0, file=graphs/file-size.ps}
+\epsfig{width=3.2in, angle=0, file=graphs/file-size.ps}
 \caption{File size distribution for all accessed files.}
 \label{fig:file-size}
 \end{figure}
@@ -308,15 +308,15 @@ the workload.
 \subsection{Sequentiality}
 
 \begin{figure*}
-\epsfig{width=2.1in, angle=0, file=graphs/seq-read-group-counts.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/seq-in-random-seq-count.ps}
-\epsfig{width=2.1in, angle=0, file=graphs/seq-in-random-seq-bytes.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/seq-read-group-counts.ps}
+% \epsfig{width=2.1in, angle=0, file=graphs/seq-in-random-seq-count.ps}
+\epsfig{width=3.3in, angle=0, file=graphs/seq-in-random-seq-bytes.ps}
 \caption{number of reads in a single group (more than 30s gap between I/Os); }
 \label{fig:seq-analysis}
 \end{figure*}
 
 \begin{figure}
-\epsfig{width=2.1in, angle=0, file=graphs/seq-bytes-compare.ps}
+\epsfig{width=3.2in, angle=0, file=graphs/seq-bytes-compare.ps}
 \caption{Negligible effect of reordering I/Os to improve estimated sequentiality.}
 \label{fig:seq-bytes-compare}
 \end{figure}
