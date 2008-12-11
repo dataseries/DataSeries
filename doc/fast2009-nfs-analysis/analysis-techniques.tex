@@ -12,9 +12,6 @@ we have collected.
 
 \subsection{Approximate quantiles}
 
-% (90 billion entries \* 8 bytes/entry * 2 sets = 1.31TiB; we need < 10MB)
-\fix{16. Note that exact quantiles are impractical}
-
 % 200 billion from biggest at around 90 billion from the ipbwrolling 
 % analysis, but we calculate broader measures at 9 billion, .9 billion 
 % and so on (100 billion).  We calculate both bw and packets/s 
@@ -25,7 +22,8 @@ do not accidentally combine separate measurements regardless of
 distribution.  Unfortunately for our data, calculating exact quantiles
 is impractical.  For a single dataset, we collect multiple statistics
 with a total of about 200 billion values.  Storing all these values
-would require $\approx$1.5TiB of memory.
+would require $\approx$1.5TiB of memory, which makes it impractical
+for us to calculate exact quantiles.
 
 % For us, epsilon 0.005, we calculate 6 Nbounds: 100e9 -> 0.168MiB; 
 % 10e9 -> 0.143; 1e9 -> 0.113; 1e8 -> 0.079; 1e7 -> 0.054; 1e6 -> 0.036
@@ -128,26 +126,21 @@ table, and reduces memory usage by 2x.
 
 \subsection{Rotating hash-map}
 
-\fix{8. Condense this and below}
+Limiting memory usage for hash tables where the entries have unknown
+lifespan presents some challenges. Consider the sequentiality metric:
+So long as accesses are active to the file, we want to continue to
+update the run information.  Once the file becomes inactive for long
+enough, we want to calculate summary statistics and remove the general
+statistics from memory.  We could keep the values in an LRU
+data-structure, however if our analysis only needs a file id and last
+offset, then the forward and backwards pointers for LRU would double
+the memory usage.  A clock-style algorithm would
+require regular full scans of the entire datastructure.
 
-One of the problems during analysis is that you can need to age out
-old (key,value) pairs, but you don't know how long you will need to
-keep around particular values for any given key.  For example,
-sequentiality is a per-file statistic.  So long as accesses are active
-to the file, we want to continue to update the run information.  Once
-the file becomes inactive for long enough, we want to calculate
-summary statistics and remove the general statistics from memory.  One
-option would be to keep the values in an LRU data-structure, however if
-our analysis only needs to keep a file id and last offset, then we
-could easily double the size of our data-structure by keeping the
-forward and backward pointers needed for LRU.  Alternately, we could
-use a clock-style algorithm, but this would require a full scan over
-the entire data-structure on a regular basis.
-
-We chose to solve this problem by keeping two hash-maps, the {\it
+We instead solve this problem by keeping two hash-maps, the {\it
 recent} and {\it old} hash-maps.  Any time a value is accessed, it is
-moved to the recent hash-map if it is not already there.  From time to
-time, the program will call the rotate(fn) operation which will apply
+moved to the recent hash-map if it is not already there.  At intervals, 
+the program will call the rotate(fn) operation which will apply
 fn to all of the (key,value) pairs in the old hash map, delete that map,
 assign the recent map to the old map and create a new recent map.
 
@@ -160,27 +153,26 @@ additional lookups, but we have so far found that the rotating
 hash-map provides a good tradeoff between minimizing memory usage and
 maximizing performance.  We believe that the LRU approach would be
 more effective if the size of the data stored in the hash map were
-larger.
+larger, and the hash-map could compact itself so that scattered
+data entries don't consume excess space.
 
 \subsection{mercury-plot}
 
-\fix{12. Use mercury-plot in the text, explain name}
-
-Once we have analyzed the data from our binary format using the cube
-and quantile techniques, we need to graph and subset the data.  For
-this purpose we use a combination of SQL, perl, and gnuplot.  The use
-of SQL makes it very easy to take subsets of the data, for example if
-we have data on 60 second intervals, it is easy to calculate
-min/mean/max for 3600 second intervals, or with the cube to select out
-the subset of the data that we want to use.  We use perl to handle
-operations that the database can't handle, for example, in the cube,
-we represent the `ANY' value as null, but SQL requires different
-syntax to select for null vs. a specific value.  We hide this
-difference in the perl functions.  In practice, this allows us to
-write very simple commands such as {\tt plot quantile as x, value as y
-from nfs\_hostinfo\_cube where operation = 'read' and direction =
-'send'} to generate a portion of the graph.  Some of our analysis
-explicitly generate SQL as output to make this later analysis easier.
-This is one of our lessons, all analysis should include an SQL output
-mode that can be used to generate derived graphs and further analyze
-the data.
+Once we have summarized the data from DataSeries using the techniques
+described above, we need to graph and subset the data.  We combined
+SQL, perl, and gnuplot into a tool we call mercury-plot\footnote{A
+previous internal tool was known as hermes.}.  SQL enables subsetting
+and combining data, for example if we have data on 60 second
+intervals, it is easy to calculate min/mean/max for 3600 second
+intervals, or with the cube to select out the subset of the data that
+we want to use.  We use perl to handle operations that the database
+can't handle, for example, in the cube, we represent the `ANY' value
+as null, but SQL requires different syntax to select for null vs. a
+specific value.  We hide this difference in the perl functions.  In
+practice, this allows us to write very simple commands such as {\tt
+plot quantile as x, value as y from nfs\_hostinfo\_cube where
+operation = 'read' and direction = 'send'} to generate a portion of
+the graph.  This tool allows us to deal with the millions of rows of
+output that can come from some of the analysis.  One of the lessons we
+learned is that our analysis should directly generate SQL insert
+statements to avoid the need for an intermediate parsing program.

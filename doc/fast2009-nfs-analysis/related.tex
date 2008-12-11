@@ -1,24 +1,22 @@
 \section{Related work}
 \label{sec:related}
 
-\fix{9. Check the paper again on whether this was digital unix server or netapp}
-
 The two closest pieces of related work are Ellard's 2001 NFS
 study~\cite{EllardFast03}, and Leung's 2007 CIFS
 study~\cite{LeungUsenix08}.  These papers also summarize the earlier
 decade of filesystem tracing, so we refer interested readers to those
-papers.  Ellard et al. captured NFS traces from a number of NetApp
-filers on the Harvard campus, analyzed the traces and presented new
-results looking at the sequentiality of the workload, and comparing
-his results to earlier traces.  Ellard made his tools available, so we
-initially considered building on top of them, but quickly discovered
-that our workload was so much more intense that his tools would be
-insufficient, and so we ended up building our own.  When we later
-translated some of his traces to use our tools, we discovered our
-tools were about 100x faster on a four core machine and used 25x less
-CPU time for analysis.  Our 2003 traces were about 20x more intense
-than Ellard's as we saw over 650 million operations/day, and Ellard
-saw about 30.
+papers.  Ellard et al. captured NFS traces from a number of Digital
+UNIX and NetApp filers on the Harvard campus, analyzed the traces and
+presented new results looking at the sequentiality of the workload,
+and comparing his results to earlier traces.  Ellard made his tools
+available, so we initially considered building on top of them, but
+quickly discovered that our workload was so much more intense that his
+tools would be insufficient, and so we ended up building our own.
+When we later translated some of his traces to use our tools, we
+discovered our tools were about 100x faster on a four core machine and
+used 25x less CPU time for analysis.  Our 2003 traces were about 20x
+more intense than Ellard's as we saw over 650 million operations/day,
+and Ellard saw about 30.
 
 Leung et al. traced a pair of NetApp filers on the NetApp campus.
 Since the clients were entirely windows clients, his traces were of

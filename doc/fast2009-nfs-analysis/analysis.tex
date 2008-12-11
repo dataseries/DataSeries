@@ -15,8 +15,6 @@ process, and let it run either until we ran out of disk space, or we
 had collected all the data we wanted.  Each of these runs comprises a
 set.  We have 21 sets from 2003, and 8 sets from 2007.
 
-\fix{6. Examine whether all the analysis could be done with nfsstat}
-
 \subsection{Capture performance}
 
 We start our analysis by looking at the performance of our capture
@@ -70,8 +68,6 @@ burstiness of the 2007 traces.  While 90\% of the 1ms intervals are
 below 2Gbits, 0.1\% are above 6Gbits.  We expect we would have seen
 slightly higher rates, but because of our configuration error for the
 2007 capture tool, we could not capture above about 8Gbits.
-
-\fix{3. Make the figures larger after we free up space elsewhere}
 
 \begin{figure*}
 %\epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-1.ps}
@@ -140,7 +136,8 @@ insufficient data points for the 0.9999 quantile.}
 \caption{symlink, rmdir, mkdir, and rename were pruned as there were
 fewer than 1 million operations; fsinfo, link, null, create, remove,
 and setattr were pruned as there were fewer than 10 million
-operations}
+operations.  The Mops column could be calculated from nfsstat, but the
+bytes/op column could not.}
 
 \label{table:nfs-stats-overview}
 \end{table*}
@@ -253,17 +250,19 @@ An NFS replay tool~\cite{NingningFast05} could be used to validate
 that the captured workload is the one that was replayed.  This
 comparison has been done to validate a block based replay
 tool~\cite{AndersonFast04}, but has not been done to validate a
-capture tool, as that work simply assumed capture was correct.  We
-expect to partially ameliorate this problem before the final paper
-because we have the complete packet traces, including any packets that
-we could not parse.  We can therefore use the timing information from
-requests and replies to identify gaps in the dataset and determine how
-many bytes were skipped.  This will allow us to approximate the number
-of missing writes.  Preservation of lower level information is a
-lesson we got right, and it will allow us to partially reconstruct
-flaws in the traces.  We believe a similar flaw is present in earlier
-traces~\cite{ellardTraces} because the same parsing technique was
-used, we do not know how much those traces were affected.
+capture tool, as that work simply assumed capture was correct.
+\fix{create analysis that compares timing of ops to packets and
+estimates missing writes if we can get the space for it} 
+% We can therefore use
+% the timing information from requests and replies to identify gaps in
+% the dataset and determine how many bytes were skipped.  This will
+% allow us to approximate the number of missing writes.  Preservation of
+% lower level information is a lesson we got right, and it will allow us
+% to partially reconstruct flaws in the traces.  
+We believe a similar
+flaw is present in earlier traces~\cite{ellardTraces} because the same
+parsing technique was used, we do not know how much those traces were
+affected.
 
 % select dataset, group_seconds, operations_per_second from xnfs_hostinfo_rate_quantiles where host is null and direction = 'send' and operation is null and op_dir is null and quantile = 0.99
 \begin{table}
@@ -373,5 +372,5 @@ random group, although 99\% of the runs are less than 1MB.
 % --> access, fsstat, getattr, lookup, read, write 
 
 \fix{5. Cram another analysis in here: file size distribution by
-unique and access, or stack-distance}
+access, or stack-distance}
 

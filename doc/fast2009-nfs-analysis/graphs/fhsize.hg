@@ -3,12 +3,16 @@ default table nfs_filesize_quantile
 
 define
 
+require 'fixtitle.pm';
+
 sub plot_one {
     my($dataset) = @_;
 
+    my $title = fixTitle($dataset);
+
     return qq{
 plot quantile as x, value as y where dataset = '$dataset'
-plottitle _ $dataset
+plottitle _ $title
 plotwith _ linespoints
 }
 }

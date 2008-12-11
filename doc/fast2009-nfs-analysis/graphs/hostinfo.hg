@@ -1,6 +1,8 @@
 # -*- perl -*-
 
 define
+
+require 'fixtitle.pm';
 sub basic_table {
     my $sth = sql_exec("select dataset, operation, group_count, mean_payload_bytes from xnfs_hostinfo_cube where group_seconds = 3600 and host is null and group_time is null and direction = 'send' and op_dir is null");
 	
@@ -49,9 +51,10 @@ sub basic_table {
 
 sub plot_oprate {
     my($dataset) = @_;
-    
+
+    my $title = fixTitle($dataset);
     return "plot (group_time-(select min(86400*(floor(group_time/86400))) from xnfs_hostinfo_cube where dataset = '$dataset' and group_time is not null))/86400 as x, (group_count/2)/group_seconds as y from xnfs_hostinfo_cube where dataset = '$dataset' and group_seconds = 3600 and host is null and group_time is not null and direction = 'send' and operation is null and op_dir is null
-plottitle _ $dataset
+plottitle _ $title
 plotwith _ linespoints
 ";
 }
@@ -79,8 +82,9 @@ sub plot_ops_quantile {
     my $opcmp = defined $operation ? " = '$operation'" : "is null";
     my $optitle = defined $operation ? " $operation op" : "all ops";
 
+    my $title = fixTitle($dataset);
     return "plot quantile as x, operations_per_second/2 as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
-plottitle _ $dataset, ${group_seconds}s interval, $optitle
+plottitle _ $title, ${group_seconds}s interval, $optitle
 plotwith _ linespoints
 ";
 }
@@ -121,8 +125,10 @@ sub plot_bw_quantile {
     my $opcmp = defined $operation ? " = '$operation'" : "is null";
     my $optitle = defined $operation ? " $operation bw" : "all bw";
 
+    my $title = fixTitle($dataset);
+
     return "plot quantile as x, payload_bytes_per_second/(1024*1024) as y from xnfs_hostinfo_rate_quantiles where dataset = '$dataset' and operation $opcmp and direction = 'send' and op_dir is null and host is null and group_seconds = $group_seconds and quantile < 1
-plottitle _ $dataset, ${group_seconds}s interval, $optitle
+plottitle _ $title, ${group_seconds}s interval, $optitle
 plotwith _ linespoints
 ";
 }
@@ -173,7 +179,7 @@ sub plot_all_multi {
 enddefine
 
 # basic_table()
-# plot_oprate_graph()
-# plot_allops_quantile_graphs()
+plot_oprate_graph()
+plot_allops_quantile_graphs()
 
 plot_all_multi()

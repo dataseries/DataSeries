@@ -1,14 +1,16 @@
 # -*- perl -*-
 
 define
+require 'fixtitle.pm';
 
 sub plot_one_quant {
     my($dataset, $type, $config) = @_;
 
+    my $title = fixTitle($dataset);
     return "
 plot quantile/100 as x, value as y from nfs_sequentiality_quantile where dataset = '$dataset' and type = '$type' and config = '$config'
 plotwith _ linespoints
-plottitle _ $dataset
+plottitle _ $title
 ";
 }
 
@@ -47,6 +49,7 @@ pngpsplot --nocolor seq-read-group-bytes
 sub seq_bytes_compare_one {
     my($dataset) = @_;
 
+    my $title = fixTitle($dataset);
     return qq{
 plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'overlapping_reorder=0.01')
 plottitle _ 10 ms reorder
@@ -55,7 +58,7 @@ plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'overlapping_reorder'
 plottitle _ reorder
 #plottitle _ notitle
 plot_one_quant('$dataset', 'sequentiality_bytes_fraction', 'request_order')
-plottitle _ $dataset
+plottitle _ $title
 plotwith _ lines
 #plottitle _ notitle
     }
@@ -73,7 +76,7 @@ gnuplot set key top left
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Fraction of bytes read sequentially"
 gnuplot set title "Effect of reordering I/Os on estimated sequentiality"
-gnuplot set key 0.25,0.95
+gnuplot set key 0.27,0.95
 pngpsplot --nocolor --font-size=10 seq-bytes-compare
     }
 }
