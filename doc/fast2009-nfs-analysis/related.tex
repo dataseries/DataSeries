@@ -12,8 +12,8 @@ and comparing his results to earlier traces.  Ellard made his tools
 available, so we initially considered building on top of them, but
 quickly discovered that our workload was so much more intense that his
 tools would be insufficient, and so we ended up building our own.
-When we later translated some of his traces to use our tools, we
-discovered our tools were about 100x faster on a four core machine and
+When we later translated some of his traces to use our infrastructure, we
+discovered our version was about 100x faster on a four core machine and
 used 25x less CPU time for analysis.  Our 2003 traces were about 20x
 more intense than Ellard's as we saw over 650 million operations/day,
 and Ellard saw about 30.
@@ -32,12 +32,12 @@ as NFS tends to have more operations than CIFS because NFS is a
 stateless protocol.
 
 Tcpdump~\cite{tcpdump} is the tool that almost all papers use to capture packet
-traces.  We initially tried using tcpdump, but experienced massive
-packet loss using it in 2003, and so developed new techniques.  We
-re-used the pcap file format that tcpdump uses for our raw captured
+traces.  We tried using tcpdump, but experienced massive
+packet loss using it in 2003, and so developed new techniques.  For
+compatibility, we used tcpdump's pcap file format for our raw captured
 data.  When we captured our second set of traces in 2007, we needed to
-capture at even higher rates, and so we ended up adopting a
-specialized capture card, and wrote new capture software using
+capture at even higher rates, and so we ended up using a
+specialized capture card. We wrote new capture software using
 techniques we had developed in 2003 to allow us to capture above
 5Gbits/s.
 
@@ -48,22 +48,21 @@ techniques we had developed in 2003 to allow us to capture above
 % tshark -r /tmp/capture.out > /dev/null  44.25s user 0.30s system 99% cpu 44.564 total
 
 Tcpdump also includes limited support for conversion of NFS packets.
-The wireshark~\cite{wireshark} tool provides a graphical interface to
-packet analysis, and the tshark tool provides conversion to text.  We
-were not aware of wireshark at the time of our first capture, and we
-simply adjusted our earlier tools when we did our 2007 tracing.  We
-may consider using the wireshark converter in the future provided we
-can determine how to make it run a lot faster.  Running tshark on a
-sample 2 million packet capture took about 45 seconds whereas our
-converter ran in about 5 seconds.  Given conversion takes 2-3 days for
-a 5 day trace, we can't afford conversion to slow down by a factor of
-$9\times$.
+Wireshark~\cite{wireshark} provides a graphical interface to packet
+analysis, and the tshark variant provides conversion to text.  We were
+not aware of wireshark at the time of our first capture, and we simply
+adjusted our earlier tools when we did our 2007 tracing.  We may
+consider using the wireshark converter in the future provided we can
+make it run much faster.  Running tshark on a small 2 million packet
+capture took about 45 seconds whereas our converter ran in about 5
+seconds.  Given conversion takes 2-3 days for a 5 day trace, we can't
+afford conversion to slow down by a factor of 9x.
 
 Some of the analysis techniques we use are derived from the database
 community, namely the work on cubes~\cite{gray97cube} and approximate
 quantiles~\cite{Manku98approximatemedians}.  We considered using a
 standard SQL database for our storage and analysis, but abandoned that
-quickly because a database that can hold 100 billion rows tends to be
+quickly because a database that can hold 100 billion rows is
 very expensive.  We do use SQL databases for analysis and graphing
 once we have reduced the data size down to a few million rows using
 our tools.
