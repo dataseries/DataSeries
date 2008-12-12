@@ -1,0 +1,57 @@
+digraph Modules {
+    concentrate=true;
+    node [shape=record, fontname=Helvetica, fontsize=10];
+    edge [fontname=Helvetica, fontsize=10];
+    { rank=same;
+        Seq [label="SequenceModule"];
+        SeqM1[shape=point];
+        SeqM2[shape=point];
+        Seqsrc[shape=point];
+    }
+    { rank=same;
+        M1 [label="Some Module"];
+        M2 [label="Another Module"];
+        Source [label="Source Module"];
+        DSSource[label="DataSeriesSource"];
+    }
+    Seq->SeqM1[arrowtail=odiamond, arrowhead=none];
+    SeqM1->SeqM2->Seqsrc[arrowhead=none];
+
+    SeqM1->M1[arrowhead=none];
+    SeqM2->M2[arrowhead=none];
+    Seqsrc->Source[arrowhead=none];
+    M1->M2->Source;
+    Source->DSSource[arrowtail=diamond, arrowhead=none];
+
+    { rank=same;
+        node [group=Op, width=0.1, label="{<a>|<a1>|<a2>|<a3>|<a4>|<a5>|<a6>|<a7>|<a8>|<a9>|<a10>}|<b>|<c>|<d>|<empty1>|<empty2>|<empty3>|<w>|<x>|<y>|<z>", fixedsize=true];
+        SeqOp [shape=record, height=2.35];
+        M1Op [height=1.87];
+        M2Op [height=1.5];
+        SourceOp [height=1.25];
+        DSSourceOp [height=1];
+
+        UserCall [style=invis, height=2.35, width=0];
+    }
+
+    Seq->SeqOp [arrowhead=none, style=dashed];
+    M1->M1Op [arrowhead=none, style=dashed];
+    M2->M2Op [arrowhead=none, style=dashed];
+    Source->SourceOp [arrowhead=none, style=dashed];
+    DSSource->DSSourceOp [arrowhead=none, style=dashed];
+
+    SeqOp:b->M1Op:a [label="GetExtent()"];
+    M1Op:b->M2Op:a [label="GetExtent()"];
+    M2Op:b->SourceOp:a [label="GetExtent()"];
+    SourceOp:b->DSSourceOp:a [label="preadExtent()"];
+
+    SeqOp:y->M1Op:z [arrowhead=none, arrowtail=normal];
+    M1Op:y->M2Op:z [arrowhead=none, arrowtail=normal];
+    M2Op:y->SourceOp:z [arrowhead=none, arrowtail=normal];
+    SourceOp:y->DSSourceOp:z [arrowhead=none, arrowtail=normal];
+
+    UserCall:a->SeqOp:a [label="getAndDelete()"];
+
+    SeqOp:a10->SeqOp:a [label="loop until getExtent() returns null"];
+
+}

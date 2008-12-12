@@ -14,6 +14,7 @@
 
 #include <DataSeries/Field.hpp>
 
+/** \brief Base class for fixed size fields. */
 class FixedField : public Field {
 public:
     typedef ExtentType::byte byte;

@@ -19,7 +19,7 @@ Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname,
 
 Field::~Field()
 {
-    dataseries.removeField(*this);
+    dataseries.removeField(*this, false);
 }
 
 void

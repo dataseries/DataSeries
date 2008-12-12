@@ -5,12 +5,6 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    Special field for dealing with different time representations that 
-    have a base type of an int64.  May eventually be extended to deal with
-    underlying representations that are int32's.  Currently enforces the
-    restriction that all accessed extents have the same units and epoch.
-*/
 #ifndef DATASERIES_INT64TIMEFIELD_HPP
 #define DATASERIES_INT64TIMEFIELD_HPP
 
@@ -18,8 +12,17 @@
 
 #include <DataSeries/Int64Field.hpp>
 
-/// Int64Field is intentionally protected so that you can't get at the
-/// various base-class operations without doing something special.
+
+/** \brief Special field for dealing with different time representations that 
+    have a base type of an int64.
+    
+    May eventually be extended to deal with
+    underlying representations that are int32's.  Currently enforces the
+    restriction that all accessed extents have the same units and epoch.
+    
+    Int64Field is intentionally protected so that you can't get at the
+    various base-class operations without doing something special.
+*/
 class Int64TimeField : protected Int64Field {
 public:
     // TODO: calculate functions that will tell us how much error we

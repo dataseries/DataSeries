@@ -18,7 +18,8 @@
 
 #include <DataSeries/DataSeriesModule.hpp>
 
-/** \brief Base class for source modules that use indicies
+/** \brief Base class for source modules that select a subset of the
+           \link Extent Extents \endlink in a file.
 
  * There are at least two different forms of indexing for reading from
  * DataSeries files.  However they share enough operations that when
@@ -82,7 +83,7 @@ public:
 	{ }
     };
 
-    /*** returns true if there were wait statistics, false otherwise */
+    /** returns true if there were wait statistics, false otherwise */
     bool getWaitStats(WaitStats &stats);
 
     /** use readCompressed() to create this structure, it will unlock

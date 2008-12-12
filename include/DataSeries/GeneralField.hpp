@@ -28,7 +28,8 @@
 
 class GeneralField;
 
-/** \brief General value that could be stored in dataseries.
+/** \brief Discriminated union capable of holding any value
+  * that could be stored in dataseries.
 
  * Sometimes it is necessary to store the values associated with
  * GeneralFields so that they can be used for comparisons in the
@@ -124,6 +125,7 @@ protected:
     friend class GF_Double;
     friend class GF_Variable32;
     ExtentType::fieldType gvtype;
+    /// \cond INTERNAL_ONLY
     union gvvalT {
 	bool v_bool;
 	ExtentType::byte v_byte;
@@ -131,6 +133,7 @@ protected:
 	ExtentType::int64 v_int64;
 	double v_double;
     } gvval;
+    /// \endcond
     std::string *v_variable32; // only valid if gvtype = ft_variable32
 };
 
@@ -169,6 +172,11 @@ struct HashMap_hash<const GeneralValue> {
     }
 };
 
+/** \brief accessor for fields whose type may not be known at compile time.
+
+  * \note This is a base class and needs to be held by (smart) pointer.
+  *
+  * \note This class does not inherit from @c Field. */
 class GeneralField {
 public:
     // see comment in DStoTextModule.H for why we have both
@@ -357,13 +365,19 @@ public:
     Variable32Field myfield;
 };
 
-// TODO: add an output module as an optional argument; if it exists, 
-// automatically do the newRecord stuff.
+/** \brief Copies records from one @c Extent to another.
+
+    \todo TODO: add an output module as an optional argument; if it exists, 
+    automatically do the newRecord stuff. */
 class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
+    /// \cond INTERNAL_ONLY
     void prep();
+    /// \endcond
     ~ExtentRecordCopy();
+    /** Copies the current record of the source @c ExtentSeries to the
+        current record of the destination @c ExtentSeries. */
     void copyRecord(); // you need to create the record first.
 private:
     bool did_prep;

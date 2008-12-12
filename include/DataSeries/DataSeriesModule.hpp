@@ -16,28 +16,70 @@
 // is to allow the use of threads so that we can take advantage of SMPs
 // ***** WARNING WARNING WARNING *****
 
-#ifndef __DATASERIES_MODULE_H
-#define __DATASERIES_MODULE_H
+#ifndef DATASERIES_MODULE_H
+#define DATASERIES_MODULE_H
 
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
 
+/** \brief Abstract base class for analysis.
+
+    The main entry point for processing is getAndDelete.  Each
+    derived class should to its processing in getExtent.  Derived
+    classes are expected to be chained together, giving a structure like:
+
+\verbatim
+
+            +----------------+
+            | SequenceModule |<>-----+-----------------+------------------+
+            +----------------+       |                 |                  |
+                   |                 |                 |                  |
+                             +-------------+  +----------------+  +---------------+   +------------------+
+ getAndDelete()    |         | Some Module |->| Another Module |->| Source Module |<>-| DataSeriesSource |
+----------------->+-+        +-------------+  +----------------+  +---------------+   +------------------+
+                  | |                |                 |                  |                      |
+              /-->+ |  getExtent()                                                                
+             |    | |-------------->+-+  getExtent()   |                  |                      |
+             |    | |               | |-------------->+-+   getExtent()                           
+             |    | |               | |               | |--------------->+-+    preadExtent()    |
+             |    | |               | |               | |                | |------------------->+-+
+             |    | |               | |               | |                | |                    | |
+loop until   |    | |               | |               | |                | |<-------------------+-+
+getExtent()  |    | |               | |               | |<---------------+-+
+returns null |    | |               | |               | |
+             |    | |               | |               | | Process the Extent
+             |    | |               | |<--------------+-+
+             |    | |               | |
+             |    | |               | | Process the Extent
+             |    | |<--------------+-+
+              \--<+-+
+
+\endverbatim
+    
+    */
 class DataSeriesModule {
 public:
+    /** Returns an Extent which ought to have been allocated with
+        global new. It is the caller's responsibility to delete
+        it. Each call to this function should return a different
+        @c Extent. Derived classes should return a null pointer
+        to indicate the end of the sequence of Extents. */
     virtual Extent *getExtent() = 0;
-    // get all the extents from module and delete them.
+    /** get all the extents from module and delete them. */
     void getAndDelete();
+    /// \cond INTERNAL_ONLY
     // TODO: deprecate static getAndDelete.
     static void getAndDelete(DataSeriesModule &from) {
 	from.getAndDelete();
     }
+    /// \endcond
     virtual ~DataSeriesModule();
 };
 
-// Module for keeping statistics about reading from files, otherwise
-// just empty now.
+/** \brief Base class for source modules that keeps statistics about
+    reading from files. Otherwise it is just empty for now. */
 class SourceModule : public DataSeriesModule {
 public:
     // Eventually, we should add some sort of shared DataSource buffer
@@ -64,7 +106,7 @@ public:
     double decode_time;
 };
 
-// Module for filtering out any extents not matching type_prefix
+/** \brief Module for filtering out any extents not matching type_prefix */
 class FilterModule : public DataSeriesModule {
 public:
     FilterModule(DataSeriesModule &_from, const std::string &_type_prefix);
@@ -78,6 +120,11 @@ private:
     std::string type_prefix;
 };
 
+/** \brief Splits a sequence of records into "bite-sized" Extents.
+
+    Since the unit of processing in DataSeries is a single
+    @c Extent, this provides a way to keep Extents from getting
+    too big to fit in memory. */
 class OutputModule {
 public:
     // TODO: Replace constructor with OutputModule(DataSeriesSink
@@ -92,14 +139,22 @@ public:
     // target extent size.
     OutputModule(DataSeriesSink &sink, ExtentSeries &series,
 		 const ExtentType *outputtype, int target_extent_size);
+    /** Calls close unless you have already called close manually. */
     ~OutputModule();
 
     // you should call writeExtentLibrary before calling this too
     // many times or it will try to write an extent.
     void newRecord();
-    void flushExtent(); // force current extent out, you can continue writing.
+    /** force current extent out, you can continue writing. */
+    void flushExtent();
+    /** Force current @c Extent out.  After calling close, it is illegal
+        to call newRecord, flushExtent or close.  Note that this does
+        not close the underlying @c DataSeriesSink. */
     void close();
 
+    /** Returns cummulative statistics on the Extents written.  As
+        with @c DataSeriesSink::getStats, this is likely to be unreliable
+        before you close the sink or call @c DataSeriesSink::flushPending. */
     DataSeriesSink::Stats getStats() {
 	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());
 	DataSeriesSink::Stats ret = stats;

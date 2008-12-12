@@ -14,6 +14,7 @@
 
 #include <DataSeries/FixedField.hpp>
 
+/** \brief Accessor for int64 fields. */
 class Int64Field : public FixedField {
 public:
     typedef int64_t int64; // Deprecating
