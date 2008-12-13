@@ -80,7 +80,7 @@ public:
      * for ft_unknown, always false
      * for ft_bool, true < false
      * for integer/double types, works as normal
-     * for ft_variable32, works as if memcmp on values padded with '\0' to 
+     * for ft_variable32, works as if memcmp on values padded with '\\0' to 
      *   the maximum length
      *
      * we implement strictlylessthan rather than compare as is done
@@ -372,9 +372,9 @@ public:
 class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
-    /// \cond INTERNAL_ONLY
+    /** Prepares the copy structure to do the copy.  Will be automatically
+	called by copyRecord() if necessary. */
     void prep();
-    /// \endcond
     ~ExtentRecordCopy();
     /** Copies the current record of the source @c ExtentSeries to the
         current record of the destination @c ExtentSeries. */

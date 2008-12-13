@@ -121,8 +121,7 @@ protected:
     /** A mask representing the position of the hidden bool field
         which determines whether this field is null. For example
         if it is the third boolean field, then the mask will be
-        0b00100000. This member is only meaningful for nullable
-        fields. 
+        0x4. This member is only meaningful for nullable fields. 
         
         Invariants:
             - null_bit_mask has at most one bit set which must

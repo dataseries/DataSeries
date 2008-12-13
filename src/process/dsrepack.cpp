@@ -330,8 +330,9 @@ main(int argc, char *argv[])
 
 	DataSeriesSource f(argv[i]);
 
-	for(map<const string, const ExtentType *>::iterator j = f.mylibrary.name_to_type.begin();
-	    j != f.mylibrary.name_to_type.end(); ++j) {
+	for(map<const string, const ExtentType *>::iterator j 
+		= f.getLibrary().name_to_type.begin();
+	    j != f.getLibrary().name_to_type.end(); ++j) {
 	    if (skipType(*j->second)) {
 		continue;
 	    }

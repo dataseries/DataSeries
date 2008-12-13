@@ -149,7 +149,7 @@ public:
     /// new fields, whereas major versions can remove fields, rename
     /// fields or change field semantics.  This means that analysis
     /// code that can process version 1.x will work on any version 1.y
-    /// for y $\geq$ x, but may or may not work on version 2.0.
+    /// for y >= x, but may or may not work on version 2.0.
     bool versionCompatible(unsigned app_major, unsigned app_minor) const {
 	return app_major == majorVersion() && app_minor <= minorVersion();
     }

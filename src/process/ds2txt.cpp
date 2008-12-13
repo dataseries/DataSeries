@@ -107,7 +107,7 @@ main(int argc, char *argv[])
     if (select_extent_type != "") {
 	string match_extent_type;
 	const ExtentType *match_type 
-	    = first_source->mylibrary.getTypeMatch(select_extent_type);
+	    = first_source->getLibrary().getTypeMatch(select_extent_type);
 
 	match_extent_type = match_type->getName();
 	vector<string> fields;
@@ -117,7 +117,7 @@ main(int argc, char *argv[])
 	xmlspec.append("\">");
 	if (select_fields == "*") {
 	    const ExtentType *t = 
-		first_source->mylibrary.getTypeByPrefix(match_extent_type);
+		first_source->getLibrary().getTypeByPrefix(match_extent_type);
 	    INVARIANT(t != NULL, "internal");
 	    for(unsigned i = 0; i < t->getNFields(); ++i) {
 		xmlspec.append((format("<field name=\"%s\"/>")
@@ -144,8 +144,9 @@ main(int argc, char *argv[])
 
     if (skip_types == false) {
 	std::cout << "# Extent Types ...\n";
-	for(std::map<const std::string, const ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
-	    i != first_source->mylibrary.name_to_type.end(); ++i) {
+	for(std::map<const std::string, const ExtentType *>::iterator i 
+		= first_source->getLibrary().name_to_type.begin();
+	    i != first_source->getLibrary().name_to_type.end(); ++i) {
 	    std::cout << i->second->xmldesc << "\n";
 	}
     }

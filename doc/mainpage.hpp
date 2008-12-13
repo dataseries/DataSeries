@@ -9,8 +9,9 @@ library.  It is intended for storing structured serial data, so it is
 similar to a append only SQL database in that it
 stores data organized into the equivalent of tables.  It is different
 in that the rows of the tables have an order that is preserved.  It is
-also different in that DataSeries does not at this point have a query
-language interface.  To access DataSeries data, the programmer will
+also different in that DataSeries has a very limited query interface in
+dsstatgroupby and ds2txt.
+To access DataSeries data, the programmer will
 need to write a module to process the data, and compile and link that
 module in to a program.  Dataseries also explicitly exposes the
 underlying storage of the data in files, although this can be

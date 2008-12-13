@@ -329,7 +329,7 @@ IndexSourceModule::readCompressed(DataSeriesSource *dss,
     PrefetchExtent *p = new PrefetchExtent;
     bool ok = dss->preadCompressed(offset,p->bytes);
     INVARIANT(ok,"whoa, shouldn't have hit eof!");
-    p->type = dss->mylibrary.getTypeByName(Extent::getPackedExtentType(p->bytes));
+    p->type = dss->getLibrary().getTypeByName(Extent::getPackedExtentType(p->bytes));
     p->need_bitflip = dss->needBitflip();
     p->uncompressed_type = uncompressed_type;
     prefetch->mutex.lock();

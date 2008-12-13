@@ -35,14 +35,17 @@ public:
             - isactive() */
     DataSeriesSource(const std::string &filename);
     ~DataSeriesSource();
+
     /** Returns the @c Extent at the current offset. Sets the current offset
         to the next @c Extent. If it has already reached the end of the file,
         returns null.  The @c Extent is allocated with global new. It is the
-        user's responsibility to delete it.
+        user's responsibility to delete it.  If the source is at the end of 
+	the file, returns NULL.
 
         Preconditions:
             - isactive() */
     Extent *readExtent() { return preadExtent(cur_offset); }
+
     /** Reads an Extent starting at a specified offset in the file. This
         argument will be modified to be the offset of the next Extent in the
         file.  If offset is at the end of the file, returns null. The resulting
@@ -54,6 +57,7 @@ public:
               equal to the size of the file.
             - isactive() */
     Extent *preadExtent(off64_t &offset, unsigned *compressedSize = NULL);
+
     /** Reads the raw Extent data from the specified offset into a
         @c ByteArray.  This byte array can be used to initialize an @c Extent.
         Updates the argument offset to be the offset of the Extent after the
@@ -66,15 +70,19 @@ public:
     bool preadCompressed(off64_t &offset, Extent::ByteArray &bytes) {
 	return Extent::preadExtent(fd,offset, bytes, need_bitflip);
     }
+
     /** Returns true if the file is currently open. */
     bool isactive() { return fd >= 0; }
+
     /** Closes the file.
 
         Preconditions:
             - The file must be open. */
     void closefile();
+
     /** Opens the file. Note that there is no way to change the name of
         the file.
+	TODO-eric: fix reopen to reset the offset to the start of the file.
         Warning: the offset is unchanged by a close/reopen. There is no
         way to adjust the offset, so if the underlying file is changed,
         @c readExtent may become unusable.
@@ -86,10 +94,6 @@ public:
     /** Returns a reference to an ExtentTypeLibrary that contains
         all of the types used in the file. */
     ExtentTypeLibrary &getLibrary() { return mylibrary; }
-
-    /// \cond INTERNAL_ONLY
-    ExtentTypeLibrary mylibrary;
-    /// \endcond
 
     /** This Extent describes all of the Extents and their offsets within the file. Its type
         is globally accessible through ExtentType::getDataSeriesIndexTypeV0.
@@ -107,8 +111,10 @@ public:
 
     /** Returns true if the endianness of the file is different from the
         endianness of the host processor. */
-    const bool needBitflip() { return need_bitflip; }
+    bool needBitflip() { return need_bitflip; }
 private:
+    ExtentTypeLibrary mylibrary;
+
     const std::string filename;
     typedef ExtentType::byte byte;
     int fd;
@@ -209,8 +215,8 @@ public:
             9 gives the best compression in general.  See the documentation of the
             underlying compression libraries for detail. 
             
-        \todo TODO: is the following ("-" == stdout) a good idea?  I don't
-            think anything uses it.*/
+        \todo TODO-eric: Remove the use of "-" == stdout). 
+    */
     DataSeriesSink(const std::string &filename,
 		   int compression_modes = Extent::compress_all,
 		   int compression_level = 9);
@@ -273,12 +279,6 @@ public:
         to call this. */
     void removeStatsUpdate(Stats *would_update);
 
-    /** <b>??? This function is not implemented ???</b>
-
-        count == -1 ==> use Lintel/PThreadMisc::getNCpus()
-        count == 0 ==> no separate thread for compressing, work done during
-        call to writeExtent() */
-    static void setDefaultCompressorCount(int count = -1);
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
 			   const std::string &filename);
     

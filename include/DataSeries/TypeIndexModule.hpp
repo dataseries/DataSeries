@@ -15,6 +15,7 @@
 
 #include <DataSeries/IndexSourceModule.hpp>
 
+// TODO-eric: remove this with recent Lintel which has deprecated in it.
 #if __GNUC__
 #define ATTRIBUTE_DEPRECATED __attribute__ ((deprecated))
 #else

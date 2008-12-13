@@ -93,7 +93,7 @@ public:
         type to the type of the @c Extent. */
     explicit ExtentSeries(Extent *e, 
 		 typeCompatibilityT _tc = typeExact);
-    /** Initilize using the @c ExtentType corresponding to the given XML. */
+    /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype,
 		 typeCompatibilityT _tc = typeExact)
 	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),

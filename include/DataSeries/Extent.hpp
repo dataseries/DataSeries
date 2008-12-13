@@ -270,15 +270,22 @@ public:
     void unpackData(Extent::ByteArray &from, bool need_bitflip);
 
     /** Returns the total size in bytes that an Extent created
-        using from will need.  (This will be the result of size() after
+        using @param from will need.  (This will be the result of size() after
         unpacking.)
+
+	\param from The byte array to use as input
+	\param need_bitflip Do we need to flip the byte order when unpacking?
+	\param type What type does the raw data represent?
         
         Preconditions:
-          - from must be in the external representation of Extents. */
+          - from must be in the external representation of Extents. 
+    */
     static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
                                  const ExtentType &type);
     
-    /** Returns the name of the type of the Extent stored in from.
+    /** Returns the name of the type of the Extent stored in @param from
+	
+        \param from What byte array should we get the type for?
         
         Preconditions:
           - from must be in the external representation of Extents. */

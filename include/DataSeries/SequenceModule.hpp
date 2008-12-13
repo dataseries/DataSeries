@@ -23,7 +23,7 @@
 class SequenceModule : public DataSeriesModule {
 public:
     /** head should be dynaically allocated with new.  The @c SequenceModule
-        takes ownershipof it.  head is the source from which the other
+        takes ownership of it.  @param head is the source from which the other
         modules added by \link SequenceModule::addModule addModule \endlink
         will ultimately get the \link Extent Extents \endlink to process. */
     SequenceModule(DataSeriesModule *head);
@@ -46,7 +46,7 @@ public:
         */
     void addModule(DataSeriesModule *mod);
     /** calls \link DataSeriesModule::getExtent getExtent \endlink on
-        the tail.  Presumably, this will call
+        the tail.  Assuming the modules were set up properly, this will call
         \link DataSeriesModule::getExtent getExtent \endlink on
         all the \link DataSeriesModule modules \endlink added.*/
     virtual Extent *getExtent();

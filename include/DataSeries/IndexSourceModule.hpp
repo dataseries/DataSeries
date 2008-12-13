@@ -19,7 +19,7 @@
 #include <DataSeries/DataSeriesModule.hpp>
 
 /** \brief Base class for source modules that select a subset of the
-           \link Extent Extents \endlink in a file.
+           \link Extent Extents \endlink in collection of files via an index file.
 
  * There are at least two different forms of indexing for reading from
  * DataSeries files.  However they share enough operations that when
