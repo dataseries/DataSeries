@@ -7,8 +7,11 @@
 #include <list>
 
 #include <Lintel/LintelAssert.hpp>
+#include <Lintel/PointerUtil.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StringUtil.hpp>
+
+#include <DataSeries/SequenceModule.hpp>
 
 #include "analysis/nfs/mod3.hpp"
 
@@ -30,14 +33,14 @@ public:
 
     class hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.type.data(),k.type.size());
 	}
     };
 
     class hteEqual {
     public:
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.type == b.type;
 	}
     };
@@ -75,7 +78,7 @@ public:
 
     class sortByType {
     public:
-	bool operator()(hteData *a, hteData *b) {
+	bool operator()(hteData *a, hteData *b) const {
 	    return a->type < b->type;
 	}
     };
@@ -136,7 +139,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "NFS trace: attr-ops",("bad\n"));
+	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (filehandle.size() > max_seen_fh_size) {
@@ -210,7 +213,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "NFS trace: attr-ops",("bad\n"));
+	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (dirfilehandle.isNull())
@@ -297,266 +300,6 @@ NFSDSAnalysisMod::newCommonBytesInFilehandles(DataSeriesModule &prev)
     return new CommonBytesInFilehandles(prev);
 }
 
-const string commonattrrw_xml( // not intended for writing, leaves out packing options
-  "<ExtentType name=\"common-attr-rw-join\">\n"
-  "  <field type=\"int64\" name=\"packet-at\" comment=\"currently the reply packet, not the request one\" />\n"
-  "  <field type=\"int32\" name=\"server\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
-  "  <field type=\"int32\" name=\"client\" comment=\"32 bit packed IPV4 address\" print_format=\"%08x\" />\n"
-  "  <field type=\"variable32\" name=\"operation\" />\n"
-  "  <field type=\"variable32\" name=\"filehandle\" print_hex=\"yes\" />\n"
-  //  "  <field type=\"variable32\" name=\"type\" />\n"
-  "  <field type=\"int64\" name=\"file-size\" />\n"
-  "  <field type=\"int64\" name=\"modify-time\" />\n"
-  "  <field type=\"int64\" name=\"offset\" />\n"
-  "  <field type=\"int32\" name=\"bytes\" />\n"
-  "</ExtentType>\n");
-
-
-static const string str_read("read");
-static const string str_write("write");
-
-// This class outputs a 3-way join, by joining the 2-way-join output of
-// AttrOpsCommonJoin with the extent type "NFS trace: read-write".
-
-class CommonAttrRWJoin: public NFSDSModule {
-public:
-    CommonAttrRWJoin(DataSeriesModule &_commonattr,
-		      DataSeriesModule &_rw)
-	: commonattr(_commonattr), rw(_rw),
-	  output_type(ExtentTypeLibrary::sharedExtentType(commonattrrw_xml)),
-	  es_commonattr(ExtentSeries::typeExact),
-	  es_rw(ExtentSeries::typeExact),
-	  in_packetat(es_commonattr,"reply-at"),
-	  out_packetat(es_out,"packet-at"),
-	  in_server(es_commonattr,"server"),
-	  out_server(es_out,"server"),
-	  in_client(es_commonattr,"client"),
-	  out_client(es_out,"client"),
-	  in_operation(es_commonattr,"operation"),
-	  out_operation(es_out,"operation"),
-	  in_recordid(es_commonattr,"record-id"),
-	  in_filehandle(es_commonattr,"filehandle"),
-	  out_filehandle(es_out,"filehandle"),
-	  in_filesize(es_commonattr,"file-size"),
-	  out_filesize(es_out,"file-size"),
-	  in_modifytime(es_commonattr,"modify-time"),
-	  out_modifytime(es_out,"modify-time"),
-	  in_requestid(es_rw,"request-id"),
-	  in_offset(es_rw,"offset"),
-	  out_offset(es_out,"offset"),
-	  in_bytes(es_rw,"bytes"),
-	  out_bytes(es_out,"bytes"),
-	  in_is_read(es_rw,"is-read"),
-	  rw_done(false), common_done(false),
-	  skip_count(0), output_bytes(0)
-    { 
-	es_out.setType(output_type);
-    }
-
-    virtual ~CommonAttrRWJoin() { }
-    
-    struct rwinfo { // for re-ordering to match by-reply-id order of attr-ops join
-	ExtentType::int64 request_id, offset;
-	ExtentType::int32 bytes;
-    };
-    struct rwinfo_geq { 
-	bool operator()(const rwinfo *a, const rwinfo *b) {
-	    return a->request_id >= b->request_id;
-	}
-    };
-    PriorityQueue<rwinfo *,rwinfo_geq> rw_reorder;
-
-    void fillRWReorder() {
-	if (es_rw.extent() == NULL || es_rw.pos.morerecords() == false) {
-	    Extent *tmp = rw.getExtent();
-	    if (tmp == NULL) {
-		rw_done = true;
-		delete es_rw.extent();
-		es_rw.clearExtent();
-		return;
-	    }
-	    delete es_rw.extent();
-	    es_rw.setExtent(tmp);
-	}
-	rwinfo *tmp = new rwinfo;
-	tmp->request_id = in_requestid.val();
-	tmp->offset = in_offset.val();
-	tmp->bytes = in_bytes.val();
-	++es_rw.pos;
-	rw_reorder.push(tmp);
-    }
-
-    struct commonattrinfo { // for re-ordering 
-	ExtentType::int64 record_id, packet_at, filesize, modifytime;
-	ExtentType::int32 server, client;
-	string operation, filehandle; 
-    };
-
-    struct commonattrinfo_geq {
-	bool operator()(const commonattrinfo *a, const commonattrinfo *b) {
-	    return a->record_id >= b->record_id;
-	}
-    };
-    PriorityQueue<commonattrinfo *,commonattrinfo_geq> commonattr_reorder;
-
-    void fillCommonAttrReorder() {
-	if (es_commonattr.extent() == NULL || es_commonattr.pos.morerecords() == false) {
-	    Extent *tmp = commonattr.getExtent();
-	    if (tmp == NULL) {
-		common_done = true;
-		delete es_commonattr.extent();
-		es_commonattr.clearExtent();
-		return;
-	    }
-	    delete es_commonattr.extent();
-	    es_commonattr.setExtent(tmp);
-	}
-	if (in_operation.equal(str_read) == false && // .equal(str_read) == false ||
-	    in_operation.equal(str_write) == false) {
-	    ++es_commonattr.pos;
-	    return; // only "reads" and "writes" can be joined
-	}
-	commonattrinfo *tmp = new commonattrinfo;
-	tmp->record_id = in_recordid.val();
-	tmp->packet_at = in_packetat.val();
-	tmp->filesize = in_filesize.val();
-	tmp->modifytime = in_modifytime.val();
-	tmp->server = in_server.val();
-	tmp->client = in_client.val();
-	tmp->operation = in_operation.stringval();
-	tmp->filehandle = in_filehandle.stringval();
-	++es_commonattr.pos;
-	commonattr_reorder.push(tmp);
-    }
-
-    // > 1000 needed by set-2/025
-    // > 2000 needed by set-2/045
-    // > 3000 needed by set-2/046
-    // > 4000 needed by set-2/047
-    static const unsigned max_out_of_order = 10000;
-    virtual Extent *getExtent() { 
-	// have to do the full re-ordering join because we have
-	// duplicates in the entries, so that doing the simple
-	// remember entries from one side or another doesn't work, but
-	// we seem to get entries that are pretty amazingly out of
-	// order.
-	if (common_done && rw_done)
-	    return NULL;
-
-	Extent *outextent = new Extent(output_type);
-	es_out.setExtent(outextent);
-
-	while(outextent->extentsize() < 8*1024*1024) {
-	    while (rw_done == false && rw_reorder.size() < max_out_of_order) {
-		fillRWReorder();
-	    } 
-	    while (common_done == false 
-		   && commonattr_reorder.size() < max_out_of_order) {
-		fillCommonAttrReorder();
-	    }
-	    AssertAlways(commonattr_reorder.empty() == false,
-			 ("internal %d",rw_reorder.size()));
-	    AssertAlways(rw_reorder.empty() == false,("out of rw before out of common?"));
-	    while (rw_reorder.top()->request_id < commonattr_reorder.top()->record_id) {
-		// rw_reorder has a few duplicates in it which have no
-		// response, so don't show up in the other join; drop
-		// these, we will verify that we find a match for
-		// everything else though, so we will have to be
-		// handling the reordering correctly.
-
-		// TODO: count the number of missed duplicates and
-		// verify it is a small fraction of the total # rows
-		if (false) 
-		    printf("skip %lld %d %d\n",
-			   rw_reorder.top()->request_id,
-			   rw_reorder.size(), commonattr_reorder.size());
-		++skip_count;
-		delete rw_reorder.top();
-		rw_reorder.pop();
-	    }
-	    AssertAlways(rw_reorder.top()->request_id == commonattr_reorder.top()->record_id,
-			 ("whoa, mismatch in join; %lld(%d) vs %lld(%d); skip %d; too out of order?",
-			  rw_reorder.top()->request_id,rw_reorder.size(),
-			  commonattr_reorder.top()->record_id,commonattr_reorder.size(),
-			  skip_count));
-
-	    es_out.newRecord();
-	    out_packetat.set(commonattr_reorder.top()->packet_at);
-	    out_server.set(commonattr_reorder.top()->server);
-	    out_client.set(commonattr_reorder.top()->client);
-	    out_operation.set(commonattr_reorder.top()->operation);
-	    out_filehandle.set(commonattr_reorder.top()->filehandle);
-	    out_filesize.set(commonattr_reorder.top()->filesize);
-	    out_modifytime.set(commonattr_reorder.top()->modifytime);
-	    out_offset.set(rw_reorder.top()->offset);
-	    out_bytes.set(rw_reorder.top()->bytes);
-
-	    ExtentType::int64 rw_request_id = rw_reorder.top()->request_id;
-      	    delete commonattr_reorder.top();
-	    commonattr_reorder.pop();
-	    if (false) 
-		printf("join %lld\n",rw_request_id);
-	    if (commonattr_reorder.empty() || commonattr_reorder.top()->record_id > rw_request_id) {
-		while (rw_reorder.empty() == false && 
-		       rw_reorder.top()->request_id == rw_request_id) {
-		    delete rw_reorder.top();
-		    rw_reorder.pop();
-		}
-	    }
-	    if (commonattr_reorder.empty()) {
-		AssertAlways(common_done == true && rw_done == true,
-			     ("internal"));
-		// a small number of leftover is ok, as we may have
-		// seen the request without the response
-		AssertAlways(rw_reorder.size() < 10, 
-			     ("too many leftover rw attrs (%d)?",rw_reorder.size()));
-		while(rw_reorder.empty() == false) {
-		    delete rw_reorder.top();
-		    rw_reorder.pop();
-		}
-		break;
-	    }
-	}
-
-	output_bytes += outextent->extentsize();
-	return outextent;
-    }
-
-    virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	printf("  skipped %d records in join -- no match found\n",skip_count);
-	printf("  generated %.2f MB of extent output\n",(double)output_bytes/(1024.0*1024.0));
-	printf("End-%s\n",__PRETTY_FUNCTION__);
-    }
-private:
-    DataSeriesModule &commonattr, &rw;
-    const ExtentType &output_type;
-    ExtentSeries es_commonattr, es_rw, es_out;
-    Int64Field in_packetat, out_packetat;
-    Int32Field in_server, out_server;
-    Int32Field in_client, out_client;
-    Variable32Field in_operation, out_operation;
-    Int64Field in_recordid;
-    Variable32Field in_filehandle, out_filehandle; 
-    Int64Field in_filesize, out_filesize, in_modifytime, out_modifytime;
-    Int64Field in_requestid;
-    Int64Field in_offset, out_offset;
-    Int32Field in_bytes, out_bytes;
-    BoolField in_is_read;
-
-    bool rw_done, common_done;
-    int skip_count;
-    ExtentType::int64 output_bytes;
-};
-
-
-NFSDSModule *
-NFSDSAnalysisMod::newCommonAttrRWJoin(DataSeriesModule &commonattr,
-				      DataSeriesModule &rw)
-{
-    return new CommonAttrRWJoin(commonattr,rw);
-}
-
 //
 // FilesRead performs read analysis.  It outputs four tables meant to be
 // plotted, each table having 3 columns. The first column is the time in
@@ -578,6 +321,8 @@ double NFSDSAnalysisMod::read_sampling = 1000.0;
 #define UNIQUEFILESREAD_PLOTSIZE 100
 #define RECENTAGE 86400
 #define BYTESUNIQUEFILESREAD_PLOTSIZE 100
+
+static string str_read("read");
 
 class FilesRead : public NFSDSModule {
 public:
@@ -609,12 +354,12 @@ public:
     };
     
     class hteHash {
-    public: unsigned int operator()(const hteData &k) {
+    public: unsigned int operator()(const hteData &k) const {
        return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
     }};
     
     class hteEqual {
-    public: bool operator()(const hteData &a, const hteData &b) {
+    public: bool operator()(const hteData &a, const hteData &b) const {
 	return a.filehandle == b.filehandle && a.server == b.server;
     }};
     
@@ -644,7 +389,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) 
 	    return NULL;
-	AssertAlways(e->type.getName() == "common-attr-rw-join",("bad\n"));
+	SINVARIANT(e->type.getName() == "common-attr-rw-join");
 
 	hteData k;
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {

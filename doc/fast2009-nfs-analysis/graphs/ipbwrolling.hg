@@ -1,0 +1,152 @@
+# -*- perl -*-
+define
+
+require 'fixtitle.pm';
+
+use Text::Expand 'expandString';
+
+sub plot_data {
+    my ($type, $interval_len, $dataset) = @_;
+
+    my $title = fixTitle($dataset);
+
+    return "plot quantile as x, val as y where type = '$type' and interval_len = $interval_len and dataset = '$dataset'
+plottitle _ $title
+plotwith _ linespoints";
+}
+
+sub plot_data_multiple {
+    my ($type, $interval_len, $datasets) = @_;
+
+    my @datasets = expandString($datasets);
+
+    my @ret;
+    foreach my $dataset (@datasets) {
+	push(@ret, plot_data($type, $interval_len, $dataset));
+    }
+    return join("\n", @ret) . "\n";
+}
+
+sub plot_selected_data_a {
+    return qq{
+unplot
+plot_data_multiple('Mbps', 60, 'nfs-2/set-[0-5]')
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Mbps"
+gnuplot set title "60 second intervals for the 2007 traces"
+gnuplot set key top left
+pngpsplot --nocolor --fontsize=14 Mbps-nfs-2
+}
+};
+
+sub plot_selected_data_b {
+    return qq{
+unplot
+plot_data_multiple('Mbps', 60, 'nfs-1/set-[12-20]')
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Mbps"
+gnuplot set title "60 second intervals for the 2003 traces"
+gnuplot set key top left
+pngpsplot --nocolor --fontsize=14 Mbps-nfs-1
+}
+}
+
+sub plot_selected_data_c {
+    return qq{
+unplot
+plot_data('Mbps', 0.001, 'nfs-2/set-5')
+plottitle _ 1 ms intervals
+plot_data('Mbps', 1, 'nfs-2/set-5')
+plottitle _ 1 s intervals
+plotwith _ linespoints pt 4
+plot_data('Mbps', 60, 'nfs-2/set-5')
+plotwith _ linespoints pt 8
+plottitle _ 60 s intervals
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "Mbps"
+gnuplot set title "anim-2007/set-5 at different intervals"
+gnuplot set key top left
+pngpsplot --nocolor --fontsize=14 Mbps-nfs-2-set-5
+};
+}
+
+sub plot_selected_data {
+    return qq{
+plot_selected_data_a()
+plot_selected_data_b()
+plot_selected_data_c()
+}
+}
+
+sub plot_tail {
+    my ($type, $interval_len, $dataset) = @_;
+
+    my $title = fixTitle($dataset);
+    return "plot 1/(1-quantile) as x, val as y where type = '$type-tail' and interval_len = $interval_len and dataset = '$dataset'
+plottitle _ $title
+plotwith _ linespoints";
+}
+
+sub plot_tail_multiple {
+    my ($type, $interval_len, $datasets) = @_;
+
+    my @datasets = expandString($datasets);
+
+    my @ret;
+    foreach my $dataset (@datasets) {
+	push(@ret, plot_tail($type, $interval_len, $dataset));
+    }
+    return join("\n", @ret) . "\n";
+}
+
+sub plot_selected_tails {
+    my($type, $key) = @_;
+    return qq{
+# set 12 is highest nfs-1, set-5 is highest nfs-2
+unplot
+#plot_tail_multiple('$type', 0.01, 'nfs-1/set-[12-20]')
+#plot_tail_multiple('$type', 0.01, 'nfs-2/set-[0-5]')
+
+plot_tail('$type', 0.001, 'nfs-2/set-5')
+plottitle _ anim-2007/set-5, 1ms intervals
+plot_tail('$type', 0.01, 'nfs-2/set-5')
+plottitle _ anim-2007/set-5, 10ms intervals
+plot_tail('$type', 1, 'nfs-2/set-5')
+plottitle _ anim-2007/set-5, 1s intervals
+plot_tail('$type', 60, 'nfs-2/set-5')
+plottitle _ anim-2007/set-5, 60s intervals
+
+plot_tail('$type', 0.001, 'nfs-1/set-12')
+plottitle _ anim-2003/set-12, 1ms intervals
+plot_tail('$type', 0.01, 'nfs-1/set-12')
+plottitle _ anim-2003/set-12, 10ms intervals
+plot_tail('$type', 1, 'nfs-1/set-12')
+plottitle _ anim-2003/set-12, 1s intervals
+plot_tail('$type', 60, 'nfs-1/set-12')
+plottitle _ anim-2003/set-12, 60s intervals
+
+gnuplot set logscale x
+gnuplot set xrange [10:10010]
+gnuplot set key top left
+gnuplot set xtics ("0.9" 10, "0.95" 20, "0.99" 100, "0.995" 200, "0.999" 1000, "0.9995" 2000, "0.9999" 10000) 
+gnuplot set xlabel "Quantile"
+gnuplot set ylabel "$type"
+gnuplot set title "Tail of the capture rates"
+gnuplot set key $key
+pngpsplot --nocolor --fontsize=14 $type-tails
+    };
+}
+
+enddefine
+
+default table ip_bw_rolling
+
+plot_selected_tails('Mbps', 'top left')
+plot_selected_tails('kpps','top left')
+
+unplot
+
+# plot_data_multiple('Mbps', 60, 'nfs-2/set-[0-5]')
+#plot_data_multiple('Mbps', 60, 'nfs-1/set-[12-20]')
+
+plot_selected_data_c()

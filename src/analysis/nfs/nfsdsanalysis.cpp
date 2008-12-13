@@ -14,12 +14,13 @@
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/LintelAssert.hpp> // TODO: remove-this
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/ConstantString.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/RotatingHashMap.hpp>
 #include <Lintel/Stats.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -34,10 +35,21 @@
 #include "analysis/nfs/mod2.hpp"
 #include "analysis/nfs/mod3.hpp"
 #include "analysis/nfs/mod4.hpp"
+#include <analysis/nfs/HostInfo.hpp>
 #include "process/sourcebyrange.hpp"
 
+using namespace NFSDSAnalysisMod;    
 using namespace std;
 using boost::format;
+using dataseries::TFixedField;
+
+namespace NFSDSAnalysisMod {
+    RowAnalysisModule *newReadWriteExtentAnalysis(DataSeriesModule &prev);
+    RowAnalysisModule *newUniqueFileHandles(DataSeriesModule &prev);
+    RowAnalysisModule *newSequentiality(DataSeriesModule &prev, const string &arg);
+    RowAnalysisModule *newServerLatency(DataSeriesModule &prev, const string &arg);
+    RowAnalysisModule *newMissingOps(DataSeriesModule &prev);
+}
 
 // needed to make g++-3.3 not suck.
 extern int printf (__const char *__restrict __format, ...) 
@@ -47,44 +59,6 @@ extern int printf (__const char *__restrict __format, ...)
 // only after the common/attr join as we now prune common rows based
 // on timestamps, but are not pruning the attr op rollups in the same
 // way.  Probably doesn't matter given the current analysis that are done.
-
-enum optionsEnum {
-    // Common rollups
-    optNFSOpPayload = 0,     // server payload analysis
-    optClientServerPairInfo, // client-server pair payload analysis
-    optHostInfo,             // host analysis
-    optPayloadInfo,          // overall payload analysis
-    optServerLatency,        // server latency analysis
-    optUnbalancedOps,        // unbalanced operations analysis
-    optNFSTimeGaps,          // time gap analysis
-    optTransactions,         // transaction analysis
-    optOutstandingRequests,  // outstanding requests analysis
-
-    // Attribute rollups
-    optFileSizeByType,       // file size analysis
-    Commonbytes,             // common bytes in dir/fh analysis
-    Unique,                  // unique bytes in file handles analysis
-    optDirectoryPathLookup,  // try to work out the directory path for filehandles
-
-    // Common + Attribute rollups
-    optFileageByFilehandle,   // file age by file handle analysis
-    Largewrite_Handle,        // large file write analysis by file handle
-    Largewrite_Name,          // large file write analysis by file name
-    Largefile_Handle,         // large file analysis by file handle
-    Largefile_Name,           // large file analysis by file name
-    strangeWriteSearch,       // search for strange write operations
-    optOperationByFileHandle, // per-operation information grouped by filename (or filehandle if name is unknown)
-    optServersPerFilehandle,  // how many servers for each file handle?
-    optFileHandleOperationLookup,   // dump records from the common + attr-ops rollup
-
-    // Common + Attribute + RW rollups
-    File_Read,                // files read analysis
-    optSequentialWholeAccess, // count files accessed sequentially and completely
-
-    LastOption
-};
-
-static bool options[LastOption];
 
 static const string str_read("read");
 static const string str_write("write");
@@ -126,14 +100,14 @@ public:
     };
 
     struct hteHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),
 				       BobJenkinsHashMix3(k.server,k.client,(k.is_read ? 0x5555 : 0xAAAA)));
 	}
     };
 
     struct hteEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.client == b.client && a.is_read == b.is_read &&
 		a.filehandle == b.filehandle;
 	}
@@ -221,12 +195,11 @@ public:
 		    if (filename == NULL) filename = &v->filehandle;
 		    if (offset.val() > filesize.val()) {
 			AssertAlways(bytes.val() == 0,("whoa, read beyond file size got bytes"));
-			printf("tolerating weird over %s on %s at %lld from %08x? %lld > %lld ; %d\n",
-			       v->is_read ? "read" : "write",
-			       maybehexstring(*filename).c_str(),
-			       packetat.val(), clientip.val(),
-			       offset.val(),filesize.val(),
-			       bytes.val());
+			cout << format("tolerating weird over %s on %s at %lld from %08x? %lld > %lld ; %d\n")
+			    % (v->is_read ? "read" : "write")
+			    % maybehexstring(*filename) % packetat.val()
+			    % clientip.val() % offset.val() % filesize.val()
+			    % bytes.val();
 		    }
 		}
 		v->cur_offset = filesize.val();
@@ -236,25 +209,25 @@ public:
     }
 
     struct rollupHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
     struct rollupEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
 
     struct mountRollupHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
     struct mountRollupEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
@@ -496,13 +469,11 @@ struct fsKeep {
 
 class OperationByFileHandle : public RowAnalysisModule {
 public:
-    OperationByFileHandle(DataSeriesModule &_source, int _timebound_start, 
-			  int _timebound_end)
+    OperationByFileHandle(DataSeriesModule &_source)
 	: RowAnalysisModule(_source),
-	  timebound_start(_timebound_start),
-	  timebound_end(_timebound_end),
 	  server(series,"server"),
-	  operation(series,"operation"), filehandle(series,"filehandle"),
+	  unified_op_id(series,"unified-op-id"), 
+	  filehandle(series,"filehandle"),
 	  request_at(series,"request-at"), reply_at(series,"reply-at"),
 	  payload_len(series,"payload-length"), 
 	  min_time(numeric_limits<int64_t>::max()),
@@ -515,50 +486,53 @@ public:
     struct hteData {
 	ExtentType::int32 server;
 	uint32_t opcount;
-	ConstantString filehandle, operation;
+	ConstantString filehandle;
+	uint8_t unified_op_id;
 	int64_t payload_sum, latency_sum_raw;
 	void zero() { opcount = 0; payload_sum = 0; latency_sum_raw = 0; }
     };
 
     struct byServerFhOp {
 	bool operator() (const HashTable_hte<hteData> &a, 
-			 const HashTable_hte<hteData> &b) {
+			 const HashTable_hte<hteData> &b) const {
 	    if (a.data.server != b.data.server) {
 		return a.data.server < b.data.server;
 	    }
 	    if (a.data.filehandle != b.data.filehandle) {
 		return a.data.filehandle < b.data.filehandle;
 	    }
-	    if (a.data.operation != b.data.operation) {
-		return a.data.operation < b.data.operation;
+	    if (a.data.unified_op_id != b.data.unified_op_id) {
+		return unifiedIdToName(a.data.unified_op_id)
+		    < unifiedIdToName(b.data.unified_op_id);
 	    }
 	    return false;
 	}
     };
 
     struct fhOpHash {
-	unsigned operator()(const hteData &k) {
-	    unsigned ret = HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
-	    return HashTable_hashbytes(k.operation.data(),k.operation.size(),ret);
+	unsigned operator()(const hteData &k) const {
+	    unsigned a = HashTable_hashbytes(k.filehandle.data(),
+					     k.filehandle.size(), 1492);
+	    return BobJenkinsHashMix3(a, k.server, k.unified_op_id);
 	}
     };
 
     struct fhOpEqual {
-	bool operator()(const hteData &a, const hteData &b) {
-	    return a.server == b.server && 
-		a.filehandle == b.filehandle && a.operation == b.operation;
+	bool operator()(const hteData &a, const hteData &b) const {
+	    return a.server == b.server && a.filehandle == b.filehandle 
+		&& a.unified_op_id == b.unified_op_id;
 	}
     };
 
     struct fhHash {
-	unsigned operator()(const hteData &k) {
+	unsigned operator()(const hteData &k) const {
 	    size_t dataaddr = reinterpret_cast<size_t>(k.filehandle.data());
 	    return static_cast<unsigned>(dataaddr) ^ k.server;
 	}
     };
 
     struct fhEqual {
-	bool operator()(const hteData &a, const hteData &b) {
+	bool operator()(const hteData &a, const hteData &b) const {
 	    return a.server == b.server && a.filehandle == b.filehandle;
 	}
     };
@@ -569,8 +543,6 @@ public:
     fhRollupT fhRollup, fsRollup;
 
     virtual void prepareForProcessing() {
-	timebound_start = request_at.secNanoToRaw(timebound_start,0);
-	timebound_end = request_at.secNanoToRaw(timebound_end,0);
 	SINVARIANT(request_at.getType() == reply_at.getType());
     }
 
@@ -578,11 +550,6 @@ public:
 	unique_fhs.add(ConstantString(filehandle.val(), filehandle.size()));
 
 	hteData k;
-	if (request_at.valRaw() < timebound_start ||
-	    reply_at.valRaw() > timebound_end) {
-	    ++out_of_bounds_count;
-	    return;
-	}
 	if (request_at.valRaw() < min_time) {
 	    min_time = request_at.valRaw();
 	} 
@@ -594,7 +561,7 @@ public:
 	INVARIANT(k.filehandle.compare(filehandle.stringval()) == 0, 
 		  boost::format("bad %s != %s") 
 		  % maybehexstring(k.filehandle) % maybehexstring(filehandle.stringval()));
-	k.operation = operation.stringval();
+	k.unified_op_id = unified_op_id.val();
 	hteData *v = fhOpRollup.lookup(k);
 	if (v == NULL) {
 	    k.zero();
@@ -665,9 +632,8 @@ public:
 		    pathname = maybehexstring(v->pathname);
 		}
 		printf("fsrollup: server %s, fs %s: %d ops %.3f MB, %.3f us avg lat\n",
-		       ipv4tostring(d.server).c_str(),pathname.c_str(),
-		       d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us, 
-		       d.latency_sum_raw);
+		       ipv4tostring(d.server).c_str(), pathname.c_str(),
+		       d.opcount, d.payload_sum/(1024.0*1024.0), avglat_us);
 	    }
 	}
     }
@@ -703,10 +669,10 @@ public:
 	    double lat_sum_sec = 
 		request_at.rawToDoubleSeconds(d.latency_sum_raw, false);
 	    double avglat_us = 1.0e6 * lat_sum_sec / d.opcount;
-	    printf("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n",
-		   ipv4tostring(d.server).c_str(),d.operation.c_str(),
-		   maybehexstring(d.filehandle).c_str(),
-		   d.opcount,d.payload_sum/(1024.0*1024.0),avglat_us);
+	    cout << format("fhoprollup: server %s, op %s, fh %s: %d ops %.3f MB, %.3f us avg lat\n")
+		% ipv4tostring(d.server) % unifiedIdToName(d.unified_op_id)
+		% maybehexstring(d.filehandle)
+		% d.opcount % (d.payload_sum/(1024.0*1024.0)) % avglat_us;
 	}
     }
 
@@ -725,11 +691,11 @@ public:
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 
-    ExtentType::int64 timebound_start, timebound_end;
-    Int32Field server;
-    Variable32Field operation, filehandle;
+    TFixedField<int32_t> server;
+    TFixedField<uint8_t> unified_op_id;
+    Variable32Field filehandle;
     Int64TimeField request_at, reply_at;
-    Int32Field payload_len;
+    TFixedField<int32_t> payload_len;
 
     int64_t min_time, max_time;
     uint64_t out_of_bounds_count;
@@ -991,7 +957,7 @@ public:
 	  client(series,"client"),
 	  server(series,"server"),
 	  replyat(series,"reply-at"),
-	  operation(series,"operation"),
+	  unified_op_id(series,"unified-op-id"),
 	  type(series,"type"),
 	  printed_header(false)
     {
@@ -1009,7 +975,7 @@ public:
 		% replyat.valStrSecNano() % ipv4tostring(client.val()) 
 		% ipv4tostring(server.val()) 
 
-		% operation.stringval() % type.stringval() 
+		% unifiedIdToName(unified_op_id.val()) % type.stringval() 
 		% hexstring(filehandle.stringval()) 
 		% maybehexstring(filename.stringval())
 
@@ -1039,11 +1005,12 @@ public:
     }
 	
     Variable32Field filename, filehandle;
-    Int64Field file_size;
+    TFixedField<int64_t> file_size;
     Int64TimeField modify_time;
-    Int32Field client, server;
+    TFixedField<int32_t> client, server;
     Int64TimeField replyat;
-    Variable32Field operation, type;
+    TFixedField<uint8_t> unified_op_id;
+    Variable32Field type;
 
     bool printed_header;
     static HashUnique<string> wanted;    
@@ -1054,70 +1021,140 @@ HashUnique<string> FileHandleOperationLookup::wanted;
 static bool need_mount_by_filehandle = false;
 static bool need_filename_by_filehandle = false;
 static bool late_filename_by_filehandle_ok = true;
-static vector<int> FileageByFilehandle_recent_secs;
-static int print_input_series;
-static int latency_offset = 0;
 
 void
 usage(char *progname) 
 {
-    cerr << "Usage: " << progname << " flags... (file...)|(index.ds start-time end-time)\n";
-    cerr << " flags\n";
-    cerr << "    Note, most of the options are disabled because they haven't been tested.\n";
-    cerr << "    However, it is trivial to change the source to re-enable them, but people\n";
-    cerr << "    doing so should make an effort to verify the code and results.\n";
-    cerr << "    It's probably also worth cleaning up the code at the same time, e.g.\n";
-    cerr << "    replacing printfs with boost::format, int with [u]int{32,64}_t as\n";
-    cerr << "    appropriate, and any other cleanups that seem appropriate.\n";
-    cerr << "    please send in patches (software@cello.hpl.hp.com) if you do this.\n";
+    cout << "Usage: " << progname << " flags... (file...)|(index.ds start-time end-time)\n";
+    cout << " flags\n";
+    cout << "    Note, most of the options are disabled because they haven't been tested.\n";
+    cout << "    However, it is trivial to change the source to re-enable them, but people\n";
+    cout << "    doing so should make an effort to verify the code and results.\n";
+    cout << "    It's probably also worth cleaning up the code at the same time, e.g.\n";
+    cout << "    replacing printfs with boost::format, int with [u]int{32,64}_t as\n";
+    cout << "    appropriate, and any other cleanups that seem appropriate.\n";
+    cout << "    please send in patches (software@cello.hpl.hp.com) if you do this.\n";
 	
-    cerr << "    -h # display this help\n";
-    cerr << "    -a # Operation count by filehandle\n";
-    cerr << "    #-b # Unique bytes in file handles analysis\n";
-    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
-    cerr << "    #-d # Large file write analysis by file handle\n";
-    cerr << "    #-e # Large file write analysis by file name\n";
-    cerr << "    #-f # Large file analysis by file handle\n";
-    cerr << "    #-g # Large file analysis by file name\n";
-    cerr << "    #-i # NFS operation/payload analysis\n";
-    cerr << "    -j # Server latency analysis\n";
-    cerr << "    #-k # Client-server pair payload analysis\n";
-    cerr << "    -l <seconds> # Host analysis\n";
-    cerr << "    #-m # Overall payload analysis\n";
-    cerr << "    #-n # File size analysis\n";
-    cerr << "    #-o # Unbalanced operations analysis\n";
-    cerr << "    #-p <time-gap in ms to treat as skip> # Time range analysis\n";
-    cerr << "    #-q <sampling interval in ms> # Read analysis\n";
-    cerr << "    #-r # Common bytes between filehandle and dirhandle\n";
-    cerr << "    #-s # Sequential whole access\n";
-    cerr << "    #-t # Strange write search\n";
-    cerr << "    -u <fh|fh-list pathname> # directory path lookup\n";
-    cerr << "    #-v <series> # select series to print 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5 = common/attr/rw join\n";
-    cerr << "    #-w # servers per filehandle\n";
-    cerr << "    #-x # transactions\n";
-    cerr << "    #-y # outstanding requests\n";
-    cerr << "    -z <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+    cout << "    -h # display this help\n";
+    cout << "    -a # Operation count by filehandle\n";
+    cout << "    -b {,output_sql} # Server latency analysis\n";
+    cout << "    -c <seconds> # Host analysis\n";
+    cout << "    -d <fh|fh-list pathname> # directory path lookup\n";
+    cout << "    -e <fh | fh-list pathname> # look up all the operations associated with a filehandle\n";
+    cout << "    -f # Read/Write Extent analysis\n";
+    cout << "    -g # Attr-Ops Extent analysis\n";
+    cout << "    -i # Sequentiality analysis\n";
+    cout << "    -Z <series-to-print> # common, attr-ops, rw, merge12, merge123\n";
+
+//    cerr << "    #-b # Unique bytes in file handles analysis\n";
+//    cerr << "    #-c <recent-age-in-seconds> # File age by file handle analysis\n";
+//    cerr << "    #-d # Large file write analysis by file handle\n";
+//    cerr << "    #-e # Large file write analysis by file name\n";
+//    cerr << "    #-f # Large file analysis by file handle\n";
+//    cerr << "    #-g # Large file analysis by file name\n";
+//    cerr << "    #-i # NFS operation/payload analysis\n";
+//    cerr << "    #-k # Client-server pair payload analysis\n";
+//    cerr << "    #-m # Overall payload analysis\n";
+//    cerr << "    #-n # File size analysis\n";
+//    cerr << "    #-o # Unbalanced operations analysis\n";
+//    cerr << "    #-p <time-gap in ms to treat as skip> # Time range analysis\n";
+//    cerr << "    #-q <sampling interval in ms> # Read analysis\n";
+//    cerr << "    #-r # Common bytes between filehandle and dirhandle\n";
+//    cerr << "    #-s # Sequential whole access\n";
+//    cerr << "    #-t # Strange write search\n";
+//    cerr << "    #-v <series> # select series to print 1 = common, 2 = attrops, 3 = rw, 4 = common/attr join, 5 = common/attr/rw join\n";
+//    cerr << "    #-w # servers per filehandle\n";
+//    cerr << "    #-x # transactions\n";
+//    cerr << "    #-y # outstanding requests\n";
     exit(1);
 }
 
-static char *host_info_arg;
-int
-parseopts(int argc, char *argv[])
-{
+void addDSToText(SequenceModule &to) {
+    to.addModule(new DStoTextModule(to.tail()));
+}
+
+int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
+	      SequenceModule &attrOpsSequence, SequenceModule &rwSequence,
+	      SequenceModule &merge12Sequence, 
+	      SequenceModule &merge123Sequence) {
     bool any_selected;
 
     // TODO: redo this so it gets passed the sequences and just stuffs
-    // things into them.
+    // things into them.  
+
 
     any_selected = false;
+    bool add_directory_path_lookup = false;
+    bool add_file_handle_operation_lookup = false;
+
     while (1) {
-	int opt = getopt(argc, argv, "abc:defghijkl:mnop:q:r:stu:v:wxy:z:");
+	int opt = getopt(argc, argv, "hab:c:d:e:fgi:jZ:");
 	if (opt == -1) break;
 	any_selected = true;
 	switch(opt){
-	case 'a': options[optOperationByFileHandle] = 1;
+	case 'h': usage(argv[0]); break;
+	case 'a': merge12Sequence.addModule
+		      (new OperationByFileHandle(merge12Sequence.tail()));
 	    need_mount_by_filehandle = 1;
 	    break;
+	case 'b': 
+	    commonSequence.addModule
+		(NFSDSAnalysisMod::newServerLatency(commonSequence.tail(), optarg));
+	    break;
+	case 'c': 
+	    commonSequence.addModule
+		(NFSDSAnalysisMod::newHostInfo(commonSequence.tail(), optarg));
+	    break;
+	case 'd': 
+	    need_mount_by_filehandle = true;
+	    DirectoryPathLookup::processArg(optarg);
+	    // will add module once at the end of processing arguments
+	    add_directory_path_lookup = true;
+	    break;
+	case 'e': 
+	    FileHandleOperationLookup::processArg(optarg);
+	    // will add module once at the end of processing arguments
+	    add_file_handle_operation_lookup = true;
+	    break;
+	case 'f':
+	    rwSequence.addModule
+		(newReadWriteExtentAnalysis(rwSequence.tail()));
+	    break;
+	case 'g':
+	    attrOpsSequence.addModule
+		(newUniqueFileHandles(attrOpsSequence.tail()));
+	    break;
+	case 'i':
+#if 0
+	    // experiment, <10% difference
+	    merge123Sequence.addModule
+		(new PrefetchBufferModule(merge123Sequence.tail(), 1024*1024));
+#endif
+	    merge123Sequence.addModule
+		(newSequentiality(merge123Sequence.tail(), optarg));
+	    break;
+	case 'j':
+	    commonSequence.addModule(newMissingOps(commonSequence.tail()));
+	    break;
+	case 'Z': {
+	    string arg = optarg;
+	    if (arg == "common") {
+		addDSToText(commonSequence);
+	    } else if (arg == "attr-ops") {
+		addDSToText(attrOpsSequence);
+	    } else if (arg == "rw") {
+		addDSToText(rwSequence);
+	    } else if (arg == "merge12") {
+		addDSToText(merge12Sequence);
+	    } else if (arg == "merge123") {
+		addDSToText(merge123Sequence);
+	    } else {
+		FATAL_ERROR(format("Unknown choice to print '%s'") % arg);
+	    }
+	    break;
+	}
+	    
+#if UNTESTED_ANALYSIS_DISABLED
 	case 'b': FATAL_ERROR("untested");options[Unique] = 1; break;
 	case 'c': FATAL_ERROR("untested");{
 	    options[optFileageByFilehandle] = 1;
@@ -1136,11 +1173,8 @@ parseopts(int argc, char *argv[])
 	          need_filename_by_filehandle = true;
 		  late_filename_by_filehandle_ok = false;
 		  break;
-	case 'h': usage(argv[0]); break;
 	case 'i': FATAL_ERROR("untested");options[optNFSOpPayload] = 1; break;
-	case 'j': options[optServerLatency] = 1; break;
 	case 'k': FATAL_ERROR("untested");options[optClientServerPairInfo] = 1; break;
-	case 'l': options[optHostInfo] = 1; host_info_arg = optarg; break;
 	case 'm': FATAL_ERROR("untested");options[optPayloadInfo] = 1; break;
 	case 'n': FATAL_ERROR("untested");options[optFileSizeByType] = 1; break;
 	case 'o': FATAL_ERROR("untested");options[optUnbalancedOps] = 1; break;
@@ -1164,10 +1198,6 @@ parseopts(int argc, char *argv[])
 		need_mount_by_filehandle = true;
 	    }
 	    break;
-	case 'u': options[optDirectoryPathLookup] = 1;
-	    need_mount_by_filehandle = true;
-	    DirectoryPathLookup::processArg(optarg);
-	    break;
 	case 'v': print_input_series = atoi(optarg);
 	    AssertAlways(print_input_series >= 1 && print_input_series <= 5,
 			 ("invalid print input series '%s'\n",optarg));
@@ -1177,9 +1207,7 @@ parseopts(int argc, char *argv[])
 	case 'y': FATAL_ERROR("untested");options[optOutstandingRequests] = 1; 
 	  latency_offset = atoi(optarg);
 	  break;
-	case 'z': options[optFileHandleOperationLookup] = 1;
-	    FileHandleOperationLookup::processArg(optarg);
-	    break;
+#endif
 
 	case '?': AssertFatal(("invalid option"));
 	default:
@@ -1191,6 +1219,14 @@ parseopts(int argc, char *argv[])
 	usage(argv[0]);
     }
 
+    if (add_directory_path_lookup) {
+	attrOpsSequence.addModule
+	    (new DirectoryPathLookup(attrOpsSequence.tail()));
+    }
+    if (add_file_handle_operation_lookup) {
+	merge12Sequence.addModule
+	    (new FileHandleOperationLookup(merge12Sequence.tail()));
+    }
     return optind;
 }
 
@@ -1207,7 +1243,8 @@ printResult(DataSeriesModule *mod)
     } else if (rowmod != NULL) {
 	rowmod->printResult();
     } else {
-	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL,
+	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL
+		  || dynamic_cast<PrefetchBufferModule *>(mod) != NULL,
 		  "Found unexpected module in chain");
     }
 
@@ -1225,15 +1262,7 @@ isnumber(const char *v)
     return true;
 }
 
-int
-main(int argc, char *argv[])
-{
-    int first = parseopts(argc, argv);
-
-    if (argc - first < 1) {
-	usage(argv[0]);
-    }
-
+void registerUnitsEpoch() {
     // Register time types for some of the old traces so we don't have to
     // do it in each of the modules.
     Int64TimeField::registerUnitsEpoch("packet-at", "NFS trace: common", "", 0,
@@ -1244,21 +1273,15 @@ main(int argc, char *argv[])
     Int64TimeField::registerUnitsEpoch("packet_at", "Trace::NFS::common", 
 				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
 				       "unix");
+}
 
-    TypeIndexModule *sourcea = 
-	new TypeIndexModule("NFS trace: common");
-    sourcea->setSecondMatch("Trace::NFS::common");
-    TypeIndexModule *sourceb = 
-	new TypeIndexModule("NFS trace: attr-ops");
-    sourceb->setSecondMatch("Trace::NFS::attr-ops");
-    TypeIndexModule *sourcec = 
-	new TypeIndexModule("NFS trace: read-write");
-    TypeIndexModule *sourced = 
-	new TypeIndexModule("NFS trace: mount");
-    sourced->setSecondMatch("Trace::NFS::mount");
+static int32_t timebound_start = 0;
+static int32_t timebound_end = numeric_limits<int32_t>::max();
+
+void setupInputs(int first, int argc, char *argv[], TypeIndexModule *sourcea,
+		 TypeIndexModule *sourceb, TypeIndexModule *sourcec,
+		 TypeIndexModule *sourced, SequenceModule &commonSequence) {
     bool timebound_set = false;
-    int32_t timebound_start = 0;
-    int32_t timebound_end = numeric_limits<int32_t>::max();
     if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
 	timebound_set = true;
 	timebound_start = atoi(argv[first+1]);
@@ -1284,18 +1307,45 @@ main(int argc, char *argv[])
     sourcec->sameInputFiles(*sourcea);
     sourced->sameInputFiles(*sourcea);
 
-    // these are the three threads that we will build according to the
-    // selected analyses
-
-    SequenceModule commonSequence(sourcea);
-    SequenceModule attrOpsSequence(sourceb);
-    SequenceModule rwSequence(sourcec);
-
     if (timebound_set) {
 	commonSequence.addModule(new TimeBoundPrune(commonSequence.tail(),
 						    timebound_start, 
 						    timebound_end));
     }
+}
+
+int main(int argc, char *argv[]) {
+    registerUnitsEpoch();
+
+    LintelLog::parseEnv();
+    // TODO: make sources an array/vector.
+    TypeIndexModule *sourcea = new TypeIndexModule("NFS trace: common");
+    sourcea->setSecondMatch("Trace::NFS::common");
+    TypeIndexModule *sourceb = new TypeIndexModule("NFS trace: attr-ops");
+    sourceb->setSecondMatch("Trace::NFS::attr-ops");
+    TypeIndexModule *sourcec = new TypeIndexModule("NFS trace: read-write");
+    sourcec->setSecondMatch("Trace::NFS::read-write");
+    TypeIndexModule *sourced = new TypeIndexModule("NFS trace: mount");
+    sourced->setSecondMatch("Trace::NFS::mount");
+
+    SequenceModule commonSequence(sourcea);
+    SequenceModule attrOpsSequence(sourceb);
+    SequenceModule rwSequence(sourcec);
+    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin());
+    SequenceModule merge123Sequence(NFSDSAnalysisMod::newCommonAttrRWJoin());
+
+    int first = parseopts(argc, argv, commonSequence, attrOpsSequence, 
+			  rwSequence, merge12Sequence, merge123Sequence);
+
+    if (argc - first < 1) {
+	usage(argv[0]);
+    }
+
+    setupInputs(first, argc, argv, sourcea, sourceb,
+		sourcec, sourced, commonSequence);
+
+    // these are the three threads that we will build according to the
+    // selected analyses
 
     // need to pre-build the table before we can do the write-filename
     // analysis after the merge join.
@@ -1320,6 +1370,15 @@ main(int argc, char *argv[])
 	delete tmp;
     }
 
+    // merge join with attributes
+    NFSDSAnalysisMod::setAttrOpsSources
+	(*merge12Sequence.begin(), commonSequence, attrOpsSequence);
+
+    // merge join with read-write data
+    NFSDSAnalysisMod::setCommonAttrRWSources
+	(*merge123Sequence.begin(), merge12Sequence, rwSequence);
+
+
     // 2004-09-02: tried experiment of putting some of the
     // bigger-memory bits into their own threads using a prefetch
     // buffer -- performance got much worse with way more time being
@@ -1327,150 +1386,30 @@ main(int argc, char *argv[])
     // malloc library issues as both those modules did lots of
     // malloc/free.
 
-    // common file rollups
-    if (options[optNFSOpPayload]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newNFSOpPayload(commonSequence.tail()));
-    }
-
-    if (options[optClientServerPairInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newClientServerPairInfo(commonSequence.tail()));
-    }
-
-    if (options[optHostInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newHostInfo(commonSequence.tail(), host_info_arg));
-    }
-
-    if (options[optPayloadInfo]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newPayloadInfo(commonSequence.tail()));
-    }
-
-    if (options[optServerLatency]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newServerLatency(commonSequence.tail()));
-    }
-
-    if (options[optUnbalancedOps]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newUnbalancedOps(commonSequence.tail()));
-    }
-
-    if (options[optNFSTimeGaps]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newNFSTimeGaps(commonSequence.tail()));
-    }
-
-    if (options[optTransactions]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newTransactions(commonSequence.tail()));
-    }
-
-    if (options[optOutstandingRequests]) {
-	commonSequence.addModule(NFSDSAnalysisMod::newOutstandingRequests(commonSequence.tail(), latency_offset));
-    }
-
-    // attribute rollups
-    if (options[optFileSizeByType]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newFileSizeByType(attrOpsSequence.tail()));
-    }
-
-    if (options[Commonbytes]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newCommonBytesInFilehandles(attrOpsSequence.tail()));
-    }
-
-    if (options[Unique]) {
-	attrOpsSequence.addModule(NFSDSAnalysisMod::newUniqueBytesInFilehandles(attrOpsSequence.tail()));
-    }
-
-    if (options[optDirectoryPathLookup]) {
-	attrOpsSequence.addModule(new DirectoryPathLookup(attrOpsSequence.tail()));
-    }
-
-    // merge join with attributes
-    SequenceModule merge12Sequence(NFSDSAnalysisMod::newAttrOpsCommonJoin(commonSequence.tail(),attrOpsSequence.tail()));
-
-    // merge join rollups
-    if (options[optFileageByFilehandle]) {
-	for(vector<int>::iterator i = FileageByFilehandle_recent_secs.begin();
-	    i != FileageByFilehandle_recent_secs.end(); ++i) {
-	    merge12Sequence.addModule(NFSDSAnalysisMod::newFileageByFilehandle(merge12Sequence.tail(),20,*i));
-	}
-    }
-
-    if (options[Largewrite_Handle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilehandleWrite(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largewrite_Name]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilenameWrite(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largefile_Handle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFileHandle(merge12Sequence.tail(),20));
-    }
-
-    if (options[Largefile_Name]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newLargeSizeFilename(merge12Sequence.tail(),20));
-    }
-    
-    if (options[strangeWriteSearch] && sws_filehandle == false) {
-	merge12Sequence.addModule(new StrangeWriteSearch(merge12Sequence.tail()));
-    }
-
-    if (options[optOperationByFileHandle]) {
-	merge12Sequence.addModule(new OperationByFileHandle(merge12Sequence.tail(),timebound_start,timebound_end));
-    }
-
-    if (options[optServersPerFilehandle]) {
-	merge12Sequence.addModule(NFSDSAnalysisMod::newServersPerFilehandle(merge12Sequence.tail()));
-    }
-
-    if (options[optFileHandleOperationLookup]) {
-	merge12Sequence.addModule(new FileHandleOperationLookup(merge12Sequence.tail()));
-    }
-
-    // merge join with read-write data
-    SequenceModule merge123Sequence(NFSDSAnalysisMod::newCommonAttrRWJoin(merge12Sequence.tail(),
-									  rwSequence.tail()));
-    if (options[File_Read]) {
-	merge123Sequence.addModule(NFSDSAnalysisMod::newFilesRead(merge123Sequence.tail()));
-    }
-
-    if (options[optSequentialWholeAccess]) {
-	merge123Sequence.addModule(new SequentialWholeAccess(merge123Sequence.tail()));
-    }
-
-    switch (print_input_series) 
-	{
-	case 0: // nothing, ok
-	    break;
-	case 1: 
-	    commonSequence.addModule(new DStoTextModule(commonSequence.tail()));
-	    break;
-	case 2:
-	    attrOpsSequence.addModule(new DStoTextModule(attrOpsSequence.tail()));
-	    break;
-	case 3:
-	    rwSequence.addModule(new DStoTextModule(rwSequence.tail()));
-	    break;
-	case 4:
-	    merge12Sequence.addModule(new DStoTextModule(merge12Sequence.tail()));
-	    break;
-	case 5:
-	    merge123Sequence.addModule(new DStoTextModule(merge123Sequence.tail()));
-	    break;
-	default:
-	    AssertFatal(("internal"));
-	}
     // only pull through what we actually need to pull through.
-
     if (merge123Sequence.size() > 1) {
+	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
 	DataSeriesModule::getAndDelete(merge123Sequence);
     } else if (merge12Sequence.size()> 1) {
+	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
+	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	DataSeriesModule::getAndDelete(merge12Sequence);
+	if (rwSequence.size() > 1) {
+	    DataSeriesModule::getAndDelete(rwSequence);
+	}
     } else {
 	if (commonSequence.size() > 1) {
+	    sourcea->startPrefetching(8*32*1024*1024, 8*96*1024*1024);
 	    DataSeriesModule::getAndDelete(commonSequence);
 	}
 	if (attrOpsSequence.size() > 1) {
+	    sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	    DataSeriesModule::getAndDelete(attrOpsSequence);
 	}
 	if (rwSequence.size() > 1) {
+	    sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
 	    DataSeriesModule::getAndDelete(rwSequence);
 	}
     }
@@ -1496,10 +1435,6 @@ main(int argc, char *argv[])
     for(SequenceModule::iterator i = merge123Sequence.begin();
 	i != merge123Sequence.end(); ++i) {
 	printResult(*i);
-    }
-    if (options[strangeWriteSearch] && sws_filehandle) {
-	DataSeriesModule *m = new StrangeWriteSearch(commonSequence.tail());
-	printResult(m);
     }
 	
     printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",
@@ -1527,13 +1462,7 @@ main(int argc, char *argv[])
 	   sourceb->waitFraction(),
 	   sourcec->waitFraction(),
 	   sourced->waitFraction());
-//    DataSeriesModule *foo = prefetcha;
-//    delete foo;
-//    delete prefetchb;
-//    delete prefetchc;
-//    delete sourcea;
-//    delete sourceb;
-//    delete sourcec;
+    delete sourced; // a-c deleted by their SequenceModules
     return 0;
 }
 

@@ -70,7 +70,7 @@ public:
 
     class kept_extent_bysortvalue {
     public:
-	bool operator() (const kept_extent &a, const kept_extent &b) {
+	bool operator() (const kept_extent &a, const kept_extent &b) const {
 	    return a.sortvalue < b.sortvalue;
 	}
     };

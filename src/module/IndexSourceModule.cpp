@@ -13,12 +13,13 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/PThread.hpp>
+
 #include <DataSeries/IndexSourceModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
+using boost::format;
 
 class IndexSourceModuleCompressedPrefetchThread : public PThread {
 public:
@@ -70,6 +71,7 @@ IndexSourceModule::~IndexSourceModule()
 	for(vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
 	    i != prefetch->unpack_threads.end(); ++i) {
 	    (**i).join();
+	    delete *i;
 	}
 	while (prefetch->compressed.empty() == false) {
 	    delete prefetch->compressed.getFront();
@@ -122,9 +124,7 @@ timediff(struct timeval &end,struct timeval &start)
     return end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec) * 1e-6;
 }
 
-Extent *
-IndexSourceModule::getExtent()
-{
+Extent *IndexSourceModule::getExtent() {
     INVARIANT(getting_extent == false,"incorrect re-entrancy detected");
     getting_extent = true;
 
@@ -160,13 +160,16 @@ IndexSourceModule::getExtent()
     Extent *ret = buf->unpacked;
     delete buf;
 
+    SINVARIANT(ret->extent_source != Extent::in_memory_str &&
+	       ret->extent_source_offset > 0);
     getting_extent = false;
+
+    LintelLogDebug("IndexSourceModule", format("return extent %s:%d type %s")
+		   % ret->extent_source % ret->extent_source_offset % ret->getType().getName());
     return ret;
 }
 
-void
-IndexSourceModule::resetPos()
-{
+void IndexSourceModule::resetPos() {
     SINVARIANT(prefetch != NULL);
     prefetch->mutex.lock();
     SINVARIANT(prefetch->reset_flag == false);
@@ -233,6 +236,8 @@ IndexSourceModule::compressedPrefetchThread()
 		prefetch->source_done = true;
 		prefetch->ready_cond.signal();
 	    } else {
+		SINVARIANT(p->extent_source != Extent::in_memory_str &&
+			   p->extent_source_offset > 0);
 		prefetch->compressed.add(p, p->bytes.size());
 		if (prefetch->unpacked.can_add(prefetch->compressed.front())) {
 		    prefetch->unpack_cond.signal();
@@ -302,6 +307,8 @@ IndexSourceModule::unpackThread()
 		sched_yield();
 	    }
 	    Extent *e = new Extent(*pe->type, pe->bytes, pe->need_bitflip);
+	    e->extent_source = pe->extent_source;
+	    e->extent_source_offset = pe->extent_source_offset;
 	    SINVARIANT(e->type.getName() == pe->uncompressed_type);
 	    SINVARIANT(e->size() == unpacked_size);
 	    prefetch->mutex.lock();
@@ -327,6 +334,8 @@ IndexSourceModule::readCompressed(DataSeriesSource *dss,
 {
     prefetch->mutex.unlock();
     PrefetchExtent *p = new PrefetchExtent;
+    p->extent_source = dss->getFilename();
+    p->extent_source_offset = offset;
     bool ok = dss->preadCompressed(offset,p->bytes);
     INVARIANT(ok,"whoa, shouldn't have hit eof!");
     p->type = dss->getLibrary().getTypeByName(Extent::getPackedExtentType(p->bytes));

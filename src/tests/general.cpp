@@ -12,8 +12,6 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <openssl/opensslv.h>
-#include <openssl/evp.h>
 
 #include <zlib.h>
 #if DATASERIES_ENABLE_LZO
@@ -984,32 +982,32 @@ test_doublebase_nullable()
     
     dbnseries.newRecord();
     f_double.setNull();
-    AssertAlways(f_double.isNull(), ("bad"));
+    SINVARIANT(f_double.isNull());
     dbnseries.newRecord();
     f_double.set(1000000);
-    AssertAlways(!f_double.isNull(), ("bad"));
+    SINVARIANT(!f_double.isNull());
     dbnseries.newRecord();
     f_double.setabs(1000000);
-    AssertAlways(!f_double.isNull(), ("bad"));
+    SINVARIANT(!f_double.isNull());
 
     dbnseries.pos.reset(cur_extent);
-    AssertAlways(dbnseries.morerecords(), ("bad"));
+    SINVARIANT(dbnseries.morerecords());
 
-    AssertAlways(f_double.isNull(), ("bad"));
-    AssertAlways(0 == f_double.val(), ("bad"));
-    AssertAlways(1000000 == f_double.absval(), ("bad")); // changed semantics to have offset in absval always
+    SINVARIANT(f_double.isNull());
+    SINVARIANT(0 == f_double.val());
+    SINVARIANT(1000000 == f_double.absval()); // changed semantics to have offset in absval always
     
     ++dbnseries;
-    AssertAlways(dbnseries.morerecords(), ("bad"));
-    AssertAlways(false == f_double.isNull(), ("bad"));
-    AssertAlways(1000000 == f_double.val(), ("bad"));
-    AssertAlways(2000000 == f_double.absval(), ("bad"));
+    SINVARIANT(dbnseries.morerecords());
+    SINVARIANT(false == f_double.isNull());
+    SINVARIANT(1000000 == f_double.val());
+    SINVARIANT(2000000 == f_double.absval());
     
     ++dbnseries;
-    AssertAlways(dbnseries.morerecords(), ("bad"));
-    AssertAlways(false == f_double.isNull(), ("bad"));
-    AssertAlways(0 == f_double.val(), ("bad"));
-    AssertAlways(1000000 == f_double.absval(), ("bad"));
+    SINVARIANT(dbnseries.morerecords());
+    SINVARIANT(false == f_double.isNull());
+    SINVARIANT(0 == f_double.val());
+    SINVARIANT(1000000 == f_double.absval());
     delete cur_extent;
 }    
 
@@ -1256,7 +1254,9 @@ main(int argc, char *argv[])
 {
     Extent::setReadChecksFromEnv(true);
 
+#if DATASERIES_ENABLE_CRYPTO
     runCryptUtilChecks();
+#endif
     test_byteflip();
     test_primitives();
     test_extentpackunpack();

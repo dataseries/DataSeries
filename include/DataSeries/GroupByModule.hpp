@@ -63,7 +63,7 @@ private:
     };
     struct hteHash {
     public:
-	unsigned int operator()(const hteData &k) {
+	unsigned int operator()(const hteData &k) const {
 	    unsigned int hash = 1972;
 	    for(vector<GeneralValue>::iterator i = k.keys.begin();
 		i != k.keys.end(); ++i) {
@@ -75,7 +75,7 @@ private:
 
     struct hteEqual {
     public:
-	unsigned int operator()(const hteData &a, const hteData &b) {
+	unsigned int operator()(const hteData &a, const hteData &b) const {
 	    if (a.size() != b.size())
 		return false;
 	    for(unsigned i = 0; i < a.size(); ++i) {

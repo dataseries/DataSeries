@@ -16,9 +16,8 @@
 #include <DataSeries/MinMaxIndexModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
-#ifndef __HP_aCC
 using namespace std;
-#endif
+using boost::format;
 
 static bool inrange(const GeneralValue &v, const GeneralValue &minrange,
 		    const GeneralValue &maxrange)
@@ -78,16 +77,18 @@ MinMaxIndexModule::init(const std::string &index_filename,
 		}
 	    }
 	    if (all_overlap) {
-		if (false)
-		    printf("keep %s @ %lld\n",filename.stringval().c_str(),
-			   extent_offset.val());
+		if (false) {
+		    cout << format("keep %s @ %d\n")
+			% filename.stringval() % extent_offset.val();
+		}
 		kept_extents.push_back(kept_extent(filename.stringval(),
 						   extent_offset.val(),
 						   extent_sort));
 	    } else {
-		if (false)
-		    printf("skip %s @ %lld\n",filename.stringval().c_str(),
-			   extent_offset.val());
+		if (false) {
+		    cout << format("skip %s @ %d\n")
+			% filename.stringval() % extent_offset.val();
+		}
 	    }
 	}
 	delete e;

@@ -177,32 +177,11 @@ namespace DSExprImpl
 
 /* First part of user declarations.  */
 
-#include <string>
-#include <DataSeries/DSExpr.hpp>
+#include "DSExprImpl.hpp"
 
 #define YY_DECL \
   DSExprImpl::Parser::token_type \
   DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
-
-namespace DSExprImpl {
-    class Driver {
-    public:
-	// Implementation in DSExpr.cpp
-	Driver(ExtentSeries &_series) 
-	    : expr(NULL), series(_series), scanner_state(NULL) { }
-	~Driver();
-
-	void doit(const std::string &str);
-
-	void startScanning(const std::string &str);
-	void finishScanning();
-	
-	DSExpr *expr;
-	ExtentSeries &series;
-	void *scanner_state;
-    };
-};
-
 
 
 /* Line 35 of lalr1.cc.  */
@@ -544,7 +523,8 @@ namespace DSExprImpl
 {
     double constant;
     DSExpr *expression;
-    std::string *field;
+    std::string *symbol;
+    std::string *strliteral;
 }
 /* Line 35 of lalr1.cc.  */
 	;
@@ -559,9 +539,22 @@ namespace DSExprImpl
       /* Tokens.  */
    enum yytokentype {
      END_OF_STRING = 0,
-     FIELD = 258,
+     SYMBOL = 258,
      CONSTANT = 259,
-     FN_TfracToSeconds = 260
+     STRLITERAL = 260,
+     FN_TfracToSeconds = 261,
+     EQ = 262,
+     NEQ = 263,
+     REMATCH = 264,
+     GT = 265,
+     LT = 266,
+     GEQ = 267,
+     LEQ = 268,
+     LOR = 269,
+     LAND = 270,
+     LNOT = 271,
+     ULNOT = 272,
+     UMINUS = 273
    };
 
     };
@@ -684,7 +677,7 @@ namespace DSExprImpl
     /// For each rule, the index of the first RHS symbol in \a yyrhs_.
     static const unsigned char yyprhs_[];
     /// For each rule, its source line number.
-    static const unsigned short int yyrline_[];
+    static const unsigned char yyrline_[];
     /// For each scanner token number, its symbol number.
     static const unsigned short int yytoken_number_[];
     /// Report on the debug stream that the rule \a r is going to be reduced.

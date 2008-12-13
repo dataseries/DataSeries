@@ -70,7 +70,8 @@ FilterModule::getExtent()
 }
 
 OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
-			   const ExtentType *_outputtype, int _target_extent_size)
+			   const ExtentType *_outputtype, 
+			   int _target_extent_size)
     : outputtype(_outputtype),
       target_extent_size(_target_extent_size),
       sink(_sink), series(_series)
@@ -140,6 +141,11 @@ OutputModule::close()
     delete old_extent;
 }
 
+DataSeriesSink::Stats OutputModule::getStats() {
+    PThreadScopedLock lock(DataSeriesSink::Stats::getMutex());
+    DataSeriesSink::Stats ret = stats;
+    return ret;
+}
 
 void
 OutputModule::printStats(std::ostream &to)

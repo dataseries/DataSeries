@@ -13,8 +13,8 @@
 #define __ROW_ANALYSIS_MODULE_H
 
 #include <DataSeries/DataSeriesModule.hpp>
-#include <DataSeries/DSExpr.hpp>
 
+class DSExpr;
 class SequenceModule;
 
 /** \brief Single series analysis handling each row in order.  
@@ -41,11 +41,22 @@ public:
     // field names, and for that, you only need to hook on the first
     // Extent.
 
+    // TODO: probably should redo the next two hooks; in practice, we
+    // need 1 right at the beginning before any extents have been set,
+    // but with the extent, a second right after that first extent is
+    // set, and a third one that gets called after the extent is
+    // set on every row.
+
     /** Called right after each extent is retrieved, but before the 
 	extent is set in the series.  Serves two purposes: 1) infrequent
 	statistics/processing; and 2) setting up fields with unknown 
 	field names */
     virtual void newExtentHook(const Extent &e);
+
+
+    /** this function will be called once, with the first extent 
+	that will be processed by the module */
+    virtual void firstExtent(const Extent &e);
 
     /** this function will be called once after the first extent has been
 	retrieved, but before processRow() has been called; it will not 

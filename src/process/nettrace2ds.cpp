@@ -186,7 +186,7 @@ struct packetTimeSize {
 };
 
 struct packetTimeSizeGeq {
-    bool operator()(const packetTimeSize &a, const packetTimeSize &b) {
+    bool operator()(const packetTimeSize &a, const packetTimeSize &b) const {
 	return a.timestamp_us >= b.timestamp_us;
     }
 };
@@ -236,7 +236,7 @@ struct bandwidth_rolling {
 
 vector<bandwidth_rolling *> bw_info;
 Clock::Tll max_incremental_processed = 0;
-int incremental_process_at_packet_count = 500000; // 6-8MB of buffering
+unsigned incremental_process_at_packet_count = 500000; // 6-8MB of buffering
 
 #if defined(bswap_64)
 inline uint64_t ntohll(uint64_t in)
@@ -750,6 +750,9 @@ public:
 #define ShortDataAssertMsg(condition,rpc_type,message) \
   ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), AssertExceptionT::stringPrintF message, __FILE__, __LINE__) )
 
+#define ShortDataAssertBoost(condition,rpc_type,message) \
+  ( (condition) ? (void)0 : throw ShortDataInRPCException(#condition, (rpc_type), str(message), __FILE__, __LINE__) )
+
 
 class RPCRequest : public RPC {
 public:
@@ -804,7 +807,7 @@ public:
 	    ++cur_pos;
 	    rpcparam = cur_pos;
 	} else {
-	    RPCParseAssert("unsupported authentication" == "");
+	    RPCParseAssert(false && "unsupported authentication");
 	}
 	rpcparamlen = len - ((char *)rpcparam - (char *)rpchdr);
 	RPCParseAssert(rpcparamlen >= 0);
@@ -1221,18 +1224,21 @@ void
 incrementalBandwidthInformation()
 {
     INVARIANT(!bw_info.empty(), "didn't call prepareBandwidthInformation()");
-    if (0 == bw_info[0]->cur_time && packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
+    if (0 == bw_info[0]->cur_time && packet_bw_rolling_info.size() 
+	> incremental_process_at_packet_count) {
+	
 	for(unsigned i = 0;i<bw_info.size();++i) {
 	    bw_info[i]->setStartTime(packet_bw_rolling_info.top().timestamp_us);
 	}
     }
 	
-    while(packet_bw_rolling_info.size() > incremental_process_at_packet_count) {
-	INVARIANT(max_incremental_processed <= packet_bw_rolling_info.top().timestamp_us, 
+    while(packet_bw_rolling_info.size() 
+	  > incremental_process_at_packet_count) {
+	INVARIANT(max_incremental_processed 
+		  <= packet_bw_rolling_info.top().timestamp_us, 
 		  "too much out of orderness");
 	max_incremental_processed = packet_bw_rolling_info.top().timestamp_us;
 	doBandwidthProcessPacket();
-	packet_bw_rolling_info.pop();
     }
 }
 
@@ -1296,9 +1302,9 @@ getLookupFilename(const uint32_t *xdr, int remain_len)
     INVARIANT(remain_len >= 4, format("bad1 %d") % remain_len);
     uint32_t strlen = ntohl(xdr[0]);
     // Changed to an assertion to handle set-6/cqracks.19352
-    RPCParseAssertMsg(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
-		      ("bad2 %d != roundup4(%d) @ record %lld\n",
-		       remain_len,strlen,cur_record_id));
+    RPCParseAssertBoost(remain_len == (int)(strlen + (4 - (strlen % 4))%4 + 4),
+			format("bad2 %d != roundup4(%d) @ record %d\n")
+			% remain_len % strlen % cur_record_id);
     string ret((char *)(xdr + 1),strlen);
     if (enable_encrypt_filenames) {
 	string enc_ret = encryptString(ret);
@@ -1340,13 +1346,14 @@ struct RPCRequestData {
     uint32_t program, version, procnum;
     unsigned int rpcreqhashval; // for sanity checking of duplicate requests
     unsigned int ipchecksum, l4checksum;
+    RPCRequestData() : reqdata(NULL), replyhandler(NULL) { }
     RPCRequestData(uint32_t a, uint32_t b, uint32_t c, uint16_t d) 
       : client(a), server(b), xid(c), server_port(d) {}
 };
 
 class RPCRequestDataHash {
 public:
-    unsigned int operator()(const RPCRequestData &k) {
+    unsigned int operator()(const RPCRequestData &k) const {
       unsigned ret,a,b;
       ret = k.xid;
       a = k.server;
@@ -1361,7 +1368,7 @@ public:
 class RPCRequestDataEqual {
 public:
     // valid to reuse same xid between same client and server if program is different
-    bool operator()(const RPCRequestData &a, const RPCRequestData &b) {
+    bool operator()(const RPCRequestData &a, const RPCRequestData &b) const {
 	return a.client == b.client && a.server == b.server && a.xid == b.xid && a.server_port == b.server_port;
     }
 };
@@ -2188,10 +2195,9 @@ handleNFSV3Request(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	    {
 		if (false) cout << format("v3GetAttr %lld %8x -> %8x; %d\n")
 			       % time % d.client % d.server % actual_len;
-		ShortDataAssertMsg(actual_len >= 8,"NFSv3 getattr request",
-				   ("bad getattr in %s request @%lld: %d",
-				    tracename.c_str(), cur_record_id,
-				    actual_len));
+		ShortDataAssertBoost(actual_len >= 8,"NFSv3 getattr request",
+				     format("bad getattr in %s request @%lld: %d")
+				     % tracename % cur_record_id % actual_len);
 		int fhlen = ntohl(xdr[0]);
 		SINVARIANT(fhlen % 4 == 0 && fhlen > 0 && fhlen <= 64);
 		ShortDataAssertMsg(actual_len == 4+fhlen,"NFSv3 getattr request",("bad"));
@@ -2353,12 +2359,12 @@ fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
     INVARIANT(cur_record_id >= 0 && cur_record_id >= first_record_id, "bad");
 
     if (v_nfsversion == 2) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv2ops,("bad"));
+	SINVARIANT(procnum >= 0 && procnum < n_nfsv2ops);
     } else if (v_nfsversion == 3) {
-	AssertAlways(procnum >= 0 && procnum < n_nfsv3ops,("bad"));
+	SINVARIANT(procnum >= 0 && procnum < n_nfsv3ops);
     } else if (v_nfsversion == 1) {
 	// caches seem to use NFS version 1 null op occasionally
-	AssertAlways(procnum == 0,("bad"));
+	SINVARIANT(procnum == 0);
     } else {
 	AssertFatal(("bad; nfs version %d",v_nfsversion));
     }
@@ -2379,7 +2385,7 @@ fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	} else if (v_nfsversion == 3) {
 	    operation.set(nfsv3ops[procnum]);
 	} else if (v_nfsversion == 1) {
-	    AssertAlways(procnum == 0,("bad"));
+	    SINVARIANT(procnum == 0);
 	}
 	payload_length.set(payload_len);
 	common_record_id.set(cur_record_id);
@@ -2469,14 +2475,14 @@ handleMountReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	{
 	case MountProc::proc_mnt: {
 	    MountRequest_MNT *m_req = dynamic_cast<MountRequest_MNT *>(req->reqdata);
-	    AssertAlways(m_req != NULL,("bad"));
+	    SINVARIANT(m_req != NULL);
 	    MountReply_MNT m_rep(req->version,reply);
 	    if (m_rep.mountok()) {
 		string pathname = m_req->pathname();
 		if (enable_encrypt_filenames) {
 		    string enc_path = encryptString(pathname);
 		    string dec_path = decryptString(enc_path);
-		    AssertAlways(dec_path == pathname,("bad"));
+		    SINVARIANT(dec_path == pathname);
 		    pathname = enc_path;
 		}
 		if (mode == Convert) {
@@ -2510,9 +2516,8 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 		 hval->client == d.client &&
 		 hval->xid == d.xid,("internal error\n"));
     if (warn_duplicate_reqs) { // disabled because of tons of them showing up in set-8
-	printf("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%lld duped by #%lld\n",
-	       hval->server, hval->client, hval->xid, 
-	       hval->request_id,d.request_id);
+	cout << format("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%d duped by #%d\n")
+	    % hval->server % hval->client % hval->xid % hval->request_id % d.request_id;
 	printf("  Checksums are %d/%d vs %d/%d\n",
 	       hval->ipchecksum,hval->l4checksum,d.ipchecksum,d.l4checksum);
 	fflush(stdout);
@@ -2613,6 +2618,7 @@ handleRPCReply(Clock::Tfrac time, const struct iphdr *ip_hdr,
     RPCRequestData *req = rpcHashTable.lookup(RPCRequestData(ip_hdr->daddr,ip_hdr->saddr,reply.xid(),source_port));
 	
     if (req != NULL) {
+	FATAL_ERROR("TODO: make this do a try, catch, rethrow bit so we can always cleanup the rpcHashTable.  We want to guarantee that each request is used exactly once, but if the reply processing finds a short message or a parse error, it can throw an exception avoiding cleanup.  Could also make a CleanupRPCRequest class, which is probably the better way to do this; may want to combine this with checksum verification, we saw this problem in nfs-2/set-5/000000-000499.ds with request 122897542333, responses 122897542350, 122897542357; also in nfs-2/set-4/001000-001499.ds with request 107266700514, responses 107266700523, 107266714386; both were on readdirplus, unknown what exactly is going on.");
 	if (req->program == RPCRequest::host_prog_nfs) {
 	    handleNFSReply(time,ip_hdr,source_port,dest_port,l4checksum,payload_len,req,reply);
 	} else if (req->program == RPCRequest::host_prog_mount) {
@@ -2845,7 +2851,8 @@ packetHandler(const unsigned char *packetdata, uint32_t capture_size, uint32_t w
 
     const struct iphdr *ip_hdr = reinterpret_cast<const struct iphdr *>(p);
     INVARIANT(ip_hdr->version == 4,
-	      format("Non IPV4 (was V%d) unimplemented\n") % ip_hdr->version);
+              format("Non IPV4 (was V%d) unimplemented\n")
+              % static_cast<int32_t>(ip_hdr->version));
     int ip_hdrlen = ip_hdr->ihl * 4;
     p += ip_hdrlen;
     INVARIANT(p < pend, "short capture?!\n");
@@ -3173,37 +3180,37 @@ void checkERFEqual(const string &src1, const string &src2)
     exit(0);
 }
 
-
-void testBWRolling()
-{
+void testBWRolling() {
     prepareBandwidthInformation();
+    // Add 1000 to packet times to keep the from starting at 0, which is 
+    // used as a sentinal value.
+    // TODO: test out the incremental code; that's where the bug was.
     if (true) {
 	// 1000 bytes/333us = 24.024 Mbits
 	for(unsigned i = 0; i<10000000; i+= 333) {
-	    packet_bw_rolling_info.push(packetTimeSize(i,1000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000,1000));
 	}
     }
 
     if (true) {
 	// 2000 bytes/100us = 160 (+24 = 184) Mbits for 10% of the time
 	for(unsigned i = 5000000; i<6000000; i+= 100) {
-	    packet_bw_rolling_info.push(packetTimeSize(i, 2000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000, 2000));
 	}
     }
     
     if (true) {
 	// 3000 bytes/25us = 960 (+24+160=1144) Mbits for 1% of the time
 	for(unsigned i = 5500000; i<5600000; i+= 25) {
-	    packet_bw_rolling_info.push(packetTimeSize(i, 3000));
+	    packet_bw_rolling_info.push(packetTimeSize(i+1000, 3000));
 	}
     }
     summarizeBandwidthInformation();
     exit(0);
 }
 
-int
-main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+    FATAL_ERROR("TODO: stamp the revision into the output file");
     if (false) testBWRolling();
     if (argc == 4 && strcmp(argv[1],"--uncompress") == 0) {
 	uncompressFile(argv[2],argv[3]);

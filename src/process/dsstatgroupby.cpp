@@ -26,12 +26,10 @@ usage(const std::string &program_name, const std::string &error)
 	 << "Usage: " << program_name 
 	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] group by <group-by>)*\n"
 	 << "  from file...\n"
-	 << "  supported stat-types: basic, quantile\n"
-	 << "  expressions include field names, numeric (double) constants, functions, +,-,*,/,()\n"
-	 << "  functions include: fn.TfracToSeconds\n"
-	 << "  boolean expressions currently support <\n"
-	 << "  for fields with non-alpha-numeric or _ in the name, escape with \\\n";
-    
+	 << "\n"
+	 << "  stat-types include:\n\n"
+         << "    basic, quantile\n\n"
+	 << DSExpr::usage();
     exit(0);
 }
 

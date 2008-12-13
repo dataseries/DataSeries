@@ -49,7 +49,7 @@ public:
               specified name. If the type of the series is not known, this
               check will be delayed until the type is set. */
     BoolField(ExtentSeries &_dataseries, const std::string &field, 
-              int flags = 0, bool default_value = false);
+	      int flags = 0, bool default_value = false, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
         If the field is null returns the default value.
@@ -92,8 +92,8 @@ private:
   */
 class ByteField : public FixedField {
 public:
-    ByteField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-              byte default_value = '\0');
+    ByteField(ExtentSeries &_dataseries, const std::string &field, 
+	      int flags = 0, byte default_value = 0, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
         If the field is null returns the default value.
@@ -122,64 +122,22 @@ public:
     byte default_value;
 };
 
-/** \brief Accessor for int32 fields. */
-class Int32Field : public FixedField {
-public:
-    typedef ExtentType::int32 int32;
-
-    Int32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-               int32 default_value = 0);
-
-    /** Returns the value of the field in the @c ExtentSeries' current record.
-        If the field is null returns the default value.
-
-        Preconditions:
-            - The name of the Field must have been set and the
-              @c ExtentSeries must have a current record. */
-    int32 val() const { 
-        if (isNull()) {
-            return default_value;
-        } else {
-            return *(int32 *)rawval();
-        }
-    }
-    /** Sets the value of the field in the @c ExtentSeries' current record.
-        The field will never be null immediately after a call to set(),
-        regardless of whether the argument is the same as the default value.
-
-        Preconditions:
-            - The name of the Field must have been set and the associated
-              @c ExtentSeries must have a current record. */
-    void set(int32 val) {
-        *(int32 *)rawval() = val;
-        setNull(false);
-    }
-    /** Sets the value of the field in the @c ExtentSeries' current record,
-        unless val == null_val, in which case it sets the field to null.
-
-        Preconditions:
-            - The name of the Field must have been set and the associated
-              @c ExtentSeries must have a current record. */
-    void nset(int32 val, int32 null_val = -1) {
-        if (val == null_val) {
-            setNull(true);
-        } else {
-            set(val);
-        }
-    }
-    int32 default_value;
-};
-
+#include <DataSeries/Int32Field.hpp>
 #include <DataSeries/Int64Field.hpp>
 #include <DataSeries/Int64TimeField.hpp>
 
 /** \brief Accessor for double fields. */
 class DoubleField : public FixedField {
 public:
+    /// flag_allownonzerobase is deprecated.  It seemed like a good
+    /// idea when we initially created it, but in practice it just
+    /// makes writing analysis really difficult.  It was intended to
+    /// deal with time fields, and the newer Int64TimeField deals with
+    /// that much better.
     static const int flag_allownonzerobase = 1024;
 
-    DoubleField(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-                double default_value = 0);
+    DoubleField(ExtentSeries &_dataseries, const std::string &field, 
+		int flags = 0, double default_value = 0, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
         If the field is null returns the default value.
@@ -229,6 +187,8 @@ public:
     virtual void newExtentType();
 };
 
+#include <DataSeries/TFixedField.hpp>
+
 /** \brief Accessor for variable32 fields. */
 class Variable32Field : public Field {
 public:
@@ -236,8 +196,10 @@ public:
     typedef ExtentType::int32 int32;
     static const std::string empty_string;
 
-    Variable32Field(ExtentSeries &_dataseries, const std::string &field, int flags = 0,
-                    const std::string &default_value = empty_string);
+    Variable32Field(ExtentSeries &_dataseries, const std::string &field, 
+		    int flags = 0, 
+		    const std::string &default_value = empty_string,
+		    bool auto_add = true);
 
     const byte *val() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
@@ -248,7 +210,7 @@ public:
             return val(dataseries.extent()->variabledata,getVarOffset());
         }
     }
-    const int32 size() const {
+    int32 size() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
                         "internal error; extent not set or field not ready");
         if (isNull()) {
@@ -289,6 +251,16 @@ public:
         if ((int)to.size() != size())
             return false;
         return memcmp(to.data(),val(),to.size()) == 0;
+    }
+
+    bool equal(const Variable32Field &to) {
+	if (isNull()) {
+	    return to.isNull();
+	}
+	if (to.isNull()) {
+	    return false;
+	}
+	return size() == to.size() && memcmp(val(), to.val(), size()) == 0;
     }
     std::string default_value;
 protected:

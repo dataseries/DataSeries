@@ -9,6 +9,7 @@
     implementation
 */
 
+#include <DataSeries/DSExpr.hpp>
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/SequenceModule.hpp>
 
@@ -26,15 +27,14 @@ RowAnalysisModule::~RowAnalysisModule()
     where_expr = NULL;
 }
 
-void
-RowAnalysisModule::newExtentHook(const Extent &e)
-{
-}
+void RowAnalysisModule::newExtentHook(const Extent &e)
+{ }
 
-void
-RowAnalysisModule::prepareForProcessing()
-{
-}
+void RowAnalysisModule::firstExtent(const Extent &e)
+{ }
+
+void RowAnalysisModule::prepareForProcessing()
+{ }
 
 Extent *
 RowAnalysisModule::getExtent()
@@ -43,6 +43,9 @@ RowAnalysisModule::getExtent()
     if (e == NULL) {
 	completeProcessing();
 	return NULL;
+    }
+    if (!prepared) {
+	firstExtent(*e);
     }
     newExtentHook(*e);
     series.setExtent(e);

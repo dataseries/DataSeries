@@ -1,0 +1,205 @@
+\section{Conversion}
+\label{sec:conversion}
+
+Once the data is captured, the second problem is parsing and
+converting that data to a easily usable format.  The raw packet format
+contains a large amount of unnecessary data, and would require
+repeated, expensive parsing to be used for NFS analysis.  There are four main
+challenges in conversion: representation, storage, performance and
+anonymization.  Representation is the challenge of deciding the
+logical structure of the converted data.  Storage is the challenge of
+picking a suitable physical structure of the converted data.
+Performance is the challenge of making the conversion run quickly,
+hopefully faster than the capture stage.  Anonymization is the
+challenge of hiding sensitive information present in the data and is
+necessary for being able to release traces.
+
+One lesson we learned after conversion is that the converter's version
+number should be included in the trace.  As with most programs, there
+can be bugs.  Having the version number in the trace makes it easy to
+determine which flaws need to be handled.  We recommend the version
+control revision ID as a suitable version number.  
+
+A second lesson was
+preservation of data.  An NFS parser will discard data both for space
+reasons and for anonymization.  Keeping underlying information, such as
+per packet conversion in addition to per NFS-request conversion can
+enable cross checking between analysis.  We caught an early bug in our
+converter that failed to record packet fragments by comparing the
+packet rates and the NFS rates.  
+
+\subsection{Representation}
+
+One option for the representation is the format used in the
+Ellard\cite{ellardTraces} traces: one line per request or reply in the
+file with field names to identify the different parameters in the RPC.
+This format is slow to parse, and works poorly for representing 
+readdir, which has an arbitrary number of response fields.
+Therefore, we chose to use a more relational data
+structuring~\cite{codd70relational}.  
+
+We have a primary data table with the common fields present in every
+request or reply, and an identifier for each RPC.  We then have
+secondary tables that contain request-type specific information, such
+as a single table for RPC's that include attributes, and a single
+table for read and write information.  We then join the common table
+to the other tables when we want to perform an analysis that uses
+information in both.  Because of this structure, a single RPC request
+or reply will have a single entry in the common table.  However, a
+request/reply pair will have 0 (no read/write entry) or more
+entries (multiple attribute entries for readdir+) in other tables.
+
+The relational structuring improves flexibility, and allows for
+analysis that only need a subset of the data to avoid reading
+unnecessary data.  For example, an analysis only looking at operation
+latency can simply scan the common table.
+
+\subsection{Storage}
+
+Having decided to use a relational structuring for our data, we next
+needed to decide how to physically store the data.  Three
+options were available to us: text, SQL, and DataSeries, our custom
+binary format~\cite{DSTechnicalReportSnapshot} for storing trace data.
+Text is a traditional way of storing trace data, however, we were
+concerned that a text representation would be too large and too slow.
+Having later converted the Ellard traces to our format, we found that
+the analysis distributed with the traces used 25x less CPU time when
+the traces and analysis used DataSeries, and ran 100x faster on a 4
+core machine. This disparity confirmed our intuition that text is a
+poor format trace data.
+
+% cat .../*-log | perl .../DataSeries/doc/fast2008-nfs-analysis/scripts/compression-sum.pl
+% last column is size it happened to be compressed to, but used lzf, gzip, bzip2
+% nfs-2/set-0: 4260280689888 43738379636 1064156793204 -> 576848706584; 7.46x / 9.23x
+% nfs-2/set-1: 3882851266232 42353445184 958237524264 -> 525549755192; 7.47x / 9.21x
+% nfs-2/set-2: 4447266037744 51364690388 1127969564332 -> 692186154292; 6.50x / 8.05x
+% nfs-2/set-3: 5560956128368 173211639312 1469393844368 -> 1053382989256; 5.44x / 6.67x
+% nfs-2/set-4: 3372576162216 76584618188 757255149580 -> 667308820144; 5.17x / 6.19x
+% nfs-2/set-5: 3993210407120 16925899320 829238508600 -> 661073679548; 6.07x / 7.29x
+% du -b (for entirely gzip compression) ; (a + b / du) / (a + c / du)
+% 841832166984    set-0/ ; 5.1x / 6.3x
+% 737388264364    set-1/ ; 5.3x / 6.5x
+% 852201228772    set-2/ ; 5.2x / 6.5x
+% 1106440058916   set-3/ ; 5.2x / 6.4x
+% 675664608564    set-4/ ; 5.1x / 6.1x
+% 807115490052    set-5/ ; 5.0x / 6.0x
+
+SQL databases support a relational structure. However, the lack of 
+extensive compression means that our datasets would 
+consume a huge amount of space. We also expected that many complex
+queries would not benefit from SQL and would require extracting
+the entire tables through the slow SQL connection.
+
+Therefore, we selected DataSeries as an efficient and compact format
+for storing traces.  It uses a relational data model, so
+there are rows of data with each row comprised of the same typed
+columns.  A column can be nullable, in which case there is a hidden
+boolean field for storing whether the value is null.  The rows are
+grouped into extents and compressed as a unit.  Prior to compression,
+various transforms are applied to reduce the size of the data.  First,
+duplicate strings in the same extent are collapsed down to a single
+string.  Second values are delta compressed relative to either the
+same value in the previous row or another value in the same row.  For
+example, the packet time values are delta compressed changing them
+from large random numbers to smaller random numbers.
+
+DataSeries is designed for efficient access. Values are packed so that
+once an extent is read in, an analysis can iterate over the rows
+simply by increasing a single counter, as with a C++ vector.
+Individual values are accessed by an offset from that
+counter and a C++ cast.  Byte swapping if necessary is automatically
+performed.  The offset is not fixed, so the same analysis can read
+different versions of the data provided the meaning of the fields
+hasn't changed.  Efficient access to subsets of the data is supported
+by an extent index that is automatically generated so programs can
+only read a selected subset of the data.
+
+DataSeries is designed for generality. It supports versioning on the
+table types so that an analysis can properly interpret data that may
+have changed in meaning.  It has special support for time fields so
+that analysis can convert to and from different raw formats.
+
+DataSeries is designed for integrity.  It has internal checksums on
+both the compressed and the uncompressed data to validate that the
+data has been processed appropriately.  Additional details on the
+format, additional transforms, and comparisons to a wide variety of
+alternatives can be found in the technical
+report~\cite{DSTechnicalReportSnapshot}.
+
+\subsection{Performance}
+
+To perform the conversion in parallel, we divide the collected files
+into groups and process each group separately.  We make two passes
+through the data.  First we parse the data and count the number of
+requests or replies.  Second we use those counts to determine the
+first record-id for each group, and convert the files.  Since NFS
+parsing requires the request to parse the reply, we currently do not
+parse any request-reply pairs that cross a group boundary.  Similarly,
+we do not do full TCP reconstruction, so for NFS over TCP, we only
+parse requests or replies that start aligned with the beginning of a
+packet. These limitations are similar to earlier work, so we found
+them acceptable.  We run the conversion locally on the 8-way tracing
+machine rather than a cluster because conversion runs faster than the
+1Gbit LAN connection we had at the customer site (the tracing card
+does not act as a normal NIC).  Conversion of a full data set (30TiB)
+takes about 3 days.
+
+We convert from trace files rather than on-the-fly primarily for
+simplicity.  However, a side benefit was that our converter could be
+paranoid and conservative, rather than have it try to recover from
+conversion problems since we could fix the converter when it was
+mis-parsing, or was too conservative.  The next time we trace, we plan
+to do more on-the-fly conversion by converting early groups and
+deleting those trace files during capture so that we can capture
+longer traces.
+
+\subsection{Anonymization}
+
+In order to release the traces, we have to obscure private data such
+as filenames.  There are three primary ways to perform the anonymization: 
+
+\begin{enumerate}
+
+\item {\bf map values to unique integers}.  This option results in the
+most compact identifiers ($\leq$ 8 bytes), but is difficult to
+calculate in parallel and requires a large translation table to
+maintain persistant mappings and to convert back to the original data.
+
+\item {\bf map values to hash/hmac}.  This option results in larger
+identifiers (16-20 bytes), but enables parallel conversion.  A HMAC
+protects against dictionary attacks.  Reversing this mapping requires
+preserving a large translation table.
+
+\item {\bf map values to encrypted values}.  This option results in
+the longest identifiers since the encrypted value will be at least as
+large as the original value.  It is parallizable and easily reversable
+provided the small keys are maintained.
+
+\end{enumerate}
+
+We chose the last approach because it preserved the maximum
+flexibility, and allowed us to easily have discussions with the
+customer about unexpected issues such as writes to what should have
+been a read-only filesystem.  Our encryption includes a self-check, so
+we can convert back to real filenames by decrypting all hexadecimal
+strings and keeping the ones that validate.  We have also used the
+reversability to verify for a colleague that they properly identified
+the '.' and '..' filenames.
+
+We chose to encrypt entire filenames since the suffixes are specific
+to the animation process and are unlikely to be useful to people.
+This choice also simplified the discussions about publishing the
+traces.  Since we can decrypt, we could in the future change this
+decision.
+
+The remaining values were semi-random (IP addresses in the 10.*
+network, filehandles selected by the filers), so we pass those values
+through unchanged.  All jobs in the customers' cluster were being run
+as a common user, so we did not capture uids.  Since they are
+transitioning away from that model, future traces would include
+unchanged uids and gids.  If there were public values in the traces,
+then we would have had to apply more sophisticated
+anonymization~\cite{ruoming07anonymization}.
+
+
+

@@ -6,7 +6,7 @@
 */
 
 /** @file
-    base field class
+    int64 field class
 */
 
 #ifndef DATASERIES_INT64FIELD_HPP
@@ -19,7 +19,7 @@ class Int64Field : public FixedField {
 public:
     typedef int64_t int64; // Deprecating
     Int64Field(ExtentSeries &_dataseries, const std::string &field, 
-	       int flags = 0, int64_t default_value = 0);
+	       int flags = 0, int64_t default_value = 0, bool auto_add = true);
     virtual ~Int64Field();
 
     int64_t val() const { 

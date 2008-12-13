@@ -61,9 +61,13 @@ public:
 	}
     };
 
+    // TODO: figure out how to make this more general
+    enum TimeType { Unknown, UnixFrac32, UnixNanoSec, UnixMicroSec };
+
     /// Standard field constructor
     Int64TimeField(ExtentSeries &series, const std::string &field,
-		   unsigned flags = 0, int64_t default_value = 0);
+		   unsigned flags = 0, TimeType = Unknown,
+		   int64_t default_value = 0, bool auto_add = true);
     virtual ~Int64TimeField();
 
     /// Set the raw time value at current series position
@@ -125,6 +129,9 @@ public:
     /// the raw units.
     double rawToDoubleSeconds(Raw raw, bool precision_check = true) const;
 
+    /// convert a double measured in seconds into a raw value
+    Raw doubleSecondsToRaw(double seconds) const;
+
     /// Some old files may not include the necessary units and epoch
     /// fields.  This function provides a back-door for specifying
     /// these values.  A call to this will override any specification
@@ -140,8 +147,6 @@ public:
     void setUnitsEpoch(const std::string &units, 
 		       const std::string &epoch);
 
-    // TODO: figure out how to make this more general
-    enum TimeType { Unknown, UnixFrac32, UnixNanoSec, UnixMicroSec };
     /// Useful for verifying multiple fields have the same type.
     TimeType getType() const {
 	return time_type;
@@ -156,6 +161,11 @@ public:
     void setFieldName(const std::string &new_name) {
 	Field::setFieldName(new_name);
     }
+
+    static TimeType convertUnitsEpoch(const std::string &units,
+				      const std::string &epoch,
+				      const std::string &field_name,
+				      bool unknown_return_ok = false);
 
 private:
     virtual void newExtentType();
@@ -172,9 +182,6 @@ private:
 	return joinSecNano(secnano.seconds, secnano.nanoseconds);
     }
 
-    static TimeType convertUnitsEpoch(const std::string &units,
-				      const std::string &epoch,
-				      const std::string &field_name);
     TimeType time_type;
     
     int64_t val() const; // unimplemented; no accidental use

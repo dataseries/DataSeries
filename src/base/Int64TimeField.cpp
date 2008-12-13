@@ -42,15 +42,17 @@ static PThreadMutex registered_mutex;
 static HashMap<RegisteredInfo, Int64TimeField::TimeType> registered_type_info;
 
 Int64TimeField::Int64TimeField(ExtentSeries &series, const std::string &field,
-			       unsigned flags, int64_t default_value)
-    : Int64Field(series, field, flags, default_value), 
-      time_type(Unknown)
+			       unsigned flags, TimeType _time_type,
+			       int64_t default_value, bool auto_add)
+    : Int64Field(series, field, flags, default_value, false), 
+      time_type(_time_type)
 {
+    if (auto_add) {
+	series.addField(*this);
+    }
 }
 
-Int64TimeField::~Int64TimeField()
-{ 
-}
+Int64TimeField::~Int64TimeField() { }
 
 int64_t Int64TimeField::rawToFrac32(Raw raw) const
 {
@@ -151,6 +153,20 @@ Int64TimeField::rawToDoubleSeconds(Raw raw, bool precision_check) const {
     return 0; // unreached
 }
 
+// TODO: should be able to get better precision by doing type-specific
+// conversions.
+Int64TimeField::Raw Int64TimeField::doubleSecondsToRaw(double seconds) const {
+    SINVARIANT(seconds > numeric_limits<int32_t>::min() && 
+	       seconds < numeric_limits<int32_t>::max());
+    int32_t i_seconds = static_cast<int32_t>(floor(seconds));
+    uint32_t nanosec = static_cast<uint32_t>(round(1.0e9 * (seconds - i_seconds)));
+    if (nanosec == 1000000000) {
+	++i_seconds;
+	nanosec = 0;
+    }
+    return secNanoToRaw(i_seconds, nanosec);
+}
+
 void Int64TimeField::newExtentType()
 {
     Int64Field::newExtentType();
@@ -248,14 +264,20 @@ void Int64TimeField::registerUnitsEpoch(const std::string &field_name,
 void Int64TimeField::setUnitsEpoch(const std::string &units,
 				   const std::string &epoch)
 {
-    TimeType new_type = convertUnitsEpoch(units,epoch, getName());
-    INVARIANT(time_type == Unknown || time_type == new_type,
-	      format("invalid to change the time type after it is set (%d != %d)")
-	      % new_type % time_type);
-    time_type = new_type;
+    TimeType new_type = convertUnitsEpoch(units, epoch, getName(), true);
+    if (new_type == Unknown) {
+	INVARIANT(time_type != Unknown,
+		  format("Can not figure out time type for field %s, units '%s', epoch '%s'") % getName() % units % epoch);
+    } else {
+	INVARIANT(time_type == Unknown  || time_type == new_type, 
+		  format("invalid to change the time type after it is set (%d != %d)")
+		  % new_type % time_type);
+	time_type = new_type;
+    }
 }
 
 static string str_unix("unix");
+static string str_unknown("unknown");
 static string str_tfrac_seconds("2^-32 seconds");
 static string str_nanoseconds("nanoseconds");
 static string str_microseconds("microseconds");
@@ -263,9 +285,13 @@ static string str_microseconds("microseconds");
 Int64TimeField::TimeType 
 Int64TimeField::convertUnitsEpoch(const std::string &units,
 				  const std::string &epoch,
-				  const std::string &field_name)
+				  const std::string &field_name,
+				  bool unknown_return_ok)
 {
-    INVARIANT(epoch == str_unix,
+    if (epoch != str_unix && unknown_return_ok) {
+	return Unknown;
+    }
+    INVARIANT(epoch == str_unix || epoch == str_unknown,
 	      format("only handle unix epoch, not '%s' for field %s")
 	      % epoch % field_name);
     if (units == str_tfrac_seconds) {
@@ -275,6 +301,8 @@ Int64TimeField::convertUnitsEpoch(const std::string &units,
     } else if (units == str_microseconds) {
 	return UnixMicroSec;
     } else {
-	FATAL_ERROR(format("unrecognized time units %s") % units);
+	INVARIANT(unknown_return_ok, 
+		  format("unrecognized time units %s") % units);
+	return Unknown;
     }
 }

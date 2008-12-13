@@ -152,14 +152,10 @@ public:
         not close the underlying @c DataSeriesSink. */
     void close();
 
-    /** Returns cummulative statistics on the Extents written.  As
+    /** Returns cumulative statistics on the Extents written.  As
         with @c DataSeriesSink::getStats, this is likely to be unreliable
         before you close the sink or call @c DataSeriesSink::flushPending. */
-    DataSeriesSink::Stats getStats() {
-	PThreadAutoLocker lock(DataSeriesSink::Stats::getMutex());
-	DataSeriesSink::Stats ret = stats;
-	return ret;
-    }
+    DataSeriesSink::Stats getStats();
 
     uint32_t getTargetExtentSize() {
 	return target_extent_size;

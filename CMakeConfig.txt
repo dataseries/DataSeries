@@ -5,6 +5,13 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+#### Default build type
+
+IF(NOT CMAKE_BUILD_TYPE)
+    MESSAGE("WARNING: you did not set a CMAKE_BUILD_TYPE; assuming RelWithDebInfo")
+    SET(CMAKE_BUILD_TYPE RelWithDebInfo)
+ENDIF(NOT CMAKE_BUILD_TYPE)
+
 #### Shared Libs
 
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
@@ -17,6 +24,8 @@ ENDIF(BUILD_SHARED_LIBS)
 
 #### Lintel
 
+# TODO: extend FindLintel to check for all dependencies again and do something
+# useful if the dependencies have vanished.
 SET(LINTEL_FIND_REQUIRED ON)
 SET(LINTELPTHREAD_FIND_REQUIRED ON)
 INCLUDE(FindLintel)
@@ -32,18 +41,9 @@ ENDIF(NOT LIBXML2_FOUND)
 
 INCLUDE(FindZLIB)
 
-OPTION(WITH_ZLIB "Build with zlib (gzip) support?" ON)
-
-IF(WITH_ZLIB AND ZLIB_FOUND) 
-    SET(ZLIB_ENABLED ON)
-ELSE(WITH_ZLIB AND ZLIB_FOUND) 
-    SET(ZLIB_ENABLED OFF)	    
-ENDIF(WITH_ZLIB AND ZLIB_FOUND) 
-
-IF(WITH_ZLIB AND NOT ZLIB_ENABLED)
-    MESSAGE("WITH_ZLIB on, but could not find zlib includes/libraries.")
-    MESSAGE("  zlib (gzip) compression support will be skipped.")
-ENDIF(WITH_ZLIB AND NOT ZLIB_ENABLED)
+IF(NOT ZLIB_FOUND) 
+    MESSAGE(FATAL_ERROR "DataSeries requires zlib to build (for adler32 checksum)")
+ENDIF(NOT ZLIB_FOUND)
 
 #### BZip2
 
@@ -62,6 +62,10 @@ IF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
     MESSAGE("  bzip2 compression support will be skipped.")
 ENDIF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
 
+SET(BUNZIP2_PROGRAM_MISSING_EXTRA 
+    "  will not be able to run the pssimple regression test")
+LINTEL_WITH_PROGRAM(BUNZIP2_PROGRAM bunzip2)
+
 #### SRT
 
 SET(SRT_MISSING_EXTRA "  will skip building srt2ds, cmpsrtds")
@@ -74,8 +78,6 @@ ENDIF(SRT_ENABLED)
 
 SET(LZO_MISSING_EXTRA "  lzo compression support will be skipped.")
 INCLUDE(FindLZO)
-
-#### crypto
 
 SET(CRYPTO_MISSING_EXTRA "  will skip building iphost2ds, nettrace2ds")
 INCLUDE(FindCrypto)
@@ -125,3 +127,21 @@ IF(WITH_INSTALLED_RPATH)
   # which point to directories outside the build tree to the install RPATH
   SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 ENDIF(WITH_INSTALLED_RPATH)
+
+#### latex Documentation
+
+# TODO: add tests for amssymb.sty; was in tetex-extra on debian
+INCLUDE(LintelCMakeUtil)
+
+LINTEL_LATEX_CONFIG()
+LINTEL_LATEX_REQUIRES(BUILD_TECH_REPORT fullpage.sty)
+
+IF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
+    MESSAGE("WITH_LINTEL_LATEX_REBUILD enabled, but lintel-latex-rebuild not found")
+    MESSAGE("  latex-documentation will remain un-built")
+ENDIF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
+
+IF(LINTEL_LATEX_REBUILD_ENABLED AND NOT BUILD_TECH_REPORT)
+    MESSAGE("doc/tr will remain un-built, unable to find required latex input file")
+ENDIF(LINTEL_LATEX_REBUILD_ENABLED AND NOT BUILD_TECH_REPORT)
+

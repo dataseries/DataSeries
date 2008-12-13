@@ -13,11 +13,20 @@
 
 #include <DataSeries/DStoTextModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/DSExpr.hpp>
 
 using namespace std;
 using boost::format;
 
 static string str_DataSeries("DataSeries:");
+
+static void eat_args(int n, int &argc, char *argv[])
+{
+    for(int i = n + 1; i < argc; i++) {
+	argv[i - n] = argv[i];
+    }
+    argc -= n;
+}
 
 int
 main(int argc, char *argv[])
@@ -27,6 +36,7 @@ main(int argc, char *argv[])
 
     Extent::setReadChecksFromEnv(true); // ds2txt so slow, may as well check
     string select_extent_type, select_fields;
+    string where_extent_type, where_expr_str;
 
     bool skip_types = false;
     while (argc > 2) {
@@ -37,7 +47,7 @@ main(int argc, char *argv[])
 	    toText.skipIndex(); 
 	    toText.skipExtentType();
 	} else if (strncmp(argv[1],"--separator=",12)==0) {
-	    std::string s = (char *)(argv[1] + 12);
+	    string s = (char *)(argv[1] + 12);
 	    toText.setSeparator(s);
 	} else if (strncmp(argv[1],"--printSpec=",12)==0) {
 	    if (*(argv[1]+12) == '<') {
@@ -50,6 +60,8 @@ main(int argc, char *argv[])
 	    }
 	} else if (strncmp(argv[1],"--header=",9)==0) {
 	    toText.setHeader(argv[1] + 9);
+	} else if (strncmp(argv[1],"--header-only-once",18)==0) {
+	    toText.setHeaderOnlyOnce();
 	} else if (strncmp(argv[1],"--fields=",9)==0) {
 	    toText.setFields(argv[1] + 9);
 	} else if (strcmp(argv[1],"--skip-index")==0) {
@@ -69,35 +81,44 @@ main(int argc, char *argv[])
 	    source.setMatch(argv[1]+7);
 	} else if (strcmp(argv[1],"--select")==0) {
 	    INVARIANT(argc > 4, "--select needs two arguments");
+	    INVARIANT(select_extent_type.empty(),
+		      "multiple --select arguments specified");
 	    select_extent_type = argv[2];
 	    INVARIANT(select_extent_type != "",
 		      "--select type needs to be non-empty");
 	    select_fields = argv[3];
-	    for(int i=3;i<argc;i++) {
-		argv[i-2] = argv[i];
-	    }
-	    argc -= 2;
+	    eat_args(2, argc, argv);
+	} else if (strcmp(argv[1],"--where")==0) {
+	    INVARIANT(argc > 4, "--where needs two arguments");
+	    INVARIANT(where_extent_type.empty(),
+		      "multiple where statements specified");
+	    where_extent_type = argv[2];
+	    INVARIANT(where_extent_type != "",
+		      "--where type needs to be non-empty");
+	    where_expr_str = argv[3];
+	    eat_args(2, argc, argv);
 	} else if (strncmp(argv[1],"-",1)==0) {
 	    FATAL_ERROR(format("Unknown argument %s\n") % argv[1]);
 	} else {
 	    break;
 	}
-	for(int i=2;i<argc;i++) {
-	    argv[i-1] = argv[i];
-	}
-	--argc;
+	eat_args(1, argc, argv);
     }
 	    
     INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
-	      format("Usage: %s [--csv] [--separator=...] [--header=...]\n"
-			    "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
-			    "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
+	      format("Usage: %s [--csv] [--separator=...]\n"
+		     "  [--header=...] [--header-only-once]\n"
+		     "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
+		     "  [--printSpec='type=\"...\" name=\"...\" print_format=\"...\" [units=\"...\" epoch=\"...\"]']\n"
 // put in the <printSpec ... /> version into man page
 // fields is mostly obsolete, move to man page eventually
 //			    "  [--fields=<fields type=\"...\"><field name=\"...\"/></fields>]\n"
-			    "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
-			    "  [--skip-extent-fieldnames] <file...>\n")
-	      % argv[0]);
+		     "  [--skip-index] [--skip-types] [--skip-extent-type]\n"
+		     "  [--skip-extent-fieldnames] [--skip-all]\n"
+		     "  [--where '*'|extent-type-match bool-expr]\n"
+		     "  <file...>\n"
+		     "\n%s\n")
+	      % argv[0] % DSExpr::usage());
     for(int i=1;i<argc;++i) {
 	source.addSource(argv[i]);
     }
@@ -107,7 +128,8 @@ main(int argc, char *argv[])
     if (select_extent_type != "") {
 	string match_extent_type;
 	const ExtentType *match_type 
-	    = first_source->getLibrary().getTypeMatch(select_extent_type);
+	    = first_source->getLibrary().getTypeMatch(select_extent_type, 
+					  	      false, true);
 
 	match_extent_type = match_type->getName();
 	vector<string> fields;
@@ -137,17 +159,23 @@ main(int argc, char *argv[])
 	toText.setFields(xmlspec.c_str());
     }
 
+    if (where_extent_type != "") {
+	const ExtentType *match_type 
+	    = first_source->getLibrary().getTypeMatch(where_extent_type, 
+						      false, true);
+	toText.setWhereExpr(match_type->getName(), where_expr_str);
+    }
+
     // Note that this doesn't completely do the right thing with
     // multiple files as we won't print out the extent types that only
     // occur in later files, of course, without a type of *, it's not
     // going to see those anyway.
 
     if (skip_types == false) {
-	std::cout << "# Extent Types ...\n";
-	for(std::map<const std::string, const ExtentType *>::iterator i 
-		= first_source->getLibrary().name_to_type.begin();
+	cout << "# Extent Types ...\n";
+	for(map<const string, const ExtentType *>::iterator i = first_source->mylibrary.name_to_type.begin();
 	    i != first_source->getLibrary().name_to_type.end(); ++i) {
-	    std::cout << i->second->xmldesc << "\n";
+	    cout << i->second->xmldesc << "\n";
 	}
     }
 
@@ -157,12 +185,10 @@ main(int argc, char *argv[])
 	ExtentSeries es(first_source->indexExtent);
 	Int64Field offset(es,"offset");
 	Variable32Field extenttype(es,"extenttype");
-	std::cout << "extent offset  ExtentType" << std::endl;
+	cout << "extent offset  ExtentType\n";
 	for(;es.pos.morerecords();++es.pos) {
-	    char buf[30];
-	    snprintf(buf,20,(char *)"%-13lld  ",offset.val());
-	    buf[19] = '\0';
-	    std::cout << buf << extenttype.stringval() << std::endl;
+	    cout << format("%-13d  %s\n") % offset.val() 
+		% extenttype.stringval();
 	}
     }
     

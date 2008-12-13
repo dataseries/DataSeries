@@ -9,7 +9,7 @@
 #define FLEX_SCANNER
 #define YY_FLEX_MAJOR_VERSION 2
 #define YY_FLEX_MINOR_VERSION 5
-#define YY_FLEX_SUBMINOR_VERSION 33
+#define YY_FLEX_SUBMINOR_VERSION 34
 #if YY_FLEX_SUBMINOR_VERSION > 0
 #define FLEX_BETA
 #endif
@@ -31,7 +31,7 @@
 
 /* C99 systems have <inttypes.h>. Non-C99 systems may or may not. */
 
-#if __STDC_VERSION__ >= 199901L
+#if defined (__STDC_VERSION__) && __STDC_VERSION__ >= 199901L
 
 /* C99 says to define __STDC_LIMIT_MACROS before including stdint.h,
  * if you want the limit (max/min) macros for int types. 
@@ -94,11 +94,12 @@ typedef unsigned int flex_uint32_t;
 
 #else	/* ! __cplusplus */
 
-#if __STDC__
+/* C99 requires __STDC__ to be defined as 1. */
+#if defined (__STDC__)
 
 #define YY_USE_CONST
 
-#endif	/* __STDC__ */
+#endif	/* defined (__STDC__) */
 #endif	/* ! __cplusplus */
 
 #ifdef YY_USE_CONST
@@ -133,8 +134,6 @@ typedef void* yyscan_t;
 #define yylineno (YY_CURRENT_BUFFER_LVALUE->yy_bs_lineno)
 #define yycolumn (YY_CURRENT_BUFFER_LVALUE->yy_bs_column)
 #define yy_flex_debug yyg->yy_flex_debug_r
-
-int DSStatGroupByScanlex_init (yyscan_t* scanner);
 
 /* Enter a start condition.  This macro really ought to take a parameter,
  * but we do it the disgusting crufty way forced on us by the ()-less
@@ -196,11 +195,13 @@ typedef struct yy_buffer_state *YY_BUFFER_STATE;
 /* The following is because we cannot portably get our hands on size_t
  * (without autoconf's help, which isn't available because we want
  * flex-generated scanners to compile on their own).
+ * Given that the standard has decreed that size_t exists since 1989,
+ * I guess we can afford to depend on it. Manoj.
  */
 
 #ifndef YY_TYPEDEF_YY_SIZE_T
 #define YY_TYPEDEF_YY_SIZE_T
-typedef unsigned int yy_size_t;
+typedef size_t yy_size_t;
 #endif
 
 #ifndef YY_STRUCT_YY_BUFFER_STATE
@@ -355,8 +356,8 @@ static void yy_fatal_error (yyconst char msg[] ,yyscan_t yyscanner );
 	*yy_cp = '\0'; \
 	yyg->yy_c_buf_p = yy_cp;
 
-#define YY_NUM_RULES 7
-#define YY_END_OF_BUFFER 8
+#define YY_NUM_RULES 18
+#define YY_END_OF_BUFFER 19
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -364,12 +365,14 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_accept[34] =
+static yyconst flex_int16_t yy_accept[54] =
     {   0,
-        0,    0,    8,    6,    1,    1,    2,    3,    4,    4,
-        1,    0,    3,    4,    0,    4,    3,    0,    0,    0,
+        0,    0,   19,   17,    1,    1,   12,   17,   17,    2,
+       13,    4,   17,    3,   14,   14,   17,    1,    8,    0,
+       16,    0,   11,    0,   13,    6,    7,    9,    5,   14,
+        0,   14,   10,    0,   16,    0,   13,    0,    0,    0,
         0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
-        0,    5,    0
+        0,   15,    0
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -377,17 +380,17 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    2,    1,    1,    1,    1,    1,    1,    1,    4,
-        4,    4,    4,    1,    4,    5,    4,    6,    6,    6,
-        6,    6,    6,    6,    6,    6,    6,    1,    1,    1,
-        1,    4,    1,    1,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    8,    9,    7,    7,    7,    7,    7,    7,
-        1,   10,    1,    1,    7,    1,   11,    7,   12,   13,
+        1,    2,    4,    5,    1,    1,    1,    6,    1,    7,
+        7,    7,    7,    7,    7,    8,    7,    9,    9,    9,
+        9,    9,    9,    9,    9,    9,    9,    1,    1,   10,
+       11,   12,    1,    1,   13,   13,   13,   13,   13,   13,
+       13,   13,   13,   13,   13,   13,   13,   13,   13,   13,
+       13,   13,   14,   15,   13,   13,   13,   13,   13,   13,
+        1,   16,    1,    1,   13,    1,   17,   13,   18,   19,
 
-       14,   15,    7,    7,    7,    7,    7,    7,    7,   16,
-       17,    7,    7,   18,   19,    7,    7,    7,    7,    7,
-        7,    7,    1,    1,    1,    1,    1,    1,    1,    1,
+       20,   21,   13,   13,   13,   13,   13,   13,   13,   22,
+       23,   13,   13,   24,   25,   13,   13,   13,   13,   13,
+       13,   13,    1,   26,    1,   27,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -404,50 +407,67 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst flex_int32_t yy_meta[20] =
+static yyconst flex_int32_t yy_meta[28] =
     {   0,
-        1,    1,    1,    1,    1,    2,    2,    2,    2,    2,
-        2,    2,    2,    2,    2,    2,    2,    2,    2
+        1,    1,    1,    1,    1,    1,    1,    1,    2,    1,
+        1,    1,    2,    2,    2,    2,    2,    2,    2,    2,
+        2,    2,    2,    2,    2,    1,    1
     } ;
 
-static yyconst flex_int16_t yy_base[35] =
+static yyconst flex_int16_t yy_base[57] =
     {   0,
-        0,    0,   57,   58,   18,   20,   58,   19,   46,   16,
-       25,   49,   24,   44,   32,   30,   47,   43,   36,   32,
-       38,   36,   38,   29,   37,   30,   31,   25,   25,   26,
-       19,   58,   58,   29
+        0,    0,   98,   99,   26,   28,   86,   27,   90,   99,
+       25,   84,   24,   83,   77,   20,   66,   35,   99,   34,
+       99,   41,   99,   82,   32,   99,   99,   99,   99,   74,
+       57,   37,   99,   44,   50,   69,   73,   66,   59,   55,
+       61,   59,   61,   52,   59,   51,   52,   33,   32,   33,
+       23,   99,   99,   85,   45,   87
     } ;
 
-static yyconst flex_int16_t yy_def[35] =
+static yyconst flex_int16_t yy_def[57] =
     {   0,
-       33,    1,   33,   33,   33,   33,   33,   33,   34,   34,
-       33,   33,   33,   34,   34,   34,   33,   33,   33,   33,
-       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
-       33,   33,    0,   33
+       53,    1,   53,   53,   53,   53,   53,   54,   53,   53,
+       53,   53,   53,   53,   55,   55,   53,   53,   53,   54,
+       53,   56,   53,   53,   53,   53,   53,   53,   53,   55,
+       55,   55,   53,   54,   54,   56,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53,   53,   53,   53,   53,
+       53,   53,    0,   53,   53,   53
     } ;
 
-static yyconst flex_int16_t yy_nxt[78] =
+static yyconst flex_int16_t yy_nxt[127] =
     {   0,
-        4,    5,    6,    7,    4,    8,    9,    9,    9,    4,
-        9,    9,    9,    9,   10,    9,    9,    9,    9,   11,
-       11,   11,   11,   12,   13,   15,   11,   11,   12,   13,
-       14,   16,   14,   14,   18,   14,   14,   32,   31,   15,
-       30,   29,   28,   27,   26,   25,   24,   23,   22,   21,
-       20,   19,   17,   15,   17,   15,   33,    3,   33,   33,
-       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
-       33,   33,   33,   33,   33,   33,   33
+        4,    5,    6,    7,    8,    9,   10,    4,   11,   12,
+       13,   14,   15,   15,   15,    4,   15,   15,   15,   15,
+       16,   15,   15,   15,   15,   17,    4,   18,   18,   18,
+       18,   21,   24,   25,   27,   31,   18,   18,   21,   24,
+       25,   32,   22,   20,   38,   35,   30,   52,   21,   22,
+       28,   51,   31,   50,   21,   49,   36,   30,   30,   22,
+       30,   30,   30,   30,   30,   22,   30,   30,   30,   48,
+       47,   20,   46,   35,   45,   44,   43,   42,   41,   40,
+       39,   37,   30,   30,   36,   20,   20,   34,   34,   31,
+       37,   33,   31,   29,   26,   23,   19,   53,    3,   53,
+
+       53,   53,   53,   53,   53,   53,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53
     } ;
 
-static yyconst flex_int16_t yy_chk[78] =
+static yyconst flex_int16_t yy_chk[127] =
     {   0,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    5,
-        5,    6,    6,    8,    8,   10,   11,   11,   13,   13,
-       34,   10,   15,   15,   16,   15,   15,   31,   30,   16,
-       29,   28,   27,   26,   25,   24,   23,   22,   21,   20,
-       19,   18,   17,   14,   12,    9,    3,   33,   33,   33,
-       33,   33,   33,   33,   33,   33,   33,   33,   33,   33,
-       33,   33,   33,   33,   33,   33,   33
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    1,    5,    5,    6,
+        6,    8,   11,   11,   13,   16,   18,   18,   20,   25,
+       25,   16,    8,   22,   32,   22,   55,   51,   34,   20,
+       13,   50,   32,   49,   35,   48,   22,   31,   31,   34,
+       31,   31,   31,   31,   31,   35,   31,   31,   31,   47,
+       46,   36,   45,   36,   44,   43,   42,   41,   40,   39,
+       38,   37,   31,   31,   36,   54,   54,   56,   56,   30,
+       24,   17,   15,   14,   12,    9,    7,    3,   53,   53,
+
+       53,   53,   53,   53,   53,   53,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53,   53,   53,   53,   53,
+       53,   53,   53,   53,   53,   53
     } ;
 
 /* The intent behind this definition is that it'll catch
@@ -484,9 +504,9 @@ static yyconst flex_int16_t yy_chk[78] =
 
 // Redefine yyterminate to return something of type token_type.
 #define yyterminate() return token::END_OF_STRING
-#line 42 "module/DSExprScan.ll"
+#line 53 "module/DSExprScan.ll"
 #define YY_USER_ACTION  cur_column += (yyleng);
-#line 490 "module/DSExprScan.cpp"
+#line 510 "module/DSExprScan.cpp"
 
 #define INITIAL 0
 
@@ -537,6 +557,10 @@ struct yyguts_t
     }; /* end struct yyguts_t */
 
 static int yy_init_globals (yyscan_t yyscanner );
+
+int DSStatGroupByScanlex_init (yyscan_t* scanner);
+
+int DSStatGroupByScanlex_init_extra (YY_EXTRA_TYPE user_defined,yyscan_t* scanner);
 
 /* Accessor methods to globals.
    These are made visible to non-reentrant scanners for convenience. */
@@ -607,7 +631,7 @@ static int input (yyscan_t yyscanner );
 /* This used to be an fputs(), but since the string might contain NUL's,
  * we now use fwrite().
  */
-#define ECHO (void) fwrite( yytext, yyleng, 1, yyout )
+#define ECHO fwrite( yytext, yyleng, 1, yyout )
 #endif
 
 /* Gets input and stuffs it into "buf".  number of characters read, or YY_NULL,
@@ -618,7 +642,7 @@ static int input (yyscan_t yyscanner );
 	if ( YY_CURRENT_BUFFER_LVALUE->yy_is_interactive ) \
 		{ \
 		int c = '*'; \
-		size_t n; \
+		int n; \
 		for ( n = 0; n < max_size && \
 			     (c = getc( yyin )) != EOF && c != '\n'; ++n ) \
 			buf[n] = (char) c; \
@@ -701,7 +725,7 @@ YY_DECL
 	register int yy_act;
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
 
-#line 45 "module/DSExprScan.ll"
+#line 56 "module/DSExprScan.ll"
 
 
 
@@ -710,7 +734,7 @@ typedef DSExprImpl::Parser::token token;
 static unsigned cur_column;
 
 
-#line 714 "module/DSExprScan.cpp"
+#line 738 "module/DSExprScan.cpp"
 
 	if ( !yyg->yy_init )
 		{
@@ -763,13 +787,13 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 34 )
+				if ( yy_current_state >= 54 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			++yy_cp;
 			}
-		while ( yy_current_state != 33 );
+		while ( yy_current_state != 53 );
 		yy_cp = yyg->yy_last_accepting_cpos;
 		yy_current_state = yyg->yy_last_accepting_state;
 
@@ -792,46 +816,103 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 53 "module/DSExprScan.ll"
+#line 64 "module/DSExprScan.ll"
 { /* ignore whitespace */ }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 55 "module/DSExprScan.ll"
-return token_type(yytext[0]);
+#line 66 "module/DSExprScan.ll"
+{ return token_type(yytext[0]); }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 56 "module/DSExprScan.ll"
-{ yylval->constant = stringToDouble(yytext); 
-             return token::CONSTANT; }
+#line 67 "module/DSExprScan.ll"
+{ return token_type(token::GT); }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 58 "module/DSExprScan.ll"
-{ yylval->field = new std::string(yytext);
-	  return token::FIELD; }
+#line 68 "module/DSExprScan.ll"
+{ return token_type(token::LT); }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 60 "module/DSExprScan.ll"
-{ return token::FN_TfracToSeconds; }
-	YY_BREAK
-case YY_STATE_EOF(INITIAL):
-#line 61 "module/DSExprScan.ll"
-{ return token::END_OF_STRING; }
+#line 69 "module/DSExprScan.ll"
+{ return token_type(token::GEQ); }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 62 "module/DSExprScan.ll"
-{ FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
+#line 70 "module/DSExprScan.ll"
+{ return token_type(token::LEQ); }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 64 "module/DSExprScan.ll"
+#line 71 "module/DSExprScan.ll"
+{ return token_type(token::EQ); }
+	YY_BREAK
+case 8:
+YY_RULE_SETUP
+#line 72 "module/DSExprScan.ll"
+{ return token_type(token::NEQ); }
+	YY_BREAK
+case 9:
+YY_RULE_SETUP
+#line 73 "module/DSExprScan.ll"
+{ return token_type(token::REMATCH); }
+	YY_BREAK
+case 10:
+YY_RULE_SETUP
+#line 74 "module/DSExprScan.ll"
+{ return token_type(token::LOR); }
+	YY_BREAK
+case 11:
+YY_RULE_SETUP
+#line 75 "module/DSExprScan.ll"
+{ return token_type(token::LAND); }
+	YY_BREAK
+case 12:
+YY_RULE_SETUP
+#line 76 "module/DSExprScan.ll"
+{ return token_type(token::LNOT); }
+	YY_BREAK
+case 13:
+YY_RULE_SETUP
+#line 77 "module/DSExprScan.ll"
+{ yylval->constant = stringToDouble(yytext); 
+                  return token::CONSTANT; }
+	YY_BREAK
+case 14:
+YY_RULE_SETUP
+#line 79 "module/DSExprScan.ll"
+{ yylval->symbol = new std::string(yytext);
+	  return token::SYMBOL; }
+	YY_BREAK
+case 15:
+YY_RULE_SETUP
+#line 81 "module/DSExprScan.ll"
+{ return token::FN_TfracToSeconds; }
+	YY_BREAK
+case 16:
+/* rule 16 can match eol */
+YY_RULE_SETUP
+#line 82 "module/DSExprScan.ll"
+{ yylval->strliteral = new std::string(yytext);
+                  return token_type(token::STRLITERAL); }
+	YY_BREAK
+case YY_STATE_EOF(INITIAL):
+#line 84 "module/DSExprScan.ll"
+{ return token::END_OF_STRING; }
+	YY_BREAK
+case 17:
+YY_RULE_SETUP
+#line 85 "module/DSExprScan.ll"
+{ FATAL_ERROR(boost::format("invalid character '%c'") % *yytext); }
+	YY_BREAK
+case 18:
+YY_RULE_SETUP
+#line 87 "module/DSExprScan.ll"
 ECHO;
 	YY_BREAK
-#line 835 "module/DSExprScan.cpp"
+#line 916 "module/DSExprScan.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -1086,6 +1167,14 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	else
 		ret_val = EOB_ACT_CONTINUE_SCAN;
 
+	if ((yy_size_t) (yyg->yy_n_chars + number_to_move) > YY_CURRENT_BUFFER_LVALUE->yy_buf_size) {
+		/* Extend the array by 50%, plus the number we really need. */
+		yy_size_t new_size = yyg->yy_n_chars + number_to_move + (yyg->yy_n_chars >> 1);
+		YY_CURRENT_BUFFER_LVALUE->yy_ch_buf = (char *) DSStatGroupByScanrealloc((void *) YY_CURRENT_BUFFER_LVALUE->yy_ch_buf,new_size ,yyscanner );
+		if ( ! YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
+			YY_FATAL_ERROR( "out of dynamic memory in yy_get_next_buffer()" );
+	}
+
 	yyg->yy_n_chars += number_to_move;
 	YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars] = YY_END_OF_BUFFER_CHAR;
 	YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[yyg->yy_n_chars + 1] = YY_END_OF_BUFFER_CHAR;
@@ -1116,7 +1205,7 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 34 )
+			if ( yy_current_state >= 54 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1145,11 +1234,11 @@ static int yy_get_next_buffer (yyscan_t yyscanner)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 34 )
+		if ( yy_current_state >= 54 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 33);
+	yy_is_jam = (yy_current_state == 53);
 
 	return yy_is_jam ? 0 : yy_current_state;
 }
@@ -1472,7 +1561,9 @@ static void DSStatGroupByScanensure_buffer_stack (yyscan_t yyscanner)
 		yyg->yy_buffer_stack = (struct yy_buffer_state**)DSStatGroupByScanalloc
 								(num_to_alloc * sizeof(struct yy_buffer_state*)
 								, yyscanner);
-		
+		if ( ! yyg->yy_buffer_stack )
+			YY_FATAL_ERROR( "out of dynamic memory in DSStatGroupByScanensure_buffer_stack()" );
+								  
 		memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));
 				
 		yyg->yy_buffer_stack_max = num_to_alloc;
@@ -1490,6 +1581,8 @@ static void DSStatGroupByScanensure_buffer_stack (yyscan_t yyscanner)
 								(yyg->yy_buffer_stack,
 								num_to_alloc * sizeof(struct yy_buffer_state*)
 								, yyscanner);
+		if ( ! yyg->yy_buffer_stack )
+			YY_FATAL_ERROR( "out of dynamic memory in DSStatGroupByScanensure_buffer_stack()" );
 
 		/* zero only the new slots.*/
 		memset(yyg->yy_buffer_stack + yyg->yy_buffer_stack_max, 0, grow_size * sizeof(struct yy_buffer_state*));
@@ -1784,6 +1877,42 @@ int DSStatGroupByScanlex_init(yyscan_t* ptr_yy_globals)
     return yy_init_globals ( *ptr_yy_globals );
 }
 
+/* DSStatGroupByScanlex_init_extra has the same functionality as DSStatGroupByScanlex_init, but follows the
+ * convention of taking the scanner as the last argument. Note however, that
+ * this is a *pointer* to a scanner, as it will be allocated by this call (and
+ * is the reason, too, why this function also must handle its own declaration).
+ * The user defined value in the first argument will be available to DSStatGroupByScanalloc in
+ * the yyextra field.
+ */
+
+int DSStatGroupByScanlex_init_extra(YY_EXTRA_TYPE yy_user_defined,yyscan_t* ptr_yy_globals )
+
+{
+    struct yyguts_t dummy_yyguts;
+
+    DSStatGroupByScanset_extra (yy_user_defined, &dummy_yyguts);
+
+    if (ptr_yy_globals == NULL){
+        errno = EINVAL;
+        return 1;
+    }
+	
+    *ptr_yy_globals = (yyscan_t) DSStatGroupByScanalloc ( sizeof( struct yyguts_t ), &dummy_yyguts );
+	
+    if (*ptr_yy_globals == NULL){
+        errno = ENOMEM;
+        return 1;
+    }
+    
+    /* By setting to 0xAA, we expose bugs in
+    yy_init_globals. Leave at 0x00 for releases. */
+    memset(*ptr_yy_globals,0x00,sizeof(struct yyguts_t));
+    
+    DSStatGroupByScanset_extra (yy_user_defined, *ptr_yy_globals);
+    
+    return yy_init_globals ( *ptr_yy_globals );
+}
+
 static int yy_init_globals (yyscan_t yyscanner)
 {
     struct yyguts_t * yyg = (struct yyguts_t*)yyscanner;
@@ -1895,7 +2024,7 @@ void DSStatGroupByScanfree (void * ptr , yyscan_t yyscanner)
 
 #define YYTABLES_NAME "yytables"
 
-#line 64 "module/DSExprScan.ll"
+#line 87 "module/DSExprScan.ll"
 
 
 

@@ -39,14 +39,14 @@ struct IndexValues {
 };
 
 struct ivHash {
-    unsigned int operator()(const IndexValues &k) {
+    unsigned int operator()(const IndexValues &k) const {
 	return BobJenkinsHash(BobJenkinsHashMixULL(k.offset),k.filename.data(),
 			      k.filename.size());
     }
 };
 
 struct ivEqual {
-    bool operator()(const IndexValues &a, const IndexValues &b) {
+    bool operator()(const IndexValues &a, const IndexValues &b) const {
 	return a.offset == b.offset && a.filename == b.filename;
     }
 };
@@ -54,7 +54,7 @@ struct ivEqual {
 typedef HashTable<IndexValues,ivHash,ivEqual> ivHashTableT;
 
 struct IndexValuesByFilenameOffset {
-    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) {
+    bool operator() (const ivHashTableT::hte &a, const ivHashTableT::hte &b) const {
 	if (a.data.filename == b.data.filename) {
 	    return a.data.offset < b.data.offset;
 	} else {
@@ -89,7 +89,7 @@ typedef HashMap<string, ExtentType::int64> modifyTimesT;
 modifyTimesT modifytimes;
 
 struct ModifyTimesByFilename {
-    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) {
+    bool operator() (const modifyTimesT::HashTableT::hte &a, const modifyTimesT::HashTableT::hte &b) const {
 	return a.data.first < b.data.first;
     }
 };
@@ -130,8 +130,9 @@ void
 indexExtent(DataSeriesSource &source, const string &filename, 
 	    ExtentType::int64 offset)
 {
-    if (verbose_index) 
-	printf("index extent %s:%lld\n",filename.c_str(),offset);
+    if (verbose_index) {
+	cout << format("index extent %s:%d\n") % filename % offset;
+    }
     // copy offset as preadExtent updates offset to offset of next extent
     off64_t tmp_offset = offset; 
     Extent *e = source.preadExtent(tmp_offset);
@@ -361,7 +362,8 @@ readExistingIndex(const char *index_filename, string &fieldlist)
 		iv.hasnulls.push_back(hasnulls[i]->val());
 	    }
 	    if (verbose_read) {
-		printf("%s:%lld %d rows\n",iv.filename.c_str(),iv.offset,iv.rowcount);
+		cout << format("%s:%d %d rows\n") % iv.filename
+		    % iv.offset % iv.rowcount;
 		for(unsigned i = 0; i < fields.size(); ++i) {
 		    printf("  field %s min '",fields[i].c_str());
 		    iv.mins[i].write(stdout);
@@ -521,7 +523,10 @@ main(int argc, char *argv[])
 	filenameF.set(v.filename);
 	extent_offsetF.set(v.offset);
 	rowcountF.set(v.rowcount);
-	if (verbose_results) printf("%s:%lld %d rows\n",v.filename.c_str(),v.offset,v.rowcount);
+	if (verbose_results) {
+	    cout << format("%s:%d %d rows\n") % v.filename
+		% v.offset % v.rowcount;
+	}
 	for(unsigned i = 0; i < fields.size(); ++i) {
 	    mins[i]->set(v.mins[i]);
 	    maxs[i]->set(v.maxs[i]);

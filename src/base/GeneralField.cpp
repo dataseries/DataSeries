@@ -24,9 +24,7 @@ using boost::format;
 // TODO: performance time boost::format, and if possible, unify the
 // write(ostream) and write(FILE *) code paths.
 
-void
-GeneralValue::set(const GeneralField &from)
-{
+void GeneralValue::set(const GeneralField &from) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == from.gftype,
 	      "invalid to change type of generalvalue");
@@ -54,9 +52,7 @@ GeneralValue::set(const GeneralField &from)
 	}
 }
 
-void
-GeneralValue::set(const GeneralValue &from)
-{
+void GeneralValue::set(const GeneralValue &from) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == from.gvtype,
 	      "invalid to change type of generalvalue");
@@ -82,56 +78,66 @@ GeneralValue::set(const GeneralValue &from)
 	}
 }
 
-uint32_t GeneralValue::hash() const
-{
+uint32_t GeneralValue::hash(uint32_t partial_hash) const {
     switch(gvtype) 
 	{
-	case ExtentType::ft_unknown: return 0;
+	case ExtentType::ft_unknown: return partial_hash;
 	case ExtentType::ft_bool: 
-	    return gvval.v_bool;
+	    return BobJenkinsHashMix3(gvval.v_bool, 1492, partial_hash);
 	case ExtentType::ft_byte: 
-	    return gvval.v_byte;
+	    return BobJenkinsHashMix3(gvval.v_byte, 1941, partial_hash);
 	case ExtentType::ft_int32: 
-	    return static_cast<u_int32_t>(gvval.v_int32);
+	    return BobJenkinsHashMix3(gvval.v_int32, 1861, partial_hash);
 	case ExtentType::ft_int64: 
-	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	    return BobJenkinsHashMixULL(gvval.v_int64, partial_hash);
 	case ExtentType::ft_double: 
 	    BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
 	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) 
 				== offsetof(gvvalT, v_int64));
-	    return BobJenkinsHashMixULL(static_cast<u_int64_t>(gvval.v_int64));
+	    return BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
+					partial_hash);
 	case ExtentType::ft_variable32: 
 	    return HashTable_hashbytes(v_variable32->data(),
-				       v_variable32->size());
+				       v_variable32->size(), partial_hash);
 	default: FATAL_ERROR("internal error, unexpected type"); 
 	    return 0; 
 	}
 }
 
-void
-GeneralValue::setInt32(ExtentType::int32 from)
-{
+void GeneralValue::setBool(bool val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_bool,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_bool;
+    gvval.v_bool = val;
+}
+
+void GeneralValue::setByte(uint8_t val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_byte,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_byte;
+    gvval.v_byte = val;
+}
+
+void GeneralValue::setInt32(int32_t val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_int32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_int32;
-    gvval.v_int32 = from;
+    gvval.v_int32 = val;
 }
 
-void
-GeneralValue::setVariable32(const string &from)
-{
+void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_variable32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_variable32;
     if (NULL == v_variable32) v_variable32 = new string;
-    *v_variable32 = from;
+    *v_variable32 = val;
 }
 
-bool 
-GeneralValue::strictlylessthan(const GeneralValue &gv) const 
-{
+bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
     INVARIANT(gvtype == gv.gvtype,
 	      "currently invalid to compare general values of different types");
     switch(gvtype) 
@@ -163,9 +169,7 @@ GeneralValue::strictlylessthan(const GeneralValue &gv) const
     
 }
 
-bool 
-GeneralValue::equal(const GeneralValue &gv) const
-{
+bool GeneralValue::equal(const GeneralValue &gv) const {
     INVARIANT(gvtype == gv.gvtype,
 	      "currently invalid to compare general values of different types");
     switch(gvtype) 
@@ -196,9 +200,7 @@ GeneralValue::equal(const GeneralValue &gv) const
     
 }
 
-void
-GeneralValue::write(FILE *to)
-{
+void GeneralValue::write(FILE *to) {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -229,9 +231,7 @@ GeneralValue::write(FILE *to)
     
 }
 
-ostream &
-GeneralValue::write(ostream &to) const
-{
+ostream &GeneralValue::write(ostream &to) const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -262,9 +262,7 @@ GeneralValue::write(ostream &to) const
     return to;
 }
 
-double
-GeneralValue::valDouble()
-{
+double GeneralValue::valDouble() {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -295,9 +293,7 @@ GeneralValue::valDouble()
     return 0;
 }
 
-int64_t
-GeneralValue::valInt64()
-{
+int64_t GeneralValue::valInt64() {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -328,9 +324,7 @@ GeneralValue::valInt64()
     return 0;
 }
 
-bool
-GeneralValue::valBool()
-{
+bool GeneralValue::valBool() {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -362,16 +356,48 @@ GeneralValue::valBool()
     return 0;
 }
 
+static string s_true("true");
+static string s_false("false");
 
-void GeneralField::enableCSV(void){
+const std::string GeneralValue::valString() {
+    switch(gvtype) {
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valString()");
+	    break;
+	case ExtentType::ft_bool:
+	    if (gvval.v_bool) {
+		return s_true;
+	    } else {
+		return s_false;
+	    }
+	    break;
+	case ExtentType::ft_byte:
+	    FATAL_ERROR("haven't decided how to translate byte to strings");
+	    break;
+	case ExtentType::ft_int32:
+	    FATAL_ERROR("haven't decided how to translate int32 to strings");
+	    break;
+	case ExtentType::ft_int64:
+	    FATAL_ERROR("haven't decided how to translate int64 to strings");
+	    break;
+	case ExtentType::ft_double:
+	    FATAL_ERROR("haven't decided how to translate double to strings");
+	    break;
+	case ExtentType::ft_variable32:
+	    return *v_variable32;
+	    break;
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+    }
+    return 0;
+}
+
+void GeneralField::enableCSV(void) {
     csvEnabled = true;
 }
 
-void
-GeneralField::deleteFields(vector<GeneralField *> &fields)
-{
-    for(vector<GeneralField *>::iterator i = fields.begin();
-	i != fields.end(); ++i) {
+void GeneralField::deleteFields(vector<GeneralField *> &fields) {
+    for(vector<GeneralField *>::iterator i = fields.begin(); i != fields.end(); ++i) {
 	delete *i;
 	*i = NULL;
     }
@@ -379,9 +405,7 @@ GeneralField::deleteFields(vector<GeneralField *> &fields)
     tmp.swap(fields);
 }
 
-static xmlChar *
-myXmlGetProp(xmlNodePtr xml, const xmlChar *prop)
-{
+static xmlChar *myXmlGetProp(xmlNodePtr xml, const xmlChar *prop) {
     if (xml == NULL) {
 	return NULL;
     } else {
@@ -406,13 +430,13 @@ GF_Bool::GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series,
     s_false = (char *)xmlfalse;
 }
 
-GF_Bool::~GF_Bool()
-{
+GF_Bool::~GF_Bool() { }
+
+bool GF_Bool::isNull() {
+    return myfield.isNull();
 }
 
-void
-GF_Bool::write(FILE *to)
-{
+void GF_Bool::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
@@ -424,9 +448,7 @@ GF_Bool::write(FILE *to)
     }
 }
 
-void
-GF_Bool::write(std::ostream &to)
-{
+void GF_Bool::write(std::ostream &to) {
     if (myfield.isNull()) {
 	to << "null";
     } else {
@@ -438,12 +460,6 @@ GF_Bool::write(std::ostream &to)
     }
 }
 
-bool
-GF_Bool::isNull()
-{
-    return myfield.isNull();
-}
-
 // TODO: see whether it's worth optimizing the set functions to special
 // case the same-type copy; that's probably the common case.
 // one experiment with this for GF_Bool did not show any benefit.
@@ -452,9 +468,7 @@ GF_Bool::isNull()
 // to get most of the benefit without having to make a special case like 
 // that.
 
-void
-GF_Bool::set(GeneralField *from)
-{
+void GF_Bool::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -485,17 +499,13 @@ GF_Bool::set(GeneralField *from)
 	}
 }
 
-void
-GF_Bool::set(const GeneralValue *from)
-{
+void GF_Bool::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_bool,
 	      "can't set GF_Bool from non-bool general value");
     myfield.set(from->gvval.v_bool);
 }
 
-double
-GF_Bool::valDouble()
-{
+double GF_Bool::valDouble() {
     return myfield.val() ? 1 : 0;
 }
 
@@ -511,12 +521,9 @@ GF_Byte::GF_Byte(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &c
     if (false) printf("should use printspec %s\n",printspec);
 }
 
-GF_Byte::~GF_Byte() 
-{
-}
+GF_Byte::~GF_Byte() { }
 
-void 
-GF_Byte::write(FILE *to) {
+void GF_Byte::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
@@ -524,8 +531,7 @@ GF_Byte::write(FILE *to) {
     }
 }
 
-void 
-GF_Byte::write(std::ostream &to) {
+void GF_Byte::write(std::ostream &to) {
     if (myfield.isNull()) {
 	to << "null";
     } else {
@@ -537,15 +543,11 @@ GF_Byte::write(std::ostream &to) {
     }
 }
 
-bool
-GF_Byte::isNull()
-{
+bool GF_Byte::isNull() {
     return myfield.isNull();
 }
 
-void
-GF_Byte::set(GeneralField *from)
-{
+void GF_Byte::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -578,17 +580,13 @@ GF_Byte::set(GeneralField *from)
     myfield.set(val);
 }
 
-void
-GF_Byte::set(const GeneralValue *from)
-{
+void GF_Byte::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_byte,
 	      "can't set GF_Byte from non-byte general value");
     myfield.set(from->gvval.v_byte);
 }
 
-double
-GF_Byte::valDouble()
-{
+double GF_Byte::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
@@ -610,9 +608,7 @@ GF_Int32::GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     }
 }
 
-GF_Int32::~GF_Int32() 
-{
-}
+GF_Int32::~GF_Int32() { }
 
 static const string ipv4addr("ipv4");
 
@@ -642,15 +638,11 @@ void GF_Int32::write(std::ostream &to) {
     }
 }
 
-bool
-GF_Int32::isNull()
-{
+bool GF_Int32::isNull() {
     return myfield.isNull();
 }
 
-void
-GF_Int32::set(GeneralField *from)
-{
+void GF_Int32::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -681,18 +673,14 @@ GF_Int32::set(GeneralField *from)
 	}
 }
 
-void
-GF_Int32::set(const GeneralValue *from)
-{
+void GF_Int32::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_int32,
 	      "can't set GF_Int32 from non-int32 general value");
     myfield.set(from->gvval.v_int32);
 }
 
 
-double
-GF_Int32::valDouble()
-{
+double GF_Int32::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
@@ -711,7 +699,8 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
 		   const std::string &column) 
     : GeneralField(ExtentType::ft_int64), 
       myfield(series,column,Field::flag_nullable),
-      relative_field(NULL), myfield_time(NULL), offset_first(false) {
+      relative_field(NULL), myfield_time(NULL), offset_first(false) 
+{
     xmlChar *xmlprintspec = myXmlGetProp(fieldxml, (const xmlChar *)"print_format");
     if (xmlprintspec == NULL) {
 	xmlprintspec = (xmlChar *)"%lld";
@@ -720,11 +709,13 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
     if (false) printf("should use printspec %s\n",printspec);
     
     if (printspec == str_sec_nanosec) {
-	myfield_time = new Int64TimeField(series, column);
 	string units = strGetXMLProp(fieldxml, "units");
 	string epoch = strGetXMLProp(fieldxml, "epoch");
 
-	myfield_time->setUnitsEpoch(units, epoch);
+	Int64TimeField::TimeType time_type
+	    = Int64TimeField::convertUnitsEpoch(units, epoch, column);
+	myfield_time = new Int64TimeField(series, column, Field::flag_nullable,
+					  time_type);
     } 
 	       
     xmlChar *xml_divisor = myXmlGetProp(fieldxml, (const xmlChar *)"print_divisor");
@@ -749,15 +740,12 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
 
 }
 
-GF_Int64::~GF_Int64() 
-{
+GF_Int64::~GF_Int64() {
     delete relative_field;
     delete myfield_time;
 }
 
-void 
-GF_Int64::write(FILE *to) 
-{
+void GF_Int64::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
@@ -779,9 +767,7 @@ GF_Int64::write(FILE *to)
     }
 }
 
-void 
-GF_Int64::write(std::ostream &to) 
-{
+void GF_Int64::write(std::ostream &to) {
     FATAL_ERROR("broken, inconsistent with FILE * version");
     if (myfield.isNull()) {
 	to << "null";
@@ -794,15 +780,11 @@ GF_Int64::write(std::ostream &to)
     }
 }
 
-bool
-GF_Int64::isNull()
-{
+bool GF_Int64::isNull() {
     return myfield.isNull();
 }
 
-void
-GF_Int64::set(GeneralField *from)
-{
+void GF_Int64::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -833,22 +815,19 @@ GF_Int64::set(GeneralField *from)
 	}
 }
 
-void
-GF_Int64::set(const GeneralValue *from)
-{
+void GF_Int64::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_int64,
 	      "can't set GF_Int64 from non-int64 general value");
     myfield.set(from->gvval.v_int64);
 }
 
-double
-GF_Int64::valDouble()
-{
+double GF_Int64::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
 GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) 
-    : GeneralField(ExtentType::ft_double), myfield(series,column,DoubleField::flag_nullable | DoubleField::flag_allownonzerobase)
+    : GeneralField(ExtentType::ft_double), 
+      myfield(series, column, DoubleField::flag_nullable | DoubleField::flag_allownonzerobase)
 {
     xmlChar *xmlprintspec = myXmlGetProp(fieldxml, (const xmlChar *)"print_format");
     if (xmlprintspec == NULL) {
@@ -877,14 +856,11 @@ GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
     }
 }
 
-GF_Double::~GF_Double() 
-{
+GF_Double::~GF_Double() {
     delete relative_field;
 }
 
-void 
-GF_Double::write(FILE *to) 
-{
+void GF_Double::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
     } else {
@@ -900,9 +876,7 @@ GF_Double::write(FILE *to)
     }
 }
 
-void 
-GF_Double::write(std::ostream &to) 
-{
+void GF_Double::write(std::ostream &to) {
     if (myfield.isNull()) {
 	to << "null";
     } else {
@@ -922,15 +896,11 @@ GF_Double::write(std::ostream &to)
     }
 }
 
-bool
-GF_Double::isNull()
-{
+bool GF_Double::isNull() {
     return myfield.isNull();
 }
 
-void
-GF_Double::set(GeneralField *from)
-{
+void GF_Double::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -963,17 +933,13 @@ GF_Double::set(GeneralField *from)
 	}
 }
 
-void
-GF_Double::set(const GeneralValue *from)
-{
+void GF_Double::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_double,
 	      "can't set GF_Double from non-double general value");
     myfield.set(from->gvval.v_double);
 }
 
-double
-GF_Double::valDouble()
-{
+double GF_Double::valDouble() {
     return myfield.val();
 }
 
@@ -1033,33 +999,23 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 
 }
 
-GF_Variable32::~GF_Variable32() 
-{
-}
+GF_Variable32::~GF_Variable32() { }
 
 static const bool print_v32_spaces = false;
 
-void 
-GF_Variable32::write(FILE *to) 
-{
+void GF_Variable32::write(FILE *to) {
+    // TODO: unify with boths writes and val_formatted (but take care
+    // as this write has extra behavior in that always applies a
+    // printf format.
     if (myfield.isNull()) {
-	fprintf(to,"null");
-    } else if (printstyle == printhex) {      
-        fprintf(to,printspec,hexstring(myfield.stringval()).c_str());
-    } else if (printstyle == printmaybehex) {
-	fprintf(to,printspec,maybehexstring(myfield.stringval()).c_str());
-    } else if ((printstyle == printcsv) || csvEnabled) {
-        fprintf(to,printspec,(toCSVform(maybehexstring(myfield.stringval()))).c_str());
-    } else if (printstyle == printtext) {
-	fprintf(to,printspec,myfield.stringval().c_str());
-    } else {	      
-	fprintf(to,printspec,myfield.stringval().c_str());
+	fprintf(to, "null");
+    } else {
+	string v = val_formatted();
+        fprintf(to, printspec, v.c_str());
     }
 }
 
-void 
-GF_Variable32::write(std::ostream &to) 
-{
+void GF_Variable32::write(std::ostream &to) {
     if (myfield.isNull()) {
 	to << "null";
     } else if (printstyle == printhex) {
@@ -1078,18 +1034,15 @@ GF_Variable32::write(std::ostream &to)
     }
 }
 
-bool
-GF_Variable32::isNull()
-{
+bool GF_Variable32::isNull() {
     return myfield.isNull();
 }
 
 static const string str_true("true");
 static const string str_false("false");
+static const string str_null("null");
 
-void
-GF_Variable32::set(GeneralField *from)
-{
+void GF_Variable32::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
 	return;
@@ -1134,27 +1087,40 @@ GF_Variable32::set(GeneralField *from)
 	}
 }
 
-void
-GF_Variable32::set(const GeneralValue *from)
-{
+void GF_Variable32::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_variable32,
 	      "can't set GF_Variable32 from non-variable32 general value");
     myfield.set(*from->v_variable32);
 }
 
-double
-GF_Variable32::valDouble()
-{
+double GF_Variable32::valDouble() {
     return stringToDouble(myfield.stringval());
 }
 
-GeneralField::~GeneralField() 
-{
+const std::string GF_Variable32::val() {
+    return myfield.stringval();
 }
 
+const std::string GF_Variable32::valFormatted() {
+    if (myfield.isNull()) {
+	return str_null;
+    } else if (printstyle == printhex) {      
+        return hexstring(myfield.stringval());
+    } else if (printstyle == printmaybehex) {
+	return maybehexstring(myfield.stringval());
+    } else if ((printstyle == printcsv) || csvEnabled) {
+	return toCSVform(maybehexstring(myfield.stringval()));
+    } else if (printstyle == printtext) {
+	return myfield.stringval();
+    } else {
+	return myfield.stringval();
+    }
+}
+
+GeneralField::~GeneralField() { }
+
 GeneralField *
-GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column)
-{
+GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) {
     INVARIANT(series.type != NULL,"need to set series type!");
     if (fieldxml == NULL) {
 	fieldxml = series.type->xmlNodeFieldDesc(column);
@@ -1181,12 +1147,9 @@ GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
 
 ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
     : fixed_copy_size(-1), source(_source), dest(_dest)
-{
-}
+{ }
 
-void 
-ExtentRecordCopy::prep()
-{
+void ExtentRecordCopy::prep() {
     INVARIANT(fixed_copy_size == -1, "internal");
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
@@ -1211,8 +1174,7 @@ ExtentRecordCopy::prep()
     }
 }
 
-ExtentRecordCopy::~ExtentRecordCopy()
-{
+ExtentRecordCopy::~ExtentRecordCopy() {
     for(unsigned i=0;i < sourcefields.size();++i) {
 	delete sourcefields[i];
 	delete destfields[i];
@@ -1224,9 +1186,7 @@ ExtentRecordCopy::~ExtentRecordCopy()
     }
 }
 
-void
-ExtentRecordCopy::copyRecord()
-{
+void ExtentRecordCopy::copyRecord() {
     if (fixed_copy_size == -1) {
 	prep();
     }

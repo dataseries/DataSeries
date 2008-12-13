@@ -13,6 +13,8 @@
 #define __DSTOTEXTMODULE_H
 
 #include <DataSeries/DataSeriesModule.hpp>
+
+class DSExpr;
 class GeneralField;
 
 /** \brief Writes Extents to a file as they go flying past. */
@@ -29,13 +31,16 @@ public:
     virtual Extent *getExtent(); // will print extent as a side effect.
 
     void setPrintSpec(const char *xmlText);
+
     /// After a call to this, the module owns the printSpec and will free it
     /// when done.
     void setHeader(const char *xmlText);
     void setFields(const char *xmlText);
     void addPrintField(const std::string &extenttype, 
 		       const std::string &field);
-    
+    void setWhereExpr(const std::string &extenttype,
+		      const std::string &where_expr_str);
+
     void skipIndex() {
 	print_index = false;
     }
@@ -54,18 +59,26 @@ public:
 
     void enableCSV();
     void setSeparator(const std::string &s);    
+    
+    void setHeaderOnlyOnce();
 
     // need to keep around state because relative printing should be
     // done relative to the first row of the first extent, not the
     // first row of each extent.
     struct PerTypeState {
+	PerTypeState();
+	~PerTypeState();
+
 	ExtentSeries series;
 	std::map<std::string, xmlNodePtr> override_print_specs, print_specs;
 	std::string header;
 	std::vector<std::string> field_names;
 	std::vector<GeneralField *> fields;
-	~PerTypeState();
+	std::string where_expr_str;
+	DSExpr *where_expr;
     };
+
+    uint64_t processed_rows, ignored_rows;
 
 private:
     static xmlNodePtr parseXML(std::string xml, const std::string &roottype);
@@ -80,6 +93,9 @@ private:
 
     // Also initializes state.fields if necessary.
     void getExtentPrintHeaders(PerTypeState &state);
+
+    // Intiailizes state.where_expr if necessary.
+    void getExtentParseWhereExpr(PerTypeState &state);
 			       
     DataSeriesModule &source;
     std::ostream *stream_text_dest;
@@ -91,6 +107,8 @@ private:
     bool print_index, print_extent_type, print_extent_fieldnames;
     bool csvEnabled;
     std::string separator; 
+    bool header_only_once;
+    bool header_printed;
 };
 
 #endif

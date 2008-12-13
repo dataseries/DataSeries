@@ -26,10 +26,6 @@
 #define DATASERIES_ENABLE_BZ2 0
 #endif
 
-#ifndef DATASERIES_ENABLE_ZLIB
-#define DATASERIES_ENABLE_ZLIB 0
-#endif
-
 #ifndef DATASERIES_ENABLE_LZO
 #define DATASERIES_ENABLE_LZO 0
 #endif
@@ -37,13 +33,11 @@
 #if DATASERIES_ENABLE_BZ2
 #include <bzlib.h>
 #endif
-#if DATASERIES_ENABLE_ZLIB
-#include <zlib.h>
-#endif
 #if DATASERIES_ENABLE_LZO
 #include <lzo1x.h>
 #endif
 
+#include <zlib.h>
 extern "C" {
 #include <lzf.h>
 }
@@ -170,9 +164,9 @@ Extent::setReadChecksFromEnv(bool defval)
 static int lzo_init = 0;
 #endif
 
-void
-Extent::init()
-{
+const std::string Extent::in_memory_str("in-memory");
+
+void Extent::init() {
 #if DATASERIES_ENABLE_LZO
     if (lzo_init == 0) {
 	INVARIANT(lzo_init() == LZO_E_OK, "lzo_init() failed ?!");
@@ -186,6 +180,8 @@ Extent::init()
     // slightly incestuous interaction between Variable32Field and
     // Extent, but probably ok.
     *(int32 *)variabledata.begin() = 0;
+    extent_source = in_memory_str;
+    extent_source_offset = -1;
 }
 
 Extent::Extent(ExtentTypeLibrary &library, 
@@ -256,7 +252,7 @@ class variableDuplicateEliminate_Equal {
 public:
     typedef ExtentType::int32 int32;
     bool operator()(const variableDuplicateEliminate &a, 
-		    const variableDuplicateEliminate &b) {
+		    const variableDuplicateEliminate &b) const {
 	int32 size_a = *(int32 *)(a.varbits);
 	int32 size_b = *(int32 *)(b.varbits);
 	if (size_a != size_b) return false;
@@ -267,7 +263,7 @@ public:
 class variableDuplicateEliminate_Hash {
 public:
     typedef ExtentType::int32 int32;
-    unsigned int operator()(const variableDuplicateEliminate &a) {
+    unsigned int operator()(const variableDuplicateEliminate &a) const {
 	int32 size_a = *(int32 *)(a.varbits);
 	return BobJenkinsHash(1776, a.varbits, 4+size_a);
     }
@@ -888,7 +884,6 @@ bool
 Extent::packZLib(byte *input, int32 inputsize,
 		 Extent::ByteArray &into, int compression_level)
 {
-#if DATASERIES_ENABLE_ZLIB
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -903,7 +898,6 @@ Extent::packZLib(byte *input, int32 inputsize,
     }
     INVARIANT(ret == Z_BUF_ERROR,
 	      boost::format("Whoa, got unexpected zlib error %d") % ret);
-#endif
     return false;
 }
 
@@ -1066,14 +1060,12 @@ Extent::uncompressBytes(byte *into, byte *from,
 		  % ret % orig_len % intosize);
 	outsize = orig_len;
 #endif
-#if DATASERIES_ENABLE_ZLIB
     } else if (compression_mode == compress_mode_zlib) {
 	uLongf destlen = intosize;
 	int ret = uncompress((Bytef *)into, &destlen,
 			     (const Bytef *)from, fromsize);
 	INVARIANT(ret == Z_OK, "Error decompressing extent!");
 	outsize = destlen;
-#endif
 #if DATASERIES_ENABLE_BZ2
     } else if (compression_mode == compress_mode_bz2) {
 	unsigned int destlen = intosize;

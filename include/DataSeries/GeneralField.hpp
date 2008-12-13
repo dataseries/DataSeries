@@ -21,6 +21,7 @@
 #include <libxml/parser.h> 
 #include <boost/static_assert.hpp>
 
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/HashMap.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
@@ -106,15 +107,20 @@ public:
 	set(from);
 	return *this;
     }
-    ExtentType::fieldType getType() { return gvtype; }
-    /** calculate a hash of this value */
-    uint32_t hash() const;
+    ExtentType::fieldType getType() const { return gvtype; }
+    /** calculate a hash of this value, use partial_hash as the
+	starting hash. */
+    uint32_t hash(uint32_t partial_hash = 1776) const;
 
-    void setInt32(ExtentType::int32 from);
+    void setBool(bool val);
+    void setByte(uint8_t val);
+    void setInt32(int32_t val);
     void setVariable32(const std::string &from);
-    double valDouble();
-    int64_t valInt64();
+
     bool valBool();
+    int64_t valInt64();
+    double valDouble();
+    const std::string valString();
 
 protected:
     // let all of the general field classes get at our value/type
@@ -179,11 +185,7 @@ struct HashMap_hash<const GeneralValue> {
   * \note This class does not inherit from @c Field. */
 class GeneralField {
 public:
-    // see comment in DStoTextModule.H for why we have both
-    // interfaces; summary ostream is very slow
     virtual ~GeneralField();
-    virtual void write(FILE *to) = 0;
-    virtual void write(std::ostream &to) = 0;
 
     /** create a new general field for a particular series; assumes that
 	the field type doesn't change over the course of the series. */
@@ -194,9 +196,15 @@ public:
     /** fieldxml can be null, in which case it gets it from the series type. */
     static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
 				const std::string &column);
-    // set will do conversion/fail as specified for each GF type
+
+    // see comment in DStoTextModule.H for why we have both
+    // interfaces; summary ostream is very slow
+    virtual void write(FILE *to) = 0;
+    virtual void write(std::ostream &to) = 0;
+
     virtual bool isNull() = 0;
 
+    // set will do conversion/fail as specified for each GF type
     virtual void set(GeneralField *from) = 0;
 
     void set(GeneralField &from) {
@@ -208,12 +216,13 @@ public:
     void set(const GeneralValue &from) {
 	set(&from);
     }
+
+    GeneralValue val() const { return GeneralValue(this); }
+    virtual double valDouble() = 0;
+
     const ExtentType::fieldType getType() const { return gftype; }
 
     void enableCSV();
-
-    GeneralValue val() { return GeneralValue(this); }
-    virtual double valDouble() = 0;
 
     /// Delete all the fields and clear the vector.
     static void deleteFields(std::vector<GeneralField *> &fields);
@@ -234,12 +243,15 @@ class GF_Bool : public GeneralField {
 public:
     GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
     virtual ~GF_Bool();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
+    virtual bool isNull();
+
     // set(bool) -> copy
     // set(byte,int32,int64,double) -> val = from->val == 0
     // set(variable32) -> fail
-    virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
 
@@ -252,8 +264,11 @@ public:
 	    myfield.set(from->myfield.val());
 	}
     }
+
     virtual double valDouble();
+
     bool val() const { return myfield.val(); }
+
     BoolField myfield;
     std::string s_true, s_false;  
 };
@@ -262,17 +277,23 @@ class GF_Byte : public GeneralField {
 public:
     GF_Byte(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Byte();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
+    virtual bool isNull();
+
     // set(bool) -> 1 if true, 0 if false
     // set(byte, int32, int64) -> val = from->val & 0xFF;
     // set(double) -> val = (byte)round(from->val);
     // set(variable32) -> ?
-    virtual bool isNull();
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+
     virtual double valDouble();
+
     ExtentType::byte val() const { return myfield.val(); }
+
     char *printspec;
     ByteField myfield;
 };
@@ -281,8 +302,12 @@ class GF_Int32 : public GeneralField {
 public:
     GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Int32();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
+    virtual bool isNull();
+
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(const GF_Int32 *from) {
@@ -292,9 +317,11 @@ public:
 	    myfield.set(from->myfield.val());
 	}
     }
-    virtual bool isNull();
+
     virtual double valDouble();
+
     ExtentType::int32 val() const { return myfield.val(); }
+
     char *printspec;
     ExtentType::int32 divisor;
     Int32Field myfield;
@@ -305,13 +332,18 @@ public:
     GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, 
 	     const std::string &column);
     virtual ~GF_Int64();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
+    virtual bool isNull();
+
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
-    virtual bool isNull();
-    virtual double valDouble();
     void set(int64_t v) { myfield.set(v);}
+
+    virtual double valDouble();
+
     ExtentType::int64 val() const { return myfield.val(); }
 
     Int64Field myfield, *relative_field;
@@ -325,12 +357,17 @@ class GF_Double : public GeneralField {
 public:
     GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
     virtual ~GF_Double();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
     virtual bool isNull();
+
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
+
     virtual double valDouble();
+
     double val() const { return myfield.val(); }
 
     DoubleField myfield;
@@ -344,9 +381,12 @@ public:
     enum printstyle_t { printnostyle, printhex, printmaybehex, printcsv, printtext };
     GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Variable32();
+
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
+
     virtual bool isNull();
+
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(GF_Variable32 *from) {
@@ -356,10 +396,24 @@ public:
 	    myfield.set(from->myfield.val(),from->myfield.size());
 	}
     }
+
+    virtual double valDouble();
+
+    /// Returns the raw string value, note that this may include nulls
+    /// and hence c_str() is dangerous
+    const std::string val() const;
+
+    /// Returns the string formatted as per it's printspec
+    const std::string valFormatted();
+
+    const std::string val_formatted() FUNC_DEPRECATED { // old naming convention
+	return valFormatted();
+    }
+
     void clear() {
 	myfield.clear();
     }
-    virtual double valDouble();
+
     char *printspec;
     printstyle_t printstyle;
     Variable32Field myfield;

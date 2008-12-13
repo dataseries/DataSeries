@@ -86,9 +86,9 @@
 679349363, 43000, 15.4934, 21.1463, 1, 64
 # End DSStatGroupByModule
 
-# extents: 0.31 MB -> 3.28 MB in 0.00 secs decode time
+# extents: 0.46 MB -> 3.28 MB in 0.00 secs decode time
 #                    common
-# MB compressed:       0.31
+# MB compressed:       0.46
 # MB uncompressed:     3.28
 # decode seconds:      0.00
 # wait fraction:       0.00

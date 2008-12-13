@@ -21,13 +21,15 @@
 
 #include <boost/static_assert.hpp>
 
-using namespace std;
-
 #include <Lintel/Double.hpp>
 #include <Lintel/HashTable.hpp>
+#include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/ExtentField.hpp>
+
+using namespace std;
+using boost::format;
 
 #if (_FILE_OFFSET_BITS == 64 && !defined(_LARGEFILE64_SOURCE)) || defined(__CYGWIN__)
 #define _LARGEFILE64_SOURCE
@@ -150,15 +152,17 @@ DataSeriesSource::reopenfile()
 }
 
 Extent *
-DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
-{
+DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize) {
     Extent::ByteArray extentdata;
     
+    off64_t save_offset = offset;
     if (Extent::preadExtent(fd, offset, extentdata, need_bitflip) == false) {
 	return NULL;
     }
     if (compressedSize) *compressedSize = extentdata.size();
     Extent *ret = new Extent(mylibrary,extentdata,need_bitflip);
+    ret->extent_source = filename;
+    ret->extent_source_offset = save_offset;
     INVARIANT(&ret->type != &ExtentType::getDataSeriesXMLType(),
 	      "Invalid to have a type extent after the first extent.");
     return ret;
@@ -375,7 +379,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
 	INVARIANT(et->xmldesc.size() > 0, "whoa extenttype has no xml data?!");
 	typevar.set(et->xmldesc.data(),et->xmldesc.size());
 	valid_types[et] = true;
-	if (et->majorVersion() == 0 && et->minorVersion() == 0 ||
+	if ((et->majorVersion() == 0 && et->minorVersion() == 0) ||
 	    et->getNamespace().empty()) {
 	    // Once we have a version of dsrepack/dsselect that can
 	    // change the XML type, we can make this an error.
@@ -434,16 +438,22 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
     INVARIANT(bjhash == check_bjhash, "bad hash in the tail!");
 }
 
-void
-DataSeriesSink::setCompressorCount(int count)
-{
+void DataSeriesSink::setCompressorCount(int count) {
     INVARIANT(count >= -1, "?");
     compressor_count = count;
 }
 
-void
-DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
-{
+void DataSeriesSink::setMaxBytesInProgress(size_t nbytes) {
+    PThreadScopedLock lock(mutex);
+    if (nbytes > max_bytes_in_progress) {
+	// May be able to get both more work and more things queued.
+	available_work_cond.broadcast();
+	available_queue_cond.broadcast();
+    }
+    max_bytes_in_progress = nbytes;
+}
+
+void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     if (to_update) {
 	PThreadAutoLocker lock(Stats::getMutex());
 	++to_update->use_count;
@@ -451,24 +461,30 @@ DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update)
     mutex.lock();
     INVARIANT(!shutdown_workers, "got to qWE after call to close()??");
     INVARIANT(cur_offset > 0, "queueWriteExtent on closed file");
+    LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)")
+		   % e.size());
     bytes_in_progress += e.size(); // putting this into toCompress erases e
     pending_work.push_back(new toCompress(e, to_update));
 
     if (compressors.empty()) {
-	INVARIANT(pending_work.size() == 1 && bytes_in_progress == 0, "internal");
+	SINVARIANT(pending_work.size() == 1 && bytes_in_progress == 0);
 	pending_work.front()->in_progress = true;
 	bytes_in_progress += e.size();
 	lockedProcessToCompress(pending_work.front());
 	pending_work.front()->in_progress = false;
 	mutex.unlock();
 	writeOutPending();
-	INVARIANT(bytes_in_progress == 0, "internal");
+	SINVARIANT(bytes_in_progress == 0);
 	return;
     } 
 	
     available_work_cond.signal();
     if (false) cout << boost::format("qwe wait? %d %d\n") % bytes_in_progress % pending_work.size();
     while(!canQueueWork()) {
+	LintelLogDebug("DataSeriesSink", 
+		       format("after queueWriteExtent %d >= %d || %d >= %d")
+		       % bytes_in_progress % max_bytes_in_progress 
+		       % pending_work.size() % (2 * compressors.size()));
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
@@ -483,6 +499,13 @@ DataSeriesSink::flushPending()
 	available_queue_cond.wait(mutex);
     }
     mutex.unlock();
+}
+
+DataSeriesSink::Stats DataSeriesSink::getStats() {
+    // Make a copy so it's thread safe.
+    PThreadScopedLock lock(Stats::getMutex());
+    Stats ret = stats; 
+    return ret;
 }
 
 void
@@ -559,6 +582,9 @@ DataSeriesSink::lockedProcessToCompress(toCompress *work)
     INVARIANT(bytes_in_progress >= work->extent.size(), "internal");
     size_t uncompressed_size = work->extent.size();
     bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
+    LintelLogDebug("DataSeriesSink", 
+		   format("compress(%d bytes), in progress %d bytes")
+		   % work->extent.size() % bytes_in_progress);
 
     INVARIANT(work->in_progress, "??");
     INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");

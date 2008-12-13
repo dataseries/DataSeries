@@ -115,6 +115,7 @@ public:
 private:
     ExtentTypeLibrary mylibrary;
 
+    const std::string &getFilename() { return filename; }
     const std::string filename;
     typedef ExtentType::byte byte;
     int fd;
@@ -267,12 +268,7 @@ public:
         so far.  (Meaning actually written, not just queued).
         You are only guaranteed to have all the statistics for writing
         this file after you call close(). */
-    Stats getStats() {
-	// Make a copy so it's thread safe.
-	PThreadAutoLocker lock(Stats::getMutex());
-	Stats ret = stats; 
-	return ret;
-    }
+    Stats getStats();
 
     /** If you are going to delete a Stats that you previously used to
         write to a DataSeriesFile before you close the file, you need
@@ -292,6 +288,8 @@ public:
     const std::string &getFilename() const {
 	return filename;
     }
+
+    void setMaxBytesInProgress(size_t nbytes);
 private:
     struct toCompress {
 	Extent extent;

@@ -6,12 +6,14 @@
 
 #include <ctype.h>
 
-#include <Lintel/LintelAssert.hpp>
+#include <openssl/md5.h>
+
 #include <Lintel/StringUtil.hpp>
 
 #include "common.hpp"
 
 using namespace std;
+using boost::format;
 
 NFSDSModule::~NFSDSModule()
 { }
@@ -54,14 +56,14 @@ struct fh2fnData {
 
 class fh2fnHash {
 public:
-    unsigned int operator()(const fh2fnData &k) {
+    unsigned int operator()(const fh2fnData &k) const {
 	return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
     }
 };
 
 class fh2fnEqual {
 public:
-    bool operator()(const fh2fnData &a, const fh2fnData &b) {
+    bool operator()(const fh2fnData &a, const fh2fnData &b) const {
 	return a.filehandle == b.filehandle;
     }
 };
@@ -72,7 +74,7 @@ static bool did_fh2fn_insert = false;
 string *
 fnByFileHandle(const ConstantString &fh)
 {
-    AssertAlways(did_fh2fn_insert,("bad"));
+    SINVARIANT(did_fh2fn_insert);
     fh2fnData k;
     k.filehandle = fh;
     fh2fnData *v = fh2fn.lookup(k);
@@ -103,7 +105,7 @@ public:
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (filename.isNull())
 		continue;
-	    AssertAlways(filename.size() > 0,("??"));
+	    SINVARIANT(filename.size() > 0);
 	    v.set(filehandle.stringval(),filename.stringval());
 	    fh2fnData *v2 = fh2fn.lookup(v);
 	    if (v2 != NULL) {
@@ -288,36 +290,68 @@ static const opinfo nfsv3ops[] = {
 
 static unsigned n_nfsv3ops = sizeof(nfsv3ops) / sizeof(opinfo);
 
-unsigned char
-opIdToUnifiedId(unsigned nfs_version, unsigned char op_id)
-{
+uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id) {
     if (nfs_version == 2) {
 	SINVARIANT(op_id < n_nfsv2ops);
 	return nfsv2ops[op_id].unified_id;
     } else if (nfs_version == 3) {
 	SINVARIANT(op_id < n_nfsv3ops);
 	return nfsv3ops[op_id].unified_id;
+    } else if (nfs_version == 1) {
+	INVARIANT(op_id == 0, format("unknown opid %d") 
+		  % static_cast<uint32_t>(op_id));
+	return 0;
     } else {
-	FATAL_ERROR(boost::format("unhandled nfs version %d\n")
+	FATAL_ERROR(format("unhandled nfs version %d op %d\n")
 		    % static_cast<unsigned>(nfs_version));
 	return 0;
     }
 }
 
-const std::string &
-unifiedIdToName(unsigned char unified_id)
-{
+const std::string &unifiedIdToName(uint8_t unified_id) {
     SINVARIANT(unified_id < n_unified);
     return unified_ops[unified_id];
 }
 
-bool
-validateUnifiedId(unsigned nfs_version, unsigned char op_id,
-		  const std::string &op_name)
-{
-    unsigned char unified_id = opIdToUnifiedId(nfs_version, op_id);
+uint8_t nameToUnifiedId(const std::string &name) {
+    for(unsigned i = 0; i < n_unified; ++i) {
+	if (unified_ops[i] == name) {
+	    return static_cast<uint8_t>(i);
+	}
+    }
+    FATAL_ERROR(boost::format("unable to find operation named '%s'") % name);
+}
+
+bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id,
+		       const std::string &op_name) {
+    uint8_t unified_id = opIdToUnifiedId(nfs_version, op_id);
     SINVARIANT(op_name == unifiedIdToName(unified_id)
 	       || (nfs_version == 2 && op_id == 17 &&
 		   op_name == nfsv2ops[17].name));
     return true;
+}
+
+unsigned getMaxUnifiedId() {
+    return n_unified;
+}
+
+uint64_t md5FileHash(const Variable32Field &filehandle) {
+    union MD5Union {
+	unsigned char digest[16];
+	uint64_t u64Digest[2];
+    };
+
+    MD5_CTX ctx;
+    MD5Union tmp;
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, filehandle.val(), filehandle.size());
+    MD5_Final(tmp.digest, &ctx);
+    
+    return tmp.u64Digest[0];
+}
+
+double doubleModArg(const string &optname, const string &arg) {
+    SINVARIANT(prefixequal(arg, optname));
+    SINVARIANT(arg.size() > optname.size() && arg[optname.size()] == '=');
+    return stringToDouble(arg.substr(optname.size()+1));
 }

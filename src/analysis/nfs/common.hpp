@@ -55,14 +55,14 @@ struct fh2mountData {
 
 class fh2mountHash {
 public:
-    unsigned int operator()(const fh2mountData &k) {
+    unsigned int operator()(const fh2mountData &k) const {
 	return HashTable_hashbytes(k.mountpartfh.data(),k.mountpartfh.size());
     }
 };
 
 class fh2mountEqual {
 public:
-    bool operator()(const fh2mountData &a, const fh2mountData &b) {
+    bool operator()(const fh2mountData &a, const fh2mountData &b) const {
 	return a.mountpartfh == b.mountpartfh;
     }
 };
@@ -84,10 +84,14 @@ inline std::string *fnByFileHandle(const std::string &fh) {
     return fnByFileHandle(ConstantString(fh));
 }
 
-unsigned char opIdToUnifiedId(unsigned nfs_version, unsigned char op_id);
-const std::string &unifiedIdToName(unsigned char unified_id);
-bool validateUnifiedId(unsigned nfs_version, unsigned char op_id, 
+uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id);
+const std::string &unifiedIdToName(uint8_t unified_id);
+uint8_t nameToUnifiedId(const std::string &name);
+bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id, 
 		       const std::string &op_name);
 unsigned getMaxUnifiedId();
 
+uint64_t md5FileHash(const Variable32Field &filehandle);
+
+double doubleModArg(const std::string &optname, const std::string &arg);
 #endif

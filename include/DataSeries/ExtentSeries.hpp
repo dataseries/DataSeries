@@ -164,6 +164,8 @@ public:
     /** Sets the current extent being processed. If e is null, clears the
         current Extent.  If the type has already been set, requires that
         the type of the new Extent be compatible with the existing type.
+        it is valid to call this with NULL which is equivalent to a call 
+        to clearExtent()
         
         Postconditions:
             - getExtent() = e
@@ -175,7 +177,8 @@ public:
 	setExtent(&e);
     }
     /** Clears the current Extent. Note that this only affects the
-        Extent, the type is left unchanged. */
+        Extent, the type is left unchanged.  Exactly equivalent to
+        setExtent(NULL) */
     void clearExtent() { setExtent(NULL); }
 
     /** Returns the current extent. */

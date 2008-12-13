@@ -1,0 +1,178 @@
+\section{Analysis techniques}
+\label{sec:analysis-techniques}
+
+Analyzing the very large amount of data that we collected meant that
+we had to adopt and develop new techniques for analyzing this data.
+The most important property that we aimed for was bounded memory,
+which meant that we needed to have streaming analysis.  The second
+property that we wanted was efficiency, because without efficiency, we
+would not be able to analyze complete datasets.  One of our lessons is
+that these techniques allow us to handle the much larger datasets that
+we have collected.
+
+\subsection{Approximate quantiles}
+
+% 200 billion from biggest at around 90 billion from the ipbwrolling 
+% analysis, but we calculate broader measures at 9 billion, .9 billion 
+% and so on (100 billion).  We calculate both bw and packets/s 
+% so 200 billion.
+
+Quantiles are better than simple statistics or histograms because they
+do not accidentally combine separate measurements regardless of
+distribution.  Unfortunately for our data, calculating exact quantiles
+is impractical.  For a single dataset, we collect multiple statistics
+with a total of about 200 billion values.  Storing all these values
+would require $\approx$1.5TiB of memory, which makes it impractical
+for us to calculate exact quantiles.
+
+% For us, epsilon 0.005, we calculate 6 Nbounds: 100e9 -> 0.168MiB; 
+% 10e9 -> 0.143; 1e9 -> 0.113; 1e8 -> 0.079; 1e7 -> 0.054; 1e6 -> 0.036
+% sum 0.593 * 2 = 1.186
+However, there is an algorithm from the database field for calculating
+approximate quantiles in bounded
+memory~\cite{Manku98approximatemedians}.  A $q-$quantile of a set of
+$n$ data elements is the element at position $\lceil q*n\rceil$ in the
+sorted list of elements indexed from 1 to n.  For approximate
+quantiles, the user specifies two numbers $\epsilon$, the maximum
+error, and $N$, the maximum number of elements.  Then when the program
+calculates quantile $q$, it actually gets a quantile in the range
+$[q-\epsilon,q+\epsilon]$.  
+
+Provided that the total number of elements
+was less than $N$, the bound is guaranteed.  We have found that
+usually the error is about 10$\times$ better than specified.  For our
+epsilon of 0.005 (sufficient to guarentee all percentiles are
+distinct), instead of needing $\approx$1.5TiB, we only need
+$\approx$1.2MiB, an improvement of $>10^6$.  This dramatic improvement
+means we can run the analysis on one machine, and hence process
+multiple sets in parallel.  The performance cost of the algorithm is
+about the same as sorting since the algorithm does similar sorting of
+subsets and merging of subsets.  Details on how the algorithm works
+can be found in ~\cite{Manku98approximatemedians} or our software
+distribution.
+
+% The approximate quantile
+% algorithm works essentially by keeping a collection of $c$ buffers
+% each containing $k$ elements.  Until we fill up all our buffers, we
+% just add values into a buffer.  Once all the buffers are full we need
+% to collapse two buffers together into a single buffer.  In the
+% simplest case, we pick two buffers, sort the combined elements, select
+% every other element to create a new buffer, and assign a weight $w$ to
+% the new buffer of 2 since each element in the buffer is logically
+% representing two values.  As the algorithm progresses, it may combine
+% buffers of differing weights, so it will pick values from a logically
+% sorted list where each element is repeated $w$ times.  The complexity
+% in the algorithm is in selecting appropriate values for $c$ and $k$
+% based on $\epsilon$ and $N$; selecting the right buffers for collapse;
+% and proving that the resulting buffers at the end provide enough
+% values to select the approximate quantiles.
+
+\subsection{Cube}
+
+Calculating aggregate or roll-up statistics is an important part of
+analyzing a workload.  For example, consider the information in the
+common NFS table: $\langle$time, operation, client-id, and
+server-id$\rangle$.  We may want to calculate the total number of
+operations performed by client 5, in which case we want to count the
+number of rows that match $\langle$*, *, 5, *$\rangle$; or we might
+want to calculate the number of read operations, in which case we want
+to count the number of rows that match $\langle$*, read, *,
+*$\rangle$.
+
+The cube\cite{gray97cube} is a generalization of the group-by
+operations described above.  Given a collection of rows, it calculates
+the set of unique values for each column $U(c)$, adds the special
+value `ANY' to the set, and then generates one row for each member of
+the cross-product $U(1) \times U(2) \times ... U(n)$.
+
+We implemented an efficient templated version of the cube operator for
+use in data analysis.  We added three features to deal with memory
+usage.  First, our cube can only include rows with actual values in
+it.  This eliminates the large number of rows from the cross-product
+that match no rows in the base data.  Second, we can further restrict
+which rows are generated.  For example, we have a large number of
+client id's, and so we can avoid cubing over entries with the client
+specified and also the operation to reduce the number of statistics
+calculated.  Third, we added the ability to prune values out of the
+cube. For example, we can output cube values for earlier time values
+and remove them from the data structure once we reach later time
+values since we know the data is sorted by time.
+
+The cube allows us to easily calculate a wide variety of summary
+statistics.  We had previously manually implemented some of the
+summary statistics by doing explicit roll-ups for some of the
+aggregates described in the example.  We discovered that the general
+implementation was actually more efficient than our manual one because
+it used a single hash table for all of the data rather than nested
+data structures, and because we tuned the hash function over the tuple
+of values to be efficiently calculated.
+
+\subsection{HashTable}
+
+Our hash-table implementation~\cite{DSOpenSource} is a straightforward
+chained-hashing implementation.  In our experiments it is strictly
+better in both performance and memory than the C++ hash table.  It
+uses somewhat more memory than the Google sparse
+hash~\cite{google-sparse-hash}, but performs almost as well as the
+dense hash; it is strictly faster than the g++ STL hash.  We added
+three unusual features.  First, it can calculate its memory usage,
+allowing us to determine what needs to be optimized.  Second it can
+partially reset iterators, which allows for safe mutating operations
+on the hash table during iteration, such as deleting a subset of the
+values.  Third, it can return the underlying hash chains allowing for
+sorting the hash table without copying the values out.  This destroys
+the hash table, but the sort is usually done before deleting the
+table, and reduces memory usage by 2x.
+
+\subsection{Rotating hash-map}
+
+Limiting memory usage for hash tables where the entries have unknown
+lifespan presents some challenges. Consider the sequentiality metric:
+So long as accesses are active to the file, we want to continue to
+update the run information.  Once the file becomes inactive for long
+enough, we want to calculate summary statistics and remove the general
+statistics from memory.  We could keep the values in an LRU
+data-structure, however if our analysis only needs a file id and last
+offset, then the forward and backwards pointers for LRU would double
+the memory usage.  A clock-style algorithm would
+require regular full scans of the entire datastructure.
+
+We instead solve this problem by keeping two hash-maps, the {\it
+recent} and {\it old} hash-maps.  Any time a value is accessed, it is
+moved to the recent hash-map if it is not already there.  At intervals, 
+the program will call the rotate(fn) operation which will apply
+fn to all of the (key,value) pairs in the old hash map, delete that map,
+assign the recent map to the old map and create a new recent map.
+
+Therefore, if the analysis wants to guarantee any gap of up to 60
+seconds will be considered part of the same run, it just needs to call
+rotate() every 60 seconds.  Any value accessed in the last 60 seconds
+will remain present in the hash-map.  We could reduce the memory
+overhead somewhat by keeping more than two hash-maps at the cost of
+additional lookups, but we have so far found that the rotating
+hash-map provides a good tradeoff between minimizing memory usage and
+maximizing performance.  We believe that the LRU approach would be
+more effective if the size of the data stored in the hash map were
+larger, and the hash-map could compact itself so that scattered
+data entries don't consume excess space.
+
+\subsection{mercury-plot}
+
+Once we have summarized the data from DataSeries using the techniques
+described above, we need to graph and subset the data.  We combined
+SQL, perl, and gnuplot into a tool we call mercury-plot\footnote{A
+previous internal tool was known as hermes.}.  SQL enables subsetting
+and combining data, for example if we have data on 60 second
+intervals, it is easy to calculate min/mean/max for 3600 second
+intervals, or with the cube to select out the subset of the data that
+we want to use.  We use perl to handle operations that the database
+can't handle, for example, in the cube, we represent the `ANY' value
+as null, but SQL requires different syntax to select for null vs. a
+specific value.  We hide this difference in the perl functions.  In
+practice, this allows us to write very simple commands such as {\tt
+plot quantile as x, value as y from nfs\_hostinfo\_cube where
+operation = 'read' and direction = 'send'} to generate a portion of
+the graph.  This tool allows us to deal with the millions of rows of
+output that can come from some of the analysis.  One of the lessons we
+learned is that our analysis should directly generate SQL insert
+statements to avoid the need for an intermediate parsing program.

@@ -15,7 +15,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/PThread.hpp>
-#include <Lintel/HashTable.hpp>
+#include <Lintel/HashMap.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/ExtentType.hpp>
@@ -71,13 +71,13 @@ const string dataseries_index_type_v1_xml =
 const ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
 const ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
 
-string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name)
-{
+string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool empty_ok) {
     xmlChar *option = xmlGetProp(cur, reinterpret_cast<const xmlChar *>(option_name.c_str()));
     if (option == NULL) {
-	return "";
+	return string();
     } else {
-	INVARIANT(*option != '\0', "Can't tell missing property from empty, so disallowing");
+	INVARIANT(empty_ok || *option != '\0', 
+		  format("Invalid specification of empty property '%s'") % option_name);
 	string ret(reinterpret_cast<char *>(option));
 	xmlFree(option);
 	return ret;
@@ -105,7 +105,7 @@ parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 
 struct NonBoolCompactByPosition {
     bool operator()(const ExtentType::nullCompactInfo &a, 
-		    const ExtentType::nullCompactInfo &b) {
+		    const ExtentType::nullCompactInfo &b) const {
 	return a.offset < b.offset;
     }
 };
@@ -253,6 +253,12 @@ ExtentType::parseXML(const string &xmldesc)
     INVARIANT(ret.name.length() <= 255,
 	      "invalid extent type name, max of 255 characters allowed");
 
+    /// ************************************************************
+    /// If you add in new packing options, you should update the TR to
+    /// describe the options and any experiments that were used to
+    /// evaluate them.
+    /// ************************************************************
+
     ret.pack_null_compact = CompactNo;
     {
 	string pack_option = strGetXMLProp(cur, "pack_null_compact");
@@ -329,7 +335,7 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.minor_version = static_cast<unsigned>(stringToLong(bits[1]));
     }
 
-    ret.type_namespace = strGetXMLProp(cur, "namespace");
+    ret.type_namespace = strGetXMLProp(cur, "namespace", true);
 
     cur = cur->xmlChildrenNode;
     unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0, 
@@ -428,6 +434,11 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.doublebase = stringToDouble(opt_doublebase);
 	}	    
 
+	// TODO: consider a variant of pack_scale where you can
+	// specify Q#.#[b#] as an alternative specification following
+	// http://en.wikipedia.org/wiki/Fixed-point_arithmetic#Nomenclature
+	// Much further extention would be non-space preserving
+	// transformations to make it take up less space.
 	string pack_scale_v = strGetXMLProp(cur, "pack_scale");
 	if (!pack_scale_v.empty()) {
 	    INVARIANT(info.type == ft_double,
@@ -615,7 +626,8 @@ ExtentType::getColumnNumber(const ParsedRepresentation &rep,
     if (debug_getcolnum) {
 	cout << boost::format("column %s -> -1\n") % column;
     }
-    INVARIANT(missing_ok, boost::format("Unknown column '%s'") % column);
+    INVARIANT(missing_ok, boost::format("Unknown column '%s' in type '%s'") 
+	      % column % rep.name);
     return -1;
 }
 
@@ -821,15 +833,20 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
+ExtentTypeLibrary::getTypeMatch(const std::string &match, 
+				bool null_ok, bool skip_info)
 {
     const ExtentType *t = NULL;
 
     static string str_DataSeries("DataSeries:");
+    static string str_Info("Info:");
     if (match == "*") {
 	for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
 	    i != name_to_type.end();++i) {
 	    if (prefixequal(i->first,str_DataSeries)) {
+		continue;
+	    }
+	    if (skip_info && prefixequal(i->first,str_Info)) {
 		continue;
 	    }
 	    INVARIANT(t == NULL, 
@@ -852,56 +869,51 @@ ExtentTypeLibrary::getTypeMatch(const std::string &match, bool null_ok)
 
 // This optimization to only have one extent type object for each xml
 // description is here for when you are handling a whole lot of small
-// files.
+// files.  This is a memory usage optimization not a performance one
+// although it happens to improve the performance.
 
-struct xmlDecodeInfo {
-    string xmldesc;
-    ExtentType *extenttype;
-};
+namespace dataseries {
+    bool in_tilde_xml_decode;
 
-struct xmlDecodeInfoHash {
-    unsigned operator()(const xmlDecodeInfo *k) {
-	return HashTable_hashbytes(k->xmldesc.data(),k->xmldesc.size());
+    struct xmlDecode {
+	typedef HashMap<string, ExtentType *> HTType;
+
+	HTType table;
+	PThreadMutex mutex;
+	~xmlDecode() { // called exactly once.
+	    SINVARIANT(!in_tilde_xml_decode);
+	    in_tilde_xml_decode = true;
+	    for(HTType::iterator i = table.begin(); i != table.end(); ++i) {
+		delete i->second;
+	    }
+	    table.clear();
+	}
+    };
+
+    static xmlDecode &decodeInfo() {
+	// C++ semantics say this will be initialized the first time we
+	// pass through this call
+	static xmlDecode decode_info;
+	return decode_info;
     }
-};
-
-struct xmlDecodeInfoEqual {
-    bool operator()(const xmlDecodeInfo *a, const xmlDecodeInfo *b) {
-	return a->xmldesc == b->xmldesc;
-    }
-};
-
-struct xmlDecode {
-    HashTable<xmlDecodeInfo *,xmlDecodeInfoHash,xmlDecodeInfoEqual> table;
-    PThreadMutex mutex;
-};
-
-static xmlDecode &decodeInfo()
-{
-    // C++ semantics say this will be initialized the first time we
-    // pass through this call
-    static xmlDecode decode_info;
-    return decode_info;
 }
 
-const ExtentType &
-ExtentTypeLibrary::sharedExtentType(const string &xmldesc)
-{
-    xmlDecodeInfo k;
-    k.xmldesc = xmldesc;
+const ExtentType &ExtentTypeLibrary::sharedExtentType(const string &xmldesc) {
+    using dataseries::decodeInfo;
     PThreadAutoLocker lock(decodeInfo().mutex);
 
-    xmlDecodeInfo **d = decodeInfo().table.lookup(&k);
-    if (d != NULL) {
-	INVARIANT((**d).extenttype != NULL, "internal");
-	// should be common case, just return the value
-	return *(**d).extenttype;
+    ExtentType **d = decodeInfo().table.lookup(xmldesc);
+    if (d != NULL) { // should be common case, just return the value
+	SINVARIANT(*d != NULL);
+	return **d;
     }
 
-    xmlDecodeInfo *tmp = new xmlDecodeInfo();
-    tmp->xmldesc = xmldesc;
-    tmp->extenttype = new ExtentType(xmldesc);
-    decodeInfo().table.add(tmp);
-    return *tmp->extenttype;
+    ExtentType *tmp = new ExtentType(xmldesc);
+    decodeInfo().table[xmldesc] = tmp;
+    return *tmp;
 }
 
+ExtentType::~ExtentType() { 
+    SINVARIANT(dataseries::in_tilde_xml_decode);
+    xmlFreeDoc(field_desc_doc);
+}
