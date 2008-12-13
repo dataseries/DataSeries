@@ -17,6 +17,7 @@
 class DSExpr;
 class GeneralField;
 
+/** \brief Writes Extents to a file as they go flying past. */
 class DStoTextModule : public DataSeriesModule {
 public:
     DStoTextModule(DataSeriesModule &source, FILE *text_dest = stdout);

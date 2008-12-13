@@ -16,7 +16,7 @@
 #include <DataSeries/IndexSourceModule.hpp>
 #include <DataSeries/GeneralField.hpp>
 
-/** \brief Source module that uses a min/max index to pick the extents
+/** \brief Selects Extents that have fields in particular range.
 
  * dsextentindex generates an index file which has a min/max extent in
  * it that tells the minimum and the maximum for a bunch of fields for

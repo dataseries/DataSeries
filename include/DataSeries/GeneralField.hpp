@@ -21,6 +21,7 @@
 #include <libxml/parser.h> 
 #include <boost/static_assert.hpp>
 
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/HashMap.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
@@ -28,7 +29,8 @@
 
 class GeneralField;
 
-/** \brief General value that could be stored in dataseries.
+/** \brief Discriminated union capable of holding any value
+  * that could be stored in dataseries.
 
  * Sometimes it is necessary to store the values associated with
  * GeneralFields so that they can be used for comparisons in the
@@ -105,7 +107,7 @@ public:
 	set(from);
 	return *this;
     }
-    ExtentType::fieldType getType() { return gvtype; }
+    ExtentType::fieldType getType() const { return gvtype; }
     /** calculate a hash of this value, use partial_hash as the
 	starting hash. */
     uint32_t hash(uint32_t partial_hash = 1776) const;
@@ -129,6 +131,7 @@ protected:
     friend class GF_Double;
     friend class GF_Variable32;
     ExtentType::fieldType gvtype;
+    /// \cond INTERNAL_ONLY
     union gvvalT {
 	bool v_bool;
 	ExtentType::byte v_byte;
@@ -136,6 +139,7 @@ protected:
 	ExtentType::int64 v_int64;
 	double v_double;
     } gvval;
+    /// \endcond
     std::string *v_variable32; // only valid if gvtype = ft_variable32
 };
 
@@ -174,6 +178,11 @@ struct HashMap_hash<const GeneralValue> {
     }
 };
 
+/** \brief accessor for fields whose type may not be known at compile time.
+
+  * \note This is a base class and needs to be held by (smart) pointer.
+  *
+  * \note This class does not inherit from @c Field. */
 class GeneralField {
 public:
     virtual ~GeneralField();
@@ -208,7 +217,7 @@ public:
 	set(&from);
     }
 
-    GeneralValue val() { return GeneralValue(this); }
+    GeneralValue val() const { return GeneralValue(this); }
     virtual double valDouble() = 0;
 
     const ExtentType::fieldType getType() const { return gftype; }
@@ -390,8 +399,16 @@ public:
 
     virtual double valDouble();
 
-    const std::string val();
-    const std::string val_formatted();
+    /// Returns the raw string value, note that this may include nulls
+    /// and hence c_str() is dangerous
+    const std::string val() const;
+
+    /// Returns the string formatted as per it's printspec
+    const std::string valFormatted();
+
+    const std::string val_formatted() FUNC_DEPRECATED { // old naming convention
+	return valFormatted();
+    }
 
     void clear() {
 	myfield.clear();
@@ -402,13 +419,19 @@ public:
     Variable32Field myfield;
 };
 
-// TODO: add an output module as an optional argument; if it exists, 
-// automatically do the newRecord stuff.
+/** \brief Copies records from one @c Extent to another.
+
+    \todo TODO: add an output module as an optional argument; if it exists, 
+    automatically do the newRecord stuff. */
 class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
+    /** Prepares the copy structure to do the copy.  Will be automatically
+	called by copyRecord() if necessary. */
     void prep();
     ~ExtentRecordCopy();
+    /** Copies the current record of the source @c ExtentSeries to the
+        current record of the destination @c ExtentSeries. */
     void copyRecord(); // you need to create the record first.
 private:
     bool did_prep;

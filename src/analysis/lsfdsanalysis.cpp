@@ -144,17 +144,15 @@ public:
 	minsubmit = min(minsubmit,exact_submit);
 	maxend = max(maxend,exact_end);
 
-	ExtentType::int32 window_submit, window_start, window_end;
-	window_submit = max(exact_submit,rollup_start);
-	window_submit = min(window_submit,rollup_end);
-	window_start = max(exact_start,rollup_start);
-	window_start = min(window_start,rollup_end);
-	window_end = max(exact_end,rollup_start);
-	window_end = min(window_end,rollup_end);
-	INVARIANT(window_submit <= window_start &&
-		  window_start <= window_end &&
-		  window_start >= rollup_start &&
-		  window_end <= rollup_end,
+	int32_t window_submit, window_start, window_end;
+	window_submit = max(exact_submit, rollup_start);
+	window_submit = min(window_submit, rollup_end);
+	window_start = max(exact_start, rollup_start);
+	window_start = min(window_start, rollup_end);
+	window_end = max(exact_end, rollup_start);
+	window_end = min(window_end, rollup_end);
+	INVARIANT(window_submit <= window_start && window_start <= window_end &&
+		  window_start >= rollup_start && window_end <= rollup_end,
 		  format("?! %d %d %d ; %d %d") % window_submit % window_start
 		  % window_end % rollup_start % rollup_end);
 	++nrecords;
@@ -263,9 +261,9 @@ public:
     };
 
     HashUnique<int> lookupents;
-    HashMap<ExtentType::int32,data> meta_map;
+    HashMap<int32_t, data> meta_map;
 
-    typedef HashMap<ExtentType::int32,data>::iterator iterator;
+    typedef HashMap<int32_t,data>::iterator iterator;
 
     virtual void processRow() { 
 	if (lookupents.exists(meta_id.val())) {
@@ -1045,13 +1043,13 @@ public:
     static const bool debug_pq = false;
     static const bool debug = false;
     struct BEInfo {
-	ExtentType::int32 starttime;
-	ExtentType::int32 reserved_cpus;
-	ExtentType::int32 best_effort_cpus;
+	int32_t starttime;
+	int32_t reserved_cpus;
+	int32_t best_effort_cpus;
     };
 
     BestEffort(DataSeriesModule &_source, 
-	       ExtentType::int32 _window_start, ExtentType::int32 _window_end,
+	       int32_t _window_start, int32_t _window_end,
 	       vector<BestEffort::BEInfo> &_reserved)
 	: RowAnalysisModule(_source), 
 	  window_start(_window_start), window_end(_window_end),
@@ -1075,10 +1073,10 @@ public:
     enum jobClass { jcUnknown = 0, jcReserved, jcBestEffort, jcExcess };
 
     struct jobEnt {
-	ExtentType::int32 starttime, endtime, job_id, job_idx;
+	int32_t starttime, endtime, job_id, job_idx;
 	jobClass jobclass;
 
-	jobEnt(ExtentType::int32 a, ExtentType::int32 b, ExtentType::int32 c, ExtentType::int32 d) 
+	jobEnt(int32_t a, int32_t b, int32_t c, int32_t d) 
 	    : starttime(a), endtime(b), job_id(c), job_idx(d), jobclass(jcUnknown) { }
     };
 
@@ -1108,7 +1106,7 @@ public:
 		    job_id.val(), job_idx.val(), user_id.val());
 	}
 	if (cluster_name.equal(str_ers)) {
-	    ExtentType::int32 job_end_time = end_time.isNull() ? event_time.val() : end_time.val();
+	    int32_t job_end_time = end_time.isNull() ? event_time.val() : end_time.val();
 	    ++ers_job_count;
 	    jobEnt *tmp = new jobEnt(start_time.val(),job_end_time,job_id.val(),job_idx.val());
 	    if (tmp->endtime < window_start || tmp->starttime > window_end) {
@@ -1137,20 +1135,19 @@ public:
 	if (starts.size() == 0) {
 	    printf("No ERS jobs found\n");
 	} else {
-	    ExtentType::int32 cur_reserved_cap = 0, cur_best_effort_cap = 0;
-	    ExtentType::int32 cur_reserved_jobs = 0, cur_best_effort_jobs = 0;
+	    int32_t cur_reserved_cap = 0, cur_best_effort_cap = 0;
+	    int32_t cur_reserved_jobs = 0, cur_best_effort_jobs = 0;
 	    
-	    ExtentType::int64 reserved_seconds = 0, best_effort_seconds = 0, 
-		excess_seconds = 0;
-	    ExtentType::int32 max_reserved = 0, max_best_effort = 0;
+	    int64_t reserved_seconds = 0, best_effort_seconds = 0, excess_seconds = 0;
+	    int32_t max_reserved = 0, max_best_effort = 0;
 	    
-	    ExtentType::int32 base_time = starts.top()->starttime;
+	    int32_t base_time = starts.top()->starttime;
 	    if (debug) {
 		printf("base time %d\n",base_time);
 	    }
 	    while(starts.empty() == false || finishes.empty() == false) {
 		if (reserved.empty() == false) {
-		    ExtentType::int32 mintime = min(starts.top()->starttime,
+		    int32_t mintime = min(starts.top()->starttime,
 					   finishes.top()->endtime);
 		    if (mintime >= reserved.front().starttime) {
 			cur_reserved_cap = reserved.front().reserved_cpus;
@@ -1203,8 +1200,8 @@ public:
 		    // finish is first
 		    jobEnt *tmp = finishes.top();
 		    SINVARIANT(tmp->jobclass != jcUnknown);
-		    ExtentType::int32 window_job_start = max(window_start,tmp->starttime);
-		    ExtentType::int32 window_job_end = min(window_end,tmp->endtime);
+		    int32_t window_job_start = max(window_start,tmp->starttime);
+		    int32_t window_job_end = min(window_end,tmp->endtime);
 		    SINVARIANT(window_job_start <= window_job_end);
 		    max_reserved = max(max_reserved, cur_reserved_jobs);
 		    max_best_effort = max(max_best_effort, cur_best_effort_jobs);
@@ -1251,14 +1248,14 @@ public:
     }
 
     vector<string> jcTrans;
-    ExtentType::int32 window_start, window_end;
+    int32_t window_start, window_end;
     vector<BEInfo> reserved;
     PriorityQueue<jobEnt *, jobEntByStart> starts;
     PriorityQueue<jobEnt *, jobEntByFinish> finishes;
     Variable32Field cluster_name;
     Int32Field event_time, start_time, end_time, job_id, job_idx, user_id;
     const string str_ers;
-    ExtentType::int32 ers_job_count, non_ers_job_count, out_of_window_jobs, zero_length_jobs, ers_test_job;
+    int32_t ers_job_count, non_ers_job_count, out_of_window_jobs, zero_length_jobs, ers_test_job;
 };
 
 // static vector<int> find_metaid_list;
@@ -1266,7 +1263,7 @@ static int job_report_start, job_report_end;
 static bool job_report_noerstest;
 static bool lsfslowjobs_show_finished = false;
 static string hostcalibration_refhost;
-static ExtentType::int32 best_effort_window_start, best_effort_window_end;
+static int32_t best_effort_window_start, best_effort_window_end;
 static vector<BestEffort::BEInfo> best_effort_reserved;
 
 void

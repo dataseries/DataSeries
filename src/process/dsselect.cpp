@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     // to get the complete typename and type information...
     DataSeriesSource first_file(extra_args[2]);
-    const ExtentType *intype = first_file.mylibrary.getTypeByPrefix(type_prefix);
+    const ExtentType *intype = first_file.getLibrary().getTypeByPrefix(type_prefix);
     first_file.closefile();
     INVARIANT(intype != NULL, boost::format("can not find a type matching prefix %s")
 	      % type_prefix);

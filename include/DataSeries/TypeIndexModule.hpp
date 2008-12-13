@@ -15,22 +15,21 @@
 
 #include <DataSeries/IndexSourceModule.hpp>
 
-/** \brief Source module that returns extents matching a particular type
-
- * Each DataSeries file contains an index that tells the type and
- * offset of every extent in that file.  This source module takes an
- * extent type match; if the match type is empty, this returns all of
- * the extents, and otherwise, chooses a type using
- * ExtentTypeLibrary::getTypeMatch, and returns all of the extents
- * which have the same type.
-
- */
+// TODO-eric: remove this with recent Lintel which has deprecated in it.
 #if __GNUC__
 #define ATTRIBUTE_DEPRECATED __attribute__ ((deprecated))
 #else
 #define ATTRIBUTE_DEPRECATED 
 #endif
 
+/** \brief Source module that returns extents matching a particular type
+
+  * Each DataSeries file contains an index that tells the type and
+  * offset of every extent in that file.  This source module takes an
+  * extent type match; if the match type is empty, this returns all of
+  * the extents, and otherwise, chooses a type using
+  * ExtentTypeLibrary::getTypeMatch, and returns all of the extents
+  * which have the same type. */
 class TypeIndexModule : public IndexSourceModule {
 public:
     TypeIndexModule(const std::string &type_match = "");

@@ -9,8 +9,8 @@ small cluster of 4 core 2.4GhZ Opterons.  Our analysis typically
 becomes bottle-necked on the fileservers that serve up to 200MB/s each
 once an analysis is running on more than 20 machines.
 
-We collected data at two times: 2003 (animation-2003), and 2007
-(animation-2007).  During each time, we would start the collection
+We collected data at two times: 2003 (anim-2003), and 2007
+(anim-2007).  During each time, we would start the collection
 process, and let it run either until we ran out of disk space, or we
 had collected all the data we wanted.  Each of these runs comprises a
 set.  We have 21 sets from 2003, and 8 sets from 2007.
@@ -25,8 +25,8 @@ overlapping intervals of a specified length.  For example if our
 interval length is 60 seconds, then we will calculate the bandwidth
 for the interval 0s-60s, 3s-63s, 6s-66s, ... end-of-trace.  We chose
 to calculate the bandwidth for overlapping intervals so that if there
-is any aligned cyclicality in the trace data we will not be confused
-by it.  We divide an interval into 20 sub-intervals.  We then add the
+is any aligned cyclicality in the trace data we will get incorrect
+results.  We divide an interval into 20 sub-intervals.  We then add the
 interval's rate to an approximate quantile so that we can understand
 the distribution of rates even for small intervals.  For example, we
 have 11.6 billion measurements for animation-2007/set-0 at a 1ms interval
@@ -40,17 +40,25 @@ shows a much lower aggregate rate.  Set-5 was the trace of a different
 set of clients working on a different movie, and hence shows a very
 different distribution.  The graph shows the effectiveness of our
 tracing technology on real workloads as it can capture 60s intervals
-above 3Gbits (375MB/s).  Indeed these traces show the requirement for
-high speed tracing as 5-20\% of the traces intervals have sustained
-intervals above 1Gbit, which is above the rate at which
-Leung~\cite{LeungUsenix08} noted their tracing tool started to drop
-packets.  The 2003 traces have a distribution of shapes because they
+above 3Gbits (375MB/s).  
+The 2003 traces have a distribution of shapes because they
 were taken on a wider variety of places in the network, and are much
 lower because our 2003 capture technology could not capture as much
 data, so we traced fewer machines at a time.
 
-Figure~\ref{fig:bwrolling-mbps}(b) shows animation-2007/set-5 at different
-interval lengths.  This graph emphasizes how bursty the traffic was
+Figure~\ref{fig:bwrolling-mbps}(a) shows animation-2007/set-5 at
+different interval lengths.  This graph shows the effectiveness of our
+tracing technology, as we have sustained intervals above 3Gbits
+(375MB/s), and 1ms intervals above 4Gbits (500MB/s). Indeed these
+traces show the requirement for high speed tracing as 5-20\% of the
+traces intervals have sustained intervals above 1Gbit, which is above
+the rate at which Leung~\cite{LeungUsenix08} noted their tracing tool
+started to drop packets.  The other sets from anim-2007 are somewhat
+less bursty, and the anim-2003 data shows much lower peaks because of
+our more limited tracing tools, and a wider variety of shapes because
+we traced at more points in the network.
+
+Figure~\ref{fig:bwrolling-mbps}(a) also emphasizes how bursty the traffic was
 during this trace. While 50\% of the intervals were above 500Mbits for
 60s intervals, only 30\% of the intervals were above 500Mbits for 1ms
 intervals.  This burstiness is expected given that
@@ -60,7 +68,7 @@ self-similar~\cite{Leland94selfsimilar}, which implies it is bursty.
 It does make it clear that we need to look at short time intervals in
 order to get an accurate view of the data.
 
-Figure~\ref{fig:bwrolling-mbps}(c) shows the tail of the distributions for
+Figure~\ref{fig:bwrolling-mbps}(b) shows the tail of the distributions for
 the capture rates for two of the trace sets.  The relative similarity
 between the Mbps and kpps graphs is simply because packet size
 distributions are relatively constant.  The traces show the remarkably high
@@ -190,29 +198,28 @@ is a filer behind some nfs-caches, whereas set-5 is the workload
 before the nfs-caches.
 
 Table~\ref{table:99quant-differences} and
-figure~\ref{fig:oprates}(b,c) shows how long averaging intervals
-can distort the load placed on the storage system.  If we were to
-develop a storage system for the hourly loads reported in most papers,
-we would fail to support the substantially higher near peak (99\%)
-loads seen in the data.  It also hides periods of idleness
-that could be used for incremental scrubbing and data reorganization.
+figure~\ref{fig:oprates}(a,b) shows how long averaging intervals can
+distort the load placed on the storage system.  If we were to develop
+a storage system for the hourly loads reported in most papers, we
+would fail to support the substantially higher near peak (99\%) loads
+seen in the data.  It also hides periods of idleness that could be
+used for incremental scrubbing and data reorganization.  We do not
+include the traditional graph of ops/s vs time because our workload
+does not show a strong daily cycle.  Animation companies tend to run
+batch processing overnight, and interactive jobs during the day, so
+show much more constant load on the cluster.  The only observable
+pattern is that weekends usually drop off to zero.
 
-We include figure~\ref{fig:oprates}(a) because it is the traditional
-graph that shows daily cycles.  We do not have quite as strong daily
-cycles because animation companies are good at keeping their compute
-clusters busy overnight, but we can see for animation-2007/set-5 the effect of
-the weekends where the load on the system drops nearly to 0.
-
-Figure~\ref{fig:bw-ops-quantiles} shows the read and write MiB/s and the
-getattr operations/s.  It shows that relative to the amount of data
-being transferred, the number of getattrs has been reduced, likely a
-result of the transition from NFSv2 to NFSv3.  The graph shows the
-payload data transferred, so it includes the offset and filehandle of
-the read request, and the size and data in the reply, but does not
-include IP headers or NFS RPC headers.  It shows that the NFS system
-is driven heavily, but not excessively, and it seems to imply that the
-write bandwidth has gotten more bursty, but has stayed roughly
-constant.  
+Figure~\ref{fig:bw-ops-quantiles} shows the read operation MiB/s and
+the getattr operations/s.  It shows that relative to the amount of
+data being transferred, the number of getattrs has been reduced,
+likely a result of the transition from NFSv2 to NFSv3.  The graph
+shows the payload data transferred, so it includes the offset and
+filehandle of the read request, and the size and data in the reply,
+but does not include IP headers or NFS RPC headers.  It shows that the
+NFS system is driven heavily, but not excessively. The write graph
+(not shown for space reasons) implies that the write bandwidth has
+gotten more bursty, but has stayed roughly constant.
 
 This result led us to further analyze the data.  We were surprised
 that that write bandwidth would not increase, even though it is not
@@ -246,13 +253,15 @@ read reply is close enough to the first that they are combined).  This
 leads us to one of our lessons, extensive validation of the conversion
 tool is important.  Both validation through validation statistics, and
 through the use of a known workload that exercises the capture tools.
-An NFS replay tool~\cite{NingningFast05} could be used to validate
-that the captured workload is the one that was replayed.  This
-comparison has been done to validate a block based replay
+\fix{Clarify that we mean replay a trace and verify what is captured
+from replay is what was replayed -- verify the capture side, not the
+replay side} An NFS replay tool~\cite{NingningFast05} could be used to
+validate that the captured workload is the one that was replayed.
+This comparison has been done to validate a block based replay
 tool~\cite{AndersonFast04}, but has not been done to validate a
 capture tool, as that work simply assumed capture was correct.
 \fix{create analysis that compares timing of ops to packets and
-estimates missing writes if we can get the space for it} 
+estimates missing writes if we can get the space for it}
 % We can therefore use
 % the timing information from requests and replies to identify gaps in
 % the dataset and determine how many bytes were skipped.  This will
@@ -361,10 +370,10 @@ reads in a group.  Most groups are single I/O groups (70-90\% in the
 because the I/Os in the 2003 traces are only 8KiB rather than 16KiB.
 
 Sequential runs within a random group turns out to be more
-interesting.  Figure~\ref{fig:seq-analysis}(b,c) show the number of
-I/Os and the number of bytes accessed in sequential runs within a
+interesting.  Figure~\ref{fig:seq-analysis}(b) show the number of
+bytes accessed in sequential runs within a
 random group.  We can see that if we start accessing a file at random,
-most (50-80\%) of the time we will do single or double I/O accesses.
+most (50-80\%) of the time we will do single or double I/O accesses (8-32k).
 However we can also see that we can get some extended runs within a
 random group, although 99\% of the runs are less than 1MB.
 

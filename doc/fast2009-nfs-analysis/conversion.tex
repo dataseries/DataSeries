@@ -4,7 +4,7 @@
 Once the data is captured, the second problem is parsing and
 converting that data to a easily usable format.  The raw packet format
 contains a large amount of unnecessary data, and would require
-repeated parsing to be used for NFS analysis.  There are for main
+repeated, expensive parsing to be used for NFS analysis.  There are four main
 challenges in conversion: representation, storage, performance and
 anonymization.  Representation is the challenge of deciding the
 logical structure of the converted data.  Storage is the challenge of
@@ -18,7 +18,9 @@ One lesson we learned after conversion is that the converter's version
 number should be included in the trace.  As with most programs, there
 can be bugs.  Having the version number in the trace makes it easy to
 determine which flaws need to be handled.  We recommend the version
-control revision ID as a suitable version number.  Related to this is
+control revision ID as a suitable version number.  
+
+A second lesson was
 preservation of data.  An NFS parser will discard data both for space
 reasons and for anonymization.  Keeping underlying information, such as
 per packet conversion in addition to per NFS-request conversion can
@@ -31,8 +33,8 @@ packet rates and the NFS rates.
 One option for the representation is the format used in the
 Ellard\cite{ellardTraces} traces: one line per request or reply in the
 file with field names to identify the different parameters in the RPC.
-However, this format works poorly for representing things like
-readdir, which have an arbitrary number of response fields.
+This format is slow to parse, and works poorly for representing 
+readdir, which has an arbitrary number of response fields.
 Therefore, we chose to use a more relational data
 structuring~\cite{codd70relational}.  
 
@@ -42,9 +44,9 @@ secondary tables that contain request-type specific information, such
 as a single table for RPC's that include attributes, and a single
 table for read and write information.  We then join the common table
 to the other tables when we want to perform an analysis that uses
-information in both.  Because of this structure, a single rpc request
+information in both.  Because of this structure, a single RPC request
 or reply will have a single entry in the common table.  However, a
-request/reply pair will have 0 (non read/write for that table) or more
+request/reply pair will have 0 (no read/write entry) or more
 entries (multiple attribute entries for readdir+) in other tables.
 
 The relational structuring improves flexibility, and allows for
@@ -55,16 +57,16 @@ latency can simply scan the common table.
 \subsection{Storage}
 
 Having decided to use a relational structuring for our data, we next
-needed to decide how to physically store the data.  There were three
-primary options available to us: text, SQL, and DataSeries, our custom
+needed to decide how to physically store the data.  Three
+options were available to us: text, SQL, and DataSeries, our custom
 binary format~\cite{DSTechnicalReportSnapshot} for storing trace data.
 Text is a traditional way of storing trace data, however, we were
 concerned that a text representation would be too large and too slow.
 Having later converted the Ellard traces to our format, we found that
 the analysis distributed with the traces used 25x less CPU time when
 the traces and analysis used DataSeries, and ran 100x faster on a 4
-core machine. This disparity convinced us that text is an
-inappropriate format for storage of our traces.
+core machine. This disparity confirmed our intuition that text is a
+poor format trace data.
 
 % cat .../*-log | perl .../DataSeries/doc/fast2008-nfs-analysis/scripts/compression-sum.pl
 % last column is size it happened to be compressed to, but used lzf, gzip, bzip2
@@ -83,8 +85,8 @@ inappropriate format for storage of our traces.
 % 807115490052    set-5/ ; 5.0x / 6.0x
 
 SQL databases support a relational structure. However, the lack of 
-extensive compression means that our very large datasets would 
-consume a large amount of space. We also expected that many complex
+extensive compression means that our datasets would 
+consume a huge amount of space. We also expected that many complex
 queries would not benefit from SQL and would require extracting
 the entire tables through the slow SQL connection.
 
@@ -103,8 +105,8 @@ from large random numbers to smaller random numbers.
 
 DataSeries is designed for efficient access. Values are packed so that
 once an extent is read in, an analysis can iterate over the rows
-simply by increasing a single counter, as if for an array of a
-structure.  Individual values are accessed by an offset from that
+simply by increasing a single counter, as with a C++ vector.
+Individual values are accessed by an offset from that
 counter and a C++ cast.  Byte swapping if necessary is automatically
 performed.  The offset is not fixed, so the same analysis can read
 different versions of the data provided the meaning of the fields
