@@ -253,13 +253,15 @@ read reply is close enough to the first that they are combined).  This
 leads us to one of our lessons, extensive validation of the conversion
 tool is important.  Both validation through validation statistics, and
 through the use of a known workload that exercises the capture tools.
-An NFS replay tool~\cite{NingningFast05} could be used to validate
-that the captured workload is the one that was replayed.  This
-comparison has been done to validate a block based replay
+\fix{Clarify that we mean replay a trace and verify what is captured
+from replay is what was replayed -- verify the capture side, not the
+replay side} An NFS replay tool~\cite{NingningFast05} could be used to
+validate that the captured workload is the one that was replayed.
+This comparison has been done to validate a block based replay
 tool~\cite{AndersonFast04}, but has not been done to validate a
 capture tool, as that work simply assumed capture was correct.
 \fix{create analysis that compares timing of ops to packets and
-estimates missing writes if we can get the space for it} 
+estimates missing writes if we can get the space for it}
 % We can therefore use
 % the timing information from requests and replies to identify gaps in
 % the dataset and determine how many bytes were skipped.  This will

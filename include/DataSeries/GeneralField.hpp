@@ -21,6 +21,7 @@
 #include <libxml/parser.h> 
 #include <boost/static_assert.hpp>
 
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/HashMap.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
@@ -105,7 +106,7 @@ public:
 	set(from);
 	return *this;
     }
-    ExtentType::fieldType getType() { return gvtype; }
+    ExtentType::fieldType getType() const { return gvtype; }
     /** calculate a hash of this value, use partial_hash as the
 	starting hash. */
     uint32_t hash(uint32_t partial_hash = 1776) const;
@@ -208,7 +209,7 @@ public:
 	set(&from);
     }
 
-    GeneralValue val() { return GeneralValue(this); }
+    GeneralValue val() const { return GeneralValue(this); }
     virtual double valDouble() = 0;
 
     const ExtentType::fieldType getType() const { return gftype; }
@@ -390,8 +391,16 @@ public:
 
     virtual double valDouble();
 
-    const std::string val();
-    const std::string val_formatted();
+    /// Returns the raw string value, note that this may include nulls
+    /// and hence c_str() is dangerous
+    const std::string val() const;
+
+    /// Returns the string formatted as per it's printspec
+    const std::string valFormatted();
+
+    const std::string val_formatted() FUNC_DEPRECATED { // old naming convention
+	return valFormatted();
+    }
 
     void clear() {
 	myfield.clear();
