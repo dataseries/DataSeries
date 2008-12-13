@@ -1010,7 +1010,7 @@ void GF_Variable32::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to, "null");
     } else {
-	string v = val_formatted();
+	string v = valFormatted();
         fprintf(to, printspec, v.c_str());
     }
 }
@@ -1097,7 +1097,7 @@ double GF_Variable32::valDouble() {
     return stringToDouble(myfield.stringval());
 }
 
-const std::string GF_Variable32::val() {
+const std::string GF_Variable32::val() const {
     return myfield.stringval();
 }
 

@@ -112,10 +112,12 @@ public:
     /** Returns true if the endianness of the file is different from the
         endianness of the host processor. */
     bool needBitflip() { return need_bitflip; }
+
+    /** get the Filename associated with this file */
+    const std::string &getFilename() { return filename; }
 private:
     ExtentTypeLibrary mylibrary;
 
-    const std::string &getFilename() { return filename; }
     const std::string filename;
     typedef ExtentType::byte byte;
     int fd;
