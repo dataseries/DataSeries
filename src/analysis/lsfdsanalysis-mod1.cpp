@@ -73,7 +73,7 @@ public:
 
     struct hteHash {
 	unsigned operator()(const hteData *k) const {
-	    return HashTable_hashbytes(k->group.data(),k->group.size());
+	    return lintel::hashBytes(k->group.data(),k->group.size());
 	}
     };
 

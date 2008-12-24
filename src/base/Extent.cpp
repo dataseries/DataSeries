@@ -265,7 +265,7 @@ public:
     typedef ExtentType::int32 int32;
     unsigned int operator()(const variableDuplicateEliminate &a) const {
 	int32 size_a = *(int32 *)(a.varbits);
-	return BobJenkinsHash(1776, a.varbits, 4+size_a);
+	return lintel::bobJenkinsHash(1776, a.varbits, 4+size_a);
     }
 };
 
@@ -761,8 +761,8 @@ Extent::packData(Extent::ByteArray &into,
     // deliberately not precisely reversable
     INVARIANT(fixed_coded.size() == type.rep.fixed_record_size * nrecords,
 	      "internal error");
-    uint32_t bjhash = BobJenkinsHash(1972, fixed_coded.begin(),
-				     type.rep.fixed_record_size * nrecords);
+    uint32_t bjhash = lintel::bobJenkinsHash(1972, fixed_coded.begin(),
+					     type.rep.fixed_record_size * nrecords);
 
     if (type.getPackNullCompact() != ExtentType::CompactNo) {
 	// do this after we do the fixed hash, so the checksum will
@@ -776,7 +776,7 @@ Extent::packData(Extent::ByteArray &into,
 	      "Internal error");
     variable_coded.resize(variable_data_pos - variable_coded.begin());
 
-    bjhash = BobJenkinsHash(bjhash,variable_coded.begin(),variable_coded.size());
+    bjhash = lintel::bobJenkinsHash(bjhash, variable_coded.begin(), variable_coded.size());
     vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variable_coded.begin() + variable_coded.size();
@@ -784,13 +784,14 @@ Extent::packData(Extent::ByteArray &into,
 	int32 size = *(int32 *)curvarpos;
 	variable_sizes.push_back(size);
 	if (variable_sizes.size() == variable_sizes_batch_size) {
-	    bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
+	    bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
+					    4*variable_sizes_batch_size);
 	    variable_sizes.resize(0);
 	}
 	curvarpos += 4 + Variable32Field::roundupSize(size);
 	SINVARIANT(curvarpos <= endvarpos);
     }
-    bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
+    bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]), 4*variable_sizes.size());
     variable_sizes.resize(0);
 
     byte compressed_fixed_mode;
@@ -1190,8 +1191,8 @@ Extent::unpackData(Extent::ByteArray &from,
     INVARIANT(variable_uncompressed_size == variable_size - 4, "internal");
     uint32_t bjhash = 0;
     if (postuncompress_check) {
-	bjhash = BobJenkinsHash(1972,fixeddata.begin(),fixeddata.size());
-	bjhash = BobJenkinsHash(bjhash,variabledata.begin(),variabledata.size());
+	bjhash = lintel::bobJenkinsHash(1972, fixeddata.begin(), fixeddata.size());
+	bjhash = lintel::bobJenkinsHash(bjhash, variabledata.begin(), variabledata.size());
     }
     vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
@@ -1202,7 +1203,8 @@ Extent::unpackData(Extent::ByteArray &from,
 	    variable_sizes.push_back(size);
 
 	    if (variable_sizes.size() == variable_sizes_batch_size) {
-		bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes_batch_size);
+		bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
+						4*variable_sizes_batch_size);
 		variable_sizes.resize(0);
 	    }
 	}
@@ -1214,7 +1216,7 @@ Extent::unpackData(Extent::ByteArray &from,
 	INVARIANT(curvarpos <= endvarpos,"internal error on variable data");
     }
     if (postuncompress_check) {
-	bjhash = BobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
+	bjhash = lintel::bobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     }
     variable_sizes.resize(0);
     INVARIANT(postuncompress_check == false 

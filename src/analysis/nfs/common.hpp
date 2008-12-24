@@ -56,7 +56,7 @@ struct fh2mountData {
 class fh2mountHash {
 public:
     unsigned int operator()(const fh2mountData &k) const {
-	return HashTable_hashbytes(k.mountpartfh.data(),k.mountpartfh.size());
+	return lintel::hashBytes(k.mountpartfh.data(),k.mountpartfh.size());
     }
 };
 

@@ -323,7 +323,7 @@ DataSeriesSink::close()
     *(int32 *)(tail + 8) = ~packed_size;
     *(int32 *)(tail + 12) = chained_checksum;
     *(ExtentType::int64 *)(tail + 16) = (ExtentType::int64)index_offset;
-    *(int32 *)(tail + 24) = BobJenkinsHash(1776,tail,6*4);
+    *(int32 *)(tail + 24) = lintel::bobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
     int ret = ::close(fd);
@@ -434,7 +434,7 @@ DataSeriesSink::verifyTail(ExtentType::byte *tail,
     }
     INVARIANT(packed_size == ~tilde_packed_size,
 	      "bad packed size in the tail!");
-    int32 check_bjhash = BobJenkinsHash(1776,tail,6*4);
+    int32 check_bjhash = lintel::bobJenkinsHash(1776,tail,6*4);
     INVARIANT(bjhash == check_bjhash, "bad hash in the tail!");
 }
 

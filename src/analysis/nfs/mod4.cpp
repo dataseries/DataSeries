@@ -45,7 +45,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 

@@ -101,8 +101,8 @@ public:
 
     struct hteHash {
 	unsigned operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),
-				       BobJenkinsHashMix3(k.server,k.client,(k.is_read ? 0x5555 : 0xAAAA)));
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size(),
+				     BobJenkinsHashMix3(k.server,k.client,(k.is_read ? 0x5555 : 0xAAAA)));
 	}
     };
 
@@ -210,7 +210,7 @@ public:
 
     struct rollupHash {
 	unsigned operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
@@ -222,7 +222,7 @@ public:
 
     struct mountRollupHash {
 	unsigned operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 
@@ -511,7 +511,7 @@ public:
 
     struct fhOpHash {
 	unsigned operator()(const hteData &k) const {
-	    unsigned a = HashTable_hashbytes(k.filehandle.data(),
+	    unsigned a = lintel::hashBytes(k.filehandle.data(),
 					     k.filehandle.size(), 1492);
 	    return BobJenkinsHashMix3(a, k.server, k.unified_op_id);
 	}

@@ -65,10 +65,10 @@ class mergeinfo_hashlots {
 public:
     int operator()(const mergeinfo &a) const {
 	int hash = 1776;
-	hash = BobJenkinsHash(hash,&a.pid,sizeof(int));
-	hash = BobJenkinsHash(hash,&a.first_seen,sizeof(double));
-	hash = BobJenkinsHash(hash,&a.devid,sizeof(ExtentType::int32));
-	hash = BobJenkinsHash(hash,&a.lvid,sizeof(ExtentType::int32));
+	hash = lintel::bobJenkinsHash(hash,&a.pid,sizeof(int));
+	hash = lintel::bobJenkinsHash(hash,&a.first_seen,sizeof(double));
+	hash = lintel::bobJenkinsHash(hash,&a.devid,sizeof(ExtentType::int32));
+	hash = lintel::bobJenkinsHash(hash,&a.lvid,sizeof(ExtentType::int32));
 	return hash;
     }
 };
@@ -610,7 +610,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const char *k) const {
-	    return HashTable_hashbytes(k,strlen(k));
+	    return lintel::hashBytes(k,strlen(k));
 	}
     };
     class hteEqual {

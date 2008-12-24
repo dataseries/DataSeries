@@ -104,10 +104,10 @@ public:
 
     struct hteHash {
 	unsigned operator()(const hte &a) const {
-	    unsigned tmp = HashTable_hashbytes(a.team.data(),a.team.size(),a.metaid);
-	    tmp = HashTable_hashbytes(a.production.data(),a.production.size(),tmp);
-	    tmp = HashTable_hashbytes(a.sequence.data(),a.sequence.size(),tmp);
-	    return HashTable_hashbytes(a.shot.data(),a.shot.size(),tmp);
+	    unsigned tmp = lintel::hashBytes(a.team.data(),a.team.size(),a.metaid);
+	    tmp = lintel::hashBytes(a.production.data(),a.production.size(),tmp);
+	    tmp = lintel::hashBytes(a.sequence.data(),a.sequence.size(),tmp);
+	    return lintel::hashBytes(a.shot.data(),a.shot.size(),tmp);
 	}
     };
 
@@ -671,9 +671,9 @@ public:
 
   struct hteHash {
     unsigned operator()(const hte &a) const {
-      unsigned tmp = HashTable_hashbytes(a.production.data(),a.production.size(),1972);
-      tmp = HashTable_hashbytes(a.sequence.data(),a.sequence.size());
-      return HashTable_hashbytes(a.shot.data(),a.shot.size(),tmp);
+      unsigned tmp = lintel::hashBytes(a.production.data(),a.production.size(),1972);
+      tmp = lintel::hashBytes(a.sequence.data(),a.sequence.size());
+      return lintel::hashBytes(a.shot.data(),a.shot.size(),tmp);
     }
   };
 

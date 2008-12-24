@@ -34,7 +34,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.type.data(),k.type.size());
+	    return lintel::hashBytes(k.type.data(),k.type.size());
 	}
     };
 
@@ -355,7 +355,7 @@ public:
     
     class hteHash {
     public: unsigned int operator()(const hteData &k) const {
-       return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
+       return lintel::hashBytes(k.filehandle.data(),k.filehandle.size());
     }};
     
     class hteEqual {

@@ -40,8 +40,8 @@ struct IndexValues {
 
 struct ivHash {
     unsigned int operator()(const IndexValues &k) const {
-	return BobJenkinsHash(BobJenkinsHashMixULL(k.offset),k.filename.data(),
-			      k.filename.size());
+	return lintel::bobJenkinsHash(BobJenkinsHashMixULL(k.offset),k.filename.data(),
+				      k.filename.size());
     }
 };
 

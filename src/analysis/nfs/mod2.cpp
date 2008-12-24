@@ -43,7 +43,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 
@@ -138,7 +138,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filename.data(),k.filename.size());
+	    return lintel::hashBytes(k.filename.data(),k.filename.size());
 	}
     };
 
@@ -245,7 +245,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filename.data(),k.filename.size());
+	    return lintel::hashBytes(k.filename.data(),k.filename.size());
 	}
     };
 
@@ -364,7 +364,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size());
 	}
     };
 
@@ -484,7 +484,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size(),k.server);
+	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size(),k.server);
 	}
     };
 

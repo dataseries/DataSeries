@@ -2577,7 +2577,7 @@ handleRPCRequest(Clock::Tfrac time, const struct iphdr *ip_hdr,
     d.program = req.host_prognum();
     d.procnum = req.host_procnum();
     d.request_at = time;
-    d.rpcreqhashval = BobJenkinsHash(1972,p,pend-p);
+    d.rpcreqhashval = lintel::bobJenkinsHash(1972,p,pend-p);
     d.ipchecksum = ntohs(ip_hdr->check);
     d.l4checksum = l4checksum;
     d.reqdata = NULL;

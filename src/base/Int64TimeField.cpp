@@ -30,10 +30,10 @@ struct RegisteredInfo {
 template <>
 struct HashMap_hash<const RegisteredInfo> {
     uint32_t operator()(const RegisteredInfo &r) const {
-	uint32_t a = HashTable_hashbytes(r.field_name.data(), 
+	uint32_t a = lintel::hashBytes(r.field_name.data(), 
 					 r.field_name.size(), r.major_version);
-	a = HashTable_hashbytes(r.type_name.data(), r.type_name.size(), a);
-	a = HashTable_hashbytes(r.name_space.data(), r.name_space.size(), a);
+	a = lintel::hashBytes(r.type_name.data(), r.type_name.size(), a);
+	a = lintel::hashBytes(r.name_space.data(), r.name_space.size(), a);
 	return a;
     }
 };

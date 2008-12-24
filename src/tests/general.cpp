@@ -366,7 +366,7 @@ test_primitives()
 	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
 	unsigned int hash = 1972;
 	for(int i=0;i<reps;i++) {
-	    hash = BobJenkinsHash(hash, packed.begin(), packed.size());
+	    hash = lintel::bobJenkinsHash(hash, packed.begin(), packed.size());
 	}
 	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;

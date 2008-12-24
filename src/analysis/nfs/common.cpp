@@ -57,7 +57,7 @@ struct fh2fnData {
 class fh2fnHash {
 public:
     unsigned int operator()(const fh2fnData &k) const {
-	return HashTable_hashbytes(k.filehandle.data(),k.filehandle.size());
+	return lintel::hashBytes(k.filehandle.data(),k.filehandle.size());
     }
 };
 

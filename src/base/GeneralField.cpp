@@ -97,8 +97,8 @@ uint32_t GeneralValue::hash(uint32_t partial_hash) const {
 	    return BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
 					partial_hash);
 	case ExtentType::ft_variable32: 
-	    return HashTable_hashbytes(v_variable32->data(),
-				       v_variable32->size(), partial_hash);
+	    return lintel::hashBytes(v_variable32->data(),
+				     v_variable32->size(), partial_hash);
 	default: FATAL_ERROR("internal error, unexpected type"); 
 	    return 0; 
 	}
