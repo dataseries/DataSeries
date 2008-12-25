@@ -473,9 +473,9 @@ handleFarmLoadArgs(const string &arg)
 	cout << "\n";
 	exit(0);
     }
-    ret->rollup_granularity = stringToInt32(args[0]);
-    unsigned start = stringToUInt32(args[1]);
-    unsigned end = stringToUInt32(args[2]);
+    ret->rollup_granularity = stringToInteger<int32_t>(args[0]);
+    unsigned start = stringToInteger<uint32_t>(args[1]);
+    unsigned end = stringToInteger<uint32_t>(args[2]);
     
     ret->rollup_start = roundDown(start, ret->rollup_granularity);
     ret->rollup_end = roundUp(end, ret->rollup_granularity);

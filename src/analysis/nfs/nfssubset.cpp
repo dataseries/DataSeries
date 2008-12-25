@@ -121,8 +121,8 @@ main(int argc, char *argv[])
 	      boost::format("Usage: %s [common-args] min_keep_id max_keep_id_inclusive input-filename... output-filename\nCommon args:\n%s") 
 	      % argv[0] % packingOptions());
     
-    int64_t min_keep = stringToInt64(argv[1]);
-    int64_t max_keep = stringToInt64(argv[2]);
+    int64_t min_keep = stringToInteger<int64_t>(argv[1]);
+    int64_t max_keep = stringToInteger<int64_t>(argv[2]);
     vector<string> source_files;
     for(int i=3; i<(argc-1); ++i) {
 	source_files.push_back(argv[i]);

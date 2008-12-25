@@ -302,10 +302,10 @@ public:
     }
     /** Returns the major version of the ExtentType.  Note that every
         extent type is versioned separately. */
-    unsigned majorVersion() const { return rep.major_version; }
+    uint32_t majorVersion() const { return rep.major_version; }
     /** Returns the minor version of the ExtentType.  Note that every
         extent type is versioned separately. */
-    unsigned minorVersion() const { return rep.minor_version; }
+    uint32_t minorVersion() const { return rep.minor_version; }
     /** Returns a flag indicating how null fields are compressed when
         writing to a file. */
     PackNullCompact getPackNullCompact() const { 
@@ -424,8 +424,8 @@ private:
 	std::vector<pack_other_relativeT> pack_other_relative;
 	std::vector<pack_self_relativeT> pack_self_relative;
 
-	int fixed_record_size;
-	unsigned major_version, minor_version;
+	int32_t fixed_record_size;
+	uint32_t major_version, minor_version;
 	std::string type_namespace;
 	PackNullCompact pack_null_compact;
 	PackPadRecord pad_record;

@@ -331,8 +331,8 @@ ExtentType::parseXML(const string &xmldesc)
 	INVARIANT(bits.size() == 2, 
 		  boost::format("bad version '%s' should be #.#") 
 		  % extentversion);
-	ret.major_version = static_cast<unsigned>(stringToLong(bits[0]));
-	ret.minor_version = static_cast<unsigned>(stringToLong(bits[1]));
+	ret.major_version = stringToInteger<int32_t>(bits[0]);
+	ret.minor_version = stringToInteger<int32_t>(bits[1]);
     }
 
     ret.type_namespace = strGetXMLProp(cur, "namespace", true);

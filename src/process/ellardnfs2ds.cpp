@@ -206,8 +206,8 @@ parseTime(const string &field)
 	      % timeparts[1].size() % nlines
 	      % time_field.val() % rpc_transaction_id.val() % field);
     return
-	static_cast<int64_t>(stringToUInt32(timeparts[0])) * 1000000 
-	+ stringToUInt32(timeparts[1]);
+	static_cast<int64_t>(stringToInteger<uint32_t>(timeparts[0])) * 1000000 
+	+ stringToInteger<uint32_t>(timeparts[1]);
 }
 
 class KVParserFH : public KVParser {
@@ -267,7 +267,7 @@ public:
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
-	    uint32_t v = stringToUInt32(val);
+	    uint32_t v = stringToInteger<uint32_t>(val);
 	    INVARIANT(v < 256, "bad");
 	    field.set(v);
 	} else {
@@ -298,7 +298,7 @@ public:
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
-	    field.set(stringToUInt32(val, 16));
+	    field.set(stringToInteger<uint32_t>(val, 16));
 	} else {
 	    INVARIANT(dup != NULL, 
 		      format("? %d %s") % nlines % field.getName());
@@ -327,7 +327,7 @@ public:
 
     virtual void parse(const string &val) {
 	if (field.isNull()) {
-	    field.set(stringToUInt64(val, 16));
+	    field.set(stringToInteger<uint64_t>(val, 16));
 	} else {
 	    INVARIANT(dup != NULL, 
 		      format("? %d %s") % nlines % field.getName());
@@ -399,7 +399,7 @@ public:
 	    // No clue as to what this is.
 	    field.set(1 << 6); 
 	} else if (isdigit(val[0]) || (islower(val[0]) && isxdigit(val[0]))) {
-	    uint32_t v = stringToUInt32(val, 16);
+	    uint32_t v = stringToInteger<uint32_t>(val, 16);
 	    INVARIANT(v <= 63, "bad");
 	    field.set(v);
 	} else {
@@ -475,8 +475,8 @@ parseIPPort(const string &field, Int32Field &ip_field, Int32Field &port_field)
     INVARIANT(parts.size() == 2 && parts[1].size() == 4,
 	      format("error parsing line %d") % nlines);
 
-    ip_field.set(stringToUInt32(parts[0], 16));
-    port_field.set(stringToUInt32(parts[1], 16));
+    ip_field.set(stringToInteger<uint32_t>(parts[0], 16));
+    port_field.set(stringToInteger<uint32_t>(parts[1], 16));
 }
 
 void
@@ -542,8 +542,8 @@ parseCommon(vector<string> &fields)
     parseTCPUDP(fields[3]);
     parseCallReplyVersion(fields[4]);
 
-    rpc_transaction_id.set(stringToUInt32(fields[5], 16));
-    rpc_function_id.set(stringToUInt32(fields[6], 16));
+    rpc_transaction_id.set(stringToInteger<uint32_t>(fields[5], 16));
+    rpc_function_id.set(stringToInteger<uint32_t>(fields[6], 16));
     rpc_function.set(fields[7]);
     short_packet.set(false);
     garbage.setNull(true);
@@ -994,7 +994,7 @@ processLine(const string &buf)
 	if (fields[8] == "OK") {
 	    return_value.set(0);
 	} else {
-	    return_value.set(stringToInt32(fields[8],16));
+	    return_value.set(stringToInteger<int32_t>(fields[8],16));
 	}
 	kvpairs = 9;
     }

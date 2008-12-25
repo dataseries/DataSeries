@@ -315,7 +315,7 @@ int64_t GeneralValue::valInt64() {
 	    return static_cast<int64_t>(gvval.v_double);
 	    break;
 	case ExtentType::ft_variable32: {
-	    return stringToInt64(*v_variable32);
+	    return stringToInteger<int64_t>(*v_variable32);
 	    break;
 	}
 	default:
@@ -722,7 +722,7 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
     if (xml_divisor == NULL) {
 	divisor = 1;
     } else {
-	divisor = stringToInt64(reinterpret_cast<char *>(xml_divisor));
+	divisor = stringToInteger<int64_t>(reinterpret_cast<char *>(xml_divisor));
     }
 
     xmlChar *xml_offset = myXmlGetProp(fieldxml, (const xmlChar *)"print_offset");
@@ -735,7 +735,7 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
 	std::string relname = (char *)(xml_offset + 11);
 	relative_field = new Int64Field(series,relname);
     } else {
-	offset = stringToInt64(reinterpret_cast<char *>(xml_offset));
+	offset = stringToInteger<int64_t>(reinterpret_cast<char *>(xml_offset));
     }
 
 }

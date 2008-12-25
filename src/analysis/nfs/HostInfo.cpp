@@ -249,7 +249,7 @@ public:
 	// Usage: group_seconds[,{no_cube_time, no_cube_host, 
 	//                        no_print_base, no_print_cube}]+
 	vector<string> args = split(arg, ",");
-	group_seconds = stringToInt32(args[0]);
+	group_seconds = stringToInteger<int32_t>(args[0]);
 	SINVARIANT(group_seconds > 0);
 	options["cube_time"] = true;
 	options["cube_host"] = true;
@@ -272,7 +272,7 @@ public:
 		options[args[i].substr(3)] = false;
 	    } else if (prefixequal(args[i], "incremental=")) {
 		// TODO: make uint32ModArg in common.hpp, use it.
-		incremental_batch_size = stringToUInt32(args[i].substr(12));
+		incremental_batch_size = stringToInteger<uint32_t>(args[i].substr(12));
 		LintelLogDebug("HostInfo", format("ibs=%d") % incremental_batch_size);
 	    } else {
 		INVARIANT(options.exists(args[i]),

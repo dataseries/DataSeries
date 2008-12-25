@@ -172,8 +172,8 @@ static int exitvalue = 0;
 static string tracename;
 int cur_file_packet_num = 0;
 
-ExtentType::int64 cur_record_id = -1000000000;
-ExtentType::int64 first_record_id = -1000000000;
+int64_t cur_record_id = -1000000000;
+int64_t first_record_id = -1000000000;
 int cur_mismatch_duplicate_requests = 0;
 
 struct packetTimeSize {
@@ -3013,7 +3013,7 @@ doInfo(NettraceReader *from)
 
 void
 doConvert(NettraceReader *from, const char *ds_output_name, 
-	  commonPackingArgs &packing_args, int expected_records)
+	  commonPackingArgs &packing_args, uint64_t expected_records)
 {
     mode = Convert;
 
@@ -3097,7 +3097,7 @@ doConvert(NettraceReader *from, const char *ds_output_name,
     delete nfs_mount_outmodule;
     delete nfsdsout;
 
-    INVARIANT((cur_record_id + 1 - first_record_id) == expected_records,
+    INVARIANT((cur_record_id + 1 - first_record_id) == static_cast<int64_t>(expected_records),
 	      format("mismatch on expected # records: %d - %d != %d")
 	      % cur_record_id % first_record_id % expected_records);
     exit(exitvalue);
@@ -3255,7 +3255,7 @@ int main(int argc, char **argv) {
 	    }
     
 	    commonPackingArgs packing_args;
-	    long expected_records = 0;
+	    uint64_t expected_records = 0;
 	    if (conv) { 
 		INVARIANT(argc >= 7, "Missing arguments to --convert; try -h for usage");
 		if (enable_encrypt_filenames) {
@@ -3263,9 +3263,9 @@ int main(int argc, char **argv) {
 		}
 		getPackingArgs(&argc,argv,&packing_args);
 	    
-		first_record_id = stringToLongLong(argv[3]);
+		first_record_id = stringToInteger<int64_t>(argv[3]);
 		cur_record_id = first_record_id - 1;
-		expected_records = stringToLong(argv[4]);
+		expected_records = stringToInteger<uint64_t>(argv[4]);
 		startFileArg = 6;
 	    }
 	    for(int i = startFileArg;i < argc; ++i) {

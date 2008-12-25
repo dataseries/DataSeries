@@ -1415,17 +1415,17 @@ parseopts(int argc, char *argv[])
 	    INVARIANT(opts[1].find(",") > opts[1].size(),
 		      format("bad second opt %s, has ','; did you leave off"
 			     " best-effort-endtime?") % opts[1]);
-	    best_effort_window_start = stringToInt32(opts[0]);
-	    best_effort_window_end = stringToInt32(opts[1]);
+	    best_effort_window_start = stringToInteger<int32_t>(opts[0]);
+	    best_effort_window_end = stringToInteger<int32_t>(opts[1]);
 	    BestEffort::BEInfo tmp;
 	    for(unsigned i = 2;i<opts.size();++i) {
 		vector<string> beopts;
 		split(opts[i],",",beopts);
 		INVARIANT(beopts.size() == 3, 
 			  format("purchase spec '%s' wrong\n") % opts[i]);
-		tmp.starttime = stringToInt32(beopts[0]);
-		tmp.reserved_cpus = stringToInt32(beopts[1]);
-		tmp.best_effort_cpus = stringToInt32(beopts[2]);
+		tmp.starttime = stringToInteger<int32_t>(beopts[0]);
+		tmp.reserved_cpus = stringToInteger<int32_t>(beopts[1]);
+		tmp.best_effort_cpus = stringToInteger<int32_t>(beopts[2]);
 		best_effort_reserved.push_back(tmp);
 	    }
 	    break;

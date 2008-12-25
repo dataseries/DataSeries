@@ -9,6 +9,7 @@ use strict;
 use Getopt::Long;
 use FileHandle;
 use Fcntl ':seek';
+use POSIX;
 @PERL_MODULES_INC_UNSHIFT@
 
 use DataSeries::LSFcommon ':all';
@@ -35,6 +36,11 @@ my $module_name = 'DataSeries::LSFPlots::Default';
 my $noplots;
 my $psonly;
 my $debug;
+
+# TODO: fix this so that time zone is an option; regression tests need
+# US/Pacific to pass.
+$ENV{TZ} = 'US/Pacific';
+POSIX::tzset();
 
 # TODO: fix code so that x axis is in seconds; this will allow us to
 # clean up Plot::Mercury::Tics to only have one way of doing time.  relative

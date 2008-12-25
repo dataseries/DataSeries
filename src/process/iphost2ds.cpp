@@ -89,7 +89,7 @@ main(int argc, char *argv[])
     uint32_t linenum = 0;
     string mapping_time_line;
     getline(infile, mapping_time_line); ++linenum;
-    uint32_t mapping_time = stringToUInt32(mapping_time_line);
+    uint32_t mapping_time = stringToInteger<uint32_t>(mapping_time_line);
 
     string hostline;
     getline(infile, hostline); ++linenum;
