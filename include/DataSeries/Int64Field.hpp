@@ -17,7 +17,6 @@
 /** \brief Accessor for int64 fields. */
 class Int64Field : public FixedField {
 public:
-    typedef int64_t int64; // Deprecating
     Int64Field(ExtentSeries &_dataseries, const std::string &field, 
 	       int flags = 0, int64_t default_value = 0, bool auto_add = true);
     virtual ~Int64Field();
@@ -29,6 +28,11 @@ public:
 	    return *(int64_t *)rawval();
 	}
     }
+    
+    int64_t operator() () const {
+	return val();
+    }
+
     void set(int64_t val) {
 	*(int64_t *)rawval() = val;
 	setNull(false);

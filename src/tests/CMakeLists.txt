@@ -32,6 +32,7 @@ DATASERIES_SCRIPT_TEST(ellard)
 DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
 DATASERIES_SCRIPT_TEST(ipdsanalysis)
+DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
 
 ### Script tests of testing-only programs
 DATASERIES_PROGRAM_NOINST(general)

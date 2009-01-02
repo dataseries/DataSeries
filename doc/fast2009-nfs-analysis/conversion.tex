@@ -138,7 +138,8 @@ parse any request-reply pairs that cross a group boundary.  Similarly,
 we do not do full TCP reconstruction, so for NFS over TCP, we only
 parse requests or replies that start aligned with the beginning of a
 packet. These limitations are similar to earlier work, so we found
-them acceptable.  We run the conversion locally on the 8-way tracing
+them acceptable.  \fix{multiple requests in a frame, but not
+misaligned ones} We run the conversion locally on the 8-way tracing
 machine rather than a cluster because conversion runs faster than the
 1Gbit LAN connection we had at the customer site (the tracing card
 does not act as a normal NIC).  Conversion of a full data set (30TiB)

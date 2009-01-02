@@ -3211,6 +3211,7 @@ void testBWRolling() {
 
 int main(int argc, char **argv) {
     FATAL_ERROR("TODO: stamp the revision into the output file");
+    FATAL_ERROR("TODO: add in the raw RPC size, and the packet overhead, so we can do a proper accounting w.r.t the IP table");
     if (false) testBWRolling();
     if (argc == 4 && strcmp(argv[1],"--uncompress") == 0) {
 	uncompressFile(argv[2],argv[3]);

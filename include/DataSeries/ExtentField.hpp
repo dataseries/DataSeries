@@ -64,6 +64,11 @@ public:
             return *rawval() & bit_mask ? true : false; 
         }
     }
+
+    bool operator() () const {
+	return val();
+    }
+
     /** Sets the value of the field in the @c ExtentSeries' current record.
         The field will never be null immediately after a call to set(),
         regardless of whether the argument is the same as the default value.

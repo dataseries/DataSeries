@@ -121,7 +121,7 @@ ByteField::ByteField(ExtentSeries &_dataseries, const std::string &field,
 }
 
 Int32Field::Int32Field(ExtentSeries &_dataseries, const std::string &field, 
-		       int flags, int32 _default_value, bool auto_add)
+		       int flags, int32_t _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_int32, flags),
       default_value(_default_value)
 { 
@@ -131,7 +131,7 @@ Int32Field::Int32Field(ExtentSeries &_dataseries, const std::string &field,
 }
 
 Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, 
-		       int flags, int64 _default_value, bool auto_add)
+		       int flags, int64_t _default_value, bool auto_add)
     : FixedField(_dataseries,field, ExtentType::ft_int64, flags),
       default_value(_default_value)
 { 

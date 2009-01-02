@@ -1,0 +1,280 @@
+131072 rows processed, 632 pairs
+262144 rows processed, 889 pairs
+393216 rows processed, 1114 pairs
+524288 rows processed, 1328 pairs
+655360 rows processed, 1463 pairs
+786432 rows processed, 1717 pairs
+917504 rows processed, 2002 pairs
+1048576 rows processed, 2285 pairs
+1179648 rows processed, 2553 pairs
+1310720 rows processed, 2779 pairs
+1441792 rows processed, 3020 pairs
+1572864 rows processed, 3257 pairs
+1703936 rows processed, 3538 pairs
+1835008 rows processed, 3813 pairs
+1966080 rows processed, 4045 pairs
+2097152 rows processed, 4290 pairs
+2228224 rows processed, 4464 pairs
+2359296 rows processed, 4619 pairs
+2490368 rows processed, 4834 pairs
+2621440 rows processed, 5141 pairs
+2752512 rows processed, 5365 pairs
+2883584 rows processed, 5570 pairs
+3014656 rows processed, 5697 pairs
+3145728 rows processed, 5887 pairs
+3276800 rows processed, 6069 pairs
+3407872 rows processed, 6274 pairs
+3538944 rows processed, 6441 pairs
+3670016 rows processed, 6616 pairs
+3801088 rows processed, 6806 pairs
+3932160 rows processed, 7115 pairs
+4063232 rows processed, 7422 pairs
+4194304 rows processed, 7689 pairs
+4325376 rows processed, 7902 pairs
+4456448 rows processed, 8066 pairs
+4587520 rows processed, 8394 pairs
+4718592 rows processed, 8610 pairs
+4849664 rows processed, 8870 pairs
+4980736 rows processed, 9150 pairs
+5111808 rows processed, 9386 pairs
+5242880 rows processed, 9514 pairs
+5373952 rows processed, 9689 pairs
+5505024 rows processed, 9871 pairs
+5636096 rows processed, 10103 pairs
+5767168 rows processed, 10270 pairs
+5898240 rows processed, 10460 pairs
+6029312 rows processed, 10590 pairs
+6160384 rows processed, 10720 pairs
+6291456 rows processed, 10908 pairs
+6422528 rows processed, 11009 pairs
+6553600 rows processed, 11123 pairs
+6684672 rows processed, 11220 pairs
+6815744 rows processed, 11308 pairs
+6946816 rows processed, 11459 pairs
+7077888 rows processed, 11594 pairs
+7208960 rows processed, 11694 pairs
+7340032 rows processed, 11855 pairs
+7471104 rows processed, 11900 pairs
+7602176 rows processed, 11941 pairs
+7733248 rows processed, 12011 pairs
+7864320 rows processed, 12086 pairs
+7995392 rows processed, 12239 pairs
+8126464 rows processed, 12381 pairs
+8257536 rows processed, 12483 pairs
+8388608 rows processed, 12580 pairs
+8519680 rows processed, 12650 pairs
+8650752 rows processed, 12704 pairs
+8781824 rows processed, 12826 pairs
+8912896 rows processed, 12918 pairs
+9043968 rows processed, 13013 pairs
+9175040 rows processed, 13122 pairs
+9306112 rows processed, 13171 pairs
+9437184 rows processed, 13259 pairs
+9568256 rows processed, 13377 pairs
+9699328 rows processed, 13502 pairs
+9830400 rows processed, 13619 pairs
+9961472 rows processed, 13760 pairs
+10092544 rows processed, 13867 pairs
+10223616 rows processed, 13964 pairs
+10354688 rows processed, 14028 pairs
+10485760 rows processed, 14107 pairs
+10616832 rows processed, 14189 pairs
+10747904 rows processed, 14257 pairs
+10878976 rows processed, 14302 pairs
+11010048 rows processed, 14388 pairs
+11141120 rows processed, 14490 pairs
+11272192 rows processed, 14538 pairs
+11403264 rows processed, 14580 pairs
+11534336 rows processed, 14685 pairs
+11665408 rows processed, 14789 pairs
+11796480 rows processed, 14867 pairs
+11927552 rows processed, 14950 pairs
+12058624 rows processed, 15017 pairs
+12189696 rows processed, 15084 pairs
+12320768 rows processed, 15127 pairs
+12451840 rows processed, 15175 pairs
+12582912 rows processed, 15236 pairs
+12713984 rows processed, 15274 pairs
+12845056 rows processed, 15327 pairs
+12976128 rows processed, 15364 pairs
+13107200 rows processed, 15400 pairs
+429 data points, mean 91.1345 +- 22.4686 [9.34414,100]
+    quantiles about every 21 data points:
+    5%: 22.941641, 59.357407, 95.517261, 98.107874, 98.562379, 98.686613, 98.698986, 98.700034, 98.703801, 98.724621
+    55%: 98.815696, 98.923042, 99.122712, 99.459474, 99.944921, 99.998861, 100, 100, 100
+171976973.777 -> 174983972.2049: 1446098 total bytes, 14.65% correlated, 85.35% ip-extra    0 multiple nfs/ip, 19 known missed nfs
+811 data points, mean 1513.25 +- 66.022 [78,1518]
+    quantiles about every 81 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976974.773 -> 174983972.2049: 2124238 total bytes, 10.11% correlated, 89.89% ip-extra    0 multiple nfs/ip, 18 known missed nfs
+1256 data points, mean 1514.04 +- 63.9029 [78,1518]
+    quantiles about every 126 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976976.785 -> 174983972.2049: 1954288 total bytes, 25.15% correlated, 74.85% ip-extra    0 multiple nfs/ip, 34 known missed nfs
+958 data points, mean 1510.51 +- 85.6607 [78,1518]
+    quantiles about every 96 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976985.785 -> 174983972.2049: 1793776 total bytes, 42.86% correlated, 57.14% ip-extra    0 multiple nfs/ip, 50 known missed nfs
+671 data points, mean 1498.33 +- 135.555 [78,1518]
+    quantiles about every 67 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976990.783 -> 174983972.2049: 1485378 total bytes, 18.30% correlated, 81.70% ip-extra    0 multiple nfs/ip, 18 known missed nfs
+796 data points, mean 1512.8 +- 72.0406 [210,1518]
+    quantiles about every 80 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976993.770 -> 174983972.2049: 4506984 total bytes, 29.65% correlated, 70.35% ip-extra    0 multiple nfs/ip, 91 known missed nfs
+2078 data points, mean 1506.14 +- 111.785 [78,1518]
+    quantiles about every 208 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976996.774 -> 174981393.2049: 1504638 total bytes, 19.22% correlated, 80.78% ip-extra    37 multiple nfs/ip, 14 known missed nfs
+798 data points, mean 1515.17 +- 51.3129 [334,1518]
+    quantiles about every 80 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171976999.785 -> 174983972.2049: 1498034 total bytes, 21.35% correlated, 78.65% ip-extra    0 multiple nfs/ip, 19 known missed nfs
+773 data points, mean 1509.05 +- 92.5551 [254,1518]
+    quantiles about every 77 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977000.788 -> 174983972.2049: 2069618 total bytes, 10.76% correlated, 89.24% ip-extra    0 multiple nfs/ip, 19 known missed nfs
+1216 data points, mean 1512.23 +- 80.0842 [78,1518]
+    quantiles about every 122 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977230.775 -> 174981393.2049: 1802654 total bytes, 13.15% correlated, 86.85% ip-extra    152 multiple nfs/ip, 1 known missed nfs
+1031 data points, mean 1517.39 +- 19.4243 [894,1518]
+    quantiles about every 103 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977232.779 -> 174983972.2049: 4424946 total bytes, 35.58% correlated, 64.42% ip-extra    0 multiple nfs/ip, 105 known missed nfs
+1863 data points, mean 1502.37 +- 125.93 [78,1518]
+    quantiles about every 186 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977234.765 -> 174983972.2049: 2123650 total bytes, 22.36% correlated, 77.64% ip-extra    0 multiple nfs/ip, 32 known missed nfs
+1082 data points, mean 1509.14 +- 93.3331 [78,1518]
+    quantiles about every 108 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977234.799 -> 174981393.2049: 8050970 total bytes, 52.00% correlated, 48.00% ip-extra    0 multiple nfs/ip, 164 known missed nfs
+2582 data points, mean 1476.15 +- 152.826 [374,1518]
+    quantiles about every 258 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977235.779 -> 174981393.2049: 1863156 total bytes, 13.08% correlated, 86.92% ip-extra    82 multiple nfs/ip, 2 known missed nfs
+1066 data points, mean 1517.97 +- 0.979642 [1486,1518]
+    quantiles about every 107 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977237.796 -> 174983972.2049: 11341972 total bytes, 22.47% correlated, 77.53% ip-extra    0 multiple nfs/ip, 148 known missed nfs
+5769 data points, mean 1511.27 +- 81.93 [78,1518]
+    quantiles about every 577 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977238.791 -> 174983972.2049: 11393050 total bytes, 23.19% correlated, 76.81% ip-extra    0 multiple nfs/ip, 153 known missed nfs
+5744 data points, mean 1509.59 +- 91.4779 [78,1518]
+    quantiles about every 574 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977240.787 -> 174981393.2049: 2151110 total bytes, 26.44% correlated, 73.56% ip-extra    244 multiple nfs/ip, 2 known missed nfs
+1042 data points, mean 1517.44 +- 17.9591 [938,1518]
+    quantiles about every 104 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977249.782 -> 174981393.2049: 1762068 total bytes, 9.52% correlated, 90.48% ip-extra    92 multiple nfs/ip, 2 known missed nfs
+1050 data points, mean 1517.18 +- 26.6509 [654,1518]
+    quantiles about every 105 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977252.768 -> 174981393.2049: 1785332 total bytes, 9.34% correlated, 90.66% ip-extra    92 multiple nfs/ip, 2 known missed nfs
+1066 data points, mean 1517.1 +- 29.3893 [558,1518]
+    quantiles about every 107 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977257.774 -> 174983973.2049: 2051254 total bytes, 25.25% correlated, 74.75% ip-extra    0 multiple nfs/ip, 30 known missed nfs
+1012 data points, mean 1495.6 +- 156.317 [82,1518]
+    quantiles about every 101 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977260.787 -> 174983973.2049: 2072358 total bytes, 22.44% correlated, 77.56% ip-extra    0 multiple nfs/ip, 33 known missed nfs
+1056 data points, mean 1508.7 +- 95.7863 [78,1518]
+    quantiles about every 106 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977261.771 -> 174981393.2049: 16068538 total bytes, 12.42% correlated, 87.58% ip-extra    0 multiple nfs/ip, 79 known missed nfs
+9285 data points, mean 1512.75 +- 57.4502 [94,1518]
+    quantiles about every 928 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977264.770 -> 174981393.2049: 1783706 total bytes, 10.81% correlated, 89.19% ip-extra    113 multiple nfs/ip, 2 known missed nfs
+1048 data points, mean 1516.74 +- 40.879 [194,1518]
+    quantiles about every 105 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977492.786 -> 174983973.2049: 2190828 total bytes, 18.84% correlated, 81.16% ip-extra    0 multiple nfs/ip, 25 known missed nfs
+1167 data points, mean 1510.18 +- 87.6282 [114,1518]
+    quantiles about every 117 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977493.777 -> 174983973.2049: 4065526 total bytes, 24.75% correlated, 75.25% ip-extra    0 multiple nfs/ip, 65 known missed nfs
+2007 data points, mean 1505.86 +- 116.056 [114,1518]
+    quantiles about every 201 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977498.784 -> 174983973.2049: 2243140 total bytes, 16.74% correlated, 83.26% ip-extra    0 multiple nfs/ip, 24 known missed nfs
+1228 data points, mean 1511.22 +- 82.8496 [146,1518]
+    quantiles about every 123 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977502.769 -> 174983973.2049: 1014312 total bytes, 30.04% correlated, 69.96% ip-extra    0 multiple nfs/ip, 21 known missed nfs
+465 data points, mean 1505.17 +- 119.348 [126,1518]
+    quantiles about every 46 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977503.772 -> 174981393.2049: 1757626 total bytes, 9.49% correlated, 90.51% ip-extra    99 multiple nfs/ip, 1 known missed nfs
+1048 data points, mean 1516.85 +- 37.0504 [318,1518]
+    quantiles about every 105 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977510.780 -> 174983973.2049: 10669508 total bytes, 41.71% correlated, 58.29% ip-extra    0 multiple nfs/ip, 259 known missed nfs
+4051 data points, mean 1507.82 +- 95.0536 [78,1518]
+    quantiles about every 405 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977519.771 -> 174983973.2049: 1918212 total bytes, 30.38% correlated, 69.62% ip-extra    0 multiple nfs/ip, 39 known missed nfs
+875 data points, mean 1504.74 +- 115.315 [78,1518]
+    quantiles about every 88 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977520.779 -> 174981393.2049: 2007822 total bytes, 27.51% correlated, 72.49% ip-extra    203 multiple nfs/ip, 10 known missed nfs
+957 data points, mean 1515.52 +- 51.9802 [142,1518]
+    quantiles about every 96 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977739.779 -> 174981393.2049: 1371888 total bytes, 36.50% correlated, 63.50% ip-extra    120 multiple nfs/ip, 20 known missed nfs
+571 data points, mean 1510.21 +- 94.3757 [114,1518]
+    quantiles about every 57 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977741.775 -> 174981393.2049: 1995324 total bytes, 29.85% correlated, 70.15% ip-extra    166 multiple nfs/ip, 14 known missed nfs
+919 data points, mean 1517.29 +- 17.4395 [1010,1518]
+    quantiles about every 92 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977743.774 -> 174981408.2049: 1358408 total bytes, 54.88% correlated, 45.12% ip-extra    0 multiple nfs/ip, 49 known missed nfs
+399 data points, mean 1496.25 +- 150.008 [82,1518]
+    quantiles about every 40 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977749.777 -> 174981408.2049: 1104812 total bytes, 22.94% correlated, 77.06% ip-extra    0 multiple nfs/ip, 18 known missed nfs
+559 data points, mean 1510.08 +- 86.2786 [130,1518]
+    quantiles about every 56 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977754.780 -> 174981408.2049: 1175550 total bytes, 59.36% correlated, 40.64% ip-extra    0 multiple nfs/ip, 43 known missed nfs
+309 data points, mean 1497.7 +- 135.579 [126,1518]
+    quantiles about every 31 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977756.780 -> 174981408.2049: 1200098 total bytes, 19.41% correlated, 80.59% ip-extra    0 multiple nfs/ip, 15 known missed nfs
+636 data points, mean 1509.97 +- 98.7672 [126,1518]
+    quantiles about every 64 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977760.785 -> 174981393.2049: 1643652 total bytes, 29.89% correlated, 70.11% ip-extra    105 multiple nfs/ip, 20 known missed nfs
+756 data points, mean 1514.84 +- 48.9832 [518,1518]
+    quantiles about every 76 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977764.776 -> 174981408.2049: 1894258 total bytes, 10.50% correlated, 89.50% ip-extra    0 multiple nfs/ip, 17 known missed nfs
+1116 data points, mean 1513.1 +- 75.8004 [82,1518]
+    quantiles about every 112 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171977775.777 -> 174983973.2049: 1795456 total bytes, 37.72% correlated, 62.28% ip-extra    0 multiple nfs/ip, 42 known missed nfs
+728 data points, mean 1504.77 +- 110.689 [146,1518]
+    quantiles about every 73 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171979543.794 -> 174981390.2049: 1084658 total bytes, 50.57% correlated, 49.43% ip-extra    0 multiple nfs/ip, 19 known missed nfs
+359 data points, mean 1474.64 +- 149.083 [78,1518]
+    quantiles about every 36 data points:
+    10%: 1270, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+171979554.778 -> 174981402.2049: 87995304 total bytes, 14.01% correlated, 85.99% ip-extra    3 multiple nfs/ip, 662 known missed nfs
+49735 data points, mean 1514.66 +- 50.6356 [126,1518]
+    quantiles about every 4974 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+174983973.2049 -> 171977263.799: 1474872 total bytes, 57.37% correlated, 42.63% ip-extra    0 multiple nfs/ip, 44 known missed nfs
+409 data points, mean 1503.63 +- 120.505 [246,1518]
+    quantiles about every 41 data points:
+    10%: 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518, 1518
+429 data points, mean 91.1345 +- 22.4686 [9.34414,100]
+    quantiles about every 21 data points:
+    5%: 22.941641, 59.357407, 95.517261, 98.107874, 98.562379, 98.686613, 98.698986, 98.700034, 98.703801, 98.724621
+    55%: 98.815696, 98.923042, 99.122712, 99.459474, 99.944921, 99.998861, 100, 100, 100

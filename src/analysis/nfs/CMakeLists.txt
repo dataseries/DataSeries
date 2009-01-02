@@ -18,4 +18,4 @@ DATASERIES_PROGRAM(nfsdsanalysis
 	UniqueFileHandles.cpp
         ../../process/sourcebyrange.cpp)
 
-
+DATASERIES_PROGRAM(ipnfscrosscheck)

@@ -75,6 +75,10 @@ namespace dataseries {
 	    return *reinterpret_cast<FIELD_TYPE *>(rawval());
 	}
 
+	FIELD_TYPE operator() () const {
+	    return val();
+	}
+
 	void set(FIELD_TYPE val) {
 	    *reinterpret_cast<FIELD_TYPE *>(rawval()) = val;
 	    setNull(false);
