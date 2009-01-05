@@ -65,16 +65,6 @@ it is by far our largest dataset ($\approx5$TB).
 
 %\subsubsection{\textit{sar} data}
 
-%In 2003-2004, as part of a project to evaluate the plausibility of a
-%remote rendering facility~\cite{DWRemoteRenderingShrek2-blind}, we used \DataSeries{} to store 
-%\textit{sar} (system activity reporter) statistics, collected every second 
-%for a 280 day period on a 500 node cluster.
-%Each observation included 2 four byte integer timestamps and 
-%129 eight byte double metrics. 
-%The size of the raw, uncompressed data for a single node is 23.4 GB;
-%the equivalent data stored in \DataSeries{} is 1.1 GB.
-%
-
 The disk traces contain entries that correspond to operating system
 level read and write requests for blocks in a storage system.  Each
 request contains three time fields (stored as doubles) describing when that request was

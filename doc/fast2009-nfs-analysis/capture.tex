@@ -28,19 +28,17 @@ dropped. We discovered this problem on a switch that used per-port
 rather than per-card buffering.  To eliminate the problem, we switched
 to 10Gbit mirror ports to reduce the need for switch-side buffering.
 
-The capture host can also be overrun. At low data rates (900Mbits,
-70kpps), standard tcpdump on commodity hardware works fine.
-However, at high data rates (5000Mbits, 1,000kpps),
+The capture host can also be overrun. At low data rates (900Mb/s,
+70k packets/s), standard tcpdump on commodity hardware works fine.
+However, at high data rates (5Gb/s, 1m packets/s),
 traditional approaches are insufficient. Indeed,
 Leung\cite{LeungUsenix08} notes
 % pg 215 ``when tcpdump dropped a few packets''
 difficulties with packet loss using tcpdump on a 1 Gbit mirror port.
 We have developed three separate techniques for packet capture, all of
-which work better than tcpdump: {\it lindump}(user-kernel ring
-buffer), {\it driverdump}(in-kernel capture to files), and {\it
-endacedump}(hardware capture to memory).  Further details and
-experiments with the first two techniques can be found
-in~\cite{Anderson06network-tracing}.
+which work better than tcpdump: {\it lindump} (user-kernel ring
+buffer), {\it driverdump} (in-kernel capture to files), and {\it
+endacedump} (hardware capture to memory).  
 
 \subsection{Lindump}
 
@@ -77,13 +75,13 @@ consumed by the kernel.
 
 To fix this problem, we modified the network driver so that instead of
 passing packets up the network stack, it would just copy the packets
-in pcap format to a file. Then it would immediately return the packet
+in pcap format to a file, and immediately return the packet
 buffer to the NIC.  A user space program prepared files for capture,
 and closed the files on completion.  We called our solution {\tt
 driverdump} since it performed all of the packet dumping in the
 driver.
 
-Because driverdump avoids the kernel IP stack, it could
+Because driverdump avoids the kernel IP stack, it can
 capture packets faster than the IP stack could drop them.
 % measured by using tcpdump with a filter that drops all packets. 
 We increased the sustained packets per second over lindump by 2.25x to
@@ -109,7 +107,7 @@ To solve this problem, we integrated our adaptive compression
 technique into a specialized capture program, and added the
 lzf~\cite{lzf} compression algorithm, that compresses at about
 100MB/s.  We also upgraded our hardware to an HP DL585g2 with 4 dual
-core 2.8GhZ Opterons, and 6 14 disk SCSI trays.  Our compression
+core 2.8Ghz Opterons, and 6 14 disk SCSI trays.  Our compression
 techniques turned our 20TiB of disk space into 30TiB of effective disk
 space.  We experienced a very small number of packet drops because our
 capture card limited a single stream to PCI-X bandwidth (8Gbps), and
@@ -129,3 +127,6 @@ rates by a factor of 2-3x at the cost of development time.  Both the
 lindump and driverdump code are available in our source
 distribution~\cite{DSOpenSource}.  These tools and techniques should
 eliminate problems of packet drops for capturing storage traces.
+Further details and
+experiments with the first two techniques can be found
+in~\cite{Anderson06network-tracing}.

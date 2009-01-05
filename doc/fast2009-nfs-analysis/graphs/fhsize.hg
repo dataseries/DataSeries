@@ -31,4 +31,4 @@ gnuplot set xlabel "Quantile"
 gnuplot set ylabel "File size (log scale)"
 gnuplot set key top left
 gnuplot set title "All accessed file size"
-pngpsplot --nocolor file-size
+pngpsplot --fontsize=22 --nocolor file-size

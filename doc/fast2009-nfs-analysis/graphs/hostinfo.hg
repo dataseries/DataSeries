@@ -70,7 +70,7 @@ plotwith _ linespoints lw 2.5
 gnuplot set ylabel "operations/s"
 gnuplot set xlabel "day of trace"
 gnuplot set title "daily usage cycles"
-pngpsplot --nocolor daily-oprate
+pngpsplot --fontsize=22 --nocolor daily-oprate
 }
 }
 
@@ -97,10 +97,10 @@ plot_ops_quantile('nfs-2/set-2',3600)
 
 plot_ops_quantile('nfs-2/set-5',1)
 plot_ops_quantile('nfs-2/set-5',3600)
-gnuplot set key top left
+gnuplot set key 0.8,76000
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Operations/second"
-pngpsplot --nocolor allops-quantile-nfs-2
+pngpsplot --fontsize=22 --nocolor allops-quantile-nfs-2
 
 unplot
 plot_ops_quantile('nfs-1/set-5',1)
@@ -109,10 +109,10 @@ plot_ops_quantile('nfs-1/set-5',3600)
 plot_ops_quantile('nfs-1/set-12',1)
 plot_ops_quantile('nfs-1/set-12',3600)
 
-gnuplot set key top left
+gnuplot set key 0.8,43000
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Operations/second"
-pngpsplot --nocolor allops-quantile-nfs-1
+pngpsplot --fontsize=22 --nocolor allops-quantile-nfs-1
 
     }
 };
@@ -134,7 +134,8 @@ plotwith _ linespoints
 }
 
 sub plot_multi_ops_quantile {
-    my($op) = @_;
+    my($op, $key) = @_;
+    $key ||= 'top left';
 
     return qq{
 unplot
@@ -142,35 +143,36 @@ plot_ops_quantile('nfs-1/set-5', 1, '$op')
 plot_ops_quantile('nfs-1/set-12', 1, '$op')
 plot_ops_quantile('nfs-2/set-2', 1, '$op')
 plot_ops_quantile('nfs-2/set-5', 1, '$op')
-gnuplot set key top left
+gnuplot set key $key
 gnuplot set xlabel 'Quantile'
 gnuplot set ylabel 'Operations/s'
 gnuplot set title '$op/second'
-pngpsplot --nocolor ops-$op
+pngpsplot --fontsize=22 --nocolor ops-$op
 }
 }
 
 sub plot_multi_bw_quantile {
-    my($op) = @_;
+    my($op, $key) = @_;
 
+    $key ||= 'top left';
     return qq{
 unplot
 plot_bw_quantile('nfs-1/set-5', 1, '$op')
 plot_bw_quantile('nfs-1/set-12', 1, '$op')
 plot_bw_quantile('nfs-2/set-2', 1, '$op')
 plot_bw_quantile('nfs-2/set-5', 1, '$op')
-gnuplot set key top left
+gnuplot set key $key
 gnuplot set xlabel 'Quantile'
 gnuplot set ylabel 'MiB/s'
 gnuplot set title '$op MiB/second'
-pngpsplot --nocolor bw-$op
+pngpsplot --fontsize=22 --nocolor bw-$op
 }
 }
 
 sub plot_all_multi {
     my @ret;
 
-    foreach my $op (qw/read write getattr access lookup/) {
+    foreach my $op (qw/read getattr write access lookup/) {
 	push(@ret, "plot_multi_ops_quantile('$op')", "plot_multi_bw_quantile('$op')");
     }
     return join("\n", @ret, '');
@@ -179,7 +181,10 @@ sub plot_all_multi {
 enddefine
 
 # basic_table()
-plot_oprate_graph()
-plot_allops_quantile_graphs()
+# plot_oprate_graph()
+# plot_allops_quantile_graphs()
 
-plot_all_multi()
+# plot_all_multi()
+plot_multi_bw_quantile('read', '0.77,330')
+plot_multi_ops_quantile('getattr', '0.77,38000')
+

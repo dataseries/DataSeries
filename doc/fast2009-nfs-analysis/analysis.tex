@@ -30,21 +30,8 @@ results.  We divide an interval into 20 sub-intervals.  We then add the
 interval's rate to an approximate quantile so that we can understand
 the distribution of rates even for small intervals.  For example, we
 have 11.6 billion measurements for animation-2007/set-0 at a 1ms interval
-length.  This correspond to the 6.7 days of that trace.
+length.  This corresponds to the 6.7 days of that trace.
 % 11.6 * 10^9 * 0.001 / 20 = 580,000 / 86400 = 6.7
-
-Figure~\ref{fig:bwrolling-mbps}(a) shows the cdf of bandwidth for the
-2007 traces using 60 second intervals.  Two traces stand out set-5 and
-set-4.  Set-4 was a trace of an NFS cache, rather than clients, and so
-shows a much lower aggregate rate.  Set-5 was the trace of a different
-set of clients working on a different movie, and hence shows a very
-different distribution.  The graph shows the effectiveness of our
-tracing technology on real workloads as it can capture 60s intervals
-above 3Gbits (375MB/s).  
-The 2003 traces have a distribution of shapes because they
-were taken on a wider variety of places in the network, and are much
-lower because our 2003 capture technology could not capture as much
-data, so we traced fewer machines at a time.
 
 Figure~\ref{fig:bwrolling-mbps}(a) shows animation-2007/set-5 at
 different interval lengths.  This graph shows the effectiveness of our
@@ -62,9 +49,9 @@ Figure~\ref{fig:bwrolling-mbps}(a) also emphasizes how bursty the traffic was
 during this trace. While 50\% of the intervals were above 500Mbits for
 60s intervals, only 30\% of the intervals were above 500Mbits for 1ms
 intervals.  This burstiness is expected given that
-general Ethernet traffic and filesystem
-traffic~\cite{Gribble98selfsimilar} has been shown to be
-self-similar~\cite{Leland94selfsimilar}, which implies it is bursty.
+general Ethernet and filesystem
+traffic have been shown to be
+self-similar~\cite{Gribble98selfsimilar,Leland94selfsimilar}, which implies the network traffic is also bursty.
 It does make it clear that we need to look at short time intervals in
 order to get an accurate view of the data.
 
@@ -84,9 +71,9 @@ slightly higher rates, but because of our configuration error for the
 \epsfig{width=3.3in, angle=0, file=graphs/Mbps-tails.ps}
 \caption{Bandwidth measured in the collection process.  In figure (b),
 animation-2007/set-5 at different intervals is the top group of 4 lines, and
-animation-2003/set-12 is the bottom group of 4 lines. animation-2003/set-12 does not go
-all the way to the right at 60s intervals because there were
-insufficient data points for the 0.9999 quantile.}
+animation-2003/set-12 is the bottom group of 4 lines. With 60s intervals, 
+animation-2003/set-12 does not show the 0.9999 quantile 
+because there were insufficient data points.}
 \label{fig:bwrolling-mbps}
 \end{figure*}
 
@@ -191,14 +178,14 @@ textures, models, etc. to produce a relatively small output frame.
 However, we believe that our traces under-estimate the number of write
 operations.  We discuss the write operation underestimation below.
 The abnormally low read size for set-12 occurred because
-that filer was handling a large number of stale FH requests.  The
+that server was handling a large number of stale FH requests.  The
 replies were therefore small and pulled down the bytes/operation.  We
 see a lot more getattr operations in set-5 than set-12 because set-12
-is a filer behind some nfs-caches, whereas set-5 is the workload
+is a server behind some nfs-caches, whereas set-5 is the workload
 before the nfs-caches.
 
 Table~\ref{table:99quant-differences} and
-figure~\ref{fig:oprates}(a,b) shows how long averaging intervals can
+figure~\ref{fig:oprates}(a,b) show how long averaging intervals can
 distort the load placed on the storage system.  If we were to develop
 a storage system for the hourly loads reported in most papers, we
 would fail to support the substantially higher near peak (99\%) loads
@@ -238,7 +225,8 @@ for set-5.  The skips in set-2 could increase the write workload by a
 factor of 1.5x if all missing skips after writes are associated with
 writes.  We expected a fair number of skips for set-5 since we
 experienced packet loss under load, but we did not expect it for
-set-2.
+set-2. \fix{run analysis on full dataset, determine how much we were hurt.  
+On one file it was <10\%}
 
 Further examination indicated that the problem came about because we
 followed the same parsing technique for TCP packets as was used in
@@ -270,7 +258,7 @@ estimates missing writes if we can get the space for it}
 % to partially reconstruct flaws in the traces.  
 We believe a similar
 flaw is present in earlier traces~\cite{ellardTraces} because the same
-parsing technique was used, we do not know how much those traces were
+parsing technique was used, although we do not know how much those traces were
 affected.
 
 % select dataset, group_seconds, operations_per_second from xnfs_hostinfo_rate_quantiles where host is null and direction = 'send' and operation is null and op_dir is null and quantile = 0.99
@@ -325,13 +313,17 @@ the workload.
 
 \begin{figure}
 \epsfig{width=3.2in, angle=0, file=graphs/seq-bytes-compare.ps}
-\caption{Negligible effect of reordering I/Os to improve estimated sequentiality.}
+\caption{Each group of lines shows how the estimated sequentiality was
+affected by allowing either reordering of I/Os within 10ms of the
+reply, reordering within the request-reply window, or no reordering.
+The small horizontal difference between the lines shows that reordering for
+this workload has a negligable effect on sequentiality.}
 \label{fig:seq-bytes-compare}
 \end{figure}
 
 Sequentiality is one of the most important properties for storage
 systems because disks are much more efficient when handling sequential
-data rather than random accesses.  Prior work has presented
+data accesses.  Prior work has presented
 various methods for calculating sequentiality.  Both
 Ellard~\cite{EllardFast03} and Leung~\cite{LeungUsenix08} split accesses
 into groups and calculate the sequentiality within the group.  Ellard
@@ -348,8 +340,8 @@ sequential.
 We prefer to only reorder within overlapping requests. Given two I/Os,
 A, and B, if the request-reply intervals overlap, then we are willing
 to re-order the requests to improve estimated sequentiality.  We
-believe this is a better model because the NFS server could have a
-change to re-order those I/Os.  In practice
+believe this is a better model because the NFS server could 
+re-order those I/Os.  In practice
 figure~\ref{fig:seq-bytes-compare} shows that for our traces this
 reordering makes little difference.  Allowing reordering an additional
 10ms beyond the reply of I/O A slightly increases the sequentiality,
@@ -379,7 +371,4 @@ random group, although 99\% of the runs are less than 1MB.
 
 % select dataset,operation, max(mean_operations_per_second) from xnfs_hostinfo_rates where group_seconds = 1 and host is null and direction = 'send' and operation is not null and op_dir is null and mean_operations_per_second > 300 group by dataset,operation order by operation
 % --> access, fsstat, getattr, lookup, read, write 
-
-\fix{5. Cram another analysis in here: file size distribution by
-access, or stack-distance}
 

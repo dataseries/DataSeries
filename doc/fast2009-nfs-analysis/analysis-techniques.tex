@@ -39,9 +39,9 @@ calculates quantile $q$, it actually gets a quantile in the range
 $[q-\epsilon,q+\epsilon]$.  
 
 Provided that the total number of elements
-was less than $N$, the bound is guaranteed.  We have found that
+is less than $N$, the bound is guaranteed.  We have found that
 usually the error is about 10$\times$ better than specified.  For our
-epsilon of 0.005 (sufficient to guarentee all percentiles are
+epsilon of 0.005 (sufficient to guarantee all percentiles are
 distinct), instead of needing $\approx$1.5TiB, we only need
 $\approx$1.2MiB, an improvement of $>10^6$.  This dramatic improvement
 means we can run the analysis on one machine, and hence process
@@ -111,7 +111,7 @@ of values to be efficiently calculated.
 
 Our hash-table implementation~\cite{DSOpenSource} is a straightforward
 chained-hashing implementation.  In our experiments it is strictly
-better in both performance and memory than the C++ hash table.  It
+better in both performance and memory than the GNU C++ hash table.  It
 uses somewhat more memory than the Google sparse
 hash~\cite{google-sparse-hash}, but performs almost as well as the
 dense hash; it is strictly faster than the g++ STL hash.  We added
@@ -158,10 +158,12 @@ data entries don't consume excess space.
 
 \subsection{mercury-plot}
 
+\fix{Someone unfamiliar with mercury should see if this makes sense}
 Once we have summarized the data from DataSeries using the techniques
 described above, we need to graph and subset the data.  We combined
-SQL, perl, and gnuplot into a tool we call mercury-plot\footnote{A
-previous internal tool was known as hermes.}.  SQL enables subsetting
+SQL, perl, and gnuplot into a tool we call mercury-plot.
+%\footnote{A previous internal tool was known as hermes.}
+ SQL enables subsetting
 and combining data, for example if we have data on 60 second
 intervals, it is easy to calculate min/mean/max for 3600 second
 intervals, or with the cube to select out the subset of the data that
