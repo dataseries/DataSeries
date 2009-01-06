@@ -1,4 +1,4 @@
-\section{Capture}
+\section{Raw packet capture}
 \label{sec:capture}
 
 The first stage in analyzing an NFS workload is capturing the data.
@@ -28,6 +28,7 @@ dropped. We discovered this problem on a switch that used per-port
 rather than per-card buffering.  To eliminate the problem, we switched
 to 10Gbit mirror ports to reduce the need for switch-side buffering.
 
+\fix{challenge capture goes to disk, capture can't throttle input}
 The capture host can also be overrun. At low data rates (900Mb/s,
 70k packets/s), standard tcpdump on commodity hardware works fine.
 However, at high data rates (5Gb/s, 1m packets/s),

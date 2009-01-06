@@ -1,4 +1,4 @@
-\section{Conversion}
+\section{Conversion from raw format}
 \label{sec:conversion}
 
 Once the data is captured, the second problem is parsing and
@@ -28,7 +28,7 @@ enable cross checking between analysis.  We caught an early bug in our
 converter that failed to record packet fragments by comparing the
 packet rates and the NFS rates.  
 
-\subsection{Representation}
+\subsection{Data representation}
 
 One option for the representation is the format used in the
 Ellard\cite{ellardTraces} traces: one line per request or reply in a text
@@ -54,7 +54,7 @@ analyses that only need a subset of the data.
 For example, an analysis only looking at operation
 latency can simply scan the common table.
 
-\subsection{Storage}
+\subsection{Storage format}
 
 Having decided to use a relational structuring for our data, we next
 needed to decide how to physically store the data.  Three
@@ -125,7 +125,7 @@ format, additional transforms, and comparisons to a wide variety of
 alternatives can be found in the technical
 report~\cite{DSTechnicalReportSnapshot}.
 
-\subsection{Performance}
+\subsection{Conversion performance}
 
 To perform the conversion in parallel, we divide the collected files
 into groups and process each group separately.  We make two passes
@@ -153,7 +153,7 @@ to do more on-the-fly conversion by converting early groups and
 deleting those trace files during capture so that we can capture
 longer traces.
 
-\subsection{Anonymization}
+\subsection{Trace anonymization}
 
 In order to release the traces, we have to obscure private data such
 as filenames.  There are three primary ways to map values in order to
@@ -186,7 +186,6 @@ we can convert back to real filenames by decrypting all hexadecimal
 strings and keeping the ones that validate.  We have also used the
 reversability to verify for a colleague that they properly identified
 the '.' and '..' filenames.
-\fix{alistair comment about known plaintext}
 
 We chose to encrypt entire filenames since the suffixes are specific
 to the animation process and are unlikely to be useful to people.
