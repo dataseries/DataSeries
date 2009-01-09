@@ -21,7 +21,28 @@ mirroring links between rendering machines and the rest of the network.
 For each collected dataset, we would start the collection
 process, and let it run either until we ran out of disk space, or we
 had collected all the data we wanted.  Each of these runs comprises a
-set.  We have 21 sets from 2003, and 8 sets from 2007. \fix{summarize what each set that we show in the table represents}
+set.  We have 21 sets from 2003, and 8 sets from 2007. 
+
+We selected a subset of the data to present, two datasets from 2003
+and two from 2007.  The sets were selected both because they are
+representative of the more intensive traces from both years, and to
+show some variety in the data.  Details on each dataset can be found
+on the trace download page~\cite{animation-bear-traces}.
+
+\begin{itemize}
+\item{anim-2003/set-5}: A trace of clients.  The clients access data
+both through NFS caches and servers.
+
+\item{anim-2003/set-12}: A trace of an NFS server.  This traces all clients
+accessing this server, but does not see client accesses to other servers.
+
+\item{anim-2007/set-2}: A trace of clients at the same site as
+anim-2003/set-5.  The number of clients was larger than in 2003.  The
+other traces of clients at this site were similar.
+
+\item{anim-2007/set-5}: A trace of clients at a separate site from
+set-2; this trace shows higher burstiness than set-2.
+\end{itemize}
 
 \subsection{Capture performance}
 
@@ -249,10 +270,9 @@ read reply is close enough to the first that they are combined).  This
 leads us to one of our lessons: extensive validation of the conversion
 tool is important.  Both validation through validation statistics, and
 through the use of a known workload that exercises the capture tools.
-\fix{Clarify that we mean replay a trace and verify what is captured
-from replay is what was replayed -- verify the capture side, not the
-replay side} An NFS replay tool~\cite{NingningFast05} could be used to
-validate that the captured workload is the one that was replayed.
+An NFS replay tool~\cite{NingningFast05} could be used to
+generate a workload, the replayed workload could be captured, and the
+capture could be compared to the original replayed workload.
 This comparison has been done to validate a block based replay
 tool~\cite{AndersonFast04}, but has not been done to validate a
 capture tool, as that work simply assumed capture was correct.

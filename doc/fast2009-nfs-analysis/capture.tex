@@ -15,22 +15,32 @@ workload performance.
 % On fiber networks, even the potential impact of
 % port mirroring can be eliminated through the use of optical fiber
 % splitters. 
-Therefore, we have always chosen to capture the
-data through the use of port mirroring.
+Therefore, we have always chosen to capture the data through the use
+of port mirroring, if necessary, using multiple ethernet ports for the
+mirrored packets.
 
-A single mirror port could be insufficient for mirroring both the send
-and recieve directions of a full-duplex port.  However, advanced
-switches can selectively mirror each direction of a port onto
-particular ports.  We used this functionality in our 2003 tracing to
-spread 2-4 one Gbit links over 2 one Gbit mirror ports.
+The main challenge for raw packet capture is the underlying data rate.
+In order to parse NFS packets, we have to capture the complete packet.
+Because the capture host is not interacting with clients, it has no
+way to throttle incoming packets, so it needs to be able to capture at
+the full sustained rate or risk packet loss.  To maximize flexibility,
+we want to write the data out to disk so that we can simplify the
+parsing and improve the error checking.  This means that all of the
+incoming data eventually turns in to disk writes leading to the second
+challenge of maximizing effective disk space.
 
-Even if 1 second average rates are low enough to fit onto the mirror
+% A single mirror port could be insufficient for mirroring both the send
+% and recieve directions of a full-duplex port.  However, advanced
+% switches can selectively mirror each direction of a port onto
+% particular ports.  We used this functionality in our 2003 tracing to
+% spread 2-4 one Gbit links over 2 one Gbit mirror ports.
+
+While the 1 second average rates may be low enough to fit onto the mirror
 ports, if the switch has insufficient buffering, packets can still be
 dropped. We discovered this problem on a switch that used per-port
 rather than per-card buffering.  To eliminate the problem, we switched
 to 10Gbit mirror ports to reduce the need for switch-side buffering.
 
-\fix{challenge capture goes to disk, capture can't throttle input}
 The capture host can also be overrun. At low data rates (900Mb/s,
 70,000 packets/s), standard tcpdump on commodity hardware works fine.
 However, at high data rates (5Gb/s, $10^6$ packets/s),
@@ -121,16 +131,17 @@ capture 10Gb/s in a single stream.
 
 Our capture techniques are directly applicable to anyone attempting to
 capture data from a networked storage service such as NFS, CIFS, or
-iSCSI.  Our most advanced techniques are capable of lossless
-full-packet capture at 10Gb/s, but require the use of special hardware.
-Our simplest technique allows capture at over twice the rate of
-tcpdump, and expands the effective size of the disks by 1.5$\times$ through
-adaptive compression. Our intermediate technique increases the capture
-rates by a factor of 2-3$\times$ at the cost of development time.  Both the
-lindump and driverdump code are available in our source
-distribution~\cite{DSOpenSource}.  These tools and techniques should
-eliminate problems of packet drops for capturing storage traces.
-Further details and
-experiments with the first two techniques can be found
-in~\cite{Anderson06network-tracing}.
-\fix{put a little more discussion on when to use each of these techniques}
+iSCSI.  The techniques present a tradeoff.  The simplest technique
+(lindump), is a drop in replacement for using tcpdump for full packet
+capture, and combined with our adaptive compression algorithm allows
+capture at over twice the rate of native tcpdump and expands the
+effective size of the disks by 1.5$\times$.  The intermediate
+technique increases the capture rates by an additional factor of
+2-3$\times$, but requires modification of the in-kernel network
+driver. Our most advanced techniques are capable of lossless
+full-packet capture at 10Gb/s, but requires purchasing special capture
+hardware.  Both the lindump and driverdump code are available in our
+source distribution~\cite{DSOpenSource}.  These tools and techniques
+should eliminate problems of packet drops for capturing storage
+traces.  Further details and experiments with the first two techniques
+can be found in~\cite{Anderson06network-tracing}.

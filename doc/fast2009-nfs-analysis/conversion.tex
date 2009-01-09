@@ -17,9 +17,9 @@ necessary for being able to release traces.
 One lesson we learned after conversion is that the converter's version
 number should be included in the trace.  As with most programs, there
 can be bugs.  Having the version number in the trace makes it easy to
-determine which flaws need to be handled.  We recommend the version
-control revision ID as a suitable version number.  
-\fix{revision control ID for whole checkout systems}
+determine which flaws need to be handled.  For systems such as
+subversion or git, we recommend the atomic checkin ID as a suitable
+version number.
 
 A second lesson was
 preservation of data.  An NFS parser will discard data both for space
@@ -61,7 +61,7 @@ latency can simply scan the common table.
 Having decided to use a relational structuring for our data, we next
 needed to decide how to physically store the data.  Three
 options were available to us: text, SQL, and DataSeries, our custom
-binary format~\cite{DSTechnicalReportSnapshot} for storing trace data.
+binary format~\cite{DataSeriesOSR2009} for storing trace data.
 Text is a traditional way of storing trace data, however, we were
 concerned that a text representation would be too large and too slow.
 Having later converted the Ellard traces to our format, we found that
@@ -136,11 +136,11 @@ requests or replies.  Second, we use those counts to determine the
 first record-id for each group, and convert the files.  Since NFS
 parsing requires the request to parse the reply, we currently do not
 parse any request-reply pairs that cross a group boundary.  Similarly,
-we do not do full TCP reconstruction, so for NFS over TCP, we only
-parse requests or replies that start aligned with the beginning of a
-packet. These limitations are similar to earlier work, so we found
-them acceptable.  \fix{multiple requests in a frame, but not
-misaligned ones} We run the conversion locally on the 8-way tracing
+we do not do full TCP reconstruction, so for NFS over TCP, we parse
+multiple requests or replies if the first one starts at the beginning of the packet.
+These limitations are similar to earlier work, so we found
+them acceptable.  
+We run the conversion locally on the 8-way tracing
 machine rather than a cluster because conversion runs faster than the
 1Gbit LAN connection we had at the customer site (the tracing card
 does not act as a normal NIC).  Conversion of a full data set (30TiB)
@@ -197,12 +197,15 @@ traces.  Since we can decrypt, we could in the future change this
 decision.
 
 The remaining values were semi-random (IP addresses in the 10.*
-network, filehandles selected by the NFS servers), so we pass those values
-through unchanged.  All jobs in the customers' cluster were being run
-as a common user, so we did not capture user identifiers.  Since they are
-transitioning away from that model, future traces would include
-unchanged user identifiers and group identifiers.  If there were public values in the traces,
-then we would have had to apply more sophisticated
+network, filehandles selected by the NFS servers), so we pass those
+values through unchanged.  We decided that the filehandle content,
+which includes for our NFS servers the filesystem containing the file,
+could be useful for analysis.  Filehandles could also be anonymized.
+
+All jobs in the customers' cluster were being run as a common user, so
+we did not capture user identifiers.  Since they are transitioning
+away from that model, future traces would include unchanged user
+identifiers and group identifiers.  If there were public values in the
+traces, then we would have had to apply more sophisticated
 anonymization~\cite{ruoming07anonymization}.
 
-\fix{could anonymize filehandle also}
