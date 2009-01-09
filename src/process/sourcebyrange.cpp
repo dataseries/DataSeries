@@ -11,10 +11,10 @@
 #include <DataSeries/IndexSourceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
+using namespace std;
 using boost::format;
-bool
-isnumber(char *v)
-{
+
+bool isnumber(char *v) {
     while(true) {
 	if (*v == '\0') {
 	    return true;
@@ -52,7 +52,7 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
 	start_time(s,"start-time"), end_time(s,"end-time");
     Variable32Field filename(s,"filename");
     int nfiles = 0;
-    printf("start ns %lld; end ns %lld\n",start_ns,end_ns);
+    cout << format("start ns %d; end ns %d\n") % start_ns % end_ns;
     for(;s.pos.morerecords();++s.pos) {
 	if (inrange(start_time.val(),start_ns,end_ns) ||
 	    inrange(end_time.val(),start_ns,end_ns) ||

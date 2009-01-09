@@ -144,15 +144,16 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 		    // the packets from the different interfaces can get to user level slightly out
 		    // of order.
 		} else if (found_ok_backwardness) {
-		    printf("tolerating backwards timeness on recordid %lld of %lld ns: %lld < %lld\n",
-			   recordid.val(),f.end_time - packettime.val(),
-			   packettime.val(),f.end_time);
+		    cout << format("tolerating backwards timeness on recordid %d of %d ns: %d < %d\n")
+			% recordid.val() % (f.end_time - packettime.val())
+			% packettime.val() % f.end_time;
 		} else {
 		    INVARIANT(backward_ns <= max_backward_ns_in_extent,
 			      format("bad2 %lld < %lld -> %lld")
 			      % packettime.val() % f.end_time % backward_ns);
-		    printf("warning backwards timeness on recordid %lld of %lld ns: %lld < %lld\n",
-			   recordid.val(),f.end_time - packettime.val(),packettime.val(),f.end_time);
+		    cout << format("warning backwards timeness on recordid %d of %d ns: %d < %d\n")
+			% recordid.val() % (f.end_time - packettime.val()) 
+			% packettime.val() % f.end_time;
 		}
 	    } else {
 		f.end_time = packettime.val();
@@ -190,8 +191,7 @@ updateIndexMap(char *filename)
 	    }
 	}
     }
-    printf("%s: first offset @ %lld, last @ %lld\n",
-	   filename,first_offset,last_offset);
+    cout << format("%s: first offset @ %d, last @ %d\n") % filename % first_offset % last_offset;
     fileinfo f;
     f.start_id = f.end_id = -1;
     f.start_time = f.end_time = -1;
@@ -201,10 +201,8 @@ updateIndexMap(char *filename)
     if (last_offset > first_offset) {
 	updateFileInfo(source,last_offset,f);
     }
-    printf("  ids: %lld .. %lld; time: %.6f .. %.6f\n",
-	   f.start_id,f.end_id,
-	   (double)f.start_time / 1.0e9,
-	   (double)f.end_time / 1.0e9);
+    cout << format("  ids: %d .. %d; time: %.6f .. %.6f\n")
+	% f.start_id % f.end_id % ((double)f.start_time / 1.0e9) % ((double)f.end_time / 1.0e9);
     indexmapT::iterator exist = indexmap.find(f.start_id);
     if (exist != indexmap.end()) {
 	SINVARIANT(exist->second.start_id == f.start_id &&
@@ -249,9 +247,8 @@ validateIndexMap()
 		found_ok_backwardness = true;
 	    if (found_ok_backwardness) {
 		if (backward_ns > min_backward_ns_print_warning) {
-		    printf("tolerating validation backwards of %lld ns: %lld < %lld\n",
-			   backward_ns, i->second.start_time,
-			   last_time);
+		    cout << format("tolerating validation backwards of %d ns: %lld < %d\n")
+			% backward_ns % i->second.start_time % last_time;
 		}
 	    } else {
 		INVARIANT(i->second.start_time >= last_time,

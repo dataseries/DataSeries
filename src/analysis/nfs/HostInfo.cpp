@@ -830,7 +830,7 @@ public:
 	SINVARIANT(v.ops_rate.mean() > 0);
 
 	if (sql_output) {
-	    cout << format("insert into nfs_hostinfo_rates (group_seconds, host, direction, operation, op_dir, mean_operations_per_second, mean_payload_bytes_per_second) values (%d, %s, %s, %s, %s, %.20g, %.20g);\n")
+	    cout << format("insert into nfs_hostinfo_rates (group_seconds, host, direction, operation, op_dir, mean_operations_per_second, mean_payload_bytes_per_second) values (%d, %s, %s, %s, %s, %.8g, %.8g);\n")
 		% group_seconds % hostStr(t, true) % sqlify(isSendStr(t))
 		% sqlify(operationStr(t)) % sqlify(isRequestStr(t))
 		% v.ops_rate.mean() % v.bytes_rate.mean();
@@ -841,7 +841,7 @@ public:
 		for(double q = 0; q < 1.0000000001; q += quantile_step) {
 		    if (q > 0) { cout << ", "; }
 		    if (q > 1) { q = 1; } // doubles can have slight overflow
-		    cout << format("(%d, %s, %s, %s, %s, %.5f, %.20g, %.20g)")
+		    cout << format("(%d, %s, %s, %s, %s, %.5f, %.8g, %.8g)")
 			% group_seconds % hostStr(t, true) % sqlify(isSendStr(t))
 			% sqlify(operationStr(t)) % sqlify(isRequestStr(t))
 			% q % v.ops_rate.getQuantile(q) % v.bytes_rate.getQuantile(q);
