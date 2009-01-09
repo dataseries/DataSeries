@@ -11,9 +11,11 @@ but impacts the performance of the
 server.  Capturing the workload on the network through port mirroring
 is about as convenient as capture on the server, and given that most
 switches implement mirroring in hardware, has no impact on network or
-workload performance.  On fiber networks, even the potential impact of
-port mirroring can be eliminated through the use of optical fiber
-splitters. Therefore, we have always chosen to capture the
+workload performance.  
+% On fiber networks, even the potential impact of
+% port mirroring can be eliminated through the use of optical fiber
+% splitters. 
+Therefore, we have always chosen to capture the
 data through the use of port mirroring.
 
 A single mirror port could be insufficient for mirroring both the send
@@ -53,11 +55,11 @@ disk.  Using an HP DL580G2, a current 4 socket server circa 2003,
 lindump was able to capture about 3x the packets per second (pps) as
 tcpdump and about 1.25x the bandwidth.  Combined with a somewhat
 higher burst rate while the kernel and network card buffered data,
-this was sufficient for mostly loss free captures at the animation
+this approach was sufficient for mostly loss free captures at the animation
 company, and was the technique we used for all of the 2003 set of
 traces.
 
-Once our packets are captured into files in tmpfs, we used compression
+Packets are captured into files in tmpfs, an in-memory filesystem, and then compressed
 to maximize the effective disk space.  If the capture host is mostly
 idle, we compressed with {\tt gzip -9}. As the backlog of pending
 files increased, we reduced the compression algorithm to {\tt gzip
@@ -68,10 +70,10 @@ rates we had to fall back to reduced compression.
 
 \subsection{Driverdump}
 
-At a second site, our 1Gbit lindump approach was insufficient because
+At another site, our 1Gbit lindump approach was insufficient because
 of packet bursts and limited buffering on the switch.  Replacing the
-dual 1Gbit cards with a 10GbE card merely moved the bottleneck to the
-host and the packets were dropped on the card before they could be
+dual 1Gbit cards with a 10Gb/s card merely moved the bottleneck to the
+host and the packets were dropped on the NIC before they could be
 consumed by the kernel.
 
 To fix this problem, we modified the network driver so that instead of
@@ -95,10 +97,10 @@ copying the files out to disk.
 \subsection{Endacedump}
 
 In 2007, we returned to the animation company to collect new traces on
-their faster NFS servers and 10GbE network.  While an update of
+their faster NFS servers and 10Gb/s network.  While an update of
 driverdump might have been sufficient, we decided to also try the
 Endace DAG 8.2X capture card~\cite{endace-cards}.  This card copies
-and timestamps packets from a 10GbE network directly into memory.  As
+and timestamps packets from a 10Gb/s network directly into memory.  As
 a result, it can capture minimal size packets at full bandwidth, and
 is intended for doing in-memory analysis of networks.  Our challenge
 was to get the capture out to disk, which was not believed to be
@@ -112,15 +114,15 @@ core 2.8Ghz Opterons, and 6 14 disk SCSI trays.  Our compression
 techniques turned our 20TiB of disk space into 30TiB of effective disk
 space.  We experienced a very small number of packet drops because our
 capture card limited a single stream to PCI-X bandwidth (8Gbps), and
-required partitioning into two streams to capture 10GbE.  Newer cards
-capture 10GbE in a single stream.
+required partitioning into two streams to capture 10Gb/s.  Newer cards
+capture 10Gb/s in a single stream.
 
 \subsection{Discussion}
 
 Our capture techniques are directly applicable to anyone attempting to
 capture data from a networked storage service such as NFS, CIFS, or
 iSCSI.  Our most advanced techniques are capable of lossless
-full-packet capture at 10GbE, but require the use of special hardware.
+full-packet capture at 10Gb/s, but require the use of special hardware.
 Our simplest technique allows capture at over twice the rate of
 tcpdump, and expands the effective size of the disks by 1.5x through
 adaptive compression. Our intermediate technique increases the capture
@@ -131,3 +133,4 @@ eliminate problems of packet drops for capturing storage traces.
 Further details and
 experiments with the first two techniques can be found
 in~\cite{Anderson06network-tracing}.
+\fix{put a little more discussion on when to use each of these techniques}

@@ -5,7 +5,7 @@
 \fix{TR reference $->$ OSR}
 Storage tracing and analysis has a long history.  Some of the earliest
 filesystem traces were captured in 1985~\cite{ousterhout85}, and there
-has been intermittent tracing effort since then summarized by
+has been intermittent tracing effort since then, summarized by
 Leung~\cite{LeungUsenix08}.  These traces are
 analyzed to find properties that future systems should support or
 exploit, and as input to simulators and replay tools to explore system
@@ -31,17 +31,6 @@ publish the traces.  The last publically available NFS traces that we
 are aware of were collected in 2001.  Our 2003 and 2007
 traces~\cite{animation-bear-traces} provide recent NFS traces for use
 by the community.
-
-The first dataset (anim-2003) was collected in Aug 2003 - Feb 2004.  We
-returned later to collect data (anim-2007) in Jan 2007 - Oct 2007 using an
-improved version of our technology.  We collected data using a variety of mirror
-ports within the companies network.
-The network design is
-straightforward: There are a redundant set of core routers, an
-optional mid-tier of switches to increase the effective port count of
-the core, and then a collection of edge switches that each cover one
-or two racks of rendering machines.  Most of our traces were taken by
-mirroring links between rendering machines and the rest of the network.
 
 One difference between our traces and other ones is the data rates
 that we measured.  Our 2003 client traces saw about 750 million
@@ -72,7 +61,7 @@ these steps are shown in italics for each step, as well as some
 traditional tools.  The first step is capturing the workload, usually
 as some type of trace.  The second step is conversion, ususally from
 some raw format into a format designed for analysis.  The third step
-is analysis to reduce the huge amount of converted data down to
+is analysis to reduce the huge amount of converted data to
 something manageable.  Alternately, this step is a simulation or replay to
 explore some new system architecture.  Finally the fourth step is to
 generate graphs or textual reports from the output of the analysis or
@@ -82,13 +71,15 @@ Our work has five main contributions:
 
 \begin{enumerate}
 \item The development of techniques for lossless raw packet capture up to
-5Gbit/s, and with the hardware improvements since our work, likely to
-10Gbit/s.  These techniques are applicable to anyone wanting to capture
+5Gb/s, and with the hardware improvements since our work, likely to
+10Gb/s.  These techniques are applicable to anyone wanting to capture
 a network storage service such as NFS, CIFS, or iSCSI.
 
-\item A series of guidelines for the conversion and storage of the traces.
-Many of these guidelines are things that we wish we had known when we
-were converting our traces.
+\item A series of guidelines for the conversion and storage of the
+traces.  Many of these guidelines are things that we wish we had known
+when we were converting our traces.  We used
+DataSeries~\cite{DataSeriesOSR2009} to store the traces, but our
+guidelines are general.
 
 \item Improved techniques for analyzing very large traces that allow
 us to look at the burstiness in workloads, and an examination of how

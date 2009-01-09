@@ -12,8 +12,8 @@ and comparing his results to earlier traces.  Ellard made his tools
 available, so we initially considered building on top of them, but
 quickly discovered that our workload was so much more intense that his
 tools would be insufficient, and so ended up building our own.
-When we later translated some of his traces to use our infrastructure, we
-discovered our version was about 100x faster on a four core machine and
+We later translated those tools and traces into DataSeries, and 
+found our version was about 100x faster on a four core machine and
 used 25x less CPU time for analysis.  Our 2003 traces were about 20x
 more intense than Ellard's as we saw over 650 million operations/day,
 and Ellard saw about 30.
@@ -23,10 +23,10 @@ Since the clients were entirely windows clients, his traces were of
 CIFS data, and so he used the wireshark tools~\cite{wireshark} to
 convert the traces.  Leung's traces were of comparable intensity to
 Ellard's traces, and they noted that they had some small packet drops
-during high load as they just used tcpdump for capture.  Leung found
-complicated sequentiality patterns and provided an extensive analysis
-of this.  Our 2007 traces were about 95x more intense than Leung's
-traces as they saw a peak of 19.1 million operations/day and we saw an
+during high load as they just used tcpdump for capture.  Leung identified and extensively analyzed 
+complicated sequentiality patterns.
+Our 2007 traces were about 95x more intense than Leung's
+traces, as they saw a peak of 19.1 million operations/day and we saw an
 average of about 1.8 billion.  This comparison is slightly misleading
 as NFS tends to have more operations than CIFS because NFS is a
 stateless protocol.
@@ -39,7 +39,7 @@ data.  When we captured our second set of traces in 2007, we needed to
 capture at even higher rates, and we used a
 specialized capture card. We wrote new capture software using
 techniques we had developed in 2003 to allow us to capture above
-5Gbits/s.
+5Gb/s.
 
 % capture.out a random capture from our nfs fileserver
 % tcpdump -r capture.out| wc   
@@ -52,7 +52,7 @@ Wireshark~\cite{wireshark} provides a graphical interface to packet
 analysis, and the tshark variant provides conversion to text.  We were
 not aware of wireshark at the time of our first capture, and we simply
 adjusted our earlier tools when we did our 2007 tracing.  We may
-consider using the wireshark converter in the future provided we can
+consider using the wireshark converter in the future, provided we can
 make it run much faster.  Running tshark on a small 2 million packet
 capture took about 45 seconds whereas our converter ran in about 5
 seconds.  Given conversion takes 2-3 days for a 5 day trace, we can't

@@ -6,11 +6,11 @@ converting that data to a easily usable format.  The raw packet format
 contains a large amount of unnecessary data, and would require
 repeated, expensive parsing to be used for NFS analysis.  There are four main
 challenges in conversion: representation, storage, performance and
-anonymization.  Representation is the challenge of deciding the
-logical structure of the converted data.  Storage is the challenge of
+anonymization.  {\it Data representation} is the challenge of deciding the
+logical structure of the converted data.  {\it Storage format} is the challenge of
 picking a suitable physical structure for the converted data.
-Performance is the challenge of making the conversion run quickly,
-ideally faster than the capture stage.  Anonymization is the
+{\it Conversion performance} is the challenge of making the conversion run quickly,
+ideally faster than the capture stage.  {\it Trace anonymization} is the
 challenge of hiding sensitive information present in the data and is
 necessary for being able to release traces.
 
@@ -46,8 +46,9 @@ table for read and write information.  We then join the common table
 to the other tables when we want to perform an analysis that uses
 information in both.  Because of this structure, a single RPC request
 or reply will have a single entry in the common table.  However, a
-request/reply pair will have 0 (no read/write entry) or more
-entries (multiple attribute entries for readdir+) in other tables.
+request/reply pair will have 0 (no entry in the read/write table
+unless the operation is a read/write) or more entries (multiple
+attribute entries for readdir+) in other tables.
 
 The relational structuring improves flexibility, and avoids reading unnecessary data for
 analyses that only need a subset of the data.
@@ -98,10 +99,10 @@ boolean field for storing whether the value is null.  Groups of rows
 are compressed as a unit.  Prior to compression,
 various transforms are applied to reduce the size of the data.  First,
 duplicate strings are collapsed down to a single
-string.  Second values are delta compressed relative to either the
+string.  Second, values are delta compressed relative to either the
 same value in the previous row or another value in the same row.  For
-example, the packet time values are delta compressed changing them
-from large random numbers to smaller random numbers.
+example, the packet time values are delta compressed, making them
+more compressible by a general purpose compression algorithm.
 
 DataSeries is designed for efficient access. Values are packed so that
 once a group of rows is read in, an analysis can iterate over them
@@ -109,7 +110,7 @@ simply by increasing a single counter, as with a C++ vector.
 Individual values are accessed by an offset from that
 counter and a C++ cast.  Byte swapping is automatically
 performed if necessary.  The offset is not fixed, so the same analysis can read
-different versions of the data provided the meaning of the fields
+different versions of the data, provided the meaning of the fields
 hasn't changed.  Efficient access to subsets of the data is supported
 by an automatically generated index.
 
@@ -129,8 +130,8 @@ report~\cite{DSTechnicalReportSnapshot}.
 
 To perform the conversion in parallel, we divide the collected files
 into groups and process each group separately.  We make two passes
-through the data.  First we parse the data and count the number of
-requests or replies.  Second we use those counts to determine the
+through the data.  First, we parse the data and count the number of
+requests or replies.  Second, we use those counts to determine the
 first record-id for each group, and convert the files.  Since NFS
 parsing requires the request to parse the reply, we currently do not
 parse any request-reply pairs that cross a group boundary.  Similarly,
@@ -144,8 +145,8 @@ machine rather than a cluster because conversion runs faster than the
 does not act as a normal NIC).  Conversion of a full data set (30TiB)
 takes about 3 days.
 
-We convert from trace files rather than on-the-fly primarily for
-simplicity.  However, a side benefit was that our converter could be
+We do offline conversion from trace files, rather than online conversion, primarily for simplicity.
+However, a side benefit was that our converter could be
 paranoid and conservative, rather than have it try to recover from
 conversion problems since we could fix the converter when it was
 mis-parsing, or was too conservative.  The next time we trace, we plan
@@ -166,10 +167,11 @@ most compact identifiers ($\leq$ 8 bytes), but is difficult to
 calculate in parallel and requires a large translation table to
 maintain persistant mappings and to convert back to the original data.
 
-\item {\bf hash/hmac}.  This option results in larger
-identifiers (16-20 bytes), but enables parallel conversion.  A keyed HMAC instead of a hash
-protects against dictionary attacks.  Reversing this mapping requires
-preserving a large translation table.
+\item {\bf hash/hmac}.  This option results in larger identifiers
+(16-20 bytes), but enables parallel conversion.  A keyed
+HMAC~\cite{Bellare96keyinghash} instead of a hash protects against
+dictionary attacks.  Reversing this mapping requires preserving a
+large translation table.
 
 \item {\bf encrypted values}.  This option results in
 the longest identifiers since the encrypted value will be at least as

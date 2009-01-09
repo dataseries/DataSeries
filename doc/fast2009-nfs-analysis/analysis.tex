@@ -5,12 +5,20 @@ Analyzing very large traces can take a long time.  While our custom
 binary format enables efficient analysis, and our analysis techniques
 are efficient, it can still take 4-8 hours to analyze a single set of
 the 2007 traces.  In practice, we analyze the traces in parallel on a
-small cluster of 4 core 2.4GhZ Opterons.  Our analysis typically
+small cluster of 4 core 2.4GHz Opterons.  Our analysis typically
 becomes bottle-necked on the fileservers that serve up to 200MB/s each
 once an analysis is running on more than 20 machines.
 
-We collected data at two times: 2003 (anim-2003), and 2007
-(anim-2007).  During each time, we would start the collection
+We collected data at two times: Aug 2003 - Feb 2004 (anim-2003), and Jan 2007 - Oct 2007
+(anim-2007).  We collected data using a variety of mirror
+ports within the company's network.
+The network design is
+straightforward: There are a redundant set of core routers, an
+optional mid-tier of switches to increase the effective port count of
+the core, and then a collection of edge switches that each cover one
+or two racks of rendering machines.  Most of our traces were taken by
+mirroring links between rendering machines and the rest of the network.
+For each collected dataset, we would start the collection
 process, and let it run either until we ran out of disk space, or we
 had collected all the data we wanted.  Each of these runs comprises a
 set.  We have 21 sets from 2003, and 8 sets from 2007.
@@ -21,12 +29,12 @@ We start our analysis by looking at the performance of our capture
 tool.  This validates our claims that we can capture packets at very
 high data rates.  We examine the capture rate of the tool by
 calculating the megabits/s (Mbps) and kilo-packets/s (kpps) for
-overlapping intervals of a specified length.  For example if our
+20 overlapping sub-intervals of a specified length.  For example if our
 interval length is 60 seconds, then we will calculate the bandwidth
 for the interval 0s-60s, 3s-63s, 6s-66s, ... end-of-trace.  We chose
-to calculate the bandwidth for overlapping intervals so that if there
-is any aligned cyclicality in the trace data we will get incorrect
-results.  We divide an interval into 20 sub-intervals.  We then add the
+to calculate the bandwidth for overlapping intervals so that we would not
+incorrectly measure the peaks and valleys of cyclic patterns aligned to the interval length.
+We then add the
 interval's rate to an approximate quantile so that we can understand
 the distribution of rates even for small intervals.  For example, we
 have 11.6 billion measurements for animation-2007/set-0 at a 1ms interval
@@ -35,14 +43,14 @@ length.  This corresponds to the 6.7 days of that trace.
 
 Figure~\ref{fig:bwrolling-mbps}(a) shows animation-2007/set-5 at
 different interval lengths.  This graph shows the effectiveness of our
-tracing technology, as we have sustained intervals above 3Gbits
-(375MB/s), and 1ms intervals above 4Gbits (500MB/s). Indeed these
-traces show the requirement for high speed tracing as 5-20\% of the
+tracing technology, as we have sustained intervals above 3Gb/s
+(375MB/s), and 1ms intervals above 4Gb/s (500MB/s). Indeed these
+traces show the requirement for high speed tracing, as 5-20\% of the
 traces intervals have sustained intervals above 1Gbit, which is above
 the rate at which Leung~\cite{LeungUsenix08} noted their tracing tool
 started to drop packets.  The other sets from anim-2007 are somewhat
 less bursty, and the anim-2003 data shows much lower peaks because of
-our more limited tracing tools, and a wider variety of shapes because
+our more limited tracing tools, and a wider variety of shapes, because
 we traced at more points in the network.
 
 Figure~\ref{fig:bwrolling-mbps}(a) also emphasizes how bursty the traffic was
@@ -60,9 +68,9 @@ the capture rates for two of the trace sets.  The relative similarity
 between the Mbps and kpps graphs is simply because packet size
 distributions are relatively constant.  The traces show the remarkably high
 burstiness of the 2007 traces.  While 90\% of the 1ms intervals are
-below 2Gbits, 0.1\% are above 6Gbits.  We expect we would have seen
+below 2Gb/s, 0.1\% are above 6Gb/s.  We expect we would have seen
 slightly higher rates, but because of our configuration error for the
-2007 capture tool, we could not capture above about 8Gbits.
+2007 capture tool, we could not capture above about 8Gb/s.
 
 \begin{figure*}
 %\epsfig{width=2.1in, angle=0, file=graphs/Mbps-nfs-1.ps}
@@ -164,10 +172,10 @@ Table~\ref{table:nfs-stats-overview} provides an overview of all the
 operations that occurred in the four traces we are examining in more
 detail.  It shows a number of substantial changes in the workload
 presented to the NFS subsystem.  First, the read and write sizes have
-almost doubled from the animation-2003 to animation-2007 datasets.  This is expected
+almost doubled from the animation-2003 to animation-2007 datasets.  This trend is expected,
 because the company moved from NFSv2 to NFSv3 between the two
-tracing periods, and set the v3 read/write size to 16k.  We asked and
-were told they set it to those sized based on some performance
+tracing periods, and set the v3 read/write size to 16k.  The company told
+us they set it to those sized based on some performance
 measurements of sequential I/O.  The NFS version switch also accounts
 for the increase in access calls (new in v3), and readdirplus (also
 new in v3).  
@@ -181,11 +189,11 @@ The abnormally low read size for set-12 occurred because
 that server was handling a large number of stale FH requests.  The
 replies were therefore small and pulled down the bytes/operation.  We
 see a lot more getattr operations in set-5 than set-12 because set-12
-is a server behind some nfs-caches, whereas set-5 is the workload
+is a server behind several nfs-caches, whereas set-5 is the workload
 before the nfs-caches.
 
 Table~\ref{table:99quant-differences} and
-figure~\ref{fig:oprates}(a,b) show how long averaging intervals can
+Figures~\ref{fig:oprates}(a,b) show how long averaging intervals can
 distort the load placed on the storage system.  If we were to develop
 a storage system for the hourly loads reported in most papers, we
 would fail to support the substantially higher near peak (99\%) loads
@@ -194,7 +202,7 @@ used for incremental scrubbing and data reorganization.  We do not
 include the traditional graph of ops/s vs time because our workload
 does not show a strong daily cycle.  Animation companies tend to run
 batch processing overnight, and interactive jobs during the day, so
-show much more constant load on the cluster.  The only observable
+the traditional diurnal pattern is reduced.  The main remaining
 pattern is that weekends usually drop off to zero.
 
 Figure~\ref{fig:bw-ops-quantiles} shows the read operation MiB/s and
@@ -214,7 +222,7 @@ implausible as the frame output size has not increased.  We analyzed
 the traces to look for missing operations in the sequence of
 transaction ids, automatically inferring if the client is using a
 big-endian or little-endian counter.  The initial results looked quite
-good, animation-2007/set-2 showed 99.7\% of the operations were in sequence,
+good: animation-2007/set-2 showed 99.7\% of the operations were in sequence,
 animation-2007/set-5 showed 98.4\%, and counting the skips of 128 transactions
 or less, we found only 0.21\% and 0.50\% respectively (the remaining
 entries were duplicates or ones that we could not positively tell if
@@ -288,11 +296,11 @@ filesystem.  They affect the maximum size of I/Os that could be
 executed, and they affect the potential sequentiality in a workload.
 
 Figure~\ref{fig:file-size} shows the size of files accessed in our
-traces.  It shows that the files in the animation workload are in
-general very small, as 40-80\% of the files are smaller than 8k, and
-hence will be read in a single I/O for the 2003 traces.  70\% of the
-files are smaller than 16k for the 2007 traces, and hence will be read
-in a single I/O.  While there are larger files in the traces, 99\% of
+traces.  It shows that most files are small enough to be read in a single I/O: 
+40-80\% of the files are smaller than 8k (NFSv2 read size) 
+for the 2003 traces, and  70\% of the
+files are smaller than 16k for the 2007 traces.
+While there are larger files in the traces, 99\% of
 the files are smaller than 10MB.  The small file sizes present in this
 workload, and the preponderance of writes suggest that a flash file
 system~\cite{Kawaguchi95aflash-memory} or MEMS file
@@ -311,7 +319,7 @@ the workload.
 
 \begin{figure}
 \epsfig{width=3.2in, angle=0, file=graphs/seq-bytes-compare.ps}
-\caption{Each group of lines shows how the estimated sequentiality was
+\caption{Each group of lines shows, in the following order, how the estimated sequentiality was
 affected by allowing either reordering of I/Os within 10ms of the
 reply, reordering within the request-reply window, or no reordering.
 The small horizontal difference between the lines shows that reordering for
@@ -329,7 +337,7 @@ emulates opens and closes by looking for 30s groups in the access
 pattern.  Ellard tolerates small gaps in the request stream as
 sequential, e.g. an I/O of 7k at offset 0 followed by an I/O of 8k at
 offset 8k would be considered sequential.  Ellard also re-orders I/Os
-to deal with client-side reordering. In particular Ellard looks
+to deal with client-side reordering. In particular, Ellard looks
 forward a constant amount from the request time to find I/Os that
 could make the access pattern more sequential.  This constant was
 determined empirically.  Leung treats the first I/O after an open as
@@ -339,8 +347,8 @@ We prefer to only reorder within overlapping requests. Given two I/Os,
 A, and B, if the request-reply intervals overlap, then we are willing
 to re-order the requests to improve estimated sequentiality.  We
 believe this is a better model because the NFS server could 
-re-order those I/Os.  In practice
-figure~\ref{fig:seq-bytes-compare} shows that for our traces this
+re-order those I/Os.  In practice,
+Figure~\ref{fig:seq-bytes-compare} shows that for our traces this
 reordering makes little difference.  Allowing reordering an additional
 10ms beyond the reply of I/O A slightly increases the sequentiality,
 but generally not much more than just for overlapping requests.
@@ -354,13 +362,13 @@ have to reposition to that file to start the read.
 
 Given our small file sizes, it turns out that most accesses count as
 random because they read the entire file in a single I/O.  We can see
-this in figure~\ref{fig:seq-analysis}(a) which shows the number of
+this in Figure~\ref{fig:seq-analysis}(a), which shows the number of
 reads in a group.  Most groups are single I/O groups (70-90\% in the
 2007 traces).  We see about twice as many I/Os in the 2003 traces,
 because the I/Os in the 2003 traces are only 8KiB rather than 16KiB.
 
 Sequential runs within a random group turns out to be more
-interesting.  Figure~\ref{fig:seq-analysis}(b) show the number of
+interesting.  Figure~\ref{fig:seq-analysis}(b) shows the number of
 bytes accessed in sequential runs within a
 random group.  We can see that if we start accessing a file at random,
 most (50-80\%) of the time we will do single or double I/O accesses (8-32k).
