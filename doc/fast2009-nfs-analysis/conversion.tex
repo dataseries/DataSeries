@@ -19,6 +19,7 @@ number should be included in the trace.  As with most programs, there
 can be bugs.  Having the version number in the trace makes it easy to
 determine which flaws need to be handled.  We recommend the version
 control revision ID as a suitable version number.  
+\fix{revision control ID for whole checkout systems}
 
 A second lesson was
 preservation of data.  An NFS parser will discard data both for space
@@ -31,7 +32,7 @@ packet rates and the NFS rates.
 \subsection{Data representation}
 
 One option for the representation is the format used in the
-Ellard\cite{ellardTraces} traces: one line per request or reply in a text
+Ellard~\cite{ellardTraces} traces: one line per request or reply in a text
 file with field names to identify the different parameters in the RPC.
 This format is slow to parse, and works poorly for representing 
 readdir, which has an arbitrary number of response fields.
@@ -46,7 +47,7 @@ table for read and write information.  We then join the common table
 to the other tables when we want to perform an analysis that uses
 information in both.  Because of this structure, a single RPC request
 or reply will have a single entry in the common table.  However, a
-request/reply pair will have 0 (no entry in the read/write table
+request/reply pair will have zero (no entry in the read/write table
 unless the operation is a read/write) or more entries (multiple
 attribute entries for readdir+) in other tables.
 
@@ -64,8 +65,8 @@ binary format~\cite{DSTechnicalReportSnapshot} for storing trace data.
 Text is a traditional way of storing trace data, however, we were
 concerned that a text representation would be too large and too slow.
 Having later converted the Ellard traces to our format, we found that
-the analysis distributed with the traces used 25x less CPU time when
-the traces and analysis used DataSeries, and ran 100x faster on a 4
+the analysis distributed with the traces used 25$\times$ less CPU time when
+the traces and analysis used DataSeries, and ran 100$\times$ faster on a 4
 core machine. This disparity confirmed our intuition that text is a
 poor format for trace data.
 
@@ -149,7 +150,7 @@ We do offline conversion from trace files, rather than online conversion, primar
 However, a side benefit was that our converter could be
 paranoid and conservative, rather than have it try to recover from
 conversion problems since we could fix the converter when it was
-mis-parsing, or was too conservative.  The next time we trace, we plan
+mis-parsing or was too conservative.  The next time we trace, we plan
 to do more on-the-fly conversion by converting early groups and
 deleting those trace files during capture so that we can capture
 longer traces.
@@ -198,11 +199,10 @@ decision.
 The remaining values were semi-random (IP addresses in the 10.*
 network, filehandles selected by the NFS servers), so we pass those values
 through unchanged.  All jobs in the customers' cluster were being run
-as a common user, so we did not capture uids.  Since they are
+as a common user, so we did not capture user identifiers.  Since they are
 transitioning away from that model, future traces would include
-unchanged uids and gids.  If there were public values in the traces,
+unchanged user identifiers and group identifiers.  If there were public values in the traces,
 then we would have had to apply more sophisticated
 anonymization~\cite{ruoming07anonymization}.
 
-
-
+\fix{could anonymize filehandle also}

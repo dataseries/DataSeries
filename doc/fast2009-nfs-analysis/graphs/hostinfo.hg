@@ -185,6 +185,11 @@ enddefine
 # plot_allops_quantile_graphs()
 
 # plot_all_multi()
-plot_multi_bw_quantile('read', '0.77,330')
-plot_multi_ops_quantile('getattr', '0.77,38000')
+# plot_multi_bw_quantile('read', '0.77,330')
+# plot_multi_ops_quantile('getattr', '0.77,38000')
 
+
+# look for any cyclicality in read/write ratio
+
+# sql create or replace view xnfs_rw_ratio as select a.dataset, a.host, a.group_time, a.group_count as read_count, b.group_count as write_count from xnfs_hostinfo_cube as a, xnfs_hostinfo_cube as b where a.dataset = b.dataset and a.host is null and b.host is null and a.group_time = b.group_time and a.group_seconds = 3600 and b.group_seconds = 3600 and a.operation = 'read' and b.operation = 'write' and a.direction = 'send' and b.direction = 'send' and a.op_dir = 'request' and b.op_dir = 'request'
+# plot group_time as x, read_count / (read_count + write_count) as y from xnfs_rw_ratio where dataset = 'nfs-1/set-5'

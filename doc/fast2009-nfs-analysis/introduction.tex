@@ -25,18 +25,18 @@ somewhat comparable, but it also means that commercial workloads are
 under-emphasized.  Microsoft is working to correct this by capturing
 commercial enterprise traces from their internal
 servers~\cite{snia-iotta-microsoft}.  Our work focuses on commercial
-NFS workloads, in particular from a feature animation (movie) company.
+NFS~\cite{rfc1094nfs} workloads, in particular from a feature animation (movie) company.
 The name of the company remains blinded as part of the agreement to
 publish the traces.  The last publically available NFS traces that we
-are aware of were collected in 2001.  Our 2003 and 2007
+are aware of were collected in 2003.  Our 2003 and 2007
 traces~\cite{animation-bear-traces} provide recent NFS traces for use
 by the community.
 
 One difference between our traces and other ones is the data rates
 that we measured.  Our 2003 client traces saw about 750 million
-operations per day.  In comparison, the 2001 Ellard
-traces~\cite{EllardFast03} saw a peak of about 30 million NFS
-operations per day , and the 2007 Leung traces~\cite{LeungUsenix08}
+operations per day.  In comparison, the 2003 Ellard
+traces~\cite{EllardLisa03} saw a peak of about 125 million NFS
+operations per day, and the 2007 Leung traces~\cite{LeungUsenix08}
 saw a peak of 19 million CIFS operations/day.  Our 2007 traces saw
 about 2.4 billion operations/day.  This difference required us to
 develop and adopt new techniques to capture, convert, and analyze the
@@ -56,7 +56,7 @@ protocol version changed, and the configuration of the clients
 changed because of standard technology trends.
 
 The process of understanding a workload involves four main
-steps, as shown in figure~\ref{fig:overall-process}.  Our tools for
+steps, as shown in Figure~\ref{fig:overall-process}.  Our tools for
 these steps are shown in italics for each step, as well as some
 traditional tools.  The first step is capturing the workload, usually
 as some type of trace.  The second step is conversion, ususally from
@@ -83,7 +83,7 @@ guidelines are general.
 
 \item Improved techniques for analyzing very large traces that allow
 us to look at the burstiness in workloads, and an examination of how
-long averaging intervals in prior analysis can obscure workload
+the long averaging intervals in prior analysis can obscure workload
 properties.
 
 \item The analysis of an intense NFS workload demonstrating that our

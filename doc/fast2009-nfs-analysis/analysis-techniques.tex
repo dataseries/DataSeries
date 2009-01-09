@@ -19,7 +19,7 @@ we have collected.
 
 Quantiles are better than simple statistics or histograms because they
 do not accidentally combine separate measurements regardless of
-distribution.  Unfortunately for our data, calculating exact quantiles
+distribution.  Unfortunately, for our data, calculating exact quantiles
 is impractical.  For a single dataset, we collect multiple statistics
 with a total of about 200 billion values.  Storing all these values
 would require $\approx$1.5TiB of memory, which makes it impractical
@@ -80,7 +80,7 @@ number of rows that match $\langle$*, *, 5, *$\rangle$.
 % to count the number of rows that match $\langle$*, read, *,
 % *$\rangle$.
 
-The cube\cite{gray97cube} is a generalization of the group-by
+The cube~\cite{gray97cube} is a generalization of the group-by
 operations described above.  Given a collection of rows, it calculates
 the set of unique values for each column $U(c)$, adds the special
 value `ANY' to the set, and then generates one row for each member of
@@ -106,7 +106,7 @@ aggregates described in the example.  We discovered that the general
 implementation was actually more efficient than our manual one because
 it used a single hash table for all of the data rather than nested
 data structures, and because we tuned the hash function over the tuple
-of values to be efficiently calculated.
+of values to be calculated efficiently.
 
 \subsection{HashTable}
 
@@ -117,19 +117,19 @@ uses somewhat more memory than the Google sparse
 hash~\cite{google-sparse-hash}, but performs almost as well as the
 dense hash; it is strictly faster than the g++ STL hash.  We added
 three unusual features.  First, it can calculate its memory usage,
-allowing us to determine what needs to be optimized.  Second it can
+allowing us to determine what needs to be optimized.  Second, it can
 partially reset iterators, which allows for safe mutating operations
 on the hash table during iteration, such as deleting a subset of the
 values.  Third, it can return the underlying hash chains, allowing for
 sorting the hash table without copying the values out.  This operation destroys
-the hash table, but the sort is usually done before deleting the
-table, and reduces memory usage by 2x.
+the hash table, but the sort is usually done immediately before deleting the
+table, and reduces memory usage by 2$\times$.
 
 \subsection{Rotating hash-map}
 
 Limiting memory usage for hash tables where the entries have unknown
 lifespan presents some challenges. Consider the sequentiality metric:
-So long as accesses are active to the file, we want to continue to
+so long as accesses are active to the file, we want to continue to
 update the run information.  Once the file becomes inactive for long
 enough, we want to calculate summary statistics and remove the general
 statistics from memory.  We could keep the values in an LRU
@@ -162,16 +162,16 @@ data entries don't consume excess space.
 \fix{Someone unfamiliar with mercury should see if this makes sense or is too short}
 Once we have summarized the data from DataSeries using the techniques
 described above, we need to graph and subset the data.  We combined
-SQL, perl, and gnuplot into a tool we call mercury-plot.
+SQL, Perl, and gnuplot into a tool we call mercury-plot.
 %\footnote{A previous internal tool was known as hermes.}
  SQL enables subsetting
 and combining data. For example if we have data on 60 second
 intervals, it is easy to calculate min/mean/max for 3600 second
 intervals, or with the cube to select out the subset of the data that
-we want to use.  We use perl to handle operations that the database
+we want to use.  We use Perl to handle operations that the database
 can't handle. For example, in the cube, we represent the `ANY' value
-as null, but SQL requires different syntax to select for null vs. a
-specific value.  We hide this difference in the perl functions.  In
+as null, but SQL requires a different syntax to select for null vs.\ a
+specific value.  We hide this difference in the Perl functions.  In
 practice, this allows us to write very simple commands such as {\tt
 plot quantile as x, value as y from nfs\_hostinfo\_cube where
 operation = 'read' and direction = 'send'} to generate a portion of

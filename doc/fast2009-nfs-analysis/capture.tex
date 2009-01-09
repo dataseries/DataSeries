@@ -9,7 +9,7 @@ interfere with the real workload.  Capturing the workload on the
 server is straightforward if the server supports capture, 
 but impacts the performance of the
 server.  Capturing the workload on the network through port mirroring
-is about as convenient as capture on the server, and given that most
+is almost as convenient as capture on the server, and given that most
 switches implement mirroring in hardware, has no impact on network or
 workload performance.  
 % On fiber networks, even the potential impact of
@@ -32,10 +32,10 @@ to 10Gbit mirror ports to reduce the need for switch-side buffering.
 
 \fix{challenge capture goes to disk, capture can't throttle input}
 The capture host can also be overrun. At low data rates (900Mb/s,
-70k packets/s), standard tcpdump on commodity hardware works fine.
-However, at high data rates (5Gb/s, 1m packets/s),
+70,000 packets/s), standard tcpdump on commodity hardware works fine.
+However, at high data rates (5Gb/s, $10^6$ packets/s),
 traditional approaches are insufficient. Indeed,
-Leung\cite{LeungUsenix08} notes
+Leung~\cite{LeungUsenix08} notes
 % pg 215 ``when tcpdump dropped a few packets''
 difficulties with packet loss using tcpdump on a 1 Gbit mirror port.
 We have developed three separate techniques for packet capture, all of
@@ -45,15 +45,15 @@ endacedump} (hardware capture to memory).
 
 \subsection{Lindump}
 
-The linux kernel includes a memory-mapped, shared ring buffer for
+The Linux kernel includes a memory-mapped, shared ring buffer for
 packet capture.  We modified the example lindump program to write out
 pcap files~\cite{pcap}, the standard output format from tcpdump, and
 to be able to capture from more than one interface at the same time.
 We wrote the output files to an in-memory filesystem using mmap to
 reduce copies, and copied and compressed the files in parallel to
 disk.  Using an HP DL580G2, a current 4 socket server circa 2003,
-lindump was able to capture about 3x the packets per second (pps) as
-tcpdump and about 1.25x the bandwidth.  Combined with a somewhat
+lindump was able to capture about 3$\times$ the packets per second (pps) as
+tcpdump and about 1.25$\times$ the bandwidth.  Combined with a somewhat
 higher burst rate while the kernel and network card buffered data,
 this approach was sufficient for mostly loss free captures at the animation
 company, and was the technique we used for all of the 2003 set of
@@ -64,7 +64,7 @@ to maximize the effective disk space.  If the capture host is mostly
 idle, we compressed with {\tt gzip -9}. As the backlog of pending
 files increased, we reduced the compression algorithm to {\tt gzip
 -6}, then to {\tt gzip -1}, and finally to nothing.  In practice this
-approach increased the effective disk size by 1.5-2.5x in our
+approach increased the effective disk size by 1.5-2.5$\times$ in our
 experience as the data was somewhat compressible, but at higher input
 rates we had to fall back to reduced compression.
 
@@ -87,8 +87,8 @@ driver.
 Because driverdump avoids the kernel IP stack, it can
 capture packets faster than the IP stack could drop them.
 % measured by using tcpdump with a filter that drops all packets. 
-We increased the sustained packets per second over lindump by 2.25x to
-676,000pps, and sustained bandwidth by 1.5x to 170MiB/s.  We could
+We increased the sustained packets per second over lindump by 2.25$\times$ to
+676,000pps, and sustained bandwidth by 1.5$\times$ to 170MiB/s (note 1 MiB/s = $2^20$ bytes/s).  We could
 handle short bursts up to 900,000 pps, and 215 MiB/s.  This gave us
 nearly lossless capture to memory at the second site.  Since the files
 were written into tmpfs, we re-used our technology for compressing and
@@ -109,8 +109,8 @@ feasable by our technical contacts at Endace.
 To solve this problem, we integrated our adaptive compression
 technique into a specialized capture program, and added the
 lzf~\cite{lzf} compression algorithm, that compresses at about
-100MB/s.  We also upgraded our hardware to an HP DL585g2 with 4 dual
-core 2.8Ghz Opterons, and 6 14 disk SCSI trays.  Our compression
+100MiB/s.  We also upgraded our hardware to an HP DL585g2 with 4 
+dual-core 2.8Ghz Opterons, and 6 14 disk SCSI trays.  Our compression
 techniques turned our 20TiB of disk space into 30TiB of effective disk
 space.  We experienced a very small number of packet drops because our
 capture card limited a single stream to PCI-X bandwidth (8Gbps), and
@@ -124,9 +124,9 @@ capture data from a networked storage service such as NFS, CIFS, or
 iSCSI.  Our most advanced techniques are capable of lossless
 full-packet capture at 10Gb/s, but require the use of special hardware.
 Our simplest technique allows capture at over twice the rate of
-tcpdump, and expands the effective size of the disks by 1.5x through
+tcpdump, and expands the effective size of the disks by 1.5$\times$ through
 adaptive compression. Our intermediate technique increases the capture
-rates by a factor of 2-3x at the cost of development time.  Both the
+rates by a factor of 2-3$\times$ at the cost of development time.  Both the
 lindump and driverdump code are available in our source
 distribution~\cite{DSOpenSource}.  These tools and techniques should
 eliminate problems of packet drops for capturing storage traces.

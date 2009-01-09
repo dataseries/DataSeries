@@ -11,7 +11,7 @@ sub plot_one {
     my $title = fixTitle($dataset);
 
     return qq{
-plot quantile as x, value as y where dataset = '$dataset'
+plot quantile/100 as x, value as y where dataset = '$dataset'
 plottitle _ $title
 plotwith _ linespoints
 }
