@@ -178,6 +178,27 @@ sub plot_all_multi {
     return join("\n", @ret, '');
 }
 
+sub count_host_servers_clients {
+    return "
+sql create or replace view tmp_nhic_count_1a as select distinct dataset, host from xnfs_hostinfo_cube where host is not null
+sql create or replace view tmp_nhic_count_1b as select dataset, count(*) as hosts from tmp_nhic_count_1a group by dataset
+
+sql create or replace view tmp_nhic_count_2a as select distinct dataset, host from xnfs_hostinfo_cube where host is not null and direction = 'send' and op_dir = 'request'
+sql create or replace view tmp_nhic_count_2a_r as select distinct dataset, host from xnfs_hostinfo_cube where host is not null and direction = 'recv' and op_dir = 'response'
+sql create or replace view tmp_nhic_count_2b as select dataset, count(*) as clients from tmp_nhic_count_2a group by dataset
+
+sql create or replace view tmp_nhic_count_3a as select distinct dataset, host from xnfs_hostinfo_cube where host is not null and direction = 'recv' and op_dir = 'request'
+sql create or replace view tmp_nhic_count_3a_r as select distinct dataset, host from xnfs_hostinfo_cube where host is not null and direction = 'send' and op_dir = 'response'
+sql create or replace view tmp_nhic_count_3b as select dataset, count(*) as servers from tmp_nhic_count_3a group by dataset
+
+sql create or replace view tmp_nhic_count_4a as select a.dataset, a.host from tmp_nhic_count_2a as a, tmp_nhic_count_3a as b where a.dataset = b.dataset and a.host = b.host
+sql create or replace view tmp_nhic_count_4b as select dataset, count(*) as caches from tmp_nhic_count_4a group by dataset
+
+select a.dataset, a.hosts, b.clients, c.servers from tmp_nhic_count_1b as a, tmp_nhic_count_2b as b, tmp_nhic_count_3b as c where a.dataset = b.dataset and b.dataset = c.dataset
+select * from tmp_nhic_count_4b
+";
+}
+
 enddefine
 
 # basic_table()
@@ -188,8 +209,32 @@ enddefine
 # plot_multi_bw_quantile('read', '0.77,330')
 # plot_multi_ops_quantile('getattr', '0.77,38000')
 
+# count_host_servers_clients()
 
-# look for any cyclicality in read/write ratio
+# look for any cyclicality in read/write ratio (request from shepherd)
 
 # sql create or replace view xnfs_rw_ratio as select a.dataset, a.host, a.group_time, a.group_count as read_count, b.group_count as write_count from xnfs_hostinfo_cube as a, xnfs_hostinfo_cube as b where a.dataset = b.dataset and a.host is null and b.host is null and a.group_time = b.group_time and a.group_seconds = 3600 and b.group_seconds = 3600 and a.operation = 'read' and b.operation = 'write' and a.direction = 'send' and b.direction = 'send' and a.op_dir = 'request' and b.op_dir = 'request'
 # plot group_time as x, read_count / (read_count + write_count) as y from xnfs_rw_ratio where dataset = 'nfs-1/set-5'
+
+
+## look at asymmetric packet capture (saw only packets in one direction)
+# first sees packets, second doesn't. (in nfs-2/set-5)
+# ds2txt --skip-index --skip-types --skip-all --where Trace::Network::IP 'source == -1062697791 && destination == -1062717409' --select Trace::Network::IP \* 000000-000499.ds | head
+# ds2txt --skip-index --skip-types --skip-all --where Trace::Network::IP 'destination == -1062697791 && source == -1062717409' --select Trace::Network::IP \* 000000-000499.ds
+
+# history skipto asymmetric
+
+count_host_servers_clients()
+
+# select dataset, hex(host+pow(2,32)) from tmp_nhic_count_3a where dataset = 'nfs-2/set-5' and host not in (select host from tmp_nhic_count_3a_r where dataset = 'nfs-2/set-5')
+# select dataset, host from tmp_nhic_count_3a where dataset = 'nfs-2/set-5' and host not in (select host from tmp_nhic_count_3a_r where dataset = 'nfs-2/set-5')
+# C0A838{1F,20,21,22,23,24,25,26} # asymmetric hosts
+# select hex(host+pow(2,32)) from tmp_nhic_count_3a where dataset = 'nfs-2/set-5'
+# C0A8{33,37,38}xx # "servers"
+# select distinct substring(hex(host+pow(2,32)),1,6) from tmp_nhic_count_2a where dataset = 'nfs-2/set-5'
+# C0A8{1E,38,84}xx # "clients"
+
+# example assymetric pair: have packets and nfs requests from c0a884c1 to c0a8381f, but not the reverse
+# however, we do see it sending requests and recieving responses from c0a83338
+
+history marker asymmetric

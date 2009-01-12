@@ -74,7 +74,7 @@ analyzing a workload.  For example, consider the information in the
 common NFS table: $\langle$time, operation, client-id, and
 server-id$\rangle$.  We may want to calculate the total number of
 operations performed by client 5, in which case we want to count the
-number of rows that match $\langle$*, *, 5, *$\rangle$.
+number of rows that match \mbox{$\langle$*, *, 5, *$\rangle$}.
 % ; or we might
 % want to calculate the number of read operations, in which case we want
 % to count the number of rows that match $\langle$*, read, *,
@@ -155,11 +155,10 @@ hash-map provides a good tradeoff between minimizing memory usage and
 maximizing performance.  We believe that the LRU approach would be
 more effective if the size of the data stored in the hash map were
 larger, and the hash-map could compact itself so that scattered
-data entries don't consume excess space.
+data entries do not consume excess space.
 
 \subsection{Graphing with mercury-plot}
 
-\fix{Someone unfamiliar with mercury should see if this makes sense or is too short}
 Once we have summarized the data from DataSeries using the techniques
 described above, we need to graph and subset the data.  We combined
 SQL, Perl, and gnuplot into a tool we call mercury-plot.
@@ -169,7 +168,7 @@ and combining data. For example if we have data on 60 second
 intervals, it is easy to calculate min/mean/max for 3600 second
 intervals, or with the cube to select out the subset of the data that
 we want to use.  We use Perl to handle operations that the database
-can't handle. For example, in the cube, we represent the `ANY' value
+can not handle. For example, in the cube, we represent the `ANY' value
 as null, but SQL requires a different syntax to select for null vs.\ a
 specific value.  We hide this difference in the Perl functions.  In
 practice, this allows us to write very simple commands such as {\tt

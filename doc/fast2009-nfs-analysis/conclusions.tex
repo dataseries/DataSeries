@@ -1,33 +1,42 @@
 \section{Conclusions}
 \label{sec:conclusion}
 
-\fix{14. Summarize lessons if we can find space}
 We have described three improved techniques for packet capture on
 networks.  The easily adopted technique should allow anyone capturing
 NFS, CIFS, or iSCSI traffic from moderate performance storage systems
 ($\leq$1Gbit) to capture traffic with no losses.  The most advanced
 technique allows lossless capture for 5-10Gbit storage systems, which
-is at the high end of most file storage systems. 
+is at the high end of most file storage systems. The primary lesson
+from this part of the work is that lossless 1Gbit packet capture is
+straightforward and up to 10Gbit is possible with an investment in
+development time or specialized hardware.
 
-We have provided guidelines for conversion, namely in terms of
-parallelizing the conversion, retaining low level information, using
-reversible anonymization when possible, and most importantly tagging
-the trace data with version information to handle conversion bugs.
+We have provided guidelines for conversion for future practitioners:
+parallelizing the conversion, retaining lower-level information, using
+reversible anonymization, approaches for testing the conversion tools,
+and tagging the trace data with version information.
 
 We have described our binary storage format, which uses chunked
-compression with multiple possible compression techniques, 
-typed relational-style data structuring, delta encoding,
-and type-safe, high-speed accessors.
+compression with multiple possible compression techniques, typed
+relational-style data structuring, delta encoding, and type-safe,
+high-speed accessors.  It improves over prior storage formats by up to
+100$\times$.
 
-We have explained the cube and approximate quantile techniques that
-we adopted from the database literature to handle analysis of very
-large data sets.  We have also explained our hashtable, rotating
-hash-map, and plotting techniques that we use for analyzing the data.
+We have described our techniques for improved memory and perforance
+efficiency to enable analysis of very large data sets.  We 
+explained the cube and approximate quantile techniques that we adopted
+from the database literature, and our hashtable, rotating hash-map, and
+plotting techniques that we use for analyzing the data.
 
 We have analyzed our NFS workload examining some of the different
 properties found in a feature animation workload and demonstrating
-that our techniques are effective.  Finally, we have made our traces
-and tools available at {\tt http://tesla.hpl.hp.com/opensource}.
+that our techniques are effective.  We found that our workload had
+much more activity than previously described workloads, and that the
+file size and sequentality is different than those workloads.
+
+Finally, to allow future practitioners to collect traces more easily,
+and use our traces for analysis and simulation, we have open sourced
+them at {\tt http://tesla.hpl.hp.com/opensource}.
 
 \section{Acknowledgements}
 

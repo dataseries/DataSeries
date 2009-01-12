@@ -1,0 +1,52 @@
+% nfs_hostinfo_rates, nfs_hostinfo_rate_quantiles, nfs_hostinfo_cube;
+% choose sets nfs-2/set-[2,5]; nfs-1/set-[5,12]
+%                     03+10, 06+13 ; 20+42, 27+49
+
+% select from_unixtime(group_time), group_count/3600 where dataset = 'nfs-1/set-12' and group_time is not null and host is null  and operation is null and direction is null and op_dir is null
+% nfs-1/set-5: 2003-09-16 .. 2003-09-18
+% nfs-1/set-12: 2003-12-09 - 2003-12-10
+% nfs-2/set-2: 2007-03-05 .. 2007-03-11
+% nfs-2/set-5: 2007-10-12 .. 2007-10-17
+% from hostinfo.hg + a few minor tweaks (n/a) for set-5 readdirplus
+\begin{table*}\begin{center}
+\begin{tabular}{|r||r|r||r|r||r|r||r|r|}
+\hline
+  & \multicolumn{2}{c||}{anim-2003/set-12} & \multicolumn{2}{c||}{anim-2003/set-5} & \multicolumn{2}{c||}{anim-2007/set-2} & \multicolumn{2}{c|}{anim-2007/set-5} \\
+   operation &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op &   Mops & bytes/op \\
+\hline
+%     symlink &     0.008 &   201 &     0.000 &    92 &     0.001 &   415 &     0.000 &   458 \\
+%       rmdir &     0.204 &   152 &     0.001 &    64 &     0.020 &   167 &     0.002 &   178 \\
+%       mkdir &     0.173 &   304 &     0.005 &   193 &     0.071 &   336 &     0.004 &   334 \\
+%      rename &     0.028 &   270 &     0.002 &   150 &     0.250 &   367 &     0.055 &   348 \\
+%\hline
+%      fsinfo &     0.023 &   176 &     0.003 &    72 &     1.352 &   176 &     0.619 &   176 \\
+%        link &     0.000 &    86 &     0.000 &    88 &     3.259 &   314 &     0.182 &   322 \\
+%        null &     0.259 &     5 &     0.087 &     4 &     1.482 &     4 &     2.808 &     4 \\
+%      create &     0.296 &   295 &     0.965 &   200 &     4.639 &   367 &     1.616 &   344 \\
+%\hline
+%      remove &     0.275 &   136 &     0.641 &    69 &     8.419 &   194 &     1.500 &   186 \\
+%     setattr &     0.716 &   133 &     1.075 &   136 &     9.415 &   193 &     6.531 &   192 \\
+     readdir &     4.579 &   281 &     1.132 &  3940 &    28.318 &  4089 &    18.350 &  4071 \\
+ readdirplus &     0.632 &  2307 &     0.000 &  n/a  &    32.806 &  1890 &    20.271 &  2001 \\
+    readlink &     0.081 &    74 &     0.049 &    79 &    25.421 &   204 &    42.335 &   203 \\
+      fsstat &    19.875 &    56 &    50.416 &    56 &     0.017 &   180 &     0.003 &   180 \\
+       write &    14.546 &  9637 &    30.236 &  7880 &    32.390 & 13562 &    45.177 & 15015 \\
+\hline
+      lookup &   134.108 &    83 &    82.823 &    92 &   643.854 &   239 &   807.127 &   235 \\
+        read &   345.743 &  1231 &   165.969 &  7855 &  1460.669 & 14658 &  1761.199 & 12301 \\
+      access &     1.858 &   136 &     0.000 &   136 &  4000.204 &   136 &  3570.404 &   136 \\
+     getattr &   244.650 &   104 &   967.961 &   104 &  6598.515 &   124 &  2756.785 &   123 \\
+\hline
+ {\bf total} &   768.053 &   790 &  1301.364 &  1274 & 12851.102 &  1833 &  9034.968 &  2599 \\
+\hline
+\end{tabular}\end{center}
+\vspace{-0.15in}
+\caption{symlink, rmdir, mkdir, and rename were pruned as there were
+fewer than 1 million operations; fsinfo, link, null, create, remove,
+and setattr were pruned as there were fewer than 10 million
+operations.  The Mops column could be calculated from nfsstat, but the
+bytes/op column could not.}
+
+\label{table:nfs-stats-overview}
+\end{table*}
+
