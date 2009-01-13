@@ -10,14 +10,14 @@ binary format enables efficient analysis, and our analysis techniques
 are efficient, it can still take 4-8 hours to analyze a single set of
 the 2007 traces.  In practice, we analyze the traces in parallel on a
 small cluster of four core 2.4GHz Opterons.  Our analysis typically
-becomes bottlenecked on the fileservers that serve up to 200MiB/s each
+becomes bottle-necked on the file servers that serve up to 200MiB/s each
 once an analysis is running on more than 20 machines.
 
 We collected data at two times: August 2003 - February 2004 (anim-2003), and January 2007 - October 2007
 (anim-2007).  We collected data using a variety of mirror
 ports within the company's network.
 The network design is
-straightforward: there are a redundant set of core routers, an
+straightforward: there is a redundant set of core routers, an
 optional mid-tier of switches to increase the effective port count of
 the core, and then a collection of edge switches that each cover one
 or two racks of rendering machines.  Most of our traces were taken by
@@ -45,12 +45,12 @@ server.  NFS caches are seen as clients in this trace.
 
 \item{anim-2007/set-2}: A trace of 273 clients accessing 40 NFS
 servers at the same site as anim-2003/set-5.  The other traces of
-clients at this site were similar.
+clients at this site are similar to set-2.
 
 \item{anim-2007/set-5}: A trace of 135 clients accessing 50 NFS
 servers, and 8 caches acting as both clients and servers, although
 because of the port mirroring setup, we did not see some of the
-responses from the caches.  This traces was at a different site from
+responses from the caches.  This trace is at a different site from
 set-2 and shows higher burstiness.
 % See graphs/hostinfo.hg for more on asymmetric packet capture
 \end{itemize}
@@ -66,9 +66,8 @@ interval length is 60 seconds, then we will calculate the bandwidth
 for the interval 0s-60s, 3s-63s, 6s-66s, ... end-of-trace.  We chose
 to calculate the bandwidth for overlapping intervals so that we would not
 incorrectly measure the peaks and valleys of cyclic patterns aligned to the interval length.
-We then add the
-interval's rate to an approximate quantile so that we can understand
-the distribution of rates even for small intervals.  For example, we
+We use the approximate quantile so we can summarize results with billions of
+underlying data points.  For example, we
 have 11.6 billion measurements for anim-2007/set-0 at a 1ms interval
 length.  This corresponds to the 6.7 days of that trace.
 % 11.6 * 10^9 * 0.001 / 20 = 580,000 / 86400 = 6.7
@@ -78,7 +77,7 @@ different interval lengths.  This graph shows the effectiveness of our
 tracing technology, as we have sustained intervals above 3Gb/s
 (358MiB/s), and 1ms intervals above 4Gb/s (476MiB/s). Indeed these
 traces show the requirement for high speed tracing, as 5-20\% of the
-traces intervals have sustained intervals above 1Gbit, which is above
+trace intervals have sustained intervals above 1Gbit, which is above
 the rate at which Leung~\cite{LeungUsenix08} noted their tracing tool
 started to drop packets.  The other sets from anim-2007 are somewhat
 less bursty, and the anim-2003 data shows much lower peaks because of
@@ -141,16 +140,18 @@ for the increase in access calls (new in v3), and readdirplus (also
 new in v3).  
 
 We also see that this workload is incredibly read-heavy.  This is
-expected; the animation workload reads a very large amount of
+expected; the animation workload reads a very large number of
 textures, models, etc. to produce a relatively small output frame.
 However, we believe that our traces under-estimate the number of write
 operations.  We discuss the write operation underestimation below.
 The abnormally low read size for set-12 occurred because
-that server was handling a large number of stale FH requests.  The
+that server was handling a large number of stale filehandle requests.  The
 replies were therefore small and pulled down the bytes/operation.  We
 see a lot more getattr operations in set-5 than set-12 because set-12
-is a server behind several nfs-caches, whereas set-5 is the workload
-before the nfs-caches.
+is a server behind several NFS-caches, whereas set-5 is the workload
+before the NFS-caches.
+
+\input{table-operation-rate-ratio}
 
 Table~\ref{table:99quant-differences} and
 Figures~\ref{fig:oprates}(a,b) show how long averaging intervals can
@@ -161,7 +162,7 @@ seen in the data.  It also hides periods of idleness that could be
 used for incremental scrubbing and data reorganization.  We do not
 include the traditional graph of ops/s vs.\ time because our workload
 does not show a strong daily cycle.  Animators submit large batches of
-jobs in the evening that keeps the cluster busy until morning, and
+jobs in the evening that keep the cluster busy until morning, and
 keep the cluster busy during the day submitting additional jobs.
 Since the jobs are very similar, we see no traditional diurnal pattern
 in the NFS load, although we do see the load go to zero by the end of
@@ -174,13 +175,13 @@ likely a result of the transition from NFSv2 to NFSv3.  The graph
 shows the payload data transferred, so it includes the offset and
 filehandle of the read request, and the size and data in the reply,
 but does not include IP headers or NFS RPC headers.  It shows that the
-NFS system is driven heavily, but not excessively. The write graph
+NFS system is driven heavily, but not excessively. The write operations/s graph
 (not shown for space reasons) implies that the write bandwidth has
 gotten more bursty, but has stayed roughly constant.
 
 This result led us to further analyze the data.  We were surprised
-that that write bandwidth did not increase, even though it is not
-implausible as the frame output size has not increased.  We analyzed
+that write bandwidth did not increase, even though it is not
+implausible, as the frame output size has not increased.  We analyzed
 the traces to look for missing operations in the sequence of
 transaction ids, automatically inferring if the client is using a
 big-endian or little-endian counter.  The initial results looked quite
@@ -209,7 +210,7 @@ biased toward writes requests and read replies. Since we had saved
 IP-level trace information as well as NFS-level, we could write an
 analysis that conservatively calculated the bytes of IP packets that
 were not associated with an NFS request or reply.  Counting a
-direction of a connections if it transfers over $10^6$ bytes, we found
+direction of a connection if it transfers over $10^6$ bytes, we found
 for anim-2007/set-2 that we can account for $>$90\% of the bytes for
 87\% of the connections, and for anim-2007/set-5 that we can account
 for $>$90\% of the bytes for $>$70\% of the connections.  The greater
@@ -219,7 +220,7 @@ RPC's since we are missing very few operations, but many more bytes,
 and reads and writes have a high byte to operation ratio.
 
 While this supports our lesson that retaining lower level information
-is valable, this analysis also leads us to another one of our lessons:
+is valuable, this analysis also leads us to another one of our lessons:
 extensive validation of the conversion tool is important.  Both
 validation through validation statistics, and through the use of a
 known workload that exercises the capture tools.  An NFS replay
@@ -227,8 +228,8 @@ tool~\cite{NingningFast05} could be used to generate a workload, the
 replayed workload could be captured, and the capture could be compared
 to the original replayed workload.  This comparison has been done to
 validate a block based replay tool~\cite{AndersonFast04}, but has not
-been done to validate a capture tool, as that work simply assumed
-capture was correct.
+been done to validate an NFS tracing tool, as the work has simply assumed
+tracing was correct.
 % We can therefore use
 % the timing information from requests and replies to identify gaps in
 % the dataset and determine how many bytes were skipped.  This will
@@ -239,25 +240,6 @@ We believe a similar
 flaw is present in earlier traces~\cite{ellardTraces} because the same
 parsing technique was used, although we do not know how much those traces were
 affected.
-
-% select dataset, group_seconds, operations_per_second from xnfs_hostinfo_rate_quantiles where host is null and direction = 'send' and operation is null and op_dir is null and quantile = 0.99
-\begin{table}
-\begin{center}
-\begin{tabular}{|l|r|r|r|}
-\hline
-dataset & 1s ops/s & 3600s ops/s & ratio \\
-\hline
-anim-2003/set-5  & 26,445 & 15,110 & 1.75$\times$ \\
-anim-2003/set-12 & 44,926 & 19,923 & 2.25$\times$ \\
-anim-2007/set-2  & 75,457 & 54,657 & 1.38$\times$ \\
-anim-2007/set-5  & 59,727 & 41,550 & 1.44$\times$ \\
-\hline
-\end{tabular}
-\end{center}
-\vspace{-0.1in}
-\caption{Operation rate ratios}
-\label{table:99quant-differences}
-\end{table}
 
 \subsection{File sizes}
 
@@ -298,7 +280,7 @@ pattern.  Ellard tolerates small gaps in the request stream as
 sequential, e.g. an I/O of 7KiB at offset 0 followed by an I/O of 8KiB at
 offset 8KiB would be considered sequential.  
 
-Ellard also re-orders I/Os
+Ellard also reorders I/Os
 to deal with client-side reordering. In particular, Ellard looks
 forward a constant amount from the request time to find I/Os that
 could make the access pattern more sequential.  This constant was
@@ -309,11 +291,11 @@ directory entry as with immediate files~\cite{Mullender84ImmediateFiles}.
 For NFS, the server may not see a lookup before a read, depending on whether
 the client has used readdir+ to get the filehandle instead of a lookup.
 
-We determine sequentiality by reordering within overlapping
-requests. Given two I/Os, A, and B, if the request-reply intervals
-overlap, then we are willing to re-order the requests to improve
+We determine sequentiality by reordering within temporally overlapping
+requests. Given two I/Os, A and B, if the request-reply intervals
+overlap, then we are willing to reorder the requests to improve
 estimated sequentiality.  We believe this is a better model because
-the NFS server could re-order those I/Os.  In practice,
+the NFS server could reorder those I/Os.  In practice,
 Figure~\ref{fig:seq-bytes-compare} shows that for our traces this
 reordering makes little difference.  Allowing reordering an additional
 10ms beyond the reply of I/O A slightly increases the sequentiality,
@@ -331,17 +313,23 @@ random because they read the entire file in a single I/O.  We can see
 this in Figure~\ref{fig:seq-analysis}(a), which shows the number of
 reads in a group.  Most groups are single I/O groups (70-90\% in the
 2007 traces).  We see about twice as many I/Os in the 2003 traces,
-because the I/Os in the 2003 traces are only 8KiB rather than 16KiB.
+because the I/Os in the 2003 traces are only 8KiB, rather than 16KiB.
 
-Sequential runs within a random group turns out to be more
+Sequential runs within a random group are more
 interesting.  Figure~\ref{fig:seq-analysis}(b) shows the number of
 bytes accessed in sequential runs within a
 random group.  We can see that if we start accessing a file at random,
 most (50-80\%) of the time we will do single or double I/O accesses (8-32KiB).
-However we can also see that we can get some extended runs within a
+However we also get some extended runs within a
 random group, although 99\% of the runs are less than 1MiB.
 
 % select dataset,operation, max(mean_operations_per_second) from xnfs_hostinfo_rates where group_seconds = 1 and host is null and direction = 'send' and operation is not null and op_dir is null and mean_operations_per_second > 300 group by dataset,operation order by operation
 % --> access, fsstat, getattr, lookup, read, write 
 
 \input{fig-seq-bytes-compare}
+
+% LocalWords:  perf op GHz Opterons MiB anim burstiness Mbps kpps mbps Gb Gbit
+% LocalWords:  Leung bursty Mbit filesystem getattrs ops NFSv KiB readdirplus
+% LocalWords:  filehandle getattr  IP RPC endian nfsdump RPCs RPC's MEMS seq
+% LocalWords:  Ellard
+% LocalWords:  prefetch readdir xnfs hostinfo dir fsstat

@@ -1,0 +1,20 @@
+% select dataset, group_seconds, operations_per_second from xnfs_hostinfo_rate_quantiles where host is null and direction = 'send' and operation is null and op_dir is null and quantile = 0.99
+\begin{table}
+\begin{center}
+\begin{tabular}{|l|r|r|r|}
+\hline
+dataset & 1s ops/s & 3600s ops/s & ratio \\
+\hline
+anim-2003/set-5  & 26,445 & 15,110 & 1.75$\times$ \\
+anim-2003/set-12 & 44,926 & 19,923 & 2.25$\times$ \\
+anim-2007/set-2  & 75,457 & 54,657 & 1.38$\times$ \\
+anim-2007/set-5  & 59,727 & 41,550 & 1.44$\times$ \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{-0.1in}
+\caption{Operation rate ratios}
+\label{table:99quant-differences}
+\end{table}
+
+% LocalWords:  xnfs hostinfo op dir ops anim

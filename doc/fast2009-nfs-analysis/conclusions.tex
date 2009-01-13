@@ -22,7 +22,7 @@ relational-style data structuring, delta encoding, and type-safe,
 high-speed accessors.  It improves over prior storage formats by up to
 100$\times$.
 
-We have described our techniques for improved memory and perforance
+We have described our techniques for improved memory and performance
 efficiency to enable analysis of very large data sets.  We 
 explained the cube and approximate quantile techniques that we adopted
 from the database literature, and our hashtable, rotating hash-map, and
@@ -32,14 +32,19 @@ We have analyzed our NFS workload examining some of the different
 properties found in a feature animation workload and demonstrating
 that our techniques are effective.  We found that our workload had
 much more activity than previously described workloads, and that the
-file size and sequentality is different than those workloads.
+file size and sequentiality is different than those workloads.
 
-Finally, to allow future practitioners to collect traces more easily,
-and use our traces for analysis and simulation, we have open sourced
-them at {\tt http://tesla.hpl.hp.com/opensource}.
+The tools described in this paper are available as open source from 
+\url{http://tesla.hpl.hp.com/opensource/}, and the traces are available
+from \url{http://apotheca.hpl.hp.com/pub/datasets/animation-bear/}.
 
 \section{Acknowledgements}
 
 The author would like to thank Alistair Veitch, Jay Wylie, Kimberly
 Keeton, our shepherd Daniel Ellard and the anonymous reviewers for
-their comments that have improved our paper.
+their comments that have greatly improved our paper.
+
+% LocalWords:  Gbit tcpdump Gb Leung pg lindump driverdump endacedump pcap mmap
+% LocalWords:  filesystem DL pps tmpfs gzip NIC IP MiB Endace timestamps lzf
+% LocalWords:  Ghz Opterons TiB PCI Gbps CIFS iSCSI anonymization chunked
+% LocalWords:  hashtable Veitch Keeton Ellard

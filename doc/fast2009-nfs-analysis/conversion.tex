@@ -18,7 +18,7 @@ One lesson we learned after conversion is that the converter's version
 number should be included in the trace.  As with most programs, there
 can be bugs.  Having the version number in the trace makes it easy to
 determine which flaws need to be handled.  For systems such as
-subversion or git, we recommend the atomic checkin ID as a suitable
+subversion or git, we recommend the atomic check-in ID as a suitable
 version number.
 
 A second lesson was
@@ -149,7 +149,7 @@ takes about 3 days.
 We do offline conversion from trace files, rather than online conversion, primarily for simplicity.
 However, a side benefit was that our converter could be
 paranoid and conservative, rather than have it try to recover from
-conversion problems since we could fix the converter when it was
+conversion problems, since we could fix the converter when it was
 mis-parsing or was too conservative.  The next time we trace, we plan
 to do more on-the-fly conversion by converting early groups and
 deleting those trace files during capture so that we can capture
@@ -166,9 +166,9 @@ anonymize them:
 \item {\bf unique integers}.  This option results in the
 most compact identifiers ($\leq$ 8 bytes), but is difficult to
 calculate in parallel and requires a large translation table to
-maintain persistant mappings and to convert back to the original data.
+maintain persistent mappings and to convert back to the original data.
 
-\item {\bf hash/hmac}.  This option results in larger identifiers
+\item {\bf hash/HMAC}.  This option results in larger identifiers
 (16-20 bytes), but enables parallel conversion.  A keyed
 HMAC~\cite{Bellare96keyinghash} instead of a hash protects against
 dictionary attacks.  Reversing this mapping requires preserving a
@@ -176,7 +176,7 @@ large translation table.
 
 \item {\bf encrypted values}.  This option results in
 the longest identifiers since the encrypted value will be at least as
-large as the original value.  It is parallizable and easily reversable
+large as the original value.  It is parallizable and easily reversible
 provided the small keys are maintained.
 
 \end{enumerate}
@@ -187,8 +187,8 @@ customer about unexpected issues such as writes to what should have
 been a read-only filesystem.  Our encryption includes a self-check, so
 we can convert back to real filenames by decrypting all hexadecimal
 strings and keeping the ones that validate.  We have also used the
-reversability to verify for a colleague that they properly identified
-the '.' and '..' filenames.
+reversibility to verify for a colleague that they properly identified
+the `.' and `..' filenames.
 
 We chose to encrypt entire filenames since the suffixes are specific
 to the animation process and are unlikely to be useful to people.
@@ -209,3 +209,9 @@ identifiers and group identifiers.  If there were public values in the
 traces, then we would have had to apply more sophisticated
 anonymization~\cite{ruoming07anonymization}.
 
+% LocalWords:  Gbit tcpdump Gb Leung pg lindump driverdump endacedump pcap mmap
+% LocalWords:  filesystem DL pps tmpfs gzip NIC IP MiB Endace timestamps lzf du
+% LocalWords:  Ghz Opterons TiB PCI Gbps CIFS iSCSI anonymization chunked RPC
+% LocalWords:  hashtable Veitch Keeton Ellard readdir RPC's analyses SQL perl
+% LocalWords:  DataSeries bzip nfs nullable versioning LAN offline mis HMAC
+% LocalWords:  anonymize parallizable filehandles filehandle anonymized

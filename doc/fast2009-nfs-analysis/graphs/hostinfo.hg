@@ -70,7 +70,7 @@ plotwith _ linespoints lw 2.5
 gnuplot set ylabel "operations/s"
 gnuplot set xlabel "day of trace"
 gnuplot set title "daily usage cycles"
-pngpsplot --fontsize=22 --nocolor daily-oprate
+pngpsplot --mode=eps --fontsize=22 --nocolor daily-oprate
 }
 }
 
@@ -100,7 +100,7 @@ plot_ops_quantile('nfs-2/set-5',3600)
 gnuplot set key 0.8,76000
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Operations/second"
-pngpsplot --fontsize=22 --nocolor allops-quantile-nfs-2
+pngpsplot --mode=eps --fontsize=22 --nocolor allops-quantile-nfs-2
 
 unplot
 plot_ops_quantile('nfs-1/set-5',1)
@@ -112,7 +112,7 @@ plot_ops_quantile('nfs-1/set-12',3600)
 gnuplot set key 0.8,43000
 gnuplot set xlabel "Quantile"
 gnuplot set ylabel "Operations/second"
-pngpsplot --fontsize=22 --nocolor allops-quantile-nfs-1
+pngpsplot --mode=eps --fontsize=22 --nocolor allops-quantile-nfs-1
 
     }
 };
@@ -147,7 +147,7 @@ gnuplot set key $key
 gnuplot set xlabel 'Quantile'
 gnuplot set ylabel 'Operations/s'
 gnuplot set title '$op/second'
-pngpsplot --fontsize=22 --nocolor ops-$op
+pngpsplot --mode=eps --fontsize=22 --nocolor ops-$op
 }
 }
 
@@ -165,7 +165,7 @@ gnuplot set key $key
 gnuplot set xlabel 'Quantile'
 gnuplot set ylabel 'MiB/s'
 gnuplot set title '$op MiB/second'
-pngpsplot --fontsize=22 --nocolor bw-$op
+pngpsplot --mode=eps --fontsize=22 --nocolor bw-$op
 }
 }
 
@@ -201,15 +201,15 @@ select * from tmp_nhic_count_4b
 
 enddefine
 
-# basic_table()
-# plot_oprate_graph()
-# plot_allops_quantile_graphs()
+basic_table()
+plot_oprate_graph()
+plot_allops_quantile_graphs()
 
-# plot_all_multi()
-# plot_multi_bw_quantile('read', '0.77,330')
-# plot_multi_ops_quantile('getattr', '0.77,38000')
+plot_all_multi()
+plot_multi_bw_quantile('read', '0.77,330')
+plot_multi_ops_quantile('getattr', '0.77,38000')
 
-# count_host_servers_clients()
+count_host_servers_clients()
 
 # look for any cyclicality in read/write ratio (request from shepherd)
 
@@ -217,12 +217,12 @@ enddefine
 # plot group_time as x, read_count / (read_count + write_count) as y from xnfs_rw_ratio where dataset = 'nfs-1/set-5'
 
 
+history skipto asymmetric
+
 ## look at asymmetric packet capture (saw only packets in one direction)
 # first sees packets, second doesn't. (in nfs-2/set-5)
 # ds2txt --skip-index --skip-types --skip-all --where Trace::Network::IP 'source == -1062697791 && destination == -1062717409' --select Trace::Network::IP \* 000000-000499.ds | head
 # ds2txt --skip-index --skip-types --skip-all --where Trace::Network::IP 'destination == -1062697791 && source == -1062717409' --select Trace::Network::IP \* 000000-000499.ds
-
-# history skipto asymmetric
 
 count_host_servers_clients()
 

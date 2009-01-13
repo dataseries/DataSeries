@@ -1,0 +1,7 @@
+# $TRANSPARENT_FIGURES = 1;
+$WHITE_BACKGROUND = 1;
+# $FIGURE_SCALE_FACTOR = 2;
+$DVIPSOPT = ''; 
+$LATEX_COLOR = "";
+$PSTOIMG = "/home/anderse/projects/DataSeries/doc/fast2009-nfs-analysis/pstoimg";
+1;

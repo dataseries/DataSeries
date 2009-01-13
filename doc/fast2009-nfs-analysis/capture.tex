@@ -16,7 +16,7 @@ workload performance.
 % port mirroring can be eliminated through the use of optical fiber
 % splitters. 
 Therefore, we have always chosen to capture the data through the use
-of port mirroring, if necessary, using multiple ethernet ports for the
+of port mirroring, if necessary, using multiple Ethernet ports for the
 mirrored packets.
 
 The main challenge for raw packet capture is the underlying data rate.
@@ -30,7 +30,7 @@ incoming data eventually turns in to disk writes leading to the second
 challenge of maximizing effective disk space.
 
 % A single mirror port could be insufficient for mirroring both the send
-% and recieve directions of a full-duplex port.  However, advanced
+% and receive directions of a full-duplex port.  However, advanced
 % switches can selectively mirror each direction of a port onto
 % particular ports.  We used this functionality in our 2003 tracing to
 % spread 2-4 one Gbit links over 2 one Gbit mirror ports.
@@ -98,7 +98,7 @@ Because driverdump avoids the kernel IP stack, it can
 capture packets faster than the IP stack could drop them.
 % measured by using tcpdump with a filter that drops all packets. 
 We increased the sustained packets per second over lindump by 2.25$\times$ to
-676,000pps, and sustained bandwidth by 1.5$\times$ to 170MiB/s (note 1 MiB/s = $2^20$ bytes/s).  We could
+676,000pps, and sustained bandwidth by 1.5$\times$ to 170MiB/s (note 1 MiB/s = $2^{20}$ bytes/s).  We could
 handle short bursts up to 900,000 pps, and 215 MiB/s.  This gave us
 nearly lossless capture to memory at the second site.  Since the files
 were written into tmpfs, we re-used our technology for compressing and
@@ -114,7 +114,7 @@ and timestamps packets from a 10Gb/s network directly into memory.  As
 a result, it can capture minimal size packets at full bandwidth, and
 is intended for doing in-memory analysis of networks.  Our challenge
 was to get the capture out to disk, which was not believed to be
-feasable by our technical contacts at Endace.
+feasible by our technical contacts at Endace.
 
 To solve this problem, we integrated our adaptive compression
 technique into a specialized capture program, and added the
@@ -145,3 +145,7 @@ source distribution~\cite{DSOpenSource}.  These tools and techniques
 should eliminate problems of packet drops for capturing storage
 traces.  Further details and experiments with the first two techniques
 can be found in~\cite{Anderson06network-tracing}.
+
+% LocalWords:  Gbit tcpdump Gb Leung pg lindump driverdump endacedump pcap mmap
+% LocalWords:  filesystem DL pps tmpfs gzip NIC IP MiB Endace timestamps lzf
+% LocalWords:  Ghz Opterons TiB PCI Gbps CIFS iSCSI

@@ -1,24 +1,27 @@
-We describe the challenges of capturing, converting, storing and
-analyzing NFS workloads that are 20-100$\times$ more intense than those previously
-published.  We describe three techniques that improve capture performance
-by up to $10\times$ over previous techniques.  
+We describe methods to capture, convert, store and analyze NFS
+workloads that are 20-100$\times$ more intense, in terms of
+operations/day, than any previously published.
 %
-For conversion we describe our tool, and 
-provide a number of guidelines for future trace collection that should
-prove useful to future practitioners.
+We describe three techniques that improve capture performance by up to
+$10\times$ over previous techniques.
 %
-We convert 
-to a general-purpose format that is both highly space efficient and provides 
-efficient access to stored data.
+For conversion, we use a general-purpose format that is both highly
+space efficient and provides efficient access to the trace data.
 %
 For
-analysis, we describe both a number of techniques adopted from the
-database community and some new techniques, that enable analysis of 
+analysis, we describe a number of techniques adopted from the
+database community and some new techniques that facilitate analysis of 
 very large traces.
+%
+We also describe a number of guidelines for trace collection that should
+prove useful to future practitioners.
 %
 Finally, we analyze a commercial feature
 animation (movie) rendering workload using these techniques and discuss the
 characteristics of the workload.
 %
-We have open sourced our implementation of these techniques, and provided
-the exact anonymnized datasets we analyzed for this paper for free download.
+Our implementation of these techniques is available as open source
+and the exact anonymized datasets we analyze are available for free download.
+
+% LocalWords:  anonymized
+
