@@ -1,5 +1,5 @@
 #include <Lintel/Deque.hpp>
-#include <Lintel/HashMap.hpp>
+#include <Lintel/RotatingHashMap.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 #include <DataSeries/TypeIndexModule.hpp>
@@ -61,46 +61,69 @@ struct Packet {
     }
 };
 
+struct SummaryInfo {
+    static const double q_error = 0.005;
+    static const uint32_t n_bound = 1000 * 1000 * 1000;
+    const char *first_file, *last_file;
+    StatsQuantile correlated_percent, correlated_bytes, uncorrelated_bytes,
+	correlated_percent_dport2049, correlated_percent_sport2049;
+    SummaryInfo(const char *a, const char *b) 
+	: first_file(a), last_file(b), correlated_percent(q_error, n_bound), 
+	  correlated_bytes(q_error, n_bound), uncorrelated_bytes(q_error, n_bound),
+	  correlated_percent_dport2049(q_error, n_bound), 
+	  correlated_percent_sport2049(q_error, n_bound)
+    { }
+};
+
 struct PairInfo {
-    void init() {
-	if (!ip_packets) {
-	    ip_packets = DequePtr(new Deque<Packet>());
-	    nfs_packets = DequePtr(new Deque<Packet>());
-	    extra_packets_size.reset(new StatsQuantile(0.05, 100000000));
-	}
-    }
     void addIp(const IPSrcDest &ipsd, int64_t at, uint32_t size, bool is_udp, 
 	       uint32_t tcp_seqnum) {
-	init();
 	if (!is_udp) {
+	    if (ip_only_resets >= ip_only_reset_threshold) {
+		return;
+	    }
+	    if (!ip_packets) {
+		ip_packets = DequePtr(new Deque<Packet>());
+	    }
+		
 	    ip_packets->push_back(Packet(at, size, tcp_seqnum));
 	}
 	doPartial(ipsd);
     }
 
     void addNfs(const IPSrcDest &ipsd, int64_t at, uint32_t size, bool is_udp) {
-	init();
 	if (!is_udp) {
+	    if (!nfs_packets) {
+		if (ip_only_resets >= ip_only_reset_threshold) {
+		    cout << "WOW, had connection that did only IP for a while and then did something that looked NFS-like\n";
+		    ip_only_resets = 0;
+		}
+		nfs_packets = DequePtr(new Deque<Packet>());
+	    }
+
 	    ++nfs_count;
 	    nfs_packets->push_back(Packet(at, size, 0));
 	}
 	doPartial(ipsd);
     }
 
+    static const uint32_t ip_only_reset_threshold = 50;
     // TODO: once deque is copyable, remove use of pointers, but check
     // to see what performance looks like, could make it much slower.
     typedef boost::shared_ptr<Deque<Packet> > DequePtr;
     DequePtr ip_packets, nfs_packets;
     boost::shared_ptr<StatsQuantile> extra_packets_size;
-    uint32_t tcp_overhead;
+    uint32_t tcp_overhead, tcp_overhead_q90, ip_only_resets;
 
     int64_t ip_extra_bytes, ip_extra_packets, correlated_bytes, correlated_requests,
-	multiple_nfs_in_single_ip, missed_nfs_count, ip_count, nfs_count;
+	ip_long_ack_bytes, ip_long_ack_packets, multiple_nfs_in_single_ip, missed_nfs_count, 
+	ip_count, nfs_count;
 
     static const uint32_t check_size = 2000;
-    PairInfo() : tcp_overhead(0), ip_extra_bytes(0), ip_extra_packets(0), 
-		 correlated_bytes(0), correlated_requests(0), multiple_nfs_in_single_ip(0), 
-		 missed_nfs_count(0), nfs_count(0)
+    PairInfo() : tcp_overhead(0), ip_only_resets(0), ip_extra_bytes(0), ip_extra_packets(0), 
+		 correlated_bytes(0), correlated_requests(0), ip_long_ack_bytes(0),
+		 ip_long_ack_packets(0), multiple_nfs_in_single_ip(0), missed_nfs_count(0), 
+		 nfs_count(0)
     { }
     ~PairInfo() { } 
 
@@ -121,24 +144,79 @@ struct PairInfo {
 	    }
 	    prev_seqnum = seqnum;
 	    prev_size = i->size;
-	    overhead.push_back(overhead_est);
+	    if (overhead_est >= (14 + 20 + 20) &&  overhead_est < 150) {
+		// only allow sane overhead estimates, assume ethernet + ip + tcp
+		overhead.push_back(overhead_est);
+	    }
 	}
+	SINVARIANT(overhead.size() > 20);
 	sort(overhead.begin(), overhead.end());
 	uint32_t pos_10 = static_cast<uint32_t>(0.1 * overhead.size());
 	uint32_t pos_90 = static_cast<uint32_t>(0.9 * overhead.size());
-	SINVARIANT(overhead[pos_10] == overhead[pos_90]);
+	if (overhead[pos_10] != overhead[pos_90]) {
+	    uint32_t pos_50 = static_cast<uint32_t>(0.50 * overhead.size());
+	    
+	    if (overhead[pos_10] == overhead[pos_50]) {
+		static unsigned warning_count;
+		
+		if (++warning_count < 100) {
+		    cout << format("Warning, tolerating variable tcp overhead on %s: %d,%d,%d\n")
+			% ipsd % overhead[pos_10] % overhead[pos_50] % overhead[pos_90];
+		    if (warning_count == 99) {
+			cout << "suppressing further warnings.\n";
+		    }
+		}
+		// Probably initial setup bits.
+	    } else {
+		for(vector<uint32_t>::iterator i = overhead.begin(); i != overhead.end(); ++i) {
+		    cout << format("%d, ") % *i;
+		}
+		cout << "\n";
+		cout << format("Warning, very bad tcp overhead on %s: %d != %d / %d") 
+		    % ipsd % overhead[pos_10] % overhead[pos_50] % overhead[pos_90];
+	    }
+	}
 	tcp_overhead = overhead[pos_10];
+	tcp_overhead_q90 = overhead[pos_90];
+	if (tcp_overhead_q90 > tcp_overhead + 16) {
+	    tcp_overhead_q90 = tcp_overhead + 16;
+	}
     }
 
     // Somewhat more complicated would be to calculate the TCP overhead
     void doPartial(const IPSrcDest &ipsd) {
-	if (tcp_overhead == 0 && ip_packets->size() > 100) {
+	static const unsigned batch_size = 100;
+	if (!!ip_packets && !nfs_packets && ip_packets->size() > batch_size * 10) {
+	    ++ip_only_resets;
+	    // not seeing nfs things, don't retain.
+	    ip_packets->clear();
+	    if (ip_only_resets >= ip_only_reset_threshold) {
+		ip_packets.reset();
+	    }
+	}
+	if (!ip_packets || !nfs_packets) {
+	    return;
+	}
+	if (ip_packets->size() < 2*batch_size || nfs_packets->size() < 2*batch_size) {
+	    // accumulate multiple before processing
+	    return;
+	}
+	if (tcp_overhead == 0 && ip_packets->size() > batch_size) {
 	    calculateTcpOverhead(ipsd);
 	}
-	while (ip_packets->size() > 100 && nfs_packets->size() > 100) {
+	if (!extra_packets_size) {
+	    extra_packets_size.reset(new StatsQuantile(0.05, 100000000));
+	}	    
+	while (ip_packets->size() > batch_size && nfs_packets->size() > batch_size) {
 	    if (ip_packets->front().at < nfs_packets->front().at) {
 		if (ip_packets->front().size == tcp_overhead) {
 		    // ack only 
+		    correlated_bytes += ip_packets->front().size;
+		    ip_packets->pop_front();
+		} else if (ip_packets->at(1).tcp_seqnum == ip_packets->front().tcp_seqnum) {
+		    ++ip_long_ack_packets;
+		    ip_long_ack_bytes += ip_packets->front().size;
+		    // ??? current packet carried no data, but was bigger than "standard" ack.
 		    correlated_bytes += ip_packets->front().size;
 		    ip_packets->pop_front();
 		} else {
@@ -158,7 +236,12 @@ struct PairInfo {
 		nfs_packets->pop_front();
 		while (nfs_packets->front().at == ip_packets->front().at) {
 		    multiple_nfs_in_single_ip += 1;
-		    SINVARIANT(remain > nfs_packets->front().size);
+		    // following can not work if we get a write as the second bit, the
+		    // remaining can fall over the end of the packet; ought to jump to
+		    // the multiple packets part of the code in that case.
+//		    INVARIANT(remain > nfs_packets->front().size, format("?? %d %d")
+//			      % remain % nfs_packets->front().size);
+		    remain -= nfs_packets->front().size;
 		    SINVARIANT(!nfs_packets->empty());
 		    nfs_packets->pop_front();
 		}
@@ -195,23 +278,40 @@ struct PairInfo {
 	}
     }
 
-    void summarizeStatus(const IPSrcDest &ipsd, StatsQuantile &correlated_percent,
-			 double print_below) {
+    double epsq(double quantile) { // extra packets size quantile
+	if (extra_packets_size->count() == 0) {
+	    return 0;
+	} else {
+	    return extra_packets_size->getQuantile(quantile);
+	}
+    }
+
+    void summarizeStatus(const IPSrcDest &ipsd, SummaryInfo &summary_info, double print_below) {
 	// ignore the extra ones we never try to correlate.
 	SINVARIANT(ip_extra_bytes >= 0);
 	double ip_bytes = ip_extra_bytes + correlated_bytes;;
-	if (nfs_packets == 0 || ip_bytes < 1000000) {
+	if (nfs_packets == 0 || ip_bytes < 1000*1000) {
+	    // if we don't have very many bytes at all, ignore, it's too small to make 
+	    // much of a difference, and the percents could be badly thrown off.
 	    return;
 	}
-	correlated_percent.add(100.0 * correlated_bytes / ip_bytes);
+	summary_info.correlated_bytes.add(correlated_bytes);
+	double percent = 100.0 * correlated_bytes / ip_bytes;
+	if (ipsd.dest_port == 2049) {
+	    summary_info.correlated_percent_dport2049.add(percent);
+	} else if (ipsd.source_port == 2049) {
+	    summary_info.correlated_percent_sport2049.add(percent);
+	}
+	summary_info.uncorrelated_bytes.add(ip_extra_bytes);
+	summary_info.correlated_percent.add(percent);
 
-	if (100.0 * correlated_bytes / ip_bytes > print_below) {
+	cout << format("insert into ipnfscrosscheck_raw (first_file, last_file, src_ip, src_port, dest_ip, dest_port, correlated_bytes, uncorrelated_bytes, uncorrelated_size_q10, uncorrelated_size_q25, uncorrelated_size_q50) values ('%s', '%s', '%s', %d, '%s', %d, %d, %d, %.0f, %.0f, %.0f);\n") % summary_info.first_file % summary_info.last_file % ipv4tostring(ipsd.source_ip) % ipsd.source_port % ipv4tostring(ipsd.dest_ip) % ipsd.dest_port % correlated_bytes % ip_extra_bytes % epsq(0.1) % epsq(0.25) % epsq(0.5);
+	if (percent > print_below) {
 	    return;
 	}
 
 	cout << format("%s: %.0f total bytes, %.2f%% correlated, %.2f%% ip-extra")
-	    % ipsd % ip_bytes % (100.0 * correlated_bytes / ip_bytes)
-	    % (100.0 * ip_extra_bytes / ip_bytes);
+	    % ipsd % ip_bytes % percent % (100.0 * ip_extra_bytes / ip_bytes);
 	cout << format("    %d multiple nfs/ip, %d known missed nfs\n")
 	    % multiple_nfs_in_single_ip % missed_nfs_count;
 	//	correlated_percent.add(100.0 * correlated_bytes / ip_bytes);
@@ -378,10 +478,26 @@ public:
     }
 };
 
+void rotateFn(const IPSrcDest &ipsd, PairInfo &info, SummaryInfo *summary_info) {
+    info.summarizeStatus(ipsd, *summary_info, 95.0);
+}
+
+void registerUnitsEpoch() {
+    // Register time types for some of the old traces so we don't have to
+    // do it in each of the modules.
+    Int64TimeField::registerUnitsEpoch("packet-at", "Trace::Network::IP", 
+				       "ssd.hpl.hp.com", 1, "2^-32 seconds", 
+				       "unix");
+    Int64TimeField::registerUnitsEpoch("packet_at", "Trace::Network::IP", 
+				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
+				       "unix");
+}
+
 int main(int argc, char *argv[]) {
     TypeIndexModule *nfs_input = new TypeIndexModule("NFS trace: common");
     nfs_input->setSecondMatch("Trace::NFS::common");
 
+    SINVARIANT(argc > 1);
     for(int i = 1; i < argc; ++i) {
 	nfs_input->addSource(argv[i]);
     }
@@ -394,37 +510,74 @@ int main(int argc, char *argv[]) {
     ExtentSeries nfs_series;
     ExtentSeries ip_series;
 
+    Extent *tmp_nfs_extent = nfs_input->getExtent();
+    SINVARIANT(tmp_nfs_extent != NULL);
+
+    registerUnitsEpoch();
+
     // fields for Trace::NFS::common (ns = ssd.hpl.hp.com, version = 1.0)
-    dataseries::TFixedField<int64_t> nfs_packet_at(nfs_series, "packet-at");
+    dataseries::TFixedField<int64_t> nfs_packet_at(nfs_series, "");
     dataseries::TFixedField<int32_t> nfs_source(nfs_series, "source");
-    dataseries::TFixedField<int32_t> nfs_source_port(nfs_series, "source-port");
+    dataseries::TFixedField<int32_t> nfs_source_port(nfs_series, "");
     dataseries::TFixedField<int32_t> nfs_dest(nfs_series, "dest");
-    dataseries::TFixedField<int32_t> nfs_dest_port(nfs_series, "dest-port");
-    BoolField nfs_is_request(nfs_series, "is-request");
-    dataseries::TFixedField<int32_t> nfs_payload_length(nfs_series, "payload-length");
-    BoolField nfs_is_udp(nfs_series, "is-udp");
+    dataseries::TFixedField<int32_t> nfs_dest_port(nfs_series, "");
+    BoolField nfs_is_request(nfs_series, "");
+    dataseries::TFixedField<int32_t> nfs_payload_length(nfs_series, "");
+    BoolField nfs_is_udp(nfs_series, "");
 
     // fields for Trace::Network::IP (ns = ssd.hpl.hp.com, version = 1.0)
-    dataseries::TFixedField<int64_t> ip_packet_at(ip_series, "packet-at");
+    dataseries::TFixedField<int64_t> ip_packet_at(ip_series, "");
     dataseries::TFixedField<int32_t> ip_source(ip_series, "source");
     dataseries::TFixedField<int32_t> ip_dest(ip_series, "destination");
-    dataseries::TFixedField<int32_t> ip_wire_length(ip_series, "wire-length");
-    Int32Field ip_source_port(ip_series, "source-port", Field::flag_nullable);
-    Int32Field ip_dest_port(ip_series, "destination-port", Field::flag_nullable);
-    Int32Field ip_tcp_seqnum(ip_series, "tcp-seqnum", Field::flag_nullable);
-    BoolField ip_is_udp(ip_series, "udp-tcp", Field::flag_nullable);
+    dataseries::TFixedField<int32_t> ip_wire_length(ip_series, "");
+    Int32Field ip_source_port(ip_series, "", Field::flag_nullable);
+    Int32Field ip_dest_port(ip_series, "", Field::flag_nullable);
+    Int32Field ip_tcp_seqnum(ip_series, "", Field::flag_nullable);
+    BoolField ip_is_udp(ip_series, "", Field::flag_nullable);
 
-    HashMap<IPSrcDest, PairInfo> pair_info;
+    if (tmp_nfs_extent->getType().versionCompatible(1,0)) {
+	nfs_packet_at.setFieldName("packet-at");
+	nfs_source_port.setFieldName("source-port");
+	nfs_dest.setFieldName("dest");
+	nfs_dest_port.setFieldName("dest-port");
+	nfs_is_request.setFieldName("is-request");
+	nfs_payload_length.setFieldName("payload-length");
+	nfs_is_udp.setFieldName("is-udp");
+
+	ip_packet_at.setFieldName("packet-at");
+	ip_wire_length.setFieldName("wire-length");
+	ip_source_port.setFieldName("source-port");
+	ip_dest_port.setFieldName("destination-port");
+	ip_tcp_seqnum.setFieldName("tcp-seqnum");
+	ip_is_udp.setFieldName("udp-tcp");
+    } else if (tmp_nfs_extent->getType().versionCompatible(2,0)) {
+	nfs_packet_at.setFieldName("packet_at");
+	nfs_source_port.setFieldName("source_port");
+	nfs_dest.setFieldName("dest");
+	nfs_dest_port.setFieldName("dest_port");
+	nfs_is_request.setFieldName("is_request");
+	nfs_payload_length.setFieldName("payload_length");
+	nfs_is_udp.setFieldName("is_udp");
+
+	ip_packet_at.setFieldName("packet_at");
+	ip_wire_length.setFieldName("wire_length");
+	ip_source_port.setFieldName("source_port");
+	ip_dest_port.setFieldName("destination_port");
+	ip_tcp_seqnum.setFieldName("tcp_seqnum");
+	ip_is_udp.setFieldName("udp_tcp");
+    } else {
+	FATAL_ERROR("...");
+    }
+    RotatingHashMap<IPSrcDest, PairInfo> pair_info;
     
     uint64_t row_count = 0;
     static const int32_t test_ips = 0; // 171977751; 
     static const int32_t test_ipd = 174981408;
-    while(true) {
-	++row_count;
-	if ((row_count & 0x1FFFF) == 0) {
-	    cout << format("%d rows processed, %d pairs\n") % row_count % pair_info.size();
-	}
+    int64_t last_rotate_at_raw = 0, rotate_interval_raw = 0;
+    
+    SummaryInfo summary_info(argv[1], argv[argc-1]);
 
+    while(true) {
 	if (nfs_series.getExtent() == NULL) {
 	    nfs_series.setExtent(nfs_input->getExtent());
 	} 
@@ -435,6 +588,26 @@ int main(int argc, char *argv[]) {
 	if (nfs_series.getExtent() == NULL || ip_series.getExtent() == NULL) {
 	    break; // slight potential error at end of analysis
 	}
+
+	++row_count;
+	if ((row_count & 0x7FFFFF) == 0) {
+	    cout << format("%d rows processed, %d pairs\n") % row_count % pair_info.size();
+	    cout.flush();
+	    if (rotate_interval_raw == 0) {
+		last_rotate_at_raw = ip_packet_at();
+		Int64TimeField tmp(ip_series, ip_packet_at.getName());
+		rotate_interval_raw = tmp.secNanoToRaw(3600,0);
+	    }
+	    if ((ip_packet_at() - last_rotate_at_raw) > rotate_interval_raw) {
+		cout << "rotate...\n";
+		last_rotate_at_raw = ip_packet_at();
+		pair_info.rotate(boost::bind(&rotateFn, _1, _2, &summary_info));
+		cout << "interim statistics (percent of data correlated between IP/NFS)\n";
+		summary_info.correlated_percent.printTextRanges(cout, 20);
+		cout.flush();
+	    }
+	}
+
 	if (false) cout << format("ip @%d, nfs@%d\n") % ip_packet_at() % nfs_packet_at();
 	if (ip_packet_at() < nfs_packet_at()) {
 	    if (!ip_is_udp.isNull()) {
@@ -465,7 +638,27 @@ int main(int argc, char *argv[]) {
 	}
     }
 
-    StatsQuantile correlated_percent(0.01, pair_info.size());
+    pair_info.flushRotate(boost::bind(&rotateFn, _1, _2, &summary_info));
+    for(double q = 0.01; q < 1; q += 0.01) {
+	cout << format("insert into ipnfscrosscheck_quantiles (first_file, last_file, quantile, percent_correlated, bytes_correlated, bytes_uncorrelated) values ('%s', '%s', %.8f, %.8f, %.8f, %.8f);\n") % argv[1] % argv[argc-1] % q % summary_info.correlated_percent.getQuantile(q) % summary_info.correlated_bytes.getQuantile(q) % summary_info.uncorrelated_bytes.getQuantile(q);
+    }
+    cout << "\n\nFinal Statistics: bytes of data correlated between IP/NFS\n";
+    summary_info.correlated_bytes.printTextRanges(cout, 100);
+
+    cout << "\n\nFinal Statistics: bytes of data uncorrelated between IP/NFS\n";
+    summary_info.uncorrelated_bytes.printTextRanges(cout, 100);
+
+    cout << "\n\nFinal Statistics: percent of data correlated between IP/NFS (source port 2049)\n";
+    cout << "(note expect more entries here because we prune out low # bytes\n";
+    cout << " and workloads are read-heavy so most bytes are from port 2049)\n";
+    summary_info.correlated_percent_sport2049.printTextRanges(cout, 100);
+
+    cout << "\n\nFinal Statistics: percent of data correlated between IP/NFS (dest port 2049)\n";
+    summary_info.correlated_percent_dport2049.printTextRanges(cout, 100);
+
+    cout << "\n\nFinal Statistics: percent of data correlated between IP/NFS\n";
+    summary_info.correlated_percent.printTextRanges(cout, 100);
+#if 0
     vector<pair<IPSrcDest, PairInfo> > sorted_data;
     for(HashMap<IPSrcDest, PairInfo>::iterator i = pair_info.begin(); i != pair_info.end(); ++i) {
 	i->second.summarizeStatus(i->first, correlated_percent, -1);
@@ -480,5 +673,27 @@ int main(int argc, char *argv[]) {
 	i->second.summarizeStatus(i->first, correlated_percent, print_below);
     }
     correlated_percent.printTextRanges(cout, 20);
+#endif
     return 0;
 }
+
+/*
+
+create table ipnfscrosscheck_raw (
+   first_file varchar(255) not null,
+   last_file varchar(255) not null,
+   src_ip varchar(32) not null,
+   src_port int not null,
+   dest_ip varchar(32) not null,
+   dest_port int not null,
+   correlated_bytes bigint not null,
+   uncorrelated_bytes bigint not null,
+   uncorrelated_size_q10 int not null,
+   uncorrelated_size_q25 int not null,
+   uncorrelated_size_q50 int not null,
+   key key1 (first_file, last_file, src_ip, src_port, dest_ip, dest_port)
+);
+
+*/
+
+

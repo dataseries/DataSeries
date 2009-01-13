@@ -237,8 +237,8 @@ public:
     static const bool print_per_mount = false;
 
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	printf("time range is %lld .. %lld\n",first_time,last_time);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	cout << format("time range is %d .. %d\n") % first_time % last_time;
 	if (print_per_client_fh) printf("exact client/server/filehandle/rw info:\n");
 	// calculate per-(server,fh) rollup while doing the client/server/fh/rw report
 	HashTable<hteData, rollupHash, rollupEqual> rollup;
@@ -248,11 +248,11 @@ public:
 	    if (print_per_client_fh) {
 		string *filename = fnByFileHandle(i->filehandle);
 		if (filename == NULL) filename = &i->filehandle;
-		printf("  %08x %08x %5s: %9lld %9lld %8lld ; %3d %3d %3d; %s\n",
-		       i->server,i->client,i->is_read ? "read" : "write",
-		       i->sequential_access_bytes, i->total_access_bytes, i->max_file_size,
-		       i->zero_starts, i->eof_restarts, i->total_starts,
-		       maybehexstring(*filename).c_str());
+		cout << format("  %08x %08x %5s: %9d %9d %8d ; %3d %3d %3d; %s\n")
+		    % i->server % i->client % (i->is_read ? "read" : "write")
+		    % i->sequential_access_bytes % i->total_access_bytes % i->max_file_size
+		    % i->zero_starts % i->eof_restarts % i->total_starts
+		    % maybehexstring(*filename);
 	    }
 	    hteData *rv = rollup.lookup(*i);
 	    if (rv == NULL) {
@@ -265,11 +265,10 @@ public:
 		    string *filename = fnByFileHandle(i->filehandle);
 		    if (filename == NULL) filename = &i->filehandle;
 		    if (false) {
-			printf("odd, %s changed max size from %lld (on %08x/%08x a %s) to %lld via a %s of %08x/%08x\n",
-			       maybehexstring(*filename).c_str(),
-			       rv->max_file_size,rv->client,rv->server,
-			       rv->is_read ? "read" : "write", i->max_file_size,
-			       i->is_read ? "read" : "write",i->client,i->server);
+			cout << format("odd, %s changed max size from %d (on %08x/%08x a %s) to %d via a %s of %08x/%08x\n")
+			    % maybehexstring(*filename) % rv->max_file_size % rv->client
+			    % rv->server % (rv->is_read ? "read" : "write") % i->max_file_size
+			    % (i->is_read ? "read" : "write") % i->client % i->server;
 		    }
 		    rv->max_file_size = i->max_file_size;
 		}
@@ -301,16 +300,17 @@ public:
 	    if (i->max_file_size == 0) {
 		i->max_file_size = 1;
 	    }
-	    AssertAlways(i->total_access_bytes == i->total_write_bytes + i->total_read_bytes,
-			 ("bad %lld %lld %lld",i->total_access_bytes,i->total_read_bytes,i->total_write_bytes));
+	    INVARIANT(i->total_access_bytes == i->total_write_bytes + i->total_read_bytes,
+		      format("bad %d %d %d") % i->total_access_bytes % i->total_read_bytes
+		      % i->total_write_bytes);
 	    if (print_per_fh) {
-		printf("%08x %3d %3d %3d: %7.4f %7.4f %7.4f %9lld ; %3d %3d %3d; %s\n",
-		       i->server, i->nclients, i->client_read_count, i->client_write_count,
-		       (double)i->sequential_access_bytes/(double)i->max_file_size,
-		       (double)(i->total_access_bytes - i->sequential_access_bytes)/(double)i->max_file_size,
-		       (double)i->total_access_bytes/(double)i->max_file_size, i->max_file_size,
-		       i->zero_starts, i->eof_restarts, i->total_starts,
-		       filename == NULL ? maybehexstring(i->filehandle).c_str() : maybehexstring(*filename).c_str());
+		cout << format("%08x %3d %3d %3d: %7.4f %7.4f %7.4f %9d ; %3d %3d %3d; %s\n")
+		    % i->server % i->nclients % i->client_read_count % i->client_write_count
+		    % ((double)i->sequential_access_bytes/(double)i->max_file_size)
+		    % ((double)(i->total_access_bytes - i->sequential_access_bytes)/(double)i->max_file_size)
+		    % ((double)i->total_access_bytes/(double)i->max_file_size) % i->max_file_size
+		    % i->zero_starts % i->eof_restarts % i->total_starts
+		    % (filename == NULL ? maybehexstring(i->filehandle) : maybehexstring(*filename));
 	    }
 	    if (mountRollup.size() <= NFSDSAnalysisMod::max_mount_points_expected) {
 		fh2mountData::pruneToMountPart(i->filehandle);
