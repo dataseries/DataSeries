@@ -18,6 +18,7 @@
 \newcommand{\fix}[1]{\marginpar{\LARGE\ensuremath{\bullet}}\textbf{[#1} \textbf{]}}
 %\newcommand{\fix}[1]{}
 \documentclass[twocolumn, 10pt]{article} 
+\usepackage{usenix}
 \setlength{\columnsep}{0.15in}
 \usepackage{graphicx,fullpage,epsf,epsfig,endnotes,pslatex,times,url}
 \usepackage[T1]{fontenc}
@@ -25,15 +26,15 @@
 \usepackage{natbib}
 \setlength{\bibsep}{4.5pt}
 
+\pagestyle{empty}
 \begin{document}
 
 %make title bold and 14 pt font (Latex default is non-bold, 16 pt)
 \title{\Large \bf Capture, conversion, and analysis of an intense NFS workload}
 
-\author{Eric Anderson, HP Labs <eric.anderson4@hp.com>}
+\author{{\it Eric Anderson, HP Labs <eric.anderson4@hp.com>}}
 \date{}
 \maketitle
-
 % Use the following at camera-ready time to suppress page numbers.
 % Comment it out when you first submit the paper for review.
 %\thispagestyle{empty}
