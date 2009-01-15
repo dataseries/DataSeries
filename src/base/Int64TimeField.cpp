@@ -267,7 +267,8 @@ void Int64TimeField::setUnitsEpoch(const std::string &units,
     TimeType new_type = convertUnitsEpoch(units, epoch, getName(), true);
     if (new_type == Unknown) {
 	INVARIANT(time_type != Unknown,
-		  format("Can not figure out time type for field %s, units '%s', epoch '%s'") % getName() % units % epoch);
+		  format("Can not figure out time type for field %s, in type %s: units '%s', epoch '%s'") 
+		  % getName() % (dataseries.getExtent() == NULL ? "unknown" : dataseries.getExtent()->getType().getName()) % units % epoch);
     } else {
 	INVARIANT(time_type == Unknown  || time_type == new_type, 
 		  format("invalid to change the time type after it is set (%d != %d)")
