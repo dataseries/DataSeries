@@ -1,3 +1,68 @@
+2008-01-14: 
+  * Final version of the FAST 2009 paper "Capture, conversion, and
+    analysis of an intense NFS workload" on analyzing the animation
+    bear traces using DataSeries. doc/fast2009-nfs-analysis
+
+2009-01-02:
+  * operator () added to fields for easier use.
+  * Added analysis/nfs/ipnfscrosscheck to compare the packets in the
+    IP and NFS traces.  This analysis conservatively identifies
+    un-converted packets.
+
+2008-12-12:
+  * Extensive documentation patch from Steven Watanabe.
+
+2008-12-04:
+  * Updates to srt2ds, cmpsrtds, cmpsrtds.pm to convert cello-1999
+    traces (32 bit only)
+
+2008-12-01:
+  * --where option added to dsselect
+
+2008-11-10:
+  * Final version of the Operating Systems Review paper "DataSeries:
+    An Efficient, Flexible Data Format for Structured Serial Data"
+
+2008-09-12: 
+  * Add sequentiality analysis to nfsdsanalysis.
+  * Add analysis that looks for gaps in the transaction id sequence to
+    nfsdsanalysis.
+
+2008-09-10:
+  * Add sql output mode to server latency analysis in nfsdsanalysis.
+
+2008-09-09:
+  * Multiple rolling bandwidth calculations can be done in one pass in
+    ipdsanalysis.
+
+2008-09-07:
+  * Add firstExtent() function to RowAnalysisModule
+
+2008-09-05:
+  * Extend Extent class to record file and offset of extents -- useful
+    for debugging.
+
+2008-09-01:
+  * Add analysis to look at statistics of unique file handles to
+    nfsdsanalysis
+  * Add option to print out merged and base series in nfsdsanalysis
+
+2008-08-28:
+  * Add sql output mode for HostInfo analysis in nfsdsanalysis
+
+2008-07-28:
+  * Add analysis of the 1998 World Cup traces; update TR to include
+    analysis.
+  * Add support for templated fixed fields that can be significantly
+    faster than the non-templated ones for very simple analysis.
+
+2008-07-09:
+  * Add support for many different operations and comparisons in the
+    expression support of dsstatgroupby.
+
+2008-06-26:
+  * Add support for --where to ds2txt
+
 2008-06-14: 
   * DataSeries should now build on cygwin.
 
