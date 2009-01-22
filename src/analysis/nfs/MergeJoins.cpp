@@ -372,8 +372,8 @@ public:
 		      % in_replyid.val() % prev_replyid);
 	    prev_replyid = in_replyid.val();
 	    if (last_record_id > in_recordid.val()) {
-		if (in_recordid.val() == 37315642835LL && last_record_id == 37315642836LL ||
-		    in_recordid.val() == 38615056294LL && last_record_id == 38615056295LL) {
+		if ((in_recordid.val() == 37315642835LL && last_record_id == 37315642836LL) 
+		    || (in_recordid.val() == 38615056294LL && last_record_id == 38615056295LL)) {
 		    // first one nfs-1/set-17, beginning of 06349 vs. end of 06348; tolerate
 		    // second one nfs-1/set-17, beginning of 09170 vs end of 09169
 		} else {
