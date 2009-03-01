@@ -429,6 +429,8 @@ private:
     Int32Field wire_len;
 };
 
+// TODO: write a general reorder module and use it instead of
+// buffering all the statistics here.
 class IPTimeSeriesBandwidthPacketsPerSecond : public RowAnalysisModule {
 public:
     IPTimeSeriesBandwidthPacketsPerSecond(DataSeriesModule &_source,
@@ -439,42 +441,63 @@ public:
 	  packet_at(series,"packet-at"),
 	  wire_len(series,"wire-length")
     { 
-	FATAL_ERROR("incorrect time conversion");
-	interval_nsecs = (long long)(atof(args.c_str()) * 1.0e9);
-	SINVARIANT(interval_nsecs > 0);
+	interval_seconds = stringToDouble(args);
+	SINVARIANT(interval_seconds > 0);
     }
 
     virtual ~IPTimeSeriesBandwidthPacketsPerSecond() { };
     
+    virtual void firstExtent(const Extent &e) {
+	const ExtentType &type = e.getType();
+	if (type.getName() == "Network trace: IP packets") {
+	    packet_at.setFieldName("packet-at");
+	    wire_len.setFieldName("wire-length");
+	} else if (type.getName() == "Trace::Network::IP" &&
+		   type.versionCompatible(1,0)) {
+	    packet_at.setFieldName("packet-at");
+	    wire_len.setFieldName("wire-length");
+	} else if (type.getName() == "Trace::Network::IP" &&
+		   type.versionCompatible(2,0)) {
+	    packet_at.setFieldName("packet_at");
+	    wire_len.setFieldName("wire_length");
+	} else {
+	    FATAL_ERROR("?");
+	}
+    }
+
+    virtual void prepareForProcessing() {
+	interval_raw = packet_at.doubleSecondsToRaw(interval_seconds);
+    }
+
     // arrival time of the packet assuming an arrival entirely
     // within the smallest measurement interval
     virtual void processRow() {
 	if (intervals_base == 0) {
-	    intervals_base = packet_at.val() - 500000000;
-	    intervals_base -= intervals_base % interval_nsecs;
-	    last_interval_start = intervals_base - interval_nsecs;
-	    last_interval_end = intervals_base;
+	    intervals_base = packet_at.valRaw();
+	    intervals_base -= intervals_base % interval_raw; // align to start
+	    last_interval_start = intervals_base - interval_raw;
+	    last_interval_end = interval_raw;
 	}
-	INVARIANT(packet_at.val() > intervals_base,
-		  boost::format("bad %lld %lld")
-		  % packet_at.val() % intervals_base);
-	if (packet_at.val() >= last_interval_end) {
-	    uint64_t total_intervals = (packet_at.val() - intervals_base)/interval_nsecs+1;
+	INVARIANT(packet_at.valRaw() > intervals_base, boost::format("bad %lld %lld")
+		  % packet_at.valRaw() % intervals_base);
+	if (packet_at.valRaw() >= last_interval_end) {
+	    uint64_t total_intervals = (packet_at.valRaw() - intervals_base)/interval_raw+1;
 	    SINVARIANT(total_intervals > sum_bytes.size());
 	    sum_bytes.resize(total_intervals);
 	    sum_packets.resize(total_intervals);
-	    last_interval_end = intervals_base + interval_nsecs * total_intervals;
-	    last_interval_start = last_interval_end - interval_nsecs;
-	    SINVARIANT(packet_at.val() >= last_interval_start 
-		       && packet_at.val() < last_interval_end);
+	    last_interval_end = intervals_base + interval_raw * total_intervals;
+	    last_interval_start = last_interval_end - interval_raw;
+	    SINVARIANT(packet_at.valRaw() >= last_interval_start 
+		       && packet_at.valRaw() < last_interval_end);
 	}
 
-	if (packet_at.val() >= last_interval_start) {
-	    SINVARIANT(packet_at.val() < last_interval_end);
+	if (packet_at.valRaw() >= last_interval_start) {
+	    SINVARIANT(packet_at.valRaw() < last_interval_end);
 	    sum_packets[sum_packets.size()-1] += 1;
 	    sum_bytes[sum_bytes.size()-1] += wire_len.val();
 	} else {
-	    uint64_t interval = (packet_at.val() - intervals_base)/interval_nsecs;
+	    // Allow packets to be out of order
+	    uint64_t interval = (packet_at.valRaw() - intervals_base)/interval_raw;
 	    SINVARIANT(interval >= 0 && interval < sum_bytes.size() - 1);
 	    sum_packets[interval] += 1;
 	    sum_bytes[interval] += wire_len.val();
@@ -482,22 +505,34 @@ public:
     }
 
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 
-	for(unsigned i=0;i<sum_bytes.size(); ++i) {
-	    long long interval_start = intervals_base + interval_nsecs * i;
-	    printf(" insert into ip_timeseries_data (interval_start, interval_nsecs, packets, bytes) values (%lld, %lld, %.0f, %.0f); \n",
-		   interval_start, interval_nsecs, sum_packets[i], sum_bytes[i]);
+	StatsQuantile packets, bytes;
+	for(size_t i=0;i<sum_bytes.size(); ++i) {
+	    int64_t interval_start_raw = intervals_base + interval_raw * i;
+	    
+	    double interval_start_sec = packet_at.rawToDoubleSeconds(interval_start_raw, false);
+
+	    cout << format(" insert into ip_timeseries_data (interval_start, interval_secs, packets, bytes) values (%.3f, %.3f, %.0f, %.0f); \n")
+		% interval_start_sec % interval_seconds % sum_packets[i] % sum_bytes[i];
+	    packets.add(sum_packets[i] / interval_seconds);
+	    bytes.add(sum_bytes[i] / interval_seconds);
 	}
 	
+	cout << format("packets/s:\n");
+	packets.printText(cout);
+	cout << format("bytes/s:\n");
+	bytes.printText(cout);
+
 	printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 private:
     std::vector<double> sum_packets;
     std::vector<double> sum_bytes;
-    long long interval_nsecs, intervals_base, last_interval_start, last_interval_end;
+    double interval_seconds;
+    int64_t interval_raw, intervals_base, last_interval_start, last_interval_end;
     
-    Int64Field packet_at;
+    Int64TimeField packet_at;
     Int32Field wire_len;
 };
 
