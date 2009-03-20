@@ -79,7 +79,7 @@ ENDIF(SRT_ENABLED)
 SET(LZO_MISSING_EXTRA "  lzo compression support will be skipped.")
 INCLUDE(FindLZO)
 
-SET(CRYPTO_MISSING_EXTRA "  will skip building iphost2ds, nettrace2ds")
+SET(CRYPTO_MISSING_EXTRA "  will skip building iphost2ds, nettrace2ds, nfsdsanalysis")
 INCLUDE(FindCrypto)
 
 SET(PCRE_MISSING_EXTRA "  will skip building bacct2ds")

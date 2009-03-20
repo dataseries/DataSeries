@@ -1,0 +1,39 @@
+// -*-C++-*-
+/*
+   (c) Copyright 2009, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Configuration parameters for DataSeries
+*/
+
+#ifndef DATASERIES_CONFIG_HPP
+#define DATASERIES_CONFIG_HPP
+
+#cmakedefine DATASERIES_BZIP2_ENABLED
+#cmakedefine DATASERIES_LZO_ENABLED
+#cmakedefine DATASERIES_CRYPTO_ENABLED
+
+namespace dataseries { namespace config {
+#ifdef DATASERIES_BZIP2_ENABLED
+	enum { bzip2 = 1 };
+#else
+	enum { bzip2 = 0 };
+#endif
+
+#ifdef DATASERIES_LZO_ENABLED
+	enum { lzo = 1 };
+#else
+	enum { lzo = 0 };
+#endif
+
+#ifdef DATASERIES_CRYPTO_ENABLED
+	enum { crypto = 1 };
+#else
+	enum { crypto = 0 };
+#endif
+}}
+
+#endif

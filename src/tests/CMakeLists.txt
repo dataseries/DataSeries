@@ -31,7 +31,6 @@ DATASERIES_SCRIPT_TEST(nfsdsanalysis)
 DATASERIES_SCRIPT_TEST(ellard)
 DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
-DATASERIES_SCRIPT_TEST(ipdsanalysis)
 DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
 
 ### Script tests of testing-only programs
@@ -42,6 +41,11 @@ DATASERIES_PROGRAM_NOINST(expr)
 DATASERIES_SCRIPT_TEST(expr)
 
 ### Conditional tests...
+
+IF(LZO_ENABLED)
+    # TODO: repack the nfs*.ip.ds files with only gz and lzf
+    DATASERIES_SCRIPT_TEST(ipdsanalysis)
+ENDIF(LZO_ENABLED)
 
 IF(BUNZIP2_PROGRAM_ENABLED)
     DATASERIES_SCRIPT_TEST(pssimple)
