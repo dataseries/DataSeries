@@ -24,7 +24,7 @@ using boost::format;
 class IndexSourceModuleCompressedPrefetchThread : public PThread {
 public:
     IndexSourceModuleCompressedPrefetchThread(IndexSourceModule &_ism)
-	: ism(_ism) { 
+	: ism(_ism) {
 	setStackSize(256*1024); // shouldn't need much
     }
 
@@ -40,7 +40,7 @@ public:
 class IndexSourceModuleUnpackThread : public PThread {
 public:
     IndexSourceModuleUnpackThread(IndexSourceModule &_ism)
-	: ism(_ism) { 
+	: ism(_ism) {
 	setStackSize(256*1024); // shouldn't need much
     }
 
@@ -92,11 +92,11 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
     INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
     SINVARIANT(prefetch_max_compressed > 0);
     SINVARIANT(prefetch_max_unpacked > 0);
-    
+
     PrefetchInfo *tmp = new PrefetchInfo(prefetch_max_compressed,
 					 prefetch_max_unpacked);
     prefetch = tmp;
-    prefetch->compressed_prefetch_thread = 
+    prefetch->compressed_prefetch_thread =
 	new IndexSourceModuleCompressedPrefetchThread(*this);
     prefetch->compressed_prefetch_thread->start();
 
@@ -118,7 +118,7 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
     INVARIANT(prefetch == tmp, "two simulataneous calls to startPrefetching??");
 }
 
-static inline double 
+static inline double
 timediff(struct timeval &end,struct timeval &start)
 {
     return end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec) * 1e-6;
@@ -173,7 +173,7 @@ void IndexSourceModule::resetPos() {
     SINVARIANT(prefetch != NULL);
     prefetch->mutex.lock();
     SINVARIANT(prefetch->reset_flag == false);
-    INVARIANT(prefetch->compressed.empty() && prefetch->unpacked.empty(), 
+    INVARIANT(prefetch->compressed.empty() && prefetch->unpacked.empty(),
 	      "reset with anything remaining not implemented");
 
     prefetch->reset_flag = true;
@@ -184,7 +184,7 @@ void IndexSourceModule::resetPos() {
     prefetch->mutex.unlock();
 }
 
-double 
+double
 IndexSourceModule::waitFraction()
 {
     if (prefetch == NULL) {
@@ -225,11 +225,16 @@ IndexSourceModule::compressedPrefetchThread()
 	} else if (prefetch->reset_flag) {
 	    SINVARIANT(prefetch->compressed.empty() &&
 		       prefetch->compressed.cur == 0);
-		      
+
 	    lockedResetModule();
 	    prefetch->source_done = false;
 	    prefetch->reset_flag = false;
 	    prefetch->compressed_cond.signal();
+
+	// make sure the compressed queue is not full (overflowing the compressed queue
+	// is actually allowed - we can't avoid it because we don't know the size of the
+	// extent that we are going to read - that's why can_add is called with 0, but
+	// later add is called with the actual size)
 	} else if (!prefetch->source_done && prefetch->compressed.can_add(0)) {
 	    PrefetchExtent *p = lockedGetCompressedExtent();
 	    if (p == NULL) {
@@ -238,14 +243,24 @@ IndexSourceModule::compressedPrefetchThread()
 	    } else {
 		SINVARIANT(p->extent_source != Extent::in_memory_str &&
 			   p->extent_source_offset > 0);
+
+		// add the data extent that we just fetched to prefetch->compressed
 		prefetch->compressed.add(p, p->bytes.size());
+
+		// is enough room for the unpacked data in prefetch->unpacked?
+		// (can_add with a PrefetchExtent first calculates the unpacked size)
 		if (prefetch->unpacked.can_add(prefetch->compressed.front())) {
-		    prefetch->unpack_cond.signal();
+		    prefetch->unpack_cond.signal(); // wake up the unpacking thread
 		} else {
+		    // no point in waking up the unpacking thread since it won't have
+		    // anywhere to store its results - so just remember that we have compressed
+		    // data waiting for unpacking
 		    ++prefetch->stats.skip_unpack_signal;
 		}
 	    }
 	} else {
+	    // we can't read the data extent from the DS file because there's no room in
+	    // prefetch->compressed to store it
 	    prefetch->compressed_cond.wait(prefetch->mutex);
 	}
     }
@@ -257,9 +272,11 @@ IndexSourceModule::unpackThread()
 {
     prefetch->mutex.lock();
     ++prefetch->stats.active_unpackers;
+
     while(prefetch->abort_prefetching == false) {
-	if(prefetch->compressed.data.empty() || 
+	if(prefetch->compressed.data.empty() ||
 	   !prefetch->unpacked.can_add(prefetch->compressed.front())) {
+	    // there's nothing to unpack or there's no room for the unpacked data
 	    --prefetch->stats.active_unpackers;
 	    if (prefetch->compressed.data.empty()) {
 		++prefetch->stats.unpack_no_upstream;
@@ -269,22 +286,37 @@ IndexSourceModule::unpackThread()
 	    prefetch->unpack_cond.wait(prefetch->mutex);
 	    ++prefetch->stats.active_unpackers;
 	}
-	
+
 	if (prefetch->abort_prefetching) {
 	    break;
 	}
 
 	prefetch->stats.lockedUpdateActive();
+
+	// check the same condition again now that we're out of the CV's wait
 	if (!prefetch->compressed.data.empty() &&
 	    prefetch->unpacked.can_add(prefetch->compressed.front())) {
+
+	    // take the data extent off the compressed queue
 	    PrefetchExtent *pe = prefetch->compressed.getFront();
+
+	    // the compressed queue now has more room available
 	    prefetch->compressed.subtract(pe->bytes.size());
-	    uint32_t unpacked_size 
+
+	    // and the unpacked queue has less room available
+	    uint32_t unpacked_size
 		= Extent::unpackedSize(pe->bytes, pe->need_bitflip,
 				       *pe->type);
+
+	    // add the unpacked extent to the unpacked queue (we haven't really unpacked it yet,
+	    // but we are certainly going to and we don't the prefetching thread to wait for us
+	    // to actually do that)
 	    prefetch->unpacked.add(pe, unpacked_size);
+
+	    // the prefetching thread can go ahead and read the next data extent from the DS file
 	    prefetch->compressed_cond.signal();
-	    bool should_yield; 
+
+	    bool should_yield;
 	    if (prefetch->unpackedReady()) {
 		// For small extents, almost equivalent to just having the
 		// next condition, but not equivalent with large extents.
@@ -293,7 +325,7 @@ IndexSourceModule::unpackThread()
 		should_yield = true;
 	    } else if (prefetch->unpacked.data.size() > 2*prefetch->unpack_threads.size()) {
 		++prefetch->stats.unpack_yield_front;
-		// The front of the queue isn't done, but we have a lot of 
+		// The front of the queue isn't done, but we have a lot of
 		// things in the queue, this means whatever thread is working
 		// on that element has been preempted.
 		// really want a directed yield to the thread processing the
@@ -306,16 +338,26 @@ IndexSourceModule::unpackThread()
 	    if (should_yield) {
 		sched_yield();
 	    }
+
+	    // this is what actually unpacks/decompresses the data!
 	    Extent *e = new Extent(*pe->type, pe->bytes, pe->need_bitflip);
+
 	    e->extent_source = pe->extent_source;
 	    e->extent_source_offset = pe->extent_source_offset;
 	    SINVARIANT(e->type.getName() == pe->uncompressed_type);
 	    SINVARIANT(e->size() == unpacked_size);
+
 	    prefetch->mutex.lock();
 	    SINVARIANT(pe->unpacked == NULL && pe->bytes.size() > 0);
+
+	    // collect some stats
 	    total_compressed_bytes += pe->bytes.size();
 	    total_uncompressed_bytes += e->size();
+
+	    // release the compressed data 
+	    // (we can clear the compressed bytes because the uncompressed bytes are stored separately)
 	    pe->bytes.clear();
+	    
 	    pe->unpacked = e;
 	    SINVARIANT(!prefetch->unpacked.empty());
 	    if (prefetch->unpackedReady()) {
@@ -323,6 +365,7 @@ IndexSourceModule::unpackThread()
 	    }
 	}
     }
+
     --prefetch->stats.active_unpackers;
     prefetch->mutex.unlock();
 }
