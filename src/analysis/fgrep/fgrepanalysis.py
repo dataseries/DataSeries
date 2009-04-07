@@ -63,6 +63,7 @@ def measure(command):
 	return {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
 
 def printUsage():
+	# TODO-shirant: fix documenation of --experiment. copies->iterations?
 	print """Usage: %(command)s <command>
 Various commands are supported:
 1) --prepare [--copies=copies] <input text file> <output text file> <output DS file>
@@ -99,6 +100,18 @@ def experiment(pattern, textFile, dsFile, iterations, skipFirstIteration):
 	print "=====> Measuring performance of 'fgrepanalysis' on %s" % dsFile
 	for i in range(iterations):
 		dsMeasurements.record(measure("fgrepanalysis --count %s %s" % (pattern, dsFile)))
+# TODO-shirant: I had the iterations stuff break on me...		
+# =====> Measuring performance of grep on /tmp/bmh.txt
+# Traceback (most recent call last):
+# 	  File "./fgrepanalysis.py", line 129, in ?
+# 		    experiment(*args)
+# 				  File "./fgrepanalysis.py", line 97, in experiment
+# 					    grepMeasurements.record(measure("grep --count %s %s" % (pattern, textFile)))
+# 							  File "./fgrepanalysis.py", line 63, in measure
+# 								return {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
+# 							ValueError: invalid literal for float(): ?
+# 							[1]    21540 exit 1     ./fgrepanalysis.py --experiment --iterations=20 "needle" /tmp/bmh.txt
+							
 	print dsMeasurements
 	
 	print "=====> Measuring performance of 'fgrepanalysis --no-memcpy' on %s" % dsFile

@@ -21,13 +21,23 @@ Variable32Field line(series, "line");
 int
 main(int argc,char *argv[])
 {
-	commonPackingArgs packing_args;
-	getPackingArgs(&argc, argv, &packing_args);
+    // TODO-shirant: weird 8 space tabbing? double check your other files /
+    // editor settings...
 
+    // TODO-shirant: --help produces an error and I could not figure out how to
+    // get help for [ds-common-args]. Maybe add a TODO about DS program options
+    // handling in general?
+
+        commonPackingArgs packing_args;
+	getPackingArgs(&argc, argv, &packing_args);
 	INVARIANT(argc == 3 || argc == 4,
 			format("Usage: %s [ds-common-args] inname outdsname [copies]; - valid for inname")
 			% argv[0]);
 
+        // TODO-shirant: remove "copies" feature from this program? Your test
+	// harness does this now. I am not sure copying is a worthwhile arg
+	// for this tool in general.
+        
 	// how many copies of the text do we want?
 	// multiple copies are useful for synthetically creating large DS files
 	int copies = (argc == 4) ? atoi(argv[3]) : 1;
@@ -36,13 +46,13 @@ main(int argc,char *argv[])
 	INVARIANT(infile.is_open(), format("Unable to open file %s") % argv[1]);
 
 	DataSeriesSink outds(argv[2],
-				packing_args.compress_modes,
-				packing_args.compress_level);
+                             packing_args.compress_modes,
+                             packing_args.compress_level);
 	ExtentTypeLibrary library;
 	const ExtentType *extent_type = library.registerType(text_xml);
 	series.setType(*extent_type);
 	outmodule = new OutputModule(outds, series, extent_type,
-			packing_args.extent_size);
+                                     packing_args.extent_size);
 	outds.writeExtentLibrary(library);
 
 	int64_t line_count = 0;

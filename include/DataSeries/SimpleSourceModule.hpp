@@ -5,14 +5,18 @@
    See the file named COPYING for license details
 */
 
+// TODO-shirant: document *no memcpy* and explain why this is not optimized inline in the normal
+// source module?
+
 /** @file
-    Data Series Module for reading a single DataSeries file with no compression and correct endianess
+    DataSeries Module for reading a single DataSeries file with no compression and correct endianess
 */
 
 #ifndef __SIMPLE_SOURCE_MODULE_H
 #define __SIMPLE_SOURCE_MODULE_H
 
 #include <string>
+
 #include <DataSeries/DataSeriesModule.hpp>
 
 class ExtentType;
@@ -29,8 +33,9 @@ private:
     void closeFile();
     bool readFile(Extent::ByteArray &data, size_t amount, size_t dataOffset = 0); // false indicates EOF
 
+    // TODO-shirant: confirm with Eric: 100 or 120 column limit on each row? Regardless, the
+    // following line overflows...
     bool readExtent(/* out */ std::string &typeName, /* out */ Extent::ByteArray &fixedData, /* out */ Extent::ByteArray &variableData);
-
 
     std::string filename;
     int fd;

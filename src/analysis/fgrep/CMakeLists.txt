@@ -8,6 +8,7 @@
 
 DATASERIES_PROGRAM(fgrepanalysis BoyerMooreHorspool.cpp)
 
+# TODO-shirant: Remove these comments?
 # example of linking a module to a library
 # FIND_LIBRARY(PCRE_LIBRARY NAMES pcre PATHS /usr/lib /usr/local/lib)
 # TARGET_LINK_LIBRARIES(fgrepanalysis ${PCRE_LIBRARY})

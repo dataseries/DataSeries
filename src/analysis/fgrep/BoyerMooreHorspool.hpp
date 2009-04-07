@@ -1,10 +1,19 @@
 #ifndef __BOYER_MOORE_HORSPOOL_H
 #define __BOYER_MOORE_HORSPOOL_H
 
+// TODO-shirant: I don't think the ".h" is used for standard headers.
 #include <inttypes.h>
 #include <limits.h>
 #include <string.h>
 
+// TODO-shirant: I believe you based this algorithm almost directly from a text
+// book. Add a comment that documents the text book you based this
+// implementation on.
+
+// TODO-shirant: although the usage is mostly clear from the interface (pass
+// what you are looking for into the constructor, then call matches to see if
+// you find the needle in the haystack), add doxygen comments '///' to the ctor
+// and to the matches method.
 class BoyerMooreHorspool {
 public:
     BoyerMooreHorspool(const char *needle, int32_t needle_length);
@@ -19,4 +28,6 @@ private:
     int32_t last;
 };
 
+// TODO-shirant: coding convention is to not "close" #endif with a comment /*
+// __B..._H */
 #endif /* __BOYER_MOORE_HORSPOOL_H */

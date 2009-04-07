@@ -8,10 +8,15 @@
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/ExtentField.hpp>
 
+// TODO-shirant: This is probably OK for now, but I wonder if BoyerMooreHorspool belongs in Lintel
+// eventually? (Think of Lintel as the resting place of all potentially common code).
 #include "BoyerMooreHorspool.hpp"
 
 using namespace std;
 
+// TODO-shirant: I think FgrepAnalysisModule ought to be called FgrepModule. It ought to have a
+// header in DataSeries/include/DataSeries and an implementation in DataSeries/src/module. For now
+// BoyerMooreHorsppol.?pp would then end up in DataSeries/src/module.
 class FgrepAnalysisModule: public RowAnalysisModule {
 public:
     FgrepAnalysisModule(DataSeriesModule &source, const string &pattern, bool print_matches=false);
@@ -23,6 +28,9 @@ public:
 
         if (matcher.matches(val, size)) {
             ++match_count;
+            // TODO-shirant: this could be done with LintelLog. If we want to maintain the
+            // print_matches bool, then should cout ought to be pointed at some stream that is
+            // passed in? This applies to all couts...
             if (print_matches) {
                 cout << std::string((char*)val, size)  << endl;
             }
@@ -66,6 +74,11 @@ void FgrepAnalysisModule::newExtentHook(const Extent &e) {
     ++extent_count;
 }
 
+// TODO-shirant: Why not use Lintel program options?
+
+// TODO-shirant: Document how to use --no-memcpy? This may be my ignorance of DataSeries, but I
+// think I neded to use some special commands when I ran txt2ds for --no-memcpy to work? (OK, from
+// fgrepanalysis.py, --compress-none is the magic incantation. Still dcoument somehow?)
 void printUsage(const char *command) {
     cerr << "Usage: " << command << " [--no-memcpy] [--count] pattern filename" << endl <<
             "    --no-memcpy: Use the specialized SimpleSourceModule module for reading the (uncompressed) file" << endl <<
