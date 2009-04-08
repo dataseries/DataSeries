@@ -10,6 +10,9 @@
 
 // TODO-shirant: This is probably OK for now, but I wonder if BoyerMooreHorspool belongs in Lintel
 // eventually? (Think of Lintel as the resting place of all potentially common code).
+// Joe agrees; BoyerMooreHorspool may be good for Lintel
+//
+// Also, use <>
 #include "BoyerMooreHorspool.hpp"
 
 using namespace std;
@@ -17,6 +20,15 @@ using namespace std;
 // TODO-shirant: I think FgrepAnalysisModule ought to be called FgrepModule. It ought to have a
 // header in DataSeries/include/DataSeries and an implementation in DataSeries/src/module. For now
 // BoyerMooreHorsppol.?pp would then end up in DataSeries/src/module.
+//
+// That is, move the grep module bit in to DataSeries/src/module, and separate out the main() bits so that others
+// can use the grepping module.  The output bits may need to be cleaned up (something like a filter module? passing in
+// another place to dump stuff?)
+//
+// First step is to move it to DataSeries/src/module, even if it isn't
+// fully general and can't be used as a filter.  Making it completely
+// general can wait; document what you think needs to be done for it
+// to be a more general filter for now.
 class FgrepAnalysisModule: public RowAnalysisModule {
 public:
     FgrepAnalysisModule(DataSeriesModule &source, const string &pattern, bool print_matches=false);
@@ -38,6 +50,8 @@ public:
     }
 
     virtual void printResult() {
+	// TODO-shirant: consider boost::format; it is much type-safer (at compile time).  Internets abound with 
+	// boost::format examples
         cout << "*** Found " << match_count << ((match_count == 1) ? " match " : " matches") << " in " << line_number << " lines (" << extent_count << " extents)" << endl;
     }
 
@@ -74,7 +88,9 @@ void FgrepAnalysisModule::newExtentHook(const Extent &e) {
     ++extent_count;
 }
 
-// TODO-shirant: Why not use Lintel program options?
+// TODO-shirant: Why not use Lintel program options?  lintel/include/Lintel/ProgramOptions
+// There is probably a good example of useing it in lintel's test program
+
 
 // TODO-shirant: Document how to use --no-memcpy? This may be my ignorance of DataSeries, but I
 // think I neded to use some special commands when I ran txt2ds for --no-memcpy to work? (OK, from

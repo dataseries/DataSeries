@@ -1,4 +1,8 @@
+// TODO-shirant: should muddle with the include path so you can use <>
+// if "" is widespread, ignore; could also email Eric
 #include "BoyerMooreHorspool.hpp"
+
+// TODO-shirant : will need to #include for memcpy
 
 BoyerMooreHorspool::BoyerMooreHorspool(const char *needle, int32_t needle_length) :
         needle_length(needle_length), last(needle_length - 1) {

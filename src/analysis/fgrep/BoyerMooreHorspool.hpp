@@ -1,9 +1,12 @@
+// TODO-shirant: __BOYER_MOORE_HORSPOOL_HPP
+// try to check if that is actually the convention; if it isn't, ignore
 #ifndef __BOYER_MOORE_HORSPOOL_H
 #define __BOYER_MOORE_HORSPOOL_H
 
 // TODO-shirant: I don't think the ".h" is used for standard headers.
 #include <inttypes.h>
 #include <limits.h>
+// TODO-shirant: seems unneeded, but maybe in the cpp
 #include <string.h>
 
 // TODO-shirant: I believe you based this algorithm almost directly from a text

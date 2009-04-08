@@ -1,7 +1,7 @@
 // TODO-shirant: The following is the preferred style for includes (group by project, list projects
 // from lowest level to highest level, list alphabetically within a project):
-// #include <stdio>
-// #include <fcntl>
+// #include <stdio.h>
+// #include <fcntl.h>
 //
 // #include <Lintel/LintelLog.hpp>
 //
@@ -18,6 +18,7 @@ using namespace std;
 
 // TODO-shirant: Why are these (FileHeader and ExtentHeaer) defined in the cpp? These look like
 // general(ish) datastructures?
+// Think if this actually works on 32 AND 64 bit given alignment and packing rules.  Maybe ask Eric
 struct FileHeader {
     char version[4];
     int32_t magic1;
@@ -62,7 +63,7 @@ void SimpleSourceModule::init() {
     // iterate over all the types in the XML type index and register them with our library
     ExtentSeries series(typeExtent); // a series of one extent
     Variable32Field typevar(series, "xmltype");
-    for(; series.pos.morerecords(); ++series.pos) {
+    for (; series.pos.morerecords(); ++series.pos) {
         string xmltype = typevar.stringval();
         library.registerType(xmltype);
     }
@@ -113,6 +114,7 @@ bool SimpleSourceModule::readExtent(string &typeName, Extent::ByteArray &fixedDa
 
     // TODO-shirant: Is there a / should there be a macro for alignment stuff? Should 4 be a const
     // or defined elsewhere (so e.g. it can be 8 on a 64 bit machine)?
+    // Perhaps ask Eric
     offset += (4 - offset % 4) % 4; // 4-byte alignment
 
     // read the fixed data

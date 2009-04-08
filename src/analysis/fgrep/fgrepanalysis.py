@@ -39,7 +39,8 @@ class Measurements:
 			"Mean: " + " ".join(self.getResultList(self.mean())) + "\n" + \
 			"Min: " + " ".join(self.getResultList(self.min)) + "\n" + \
 			"Max: " + " ".join(self.getResultList(self.max))
-		
+# TODO-shirant: can we get standard error of mean? this is sample standard deviation / sqrt(number of samples)
+# there is an incremental way of diong sample standard deviation
 
 
 def runText(command):
@@ -85,9 +86,14 @@ def prepare(inputTextFile, outputTextFile, outputDsFile, copies):
 		runText('cat %s >> %s' % (inputTextFile, outputTextFile))
 	
 	print "=====> Creating DataSeries file '%s' via 'txt2ds --compress-none'" % outputDsFile
+#TODO-shirant - add flag to do these with compression (grep and no-memcpy dataseries uncompressed, vs grep uncompressed and yes-memcpy dataseries compressed); may also consider different compression options (lzf & gz are the most interesting ones)
 	run("txt2ds --compress-none %s %s %s" % (inputTextFile, outputDsFile, copies))
 
 def experiment(pattern, textFile, dsFile, iterations, skipFirstIteration):
+# TODO-shirant : option for clearing the file cache? clear file cache between each run?
+# ask eric about the quick way of throwing out the file cache
+# it is interesting to do cold cache/warm cache.
+
 	grepMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)
 	dsMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)
 	dsNoMemcpyMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)

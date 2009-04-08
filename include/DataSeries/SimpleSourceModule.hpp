@@ -6,7 +6,7 @@
 */
 
 // TODO-shirant: document *no memcpy* and explain why this is not optimized inline in the normal
-// source module?
+// source module? - use doxygen triple-slash comments
 
 /** @file
     DataSeries Module for reading a single DataSeries file with no compression and correct endianess
