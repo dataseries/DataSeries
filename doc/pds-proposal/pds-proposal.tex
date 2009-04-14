@@ -1,0 +1,86 @@
+\documentclass{acm_proc_article-sp}
+
+\begin{document}
+
+\title{Parallel DataSeries: Efficient and Scalable Data-Intensive Computing}
+\subtitle{Project Proposal}
+\numberofauthors{1}
+\author{
+\alignauthor
+Tomer Shiran\\
+       \affaddr{Carnegie Mellon University}\\
+       \email{tshiran@cmu.edu}
+\and
+}
+\date{15 April 2009}
+\maketitle
+\begin{abstract}
+This paper describes a 12-week project that involves extending DataSeries to support parallel processing, both on a single machine (utilizing multiple CPUs and cores) and on multiple machines. Unlike other parallel dataflow frameworks, such as Hadoop \cite{hadoop}, Parallel DataSeries (PDS) will maximize resource (CPU, network, disk) utilization. The hypothesis that this project will test is whether we can achieve significantly higher performance by carefully designing and implementing the system so that it maximizes resource utilization. The ultimate goal of this research is, therefore, to understand whether there is an opportunity for significantly reducing the capital and operating expenses of large-scale parallel data processing.
+\end{abstract}
+\section{Introduction}
+Large-scale parallel dataflow systems, such as MapReduce \cite{mapreduce} and Dryad \cite{dryad}, have attracted significant attention recently. They provide abstractions for specifying data-parallel computations, and they also provide environments for automating the execution of data-parallel programs on large clusters of commodity machines. MapReduce, in particular, has received a great deal of attention, and several implementations \cite{hadoop, phoenix} are publicly available. These programming models and systems offer an alternative to parallel databases \cite{paralleldatabases} for processing large data sets.
+
+Although existing systems can scale to hundreds and thousands of machines, they do not fully utilize the hardware resources on which they execute. For example, running Hadoop on a single machine and executing a grep-like program is more than an order of magnitude slower than running the standard UNIX grep command on the exact same hardware. As another example, Google's MapReduce implementation reaches a peak input data transfer rate of only 30 GB/s while running a distributed grep on a cluster of 1800 two-disk machines. That rate is equivalent to only 8.33 MB/s per disk at the peak, which is reached 60 seconds into the computation.
+
+We argue that in most practical applications, achieving near-linear speedup or scaleup is only meaningful when the performance on a single node is reasonably close to the performance of a sequential implementation. The primary goal of this project is to show that it is possible to build such as system by utilizing various techniques. The end-result will be a large-scale parallel dataflow system that:
+\begin{itemize}
+\item Will run at approximately the same speed as a sequential implementation on a single node.
+\item Will scale similarly to other systems, such as Hadoop, MapReduce and Dryad.
+\end{itemize}
+\section{Non-Goals}
+Due to the short timeframe and limited resources, this project will focus only on achieving the goals described in the previous section. The following functionality is important to a production system but is a not a goal for this project:
+\begin{itemize}
+\item Using or building a job scheduler. Instead, we will rely on ssh and simple scripts to manage the PDS processes on the cluster's machines.
+\item Using or building a parallel filesystem, or automatically partitioning data sets. Instead, we will manually partition and distribute the desired data sets on the local filesystems of the machines.
+\item Fault tolerance. Although large-scale systems are expected to deal with failures, we do not address such failures in this project.
+\item Automatically determining an execution plan. Instead, we will require the user to specify the exact dataflow graph.
+\item Automatically optimizing data packing and compression parameters for network transmissions. Instead, we will require the user to specify the desired settings in the specification of the dataflow graph.
+\item Optimizing for power efficiency. Although power consumption is important, we will not address it in this project.
+\end{itemize}
+\section{Details}
+A DataSeries program is organized as a pipeline of modules, in which the module that reads the data from a DataSeries file is a \emph{source}, and the module that writes the output data to a file is a \emph{sink}. All other modules in the pipeline are \emph{filters}.
+PDS will allow developers to construct data-intensive programs that can efficiently utilize multiple CPU cores on a machine, and multiple machines in a cluster. Recalling that a DataSeries program is a pipeline of modules, achieving \emph{partitioned parallelism} \cite{paralleldatabases} is equivalent to allowing a module to run in parallel on multiple CPU cores and multiple machines. Obviously, this can only be beneficial if at least one of the following conditions apply:
+\begin{itemize}
+\item The sink module can read multiple files in parallel. The input data must be split between different disks on a machine or between different machines in order to achieve input parallelism.
+\item One or more filter modules are sufficiently CPU-intensive, in which case even if the input data is not partitioned, it is beneficial to divide the processing work.
+\end{itemize}
+PDS will use threading to achieve intra-process parallelism, and RPC (eg, Thrift) to achieve inter-process (ie, inter-machine) parallelism.
+\section{Experiments}
+The evaluation of PDS vs. Hadoop (and publicly available results for other systems) is expected to be a significant portion of the work on this project. We will evaluate PDS on three workloads:
+\begin{itemize}
+\item Distributed grep (as in MapReduce)
+\item Distributed sort (as in MapReduce)
+\item One additional workload (***TBD)
+\end{itemize}
+\section{Timeline}
+The following table outlines the project's expected timeline.
+\newenvironment{noop}{}{}
+\begin{noop}\begin{tabular}{|c|c|p{2.2in}|} \hline
+Week(s)&Date&Task\\ \hline
+1 & 4/24 & Write high-level design\\ \hline
+2-3 & 5/8 & Implement intra-process parallelism (thread-based)\\ \hline
+4-5 & 5/22 & Implement inter-process parallelism (RPC-based)\\ \hline
+6-7 & 6/5 & Define dataflow graph specification format, and implement a system that reads the specification and runs the parallel program on the cluster\\ \hline
+8-9 & 6/19 & Implement/run distributed grep experiment and celebrate Reut's birthday!\\ \hline
+10 & 6/26 & Implement/run distributed sort experiment\\ \hline
+11 & 7/3 & Implement/run additional workload experiment\\ \hline
+12 & 7/10 & Write thesis\\
+\hline\end{tabular}\end{noop}
+
+
+\section{Related Work}
+Google's MapReduce \cite{mapreduce} offers a programming model that enables easy development of scalable parallel applications to process a vast amount of data on large clusters of commodity machines. Through a simple interface with two functions, map and reduce, this model facilitates parallel implementation of many real-world tasks such as data processing and machine learning. Hadoop \cite{hadoop} is an open-source map-reduce implementation for large clusters that is very similar to \cite{mapreduce}.
+
+Phoenix \cite{phoenix} is a shared-memory implementation of the map-reduce model for multi-core and SMP machines that allows programmers to develop parallel applications without having to deal with threading and synchronization. Due to its use of shared memory rather than temporary files and TCP networking, Phoenix can  outperform MapReduce on a single machine.
+
+Dryad \cite{dryad}, like MapReduce, offers a programming model and an execution framework for writing parallel distributed programs. A Dryad programmer writes several sequential programs and connects them using one-way channels. The computation is structured as a directed graph (similarly to \cite{paralleldatabases}). Dryad is responsible for executing the user-specified graph on a cluster of commodity machines. Dryad also handles fault tolerance, scheduling and resource management.
+
+Additional, higher-level languages have been introduced on top of MapReduce, Hadoop and Dryad. These models further simplify the task of developing and executing scalable parallel applications. Sawzall \cite{sawzall} is a high-level language for the MapReduce framework that includes various built-in aggregators. Pig Latin \cite{piglatin} is a high-level procedural language for the Hadoop framework, which can also be executed on other frameworks (by extending Pig, the compiler that translates Pig Latin programs into Hadoop programs). Pig Latin offers various operators, such as COGROUP, FOREACH and FILTER, and is similar to the declarative SQL language. DryadLINQ \cite{dryadlinq} generates Dryad computations from the LINQ Language-Integrated Query extensions to C\#.
+
+Gordon \cite{gordon} is a system architecture for data-intensive applications that combines low-power processors, flash memory and parallel dataflow systems (eg, Hadoop) that improves the performance and power-consumption of such applications. Gordon focuses on identifying the best hardware for large-scale parallel processing, rather than assuming given hardware and developing the best software for the task. According to trace-based simulations, Gordon can out-perform disk-based clusters by 1.5x. However, the simulations do not account for networking, which is often the bottleneck in such applications.
+
+\bibliographystyle{abbrv}
+\bibliography{pds-proposal}
+
+\balancecolumns
+\end{document}
