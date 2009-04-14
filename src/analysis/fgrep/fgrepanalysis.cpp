@@ -129,9 +129,11 @@ int main(int argc, char* argv[]) {
     DataSeriesModule *source = NULL;
     if (no_memcpy) {
         source = new SimpleSourceModule(filename);
+        cout << "Reading with SimpleSourceModule (memcpy avoided)" << endl;
     } else {
         source = new TypeIndexModule("Text"); // "Text" is the type name used by ds2text
         static_cast<TypeIndexModule*>(source)->addSource(filename);
+        cout << "Reading with TypeIndexModule (memcpy required)" << endl;
     }
 
     FgrepAnalysisModule analysis(*source, pattern, !count);

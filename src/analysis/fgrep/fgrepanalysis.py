@@ -73,7 +73,7 @@ Various commands are supported:
 
 Examples:
 %(command)s --prepare --copies=200 /usr/share/datasets/fgrepbible.txt /usr/share/datasets/fgrepbible_200_none.txt /usr/share/datasets/fgrepbible_200_none.in
-%(command)s --experiment --copies=200 "seven" /usr/share/datasets/fgrepbible_200_none.txt /usr/share/datasets/fgrepbible_200_none.in""" % {'command': sys.argv[0]}
+%(command)s --experiment "seven" /usr/share/datasets/fgrepbible_200_none.txt /usr/share/datasets/fgrepbible_200_none.in""" % {'command': sys.argv[0]}
 
 def exitUsage(retvalue):
 	printUsage()
