@@ -1,149 +1,137 @@
 #!/usr/bin/env python
 
-from subprocess import call
-import sys	
-import os
-import re
-import getopt
+import getopt, sys, os
+from experimentation import MeasurementDatabase, Experiment, run
 
-class Measurements:
-	def __init__(self, parameters, skipFirst):
-		self.parameters = parameters
-		self.total = dict([(name, 0.0) for name in parameters])
-		self.skip = skipFirst
-		self.count = 0
-		self.min = dict([(name, float('inf')) for name in parameters])
-		self.max = dict([(name, 0.0) for name in parameters])
-		
-	def record(self, results):
-		if self.skip:
-			self.skip = False
-			return
+class FgrepMeasurementDatabase(MeasurementDatabase):
+	experimentTableName = "FgrepExperiments"
+	measurementTableName = "FgrepMeasurements"
 
-		for (key, val) in results.iteritems():
-			self.total[key] += val
-			self.min[key] = min(self.min[key], val)
-			self.max[key] = max(self.max[key], val)
-		self.count += 1
-	
-	def mean(self):
-		return dict([
-			[key, val / self.count] for (key, val) in self.total.iteritems()
-			])
-	
-	def getResultList(self, d):
-		return ["%s" % d[key] for key in self.parameters]
-		
-	def __str__(self):
-		return " ".join(self.parameters) + "\n" + \
-			"Mean: " + " ".join(self.getResultList(self.mean())) + "\n" + \
-			"Min: " + " ".join(self.getResultList(self.min)) + "\n" + \
-			"Max: " + " ".join(self.getResultList(self.max))
-# TODO-shirant: can we get standard error of mean? this is sample standard deviation / sqrt(number of samples)
-# there is an incremental way of diong sample standard deviation
-
-
-def runText(command):
-	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
-	return (stdoutHandle.read(), stderrHandle.read())
-
-def runLines(command):
-	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
-	return (stdoutHandle.readlines(), stderrHandle.readlines())
-
-def run(command):
-	os.popen(command)
-
-def extractTime(expression, stderrText):
-	return expression.search(stderrText).group(2)
-
-def measure(command):
-	(stdoutLines, stderrLines) = runLines('/usr/bin/time -f "%e %U %S %P" ' + command)
-	line = stderrLines[-1]
-	components = line.split()
-	return {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
 
 def printUsage():
-	# TODO-shirant: fix documenation of --experiment. copies->iterations?
 	print """Usage: %(command)s <command>
 Various commands are supported:
-1) --prepare [--copies=copies] <input text file> <output text file> <output DS file>
-2) --experiment [--iterations=iterations [--skip-first-iteration]] <pattern> <text file> <DS file>
-   (grep uses the text file, fgrepanalysis uses the equivalent DS file)
+1) prepare [--copies=<copies>] <input text file> <output file prefix>
+       Prepares a text file and multiple DS files (various compression algorithms). The output files
+       are named automatically by adding suffixes (.txt, .none.in, .lzf.in, .gz.in).
+2) experiment [--cache] [--iterations=<iterations>] [--tag=<tag>] <pattern> <input file prefix>
+       Runs the experiment to compare standard grep with fgrepanalysis. The text and DS files
+       are expected for the specified file prefix (.txt, .none.in, .lzf.in, .gz.in).
+       
+       If --cache is specified, an additional iteration is performed first without recording the
+       results. If --cache is not specified, the cache is cleared first by writing a large file to /tmp.
+3) create-mercury-tables
+       Creates the MySQL database tables in which the results are stored.
+4) drop-mercury-tables
+       Deletes the MySQL database tables in which the results are stored.
 
 Examples:
-%(command)s --prepare --copies=200 /usr/share/datasets/fgrepbible.txt /usr/share/datasets/fgrepbible_200_none.txt /usr/share/datasets/fgrepbible_200_none.in
-%(command)s --experiment "seven" /usr/share/datasets/fgrepbible_200_none.txt /usr/share/datasets/fgrepbible_200_none.in""" % {'command': sys.argv[0]}
+%(command)s prepare --copies=200 /usr/share/datasets/fgrepbible.txt /usr/share/datasets/fgrepbible200
+%(command)s experiment --cache --iterations=10 --tag="my experiment" "seven" /usr/share/datasets/fgrepbible200""" % {'command': sys.argv[0]}
 
 def exitUsage(retvalue):
 	printUsage()
 	sys.exit(retvalue)
 
-def prepare(inputTextFile, outputTextFile, outputDsFile, copies):
-	print "=====> Creating text file '%s'" % outputTextFile
-	runText('cat %s > %s' % (inputTextFile, outputTextFile))
+def prepare(inputTextFile, outputFilePrefix, copies):
+	outputFileTxt = outputFilePrefix + ".txt"
+	outputFileNone = outputFilePrefix + ".none.in"
+	outputFileLzf = outputFilePrefix + ".lzf.in"
+	outputFileGz = outputFilePrefix + ".gz.in"
+
+	assert(outputFileTxt != inputTextFile)
+
+	print "=====> Creating text file '%s'" % outputFileTxt
+	run('cat %s > %s' % (inputTextFile, outputFileTxt))
 	for i in range(copies - 1):
-		runText('cat %s >> %s' % (inputTextFile, outputTextFile))
+		run('cat %s >> %s' % (inputTextFile, outputFileTxt))
 	
-	print "=====> Creating DataSeries file '%s' via 'txt2ds --compress-none'" % outputDsFile
-#TODO-shirant - add flag to do these with compression (grep and no-memcpy dataseries uncompressed, vs grep uncompressed and yes-memcpy dataseries compressed); may also consider different compression options (lzf & gz are the most interesting ones)
-	run("txt2ds --compress-none %s %s %s" % (inputTextFile, outputDsFile, copies))
+	print "=====> Creating DS file '%s' via 'txt2ds --compress-none'" % outputFileNone
+	run("txt2ds --compress-none %s %s" % (outputFileTxt, outputFileNone))
 
-def experiment(pattern, textFile, dsFile, iterations, skipFirstIteration):
-# TODO-shirant : option for clearing the file cache? clear file cache between each run?
-# ask eric about the quick way of throwing out the file cache
-# it is interesting to do cold cache/warm cache.
+	print "=====> Creating DS file '%s' via 'txt2ds --compress-lzf'" % outputFileLzf
+	run("txt2ds --compress-lzf %s %s" % (outputFileTxt, outputFileLzf))
 
-	grepMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)
-	dsMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)
-	dsNoMemcpyMeasurements = Measurements(['elapsed', 'user', 'system', 'cpu'], skipFirstIteration)
+	print "=====> Creating DS file '%s' via 'txt2ds --compress-gz'" % outputFileGz
+	run("txt2ds --compress-gz %s %s" % (outputFileTxt, outputFileGz))
+
+def experiment(pattern, inputFilePrefix, cache, iterations, tag):
+	experiment = Experiment(database, tag)
+	print "Starting experiment: %s" % repr(experiment)
+	
+	# total of five different experiments:
+	# 1: {(grep, text)}
+	# 3: {DS w/ memcpy} x {none, lzf, gz}
+	# 1: {DS wo/ memcpy} x {none}
+
+	inputFileTxt = inputFilePrefix + ".txt"
+	inputFileNone = inputFilePrefix + ".none.in"
+	inputFileLzf = inputFilePrefix + ".lzf.in"
+	inputFileGz = inputFilePrefix + ".gz.in"
+	
+	commands = (
+		"grep --count %s %s" % (pattern, inputFileTxt),
+
+		"fgrepanalysis --count %s %s" % (pattern, inputFileNone),
+		"fgrepanalysis --count %s %s" % (pattern, inputFileLzf),
+		"fgrepanalysis --count %s %s" % (pattern, inputFileGz),
+
+		"fgrepanalysis --no-memcpy --count %s %s" % (pattern, inputFileNone),
+		)
+
+	if cache:
+		iterations += 1
+	
+	for command in commands:
+		for i in range(iterations):
 		
-	print "=====> Measuring performance of grep on %s" % textFile
-	for i in range(iterations):
-		grepMeasurements.record(measure("grep --count %s %s" % (pattern, textFile)))
-	print grepMeasurements
-	
-	print "=====> Measuring performance of 'fgrepanalysis' on %s" % dsFile
-	for i in range(iterations):
-		dsMeasurements.record(measure("fgrepanalysis --count %s %s" % (pattern, dsFile)))
-# TODO-shirant: I had the iterations stuff break on me...		
-# =====> Measuring performance of grep on /tmp/bmh.txt
-# Traceback (most recent call last):
-# 	  File "./fgrepanalysis.py", line 129, in ?
-# 		    experiment(*args)
-# 				  File "./fgrepanalysis.py", line 97, in experiment
-# 					    grepMeasurements.record(measure("grep --count %s %s" % (pattern, textFile)))
-# 							  File "./fgrepanalysis.py", line 63, in measure
-# 								return {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
-# 							ValueError: invalid literal for float(): ?
-# 							[1]    21540 exit 1     ./fgrepanalysis.py --experiment --iterations=20 "needle" /tmp/bmh.txt
-							
-	print dsMeasurements
-	
-	print "=====> Measuring performance of 'fgrepanalysis --no-memcpy' on %s" % dsFile
-	for i in range(iterations):
-		dsNoMemcpyMeasurements.record(measure("fgrepanalysis --count --no-memcpy %s %s" % (pattern, dsFile)))
-	print dsNoMemcpyMeasurements
+			print command
+			if i == 0 and cache:
+				run(command)
+			else:
+				if not cache: # if caching is not desired we must clear the buffer cache
+					run("sudo sh -c 'sync && echo 3 > /proc/sys/vm/drop_caches'")
+				experiment.measure(command, tag=command)
 
 if __name__ == "__main__":
+	if len(sys.argv) == 1:
+		print "ERROR: no command specified"
+		exitUsage(1)
+	
+	command = sys.argv.pop(1)
+	
 	try:                                
-		opts, args = getopt.getopt(sys.argv[1:], "", ["prepare", "experiment", "copies=", "iterations=", "skip-first-iteration"])
+		opts, args = getopt.getopt(sys.argv[1:], "", ["copies=", "iterations=", "cache", "tag="])
 		opts = dict(opts)
 	except getopt.GetoptError, err:
 		print "ERROR: %s" % err
-		printUsage()
-		sys.exit(2)
-		
-	if '--prepare' in opts:
-		if len(args) != 3:
+		exitUsage(2)
+	
+	database = MeasurementDatabase("FgrepExperiments", "FgrepMeasurements")
+	
+	if command == 'create-mercury-tables':
+		database.connect()
+		database.createTables()
+		database.close()
+	elif command == 'drop-mercury-tables':
+		database.connect()
+		database.dropTables()
+		database.close()
+	elif command == 'prepare':
+		if len(args) != 2:
 			exitUsage(3)
 		args.append(int(opts.get('--copies', '1')))
 		prepare(*args)
-	elif '--experiment' in opts:
-		if len(args) != 3:
+	elif command == 'experiment':
+		if len(args) != 2:
 			exitUsage(3)
+		args.append(opts.get('--cache') is not None);
 		args.append(int(opts.get('--iterations', '1')))
-		args.append(opts.get('--skip-first-iteration') is not None);
+		args.append(opts.get('--tag'))
+		
+		database.connect()
 		experiment(*args)
+		database.close()
 	else:
 		exitUsage(3)
+		
