@@ -8,7 +8,7 @@
 
 set -e
 
-./general
+./misc
 ../process/ds2txt --skip-index test.ds >test.txt
 cmp $1/check-data/complex.txt test.txt
 
