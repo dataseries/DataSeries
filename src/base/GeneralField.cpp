@@ -128,6 +128,14 @@ void GeneralValue::setInt32(int32_t val) {
     gvval.v_int32 = val;
 }
 
+void GeneralValue::setInt64(int64_t val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_int64,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_int64;
+    gvval.v_int64 = val;
+}
+
 void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_variable32,
@@ -247,7 +255,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << boost::format("%d") % gvval.v_int32;
 	    break;
 	case ExtentType::ft_int64:
-	    to << boost::format("%lld") % gvval.v_int64;
+	    to << boost::format("%d") % gvval.v_int64;
 	    break;
 	case ExtentType::ft_double:
 	    to << boost::format("%.12g") % gvval.v_double;
