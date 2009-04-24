@@ -20,7 +20,7 @@ void check_set()
     test.setInt64(1234567890987654321LL);
     SINVARIANT(test.valBool());
     SINVARIANT(test.valByte() == 1234567890987654321LL % 256);
-    SINVARIANT(static_cast<uint32_t>(test.valInt32())== 1234567890987654321LL % 4294967296);
+    SINVARIANT(static_cast<uint32_t>(test.valInt32())== 1234567890987654321LL % 4294967296LL);
     SINVARIANT(test.valInt64() == 1234567890987654321LL);
     SINVARIANT(test.valDouble() == 1234567890987654400.0);
     //valString is unimplemented for all values except bool
