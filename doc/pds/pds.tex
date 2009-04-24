@@ -21,6 +21,9 @@ Tomer Shiran\\
 }
 \date{15 April 2009}
 \maketitle
+
+\newenvironment{noop}{}{}
+
 \begin{abstract}
 This paper describes a 12-week project that involves developing a model to help improve the performance and reduce the cost of data-intensive computing. This model will provide an in-depth understanding of the \emph{data exchange wall}, a phenomenon in which the overall throughput drops when a data-intensive program is executed on multiple machines. As CPUs become increasingly parallel (via multiple cores) and local storage bandwidth increases (via Flash or multiple disks per machine), the data exchange wall will become increasingly important and will need to be strongly considered in any data-intensive computing work. This project also involves extending DataSeries \cite{dataseries} to support parallel processing, both on a single machine (utilizing multiple CPUs and cores) and on multiple machines. Unlike other parallel dataflow systems, such as Hadoop \cite{hadoop}, Parallel DataSeries (PDS) will efficiently utilize local resources (disk and CPU), thus demonstrating the inefficiency of existing systems and allowing us to empirically corroborate our model.
 \end{abstract}
@@ -74,7 +77,6 @@ We will demonstrate scenarios A-D by implementing a distributed grep-like progra
 
 \section{Timeline}
 The following table outlines the project's expected timeline.
-\newenvironment{noop}{}{}
 \begin{noop}\begin{tabular}{|c|c|p{2.2in}|} \hline
 Week(s)&Date&Task\\ \hline
 1 & 4/24 & Refine model and evaluate MapReduce and Dryad and according to model. Write corresponding sections of thesis/paper\\ \hline
@@ -132,7 +134,7 @@ Additional, higher-level languages have been introduced on top of MapReduce, Had
 
 Gordon \cite{gordon} is a system architecture for data-intensive applications that combines low-power processors, flash memory and parallel dataflow systems (eg, Hadoop) and improves the performance and power-consumption of such applications. Gordon focuses on identifying the best hardware for large-scale parallel processing. According to trace-based simulations (Gordon is not an actual system), Gordon can outperform disk-based clusters by 1.5x. However, the simulations do not account for networking, which is often the bottleneck in such applications. Furthermore, Gordon assumes a given software stack and, unlike PDS, does not address the relationship between the system's hardware and software.
 
-\section{Week 1}
+\section{Week 1-1.5}
 \subsection{Grep on MapReduce}
 A distributed grep execution on MapReduce involved 1800 machines, each consisting of two 160 GB IDE disks and a gigabit Ethernet link. \cite{mapreduce} does not provide the specifications or model numbers of the disks. However, we can estimate the sustained throughput of such disks by looking at publicly available data. The specifications of a Barracuda 7200.10 Ultra ATA/100 160 GB drive indicate a sustained throughput of 78 MB/s \cite{seagate160gb}, so we assume that the disks measured in \cite{mapreduce} had similar throughput. In other words, any of the 1800 machines in the MapReduce cluster could read input data off its disks at a rate of $D = 2 \cdot 78 = 166 \text{ MB/s}$.
 
@@ -140,7 +142,7 @@ We cannot determine the value of $C$ because it is implementation-dependant. Als
 
 Referring to our model, $C < D$. It is worth noting that MapReduce reads its input data from GFS \cite{gfs}, and in some cases input files may need to be transmitted over the network. However, this is unlikley to affect the relationship between $C$ and $D$ because:
 \begin{itemize}
-  \item The experiments were executed during the weekend on an idle cluster. Thus, MapReduce's locality optimization  ensured that most mappers were scheduled to run on the machines that actually stored their input files (this is explicitly mentioned in the paper's description of the sort experiment).
+  \item The experiments were executed during the weekend on an idle cluster. Thus, MapReduce's locality optimization ensured that most mappers were scheduled to run on the machines that actually stored their input files (this is explicitly mentioned in the paper's description of the sort experiment).
   \item Even if locality was not achieved on some machines, $D$ would only drop to about 100 MB/s on gigabit Ethernet, still much higher than $C$.
 \end{itemize}
 
@@ -155,10 +157,218 @@ Our analysis of the distributed sort experiment on MapReduce is similar to that 
 
 As in grep, the throughput of distributed sort on MapReduce is severely limited by the system's processing overhead. Given that the map phase of sort only involves partitioning the data, we would expect an efficient system to be I/O-bound (in this case, $N/s < D$, so we would expect it to be network-bound). Given that the network had about 100-200 Gbps at the root, we can conclude that the maximum aggregate throughput is $B/s = 10000/1 = 10000 MB/s$ (assuming, very conservatively, that the root had 100 Gbps and that all data exchange crossed the root switch). With an efficient system, this would be reached with only $(B/s) / (N/s) = 10000/100 = 100$ machines. In other words, an efficient system would reach twice the aggregate throughput of MapReduce with 17 times less machines. We further suspect that a higher backplane bandwidth ($B$) would be possible (with 100-200 machines, as opposed to 17000), thereby allowing the efficient system to scale beyond 100 machines and 10000 MB/s.
 
+\subsection{Teraort on Hadoop}
+We analyze the performance of Hadoop on the TeraSort benchmark \cite{terasort}. According to \cite{hadoopterasort}, the experiment included $n=910$ machines, each with four SATA disks and gigabit Ethernet. We assume each disk has a sustained throughput of 65 MB/s, so $D = 4 \cdot 65 = 260 \text{ MB/s}$. We also have $s = 1$ (almost all data must be exchanged in a distributed sort) and $N/s = 100/1 = 100 \text{ MB/s}$ since gigabit Ethernet provides roughly 100 MB/s of throughput. The sorting of one terabyte on this Hadoop cluster completed in 209 seconds, so $T = 1000000/209 = 4784.69 \text{ MB/s}$. Our model suggests that $T = min\{B/s, n \cdot min\{C, D, N/s\}\}$, so: $4784.69 \text{ MB/s} = min\{B, 910 \cdot min\{C, 260 \text{ MB/s}, 100 \text{ MB/s}\}$. This clearly shows that the system was far from utilizing the available disk and network throughput of the machines. The per-machine throughput was $T_{machine} = 4784.69/910 = 5.26 \text{ MB/s}$, or 50 times less than the available disk throughput and 20 times less than the available network throughput. Therefore, we are left with two options. Either $C = 5.26 \text{ MB/s}$, indicating an extremely inefficient system, or $B = 4784.69 \text{ MB/s}$.
+
+This experiment was executed on a two-layer network with one switch for each rack (each rack consisted of 40 nodes), and a core switch. The rack switches were connected to the core switch using eight gigabit Ethernet links, so the available throughput between racks was 800 MB/s. Given that in distributed sort must each machine must transmit an equal amount of data to each of the other machines, $22/23 = 95.7\%$ (assuming 23 racks were used to house the 910 machines) of the data exchange had to cross racks. Assuming the core switch has sufficient backplane bandwidth, we can conclude that $B = 800/0.957 = 836.36 \text{ MB/s}$. This is clearly not possible given the reported execution time.
+
+It is worth noting that, given the same hardware, a highly efficient system could achieve the same throughput ($T = 4784.69 \text{ MB/s}$) with only $T / min\{D, N/s\} = 4784.69 / 100 = 48$ machines. Alternatively, using only a single rack, it would be possible to achieve an aggregate throughput of $40 \cdot 100 = 4000 \text{ MB/s}$, reaching 83.6\% of the reported throughput (the computation would take 250 instead of 209 seconds) at less than 4.4\% of the cost.
+
+\subsection{Terasort on MapReduce}
+Google announced \cite{mapreduceterasort} that it was able to complete the TeraSort benchmark in 68 seconds, using $n=1000$ machines, each consisting of 12 disks. The aggregate throughput was $T = 1000000/68 = 14705.88 \text{ MB/s}$ and the per-machine throughput was $T_{machine} = T / n = 14.71 \text{ MB/s}$. Assuming a sustained throughput of 65 MB/s per disk and gigabit Ethernet, we have $D = 12 \cdot 65 = 780 \text{ MB/s}$ and $N/s = 100 \text{ MB/s}$. Therefore, either $C = 14.71 \text{ MB/s}$, indicating an extremely inefficient system, or $B = 14705.88 \text{ MB/s}$. If the latter is true (ie, the network's effective backplane bandwidth was only 14705.88 MB/s), and the system is indeed capable of fully utilizing the available network and disk throughput on each machine, then the same aggregate throughput could have been achieved using only $T / min\{D, N/s\} = 14705.88 / 100 = 148$ machines instead of 1000. In addition, if indeed the backplane bandwidth was the bottleneck, it may be possible to achieve a higher backplane bandwidth on a network with 100-200 instead of 1000 machines, thereby increasing the aggregate throughput while dramatically reducing costs.
+
 \subsection{Data Mining on Dryad}
 \cite{dryad} describes an experiment involving a cluster of 1800 machines with four disks and one gigabit Ethernet link. The exact model of the disks is provided. Their sustained transfer rate, according to \cite{wd400gb}, is 65 MB/s. Given that the input data was striped across all four disks, the aggregate disk throughput (for sequential reading) on a single machine is $D = 4 \cdot 65 = 260 \text{ MB/s}$.
 
 The end-to-end computation of this experiment took 11.5 minutes, processing a total of 10160519 MB, so the aggregate input throughput was $T = 10160519 / (11.5 \cdot 60) = 14725 \text{ MB/s}$. The workload performed a significant data reduction; of the 10160519 MB of input data, only 153703 MB were transmitted in the first data exchange, so we have $s = 153703 / 10160519 = 0.015$ and $N/s = 100/0.015 = 6667 \text{ MB/s}$ (assuming a throughput of 100 MB/s for gigabit Ethernet). According to our model, we have $14725 = n \cdot min\{C, D, N/s\} = n \cdot min\{C, 260 \text{ MB/s}, 6667 \text{ MB/s}\}$. We can clearly see that both the disks and the individual network links do not limit the throughput. Furthermore, given that the cluster was of similar size to the one in the MapReduce experiments, we will assume that $B = 10000 \text{ MB/s}$. We then have $B/s = 10000/0.015 = 666667 \text{ MB/s}$, so clearly the network's backplane bandwidth is not the limiting factor either. We must therefore conclude that $C = 14725 / 1800 = 8.18 \text{ MB/s}$, over 30 times slower than the available disk throughput. The performance of Dryad is severely limited by the processing throughput of the individual machines. Since the machines have sufficient CPU and memory to read at the maximum input rate supported by the disks (the second-slowest link in the chain), we conclude that the system's implementation is inefficient. Even if we assume that 10\% of the overall time was spent on startup, and that only 75\% of the execution time was spent in the first phase (the Q' vertices in Figure 10 of \cite{dryad}), we have $T = 21814.81 \text{MB/s}$ and $C = 14725 / 1800 = 12.12 \text{ MB/s}$, still over 20 times less than the available disk throughput. The assumption that over 75\% of the actual execution time was spent on the first phase is reasonable because the first phase reduces the amount of data by a factor of $1/s = 66$, and none of the remaining phases  (two layers of a merge sort followed by a count) should take a significant amount of time.
+
+\subsection{Model Refinement}
+In the first phase of a workload, $n$ nodes read input data from their disks, process it and distribute the output data among the nodes. For simplicity, we assume that there is no skew (ie, the data is uniformly partitioned and the nodes have identical hardware). 
+% We also ignore the fact that $1/n$ of a node's output data does not need to be sent over the network because it will be processed by the same node. 
+
+The maximum aggregate throughput for the first phase is:
+
+\begin{equation}
+T_{max} = min\{\frac{ B }{ s }, n \cdot min\{C, D, \frac{ N }{ s \cdot \frac{n-1}{n} }\}\}
+\label{eqn:tmax}
+\end{equation}
+
+$C$ is the CPU processing throughput of a single node, $D$ is the disk throughput of a single node, $N$ is the network throughput of a single node and $s$ is the ratio of the output data to the input data. (The output data then becomes the input data for the next phase.)
+
+$B$ is a limitation that is derived from the network architecture, and may be associated with the backplane bandwidth of the switches or the uplinks between rack switches and core switches in a two-level tree-shaped network. In a simple network with one switch, $B$ is simply the backplane bandwidth of that switch. In a two-level tree-shaped network, assuming that each node uniformly distributes its output traffic:
+
+\begin{equation}
+B = min\{\frac{ B_{core} }{ \frac{r-1}{r} }, \frac{ B_{rack} }{ \frac{1}{r} \cdot \frac{n-1}{n} }, \frac{ L }{ \frac{1}{r} \cdot \frac{r-1}{r} }\}
+\label{eqn:b}
+\end{equation}
+
+$B_{core}$ is the backplane bandwidth of the core switch, $B_{rack}$ is the backplane bandwidth of the rack switches, $L$ is the throughput of an uplink connection (between a rack switch and the core switch) and $r$ is the number of racks.
+
+We can significantly simplify $B$ by realizing that the switches in data-intensive computing clusters are typically non-blocking, so $B_{core}$ and $B_{rack}$ are irrelevant (accounting for $N$ in $T_{max}$ is achieves the same effect), so \ref{eqn:b} can be simplified:
+
+\begin{equation}
+B = \frac{ L }{ \frac{1}{r} \cdot \frac{r-1}{r} }
+\label{eqn:bnonblocking}
+\end{equation}
+
+In a simple network with one non-blocking switch:
+
+\begin{equation}
+T_{max} = min\{n \cdot min\{C, D, \frac{ N }{ s \cdot \frac{n-1}{n} }\}\}
+\label{eqn:tmaxsingleswitch}
+\end{equation}
+
+In a two-level tree-shaped network with non-blocking switches:
+
+\begin{equation}
+T_{max} = min\{\frac{ L }{ s \cdot \frac{1}{r} \cdot \frac{r-1}{r} }, n \cdot min\{C, D, \frac{ N }{ s \cdot \frac{n-1}{n} }\}\}
+\label{eqn:tmaxtree}
+\end{equation}
+
+\pagebreak 
+
+\section{Week 1.5-2}
+A more sophisticated model is required in order to evaluate real-world dataflows. The dataflow of a map-reduce computation can be represented as:
+\begin{equation}
+{D_{R}}_I \| P_{M} \| P_{P} \|
+{D_{W}}_F \| N \| {P_{S}}_1 \|
+{D_{W}}_S \Rightarrow {D_{R}}_S \| {P_{S}}_2 \|
+P_{R} \| {D_{W}}_O
+\label{eqn:dataflow}
+\end{equation}
+$A \| B$ indicates that $A$ and $B$ can be parallelized, whereas $A \Rightarrow B$ indicates that $B$ can only execute after $A$ is done. The following table describes the steps of the model:
+
+\begin{noop}\begin{tabular}{|c|c|p{2.25in}|} \hline
+\#&Symbol&Definition\\ \hline
+1 & ${D_{R}}_I$ & Disk read. The input file is read from the local disks. The locality optimization of MapReduce (or Hadoop) ensures that most files are read from local disks.\\ \hline
+2 & $P_{M}$ & Processing. The map function processes each record. \\ \hline
+3 & $P_{P}$ & Processing. The partition function processes each mapped tuple to decide which reducer will process it.\\ \hline
+4 & ${D_{W}}_F$ & Disk write. The mapped tuples are written to disk. This step enables faster recovery from failures. Without it, if a node fails, the entire job must be restarted (because one partition from each mapper would be lost).\\ \hline
+5 & $N$ & Network. The mapped tuples are streamed to the nodes that will process them.\\ \hline
+6 & ${P_{S}}_1$ & Processing. When a node fills up a predefined amount of memory with mapped tupples, it sorts the in-memory buffer.\\ \hline
+7 & ${D_{W}}_S$ & Disk write. The node flushes the in-memory buffer to disk.\\ \hline
+8 & ${D_{R}}_S$ & Disk read. The sorted chunks are from disk. (At first, only the beginning of each chunk is read, while the rest is read as the merge progresses.)\\ \hline
+9 & ${P_{S}}_2$ & Processing. The mapped tuples from the sorted chunks are merged so that they can be handed to the reduce function in order.\\ \hline
+10 & $P_{R}$ & Processing. The reduce function processes each of the mapped tuples. \\ \hline
+11 & ${D_{W}}_O$ & Disk write. The final output is written to disk. (If a distributed file system is used, this assumes that no replication is required, or that replication will happen later.)\\
+\hline\end{tabular}\end{noop}
+
+We denote the disk throughput of a node as $D$ and the network throughput as $N$. If a node has multiple disks, $D$ is the aggregate throughput of the disks. (We assume that the data is striped accross the disks.) If the network consists of a blocking switch (ie, a switch that does not have full backplane bandwidth), or the network consists of multiple switches that are linked together, then $N$ may be less than the throughput of a single link (about 100 MB/s for gigabit Ethernet).
+
+To model the running time of the preceding dataflow, we must consider the amount of data reduction that is achieved by the map and reduce functions. We denote the number of nodes in the cluster as $n$, the total amount of input data as $i$, the  expansion ratio of the map function as $e_M$ and the expansion ratio of the reduce function as $e_R$. A function's expansion ratio is 0 if the function does not output any data, and its expansion ratio is 1 if the size of the its output is equal to the size of its input.
+
+The amount of input data per node is:
+\begin{equation}
+k_0 = \frac{i}{n}
+\end{equation}
+After applying the map function, the amount of data per node is:
+\begin{equation}
+k_1 = \frac{i \cdot e_M}{n}
+\end{equation}
+After applying the reduce function, the amount of data per node is:
+\begin{equation}
+k_2 = \frac{i \cdot e_M \cdot e_R}{n}
+\end{equation}
+When modelling the running time of the dataflow, we take the maximum running time of parallel steps and add the running time of sequential steps. Multiple parallel steps that utilize the same resource (eg, disk) must be added. Therefore, the running time of dataflow \ref{eqn:dataflow} is:
+\begin{align}
+t &= max\left\{ \frac{k_0 + 2k_1}{D}, \frac{k_1}{N} \right\} + \frac{k_1 + k_2}{D}\\
+  &= \frac{i}{n} \left( max\left\{ \frac{1 + 2 e_M}{D}, \frac{e_M}{N} \right\} + \frac{e_M + e_M e_R}{D} \right)
+\label{eqn:runtime}
+\end{align}
+For many workloads, $k_1$ fits in memory, so an in-memory sort is used instead of an external sort. In such cases, the partial dataflow ${P_{S}}_1 \| {D_{W}}_S \Rightarrow {D_{R}}_S \| {P_{S}}_2$ can be collapsed into a single step that does not require any disk access:
+\begin{equation}
+{D_{R}}_I \| P_{M} \| P_{P} \|
+{D_{W}}_F \| N \Rightarrow P_{S} \|
+P_{R} \| {D_{W}}_O
+\label{eqn:memdataflow}
+\end{equation}
+Previously, we considered the in-memory sorting to occur in parallel to the network data transfer, because we were buffering the streamed data and sorting the buffer each time is became full. However, in this dataflow, all of the data ($k_1$) fits in memory, so it does not make sense to consider the networking and sorting to occur in parallel. The running time of dataflow \ref{eqn:memdataflow} is:
+\begin{align}
+t &= max\left\{ \frac{k_0 + k_1}{D}, \frac{k_1}{N} \right\} + \frac{k_2}{D}\\
+  &= \frac{i}{n} \left( max\left\{ \frac{1 + e_M}{D}, \frac{e_M}{N} \right\} + \frac{e_M e_R}{D} \right)
+\label{eqn:memruntime}
+\end{align}
+To compare the running time of a multi-node cluster to that of a single-node ``cluster,'' we need to understand the dataflow when only one node is used. First, partitioning is unnecessary, because all data will be sorted locally (and we are not parallelizing the processing). Second, the first disk write (${D_W}_F$) is unnecessary, because fault tolerance is meaningless in this case. Third, the networking step ($N$) is obviously useless. If $k_1$ is larger than the available memory, the following dataflow applies:
+\begin{equation}
+{D_{R}}_I \| P_{M} \| {P_{S}}_1 \|
+{D_{W}}_S \Rightarrow {D_{R}}_S \| {P_{S}}_2 \|
+P_{R} \| {D_{W}}_O
+\label{eqn:singledataflow}
+\end{equation}
+The running time of dataflow \ref{eqn:singledataflow} is:
+\begin{align}
+t &= \frac{k_0 + k_1}{D} + \frac{k_1 + k_2}{D}\\
+  &= \frac{i}{D} \left( 1 + 2 e_M + e_M e_R \right)
+\end{align}
+If $k_1$ is smaller than the available memory, an external sort is unnecessary:
+\begin{equation}
+{D_{R}}_I \| P_{M} \Rightarrow P_{S} \|
+P_{R} \| {D_{W}}_O
+\label{eqn:singlememdataflow}
+\end{equation}
+The running time of dataflow \ref{eqn:singlememdataflow} is:
+\begin{align}
+t &= \frac{k_0}{D} + \frac{k_2}{D}\\
+  &= \frac{i}{D} \left( 1 + e_M e_R \right)
+\end{align}
+
+\subsection{Common workloads: grep and sort}
+The scaling factor or expected performance of any map-reduce job can be computed using our dataflow models. The only job-specific parameters are $e_M$ and $e_R$. For distribued grep (with high selectivity or ``count mode''), $e_M \approx 0$ and $e_R = 1$ (so $e_M e_R \approx 0$). For distributed sort, $e_M = e_R = 1$.
+
+We can use equation \ref{eqn:runtime} to compute the expected running time of a distributed grep with high selectivity by setting $e_M = 0$:
+\begin{equation}
+t_\text{grep} = \frac{i}{n D}
+\end{equation}
+As expected, the running time (and throughput) distribute grep depends only on the disk throughput of the nodes. Similarly, we can compute the expected running time of a distributed sort with a sufficiently large amount of data to require an external sort on each node by setting $e_M = e_R = 1$:
+\begin{equation}
+t_\text{sort} = \frac{i}{n} \left( max\left\{ \frac{3}{D}, \frac{1}{N} \right\} + \frac{2}{D} \right)
+\end{equation}
+If the amount of data per node fits in the nodes' memory, an external sort is not needed, so we can use equation \ref{eqn:memruntime}:
+\begin{equation}
+t_\text{sort} = \frac{i}{n} \left( max\left\{ \frac{2}{D}, \frac{1}{N} \right\} + \frac{1}{D} \right)
+\end{equation}
+Depending on the ratio of disk throughput to network throughput, a distributed sort computation may be either disk-bound or network-bound. A sort will be five times slower than grep if it is disk-bound, and even slower if it is network-bound.
+
+\subsection{The data exchange wall}
+Of the two sequential phases of our dataflows, the first is more interesting because it involves both the disk and the network. Furthermore, the second phase is identical regardless of whether the dataflow is executed on a single machine or on a large cluster. For example, when $k_1$ is sufficiently large that an external sort is required, the running time of the second phase is $(k_1 + k_2)/D$ both on a single machine (dataflow \ref{eqn:singledataflow}) and on a cluster (dataflow \ref{eqn:dataflow}).
+
+Revisiting equation \ref{eqn:runtime}, we can express the aggregate throughput $T = i/t$ as a function of the number of nodes $n$:
+\begin{equation}
+T = \frac{n}{max\left\{ \frac{1 + 2 e_M}{D}, \frac{e_M}{N} \right\} + \frac{e_M + e_M e_R}{D}}
+\label{eqn:throughput}
+\end{equation}
+For the purpose of identifying the bottlenecks and analyzing the data exchange wall, we can omit the second phase of the dataflow:
+\begin{align}
+T' &= \frac{n}{max\left\{ \frac{1 + 2 e_M}{D}, \frac{e_M}{N} \right\}}\\
+  &= n \cdot min\left\{ \frac{D}{1 + 2 e_M}, \frac{N}{e_M} \right\}
+\label{eqn:phase1throughput}
+\end{align}
+
+\subsection{Experiment evaluations}
+All of the experiments except Google's petabyte sort exhibited $k_1$ values that could be stored in memory, so we can use equation \ref{eqn:memruntime}.
+\subsubsection{MapReduce}
+$D = 2 \cdot 50 = 100 \text{ MB/s}$, $N = 100 \text{ MB/s}$. Disk is the bottleneck. 
+\[t = \frac{i}{n} \left( \frac{1 + e_M + e_M e_R}{D} \right)\]
+\[T = n \frac{D}{1 + e_M + e_M e_R}\]
+\[{t_\text{grep}}_\text{optimal} = \frac{1000000}{1800} \left( \frac{1}{100} \right) = 5.56 \text{ seconds}\]
+\[{t_\text{sort}}_\text{optimal} = \frac{1000000}{1700} \left( \frac{3}{100} \right) = 17.65 \text{ seconds}\]
+The grep took them 150 seconds. The sort took them 891 seconds (850 without startup overhead).
+
+\subsubsection{Dryad}
+$D = 4 \cdot 65 = 260 \text{ MB/s}$, $N = 100 \text{ MB/s}$.
+Dryad had very high selectivity ($e_M$ = 0.015) so disk is the bottleneck.
+Dryad's experiment was not a map-reduce, but the number of operations was similar (we really only care about the first phase and the first exchange, because the data reduction was so high that the remaining phases are negligible)
+\[t = \frac{i}{n} \left( \frac{1 + e_M + e_M e_R}{D} \right)\]
+\[t_\text{optimal} = \frac{10160519}{1800} \left( \frac{1.03}{260} \right) = 22.36 \text{ seconds}\]
+It took them 690 seconds.
+
+\subsubsection{Hadoop: Terasort}
+$D = 4 \cdot 65 = 260 \text{ MB/s}$, $N = 100 \text{ MB/s}$.
+\[t_\text{optimal} = \frac{1000000}{910} \left( \frac{1}{100} + \frac{1}{260} \right) = 15.22 \text{ seconds}\]
+It took them 209 seconds.
+
+\subsubsection{MapReduce: Terasort}
+$D = 12 \cdot 65 = 780 \text{ MB/s}$, $N = 100 \text{ MB/s}$. Network is the bottleneck. In fact, the disk throughput is so much greater than the network throughput that we can simply ignore its contribution to the running time.
+\[t = \frac{i}{n} \left( \frac{e_M}{N} + \frac{e_M e_R}{D} \right) \approx \frac{i}{n} \left( \frac{e_M}{N} \right)\]
+\[T \approx n \frac{N}{e_M}\]
+\[t_\text{optimal} = \frac{1000000}{1000} \left(\frac{1}{100} + \frac{1}{760} \right) = 11.32 \text{ seconds}\]
+It took them 68 seconds.
+
+\subsubsection{MapReduce: Petasort}
+Here we cannot assume that the reduce phase can occur in memory. In other words, the reduce phase will need to do perform an external sort.
+\[t = \frac{i}{n} \left( \frac{e_M}{N} + \frac{e_M + e_M e_R}{D} \right)\]
+\[t_\text{optimal} = \frac{1000000000}{4000} \left( \frac{1}{100} + \frac{2}{780} \right) = 3141 \text{ seconds}\]
+It took them 21720 seconds.
 
 \bibliographystyle{abbrv}
 \bibliography{pds}
