@@ -116,9 +116,12 @@ public:
     void setByte(uint8_t val);
     void setInt32(int32_t val);
     void setInt64(int64_t val);
+    void setDouble(double val);
     void setVariable32(const std::string &from);
 
     bool valBool();
+    uint8_t valByte();
+    int32_t valInt32();
     int64_t valInt64();
     double valDouble();
     const std::string valString();
