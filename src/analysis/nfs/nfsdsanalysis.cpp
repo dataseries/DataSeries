@@ -423,10 +423,9 @@ public:
 		    for(int i=0;i<nsws_searchfor;++i) {
 			if (fh2mountData::equalMountParts(filehandle.stringval(),
 							  sws_searchfor[i].mountpartfh)) {
-				printf("sws: (%s) %s at %lld from %08x\n",
-				       operation.stringval().c_str(),
-				       maybehexstring(filehandle.stringval()).c_str(),
-				       opat.val(),client.val());
+			    cout << format("sws: (%s) %s at %d from %08x\n")
+				% operation.stringval() % maybehexstring(filehandle.stringval())
+				% opat.val() % client.val();
 			}
 		    }
 		}
@@ -575,9 +574,8 @@ public:
 	    // with < 1us between them.
 	    v->latency_sum_raw += 1;
 	} else {
-	    AssertAlways(reply_at.valRaw() > request_at.valRaw(),
-			 ("no %lld %lld.\n",reply_at.valRaw(),
-			  request_at.valRaw()));
+	    INVARIANT(reply_at.valRaw() > request_at.valRaw(), format("no %d %d.\n") 
+		      % reply_at.valRaw() % request_at.valRaw());
 	    v->latency_sum_raw += reply_at.valRaw() - request_at.valRaw();
 	}
 
@@ -933,15 +931,13 @@ public:
     }
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	printf("  %lld total extents, %lld unchanged, %lld partials\n",
-	       pass_through_extents + partial_extents,
-	       pass_through_extents, partial_extents);
-	printf("  %lld total records kept, %lld records in partials, %lld kept, %lld pruned\n",
-	       total_kept_records,
-	       partial_kept_records + partial_pruned_records,
-	       partial_kept_records, partial_pruned_records);
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	cout << format("  %d total extents, %d unchanged, %d partials\n")
+	    % (pass_through_extents + partial_extents) % pass_through_extents % partial_extents;
+	cout << format("  %d total records kept, %d records in partials, %d kept, %d pruned\n")
+	    % total_kept_records % ( partial_kept_records + partial_pruned_records) 
+	    % partial_kept_records % partial_pruned_records;
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
 
 };

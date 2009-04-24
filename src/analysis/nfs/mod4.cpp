@@ -812,12 +812,10 @@ public:
 	    cr->total++;
 	  }
 
-	  if((cr->total % 100) == 0)
-	    printf("CLI %lld %x %u\n", 
-		   req_reorder.top()->reqtime/1000000000,
-		   cr->ip_addr,
-		   cr->count);
-
+	  if((cr->total % 100) == 0) {
+	      cout << format("CLI %d %x %u\n") % (req_reorder.top()->reqtime/1000000000)
+		  % cr->ip_addr % cr->count;
+	  }
 	  // add server to hash table
 	  transData svr;
 	  svr.ip_addr = req_reorder.top()->destip;
@@ -834,12 +832,10 @@ public:
 	    sr->total++;
 	  }
 	  
-	  if((sr->total % 100)==0)
-	    printf("SVR %lld %x %u\n", 
-		   req_reorder.top()->reqtime/1000000000,
-		   sr->ip_addr,
-		   sr->count);
-
+	  if((sr->total % 100)==0) {
+	      cout << format("SVR %d %x %u\n") % (req_reorder.top()->reqtime/1000000000)
+		  % sr->ip_addr % sr->count;
+	  }
 	  // queue transaction
 	  transinfo *newt = new transinfo;
 	  newt->end = (t->rsptime/1000000 + latency_offset);
@@ -864,9 +860,8 @@ public:
 
     return e;
   }
-
+    
   virtual void printResult() {
-
     // check for completed transactions
     while(req_reorder.empty() == false &&
 	  pending.size() > 0) {
@@ -913,38 +908,35 @@ public:
       delete req_reorder.top();
       req_reorder.pop();
     }
-
+  
     // remove completed transactions from queue
     while(trans_reorder.empty() == false) {
-
       // update count on appropriate hosts
       transData cli;
       cli.ip_addr = trans_reorder.top()->clientip;
       transData *cd = Clients.lookup(cli);
       if(cd == NULL) {
-	printf("CLIENT_ERROR\n");
+	  printf("CLIENT_ERROR\n");
       } else {
-	cd->count--;
-	if((cd->total % 100)==0)
-	  printf("CLI %lld %x %u\n", 
-		 trans_reorder.top()->end/1000,
-		 cd->ip_addr,
-		 cd->count);
+	  cd->count--;
+	  if((cd->total % 100)==0) {
+	      cout << format("CLI %d %x %u\n") % (trans_reorder.top()->end/1000)
+		  % cd->ip_addr % cd->count;
+	  }
       }
       
       // update count on appropriate server
       transData svr;
       svr.ip_addr = trans_reorder.top()->serverip;
       transData *sd = Servers.lookup(svr);
-      if(sd == NULL) {
-	printf("SERVER_ERROR\n");
+      if (sd == NULL) {
+	  printf("SERVER_ERROR\n");
       } else {
-	sd->count--;
-	if((sd->total % 100)==0)
-	  printf("SVR %lld %x %u\n", 
-		 trans_reorder.top()->end/1000,
-		 sd->ip_addr,
-		 sd->count);
+	  sd->count--;
+	  if ((sd->total % 100)==0) {
+	      cout << format("SVR %d %x %u\n") % (trans_reorder.top()->end/1000)
+		  % sd->ip_addr % sd->count;
+	  }
       }
       
       // remove transaction
@@ -985,7 +977,7 @@ public:
     printf("End-%s\n",__PRETTY_FUNCTION__);
     }
 };
-
+  
 
 NFSDSModule *
 NFSDSAnalysisMod::newOutstandingRequests(DataSeriesModule &prev,
