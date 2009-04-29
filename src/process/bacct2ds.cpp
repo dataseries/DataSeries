@@ -1245,11 +1245,11 @@ parse_pipesep_jobname(const string &jobname, job_info &jinfo)
  failparse:
     if (fields.size() > 1) {
 	if (print_parse_warnings) {
-	    fprintf(stderr,"pipesep failed to parse(%s) %s (%d)\n",
-		    error.c_str(), jobname.c_str(),fields.size());
+	    cerr << format("pipesep failed to parse(%s) %s (%d)\n") 
+		% error % jobname % fields.size();
 	    for(unsigned i=0;i<fields.size();++i) {
-		fprintf(stderr, "  field %d: %s  // %s\n",i,fields[i].c_str(),
-			hexstring(encryptString(fields[i])).c_str());
+		cerr << format("  field %d: %s  // %s\n") % i % fields[i]
+		    % hexstring(encryptString(fields[i]));
 	    }
 	}
     }
@@ -1669,11 +1669,10 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
     // COLONSEP PARSE -- for finding place to add parsing in code
 
     if (print_parse_warnings && fields.size() > 2) {
-	fprintf(stderr,"colonsep failed to parse %s (%d)\n",
-		jobname.c_str(),fields.size());
+	cerr << format("colonsep failed to parse %s (%d)\n") % jobname % fields.size();
 	for(unsigned i=0;i<fields.size();++i) {
-	    fprintf(stderr, "  field %d: %s  // %s\n",i,fields[i].c_str(),
-		    hexstring(encryptString(fields[i])).c_str());
+	    cerr << format("  field %d: %s  // %s\n") % i % fields[i]
+		% hexstring(encryptString(fields[i]));
 	}
     }
     return false;
@@ -1688,10 +1687,9 @@ bool xpcre_check_encrypted(const string &instr, int *ovector, int rc, int string
 	return true;
     } else {
 	if (print_parse_warnings) {
-	    fprintf(stderr,"******* Unable to match %s -> %s == %d/%s in %s\n",
-		    str.c_str(),hexstring(encryptString(str)).c_str(),
-		    match_encrypted.size(),hexstring(match_encrypted).c_str(),
-		    instr.c_str());
+	    cerr << format("******* Unable to match %s -> %s == %d/%s in %s\n")
+		% str % hexstring(encryptString(str)) % match_encrypted.size() 
+		% hexstring(match_encrypted) % instr;
 	}
 	return false;
     }
@@ -2499,12 +2497,10 @@ parse_directory_warning(const string &dirpath, int linenum)
     }
 
     if (print_parse_warnings) {
-	fprintf(stderr,"Unable to parse directory path(line%d) (%d parts) '%s' --> '%s'\n",
-		linenum, parts.size(), dirpath.c_str(),
-		hexstring(encryptString(dirpath)).c_str());
+	cerr << format("Unable to parse directory path(line%d) (%d parts) '%s' --> '%s'\n")
+	    % linenum % parts.size() % dirpath % hexstring(encryptString(dirpath));
 	for(unsigned i=0;i<parts.size();++i) {
-	    fprintf(stderr,"  %d: %s -> %s\n",i,parts[i].c_str(),
-		    hexstring(encryptString(parts[i])).c_str());
+	    cerr << format("  %d: %s -> %s\n") % i % parts[i] % hexstring(encryptString(parts[i]));
 	}
     }
     return true;

@@ -88,7 +88,7 @@ public:
     };
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	vector<hteData *> vals;
 	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
 	    i != stats_table.end();++i) {
@@ -96,11 +96,10 @@ public:
 	}
 	sort(vals.begin(),vals.end(),sortByMaxSize());
 	for(unsigned int i=0;i<nkeep;++i) {
-	    printf("%9s %s %lld\n",vals[i]->operation.c_str(),
-		   hexstring(vals[i]->filehandle).c_str(),
-		   vals[i]->maxsize);
+	    cout << format("%9s %s %d\n") % vals[i]->operation % 
+		hexstring(vals[i]->filehandle) % vals[i]->maxsize;
 	}
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;
@@ -192,7 +191,7 @@ public:
     };
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	vector<hteData *> vals;
 	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
 	    i != stats_table.end();++i) {
@@ -202,10 +201,10 @@ public:
 	if (nkeep > vals.size()) 
 	    nkeep = vals.size();
 	for(unsigned int i=0;i<nkeep;++i) {
-	    printf("%10s %10lld %s\n",vals[i]->operation.c_str(),
-		   vals[i]->maxsize, maybehexstring(vals[i]->filename).c_str());
+	    cout << format("%10s %10d %s\n") % vals[i]->operation
+		% vals[i]->maxsize % maybehexstring(vals[i]->filename);
 	}
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;
@@ -302,7 +301,7 @@ public:
     };
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	vector<hteData *> vals;
 	unsigned long long sum_write = 0;
 	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
@@ -310,21 +309,18 @@ public:
 	    vals.push_back(&(*i));
 	    sum_write += i->maxsize;
 	}
-	printf("sum(max size seen for each written file with known name) = %.2f MB\n",
-	       (double)sum_write/(1024.0*1024.0));
+	cout << format("sum(max size seen for each written file with known name) = %.2f MB\n")
+	    % ((double)sum_write/(1024.0*1024.0));
 	sort(vals.begin(),vals.end(),sortByMaxSize());
 	if (nkeep > vals.size()) 
 	    nkeep = vals.size();
 	for(unsigned int i=0;i<nkeep;++i) {
-	    printf("%10lld %d.%d.%d.%d %s\n",
-		   vals[i]->maxsize, 
-		   (vals[i]->dest >> 24) & 0xFF,
-		   (vals[i]->dest >> 16) & 0xFF,
-		   (vals[i]->dest >> 8) & 0xFF,
-		   (vals[i]->dest >> 0) & 0xFF,
-		   maybehexstring(vals[i]->filename).c_str());
+	    cout << format("%10d %d.%d.%d.%d %s\n")
+		% vals[i]->maxsize % ((vals[i]->dest >> 24) & 0xFF)
+		% ((vals[i]->dest >> 16) & 0xFF) % ((vals[i]->dest >> 8) & 0xFF)
+		% ((vals[i]->dest >> 0) & 0xFF) % maybehexstring(vals[i]->filename);
 	}
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;
@@ -412,7 +408,7 @@ public:
     };
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	vector<hteData *> vals;
 	unsigned long long sum_write = 0;
 	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
@@ -426,15 +422,12 @@ public:
 	if (nkeep > vals.size()) 
 	    nkeep = vals.size();
 	for(unsigned int i=0;i<nkeep;++i) {
-	    printf("%10lld %d.%d.%d.%d %s\n",
-		   vals[i]->maxsize, 
-		   (vals[i]->dest >> 24) & 0xFF,
-		   (vals[i]->dest >> 16) & 0xFF,
-		   (vals[i]->dest >> 8) & 0xFF,
-		   (vals[i]->dest >> 0) & 0xFF,
-		   hexstring(vals[i]->filehandle).c_str());
+	    cout << format("%10d %d.%d.%d.%d %s\n")
+		% vals[i]->maxsize % ((vals[i]->dest >> 24) & 0xFF)
+		% ((vals[i]->dest >> 16) & 0xFF) % ((vals[i]->dest >> 8) & 0xFF)
+		% ((vals[i]->dest >> 0) & 0xFF) % hexstring(vals[i]->filehandle);
 	}
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;
@@ -549,7 +542,7 @@ public:
     };
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
 	vector<hteData *> vals;
 	for(HashTable<hteData, hteHash, hteEqual>::iterator i = stats_table.begin();
 	    i != stats_table.end();++i) {
@@ -562,12 +555,9 @@ public:
 	    if (vals[i]->filename.empty()) {
 		vals[i]->filename = "*unknown*";
 	    }
-	    printf("%10.3f secs %s %20s %8s %lld\n",
-		   (double)vals[i]->file_age / (1.0e9),
-		   hexstring(vals[i]->filehandle).c_str(),
-		   maybehexstring(vals[i]->filename).c_str(),
-		   vals[i]->type.c_str(),
-		   vals[i]->maxsize);
+	    cout << format("%10.3f secs %s %20s %8s %d\n")
+		% ((double)vals[i]->file_age / (1.0e9)) % hexstring(vals[i]->filehandle)
+		% maybehexstring(vals[i]->filename) % vals[i]->type % vals[i]->maxsize;
 	}
 	double recent_mb = 0;
 	double old_mb = 0;
@@ -583,9 +573,10 @@ public:
 		old_mb += vals[i]->maxsize / (1024.0*1024.0);
 	    }
 	}
-	printf("%d unique filehandles, %d recent (%d seconds): %.2f GB total files accessed; %.2f GB recent, or %.2f%%\n",
-	       vals.size(), nrecent, recent_age_seconds, (recent_mb + old_mb)/1024.0, recent_mb/1024.0, 100.0 * recent_mb / (recent_mb+old_mb));
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("%d unique filehandles, %d recent (%d seconds): %.2f GB total files accessed; %.2f GB recent, or %.2f%%\n")
+	    % vals.size() % nrecent % recent_age_seconds % ((recent_mb + old_mb)/1024.0) 
+	    % (recent_mb/1024.0) % (100.0 * recent_mb / (recent_mb+old_mb));
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;

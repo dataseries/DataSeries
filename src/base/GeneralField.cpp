@@ -216,6 +216,17 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
     
 }
 
+namespace {
+    char *long_int_format() {
+	BOOST_STATIC_ASSERT(sizeof(long) == 4 || sizeof(long) == 8); 
+	if (sizeof(long) == 8) {
+	    return (char *)"%ld";
+	} else if (sizeof(long) == 4) {
+	    return (char *)"%lld";
+	}
+    }
+}
+
 void GeneralValue::write(FILE *to) {
     switch(gvtype) 
 	{
@@ -232,7 +243,7 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to,"%d",gvval.v_int32);
 	    break;
 	case ExtentType::ft_int64:
-	    fprintf(to,"%lld",gvval.v_int64);
+	    fprintf(to, long_int_format(),gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
 	    fprintf(to,"%.12g",gvval.v_double);

@@ -60,9 +60,8 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
 	    inrange(end_ns,start_time.val(),end_time.val())) { 
 	    ++nfiles;
 	    if (false) {
-		fprintf(stderr,"addsource %s %lld %lld\n",
-		       filename.stringval().c_str(),
-		       start_time.val(), end_time.val());
+		cerr << format("addsource %s %d %d\n")
+		    % filename.stringval() % start_time.val() % end_time.val();
 	    }
 	    source->addSource(filename.stringval());
 	}
@@ -76,8 +75,9 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     delete e;
     INVARIANT(src.getExtent() == NULL,"whoa, index had incorrect extents");
     char *end_add = (char *)sbrk(0);
-    if (false) 
-	printf("%d bytes used for %d files, or %d bytes/file\n",
-	       end_add - start_add,nfiles,(end_add - start_add)/nfiles);
+    if (false) {
+	cout << format("%d bytes used for %d files, or %d bytes/file\n")
+	    % (end_add - start_add) % nfiles % ((end_add - start_add)/nfiles);
+    }
 }
 
