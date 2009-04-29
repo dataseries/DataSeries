@@ -115,6 +115,7 @@ public:
     void setBool(bool val);
     void setByte(uint8_t val);
     void setInt32(int32_t val);
+    void setInt64(int64_t val);
     void setVariable32(const std::string &from);
 
     bool valBool();
@@ -220,7 +221,7 @@ public:
     GeneralValue val() const { return GeneralValue(this); }
     virtual double valDouble() = 0;
 
-    const ExtentType::fieldType getType() const { return gftype; }
+    ExtentType::fieldType getType() const { return gftype; }
 
     void enableCSV();
 

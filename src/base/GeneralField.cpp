@@ -128,6 +128,14 @@ void GeneralValue::setInt32(int32_t val) {
     gvval.v_int32 = val;
 }
 
+void GeneralValue::setInt64(int64_t val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_int64,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_int64;
+    gvval.v_int64 = val;
+}
+
 void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_variable32,
