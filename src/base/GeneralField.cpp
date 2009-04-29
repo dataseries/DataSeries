@@ -136,6 +136,14 @@ void GeneralValue::setInt64(int64_t val) {
     gvval.v_int64 = val;
 }
 
+void GeneralValue::setDouble(double val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_double,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_double;
+    gvval.v_double = val;
+}
+
 void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown || 
 	      gvtype == ExtentType::ft_variable32,
@@ -301,6 +309,68 @@ double GeneralValue::valDouble() {
     return 0;
 }
 
+uint8_t GeneralValue::valByte() {
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt32()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return static_cast<uint8_t>(gvval.v_double);
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToInteger<int32_t>(*v_variable32);
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+	}
+    return 0;
+}
+
+int32_t GeneralValue::valInt32() {
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt32()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return static_cast<int32_t>(gvval.v_double);
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToInteger<int32_t>(*v_variable32);
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+	}
+    return 0;
+}
+
 int64_t GeneralValue::valInt64() {
     switch(gvtype) 
 	{
@@ -386,7 +456,7 @@ const std::string GeneralValue::valString() {
 	    FATAL_ERROR("haven't decided how to translate int32 to strings");
 	    break;
 	case ExtentType::ft_int64:
-	    FATAL_ERROR("haven't decided how to translate int64 to strings");
+	    FATAL_ERROR("haven't decided how to translate int64 to strings, Need to take printspec into account, can't just use boost::lexical_cast");
 	    break;
 	case ExtentType::ft_double:
 	    FATAL_ERROR("haven't decided how to translate double to strings");
