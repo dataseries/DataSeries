@@ -4,6 +4,11 @@
    See the file named COPYING for license details
 */
 
+#include <algorithm>
+
+#include <boost/foreach.hpp>
+#include <boost/bind.hpp>
+
 #include <Lintel/AssertBoost.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
@@ -28,9 +33,9 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
 
 ExtentSeries::~ExtentSeries()
 {
-    INVARIANT(my_fields.size() == 0, 
+    INVARIANT(my_fields.size() == 0,
 	      boost::format("You still have fields such as %s live on a series over type %s.  You have to delete dynamically allocated fields before deleting the ExtentSeries.  Class member variables and static ones are automatically deleted in the proper order.")
-	      % my_fields[0]->getName() 
+	      % my_fields[0]->getName()
 	      % (type == NULL ? "unset type" : type->getName()));
 }
 
@@ -43,8 +48,8 @@ ExtentSeries::setType(const ExtentType &_type)
     }
     switch(typeCompatibility)
 	{
-	case typeExact: 
-	    INVARIANT(type == NULL || type->xmldesc != _type.xmldesc, 
+	case typeExact:
+	    INVARIANT(type == NULL || type->xmldesc != _type.xmldesc,
 		      "internal -- same xmldesc should get same type");
 	    INVARIANT(type == NULL,
 		      boost::format("Unable to change type with typeExact compatibility\nType 1:\n%s\nType 2:\n%s\n")
@@ -86,7 +91,7 @@ ExtentSeries::addField(Field &field)
 void ExtentSeries::removeField(Field &field, bool must_exist)
 {
     bool found = false;
-    for(vector<Field *>::iterator i = my_fields.begin(); 
+    for(vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end(); ++i) {
 	if (*i == &field) {
 	    found = true;
@@ -104,7 +109,7 @@ ExtentSeries::iterator::setPos(const void *_new_pos)
     byte *cur_begin = cur_extent->fixeddata.begin();
     unsigned recnum = (new_pos - cur_begin) / recordsize;
     INVARIANT(cur_extent != NULL, "no current extent?");
-    INVARIANT(new_pos >= cur_begin, 
+    INVARIANT(new_pos >= cur_begin,
 	      "new pos before start");
     INVARIANT(new_pos <= cur_extent->fixeddata.end(),
 	      "new pos after end");
@@ -136,13 +141,68 @@ ExtentSeries::iterator::update(Extent *e)
 void
 ExtentSeries::iterator::forceCheckOffset(long offset)
 {
-    INVARIANT(cur_extent != NULL, 
+    INVARIANT(cur_extent != NULL,
 	      "internal error, current extent is NULL");
     INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
 	      cur_pos + offset < cur_extent->fixeddata.end(),
-	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n") 
+	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n")
 	      % reinterpret_cast<void *>(cur_pos) % offset
 	      % reinterpret_cast<void *>(cur_pos+offset)
 	      % reinterpret_cast<void *>(cur_extent->fixeddata.begin())
 	      % reinterpret_cast<void *>(cur_extent->fixeddata.end()));
+}
+
+void ExtentSeries::setRecordIndex(size_t index) {
+    setExtentPosition(indices[index]);
+}
+
+void ExtentSeries::setExtentPosition(const ExtentPosition &extentPosition) {
+    setExtent(extentPosition.extent);
+    setCurPos(extentPosition.position);
+}
+
+ExtentSeries::ExtentPosition ExtentSeries::getExtentPosition() {
+    ExtentPosition extentPosition;
+    extentPosition.extent = getExtent();
+    extentPosition.position = getCurPos();
+    return extentPosition;
+}
+
+size_t ExtentSeries::getRecordCount() {
+    return indices.size();
+}
+
+void ExtentSeries::setExtents(const vector<Extent*> &extents) {
+    // special case for no extents so that we don't have to worry about this case anymore
+    if (extents.size() == 0) {
+        setExtent(NULL);
+        return;
+    }
+
+    // calculate the total number of records in all of the provided extents
+    size_t byteCount = 0;
+    BOOST_FOREACH(Extent *extent, extents) {
+        byteCount += extent->fixeddata.end() - extent->fixeddata.begin();
+    }
+    size_t recordCount = byteCount / extents[0]->type.fixedrecordsize();
+
+    // prepare the indices vector so that we can have fast random access
+    indices.resize(recordCount);
+    size_t lastRecord = 0;
+    BOOST_FOREACH(Extent *extent, extents) {
+        setExtent(extent);
+        for (; pos.morerecords(); ++pos) {
+            indices[lastRecord].position = pos.getPos();
+            indices[lastRecord].extent = extent;
+            ++lastRecord;
+        }
+    }
+
+    SINVARIANT(lastRecord == indices.size()); // hopefully our calculation was right!
+}
+
+void ExtentSeries::sortRecords(IExtentPositionComparator *comparator) {
+    ExtentPosition savedPosition = getExtentPosition();
+    sort(indices.begin(), indices.end(), bind(&IExtentPositionComparator::compare, comparator, *_1, *_2));
+    setExtentPosition(savedPosition);
 }

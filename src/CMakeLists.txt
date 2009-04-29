@@ -65,7 +65,7 @@ SET(LIBDATASERIES_SOURCES
 	module/TypeIndexModule.cpp
 	module/SimpleSourceModule.cpp
 	liblzf-1.6/lzf_c.c
-	liblzf-1.6/lzf_d.c 
+	liblzf-1.6/lzf_d.c
 )
 
 ################################## SUBDIRS
@@ -76,6 +76,7 @@ ADD_SUBDIRECTORY(BatchParallel)
 ADD_SUBDIRECTORY(raw-collection)
 ADD_SUBDIRECTORY(tests)
 ADD_SUBDIRECTORY(perl-modules)
+ADD_SUBDIRECTORY(mapreduce)
 IF(BUILD_PAPER)
     ADD_SUBDIRECTORY(paper)
 ENDIF(BUILD_PAPER)

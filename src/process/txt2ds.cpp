@@ -21,61 +21,49 @@ Variable32Field line(series, "line");
 int
 main(int argc,char *argv[])
 {
-    // TODO-shirant: weird 8 space tabbing? double check your other files /
-    // editor settings...
-    // Yes!!!!!!
+    commonPackingArgs packing_args;
+    getPackingArgs(&argc, argv, &packing_args);
+    INVARIANT(argc == 3 || argc == 4,
+        format("Usage: %s [ds-common-args] inname outdsname [copies]; - valid for inname")
+        % argv[0]);
 
-    // TODO-shirant: --help produces an error and I could not figure out how to
-    // get help for [ds-common-args]. Maybe add a TODO about DS program options
-    // handling in general?
+    // how many copies of the text do we want?
+    // multiple copies are useful for synthetically creating large DS files
+    int copies = (argc == 4) ? atoi(argv[3]) : 1;
 
-    // TODO-shirant: again, consider Lintel program options
-	commonPackingArgs packing_args;
-	getPackingArgs(&argc, argv, &packing_args);
-	INVARIANT(argc == 3 || argc == 4,
-			format("Usage: %s [ds-common-args] inname outdsname [copies]; - valid for inname")
-			% argv[0]);
+    ifstream infile(argv[1]);
+    INVARIANT(infile.is_open(), format("Unable to open file %s") % argv[1]);
 
-	// how many copies of the text do we want?
-	// multiple copies are useful for synthetically creating large DS files
-	int copies = (argc == 4) ? atoi(argv[3]) : 1;
+    DataSeriesSink outds(argv[2], packing_args.compress_modes, packing_args.compress_level);
+    ExtentTypeLibrary library;
+    const ExtentType *extent_type = library.registerType(text_xml);
+    series.setType(*extent_type);
+    outmodule = new OutputModule(outds, series, extent_type, packing_args.extent_size);
+    outds.writeExtentLibrary(library);
 
-	ifstream infile(argv[1]);
-	INVARIANT(infile.is_open(), format("Unable to open file %s") % argv[1]);
+    int64_t line_count = 0;
+    string str;
 
-	DataSeriesSink outds(argv[2],
-			     packing_args.compress_modes,
-			     packing_args.compress_level);
-	ExtentTypeLibrary library;
-	const ExtentType *extent_type = library.registerType(text_xml);
-	series.setType(*extent_type);
-	outmodule = new OutputModule(outds, series, extent_type,
-				     packing_args.extent_size);
-	outds.writeExtentLibrary(library);
+    cout << "Multiplying the content by " << copies << endl;
 
-	int64_t line_count = 0;
-	string str;
+    for (int i = 0; i < copies; ++i) {
+        cout << "Processing copy #" << i << " (starting at line #" << line_count << ")" << endl;
+        while (!infile.eof()) {
+            getline(infile, str); // read next line from file
+            outmodule->newRecord();
+            line.set(str); // create a record in data series for the line
+            ++line_count;
+        }
+        infile.clear(); // clear the eof state
+        infile.seekg(0); // start from the beginning again
+    }
 
-	cout << "Multiplying the content by " << copies << endl;
+    delete outmodule;
+    outds.close();
 
-	for (int i = 0; i < copies; ++i) {
-		cout << "Processing copy #" << i << " (starting at line #" << line_count << ")" << endl;
-		while (!infile.eof()) {
-			getline(infile, str); // read next line from file
-			outmodule->newRecord();
-			line.set(str); // create a record in data series for the line
-			++line_count;
-		}
-		infile.clear(); // clear the eof state
-		infile.seekg(0); // start from the beginning again
-	}
+    cout << "Finished writing " << line_count << " records/lines" << endl;
 
-	delete outmodule;
-	outds.close();
-
-	cout << "Finished writing " << line_count << " records/lines" << endl;
-
-	infile.close();
+    infile.close();
     return 0;
 }
 

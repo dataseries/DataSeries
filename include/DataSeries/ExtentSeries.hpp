@@ -37,7 +37,7 @@ public:
     enum typeCompatibilityT {
         /** The ExtentSeries can only hold Extents of a single type. */
         typeExact,
-        /** The ExtentSeries can hold Extents of any type which is 
+        /** The ExtentSeries can hold Extents of any type which is
             compatible with all of its fields.  This effectively means
             that it doesn't matter what the ExtentSeries held previously. */
         typeLoose
@@ -48,7 +48,7 @@ public:
 
         Postconditions:
             - getType() == 0 and getExtent() == 0 */
-    explicit ExtentSeries(typeCompatibilityT _tc = typeExact) 
+    explicit ExtentSeries(typeCompatibilityT _tc = typeExact)
 	: type(NULL), my_extent(NULL), typeCompatibility(_tc) {
     }
 
@@ -91,13 +91,13 @@ public:
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
         type to the type of the @c Extent. */
-    explicit ExtentSeries(Extent *e, 
+    explicit ExtentSeries(Extent *e,
 		 typeCompatibilityT _tc = typeExact);
     /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype,
 		 typeCompatibilityT _tc = typeExact)
 	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
-	  my_extent(NULL), typeCompatibility(_tc) { 
+	  my_extent(NULL), typeCompatibility(_tc) {
     }
 
     /** Preconditions:
@@ -143,14 +143,14 @@ public:
     /** Restores the current position to a saved state.  position must be the
         the result of a previous call to @c getCurPos() with the current
         @c Extent and must not have been invalidated.
-        
+
         This function may be slow. (Slow means that it does a handful of
         arithmetic and comparisons to verify that the call leaves that
         the @c ExtentSeries in a valid state.) */
     void setCurPos(const void *position) {
 	pos.setPos(position);
     }
-    
+
     /** Sets the type of Extents. If the type has already been set in any way,
         requires that the new type be compatible with the existing type as
         specified by the typeCompatibilityT of all the constructors. */
@@ -164,9 +164,9 @@ public:
     /** Sets the current extent being processed. If e is null, clears the
         current Extent.  If the type has already been set, requires that
         the type of the new Extent be compatible with the existing type.
-        it is valid to call this with NULL which is equivalent to a call 
+        it is valid to call this with NULL which is equivalent to a call
         to clearExtent()
-        
+
         Postconditions:
             - getExtent() = e
             - the current position will be set to the beginning of the
@@ -182,7 +182,7 @@ public:
     void clearExtent() { setExtent(NULL); }
 
     /** Returns the current extent. */
-    Extent *extent() { 
+    Extent *extent() {
 	return my_extent;
     }
     Extent *getExtent() {
@@ -209,7 +209,7 @@ public:
         new record.
 
         Preconditions:
-            - The current Extent is not null. 
+            - The current Extent is not null.
 
         \todo are multiple @c ExtentSeries even supported?
         \todo should nullable fields be set to null? */
@@ -245,7 +245,7 @@ public:
 	iterator(Extent *e) { reset(e); }
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }
-	void reset(Extent *e) { 
+	void reset(Extent *e) {
 	    if (e == NULL) {
 		cur_extent = NULL;
 		cur_pos = NULL;
@@ -256,7 +256,7 @@ public:
 		recordsize = e->type.fixedrecordsize();
 	    }
 	}
-	
+
 	/// old api
 	void setpos(byte *new_pos) {
 	    setPos(new_pos);
@@ -316,10 +316,33 @@ public:
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     /** Returns the current Extent. */
     const Extent *curExtent() { return my_extent; }
+
+    class ExtentPosition {
+    public:
+        const void *position;
+        Extent *extent;
+    };
+
+    class IExtentPositionComparator {
+    public:
+        virtual ~IExtentPositionComparator() {}
+        virtual bool compare(const ExtentSeries::ExtentPosition &lhsExtentPosition,
+                const ExtentSeries::ExtentPosition &rhsExtentPosition) = 0;
+    };
+
+    void setRecordIndex(size_t index);
+    void setExtentPosition(const ExtentPosition &extentPosition);
+    ExtentPosition getExtentPosition();
+    void setExtents(const std::vector<Extent*> &extents);
+    void sortRecords(IExtentPositionComparator *comparator);
+    size_t getRecordCount();
+
 private:
     Extent *my_extent;
     const typeCompatibilityT typeCompatibility;
     std::vector<Field *> my_fields;
+
+    std::vector<ExtentPosition> indices;
 };
 
 #endif
