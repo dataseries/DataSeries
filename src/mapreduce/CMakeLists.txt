@@ -6,3 +6,4 @@
 # cmake rules for the src/mapreduce directory
 
 DATASERIES_PROGRAM(mapreducedemo Record.cpp Mapper.cpp Reducer.cpp)
+DATASERIES_PROGRAM(mapreducetest)

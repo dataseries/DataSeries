@@ -56,6 +56,15 @@ public:
 
         return lhsVal < rhsVal;
     }
+
+    virtual int compare(Record *rhsRecord) {
+        DemoMapRecord *record = static_cast<DemoMapRecord*>(rhsRecord);
+        string lhsVal(line.stringval());
+        string rhsVal(record->line.stringval());
+        if (lhsVal < rhsVal) return -1;
+        if (lhsVal == rhsVal) return 0;
+        return 1;
+    }
 };
 
 
@@ -116,17 +125,14 @@ void map(Mapper &mapper, Record &inputRecord, Record &mapOutputRecord) {
     }
 }
 
-void reduce(Reducer &reducer, Record &mapInputRecord, Record &outputRecord) {
+void reduce(Reducer &reducer, const vector<Record*> &mapInputRecords, Record &outputRecord) {
     // read all the records in mapInputRecord, sort them, and call outputRecord
-    // this function probably needs the key name so that it knows which key in the temp file to sort by
     LintelLogDebug("mapreduce", "Starting reduce");
 
     // TODO: reduce is totally wrong in terms of logic!!
 
-    vector<Record*> mapInputRecords;
-    mapInputRecords.push_back(&mapInputRecord);
 
-    while (mapInputRecord.read()) {
+    while (mapInputRecords[0]->read()) {
         reducer.reduce(mapInputRecords, &outputRecord);
     }
 }
@@ -141,8 +147,11 @@ int main(int argc, const char *argv[]) {
     DemoMapRecord mapOutputRecord;
     mapOutputRecord.attachOutput(argv[2]);
 
-    DemoMapRecord mapInputRecord;
-    mapInputRecord.attachInput(argv[2], 1 << 20, true); // read and sort approximately 1 MB of records at a time
+    DemoMapRecord mapInputRecord0;
+    mapInputRecord0.attachInput(argv[2], 1 << 20, true); // read and sort approximately 1 MB of records at a time
+
+    vector<Record*> mapInputRecords;
+    mapInputRecords.push_back(&mapInputRecord0);
 
     DemoOutputRecord outputRecord;
     outputRecord.attachOutput(argv[3]);
@@ -154,8 +163,8 @@ int main(int argc, const char *argv[]) {
     inputRecord.close();
     mapOutputRecord.close();
 
-    ::reduce(reducer, mapInputRecord, outputRecord);
-    mapInputRecord.close();
+    ::reduce(reducer, mapInputRecords, outputRecord);
+    mapInputRecord0.close();
     outputRecord.close();
 
     return 0;

@@ -36,6 +36,8 @@ public:
     virtual bool compare(const ExtentSeries::ExtentPosition &lhsExtentPosition,
             const ExtentSeries::ExtentPosition &rhsExtentPosition) { return false; }
 
+    virtual int compare(Record *rhsRecord) { return 0; }
+
 protected:
     ExtentSeries series;
 
