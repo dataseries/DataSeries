@@ -224,7 +224,7 @@ public:
     GeneralValue val() const { return GeneralValue(this); }
     virtual double valDouble() = 0;
 
-    const ExtentType::fieldType getType() const { return gftype; }
+    ExtentType::fieldType getType() const { return gftype; }
 
     void enableCSV();
 
