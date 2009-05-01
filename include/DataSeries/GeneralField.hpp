@@ -207,6 +207,7 @@ public:
     virtual void write(std::ostream &to) = 0;
 
     virtual bool isNull() = 0;
+    virtual void setNull(bool val = true) = 0;
 
     // set will do conversion/fail as specified for each GF type
     virtual void set(GeneralField *from) = 0;
@@ -252,6 +253,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     // set(bool) -> copy
     // set(byte,int32,int64,double) -> val = from->val == 0
@@ -286,6 +288,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     // set(bool) -> 1 if true, 0 if false
     // set(byte, int32, int64) -> val = from->val & 0xFF;
@@ -311,6 +314,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -341,6 +345,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -366,6 +371,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -390,6 +396,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val = true);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
