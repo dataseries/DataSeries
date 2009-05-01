@@ -21,16 +21,19 @@
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/format.hpp>
 
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/Field.hpp>
+#include <DataSeries/GeneralField.hpp>
 
+template <typename FieldType>
 class MemorySortModule {
 public:
-    typedef boost::function<bool (const Variable32Field&, const Variable32Field&)> FieldComparator;
+    typedef boost::function<bool (const FieldType&, const FieldType&)> FieldComparator;
 
     /** Constructs a new @c MemorySortModule that will sort all the records based on the field
         named @param fieldName\. A sorting functor must also be provided.
@@ -51,7 +54,7 @@ public:
 private:
     class SortedExtent {
     public:
-        boost::shared_ptr<Extent> extent;
+        Extent *extent;
         std::vector<const void*> positions; // the positions in sorted order (positions.size() == # of records in this extent)
         std::vector<const void*>::iterator iterator;
     };
@@ -68,8 +71,8 @@ private:
         const FieldComparator &fieldComparator;
         boost::shared_ptr<ExtentSeries> series0;
         boost::shared_ptr<ExtentSeries> series1;
-        boost::shared_ptr<Variable32Field> field0;
-        boost::shared_ptr<Variable32Field> field1;
+        boost::shared_ptr<FieldType> field0;
+        boost::shared_ptr<FieldType> field1;
     };
 
     typedef boost::function<bool (SortedExtent*, SortedExtent*)> SortedExtentComparator;
@@ -79,9 +82,8 @@ private:
     void sortExtent(SortedExtent &sortedExtent);
     bool compareSortedExtents(SortedExtent *sortedExtent0, SortedExtent *sortedExtent1);
     Extent* createNextExtent();
-    void copyRecord(Extent *sourceExtent, const void *position, Extent *destinationExtent);
 
-    std::vector<SortedExtent> sortedExtents;
+    std::vector<boost::shared_ptr<SortedExtent> > sortedExtents;
 
     bool initialized; // starts as false, becomes true after first call to upstreamModule.getExtent
     DataSeriesModule &upstreamModule;
@@ -92,11 +94,13 @@ private:
     PriorityQueue <SortedExtent*, SortedExtentComparator> sortedExtentQueue;
     ExtentSeries series0;
     ExtentSeries series1;
-    Variable32Field field0;
-    Variable32Field field1;
+    FieldType field0;
+    FieldType field1;
 };
 
-MemorySortModule::MemorySortModule(DataSeriesModule &upstreamModule,
+
+template <typename FieldType>
+MemorySortModule<FieldType>::MemorySortModule(DataSeriesModule &upstreamModule,
                                    const std::string &fieldName,
                                    const FieldComparator &fieldComparator)
     : initialized(false),
@@ -105,10 +109,12 @@ MemorySortModule::MemorySortModule(DataSeriesModule &upstreamModule,
       field0(series0, fieldName), field1(series1, fieldName) {
 }
 
-MemorySortModule::~MemorySortModule() {
+template <typename FieldType>
+MemorySortModule<FieldType>::~MemorySortModule() {
 }
 
-Extent *MemorySortModule::getExtent() {
+template <typename FieldType>
+Extent *MemorySortModule<FieldType>::getExtent() {
     // retrieve the extents and sort them if this is the first call to getExtent
     if (!initialized) {
         retrieveExtents();
@@ -120,26 +126,38 @@ Extent *MemorySortModule::getExtent() {
     return createNextExtent();
 }
 
-void MemorySortModule::retrieveExtents() {
+template <typename FieldType>
+void MemorySortModule<FieldType>::retrieveExtents() {
     Extent *extent = NULL;
     while ((extent = upstreamModule.getExtent()) != NULL) {
-        SortedExtent sortedExtent;
-        sortedExtent.extent.reset(extent);
+        boost::shared_ptr<SortedExtent> sortedExtent(new SortedExtent);
+        sortedExtent->extent = extent;
         sortedExtents.push_back(sortedExtent);
     }
-}
 
-void MemorySortModule::sortExtents() {
-    BOOST_FOREACH(SortedExtent &sortedExtent, sortedExtents) {
-        sortExtent(sortedExtent);
-        sortedExtent.iterator = sortedExtent.positions.begin();
-        sortedExtentQueue.push(&sortedExtent);
+    size_t recordCount = 0;
+    BOOST_FOREACH(boost::shared_ptr<SortedExtent> &sortedExtent, sortedExtents) {
+        recordCount += sortedExtent->extent->getRecordCount();
     }
+
+    LintelLogDebug("memorysortmodule", boost::format("Retrieved %d extents (%d records) from upstream module") % sortedExtents.size() % recordCount);
 }
 
-void MemorySortModule::sortExtent(SortedExtent &sortedExtent) {
+template <typename FieldType>
+void MemorySortModule<FieldType>::sortExtents() {
+    BOOST_FOREACH(boost::shared_ptr<SortedExtent> &sortedExtent, sortedExtents) {
+        sortExtent(*sortedExtent);
+        sortedExtent->iterator = sortedExtent->positions.begin();
+        sortedExtentQueue.push(sortedExtent.get());
+    }
+
+    LintelLogDebug("memorysortmodule", boost::format("Added %d sorted extents to the priority queue") % sortedExtentQueue.size());
+}
+
+template <typename FieldType>
+void MemorySortModule<FieldType>::sortExtent(SortedExtent &sortedExtent) {
     // start by initializing the positions array so that it holds the pointer to each fixed record
-    ExtentSeries series(sortedExtent.extent.get());
+    ExtentSeries series(sortedExtent.extent);
     sortedExtent.positions.reserve(sortedExtent.extent->getRecordCount());
     for (; series.more(); series.next()) {
         sortedExtent.positions.push_back(series.getCurPos());
@@ -148,88 +166,84 @@ void MemorySortModule::sortExtent(SortedExtent &sortedExtent) {
     // sort the positions using our custom comparator and STL's sort (the role of the custom
     // comparator is to translate a comparison of void*-based positions to a comparison of fields
     PositionComparator comparator(fieldName, fieldComparator);
-    comparator.setExtent(sortedExtent.extent.get());
+    comparator.setExtent(sortedExtent.extent);
     std::sort(sortedExtent.positions.begin(), sortedExtent.positions.end(), comparator);
 }
 
-bool MemorySortModule::compareSortedExtents(SortedExtent *sortedExtent0, SortedExtent *sortedExtent1) {
-    // if there are no more records in one of the sorted extents, then the other is "less"
-    if (sortedExtent0->iterator == sortedExtent0->positions.end()) return false;
-    if (sortedExtent1->iterator == sortedExtent1->positions.end()) return true;
+template <typename FieldType>
+bool MemorySortModule<FieldType>::compareSortedExtents(SortedExtent *sortedExtent0, SortedExtent *sortedExtent1) {
+    // if there are no more records in one of the sorted extents, then the other is more important
+    if (sortedExtent0->iterator == sortedExtent0->positions.end()) return true;
+    if (sortedExtent1->iterator == sortedExtent1->positions.end()) return false;
 
     // sortedExtent0->iterator and sortedExtent1->iterator are valid entries
 
-    series0.setExtent(sortedExtent0->extent.get());
+    series0.setExtent(sortedExtent0->extent);
     series0.setCurPos(*sortedExtent0->iterator);
 
-    series1.setExtent(sortedExtent1->extent.get());
+    series1.setExtent(sortedExtent1->extent);
     series1.setCurPos(*sortedExtent1->iterator);
 
-    return fieldComparator(field0, field1);
+    return !fieldComparator(field0, field1);
 }
 
-Extent* MemorySortModule::createNextExtent() {
-    // can't create an extent since there are no more records
+template <typename FieldType>
+Extent* MemorySortModule<FieldType>::createNextExtent() {
     SortedExtent *sortedExtent = sortedExtentQueue.top();
     if (sortedExtent->iterator == sortedExtent->positions.end()) {
-        return NULL;
+        return NULL; // can't create an extent since there are no more records
     }
 
     Extent *destinationExtent = new Extent(sortedExtent->extent->getType());
 
+    ExtentSeries destinationSeries(destinationExtent);
+    ExtentSeries sourceSeries;
+    ExtentRecordCopy recordCopier(sourceSeries, destinationSeries);
+
+    size_t recordCount = 0;
+
     while (true) {
-        SortedExtent *sortedExtent = sortedExtentQueue.top();
-
-        if (sortedExtent->iterator == sortedExtent->positions.end()) {
-            break;
-        }
-
-        Extent *sourceExtent = sortedExtent->extent.get();
-        const void *position = *sortedExtent->iterator;
-        copyRecord(sourceExtent, position, destinationExtent);
+        sourceSeries.setExtent(sortedExtent->extent);
+        sourceSeries.setCurPos(*sortedExtent->iterator);
+        destinationSeries.newRecord();
+        recordCopier.copyRecord();
+        ++recordCount;
 
         ++sortedExtent->iterator;
         sortedExtentQueue.replaceTop(sortedExtent); // reinsert the sorted extent
+
+        // check if there are any records left
+        sortedExtent = sortedExtentQueue.top();
+        if (sortedExtent->iterator == sortedExtent->positions.end()) {
+            break;
+        }
     }
 
-    ExtentSeries s(destinationExtent);
-    Variable32Field f(s, "line");
-    for (; s.more(); s.next()) {
-        LintelLogDebug("memorysortmodule", f.stringval());
-    }
+    LintelLogDebug("memorysortmodule", boost::format("Added %d records to the extent") % recordCount);
 
     return destinationExtent;
 }
 
-void MemorySortModule::copyRecord(Extent *sourceExtent, const void *position, Extent *destinationExtent) {
-    // TODO: can we make this independent of the fields
-    ExtentSeries sourceSeries(sourceExtent);
-    Variable32Field sourceField(sourceSeries, fieldName);
-    sourceSeries.setCurPos(position);
-
-    ExtentSeries destinationSeries(destinationExtent);
-    Variable32Field destinationField(destinationSeries, fieldName);
-    destinationSeries.newRecord();
-
-    destinationField.set(sourceField);
-}
-
-MemorySortModule::PositionComparator::PositionComparator(const std::string &fieldName,
+template <typename FieldType>
+MemorySortModule<FieldType>::PositionComparator::PositionComparator(const std::string &fieldName,
                                                          const FieldComparator &fieldComparator)
     : fieldComparator(fieldComparator),
       series0(new ExtentSeries()), series1(new ExtentSeries()),
-      field0(new Variable32Field(*series0, fieldName)), field1(new Variable32Field(*series1, fieldName)) {
+      field0(new FieldType(*series0, fieldName)), field1(new FieldType(*series1, fieldName)) {
 }
 
-MemorySortModule::PositionComparator::~PositionComparator() {
+template <typename FieldType>
+MemorySortModule<FieldType>::PositionComparator::~PositionComparator() {
 }
 
-void MemorySortModule::PositionComparator::setExtent(Extent *extent) {
+template <typename FieldType>
+void MemorySortModule<FieldType>::PositionComparator::setExtent(Extent *extent) {
     series0->setExtent(extent);
     series1->setExtent(extent);
 }
 
-bool MemorySortModule::PositionComparator::operator()(const void *position0, const void *position1) {
+template <typename FieldType>
+bool MemorySortModule<FieldType>::PositionComparator::operator()(const void *position0, const void *position1) {
     series0->setCurPos(position0);
     series1->setCurPos(position1);
     return fieldComparator(*field0, *field1);
