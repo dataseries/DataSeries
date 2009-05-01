@@ -31,7 +31,7 @@
 #include <DataSeries/GeneralField.hpp>
 
 template <typename FieldType>
-class MemorySortModule {
+class MemorySortModule : public DataSeriesModule {
 public:
     typedef boost::function<bool (const FieldType&, const FieldType&)> FieldComparator;
 
@@ -40,16 +40,22 @@ public:
         \param upstreamModule  The upstream @c DataSeriesModule from which this module requests
                                extents.
         \param fieldName       The name of the field on which the records will be sorted.
-        \param fieldComparator The comparison (less-than) function for comparing two fields. */
+        \param fieldComparator The comparison (less-than) function for comparing two fields.
+        \param extentSizeLimit The maximum size of the extents returned by getExtent. A value
+                               of 0 indicates that a single extent should be returned. */
     MemorySortModule(DataSeriesModule &upstreamModule,
                      const std::string &fieldName,
-                     const FieldComparator &fieldComparator);
+                     const FieldComparator &fieldComparator,
+                     size_t extentSizeLimit = 0);
 
     virtual ~MemorySortModule();
 
     /** Returns the next @c Extent according to the sorted order. Note that the first call to
         getExtent will be significantly slower than the rest, because it triggers the sorting process. */
     virtual Extent *getExtent();
+
+    /** Resets the object so that it can be used again if the upstream module has data. */
+    void reset();
 
 private:
     class SortedExtent {
@@ -89,6 +95,7 @@ private:
     DataSeriesModule &upstreamModule;
     std::string fieldName;
     FieldComparator fieldComparator;
+    size_t extentSizeLimit;
 
     // some members to help with the merging
     PriorityQueue <SortedExtent*, SortedExtentComparator> sortedExtentQueue;
@@ -102,9 +109,11 @@ private:
 template <typename FieldType>
 MemorySortModule<FieldType>::MemorySortModule(DataSeriesModule &upstreamModule,
                                    const std::string &fieldName,
-                                   const FieldComparator &fieldComparator)
+                                   const FieldComparator &fieldComparator,
+                                   size_t extentSizeLimit)
     : initialized(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
+      extentSizeLimit(extentSizeLimit),
       sortedExtentQueue(boost::bind(&MemorySortModule::compareSortedExtents, this, _1, _2)),
       field0(series0, fieldName), field1(series1, fieldName) {
 }
@@ -127,6 +136,13 @@ Extent *MemorySortModule<FieldType>::getExtent() {
 }
 
 template <typename FieldType>
+void MemorySortModule<FieldType>::reset() {
+    sortedExtents.clear();
+    sortedExtentQueue.clear();
+    initialized = false;
+}
+
+template <typename FieldType>
 void MemorySortModule<FieldType>::retrieveExtents() {
     Extent *extent = NULL;
     while ((extent = upstreamModule.getExtent()) != NULL) {
@@ -134,13 +150,6 @@ void MemorySortModule<FieldType>::retrieveExtents() {
         sortedExtent->extent = extent;
         sortedExtents.push_back(sortedExtent);
     }
-
-    size_t recordCount = 0;
-    BOOST_FOREACH(boost::shared_ptr<SortedExtent> &sortedExtent, sortedExtents) {
-        recordCount += sortedExtent->extent->getRecordCount();
-    }
-
-    LintelLogDebug("memorysortmodule", boost::format("Retrieved %d extents (%d records) from upstream module") % sortedExtents.size() % recordCount);
 }
 
 template <typename FieldType>
@@ -189,10 +198,10 @@ bool MemorySortModule<FieldType>::compareSortedExtents(SortedExtent *sortedExten
 
 template <typename FieldType>
 Extent* MemorySortModule<FieldType>::createNextExtent() {
+    if (sortedExtentQueue.empty()) return NULL;
+
     SortedExtent *sortedExtent = sortedExtentQueue.top();
-    if (sortedExtent->iterator == sortedExtent->positions.end()) {
-        return NULL; // can't create an extent since there are no more records
-    }
+    if (sortedExtent->iterator == sortedExtent->positions.end()) return NULL;
 
     Extent *destinationExtent = new Extent(sortedExtent->extent->getType());
 
@@ -212,11 +221,12 @@ Extent* MemorySortModule<FieldType>::createNextExtent() {
         ++sortedExtent->iterator;
         sortedExtentQueue.replaceTop(sortedExtent); // reinsert the sorted extent
 
+        // have we crossed the maximum extent size
+        if (extentSizeLimit != 0 && destinationExtent->size() >= extentSizeLimit) break;
+
         // check if there are any records left
         sortedExtent = sortedExtentQueue.top();
-        if (sortedExtent->iterator == sortedExtent->positions.end()) {
-            break;
-        }
+        if (sortedExtent->iterator == sortedExtent->positions.end()) break;
     }
 
     LintelLogDebug("memorysortmodule", boost::format("Added %d records to the extent") % recordCount);

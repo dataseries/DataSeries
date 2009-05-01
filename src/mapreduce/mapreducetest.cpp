@@ -12,6 +12,7 @@
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/MemorySortModule.hpp>
+#include <DataSeries/SortModule.hpp>
 #include <DataSeries/Extent.hpp>
 
 class StringFieldComparator {
@@ -28,7 +29,7 @@ int main(int argc, const char *argv[]) {
     TypeIndexModule inputModule("Text");
     inputModule.addSource(argv[1]);
 
-    MemorySortModule<Variable32Field> memorySortModule(inputModule, "line", StringFieldComparator());
+    MemorySortModule<Variable32Field> memorySortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
 
     DataSeriesSink sink(argv[2], Extent::compress_none, 0);
 
