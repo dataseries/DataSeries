@@ -212,6 +212,8 @@ Extent* MemorySortModule<FieldType>::createNextExtent() {
     size_t recordCount = 0;
 
     while (true) {
+        INVARIANT(&sortedExtent->extent->getType() == &destinationExtent->getType(),
+                "all extents must be of the same type");
         sourceSeries.setExtent(sortedExtent->extent);
         sourceSeries.setCurPos(*sortedExtent->iterator);
         destinationSeries.newRecord();
@@ -228,8 +230,6 @@ Extent* MemorySortModule<FieldType>::createNextExtent() {
         sortedExtent = sortedExtentQueue.top();
         if (sortedExtent->iterator == sortedExtent->positions.end()) break;
     }
-
-    LintelLogDebug("memorysortmodule", boost::format("Added %d records to the extent") % recordCount);
 
     return destinationExtent;
 }

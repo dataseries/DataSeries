@@ -29,7 +29,9 @@ int main(int argc, const char *argv[]) {
     TypeIndexModule inputModule("Text");
     inputModule.addSource(argv[1]);
 
-    MemorySortModule<Variable32Field> memorySortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
+    //MemorySortModule<Variable32Field> memorySortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
+    //SortModule memorySortModule(inputModule, "line", StringFieldComparator(), 1 << 20, 1 << 30, "/tmp/sort");
+    SortModule memorySortModule(inputModule, "line", StringFieldComparator(), 100 * 1000, 1 << 20, "/tmp/sort");
 
     DataSeriesSink sink(argv[2], Extent::compress_none, 0);
 

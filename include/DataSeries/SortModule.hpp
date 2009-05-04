@@ -15,6 +15,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
@@ -60,45 +61,36 @@ public:
     virtual Extent *getExtent();
 
 private:
-    typedef std::vector<boost::shared_ptr<Extent> > ExtentVector;
-
-    class ThrottlerModule : public DataSeriesModule {
+    class FeederModule : public DataSeriesModule {
     public:
-        ThrottlerModule(DataSeriesModule &upstreamModule, size_t memoryLimit);
-        void reset();
-        bool full();
         Extent *getExtent();
-
-    private:
-        size_t firstSize;
-        size_t totalSize;
-
-        DataSeriesModule &upstreamModule;
-        size_t memoryLimit;
+        void addExtent(Extent *extent);
+        std::deque<Extent*> extents;
     };
 
     class SortedInputFile {
     public:
-        SortedInputFile(const std::string &file);
+        SortedInputFile(const std::string &file, const std::string &extentType);
 
+        std::string file;
         TypeIndexModule inputModule;
         boost::shared_ptr<Extent> extent; // the extent that we're currently reading from
         const void *position; // where are we in the current extent?
     };
 
     typedef boost::function
-            <bool (boost::shared_ptr<SortedInputFile>, boost::shared_ptr<SortedInputFile>)>
+            <bool (SortedInputFile*, SortedInputFile*)>
             SortedInputFileComparator;
 
-    void createSortedFiles(Extent *extent); // extent is the first extent (we already popped it)
-    Extent *createNextExtent();
+    bool retrieveExtents(); // fills up the feeder and returns false if we're out of extents
+    void createSortedFiles();
     void prepareSortedInputFiles();
-    bool compareSortedInputFiles(boost::shared_ptr<SortedInputFile> &sortedInputFile0,
-                                 boost::shared_ptr<SortedInputFile> &sortedInputFile1);
+    Extent *createNextExtent();
+    bool compareSortedInputFiles(SortedInputFile *sortedInputFile0,
+                                 SortedInputFile *sortedInputFile1);
 
     bool initialized;
     bool external; // is this an external/two-phase sort?
-    size_t lastTempFileSuffix;
 
     DataSeriesModule &upstreamModule;
     std::string fieldName;
@@ -109,11 +101,12 @@ private:
 
     size_t bufferLimit;
 
-    ExtentVector extents;
-    ThrottlerModule throttlerModule;
+    FeederModule feederModule;
     MemorySortModule<Variable32Field> memorySortModule;
 
-    PriorityQueue<boost::shared_ptr<SortedInputFile>, SortedInputFileComparator> sortedInputFileQueue;
+    std::vector<boost::shared_ptr<SortedInputFile> > sortedInputFiles;
+    PriorityQueue<SortedInputFile*, SortedInputFileComparator> sortedInputFileQueue;
+
     ExtentSeries series0;
     ExtentSeries series1;
     Variable32Field field0;
@@ -126,12 +119,11 @@ SortModule::SortModule(DataSeriesModule &upstreamModule,
                        size_t extentSizeLimit,
                        size_t memoryLimit,
                        const std::string &tempFilePrefix)
-    : initialized(false), external(false), lastTempFileSuffix(),
+    : initialized(false), external(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit), tempFilePrefix(tempFilePrefix),
       bufferLimit(memoryLimit / 2),
-      throttlerModule(upstreamModule, bufferLimit),
-      memorySortModule(throttlerModule, fieldName, fieldComparator, extentSizeLimit),
+      memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
       sortedInputFileQueue(boost::bind(&SortModule::compareSortedInputFiles, this, _1, _2)),
       field0(series0, fieldName), field1(series1, fieldName) {
 }
@@ -141,69 +133,109 @@ SortModule::~SortModule() {
 
 Extent *SortModule::getExtent() {
     if (!initialized) {
-        Extent *firstExtent = memorySortModule.getExtent();
-        external = throttlerModule.full();
-        initialized = true;
+        external = retrieveExtents();
         if (external) {
-            createSortedFiles(firstExtent); // we already took off the first extent so we have to pass it
+            createSortedFiles();
             prepareSortedInputFiles();
-        } else {
-            return firstExtent;
         }
+        initialized = true;
     }
 
-    // this is just an in-memory sort
-    if (!external) return memorySortModule.getExtent();
-
-    // this is an external sort so we have to create the extent by merging from the files
-    return createNextExtent();
+    // for external sort we need to merge from the files; for memory sort we just return an extent
+    return external ? createNextExtent() : memorySortModule.getExtent();
 }
 
-void SortModule::createSortedFiles(Extent *extent) {
-    lastTempFileSuffix = 0;
+bool SortModule::retrieveExtents() {
+    size_t totalSize = 0;
+    Extent *extent = upstreamModule.getExtent();
+    if (extent == NULL) return false;
 
-    INVARIANT(extent != NULL, "why are we trying to do an external sort if the first extent is NULL?");
-    ExtentTypeLibrary library;
-    library.registerType(extent->getType());
+    size_t firstSize = extent->size();
+    totalSize = firstSize;
+    feederModule.addExtent(extent);
 
-    boost::shared_ptr<DataSeriesSink> sink(new DataSeriesSink(
-            tempFilePrefix + (boost::format("%d") % lastTempFileSuffix).str(),
-            Extent::compress_none,
-            0));
-    sink->writeExtentLibrary(library);
+    while (totalSize + firstSize <= bufferLimit) {
+        // we have space to read another extent (assuming they are all the same size)
+        extent = upstreamModule.getExtent();
+        if (extent == NULL) return false;
+        totalSize += extent->size();
+        feederModule.addExtent(extent);
+    }
+
+    return true; // and do not delete extent (we're passing it as-is to memorySortModule)
+}
+
+void SortModule::createSortedFiles() {
+    int i = 0;
+    bool lastFile = false; // we need more than one file (although special case at end of function)
 
     while (true) {
+        // read the first extent
+        Extent *extent = memorySortModule.getExtent();
+        INVARIANT(extent != NULL, "why are we making an empty file?");
+
+        // create a new input file entry
+        boost::shared_ptr<SortedInputFile> sortedInputFile(new SortedInputFile(
+                tempFilePrefix + (boost::format("%d") % i++).str(),
+                extent->getType().getName()));
+        sortedInputFiles.push_back(sortedInputFile);
+
+        // create the sink
+        boost::shared_ptr<DataSeriesSink> sink(new DataSeriesSink(
+                sortedInputFile->file,
+                Extent::compress_none,
+                0));
+
+        LintelLogDebug("sortmodule",
+                boost::format("Created a temporary file for the external sort: %s") %
+                sortedInputFile->file);
+
+        // write the type library
+        ExtentTypeLibrary library;
+        library.registerType(extent->getType());
+        sink->writeExtentLibrary(library);
+
+        // write the first extent
         sink->writeExtent(*extent, NULL);
 
-        // get the next extent in this batch?
-        extent = memorySortModule.getExtent();
-
-        // no more extents in this batch? (we'll either start a new batch or finish)
-        if (extent == NULL) {
-            memorySortModule.reset();
-            sink->close(); // not really needed because of sink's destructor
-
-            // get the first extent in the new batch
-            extent = memorySortModule.getExtent();
-
-            // if it's still NULL (after the reset) then no more data is available and we're done
-            if (extent == NULL) break;
-
-            ++lastTempFileSuffix;
-
-            sink.reset(new DataSeriesSink(
-                    tempFilePrefix + (boost::format("%d") % lastTempFileSuffix).str(),
-                    Extent::compress_none,
-                    0));
-            sink->writeExtentLibrary(library);
+        // read and write remaining extents
+        while ((extent = memorySortModule.getExtent()) != NULL) {
+            sink->writeExtent(*extent, NULL);
         }
+
+        // close the sink
+        sink->close();
+
+        if (lastFile) break;
+
+        // re-fill the feeder
+        lastFile = !retrieveExtents();
+        if (feederModule.extents.size() == 0) {
+            SINVARIANT(lastFile);
+            break; // having zero extents in the "last file" is a special case - no need for that file
+        }
+
+        memorySortModule.reset();
+    }
+}
+
+void SortModule::prepareSortedInputFiles() {
+    // create the input modules and read/store the first extent from each one
+    BOOST_FOREACH(boost::shared_ptr<SortedInputFile> &sortedInputFile, sortedInputFiles) {
+        sortedInputFile->extent.reset(sortedInputFile->inputModule.getExtent());
+        INVARIANT(sortedInputFile->extent.get() != NULL, "why do we have an empty file?");
+
+        ExtentSeries series(sortedInputFile->extent.get());
+        sortedInputFile->position = series.getCurPos();
+
+        sortedInputFileQueue.push(sortedInputFile.get()); // add the file to our priority queue
     }
 }
 
 Extent *SortModule::createNextExtent() {
     if (sortedInputFileQueue.empty()) return NULL;
 
-    boost::shared_ptr<SortedInputFile> sortedInputFile = sortedInputFileQueue.top();
+    SortedInputFile *sortedInputFile = sortedInputFileQueue.top();
     INVARIANT(sortedInputFile->extent != NULL, "each file must have at least one extent"
             " and we are never returning finished input files to the queue");
 
@@ -225,25 +257,26 @@ Extent *SortModule::createNextExtent() {
 
         sourceSeries.next();
 
-        // skip to the next record in this input file, and push the file back into the priority
-        // queue if we can find one
-        while (!sourceSeries.more()) {
-            Extent *nextExtent = sortedInputFile->inputModule.getExtent();
-            sortedInputFile->extent.reset(nextExtent);
+        if (!sourceSeries.more()) {
+            Extent *nextExtent = NULL;
 
-            if (nextExtent == NULL) { // this input file is done
-                sortedInputFile->position = NULL; // not really needed
-                break;
+            do { // skip over any empty extents
+                nextExtent = sortedInputFile->inputModule.getExtent();
+                if (nextExtent == NULL) break; // this input file is done
+                sourceSeries.setExtent(nextExtent);
+            } while (!sourceSeries.more());
+
+            if (nextExtent == NULL) { // no more records so pop it out
+                sortedInputFileQueue.pop();
+                sortedInputFile->extent.reset(); // be nice and clean up!
+                sortedInputFile->position = NULL;
+            } else { // more records available in a new extent
+                sortedInputFile->extent.reset(nextExtent);
+                sortedInputFile->position = sourceSeries.getCurPos();
+                sortedInputFileQueue.replaceTop(sortedInputFile);
             }
-
-            // reset the position
-            sourceSeries.setExtent(nextExtent);
+        } else { // more records available in the current extent
             sortedInputFile->position = sourceSeries.getCurPos();
-        }
-
-        if (sortedInputFile->extent.get() == NULL) {
-            sortedInputFileQueue.pop();
-        } else {
             sortedInputFileQueue.replaceTop(sortedInputFile);
         }
 
@@ -252,29 +285,15 @@ Extent *SortModule::createNextExtent() {
 
         // check if there are any records left
         if (sortedInputFileQueue.empty()) break;
-    }
 
-    LintelLogDebug("sortmodule", boost::format("Added %d records to the extent") % recordCount);
+        sortedInputFile = sortedInputFileQueue.top();
+    }
 
     return destinationExtent;
 }
 
-void SortModule::prepareSortedInputFiles() {
-    // create the input modules and read/store the first extent from each one
-    for (size_t tempFileSuffix = 0; tempFileSuffix < lastTempFileSuffix; ++tempFileSuffix) {
-        std::string file(tempFilePrefix + (boost::format("%d") % tempFileSuffix).str());
-        boost::shared_ptr<SortedInputFile> sortedInputFile(new SortedInputFile(file));
-        sortedInputFile->extent.reset(sortedInputFile->inputModule.getExtent());
-
-        ExtentSeries series(sortedInputFile->extent.get());
-        sortedInputFile->position = series.getCurPos();
-
-        sortedInputFileQueue.push(sortedInputFile); // add the file to our priority queue
-    }
-}
-
-bool SortModule::compareSortedInputFiles(boost::shared_ptr<SortedInputFile> &sortedInputFile0,
-                                         boost::shared_ptr<SortedInputFile> &sortedInputFile1) {
+bool SortModule::compareSortedInputFiles(SortedInputFile *sortedInputFile0,
+                                         SortedInputFile *sortedInputFile1) {
     series0.setExtent(sortedInputFile0->extent.get());
     series0.setCurPos(sortedInputFile0->position);
 
@@ -284,36 +303,19 @@ bool SortModule::compareSortedInputFiles(boost::shared_ptr<SortedInputFile> &sor
     return !fieldComparator(field0, field1);
 }
 
-SortModule::ThrottlerModule::ThrottlerModule(DataSeriesModule &upstreamModule, size_t memoryLimit)
-    : firstSize(0), totalSize(0),
-      upstreamModule(upstreamModule), memoryLimit(memoryLimit) {
+void SortModule::FeederModule::addExtent(Extent *extent) {
+    extents.push_back(extent);
 }
 
-void SortModule::ThrottlerModule::reset() {
-    totalSize = 0;
-}
-
-bool SortModule::ThrottlerModule::full() {
-    return totalSize > 0 && totalSize + firstSize > memoryLimit ;
-}
-
-Extent* SortModule::ThrottlerModule::getExtent() {
-    if (firstSize == 0) {
-        Extent *extent = upstreamModule.getExtent();
-        totalSize = firstSize = extent->size();
-        return extent;
-    }
-
-    // if we returned at least one extent in this batch, and the next extent will push us beyond
-    // the memory limit, then don't fetch another extent
-    if (full()) return NULL;
-
-    Extent *extent = upstreamModule.getExtent();
-    totalSize += extent->size();
+Extent* SortModule::FeederModule::getExtent() {
+    if (extents.empty()) return NULL;
+    Extent *extent = extents.front();
+    extents.pop_front();
     return extent;
 }
 
-SortModule::SortedInputFile::SortedInputFile(const std::string &file) {
+SortModule::SortedInputFile::SortedInputFile(const std::string &file, const std::string &extentType)
+    : file(file), inputModule(extentType) {
     inputModule.addSource(file);
 }
 
