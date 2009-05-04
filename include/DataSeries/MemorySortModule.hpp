@@ -60,7 +60,7 @@ public:
 private:
     class SortedExtent {
     public:
-        Extent *extent;
+        boost::shared_ptr<Extent> extent;
         std::vector<const void*> positions; // the positions in sorted order (positions.size() == # of records in this extent)
         std::vector<const void*>::iterator iterator;
     };
@@ -147,7 +147,7 @@ void MemorySortModule<FieldType>::retrieveExtents() {
     Extent *extent = NULL;
     while ((extent = upstreamModule.getExtent()) != NULL) {
         boost::shared_ptr<SortedExtent> sortedExtent(new SortedExtent);
-        sortedExtent->extent = extent;
+        sortedExtent->extent.reset(extent);
         sortedExtents.push_back(sortedExtent);
     }
 }
@@ -166,7 +166,7 @@ void MemorySortModule<FieldType>::sortExtents() {
 template <typename FieldType>
 void MemorySortModule<FieldType>::sortExtent(SortedExtent &sortedExtent) {
     // start by initializing the positions array so that it holds the pointer to each fixed record
-    ExtentSeries series(sortedExtent.extent);
+    ExtentSeries series(sortedExtent.extent.get());
     sortedExtent.positions.reserve(sortedExtent.extent->getRecordCount());
     for (; series.more(); series.next()) {
         sortedExtent.positions.push_back(series.getCurPos());
@@ -175,7 +175,7 @@ void MemorySortModule<FieldType>::sortExtent(SortedExtent &sortedExtent) {
     // sort the positions using our custom comparator and STL's sort (the role of the custom
     // comparator is to translate a comparison of void*-based positions to a comparison of fields
     PositionComparator comparator(fieldName, fieldComparator);
-    comparator.setExtent(sortedExtent.extent);
+    comparator.setExtent(sortedExtent.extent.get());
     std::sort(sortedExtent.positions.begin(), sortedExtent.positions.end(), comparator);
 }
 
@@ -187,10 +187,10 @@ bool MemorySortModule<FieldType>::compareSortedExtents(SortedExtent *sortedExten
 
     // sortedExtent0->iterator and sortedExtent1->iterator are valid entries
 
-    series0.setExtent(sortedExtent0->extent);
+    series0.setExtent(sortedExtent0->extent.get());
     series0.setCurPos(*sortedExtent0->iterator);
 
-    series1.setExtent(sortedExtent1->extent);
+    series1.setExtent(sortedExtent1->extent.get());
     series1.setCurPos(*sortedExtent1->iterator);
 
     return !fieldComparator(field0, field1);
@@ -214,7 +214,7 @@ Extent* MemorySortModule<FieldType>::createNextExtent() {
     while (true) {
         INVARIANT(&sortedExtent->extent->getType() == &destinationExtent->getType(),
                 "all extents must be of the same type");
-        sourceSeries.setExtent(sortedExtent->extent);
+        sourceSeries.setExtent(sortedExtent->extent.get());
         sourceSeries.setCurPos(*sortedExtent->iterator);
         destinationSeries.newRecord();
         recordCopier.copyRecord();

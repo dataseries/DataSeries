@@ -29,9 +29,10 @@
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/MemorySortModule.hpp>
 
+template <typename FieldType>
 class SortModule : public DataSeriesModule {
 public:
-    typedef boost::function<bool (const Variable32Field&, const Variable32Field&)> FieldComparator;
+    typedef boost::function<bool (const FieldType&, const FieldType&)> FieldComparator;
 
     /** Constructs a new @c SortModule that will sort all the records based on the field
         named @param fieldName\. A sorting functor must also be provided.
@@ -102,18 +103,19 @@ private:
     size_t bufferLimit;
 
     FeederModule feederModule;
-    MemorySortModule<Variable32Field> memorySortModule;
+    MemorySortModule<FieldType> memorySortModule;
 
     std::vector<boost::shared_ptr<SortedInputFile> > sortedInputFiles;
     PriorityQueue<SortedInputFile*, SortedInputFileComparator> sortedInputFileQueue;
 
     ExtentSeries series0;
     ExtentSeries series1;
-    Variable32Field field0;
-    Variable32Field field1;
+    FieldType field0;
+    FieldType field1;
 };
 
-SortModule::SortModule(DataSeriesModule &upstreamModule,
+template <typename FieldType>
+SortModule<FieldType>::SortModule(DataSeriesModule &upstreamModule,
                        const std::string &fieldName,
                        const FieldComparator &fieldComparator,
                        size_t extentSizeLimit,
@@ -128,10 +130,12 @@ SortModule::SortModule(DataSeriesModule &upstreamModule,
       field0(series0, fieldName), field1(series1, fieldName) {
 }
 
-SortModule::~SortModule() {
+template <typename FieldType>
+SortModule<FieldType>::~SortModule() {
 }
 
-Extent *SortModule::getExtent() {
+template <typename FieldType>
+Extent *SortModule<FieldType>::getExtent() {
     if (!initialized) {
         external = retrieveExtents();
         if (external) {
@@ -145,7 +149,8 @@ Extent *SortModule::getExtent() {
     return external ? createNextExtent() : memorySortModule.getExtent();
 }
 
-bool SortModule::retrieveExtents() {
+template <typename FieldType>
+bool SortModule<FieldType>::retrieveExtents() {
     size_t totalSize = 0;
     Extent *extent = upstreamModule.getExtent();
     if (extent == NULL) return false;
@@ -162,10 +167,13 @@ bool SortModule::retrieveExtents() {
         feederModule.addExtent(extent);
     }
 
+    LintelLogDebug("sortmodule", boost::format("Filled up the buffer with %d bytes") % totalSize);
+
     return true; // and do not delete extent (we're passing it as-is to memorySortModule)
 }
 
-void SortModule::createSortedFiles() {
+template <typename FieldType>
+void SortModule<FieldType>::createSortedFiles() {
     int i = 0;
     bool lastFile = false; // we need more than one file (although special case at end of function)
 
@@ -197,10 +205,12 @@ void SortModule::createSortedFiles() {
 
         // write the first extent
         sink->writeExtent(*extent, NULL);
+        delete extent;
 
         // read and write remaining extents
         while ((extent = memorySortModule.getExtent()) != NULL) {
             sink->writeExtent(*extent, NULL);
+            delete extent;
         }
 
         // close the sink
@@ -219,7 +229,8 @@ void SortModule::createSortedFiles() {
     }
 }
 
-void SortModule::prepareSortedInputFiles() {
+template <typename FieldType>
+void SortModule<FieldType>::prepareSortedInputFiles() {
     // create the input modules and read/store the first extent from each one
     BOOST_FOREACH(boost::shared_ptr<SortedInputFile> &sortedInputFile, sortedInputFiles) {
         sortedInputFile->extent.reset(sortedInputFile->inputModule.getExtent());
@@ -232,7 +243,8 @@ void SortModule::prepareSortedInputFiles() {
     }
 }
 
-Extent *SortModule::createNextExtent() {
+template <typename FieldType>
+Extent *SortModule<FieldType>::createNextExtent() {
     if (sortedInputFileQueue.empty()) return NULL;
 
     SortedInputFile *sortedInputFile = sortedInputFileQueue.top();
@@ -292,7 +304,8 @@ Extent *SortModule::createNextExtent() {
     return destinationExtent;
 }
 
-bool SortModule::compareSortedInputFiles(SortedInputFile *sortedInputFile0,
+template <typename FieldType>
+bool SortModule<FieldType>::compareSortedInputFiles(SortedInputFile *sortedInputFile0,
                                          SortedInputFile *sortedInputFile1) {
     series0.setExtent(sortedInputFile0->extent.get());
     series0.setCurPos(sortedInputFile0->position);
@@ -303,18 +316,21 @@ bool SortModule::compareSortedInputFiles(SortedInputFile *sortedInputFile0,
     return !fieldComparator(field0, field1);
 }
 
-void SortModule::FeederModule::addExtent(Extent *extent) {
+template <typename FieldType>
+void SortModule<FieldType>::FeederModule::addExtent(Extent *extent) {
     extents.push_back(extent);
 }
 
-Extent* SortModule::FeederModule::getExtent() {
+template <typename FieldType>
+Extent* SortModule<FieldType>::FeederModule::getExtent() {
     if (extents.empty()) return NULL;
     Extent *extent = extents.front();
     extents.pop_front();
     return extent;
 }
 
-SortModule::SortedInputFile::SortedInputFile(const std::string &file, const std::string &extentType)
+template <typename FieldType>
+SortModule<FieldType>::SortedInputFile::SortedInputFile(const std::string &file, const std::string &extentType)
     : file(file), inputModule(extentType) {
     inputModule.addSource(file);
 }
