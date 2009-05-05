@@ -1,9 +1,12 @@
+// TODO-tomer: fix copyright.
 /*
  * mapreducetest.cpp
  *
  *  Created on: Apr 30, 2009
  *      Author: shirant
  */
+
+// TODO-tomer: include this in examples directory and brad may hug you.
 
 #include <string>
 #include <algorithm>
@@ -44,7 +47,9 @@ int main(int argc, const char *argv[]) {
     inputModule.addSource(argv[1]);
 
     //MemorySortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
-    //SortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1 << 20, 1 << 30, "/tmp/sort");
+    //SortModule<Variable32Field> sortModule(inputModule, "line",
+    //StringFieldComparator(), 1 << 20, 1 << 30, "/tmp/sort");
+    // TODO-tomer: at least use default values. 
     SortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1000 * 1000, 1000 * 1000 * 1000, "/tmp/sort");
 
     DataSeriesSink sink(argv[2], Extent::compress_none, 0);

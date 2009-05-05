@@ -29,6 +29,11 @@
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/MemorySortModule.hpp>
 
+// TODO-tomer: Document that this will do in memory or out-of-core
+// sort. Consider writing intermediate file to dataseries or not? I.e., is
+// there a simpler file format?
+
+
 template <typename FieldType>
 class SortModule : public DataSeriesModule {
 public:
@@ -53,6 +58,9 @@ public:
                const FieldComparator &fieldComparator,
                size_t extentSizeLimit,
                size_t memoryLimit,
+               // TODO-tomer: ask Eric if tempFilePrefix is "good enough" for
+               // merging. Other options include environment variables, program options,
+               // use of default values, and methods that create a unique file etc.
                const std::string &tempFilePrefix);
 
     virtual ~SortModule();
@@ -62,6 +70,10 @@ public:
     virtual Extent *getExtent();
 
 private:
+    // TODO-tomer: make srue this comment is correct. Talk further with Brad
+    // (Eric?) to see if there is a sequence module or something that can be
+    // used instead of this kludgy wrapper.
+    // Wrap deque to offer getExtent interface for use in memory sort module.
     class FeederModule : public DataSeriesModule {
     public:
         Extent *getExtent();
@@ -73,25 +85,24 @@ private:
     public:
         SortedInputFile(const std::string &file, const std::string &extentType);
 
-        std::string file;
+        std::string file; // TODO-tomer: fileName.
         TypeIndexModule inputModule;
         boost::shared_ptr<Extent> extent; // the extent that we're currently reading from
         const void *position; // where are we in the current extent?
     };
 
-    typedef boost::function
-            <bool (SortedInputFile*, SortedInputFile*)>
-            SortedInputFileComparator;
+    typedef boost::function <bool (SortedInputFile*, SortedInputFile*)> SortedInputFileComparator;
 
     bool retrieveExtents(); // fills up the feeder and returns false if we're out of extents
     void createSortedFiles();
     void prepareSortedInputFiles();
     Extent *createNextExtent();
+    // TODO-tomer: 0 = _lhs, 1 = _rhs
     bool compareSortedInputFiles(SortedInputFile *sortedInputFile0,
                                  SortedInputFile *sortedInputFile1);
 
     bool initialized;
-    bool external; // is this an external/two-phase sort?
+    bool external; // Automagically figured out when run out of memory.
 
     DataSeriesModule &upstreamModule;
     std::string fieldName;
@@ -124,6 +135,11 @@ SortModule<FieldType>::SortModule(DataSeriesModule &upstreamModule,
     : initialized(false), external(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit), tempFilePrefix(tempFilePrefix),
+      // TODO-tomer: better document this "feature". There is a special case
+      // that as sorted extents are extracted they may be synced to disk for
+      // example and so only one exten in memory is needed beyond the sorted
+      // extents.
+      // OR, the 2 is wrong. ;)
       bufferLimit(memoryLimit / 2),
       memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
       sortedInputFileQueue(boost::bind(&SortModule::compareSortedInputFiles, this, _1, _2)),
@@ -153,7 +169,9 @@ template <typename FieldType>
 bool SortModule<FieldType>::retrieveExtents() {
     size_t totalSize = 0;
     Extent *extent = upstreamModule.getExtent();
-    if (extent == NULL) return false;
+    if (extent == NULL) {
+        return false;
+    }
 
     size_t firstSize = extent->size();
     totalSize = firstSize;
@@ -162,7 +180,9 @@ bool SortModule<FieldType>::retrieveExtents() {
     while (totalSize + firstSize <= bufferLimit) {
         // we have space to read another extent (assuming they are all the same size)
         extent = upstreamModule.getExtent();
-        if (extent == NULL) return false;
+        if (extent == NULL) {
+            return false;
+        }
         totalSize += extent->size();
         feederModule.addExtent(extent);
     }
@@ -177,6 +197,9 @@ void SortModule<FieldType>::createSortedFiles() {
     int i = 0;
     bool lastFile = false; // we need more than one file (although special case at end of function)
 
+    // TODO-tomer: do while, or while (test) is preferred. if while(true) is
+    // the best, at least add a comment to explain what this loop's exit
+    // condition is.
     while (true) {
         // read the first extent
         Extent *extent = memorySortModule.getExtent();
@@ -186,11 +209,12 @@ void SortModule<FieldType>::createSortedFiles() {
         boost::shared_ptr<SortedInputFile> sortedInputFile(new SortedInputFile(
                 tempFilePrefix + (boost::format("%d") % i++).str(),
                 extent->getType().getName()));
+        // TODO-tomer: rename sortedInputFiles to sortedMergeFiles
         sortedInputFiles.push_back(sortedInputFile);
 
         // create the sink
         boost::shared_ptr<DataSeriesSink> sink(new DataSeriesSink(
-                sortedInputFile->file,
+                sortedInputFile->file, 
                 Extent::compress_none,
                 0));
 
@@ -203,6 +227,13 @@ void SortModule<FieldType>::createSortedFiles() {
         library.registerType(extent->getType());
         sink->writeExtentLibrary(library);
 
+        // TODO-tomer: this commented code OK?
+//         do {
+//             sink->writeExtent(*extent, NULL);
+//             delete extent;
+//             extent = memorySortModule.getExtent();
+//         } while (extent != NULL)
+            
         // write the first extent
         sink->writeExtent(*extent, NULL);
         delete extent;
@@ -216,7 +247,9 @@ void SortModule<FieldType>::createSortedFiles() {
         // close the sink
         sink->close();
 
-        if (lastFile) break;
+        if (lastFile) {
+            break;
+        }
 
         // re-fill the feeder
         lastFile = !retrieveExtents();
@@ -259,7 +292,9 @@ Extent *SortModule<FieldType>::createNextExtent() {
 
     size_t recordCount = 0;
 
-    // each iteration of this loop adds a single record to the destination extent
+    // each iteration of this loop adds a single record to the destination
+    // extent
+    // TODO-tomer: pleae no more while trues...
     while (true) {
         sourceSeries.setExtent(sortedInputFile->extent.get());
         sourceSeries.setCurPos(sortedInputFile->position);
@@ -269,12 +304,21 @@ Extent *SortModule<FieldType>::createNextExtent() {
 
         sourceSeries.next();
 
+        // TODO-tomer: reorder if branches. Handles soureSeries.more()==true
+        // first.
+        // TODO-tomer: look for "refillExtent" in code for examples of patterns
+        // like you are doing here. hopefully some minor refactoring will
+        // reduce this stuff in size by a factor of two.
         if (!sourceSeries.more()) {
             Extent *nextExtent = NULL;
 
+            // TODO-tomer: do these 7 lines need to be here? can this be a
+            // method of something else?
             do { // skip over any empty extents
                 nextExtent = sortedInputFile->inputModule.getExtent();
-                if (nextExtent == NULL) break; // this input file is done
+                if (nextExtent == NULL) {
+                    break; // this input file is done
+                }
                 sourceSeries.setExtent(nextExtent);
             } while (!sourceSeries.more());
 
@@ -293,10 +337,14 @@ Extent *SortModule<FieldType>::createNextExtent() {
         }
 
         // have we crossed the maximum extent size
-        if (extentSizeLimit != 0 && destinationExtent->size() >= extentSizeLimit) break;
+        if (extentSizeLimit != 0 && destinationExtent->size() >= extentSizeLimit) {
+            break;
+        }
 
         // check if there are any records left
-        if (sortedInputFileQueue.empty()) break;
+        if (sortedInputFileQueue.empty()) {
+            break;
+        }
 
         sortedInputFile = sortedInputFileQueue.top();
     }
@@ -313,7 +361,8 @@ bool SortModule<FieldType>::compareSortedInputFiles(SortedInputFile *sortedInput
     series1.setExtent(sortedInputFile1->extent.get());
     series1.setCurPos(sortedInputFile1->position);
 
-    return !fieldComparator(field0, field1);
+    // Sense of fieldComparator is weird, so field1 then field0.
+    return fieldComparator(field1, field0);
 }
 
 template <typename FieldType>

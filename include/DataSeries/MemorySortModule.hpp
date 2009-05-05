@@ -1,6 +1,8 @@
 // -*-C++-*-
+// TODO-tomer: ask Eric how he wants this copyright header to read for your
+// stuff. (or make Jay follow up.)
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2009, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -33,6 +35,10 @@
 template <typename FieldType>
 class MemorySortModule : public DataSeriesModule {
 public:
+    // TODO-tomer: figure out if the following comment is correct.
+    // FieldComparator effectively uses a function pointer. It may be a
+    // performance bottleneck in the future. I.e., a fully templatized
+    // implementation should be faster.
     typedef boost::function<bool (const FieldType&, const FieldType&)> FieldComparator;
 
     /** Constructs a new @c MemorySortModule that will sort all the records based on the field
@@ -58,10 +64,12 @@ public:
     void reset();
 
 private:
+    // TODO-tomer: add comment to document this private class
     class SortedExtent {
     public:
         boost::shared_ptr<Extent> extent;
-        std::vector<const void*> positions; // the positions in sorted order (positions.size() == # of records in this extent)
+        std::vector<const void*> positions; // the positions in sorted order
+                                            // (positions.size() == # of records in this extent)
         std::vector<const void*>::iterator iterator;
     };
 
@@ -75,6 +83,7 @@ private:
 
     private:
         const FieldComparator &fieldComparator;
+        // TODO-tomer: 0 = _lhs, 1 = _rhs? same with private members below.
         boost::shared_ptr<ExtentSeries> series0;
         boost::shared_ptr<ExtentSeries> series1;
         boost::shared_ptr<FieldType> field0;
@@ -156,6 +165,9 @@ template <typename FieldType>
 void MemorySortModule<FieldType>::sortExtents() {
     BOOST_FOREACH(boost::shared_ptr<SortedExtent> &sortedExtent, sortedExtents) {
         sortExtent(*sortedExtent);
+        // TODO-tomer: this next line seems like it ought to either be part of
+        // construction or a side effect of sortExtent. OR, it should be a
+        // method on sortedExtent.
         sortedExtent->iterator = sortedExtent->positions.begin();
         sortedExtentQueue.push(sortedExtent.get());
     }
@@ -173,7 +185,7 @@ void MemorySortModule<FieldType>::sortExtent(SortedExtent &sortedExtent) {
     }
 
     // sort the positions using our custom comparator and STL's sort (the role of the custom
-    // comparator is to translate a comparison of void*-based positions to a comparison of fields
+    // comparator is to translate a comparison of void*-based positions to a comparison of fields)
     PositionComparator comparator(fieldName, fieldComparator);
     comparator.setExtent(sortedExtent.extent.get());
     std::sort(sortedExtent.positions.begin(), sortedExtent.positions.end(), comparator);
@@ -185,6 +197,8 @@ bool MemorySortModule<FieldType>::compareSortedExtents(SortedExtent *sortedExten
     if (sortedExtent0->iterator == sortedExtent0->positions.end()) return true;
     if (sortedExtent1->iterator == sortedExtent1->positions.end()) return false;
 
+    // TODO-tomer: use DEBUG_INVARIANT rather than the below comment
+    // (sortedExtent0->iterator != end()). 
     // sortedExtent0->iterator and sortedExtent1->iterator are valid entries
 
     series0.setExtent(sortedExtent0->extent.get());
@@ -193,15 +207,20 @@ bool MemorySortModule<FieldType>::compareSortedExtents(SortedExtent *sortedExten
     series1.setExtent(sortedExtent1->extent.get());
     series1.setCurPos(*sortedExtent1->iterator);
 
-    return !fieldComparator(field0, field1);
+    // sense of fieldComparator is inverted compared to normal: so, field1 then field0.
+    return fieldComparator(field1, field0);
 }
 
 template <typename FieldType>
 Extent* MemorySortModule<FieldType>::createNextExtent() {
-    if (sortedExtentQueue.empty()) return NULL;
+    if (sortedExtentQueue.empty()) {
+        return NULL;
+    }
 
     SortedExtent *sortedExtent = sortedExtentQueue.top();
-    if (sortedExtent->iterator == sortedExtent->positions.end()) return NULL;
+    if (sortedExtent->iterator == sortedExtent->positions.end()) {
+        return NULL;
+    }
 
     Extent *destinationExtent = new Extent(sortedExtent->extent->getType());
 
@@ -211,24 +230,33 @@ Extent* MemorySortModule<FieldType>::createNextExtent() {
 
     size_t recordCount = 0;
 
+    // TODO-tomer: retry a do while(!extentSizeLimit && records left) loop.
     while (true) {
         INVARIANT(&sortedExtent->extent->getType() == &destinationExtent->getType(),
                 "all extents must be of the same type");
         sourceSeries.setExtent(sortedExtent->extent.get());
+        //It may be possible to extend ExtentRecordCopy so that it "knows" to
+        //use sortedExtent->iterator rather than explicitly invoking
+        //setCurPos. But, it may also not be possible... This is a performance
+        //improvement possibility.
         sourceSeries.setCurPos(*sortedExtent->iterator);
         destinationSeries.newRecord();
         recordCopier.copyRecord();
         ++recordCount;
 
-        ++sortedExtent->iterator;
+        ++(sortedExtent->iterator);
         sortedExtentQueue.replaceTop(sortedExtent); // reinsert the sorted extent
 
         // have we crossed the maximum extent size
-        if (extentSizeLimit != 0 && destinationExtent->size() >= extentSizeLimit) break;
+        if (extentSizeLimit != 0 && destinationExtent->size() >= extentSizeLimit) {
+            break;
+        }
 
         // check if there are any records left
         sortedExtent = sortedExtentQueue.top();
-        if (sortedExtent->iterator == sortedExtent->positions.end()) break;
+        if (sortedExtent->iterator == sortedExtent->positions.end()) {
+            break;
+        }
     }
 
     return destinationExtent;
