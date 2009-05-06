@@ -105,6 +105,7 @@ void ExtentSeries::removeField(Field &field, bool must_exist)
 void
 ExtentSeries::iterator::setPos(const void *_new_pos)
 {
+#ifdef LINTEL_ASSERT_BOOST_DEBUG
     const byte *new_pos = static_cast<const byte *>(_new_pos);
     byte *cur_begin = cur_extent->fixeddata.begin();
     unsigned recnum = (new_pos - cur_begin) / recordsize;
@@ -117,6 +118,14 @@ ExtentSeries::iterator::setPos(const void *_new_pos)
     INVARIANT(recnum * recordsize == offset,
 	      "new position not aligned to record boundary");
     cur_pos = cur_begin + offset;
+#else
+    cur_pos = _new_pos;
+#endif
+}
+
+void ExtentSeries::iterator::relocate(Extent *extent, const void *position) {
+    cur_extent = extent;
+    cur_pos = static_cast<const byte *>(position);
 }
 
 void
@@ -146,10 +155,10 @@ ExtentSeries::iterator::forceCheckOffset(long offset)
     INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
 	      cur_pos + offset < cur_extent->fixeddata.end(),
 	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n")
-	      % reinterpret_cast<void *>(cur_pos) % offset
-	      % reinterpret_cast<void *>(cur_pos+offset)
-	      % reinterpret_cast<void *>(cur_extent->fixeddata.begin())
-	      % reinterpret_cast<void *>(cur_extent->fixeddata.end()));
+	      % reinterpret_cast<const void *>(cur_pos) % offset
+	      % reinterpret_cast<const void *>(cur_pos+offset)
+	      % reinterpret_cast<const void *>(cur_extent->fixeddata.begin())
+	      % reinterpret_cast<const void *>(cur_extent->fixeddata.end()));
 }
 
 void ExtentSeries::setRecordIndex(size_t index) {
