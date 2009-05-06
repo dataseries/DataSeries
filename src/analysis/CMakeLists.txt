@@ -9,6 +9,8 @@ DATASERIES_PROGRAM(wcanalysis)
 DATASERIES_PROGRAM(lsfdsanalysis 
 	lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
 DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
+DATASERIES_PROGRAM(grepanalysis)
+DATASERIES_PROGRAM(sortanalysis)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
     LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)
@@ -19,4 +21,3 @@ IF(PERL_DATE_PARSE_ENABLED)
 ENDIF(PERL_DATE_PARSE_ENABLED)
 
 ADD_SUBDIRECTORY(nfs)
-ADD_SUBDIRECTORY(fgrep)

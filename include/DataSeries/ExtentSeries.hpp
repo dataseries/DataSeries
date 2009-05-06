@@ -151,6 +151,14 @@ public:
 	pos.setPos(position);
     }
 
+    void relocate(Extent *extent, const void *position) {
+        my_extent = extent;
+        if (extent == NULL) {
+            position = NULL;
+        }
+        pos.relocate(extent, position);
+    }
+
     /** Sets the type of Extents. If the type has already been set in any way,
         requires that the new type be compatible with the existing type as
         specified by the typeCompatibilityT of all the constructors. */
@@ -262,7 +270,7 @@ public:
 	    setPos(new_pos);
 	}
 	/// old api
-	byte *record_start() { return cur_pos; }
+	byte *record_start() { return const_cast<byte*>(cur_pos); }
 
 	void setPos(const void *new_pos);
 	const void *getPos() {
@@ -291,10 +299,12 @@ public:
 #endif
 	}
 	void forceCheckOffset(long offset);
+
+	void relocate(Extent *extent, const void *position);
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;
-	byte *cur_pos;
+	const byte *cur_pos;
 	unsigned recordsize;
     };
 
