@@ -152,10 +152,8 @@ public:
     }
 
     void relocate(Extent *extent, const void *position) {
+        DEBUG_SINVARIANT(extent != NULL);
         my_extent = extent;
-        if (extent == NULL) {
-            position = NULL;
-        }
         pos.relocate(extent, position);
     }
 
@@ -272,7 +270,25 @@ public:
 	/// old api
 	byte *record_start() { return const_cast<byte*>(cur_pos); }
 
-	void setPos(const void *new_pos);
+	void setPos(const void *_new_pos) {
+#if LINTEL_ASSERT_BOOST_DEBUG
+	    const byte *new_pos = static_cast<const byte *>(_new_pos);
+	    byte *cur_begin = cur_extent->fixeddata.begin();
+	    unsigned recnum = (new_pos - cur_begin) / recordsize;
+	    INVARIANT(cur_extent != NULL, "no current extent?");
+	    INVARIANT(new_pos >= cur_begin,
+	              "new pos before start");
+	    INVARIANT(new_pos <= cur_extent->fixeddata.end(),
+	              "new pos after end");
+	    size_t offset = new_pos - cur_begin;
+	    INVARIANT(recnum * recordsize == offset,
+	              "new position not aligned to record boundary");
+	    cur_pos = cur_begin + offset;
+#else
+	    cur_pos = static_cast<const byte *>(_new_pos);
+#endif
+	}
+
 	const void *getPos() {
 	    return cur_pos;
 	}
@@ -300,7 +316,10 @@ public:
 	}
 	void forceCheckOffset(long offset);
 
-	void relocate(Extent *extent, const void *position);
+	void relocate(Extent *extent, const void *position) {
+	    cur_extent = extent;
+	    cur_pos = static_cast<const byte *>(position);
+	}
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;

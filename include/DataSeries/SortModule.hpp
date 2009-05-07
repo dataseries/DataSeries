@@ -34,11 +34,9 @@
 // there a simpler file format?
 
 
-template <typename FieldType>
+template <typename FieldType, typename FieldComparator>
 class SortModule : public DataSeriesModule {
 public:
-    typedef boost::function<bool (const FieldType&, const FieldType&)> FieldComparator;
-
     /** Constructs a new @c SortModule that will sort all the records based on the field
         named @param fieldName\. A sorting functor must also be provided.
         \param upstreamModule  The upstream @c DataSeriesModule from which this module requests
@@ -47,9 +45,7 @@ public:
         \param fieldComparator The comparison (less-than) function for comparing two fields.
         \param extentSizeLimit The maximum size of the extents returned by getExtent. A value
                                of 0 indicates that a single extent should be returned.
-        \param memoryLimit     The maximum amount of memory to use. Since SortModule has a 100%
-                               memory overhead, about 1/2 of @param memoryLimit will be used for
-                               data from the upstream module.
+        \param memoryLimit     The maximum amount of memory to use.
         \param tempFilePrefix  In case an external (two-phase) sort is required, @c SortModule will
                                create temporary DataSeries files. The files will be named by appending
                                an incrementing integer to the specified @param tempFilePrefix\. */
@@ -81,9 +77,9 @@ private:
         std::deque<Extent*> extents;
     };
 
-    class SortedInputFile {
+    class SortedMergeFile {
     public:
-        SortedInputFile(const std::string &file, const std::string &extentType);
+        SortedMergeFile(const std::string &file, const std::string &extentType);
 
         std::string file; // TODO-tomer: fileName.
         TypeIndexModule inputModule;
@@ -91,18 +87,18 @@ private:
         const void *position; // where are we in the current extent?
     };
 
-    typedef boost::function <bool (SortedInputFile*, SortedInputFile*)> SortedInputFileComparator;
+    typedef boost::function <bool (SortedMergeFile*, SortedMergeFile*)> SortedMergeFileComparator;
 
     bool retrieveExtents(); // fills up the feeder and returns false if we're out of extents
     void createSortedFiles();
-    void prepareSortedInputFiles();
+    void prepareSortedMergeFiles();
     Extent *createNextExtent();
-    // TODO-tomer: 0 = _lhs, 1 = _rhs
-    bool compareSortedInputFiles(SortedInputFile *sortedInputFile0,
-                                 SortedInputFile *sortedInputFile1);
+    bool compareSortedMergeFiles(SortedMergeFile *sortedMergeFileLhs,
+                                 SortedMergeFile *sortedMergeFileRhs);
 
     bool initialized;
-    bool external; // Automagically figured out when run out of memory.
+    bool external; // automatically set to true when upstream module provides more data than
+                   // we can store in memory
 
     DataSeriesModule &upstreamModule;
     std::string fieldName;
@@ -114,49 +110,47 @@ private:
     size_t bufferLimit;
 
     FeederModule feederModule;
-    MemorySortModule<FieldType> memorySortModule;
+    MemorySortModule<FieldType, FieldComparator> memorySortModule;
 
-    std::vector<boost::shared_ptr<SortedInputFile> > sortedInputFiles;
-    PriorityQueue<SortedInputFile*, SortedInputFileComparator> sortedInputFileQueue;
+    std::vector<boost::shared_ptr<SortedMergeFile> > sortedMergeFiles;
+    PriorityQueue<SortedMergeFile*, SortedMergeFileComparator> sortedMergeFileQueue;
 
-    ExtentSeries series0;
-    ExtentSeries series1;
-    FieldType field0;
-    FieldType field1;
+    ExtentSeries seriesLhs;
+    ExtentSeries seriesRhs;
+    FieldType fieldLhs;
+    FieldType fieldRhs;
 };
 
-template <typename FieldType>
-SortModule<FieldType>::SortModule(DataSeriesModule &upstreamModule,
-                       const std::string &fieldName,
-                       const FieldComparator &fieldComparator,
-                       size_t extentSizeLimit,
-                       size_t memoryLimit,
-                       const std::string &tempFilePrefix)
+template <typename FieldType, typename FieldComparator>
+SortModule<FieldType, FieldComparator>::
+SortModule(DataSeriesModule &upstreamModule,
+           const std::string &fieldName,
+           const FieldComparator &fieldComparator,
+           size_t extentSizeLimit,
+           size_t memoryLimit,
+           const std::string &tempFilePrefix)
     : initialized(false), external(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit), tempFilePrefix(tempFilePrefix),
-      // TODO-tomer: better document this "feature". There is a special case
-      // that as sorted extents are extracted they may be synced to disk for
-      // example and so only one exten in memory is needed beyond the sorted
-      // extents.
-      // OR, the 2 is wrong. ;)
-      bufferLimit(memoryLimit / 2),
+      bufferLimit(memoryLimit / 1.2), // this module has some overhead (we just assume 20%)
       memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
-      sortedInputFileQueue(boost::bind(&SortModule::compareSortedInputFiles, this, _1, _2)),
-      field0(series0, fieldName), field1(series1, fieldName) {
+      sortedMergeFileQueue(boost::bind(&SortModule::compareSortedMergeFiles, this, _1, _2)),
+      fieldLhs(seriesLhs, fieldName), fieldRhs(seriesRhs, fieldName) {
 }
 
-template <typename FieldType>
-SortModule<FieldType>::~SortModule() {
+template <typename FieldType, typename FieldComparator>
+SortModule<FieldType, FieldComparator>::
+~SortModule() {
 }
 
-template <typename FieldType>
-Extent *SortModule<FieldType>::getExtent() {
+template <typename FieldType, typename FieldComparator>
+Extent *SortModule<FieldType, FieldComparator>::
+getExtent() {
     if (!initialized) {
         external = retrieveExtents();
         if (external) {
             createSortedFiles();
-            prepareSortedInputFiles();
+            prepareSortedMergeFiles();
         }
         initialized = true;
     }
@@ -165,8 +159,9 @@ Extent *SortModule<FieldType>::getExtent() {
     return external ? createNextExtent() : memorySortModule.getExtent();
 }
 
-template <typename FieldType>
-bool SortModule<FieldType>::retrieveExtents() {
+template <typename FieldType, typename FieldComparator>
+bool SortModule<FieldType, FieldComparator>::
+retrieveExtents() {
     size_t totalSize = 0;
     Extent *extent = upstreamModule.getExtent();
     if (extent == NULL) {
@@ -192,8 +187,9 @@ bool SortModule<FieldType>::retrieveExtents() {
     return true; // and do not delete extent (we're passing it as-is to memorySortModule)
 }
 
-template <typename FieldType>
-void SortModule<FieldType>::createSortedFiles() {
+template <typename FieldType, typename FieldComparator>
+void SortModule<FieldType, FieldComparator>::
+createSortedFiles() {
     int i = 0;
     bool lastFile = false; // we need more than one file (although special case at end of function)
 
@@ -206,21 +202,20 @@ void SortModule<FieldType>::createSortedFiles() {
         INVARIANT(extent != NULL, "why are we making an empty file?");
 
         // create a new input file entry
-        boost::shared_ptr<SortedInputFile> sortedInputFile(new SortedInputFile(
+        boost::shared_ptr<SortedMergeFile> sortedMergeFile(new SortedMergeFile(
                 tempFilePrefix + (boost::format("%d") % i++).str(),
                 extent->getType().getName()));
-        // TODO-tomer: rename sortedInputFiles to sortedMergeFiles
-        sortedInputFiles.push_back(sortedInputFile);
+        sortedMergeFiles.push_back(sortedMergeFile);
 
         // create the sink
         boost::shared_ptr<DataSeriesSink> sink(new DataSeriesSink(
-                sortedInputFile->file, 
+                sortedMergeFile->file,
                 Extent::compress_none,
                 0));
 
         LintelLogDebug("sortmodule",
                 boost::format("Created a temporary file for the external sort: %s") %
-                sortedInputFile->file);
+                sortedMergeFile->file);
 
         // write the type library
         ExtentTypeLibrary library;
@@ -233,7 +228,7 @@ void SortModule<FieldType>::createSortedFiles() {
 //             delete extent;
 //             extent = memorySortModule.getExtent();
 //         } while (extent != NULL)
-            
+
         // write the first extent
         sink->writeExtent(*extent, NULL);
         delete extent;
@@ -262,29 +257,31 @@ void SortModule<FieldType>::createSortedFiles() {
     }
 }
 
-template <typename FieldType>
-void SortModule<FieldType>::prepareSortedInputFiles() {
+template <typename FieldType, typename FieldComparator>
+void SortModule<FieldType, FieldComparator>::
+prepareSortedMergeFiles() {
     // create the input modules and read/store the first extent from each one
-    BOOST_FOREACH(boost::shared_ptr<SortedInputFile> &sortedInputFile, sortedInputFiles) {
-        sortedInputFile->extent.reset(sortedInputFile->inputModule.getExtent());
-        INVARIANT(sortedInputFile->extent.get() != NULL, "why do we have an empty file?");
+    BOOST_FOREACH(boost::shared_ptr<SortedMergeFile> &sortedMergeFile, sortedMergeFiles) {
+        sortedMergeFile->extent.reset(sortedMergeFile->inputModule.getExtent());
+        INVARIANT(sortedMergeFile->extent.get() != NULL, "why do we have an empty file?");
 
-        ExtentSeries series(sortedInputFile->extent.get());
-        sortedInputFile->position = series.getCurPos();
+        ExtentSeries series(sortedMergeFile->extent.get());
+        sortedMergeFile->position = series.getCurPos();
 
-        sortedInputFileQueue.push(sortedInputFile.get()); // add the file to our priority queue
+        sortedMergeFileQueue.push(sortedMergeFile.get()); // add the file to our priority queue
     }
 }
 
-template <typename FieldType>
-Extent *SortModule<FieldType>::createNextExtent() {
-    if (sortedInputFileQueue.empty()) return NULL;
+template <typename FieldType, typename FieldComparator>
+Extent *SortModule<FieldType, FieldComparator>::
+createNextExtent() {
+    if (sortedMergeFileQueue.empty()) return NULL;
 
-    SortedInputFile *sortedInputFile = sortedInputFileQueue.top();
-    INVARIANT(sortedInputFile->extent != NULL, "each file must have at least one extent"
+    SortedMergeFile *sortedMergeFile = sortedMergeFileQueue.top();
+    INVARIANT(sortedMergeFile->extent != NULL, "each file must have at least one extent"
             " and we are never returning finished input files to the queue");
 
-    Extent *destinationExtent = new Extent(sortedInputFile->extent->getType());
+    Extent *destinationExtent = new Extent(sortedMergeFile->extent->getType());
 
     ExtentSeries destinationSeries(destinationExtent);
     ExtentSeries sourceSeries;
@@ -296,8 +293,8 @@ Extent *SortModule<FieldType>::createNextExtent() {
     // extent
     // TODO-tomer: pleae no more while trues...
     while (true) {
-        sourceSeries.setExtent(sortedInputFile->extent.get());
-        sourceSeries.setCurPos(sortedInputFile->position);
+        sourceSeries.setExtent(sortedMergeFile->extent.get());
+        sourceSeries.setCurPos(sortedMergeFile->position);
         destinationSeries.newRecord();
         recordCopier.copyRecord();
         ++recordCount;
@@ -315,7 +312,7 @@ Extent *SortModule<FieldType>::createNextExtent() {
             // TODO-tomer: do these 7 lines need to be here? can this be a
             // method of something else?
             do { // skip over any empty extents
-                nextExtent = sortedInputFile->inputModule.getExtent();
+                nextExtent = sortedMergeFile->inputModule.getExtent();
                 if (nextExtent == NULL) {
                     break; // this input file is done
                 }
@@ -323,17 +320,17 @@ Extent *SortModule<FieldType>::createNextExtent() {
             } while (!sourceSeries.more());
 
             if (nextExtent == NULL) { // no more records so pop it out
-                sortedInputFileQueue.pop();
-                sortedInputFile->extent.reset(); // be nice and clean up!
-                sortedInputFile->position = NULL;
+                sortedMergeFileQueue.pop();
+                sortedMergeFile->extent.reset(); // be nice and clean up!
+                sortedMergeFile->position = NULL;
             } else { // more records available in a new extent
-                sortedInputFile->extent.reset(nextExtent);
-                sortedInputFile->position = sourceSeries.getCurPos();
-                sortedInputFileQueue.replaceTop(sortedInputFile);
+                sortedMergeFile->extent.reset(nextExtent);
+                sortedMergeFile->position = sourceSeries.getCurPos();
+                sortedMergeFileQueue.replaceTop(sortedMergeFile);
             }
         } else { // more records available in the current extent
-            sortedInputFile->position = sourceSeries.getCurPos();
-            sortedInputFileQueue.replaceTop(sortedInputFile);
+            sortedMergeFile->position = sourceSeries.getCurPos();
+            sortedMergeFileQueue.replaceTop(sortedMergeFile);
         }
 
         // have we crossed the maximum extent size
@@ -342,44 +339,49 @@ Extent *SortModule<FieldType>::createNextExtent() {
         }
 
         // check if there are any records left
-        if (sortedInputFileQueue.empty()) {
+        if (sortedMergeFileQueue.empty()) {
             break;
         }
 
-        sortedInputFile = sortedInputFileQueue.top();
+        sortedMergeFile = sortedMergeFileQueue.top();
     }
 
     return destinationExtent;
 }
 
-template <typename FieldType>
-bool SortModule<FieldType>::compareSortedInputFiles(SortedInputFile *sortedInputFile0,
-                                         SortedInputFile *sortedInputFile1) {
-    series0.setExtent(sortedInputFile0->extent.get());
-    series0.setCurPos(sortedInputFile0->position);
+template <typename FieldType, typename FieldComparator>
+bool SortModule<FieldType, FieldComparator>::
+compareSortedMergeFiles(SortedMergeFile *sortedMergeFileLhs,
+                        SortedMergeFile *sortedMergeFileRhs) {
+    seriesLhs.setExtent(sortedMergeFileLhs->extent.get());
+    seriesLhs.setCurPos(sortedMergeFileLhs->position);
 
-    series1.setExtent(sortedInputFile1->extent.get());
-    series1.setCurPos(sortedInputFile1->position);
+    seriesRhs.setExtent(sortedMergeFileRhs->extent.get());
+    seriesRhs.setCurPos(sortedMergeFileRhs->position);
 
-    // Sense of fieldComparator is weird, so field1 then field0.
-    return fieldComparator(field1, field0);
+    // swap fieldRhs and fieldLhs because compareSortedExtents == "less important" and
+    // fieldComparator == "less than"
+    return fieldComparator(fieldRhs, fieldLhs);
 }
 
-template <typename FieldType>
-void SortModule<FieldType>::FeederModule::addExtent(Extent *extent) {
+template <typename FieldType, typename FieldComparator>
+void SortModule<FieldType, FieldComparator>::
+FeederModule::addExtent(Extent *extent) {
     extents.push_back(extent);
 }
 
-template <typename FieldType>
-Extent* SortModule<FieldType>::FeederModule::getExtent() {
+template <typename FieldType, typename FieldComparator>
+Extent* SortModule<FieldType, FieldComparator>::
+FeederModule::getExtent() {
     if (extents.empty()) return NULL;
     Extent *extent = extents.front();
     extents.pop_front();
     return extent;
 }
 
-template <typename FieldType>
-SortModule<FieldType>::SortedInputFile::SortedInputFile(const std::string &file, const std::string &extentType)
+template <typename FieldType, typename FieldComparator>
+SortModule<FieldType, FieldComparator>::
+SortedMergeFile::SortedMergeFile(const std::string &file, const std::string &extentType)
     : file(file), inputModule(extentType) {
     inputModule.addSource(file);
 }

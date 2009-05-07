@@ -48,7 +48,7 @@ public:
             - The ExtentType of the series must have a bool field with the
               specified name. If the type of the series is not known, this
               check will be delayed until the type is set. */
-    BoolField(ExtentSeries &_dataseries, const std::string &field, 
+    BoolField(ExtentSeries &_dataseries, const std::string &field,
 	      int flags = 0, bool default_value = false, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -57,11 +57,11 @@ public:
         Preconditions:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
-    bool val() const { 
+    bool val() const {
         if (isNull()) {
             return default_value;
         } else {
-            return *rawval() & bit_mask ? true : false; 
+            return *rawval() & bit_mask ? true : false;
         }
     }
 
@@ -97,7 +97,7 @@ private:
   */
 class ByteField : public FixedField {
 public:
-    ByteField(ExtentSeries &_dataseries, const std::string &field, 
+    ByteField(ExtentSeries &_dataseries, const std::string &field,
 	      int flags = 0, byte default_value = 0, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -106,7 +106,7 @@ public:
         Preconditions:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
-    byte val() const { 
+    byte val() const {
         if (isNull()) {
             return default_value;
         } else {
@@ -141,7 +141,7 @@ public:
     /// that much better.
     static const int flag_allownonzerobase = 1024;
 
-    DoubleField(ExtentSeries &_dataseries, const std::string &field, 
+    DoubleField(ExtentSeries &_dataseries, const std::string &field,
 		int flags = 0, double default_value = 0, bool auto_add = true);
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -150,21 +150,21 @@ public:
         Preconditions:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
-    double val() const { 
+    double val() const {
         if (isNull()) {
             return default_value;
         } else {
             return *(double *)rawval();
         }
     }
-  
-    double absval() const { 
+
+    double absval() const {
         if (isNull()) {
             // 2006-06-30 EricAnderson, used to return just
             // default_value, but that seems inconsistent with what is
             // being done below, and different than how val() would
             // work.  Correct behavior seems to be unclear
-            return default_value + base_val; 
+            return default_value + base_val;
         } else {
             return val() + base_val;
         }
@@ -181,12 +181,12 @@ public:
         *(double *)rawval() = val;
         setNull(false);
     }
-  
+
     void setabs(double val) {
         *(double *)rawval() = val - base_val;
         setNull(false);
     }
-  
+
     double default_value;
     double base_val;
     virtual void newExtentType();
@@ -201,8 +201,8 @@ public:
     typedef ExtentType::int32 int32;
     static const std::string empty_string;
 
-    Variable32Field(ExtentSeries &_dataseries, const std::string &field, 
-		    int flags = 0, 
+    Variable32Field(ExtentSeries &_dataseries, const std::string &field,
+		    int flags = 0,
 		    const std::string &default_value = empty_string,
 		    bool auto_add = true);
 
@@ -276,7 +276,7 @@ protected:
     }
     static int32 size(Extent::ByteArray &varbytes, int32 varoffset) {
         return *(int32 *)(varbytes.begin() + varoffset);
-    }            
+    }
     static byte *val(Extent::ByteArray &varbytes, int32 varoffset) {
         return (byte *)vardata(varbytes,varoffset+4);
     }
@@ -286,7 +286,9 @@ protected:
     int32 getVarOffset() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
+#if defined(COMPILE_DEBUG) || defined(DEBUG)
         dataseries.pos.checkOffset(offset_pos);
+#endif
         int32 varoffset = getVarOffset(dataseries.pos.record_start(),
                                        offset_pos);
 #if defined(COMPILE_DEBUG) || defined(DEBUG)
@@ -306,7 +308,7 @@ protected:
         selfcheck(dataseries.extent()->variabledata,varoffset);
     }
     static void selfcheck(Extent::ByteArray &varbytes, int32 varoffset);
-    static void dosetandguard(byte *vardatapos, 
+    static void dosetandguard(byte *vardatapos,
                               const void *data, int32 datasize,
                               int32 roundup);
     static int32 roundupSize(int32 size) {

@@ -46,6 +46,7 @@ ExtentSeries::setType(const ExtentType &_type)
     if (type == &_type) {
 	return; // nothing to do, a valid but useless call
     }
+
     switch(typeCompatibility)
 	{
 	case typeExact:
@@ -103,32 +104,6 @@ void ExtentSeries::removeField(Field &field, bool must_exist)
 }
 
 void
-ExtentSeries::iterator::setPos(const void *_new_pos)
-{
-#ifdef LINTEL_ASSERT_BOOST_DEBUG
-    const byte *new_pos = static_cast<const byte *>(_new_pos);
-    byte *cur_begin = cur_extent->fixeddata.begin();
-    unsigned recnum = (new_pos - cur_begin) / recordsize;
-    INVARIANT(cur_extent != NULL, "no current extent?");
-    INVARIANT(new_pos >= cur_begin,
-	      "new pos before start");
-    INVARIANT(new_pos <= cur_extent->fixeddata.end(),
-	      "new pos after end");
-    size_t offset = new_pos - cur_begin;
-    INVARIANT(recnum * recordsize == offset,
-	      "new position not aligned to record boundary");
-    cur_pos = cur_begin + offset;
-#else
-    cur_pos = _new_pos;
-#endif
-}
-
-void ExtentSeries::iterator::relocate(Extent *extent, const void *position) {
-    cur_extent = extent;
-    cur_pos = static_cast<const byte *>(position);
-}
-
-void
 ExtentSeries::iterator::update(Extent *e)
 {
     if (e->type.fixedrecordsize() == recordsize) {
@@ -145,7 +120,6 @@ ExtentSeries::iterator::update(Extent *e)
 	cur_pos = begin_pos + recnum * recordsize;
     }
 }
-
 
 void
 ExtentSeries::iterator::forceCheckOffset(long offset)
