@@ -70,6 +70,9 @@ private:
         void resetIterator();
     };
 
+    /** A data class to hold data that is needed by an AbstractComparator. This cannot
+        be stored directly in AbstractComparator because std::sort copies the comparator
+        (once for each item!), resulting in a performance hit. */
     class ComparatorData {
     public:
         ComparatorData(const std::string &fieldName, FieldComparator &fieldComparator);
@@ -80,6 +83,7 @@ private:
         FieldType fieldRhs;
     };
 
+    /** A base class for comparators that wrap a user-specified FieldComparator. */
     class AbstractComparator {
     public:
         AbstractComparator(ComparatorData &data);

@@ -34,10 +34,11 @@ int main(int argc, const char *argv[]) {
     TypeIndexModule inputModule("Text");
     inputModule.addSource(argv[1]);
 
-    MemorySortModule<Variable32Field, StringFieldComparator>
-            sortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
+    //MemorySortModule<Variable32Field, StringFieldComparator>
+    //        sortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
     //SortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1 << 20, 1 << 30, "/tmp/sort");
-    //SortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1000 * 1000, 1000 * 1000 * 1000, "/tmp/sort");
+    SortModule<Variable32Field, StringFieldComparator>
+              sortModule(inputModule, "line", StringFieldComparator(), 1000 * 1000, 10 * 1000 * 1000);
 
     bool writeOutput = false;
     if (writeOutput) {
