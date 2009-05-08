@@ -15,6 +15,7 @@
 #include <DataSeries/MemorySortModule.hpp>
 #include <DataSeries/SortModule.hpp>
 #include <DataSeries/Extent.hpp>
+#include <DataSeries/ExtentWriter.hpp>
 
 class StringFieldComparator {
 public:
@@ -43,6 +44,7 @@ int main(int argc, const char *argv[]) {
     bool writeOutput = false;
     if (writeOutput) {
         DataSeriesSink sink(argv[2], Extent::compress_none, 0);
+        //ExtentWriter sink(argv[2], true);
         bool wroteLibrary = false;
         Extent *extent = NULL;
         while ((extent = sortModule.getExtent()) != NULL) {
@@ -53,6 +55,7 @@ int main(int argc, const char *argv[]) {
                 wroteLibrary = true;
             }
             sink.writeExtent(*extent, NULL);
+            //sink.writeExtent(extent);
             delete extent;
         }
         sink.close();

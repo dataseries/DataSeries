@@ -13,6 +13,8 @@
 #ifndef __DATASERIES_SORTMODULE_H
 #define __DATASERIES_SORTMODULE_H
 
+#include <stdlib.h>
+
 #include <string>
 #include <vector>
 #include <deque>
@@ -28,6 +30,8 @@
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/MemorySortModule.hpp>
+#include <DataSeries/ExtentWriter.hpp>
+#include <DataSeries/ExtentReader.hpp>
 
 // TODO-tomer: Document that this will do in memory or out-of-core
 // sort. Consider writing intermediate file to dataseries or not? I.e., is
@@ -47,6 +51,7 @@ public:
         \param extentSizeLimit The maximum size of the extents returned by getExtent. A value
                                of 0 indicates that a single extent should be returned.
         \param memoryLimit     The maximum amount of memory to use.
+        \param compressTemp    Whether or not LZF compression should be used on the merge files.
         \param tempFilePrefix  In case an external (two-phase) sort is required, @c SortModule will
                                create temporary DataSeries files. The files will be named by appending
                                an incrementing integer to the specified @param tempFilePrefix\. */
@@ -55,10 +60,8 @@ public:
                const FieldComparator &fieldComparator,
                size_t extentSizeLimit = 1 * 1000000, // 1 MB
                size_t memoryLimit = 2000 * 1000000, // 2 GB
-               // TODO-tomer: ask Eric if tempFilePrefix is "good enough" for
-               // merging. Other options include environment variables, program options,
-               // use of default values, and methods that create a unique file etc.
-               const std::string &tempFilePrefix = "/tmp/externalsort");
+               bool compressTemp = false,
+               const std::string &tempFilePrefix = "");
 
     virtual ~SortModule();
 
@@ -77,10 +80,13 @@ private:
 
     class SortedMergeFile {
     public:
-        SortedMergeFile(const std::string &file, const std::string &extentType);
-        void next();
-        std::string fileName; // TODO-tomer: fileName.
-        TypeIndexModule inputModule;
+        SortedMergeFile(const std::string &file, const ExtentType &extentType);
+        void open();
+
+        std::string fileName;
+        const ExtentType &extentType;
+
+        boost::shared_ptr<ExtentReader> inputModule;
         boost::shared_ptr<Extent> extent; // the extent that we're currently reading from
         const void *position; // where are we in the current extent?
     };
@@ -103,6 +109,7 @@ private:
     FieldComparator fieldComparator;
     size_t extentSizeLimit;
     size_t memoryLimit;
+    bool compressTemp;
     std::string tempFilePrefix;
 
     size_t bufferLimit;
@@ -126,14 +133,26 @@ SortModule(DataSeriesModule &upstreamModule,
            const FieldComparator &fieldComparator,
            size_t extentSizeLimit,
            size_t memoryLimit,
+           bool compressTemp,
            const std::string &tempFilePrefix)
     : initialized(false), external(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
-      extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit), tempFilePrefix(tempFilePrefix),
+      extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit),
+      compressTemp(compressTemp), tempFilePrefix(tempFilePrefix),
       bufferLimit(memoryLimit * 4 / 5), // this module has some overhead (we just assume 20%)
       memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
       sortedMergeFileQueue(boost::bind(&SortModule::compareSortedMergeFiles, this, _1, _2)),
       fieldLhs(seriesLhs, fieldName), fieldRhs(seriesRhs, fieldName) {
+    if (tempFilePrefix.empty()) {
+        char path[50];
+        strcpy(path, "/tmp/XXXXXX");
+        CHECKED(mkdtemp(path) != NULL,
+                boost::format("Unable to create the temporary directory '%s'") % path);
+        this->tempFilePrefix = path;
+        this->tempFilePrefix += "/sort";
+        LintelLogDebug("sortmodule", boost::format("Temporary files will have the prefix '%s'") %
+                       this->tempFilePrefix);
+    }
 }
 
 template <typename FieldType, typename FieldComparator>
@@ -200,32 +219,29 @@ createSortedFiles() {
         // create a new input file entry
         boost::shared_ptr<SortedMergeFile> sortedMergeFile(new SortedMergeFile(
                 tempFilePrefix + (boost::format("%d") % i++).str(),
-                extent->getType().getName()));
+                extent->getType()));
         sortedMergeFiles.push_back(sortedMergeFile);
 
         // create the sink
-        boost::shared_ptr<DataSeriesSink> sink(new DataSeriesSink(
-                sortedMergeFile->fileName,
-                Extent::compress_none,
-                0));
+        ExtentWriter sink(sortedMergeFile->fileName, compressTemp);
 
         LintelLogDebug("sortmodule",
                 boost::format("Created a temporary file for the external sort: %s") %
                 sortedMergeFile->fileName);
 
         // write the type library
-        ExtentTypeLibrary library;
-        library.registerType(extent->getType());
-        sink->writeExtentLibrary(library);
+        //ExtentTypeLibrary library;
+        //library.registerType(extent->getType());
+        //sink->writeExtentLibrary(library);
 
         do {
-            sink->writeExtent(*extent, NULL);
+            sink.writeExtent(extent);
             delete extent;
             extent = memorySortModule.getExtent();
         } while (extent != NULL);
 
         // close the sink
-        sink->close();
+        sink.close();
 
         if (lastFile) { // we know there's no more data
             break;
@@ -247,12 +263,7 @@ void SortModule<FieldType, FieldComparator>::
 prepareSortedMergeFiles() {
     // create the input modules and read/store the first extent from each one
     BOOST_FOREACH(boost::shared_ptr<SortedMergeFile> &sortedMergeFile, sortedMergeFiles) {
-        sortedMergeFile->extent.reset(sortedMergeFile->inputModule.getExtent());
-        INVARIANT(sortedMergeFile->extent.get() != NULL, "why do we have an empty file?");
-
-        ExtentSeries series(sortedMergeFile->extent.get());
-        sortedMergeFile->position = series.getCurPos();
-
+        sortedMergeFile->open();
         sortedMergeFileQueue.push(sortedMergeFile.get()); // add the file to our priority queue
     }
 }
@@ -292,7 +303,7 @@ createNextExtent() {
             Extent *nextExtent = NULL;
 
             do { // skip over any empty extents
-                nextExtent = sortedMergeFile->inputModule.getExtent();
+                nextExtent = sortedMergeFile->inputModule->getExtent();
                 if (nextExtent == NULL) {
                     break; // this input file is done
                 }
@@ -347,15 +358,19 @@ FeederModule::getExtent() {
 
 template <typename FieldType, typename FieldComparator>
 SortModule<FieldType, FieldComparator>::
-SortedMergeFile::SortedMergeFile(const std::string &fileName, const std::string &extentType)
-    : fileName(fileName), inputModule(extentType) {
-    inputModule.addSource(fileName);
+SortedMergeFile::SortedMergeFile(const std::string &fileName, const ExtentType &extentType)
+    : fileName(fileName), extentType(extentType) {
 }
 
 template <typename FieldType, typename FieldComparator>
 void SortModule<FieldType, FieldComparator>::
-SortedMergeFile::next() {
+SortedMergeFile::open() {
+    inputModule.reset(new ExtentReader(fileName, extentType));
+    extent.reset(inputModule->getExtent());
+    INVARIANT(extent.get() != NULL, "why do we have an empty file?");
 
+    ExtentSeries series(extent.get());
+    position = series.getCurPos();
 }
 
 #endif
