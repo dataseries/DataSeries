@@ -10,9 +10,6 @@
 
 using namespace std;
 
-// TODO-shirant: Why are these (FileHeader and ExtentHeaer) defined in the cpp? These look like
-// general(ish) datastructures?
-// Think if this actually works on 32 AND 64 bit given alignment and packing rules.  Maybe ask Eric
 struct FileHeader {
     char version[4];
     int32_t magic1;
@@ -20,7 +17,7 @@ struct FileHeader {
     double magic3;
     double magic4;
     double magic5;
-};
+} __attribute__((__packed__));
 
 struct ExtentHeader {
     uint32_t compressedFixedDataSize;
@@ -33,7 +30,7 @@ struct ExtentHeader {
     uint8_t variableDataCompressionType;
     uint8_t extentTypeNameLength;
     uint8_t zero;
-};
+} __attribute__((__packed__));
 
 SimpleSourceModule::SimpleSourceModule(const string &filename) :
         filename(filename), fd(-1), offset(0), extentCount(0), done(false) {
@@ -107,9 +104,7 @@ bool SimpleSourceModule::readExtent(string &typeName, Extent::ByteArray &fixedDa
     SINVARIANT(readFile(typeNameData, header->extentTypeNameLength));
     typeName = string((char*)typeNameData.begin(), header->extentTypeNameLength);
 
-    // TODO-shirant: Is there a / should there be a macro for alignment stuff? Should 4 be a const
-    // or defined elsewhere (so e.g. it can be 8 on a 64 bit machine)?
-    // Perhaps ask Eric
+    // TODO: add a macro for alignment for all of DataSeries
     offset += (4 - offset % 4) % 4; // 4-byte alignment
 
     // read the fixed data

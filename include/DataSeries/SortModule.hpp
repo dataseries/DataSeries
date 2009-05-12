@@ -33,10 +33,6 @@
 #include <DataSeries/ExtentWriter.hpp>
 #include <DataSeries/ExtentReader.hpp>
 
-// TODO-tomer: Document that this will do in memory or out-of-core
-// sort. Consider writing intermediate file to dataseries or not? I.e., is
-// there a simpler file format?
-
 /** A class that sorts input of any size. It uses an external (ie, two-phase) sort when there
     is too much data to do it in memory (the amount of available memory is an input parameter). */
 template <typename FieldType, typename FieldComparator>
