@@ -199,7 +199,6 @@ sortExtents() {
     // relocate method later instead of setExtent and setCurPos
     sortedExtentComparator.setExtent(sortedExtents[0]->extent.get());
 
-
     gettimeofday(&startSortTime, NULL);
 
     LintelLogDebug("memorysortmodule",

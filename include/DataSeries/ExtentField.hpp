@@ -130,6 +130,7 @@ public:
 #include <DataSeries/Int32Field.hpp>
 #include <DataSeries/Int64Field.hpp>
 #include <DataSeries/Int64TimeField.hpp>
+#include <DataSeries/FixedWidthField.hpp>
 
 /** \brief Accessor for double fields. */
 class DoubleField : public FixedField {

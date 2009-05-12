@@ -9,7 +9,7 @@ using namespace std;
 using boost::format;
 
 const string text_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Text\" version=\"1.0\" pack_pad_record=\"max_column_size\" pack_field_ordering=\"big_to_small_sep_var32\" comment=\"\" >\n"
+  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Text\" version=\"1.0\" comment=\"\" >\n"
   "  <field type=\"variable32\" name=\"line\" comment=\"one line of a text file\" />\n"
   "</ExtentType>"
   );

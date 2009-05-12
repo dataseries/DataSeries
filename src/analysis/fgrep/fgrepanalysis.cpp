@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <string.h>
 
+#include <Lintel/LintelLog.hpp>
+
 #include <DataSeries/RowAnalysisModule.hpp>
 #include <DataSeries/SimpleSourceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
@@ -50,7 +52,7 @@ public:
     }
 
     virtual void printResult() {
-	// TODO-shirant: consider boost::format; it is much type-safer (at compile time).  Internets abound with 
+	// TODO-shirant: consider boost::format; it is much type-safer (at compile time).  Internets abound with
 	// boost::format examples
         cout << "*** Found " << match_count << ((match_count == 1) ? " match " : " matches") << " in " << line_number << " lines (" << extent_count << " extents)" << endl;
     }
@@ -104,6 +106,7 @@ void printUsage(const char *command) {
 }
 
 int main(int argc, char* argv[]) {
+    LintelLog::parseEnv();
     if (argc < 3) {
         printUsage(argv[0]);
         return 1;

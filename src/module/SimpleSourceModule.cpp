@@ -1,18 +1,12 @@
-// TODO-shirant: The following is the preferred style for includes (group by project, list projects
-// from lowest level to highest level, list alphabetically within a project):
-// #include <stdio.h>
-// #include <fcntl.h>
-//
-// #include <Lintel/LintelLog.hpp>
-//
-// #include <DataSeries/Extent.hpp>
-// #include <DataSeries/SimpleSourceModule.hpp>
+#include <stdio.h>
+#include <fcntl.h>
+
+#include <boost/format.hpp>
+
+#include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/SimpleSourceModule.hpp>
 #include <DataSeries/Extent.hpp>
-#include <Lintel/LintelLog.hpp>
-#include <stdio.h>
-#include <fcntl.h>
 
 using namespace std;
 
@@ -42,7 +36,7 @@ struct ExtentHeader {
 };
 
 SimpleSourceModule::SimpleSourceModule(const string &filename) :
-        filename(filename), fd(-1), offset(0), extentCount(0) {
+        filename(filename), fd(-1), offset(0), extentCount(0), done(false) {
     init(); // better than working in the constructor due to gcc/gdb bug (no debug info for local variables in constructors)
 }
 
@@ -65,6 +59,7 @@ void SimpleSourceModule::init() {
     Variable32Field typevar(series, "xmltype");
     for (; series.pos.morerecords(); ++series.pos) {
         string xmltype = typevar.stringval();
+        LintelLogDebug("simplesourcemodule", boost::format("Type: %s") % xmltype);
         library.registerType(xmltype);
     }
     delete typeExtent;
@@ -82,7 +77,7 @@ void SimpleSourceModule::openFile() {
 }
 
 void SimpleSourceModule::closeFile() {
-    SINVARIANT(fd != 0);
+    SINVARIANT(fd != -1);
     close(fd);
 }
 
@@ -132,6 +127,10 @@ bool SimpleSourceModule::readExtent(string &typeName, Extent::ByteArray &fixedDa
 }
 
 Extent* SimpleSourceModule::getExtent() {
+    if (done) {
+        return NULL;
+    }
+
     Extent::ByteArray fixedData;
     Extent::ByteArray variableData;
 
@@ -143,8 +142,10 @@ Extent* SimpleSourceModule::getExtent() {
     ++extentCount;
 
     if (extentType == &ExtentType::getDataSeriesIndexTypeV0()) {
+        done = true;
         return NULL; // this is the index extent so we're done
     }
+
     Extent *extent = new Extent(*extentType);
     extent->extent_source = filename;
     extent->extent_source_offset = extentOffset;

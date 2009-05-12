@@ -43,6 +43,7 @@ private:
     uint64_t extentCount;
     const ExtentType *commonExtentType; // we really only support one type (this is how we'll know we've reached the end)
     ExtentTypeLibrary library;
+    bool done;
 };
 
 #endif

@@ -346,32 +346,10 @@ public:
     /** Returns the current Extent. */
     const Extent *curExtent() { return my_extent; }
 
-    class ExtentPosition {
-    public:
-        const void *position;
-        Extent *extent;
-    };
-
-    class IExtentPositionComparator {
-    public:
-        virtual ~IExtentPositionComparator() {}
-        virtual bool compare(const ExtentSeries::ExtentPosition &lhsExtentPosition,
-                const ExtentSeries::ExtentPosition &rhsExtentPosition) = 0;
-    };
-
-    void setRecordIndex(size_t index);
-    void setExtentPosition(const ExtentPosition &extentPosition);
-    ExtentPosition getExtentPosition();
-    void setExtents(const std::vector<Extent*> &extents);
-    void sortRecords(IExtentPositionComparator *comparator);
-    size_t getRecordCount();
-
 private:
     Extent *my_extent;
     const typeCompatibilityT typeCompatibility;
     std::vector<Field *> my_fields;
-
-    std::vector<ExtentPosition> indices;
 };
 
 #endif

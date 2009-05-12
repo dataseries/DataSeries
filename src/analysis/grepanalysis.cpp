@@ -8,61 +8,88 @@
 
 #include <string>
 #include <algorithm>
+#include <vector>
+#include <iostream>
 
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
 #include <Lintel/BoyerMooreHorspool.hpp>
 #include <Lintel/LintelLog.hpp>
+#include <Lintel/ProgramOptions.hpp>
 
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/GrepModule.hpp>
 #include <DataSeries/Extent.hpp>
+#include <DataSeries/SimpleSourceModule.hpp>
 
 using namespace std;
 
 class StringFieldMatcher {
 public:
-    StringFieldMatcher(const string &needle) : matcher(needle.c_str(), needle.size()) {
+    StringFieldMatcher(const string &needle)
+        : matcher(new BoyerMooreHorspool(needle.c_str(), needle.size())) {
     }
 
     bool operator()(const Variable32Field &field) {
-        return matcher.matches((const char*)field.val(), field.size());
+        return matcher->matches((const char*)field.val(), field.size());
     }
 
 private:
-    BoyerMooreHorspool matcher;
+    boost::shared_ptr<BoyerMooreHorspool> matcher;
 };
 
-int main(int argc, const char *argv[]) {
+lintel::ProgramOption<bool> countOnly("countOnly", "print match count but do not create output file");
+lintel::ProgramOption<bool> noCopy("noCopy", "use a specialized input module for non-compressed"
+                                                " data that does not memcpy");
+lintel::ProgramOption<string> extentTypeName("extentTypeName", "the extent type", string("Text"));
+lintel::ProgramOption<string> fieldName("fieldName", "the name of the field in which"
+                                                     " to search for the needle", string("line"));
+lintel::ProgramOption<string> needle("needle", "the substring to look for in each record");
+lintel::ProgramOption<string> inputFile("inputFile", "the path of the input file");
+lintel::ProgramOption<string> outputFile("outputFile", "the path of the output file", string());
+
+lintel::ProgramOption<bool> help("help", "get help");
+
+int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
-    const char *inputFile = argv[1];
-    const char *outputFile = argv[2];
-    const char *needle = argv[3];
-    bool countOnly = true;
+    // lintel::programOptionsHelp("arguments");
+    vector<string> args = lintel::parseCommandLine(argc, argv, false);
 
     LintelLogDebug("grepanalysis", "Starting grep analysis");
 
-    TypeIndexModule inputModule("Text");
-    inputModule.addSource(inputFile);
+    INVARIANT(countOnly.get() == (outputFile.get().empty()),
+              "outputFile should not be specified when countOnly is used.");
+    INVARIANT(!inputFile.get().empty(), "inputFile must be specified.");
+    INVARIANT(!needle.get().empty(), "needle must be specified.");
 
-    StringFieldMatcher fieldMatcher(needle);
-    string fieldName("line");
-    GrepModule grepModule(inputModule, fieldName, fieldMatcher);
+    auto_ptr<DataSeriesModule> inputModule;
+    if (noCopy.get()) {
+        inputModule.reset(new SimpleSourceModule(inputFile.get()));
+    } else {
+        TypeIndexModule *typeInputModule = new TypeIndexModule(extentTypeName.get());
+        typeInputModule->addSource(inputFile.get());
+        inputModule.reset(typeInputModule);
+    }
 
-    size_t count = 0;
-    if (!countOnly) {
+
+    StringFieldMatcher fieldMatcher(needle.get());
+    GrepModule<Variable32Field, StringFieldMatcher>
+        grepModule(*inputModule, fieldName.get(), fieldMatcher);
+
+    size_t matches = 0;
+    if (!countOnly.get()) {
         Extent *extent = grepModule.getExtent(); // the first extent
         if (extent != NULL) {
-            DataSeriesSink sink(outputFile, Extent::compress_none, 0);
+            DataSeriesSink sink(outputFile.get(), Extent::compress_none, 0);
             ExtentTypeLibrary library;
             library.registerType(extent->getType());
             sink.writeExtentLibrary(library);
 
             while (extent != NULL) {
                 sink.writeExtent(*extent, NULL);
-                count += extent->getRecordCount();
+                matches += extent->getRecordCount();
 
                 delete extent;
                 extent = grepModule.getExtent();
@@ -70,12 +97,12 @@ int main(int argc, const char *argv[]) {
             sink.close();
         }
     } else {
-        Extent *extent = NULL;
-        while ((extent = grepModule.getExtent()) != NULL) {
-            count += extent->getRecordCount();
+        Extent *extent = grepModule.getExtent();
+        while (extent != NULL) {
+            matches += extent->getRecordCount();
             delete extent;
+            extent = grepModule.getExtent();
         }
     }
-    LintelLogDebug("grepanalysis", boost::format("Found %d occurrence(s) of the string '%s'") % count % needle);
-
+    cerr << boost::format("Found %d occurrence(s) of the string '%s'") % matches % needle.get() << endl;
 }

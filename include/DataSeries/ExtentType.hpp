@@ -26,12 +26,12 @@
 #include <Lintel/Double.hpp>
 #include <Lintel/StringUtil.hpp>
 
-namespace dataseries { 
+namespace dataseries {
     struct xmlDecode; // Internal class for caching extent type translations.
 }
 /** \brief This class describes the format of records in an @c Extent.
 
-  * Provides the mapping from the DataSeries XML descriptions to 
+  * Provides the mapping from the DataSeries XML descriptions to
   *  - the total space used by the fixed size portion record.
   *  - the offsets of each member */
 class ExtentType : boost::noncopyable {
@@ -59,7 +59,7 @@ public:
             the type needs to be set later or to indicate a nonexistent
             value */
         ft_unknown = 0,
-        /** Indicates a field which can hold true and false values. 
+        /** Indicates a field which can hold true and false values.
             Corresponds to the C++ type @c bool. */
         ft_bool,
         /** Indicates a field which can hold values in the range [0, 256).
@@ -75,14 +75,16 @@ public:
             Corresponds to the C++ type @c double. */
         ft_double,
         /** Indicates a field which can store up to 2^31 bytes of data.
-            Most closely corresponds to the C++ type @c string. 
+            Most closely corresponds to the C++ type @c string.
 
 	    \internal Note that for alignment purposes @c variable32
 	    is considered a 4 byte type, because the fixed size
 	    portion is a 32 bit index into a string pool.  The first
 	    four bytes at the indicated position are the length of the
 	    string. */
-        ft_variable32
+        ft_variable32,
+        /** Indicates a fixed-width byte array. */
+        ft_fixedwidth
     };
 
     /** Determines which fields can be removed before compression when
@@ -90,7 +92,7 @@ public:
 
         \internal
         Might want CompactAll, so don't want a boolean here. */
-    enum PackNullCompact { 
+    enum PackNullCompact {
         /** When a field other than a boolean field is being
             compressed before being written to a file, first check to
             see whether it has been marked as null. If it is, skip
@@ -110,7 +112,7 @@ public:
         record the option in the type) if there are any 8 byte fields,
         or if the record size would otherwise be a multiple of 8
         bytes.
-       
+
         \internal
         If we want to enable use of SSE style extensions, may need an
         option to pad differently.  Could also do a PadTight, although
@@ -229,8 +231,8 @@ public:
         @c DoubleField::getabs and @c DoubleField::setabs use this. For
         example, if the double base is 100.0 and the value of a
         particular field is 1.0 than @c DoubleField::absval will
-        return 101.0. @c DoubleField::setabs does the reverse conversion. 
-	
+        return 101.0. @c DoubleField::setabs does the reverse conversion.
+
 	This option was created to allow for more precision of large
 	numbers, e.g. storing the current time in doubles with
 	nanosecond precision.  It is retained for backwards
@@ -294,7 +296,7 @@ public:
         fields or change field semantics.  This means that analysis
         code that can process version 1.x will work on any version 1.y
         for y >= x, but may or may not work on version 2.0.
-        
+
         \internal
         Update doc/tr/design.tex if you change this description. */
     bool versionCompatible(unsigned app_major, unsigned app_minor) const {
@@ -308,8 +310,8 @@ public:
     uint32_t minorVersion() const { return rep.minor_version; }
     /** Returns a flag indicating how null fields are compressed when
         writing to a file. */
-    PackNullCompact getPackNullCompact() const { 
-	return rep.pack_null_compact; 
+    PackNullCompact getPackNullCompact() const {
+	return rep.pack_null_compact;
     }
     /** Returns the name of the ExtentType. This corresponds the the "name"
         attribute in the XML. */
@@ -334,8 +336,8 @@ public:
 	int32 size, offset; // The nullable data
 	int32 null_offset;
 	int null_bitmask;
-	nullCompactInfo() : type(ft_unknown), field_num(0), 
-			    size(0), offset(0), 
+	nullCompactInfo() : type(ft_unknown), field_num(0),
+			    size(0), offset(0),
 			    null_offset(0), null_bitmask(0) { }
     };
 
@@ -344,14 +346,14 @@ public:
 	fieldType type;
 	// size is byte size used in the fixed record, bitpos is only
 	// valid for bool fields.
-	int32 size, offset, bitpos; 
+	int32 size, offset, bitpos;
 	int null_fieldnum;
 	bool unique;
 	nullCompactInfo *null_compact_info;
 	double doublebase;
 	xmlNodePtr xmldesc;
 	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      null_fieldnum(-1), unique(false), 
+		      null_fieldnum(-1), unique(false),
 		      null_compact_info(NULL), doublebase(0), xmldesc(NULL)
 	{ }
     };
@@ -384,7 +386,7 @@ private:
     struct pack_scaleT {
 	int field_num;
 	double scale, multiplier;
-	pack_scaleT(int a, double b) 
+	pack_scaleT(int a, double b)
 	    : field_num(a), scale(b), multiplier(1.0/b) {}
     };
     struct pack_other_relativeT {
@@ -397,8 +399,8 @@ private:
 	double scale,multiplier;
 	int32 int32_prev_v;
 	int64 int64_prev_v;
-	pack_self_relativeT(int a) 
-	    : field_num(a), double_prev_v(0), scale(1), multiplier(1), 
+	pack_self_relativeT(int a)
+	    : field_num(a), double_prev_v(0), scale(1), multiplier(1),
 	      int32_prev_v(0), int64_prev_v(0) {}
     };
 
@@ -413,13 +415,13 @@ private:
 
 	// mapping from visible fields (defined in the XML) to the actual
 	// field_info (which may have hidden fields)
-	std::vector<int> visible_fields; 
+	std::vector<int> visible_fields;
 	std::vector<fieldInfo> field_info;
 	std::vector<nullCompactInfo> nonbool_compact_info_size1,
-	    nonbool_compact_info_size4, nonbool_compact_info_size8; 
+	    nonbool_compact_info_size4, nonbool_compact_info_size8;
 	int bool_bytes;
 	std::vector<int32> variable32_field_columns;
-	
+
 	std::vector<pack_scaleT> pack_scale;
 	std::vector<pack_other_relativeT> pack_other_relative;
 	std::vector<pack_self_relativeT> pack_self_relative;
@@ -432,7 +434,7 @@ private:
 	PackFieldOrdering field_ordering;
 	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
     };
-    
+
     static int getColumnNumber(const ParsedRepresentation &rep,
 			       const std::string &column,
 			       bool missing_ok = true);
@@ -457,23 +459,23 @@ public:
     const std::string xmldesc;
     const xmlDocPtr field_desc_doc;
 private:
-    static void parsePackBitFields(ParsedRepresentation &ret, 
+    static void parsePackBitFields(ParsedRepresentation &ret,
 				   int32 &byte_pos);
-    static void parsePackByteFields(ParsedRepresentation &ret, 
+    static void parsePackByteFields(ParsedRepresentation &ret,
 				    int32 &byte_pos);
-    static void parsePackInt32Fields(ParsedRepresentation &ret, 
+    static void parsePackInt32Fields(ParsedRepresentation &ret,
 				     int32 &byte_pos);
-    static void parsePackVar32Fields(ParsedRepresentation &ret, 
+    static void parsePackVar32Fields(ParsedRepresentation &ret,
 				     int32 &byte_pos);
-    static void parsePackSize8Fields(ParsedRepresentation &ret, 
+    static void parsePackSize8Fields(ParsedRepresentation &ret,
 				     int32 &byte_pos);
 
-    
+
     /// \endcond INTERNAL_ONLY
 };
 
 /** \brief This class represents a group of ExtentTypes keyed by name.
-  
+
   * The primary use is to store the types from a single file.
   * All ExtentTypes are ultimately created by
   * @c ExtentTypeLibrary::sharedExtentType and thus survive the
@@ -501,13 +503,13 @@ public:
         in the @c ExtentTypeLibrary, returns a null pointer.
         Otherwise, it is an error if there is no @c ExtentType
         with the given name in the library */
-    const ExtentType *getTypeByName(const std::string &name, 
+    const ExtentType *getTypeByName(const std::string &name,
 				    bool null_ok = false);
     /** Find an ExtentType whose name begins with a known prefix.
         null_ok has the same meaning as in @c getTypeByName.
         Preconditions:
         - Only one type in the library matches. */
-    const ExtentType *getTypeByPrefix(const std::string &prefix, 
+    const ExtentType *getTypeByPrefix(const std::string &prefix,
 				      bool null_ok = false);
     /** Find an ExtentType whose name contains some substring.
         null_ok has the same meaning as in @c getTypeByName.
@@ -522,7 +524,7 @@ public:
 
     /** Stores the known @c ExtentType.  You should not modify this
         directly.  Use @c registerType.  The only time this map should
-        be used directly is to iterate over the library elements. 
+        be used directly is to iterate over the library elements.
 
 	\todo TODO: find some other way to do this so that people
 	can't do something bogus, e.g. return a const_iterator.

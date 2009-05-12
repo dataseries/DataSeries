@@ -6,7 +6,7 @@
 # cmake rules for the src/analysis/fgrep directory
 
 
-#DATASERIES_PROGRAM(fgrepanalysis BoyerMooreHorspool.cpp)
+DATASERIES_PROGRAM(fgrepanalysis BoyerMooreHorspool.cpp)
 
 # TODO-shirant: Remove these comments?
 # example of linking a module to a library
