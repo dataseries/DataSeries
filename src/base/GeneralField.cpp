@@ -274,7 +274,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << boost::format("%d") % gvval.v_int32;
 	    break;
 	case ExtentType::ft_int64:
-	    to << boost::format("%d") % gvval.v_int64;
+	    to << boost::format("%lld") % gvval.v_int64;
 	    break;
 	case ExtentType::ft_double:
 	    to << boost::format("%.12g") % gvval.v_double;
@@ -525,6 +525,10 @@ bool GF_Bool::isNull() {
     return myfield.isNull();
 }
 
+void GF_Bool::setNull(bool val) {
+    return myfield.setNull(val);
+}
+
 void GF_Bool::write(FILE *to) {
     if (myfield.isNull()) {
 	fprintf(to,"null");
@@ -636,6 +640,10 @@ bool GF_Byte::isNull() {
     return myfield.isNull();
 }
 
+void GF_Byte::setNull(bool val) {
+    return myfield.setNull(val);
+}
+
 void GF_Byte::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -729,6 +737,10 @@ void GF_Int32::write(std::ostream &to) {
 
 bool GF_Int32::isNull() {
     return myfield.isNull();
+}
+
+void GF_Int32::setNull(bool val) {
+    return myfield.setNull(val);
 }
 
 void GF_Int32::set(GeneralField *from) {
@@ -873,6 +885,10 @@ bool GF_Int64::isNull() {
     return myfield.isNull();
 }
 
+void GF_Int64::setNull(bool val) {
+    return myfield.setNull(val);
+}
+
 void GF_Int64::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -987,6 +1003,10 @@ void GF_Double::write(std::ostream &to) {
 
 bool GF_Double::isNull() {
     return myfield.isNull();
+}
+
+void GF_Double::setNull(bool val) {
+    return myfield.setNull(val);
 }
 
 void GF_Double::set(GeneralField *from) {
@@ -1125,6 +1145,10 @@ void GF_Variable32::write(std::ostream &to) {
 
 bool GF_Variable32::isNull() {
     return myfield.isNull();
+}
+
+void GF_Variable32::setNull(bool val) {
+    return myfield.setNull(val);
 }
 
 static const string str_true("true");
