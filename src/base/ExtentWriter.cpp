@@ -1,19 +1,20 @@
-#include <DataSeries/ExtentWriter.hpp>
-
-#include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
-
-#include <boost/format.hpp>
-
-#include <Lintel/LintelLog.hpp>
+#include <fcntl.h>
+#include <unistd.h>
 
 extern "C" {
 #include <lzf.h>
 }
 
+#include <boost/format.hpp>
+
+#include <Lintel/LintelLog.hpp>
+
+#include <DataSeries/ExtentWriter.hpp>
+
 ExtentWriter::ExtentWriter(const std::string &fileName, bool compress)
     : fd(-1), compress(compress) {
+    // TODO-tomer: 0666 -> 0640?
     fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_LARGEFILE, 0666);
     INVARIANT(fd >= 0, boost::format("Error opening file '%s' for write: %s")
               % fileName % strerror(errno));
@@ -43,12 +44,14 @@ void ExtentWriter::writeExtentBuffers(Extent::ByteArray &fixedData,
     uint32_t headers[3];
     headers[0] = compress ? 1 : 0;
     headers[1] = fixedData.size();
-    headers[2] = variableData.size(); // TOOD: should we be doing htonl?
+    headers[2] = variableData.size();
 
+    // Could use writeev (i.e., scatter gather) to do these three writes...
     writeBuffer(headers, sizeof(headers));
     writeBuffer(fixedData.begin(), fixedData.size());
     writeBuffer(variableData.begin(), variableData.size());
 
+    // TODO-tomer: cast fixage
     LintelLogDebug("extentwriter", boost::format("Wrote extent to file (header: %lu bytes, "
                    "fixed data: %lu bytes, variable data: %lu bytes)") %
                    (unsigned long)sizeof(headers) %
@@ -68,6 +71,7 @@ void ExtentWriter::writeBuffer(const void *buffer, size_t size) {
 
 void ExtentWriter::compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination) {
     destination.resize(source.size() + sizeof(uint32_t), false);
+    // TODO-tomer: cast
     ((uint32_t*)destination.begin())[0] = source.size();
     unsigned int ret = lzf_compress(source.begin(), source.size(),
                                     destination.begin() + sizeof(uint32_t),
@@ -79,7 +83,9 @@ void ExtentWriter::compressBuffer(Extent::ByteArray &source, Extent::ByteArray &
 }
 
 void ExtentWriter::close() {
-    if (fd == -1) return;
+    if (fd == -1) {
+        return;
+    }
     CHECKED(::close(fd) == 0,
             boost::format("Close failed: %s") % strerror(errno));
     fd = -1;

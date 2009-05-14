@@ -30,21 +30,16 @@ public:
 
 int main(int argc, const char *argv[]) {
     LintelLog::parseEnv();
-    LintelLogDebug("mapreducedemo", "Hi!");
 
     TypeIndexModule inputModule("Text");
     inputModule.addSource(argv[1]);
 
-    //MemorySortModule<Variable32Field, StringFieldComparator>
-    //        sortModule(inputModule, "line", StringFieldComparator(), 1 << 20);
-    //SortModule<Variable32Field> sortModule(inputModule, "line", StringFieldComparator(), 1 << 20, 1 << 30, "/tmp/sort");
     SortModule<Variable32Field, StringFieldComparator>
               sortModule(inputModule, "line", StringFieldComparator(), 1000 * 1000, 10 * 1000 * 1000);
 
     bool writeOutput = false;
     if (writeOutput) {
         DataSeriesSink sink(argv[2], Extent::compress_none, 0);
-        //ExtentWriter sink(argv[2], true);
         bool wroteLibrary = false;
         Extent *extent = NULL;
         while ((extent = sortModule.getExtent()) != NULL) {
@@ -55,7 +50,6 @@ int main(int argc, const char *argv[]) {
                 wroteLibrary = true;
             }
             sink.writeExtent(*extent, NULL);
-            //sink.writeExtent(extent);
             delete extent;
         }
         sink.close();

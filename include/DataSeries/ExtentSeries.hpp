@@ -323,6 +323,8 @@ public:
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;
+        // Note in the "old api" constness is cast away. In the future the old
+        // api should be deprecated.
 	const byte *cur_pos;
 	unsigned recordsize;
     };

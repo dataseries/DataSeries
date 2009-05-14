@@ -6,7 +6,8 @@
 */
 
 /** @file
-    A simple class for serializing extents to temporary files.
+    A simple class for serializing temporary extents to temporary files. It is used in
+    conjunction with ExtentReader.
     This class supports LZF compression.
 */
 

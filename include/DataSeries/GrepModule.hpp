@@ -26,8 +26,9 @@ public:
                const std::string &fieldName,
                const FieldMatcher &fieldMatcher);
 
+    /// Currently returns exactly one extent. If your grep is non-selective,
+    /// this extent could be very large.
     Extent *getExtent();
-
 private:
     DataSeriesModule &upstreamModule;
     std::string fieldName;

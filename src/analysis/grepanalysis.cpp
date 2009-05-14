@@ -1,3 +1,4 @@
+// TODO-tomer: standard copyright notice?
 /*
  * grepanalysis.cpp
  *
@@ -42,7 +43,7 @@ private:
 
 lintel::ProgramOption<bool> countOnly("countOnly", "print match count but do not create output file");
 lintel::ProgramOption<bool> noCopy("noCopy", "use a specialized input module for non-compressed"
-                                                " data that does not memcpy");
+                                             " data that does not memcpy");
 lintel::ProgramOption<string> extentTypeName("extentTypeName", "the extent type", string("Text"));
 lintel::ProgramOption<string> fieldName("fieldName", "the name of the field in which"
                                                      " to search for the needle", string("line"));
@@ -54,13 +55,12 @@ lintel::ProgramOption<bool> help("help", "get help");
 
 int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
-    // lintel::programOptionsHelp("arguments");
     vector<string> args = lintel::parseCommandLine(argc, argv, false);
 
     LintelLogDebug("grepanalysis", "Starting grep analysis");
 
     INVARIANT(countOnly.get() == (outputFile.get().empty()),
-              "outputFile should not be specified when countOnly is used.");
+              "Precisely one of outputFile and countOnly must be specified.");
     INVARIANT(!inputFile.get().empty(), "inputFile must be specified.");
     INVARIANT(!needle.get().empty(), "needle must be specified.");
 

@@ -25,16 +25,16 @@
 
 #include <Lintel/PriorityQueue.hpp>
 
-#include <DataSeries/DataSeriesModule.hpp>
-#include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/ExtentReader.hpp>
+#include <DataSeries/ExtentWriter.hpp>
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/MemorySortModule.hpp>
-#include <DataSeries/ExtentWriter.hpp>
-#include <DataSeries/ExtentReader.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 /** A class that sorts input of any size. It uses an external (ie, two-phase) sort when there
-    is too much data to do it in memory (the amount of available memory is an input parameter). */
+    if too much data to do it in memory (the amount of available memory is an input parameter). */
 template <typename FieldType, typename FieldComparator>
 class SortModule : public DataSeriesModule {
 public:
@@ -135,6 +135,8 @@ SortModule(DataSeriesModule &upstreamModule,
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit),
       compressTemp(compressTemp), tempFilePrefix(tempFilePrefix),
+      // TODO-tomer: I suggest documenting that buffer limit ONLY limits the
+      // mem of buffers. Then document overhead and let the user live with the consequences.
       bufferLimit(memoryLimit * 4 / 5), // this module has some overhead (we just assume 20%)
       memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
       sortedMergeFileQueue(boost::bind(&SortModule::compareSortedMergeFiles, this, _1, _2)),
@@ -224,11 +226,6 @@ createSortedFiles() {
         LintelLogDebug("sortmodule",
                 boost::format("Created a temporary file for the external sort: %s") %
                 sortedMergeFile->fileName);
-
-        // write the type library
-        //ExtentTypeLibrary library;
-        //library.registerType(extent->getType());
-        //sink->writeExtentLibrary(library);
 
         do {
             sink.writeExtent(extent);

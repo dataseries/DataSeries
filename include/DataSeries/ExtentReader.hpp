@@ -6,7 +6,8 @@
 */
 
 /** @file
-    A simple class for reading extents from temporary files.
+    A simple class for reading temporary extents from files. It is used in
+    conjunction with ExtentWriter.
     This class supports LZF compression.
 */
 

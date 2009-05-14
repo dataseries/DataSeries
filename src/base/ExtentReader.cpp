@@ -1,16 +1,16 @@
-#include <DataSeries/ExtentReader.hpp>
-
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+
+extern "C" {
+#include <lzf.h>
+}
 
 #include <boost/format.hpp>
 
 #include <Lintel/LintelLog.hpp>
 
-extern "C" {
-#include <lzf.h>
-}
+#include <DataSeries/ExtentReader.hpp>
 
 ExtentReader::ExtentReader(const std::string &fileName, const ExtentType &extentType)
     : fd(-1), extentType(extentType), offset(0) {
@@ -31,14 +31,14 @@ Extent *ExtentReader::getExtent() {
     LintelLogDebug("extentreader", boost::format("Reading extent from disk (comrpessed/fixed/variable): %lu/%lu/%lu") % headers[0] % headers[1] % headers[2]);
 
     Extent *extent = new Extent(extentType);
-    extent->fixeddata.resize(headers[1]);
-    extent->variabledata.resize(headers[2]);
     readExtentBuffers(headers[0] == 1, headers[1], headers[2], extent->fixeddata, extent->variabledata);
     return extent;
 }
 
 void ExtentReader::close() {
-    if (fd == -1) return;
+    if (fd == -1) {
+        return;
+    }
     CHECKED(::close(fd) == 0,
             boost::format("Close failed: %s") % strerror(errno));
     fd = -1;
@@ -72,6 +72,8 @@ void ExtentReader::readExtentBuffers(bool compress,
 }
 
 void ExtentReader::decompressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination) {
+    // TODO-tomer: fix all casts to be c++ type casts (static, reinterpret,
+    // dynamic, etc.). 
     destination.resize(*((uint32_t*)source.begin()));
     unsigned int ret = lzf_decompress(source.begin() + sizeof(uint32_t), source.size() - sizeof(uint32_t),
                                       destination.begin(), destination.size());
@@ -83,10 +85,13 @@ void ExtentReader::decompressBuffer(Extent::ByteArray &source, Extent::ByteArray
 }
 
 bool ExtentReader::readBuffer(void *buffer, size_t size) {
+    // TODO-tomer: look into whether pread64 takes an ssize_t or a size_t and fix/document.
     ssize_t ret = pread64(fd, buffer, size, offset);
     INVARIANT(ret != -1, boost::format("Error reading %lu bytes: %s") %
               size % strerror(errno));
-    if (ret == 0) return false;
+    if (ret == 0) {
+        return false;
+    }
     offset += size;
     INVARIANT((size_t)ret == size, boost::format("Partial read %ld of %lu bytes: %s")
               % ret % size % strerror(errno));
