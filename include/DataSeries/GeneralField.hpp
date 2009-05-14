@@ -253,7 +253,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     // set(bool) -> copy
     // set(byte,int32,int64,double) -> val = from->val == 0
@@ -288,7 +288,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     // set(bool) -> 1 if true, 0 if false
     // set(byte, int32, int64) -> val = from->val & 0xFF;
@@ -314,7 +314,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -345,7 +345,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -371,7 +371,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -396,7 +396,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
-    virtual void setNull(bool val = true);
+    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
