@@ -594,7 +594,7 @@ ExtentType::parseXML(const string &xmldesc)
 	}
 	switch(n.type)
 	    {
-	    case ft_byte:
+	    case ft_byte: case ft_fixedwidth:
 		ret.nonbool_compact_info_size1.push_back(n);
 		break;
 	    case ft_int32: case ft_variable32:
@@ -603,7 +603,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    case ft_int64: case ft_double:
 		ret.nonbool_compact_info_size8.push_back(n);
 		break;
-	    default: FATAL_ERROR("?");
+	    default: FATAL_ERROR(boost::format("Unrecognized type: %s") % n.type);
 	    }
     }
 
