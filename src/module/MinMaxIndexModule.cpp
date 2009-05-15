@@ -36,8 +36,8 @@ static bool intervalOverlap(const GeneralValue &a_min, const GeneralValue &a_max
 
 void
 MinMaxIndexModule::init(const std::string &index_filename,
-			std::vector<selector> &intersection_list,
-			const std::string &sort_fieldname)
+                                    std::vector<selector> &intersection_list,
+                                    const std::string &sort_fieldname)
 {
     TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
     tim.addSource(index_filename);
@@ -46,6 +46,7 @@ MinMaxIndexModule::init(const std::string &index_filename,
     Variable32Field filename(s,"filename");
     Int64Field extent_offset(s,"extent_offset");
     GeneralField *sort_val = NULL;
+
     while(true) {
 	Extent *e = tim.getExtent();
 	if (e == NULL) {
@@ -66,31 +67,55 @@ MinMaxIndexModule::init(const std::string &index_filename,
 	}
 	for(;s.pos.morerecords();++s.pos) {
 	    bool all_overlap = true;
+	    bool any_overlap = false;
 	    GeneralValue extent_sort(sort_val);
 	    for(unsigned i=0;i<intersection_list.size();++i) {
 		selector &sel = intersection_list[i];
 		GeneralValue extent_min(sel.minf);
 		GeneralValue extent_max(sel.maxf);
+
 		if (false == intervalOverlap(extent_min,extent_max,sel.minv,sel.maxv)) {
 		    all_overlap = false;
-		    break;
-		}
+                    any_overlap |= false;
+                    if (!use_or) {
+                        break;
+                    }
+		} else {
+                    any_overlap |= true;
+                }
 	    }
-	    if (all_overlap) {
-		if (false) {
-		    cout << format("keep %s @ %d\n")
-			% filename.stringval() % extent_offset.val();
-		}
-		kept_extents.push_back(kept_extent(filename.stringval(),
-						   extent_offset.val(),
-						   extent_sort));
-	    } else {
-		if (false) {
-		    cout << format("skip %s @ %d\n")
-			% filename.stringval() % extent_offset.val();
-		}
-	    }
-	}
+	    if (!use_or) {
+                if (all_overlap) {
+                    if (false) {
+                        cout << format("keep %s @ %d\n")
+                            % filename.stringval() % extent_offset.val();
+                    }
+                    kept_extents.push_back(kept_extent(filename.stringval(),
+                                                       extent_offset.val(),
+                                                       extent_sort));
+                } else {
+                    if (false) {
+                        cout << format("skip %s @ %d\n")
+                            % filename.stringval() % extent_offset.val();
+                    }
+                }
+            } else {
+                if (any_overlap) {
+                    if (false) {
+                        cout << format("keep %s @ %d\n")
+                            % filename.stringval() % extent_offset.val();
+                    }
+                    kept_extents.push_back(kept_extent(filename.stringval(),
+                                                       extent_offset.val(),
+                                                       extent_sort));
+                } else {
+                    if (false) {
+                        cout << format("skip %s @ %d\n")
+                            % filename.stringval() % extent_offset.val();
+                    }
+                }
+            }
+        }
 	delete e;
     }
     for(unsigned i=0;i<intersection_list.size();++i) {
@@ -111,7 +136,7 @@ MinMaxIndexModule::MinMaxIndexModule(const string &index_filename,
 				     const string &max_fieldname,
 				     const string &sort_fieldname)
     : IndexSourceModule(), index_type(_index_type), 
-      cur_extent(0), cur_source(NULL)
+      cur_extent(0), cur_source(NULL), use_or(false)
 {
     vector<selector> tmp;
     selector foo(minv,maxv,min_fieldname,max_fieldname);
@@ -124,7 +149,18 @@ MinMaxIndexModule::MinMaxIndexModule(const std::string &index_filename,
 				     std::vector<selector> intersection_list,
 				     const std::string &sort_fieldname)
     : IndexSourceModule(), index_type(_index_type), 
-      cur_extent(0), cur_source(NULL)
+      cur_extent(0), cur_source(NULL), use_or(false)
+{
+    init(index_filename,intersection_list,sort_fieldname);
+}
+
+MinMaxIndexModule::MinMaxIndexModule(const std::string &index_filename,
+				     const std::string &_index_type,
+				     std::vector<selector> intersection_list,
+                                     const std::string &sort_fieldname,
+                                     const bool _use_or)
+    : IndexSourceModule(), index_type(_index_type), 
+      cur_extent(0), cur_source(NULL), use_or(_use_or)
 {
     init(index_filename,intersection_list,sort_fieldname);
 }

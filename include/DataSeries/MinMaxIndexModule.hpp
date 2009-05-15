@@ -76,12 +76,23 @@ public:
     };
 
 
-    /** selects extents where all selectors overlap (intersection)
-	rules for the values as per the other constructor */
+    /** selects extents where selectors overlap.  If use_or is false,
+        then it selects extents where all selectors overlap
+        (intersection).  If use_or is true, if selects extents where
+        any of the selectors overlap (union).  Rules for the values as
+        per the other constructor */
     MinMaxIndexModule(const std::string &index_filename,
-		      const std::string &index_type,
-		      std::vector<selector> intersection_list,
-		      const std::string &sort_fieldname);
+                      const std::string &index_type,
+                      std::vector<selector> intersection_list,
+                      const std::string &sort_fieldname,
+                      const bool _use_or);
+
+    /** selects extents where all selectors overlap (intersection).
+        Rules for the values as per the other constructor */
+    MinMaxIndexModule(const std::string &index_filename,
+                      const std::string &index_type,
+                      std::vector<selector> intersection_list,
+                      const std::string &sort_fieldname);
 
 protected:
     virtual void lockedResetModule();
@@ -98,6 +109,7 @@ private:
     unsigned cur_extent;
     DataSeriesSource *cur_source;
     std::string cur_source_filename;
+    bool use_or;
 };
 
 #endif
