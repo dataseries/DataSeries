@@ -526,7 +526,7 @@ bool GF_Bool::isNull() {
 }
 
 void GF_Bool::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 void GF_Bool::write(FILE *to) {
@@ -641,7 +641,7 @@ bool GF_Byte::isNull() {
 }
 
 void GF_Byte::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 void GF_Byte::set(GeneralField *from) {
@@ -740,7 +740,7 @@ bool GF_Int32::isNull() {
 }
 
 void GF_Int32::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 void GF_Int32::set(GeneralField *from) {
@@ -886,7 +886,7 @@ bool GF_Int64::isNull() {
 }
 
 void GF_Int64::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 void GF_Int64::set(GeneralField *from) {
@@ -1006,7 +1006,7 @@ bool GF_Double::isNull() {
 }
 
 void GF_Double::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 void GF_Double::set(GeneralField *from) {
@@ -1148,7 +1148,7 @@ bool GF_Variable32::isNull() {
 }
 
 void GF_Variable32::setNull(bool val) {
-    return myfield.setNull(val);
+    myfield.setNull(val);
 }
 
 static const string str_true("true");
