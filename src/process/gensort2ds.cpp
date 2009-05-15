@@ -2,8 +2,10 @@
 #include <fstream>
 #include <string>
 
-#include <DataSeries/DataSeriesModule.hpp>
+#include <Lintel/LintelLog.hpp>
+
 #include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 using namespace std;
 using boost::format;
@@ -23,9 +25,10 @@ FixedWidthField value(series, "value");
 int
 main(int argc,char *argv[])
 {
+    LintelLog::parseEnv();
     commonPackingArgs packing_args;
     getPackingArgs(&argc, argv, &packing_args);
-    INVARIANT(argc == 4,
+    INVARIANT(argc == 3,
         format("Usage: %s [ds-common-args] inname outdsname")
         % argv[0]);
 
@@ -42,18 +45,20 @@ main(int argc,char *argv[])
     int64_t record_count = 0;
 
     uint8_t record[100];
+    infile.read((char*)record, 100);
     while (!infile.eof()) {
-        infile.read((char*)record, 100);
         outmodule->newRecord();
         key.set(record + 0);
         value.set(record + 10);
         ++record_count;
+        LintelLogDebug("gensort2ds", boost::format("Processed record #%s") % record_count);
+        infile.read((char*)record, 100);
     }
 
     delete outmodule;
     outds.close();
 
-    cout << "Finished writing " << record_count << " records/lines" << endl;
+    cout << "Finished writing " << record_count << " records" << endl;
 
     infile.close();
     return 0;
