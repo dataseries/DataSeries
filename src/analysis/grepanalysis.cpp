@@ -1,11 +1,8 @@
-// TODO-tomer: standard copyright notice?
 /*
- * grepanalysis.cpp
- *
- *  Created on: May 5, 2009
- *      Author: shirant
- */
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
+   See the file named COPYING for license details
+*/
 
 #include <string>
 #include <algorithm>

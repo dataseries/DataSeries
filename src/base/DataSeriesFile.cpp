@@ -274,12 +274,12 @@ DataSeriesSink::close()
     available_write_cond.broadcast();
     mutex.unlock();
 
-    // TODO-tomer: while not empty pop_front.  then invariant compressors.empty().
     for(vector<PThread *>::iterator i = compressors.begin();
 	i != compressors.end(); ++i) {
 	(**i).join();
 	delete *i;
     }
+    compressors.clear();
     writer->join();
     delete writer;
     writer=NULL;

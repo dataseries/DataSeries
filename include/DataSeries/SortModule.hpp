@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <iostream>
 
 #include <boost/shared_ptr.hpp>
 #include <boost/format.hpp>
@@ -33,6 +34,7 @@
 #include <DataSeries/MemorySortModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
+
 /** A class that sorts input of any size. It uses an external (ie, two-phase) sort when there
     if too much data to do it in memory (the amount of available memory is an input parameter). */
 template <typename FieldType, typename FieldComparator>
@@ -46,7 +48,8 @@ public:
         \param fieldComparator The comparison (less-than) function for comparing two fields.
         \param extentSizeLimit The maximum size of the extents returned by getExtent. A value
                                of 0 indicates that a single extent should be returned.
-        \param memoryLimit     The maximum amount of memory to use.
+        \param memoryLimit     The maximum amount of memory to use for the upstream buffers. Note
+                               that some overhead should be assumed.
         \param compressTemp    Whether or not LZF compression should be used on the merge files.
         \param tempFilePrefix  In case an external (two-phase) sort is required, @c SortModule will
                                create temporary DataSeries files. The files will be named by appending
@@ -106,9 +109,8 @@ private:
     size_t extentSizeLimit;
     size_t memoryLimit;
     bool compressTemp;
+    std::string tempFileDir;
     std::string tempFilePrefix;
-
-    size_t bufferLimit;
 
     FeederModule feederModule;
     MemorySortModule<FieldType, FieldComparator> memorySortModule;
@@ -135,19 +137,17 @@ SortModule(DataSeriesModule &upstreamModule,
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit), memoryLimit(memoryLimit),
       compressTemp(compressTemp), tempFilePrefix(tempFilePrefix),
-      // TODO-tomer: I suggest documenting that buffer limit ONLY limits the
-      // mem of buffers. Then document overhead and let the user live with the consequences.
-      bufferLimit(memoryLimit * 4 / 5), // this module has some overhead (we just assume 20%)
       memorySortModule(feederModule, fieldName, fieldComparator, extentSizeLimit),
       sortedMergeFileQueue(boost::bind(&SortModule::compareSortedMergeFiles, this, _1, _2)),
       fieldLhs(seriesLhs, fieldName), fieldRhs(seriesRhs, fieldName) {
     if (tempFilePrefix.empty()) {
         char path[50];
-        strcpy(path, "/tmp/XXXXXX");
+        strcpy(path, "/tmp/sortXXXXXX");
         CHECKED(mkdtemp(path) != NULL,
                 boost::format("Unable to create the temporary directory '%s'") % path);
+        this->tempFileDir = path;
         this->tempFilePrefix = path;
-        this->tempFilePrefix += "/sort";
+        this->tempFilePrefix += "/batch";
         LintelLogDebug("sortmodule", boost::format("Temporary files will have the prefix '%s'") %
                        this->tempFilePrefix);
     }
@@ -156,6 +156,10 @@ SortModule(DataSeriesModule &upstreamModule,
 template <typename FieldType, typename FieldComparator>
 SortModule<FieldType, FieldComparator>::
 ~SortModule() {
+    if (!tempFileDir.empty()) {
+        LintelLogDebug("sortmodule", boost::format("Removing the temporary directory %s") % tempFileDir);
+        rmdir(tempFileDir.c_str());
+    }
 }
 
 template <typename FieldType, typename FieldComparator>
@@ -180,6 +184,7 @@ retrieveExtents() {
     size_t totalSize = 0;
     Extent *extent = upstreamModule.getExtent();
     if (extent == NULL) {
+        LintelLogDebug("sortmodule", boost::format("Empty buffer"));
         return false;
     }
 
@@ -187,17 +192,18 @@ retrieveExtents() {
     totalSize = firstSize;
     feederModule.addExtent(extent);
 
-    while (totalSize + firstSize <= bufferLimit) {
+    while (totalSize + firstSize <= memoryLimit) {
         // we have space to read another extent (assuming they are all the same size)
         extent = upstreamModule.getExtent();
         if (extent == NULL) {
+            LintelLogDebug("sortmodule", boost::format("Partially full buffer: %d bytes") % totalSize);
             return false;
         }
         totalSize += extent->size();
         feederModule.addExtent(extent);
     }
 
-    LintelLogDebug("sortmodule", boost::format("Filled up the buffer with %d bytes") % totalSize);
+    LintelLogDebug("sortmodule", boost::format("Full buffer: %d bytes") % totalSize);
 
     return true; // and do not delete extent (we're passing it as-is to memorySortModule)
 }
@@ -307,6 +313,7 @@ createNextExtent() {
                 sortedMergeFileQueue.pop();
                 sortedMergeFile->extent.reset(); // be nice and clean up!
                 sortedMergeFile->position = NULL;
+                unlink(sortedMergeFile->fileName.c_str()); // delete this temporary file
             } else { // more records available in a new extent
                 sortedMergeFile->extent.reset(nextExtent);
                 sortedMergeFile->position = sourceSeries.getCurPos();

@@ -100,7 +100,7 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 	}
 
 	// we're done with the current DS file (no more records in the index)
-	if (indexSeries.pos.morerecords() == false) { // TODO-shirant: isn't this always false?  Ask Eric
+	if (indexSeries.pos.morerecords() == false) { // TODO: isn't this always false?
 	    indexSeries.clearExtent();
 	    delete cur_source; // release resources associated with current DS file (eg, index extent)
 	    cur_source = NULL;

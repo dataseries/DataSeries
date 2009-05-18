@@ -1,6 +1,4 @@
 // -*-C++-*-
-// TODO-tomer: ask Eric how he wants this copyright header to read for your
-// stuff. (or make Jay follow up.)
 /*
    (c) Copyright 2009, Hewlett-Packard Development Company, LP
 

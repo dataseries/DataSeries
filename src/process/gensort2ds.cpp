@@ -28,6 +28,7 @@ main(int argc,char *argv[])
     LintelLog::parseEnv();
     commonPackingArgs packing_args;
     getPackingArgs(&argc, argv, &packing_args);
+
     INVARIANT(argc == 3,
         format("Usage: %s [ds-common-args] inname outdsname")
         % argv[0]);
@@ -39,6 +40,9 @@ main(int argc,char *argv[])
     ExtentTypeLibrary library;
     const ExtentType *extent_type = library.registerType(text_xml);
     series.setType(*extent_type);
+
+    LintelLogDebug("gensort2ds", format("Creating output file with extent size: %s") % packing_args.extent_size);
+
     outmodule = new OutputModule(outds, series, extent_type, packing_args.extent_size);
     outds.writeExtentLibrary(library);
 
@@ -51,7 +55,6 @@ main(int argc,char *argv[])
         key.set(record + 0);
         value.set(record + 10);
         ++record_count;
-        LintelLogDebug("gensort2ds", boost::format("Processed record #%s") % record_count);
         infile.read((char*)record, 100);
     }
 

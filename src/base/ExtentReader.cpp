@@ -1,3 +1,9 @@
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -10,6 +16,7 @@ extern "C" {
 
 #include <Lintel/LintelLog.hpp>
 
+#include <DataSeries/ExtentIO.hpp>
 #include <DataSeries/ExtentReader.hpp>
 
 ExtentReader::ExtentReader(const std::string &fileName, const ExtentType &extentType)
@@ -24,14 +31,13 @@ ExtentReader::~ExtentReader() {
 }
 
 Extent *ExtentReader::getExtent() {
-    uint32_t headers[3];
-    if (!readBuffer(headers, sizeof(headers))) {
+    ExtentDataHeader header;
+    if (!readBuffer(&header, sizeof(header))) {
         return NULL;
     }
-    LintelLogDebug("extentreader", boost::format("Reading extent from disk (comrpessed/fixed/variable): %lu/%lu/%lu") % headers[0] % headers[1] % headers[2]);
 
     Extent *extent = new Extent(extentType);
-    readExtentBuffers(headers[0] == 1, headers[1], headers[2], extent->fixeddata, extent->variabledata);
+    readExtentBuffers(header, extent->fixeddata, extent->variabledata);
     return extent;
 }
 
@@ -44,56 +50,50 @@ void ExtentReader::close() {
     fd = -1;
 }
 
-void ExtentReader::readExtentBuffers(bool compress,
-                                     size_t compressedFixedDataSize,
-                                     size_t compressedVariableDataSize,
+void ExtentReader::readExtentBuffers(const ExtentDataHeader &header,
                                      Extent::ByteArray &fixedData,
                                      Extent::ByteArray &variableData) {
-    if (!compress) {
-        fixedData.resize(compressedFixedDataSize);
-        variableData.resize(compressedVariableDataSize);
-
-        readBuffer(fixedData.begin(), compressedFixedDataSize);
-        readBuffer(variableData.begin(), compressedVariableDataSize);
-        return;
+    if (!header.fixedDataCompressed) {
+        fixedData.resize(header.fixedDataSize);
+        readBuffer(fixedData.begin(), header.fixedDataSize);
+    } else {
+        Extent::ByteArray compressedFixedData;
+        compressedFixedData.resize(header.fixedDataSize);
+        CHECKED(readBuffer(compressedFixedData.begin(), header.fixedDataSize), "Unable to read fixed data");
+        decompressBuffer(compressedFixedData, fixedData);
     }
 
-    Extent::ByteArray compressedFixedData;
-    Extent::ByteArray compressedVariableData;
-
-    compressedFixedData.resize(compressedFixedDataSize);
-    compressedVariableData.resize(compressedVariableDataSize);
-
-    CHECKED(readBuffer(compressedFixedData.begin(), compressedFixedDataSize), "Unable to read fixed data");
-    CHECKED(readBuffer(compressedVariableData.begin(), compressedVariableDataSize), "Unable to read variable data");
-
-    decompressBuffer(compressedFixedData, fixedData);
-    decompressBuffer(compressedVariableData, variableData);
+    if (!header.variableDataCompressed) {
+        variableData.resize(header.variableDataSize);
+        readBuffer(variableData.begin(), header.variableDataSize);
+    } else {
+        Extent::ByteArray compressedVariableData;
+        compressedVariableData.resize(header.variableDataSize);
+        CHECKED(readBuffer(compressedVariableData.begin(), header.variableDataSize), "Unable to read variable data");
+        decompressBuffer(compressedVariableData, variableData);
+    }
 }
 
 void ExtentReader::decompressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination) {
-    // TODO-tomer: fix all casts to be c++ type casts (static, reinterpret,
-    // dynamic, etc.). 
-    destination.resize(*((uint32_t*)source.begin()));
+    destination.resize(*(reinterpret_cast<uint32_t*>(source.begin())));
     unsigned int ret = lzf_decompress(source.begin() + sizeof(uint32_t), source.size() - sizeof(uint32_t),
                                       destination.begin(), destination.size());
     INVARIANT((size_t)ret == destination.size(),
-              boost::format("Decompressed data has incorrect size (%ld != %lu)") %
+              boost::format("Decompressed data has incorrect size (%s != %s)") %
               ret % destination.size());
-    LintelLogDebug("extentreader", boost::format("LZF: %lu + %lu => %lu") %
-                   (unsigned long)source.size() % sizeof(uint32_t) % (unsigned long)destination.size());
+    LintelLogDebug("extentreader", boost::format("LZF: %s + %s => %s") %
+                   source.size() % sizeof(uint32_t) % destination.size());
 }
 
 bool ExtentReader::readBuffer(void *buffer, size_t size) {
-    // TODO-tomer: look into whether pread64 takes an ssize_t or a size_t and fix/document.
     ssize_t ret = pread64(fd, buffer, size, offset);
-    INVARIANT(ret != -1, boost::format("Error reading %lu bytes: %s") %
+    INVARIANT(ret != -1, boost::format("Error reading %s bytes: %s") %
               size % strerror(errno));
     if (ret == 0) {
         return false;
     }
     offset += size;
-    INVARIANT((size_t)ret == size, boost::format("Partial read %ld of %lu bytes: %s")
+    INVARIANT((size_t)ret == size, boost::format("Partial read %s of %s bytes: %s")
               % ret % size % strerror(errno));
     return true;
 }

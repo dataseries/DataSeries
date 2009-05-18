@@ -16,9 +16,11 @@
 
 #include <string>
 
-#include <DataSeries/Extent.hpp>
 #include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentType.hpp>
+
+class ExtentDataHeader;
 
 class ExtentReader : public DataSeriesModule {
 public:
@@ -33,9 +35,7 @@ public:
     void close();
 
 private:
-    void readExtentBuffers(bool compress,
-                           size_t compressedFixedDataSize,
-                           size_t compressedVariableDataSize,
+    void readExtentBuffers(const ExtentDataHeader &header,
                            Extent::ByteArray &fixedData,
                            Extent::ByteArray &variableData);
     void decompressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);

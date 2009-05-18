@@ -67,7 +67,7 @@ class MeasurementDatabase:
 		"""Adds a new experiment to the database and returns it's ID. The ID can then be used when
 		calling addMeasurement."""
 		cursor = self.connection.cursor()
-		cursor.execute("""INSERT INTO %s (tag) VALUES ("%s");""" % (self.experimentTableName, tag,))
+		cursor.execute("""INSERT INTO %s (tag) VALUES ("%%s");""" % self.experimentTableName, (tag,))
 		self.lastExperimentId = cursor.lastrowid
 		cursor.close()
 		return self.lastExperimentId
@@ -76,10 +76,8 @@ class MeasurementDatabase:
 		if experimentId is None:
 			experimentId = self.lastExperimentId
 		cursor = self.connection.cursor()
-		cursor.execute("""
-			INSERT INTO %s (experimentId, tag, elapsed, user, system, cpu)
-			VALUES (%s, "%s", %s, %s, %s, %s);
-			""" % (self.measurementTableName, experimentId, tag, elapsed, user, system, cpu,))
+		cursor.execute("""INSERT INTO %s (experimentId, tag, elapsed, user, system, cpu)
+VALUES (%%s, %%s, %%s, %%s, %%s, %%s);""" % self.measurementTableName, (experimentId, tag, elapsed, user, system, cpu,))
 		cursor.close()
 
 class Experiment:
@@ -97,6 +95,33 @@ class Experiment:
 		components = line.split()
 		measurements = {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
 		self.database.addMeasurement(self.experimentId, tag, **measurements)
+		sys.stderr.write(''.join(stdoutLines))
 	
 	def __repr__(self):
 		return """Experiment(id=%s, tag="%s")""" % (self.experimentId, self.tag)
+
+		
+# Given a list of options, where each option is a (key, value) pair, and value is a comma-separated
+# list of values, return a list of all the option combinations. Each combination is simply a string.
+# Note that for Boolean options without values (eg, --countOnly), both values can be specified via a
+# trailing question mark (eg, --countOnly?).
+def buildCombinations(options):	
+    if len(options) == 0:
+        return [""]
+    
+    (key, values) = options.pop(0)
+    result = []
+    remaining = buildCombinations(options)
+    if key.endswith('?'):
+    	for line in remaining: # once with the option, and once without
+    		result.append(line)
+    		result.append('%s %s' % (key[0:-1], line))
+    elif values is None:
+    	for line in remaining:
+    		result.append('%s %s' % (key, line))
+    else:
+    	for value in values.split(','):
+	        for line in remaining:
+	            result.append('%s=%s %s' % (key, value, line))
+    return result
+ 

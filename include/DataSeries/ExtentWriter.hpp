@@ -30,9 +30,11 @@ public:
     void close();
 
 private:
-    void writeExtentBuffers(Extent::ByteArray &fixedData,
+    void writeExtentBuffers(bool fixedDataCompressed,
+                            bool variableDataCompressed,
+                            Extent::ByteArray &fixedData,
                             Extent::ByteArray &variableData);
-    void compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
+    bool compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
     void writeBuffer(const void *buffer, size_t size);
 
     int fd;
