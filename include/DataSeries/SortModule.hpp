@@ -246,14 +246,14 @@ createSortedFiles() {
             break;
         }
 
+        memorySortModule.reset(); // clear all the memory before we retrieve more extents!!
+
         // re-fill the feeder
         lastFile = !retrieveExtents();
         if (feederModule.extents.size() == 0) { // we thought there might be more data but there isn't
             SINVARIANT(lastFile);
             break; // having zero extents in the "last file" is a special case - no need for that file
         }
-
-        memorySortModule.reset();
     }
 }
 

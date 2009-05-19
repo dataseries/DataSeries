@@ -5,11 +5,19 @@ import os
 
 def runText(command):
 	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
-	return (stdoutHandle.read(), stderrHandle.read())
+	pair = (stdoutHandle.read(), stderrHandle.read())
+	stdinHandle.close()
+	stdoutHandle.close()
+	stderrHandle.close()
+	return pair
 
-def runLines(command):
+def runLines(command, echo=True):
 	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
-	return (stdoutHandle.readlines(), stderrHandle.readlines())
+	pair = (stdoutHandle.readlines(), stderrHandle.readlines())
+	stdinHandle.close()
+	stdoutHandle.close()
+	stderrHandle.close()
+	return pair
 
 def run(command):
 	os.system(command)
@@ -50,6 +58,8 @@ class MeasurementDatabase:
 				user FLOAT,
 				system FLOAT,
 				cpu FLOAT,
+				stdout TEXT,
+				stderr TEXT,
 				date TIMESTAMP NOT NULL DEFAULT NOW(),
 				PRIMARY KEY (id),
 				CONSTRAINT FOREIGN KEY fkMeasurementToExperint (experimentId) REFERENCES %s(id) ON DELETE CASCADE
@@ -72,12 +82,12 @@ class MeasurementDatabase:
 		cursor.close()
 		return self.lastExperimentId
 
-	def addMeasurement(self, experimentId, tag, elapsed=-1.0, user=-1.0, system=-1.0, cpu=-1.0):
+	def addMeasurement(self, experimentId, tag, elapsed=-1.0, user=-1.0, system=-1.0, cpu=-1.0, stdout='', stderr=''):
 		if experimentId is None:
 			experimentId = self.lastExperimentId
 		cursor = self.connection.cursor()
-		cursor.execute("""INSERT INTO %s (experimentId, tag, elapsed, user, system, cpu)
-VALUES (%%s, %%s, %%s, %%s, %%s, %%s);""" % self.measurementTableName, (experimentId, tag, elapsed, user, system, cpu,))
+		cursor.execute("""INSERT INTO %s (experimentId, tag, elapsed, user, system, cpu, stdout, stderr)
+VALUES (%%s, %%s, %%s, %%s, %%s, %%s, %%s, %%s);""" % self.measurementTableName, (experimentId, tag, elapsed, user, system, cpu, stdout, stderr))
 		cursor.close()
 
 class Experiment:
@@ -93,9 +103,13 @@ class Experiment:
 		(stdoutLines, stderrLines) = runLines('/usr/bin/time -f "%e %U %S %P" ' + command)
 		line = stderrLines[-1]
 		components = line.split()
-		measurements = {'elapsed': float(components[0]), 'user': float(components[1]), 'system': float(components[2]), 'cpu': float(components[3][0:-1])}
+		measurements = {'elapsed': float(components[0]),
+		                'user': float(components[1]),
+		                'system': float(components[2]),
+		                'cpu': float(components[3][0:-1]),
+		                'stdout': ''.join(stdoutLines),
+		                'stderr': ''.join(stderrLines)}
 		self.database.addMeasurement(self.experimentId, tag, **measurements)
-		sys.stderr.write(''.join(stdoutLines))
 	
 	def __repr__(self):
 		return """Experiment(id=%s, tag="%s")""" % (self.experimentId, self.tag)
@@ -116,7 +130,7 @@ def buildCombinations(options):
     	for line in remaining: # once with the option, and once without
     		result.append(line)
     		result.append('%s %s' % (key[0:-1], line))
-    elif values is None:
+    elif values == '':
     	for line in remaining:
     		result.append('%s %s' % (key, line))
     else:

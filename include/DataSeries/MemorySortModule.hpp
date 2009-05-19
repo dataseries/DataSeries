@@ -291,10 +291,6 @@ createNextExtent() {
         // keep going as long as we haven't reached the maxmium extent size (user-specified)
     } while (extentSizeLimit == 0 || destinationExtent->size() < extentSizeLimit);
 
-    LintelLogDebug("memorysortmodule",
-            boost::format("Added %d records to a new extent") %
-            recordCount);
-
     return destinationExtent;
 }
 

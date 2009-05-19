@@ -3,6 +3,8 @@
 import getopt, sys, os
 from experimentation import MeasurementDatabase, Experiment, run
 
+COMPRESSION_TYPES = ('none', 'lzf', 'gz')
+
 class GrepMeasurementDatabase(MeasurementDatabase):
 	experimentTableName = "GrepExperiments"
 	measurementTableName = "GrepMeasurements"
@@ -69,7 +71,7 @@ def experiment(pattern, inputFilePrefix, cache, iterations, tag):
 	inputFileGz = inputFilePrefix + ".gz.in"
 	
 	commands = (
-		"grep --count %s %s" % (pattern, inputFileTxt),
+		"grep %s %s | wc -l" % (pattern, inputFileTxt),
 
 		"grepanalysis --countOnly --needle=\"%s\" --inputFile=\"%s\"" % (pattern, inputFileNone),
 		"grepanalysis --countOnly --needle=\"%s\" --inputFile=\"%s\"" % (pattern, inputFileLzf),

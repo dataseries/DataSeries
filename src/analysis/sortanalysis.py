@@ -84,10 +84,6 @@ def experiment(inputFilePrefix, outputFile, cache, iterations, tag, gensort, opt
 	experiment = Experiment(database, tag)
 	print "Starting experiment: %s" % repr(experiment)
 	
-	# total of nine or ten different experiments:
-	# 1: {(sort, text, text)} (only if binary is False)
-	# 9: {sortanalysis} x {none, lzf, gz} x {none, lzf, gz}
-
 	if not gensort:
 		inputFileTxt = inputFilePrefix + ".txt"
 		commands = ["sort %s > %s" % (inputFileTxt, outputFile)]
