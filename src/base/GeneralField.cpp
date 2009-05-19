@@ -43,14 +43,18 @@ void GeneralValue::set(const GeneralField &from) {
 	case ExtentType::ft_double:
 	    gvval.v_double = ((GF_Double *)&from)->val(); break;
 	case ExtentType::ft_fixedwidth: {
-	    if (NULL == v_fixedwidth) v_fixedwidth = new vector<uint8_t>;
+	    if (NULL == v_fixedwidth) {
+                v_fixedwidth = new vector<uint8_t>;
+            }
 	    const GF_FixedWidth *tmp = reinterpret_cast<const GF_FixedWidth *>(&from);
 	    v_fixedwidth->resize(tmp->myfield.size());
 	    memcpy(&v_fixedwidth[0], tmp->myfield.val(), tmp->myfield.size());
 	    break;
 	}
 	case ExtentType::ft_variable32: {
-	    if (NULL == v_variable32) v_variable32 = new string;
+	    if (NULL == v_variable32) {
+                v_variable32 = new string;
+            }
 	    const GF_Variable32 *tmp = reinterpret_cast<const GF_Variable32 *>(&from);
 	    *v_variable32 = tmp->myfield.stringval();
 	    break;
@@ -78,11 +82,15 @@ void GeneralValue::set(const GeneralValue &from) {
 	case ExtentType::ft_double:
 	    gvval.v_double = from.gvval.v_double; break;
         case ExtentType::ft_fixedwidth:
-            if (NULL == v_fixedwidth) v_fixedwidth = new vector<uint8_t>;
+            if (NULL == v_fixedwidth) {
+                v_fixedwidth = new vector<uint8_t>;
+            }
             *v_fixedwidth = *from.v_fixedwidth;
             break;
 	case ExtentType::ft_variable32:
-	    if (NULL == v_variable32) v_variable32 = new string;
+	    if (NULL == v_variable32) {
+                v_variable32 = new string;
+            }
 	    *v_variable32 = *from.v_variable32;
 	    break;
 	default: FATAL_ERROR("internal error, unexpected type"); break;
@@ -168,6 +176,7 @@ bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
 	case ExtentType::ft_double:
 	    return gvval.v_double < gv.gvval.v_double;
 	case ExtentType::ft_fixedwidth:
+            // TODO-tomer: fix this. look for tests?
 	    return v_fixedwidth < gv.v_fixedwidth;
 	case ExtentType::ft_variable32: {
 	    int diff = memcmp(v_variable32->data(),gv.v_variable32->data(),
@@ -202,6 +211,7 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
 	case ExtentType::ft_double:
 	    return gvval.v_double == gv.gvval.v_double;
         case ExtentType::ft_fixedwidth:
+            // TODO-tomer: fix this as well.
             return v_fixedwidth == gv.v_fixedwidth;
 	case ExtentType::ft_variable32: {
 	    if (v_variable32->size() == gv.v_variable32->size()) {
@@ -991,7 +1001,6 @@ double GF_Double::valDouble() {
     return myfield.val();
 }
 
-///////////////////
 
 GF_FixedWidth::GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column)
     : GeneralField(ExtentType::ft_fixedwidth),
@@ -1046,6 +1055,7 @@ void GF_FixedWidth::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from double -> fixedwidth");
             break;
         case ExtentType::ft_fixedwidth: {
+            // TODO-tomer: static_cast? why need tmp?
             GF_FixedWidth *tmp = (GF_FixedWidth *)from;
             myfield.set(tmp->val());
             }
@@ -1069,7 +1079,6 @@ double GF_FixedWidth::valDouble() {
     FATAL_ERROR("unimplemented conversion from fixedwidth -> double");
 }
 
-///////////////////
 
 GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column)
     : GeneralField(ExtentType::ft_variable32), myfield(series,column,Field::flag_nullable)

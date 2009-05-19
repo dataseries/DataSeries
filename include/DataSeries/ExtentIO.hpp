@@ -13,10 +13,10 @@
 #define EXTENT_IO_H
 
 struct ExtentDataHeader {
-    uint8_t fixedDataCompressed;
-    uint8_t variableDataCompressed;
-    uint32_t fixedDataSize; // compressed size of it's compressed
-    uint32_t variableDataSize; // compressed size if it's compressed
+    uint32_t fixedDataSize; // (compressed) size
+    uint32_t variableDataSize; // (compressed) size
+    uint8_t fixedDataCompressed; // effectively a bool.
+    uint8_t variableDataCompressed; // effectively a bool
 } __attribute__((__packed__));
 
 #endif

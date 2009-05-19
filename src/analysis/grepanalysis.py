@@ -71,6 +71,7 @@ def experiment(pattern, inputFilePrefix, cache, iterations, tag):
 	inputFileGz = inputFilePrefix + ".gz.in"
 	
 	commands = (
+		# TODO-tomer: document | wc -l versus --count. Pick either, but be sure you know the performance difference between the two.
 		"grep %s %s | wc -l" % (pattern, inputFileTxt),
 
 		"grepanalysis --countOnly --needle=\"%s\" --inputFile=\"%s\"" % (pattern, inputFileNone),

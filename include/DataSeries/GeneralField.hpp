@@ -47,7 +47,7 @@ class GeneralField;
 class GeneralValue {
 public:
     GeneralValue()
-	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+        : gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { }
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
@@ -65,7 +65,7 @@ public:
 	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
-    ~GeneralValue() { delete v_variable32; }
+    ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) {
@@ -142,7 +142,7 @@ protected:
     } gvval;
     /// \endcond
     std::string *v_variable32; // only valid if gvtype = ft_variable32
-    std::vector<uint8_t> *v_fixedwidth;
+    std::vector<uint8_t> *v_fixedwidth; // only valid if gvtype == ft_fixedwidth
 };
 
 inline bool operator < (const GeneralValue &a, const GeneralValue &b) {

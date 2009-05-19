@@ -88,7 +88,6 @@ bool ExtentWriter::compressBuffer(Extent::ByteArray &source, Extent::ByteArray &
     if (ret == 0) {
         return false;
     }
-    INVARIANT(ret != 0, "LZF compression failed");
     destination.resize(ret + sizeof(uint32_t));
     LintelLogDebug("extentwriter", boost::format("LZF: %s => %s + %s bytes") %
             source.size() % sizeof(uint32_t) % ((unsigned long)destination.size() - sizeof(uint32_t)));

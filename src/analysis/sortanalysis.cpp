@@ -11,12 +11,12 @@
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/ProgramOptions.hpp>
 
-#include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
-#include <DataSeries/MemorySortModule.hpp>
-#include <DataSeries/SortModule.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentWriter.hpp>
+#include <DataSeries/MemorySortModule.hpp>
+#include <DataSeries/SortModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
 
@@ -123,6 +123,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (!memOnlyOption.get()) {
+        // TODO-tomer: use Extent::foo and get it to build!
         DataSeriesSink sink(outputFileOption.get(),
                             compressOutputOption.get() ?
                                 8 /* Extent::compress_lzf */ :
@@ -149,4 +150,6 @@ int main(int argc, char *argv[]) {
             delete extent;
         }
     }
+    // TODO-tomer: run under valgrind --tool=memcheck and see how we are doing
+    // cleaning up after ourselves...
 }
