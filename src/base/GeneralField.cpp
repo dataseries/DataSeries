@@ -176,8 +176,7 @@ bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
 	case ExtentType::ft_double:
 	    return gvval.v_double < gv.gvval.v_double;
 	case ExtentType::ft_fixedwidth:
-            // TODO-tomer: fix this. look for tests?
-	    return v_fixedwidth < gv.v_fixedwidth;
+	    return *v_fixedwidth < *gv.v_fixedwidth;
 	case ExtentType::ft_variable32: {
 	    int diff = memcmp(v_variable32->data(),gv.v_variable32->data(),
 			      min(v_variable32->size(),gv.v_variable32->size()));
@@ -211,8 +210,7 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
 	case ExtentType::ft_double:
 	    return gvval.v_double == gv.gvval.v_double;
         case ExtentType::ft_fixedwidth:
-            // TODO-tomer: fix this as well.
-            return v_fixedwidth == gv.v_fixedwidth;
+            return *v_fixedwidth == *gv.v_fixedwidth;
 	case ExtentType::ft_variable32: {
 	    if (v_variable32->size() == gv.v_variable32->size()) {
 		return memcmp(v_variable32->data(),gv.v_variable32->data(),
@@ -1054,11 +1052,8 @@ void GF_FixedWidth::set(GeneralField *from) {
         case ExtentType::ft_double:
             FATAL_ERROR("unimplemented conversion from double -> fixedwidth");
             break;
-        case ExtentType::ft_fixedwidth: {
-            // TODO-tomer: static_cast? why need tmp?
-            GF_FixedWidth *tmp = (GF_FixedWidth *)from;
-            myfield.set(tmp->val());
-            }
+        case ExtentType::ft_fixedwidth:
+            myfield.set((static_cast<GF_FixedWidth*>(from))->val());
             break;
         case ExtentType::ft_variable32:
             FATAL_ERROR("unimplemented conversion from variable32 -> fixedwidth");

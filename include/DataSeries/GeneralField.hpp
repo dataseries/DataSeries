@@ -51,26 +51,29 @@ public:
     { }
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
-	if (gvtype == ExtentType::ft_variable32) {
-	    v_variable32 = new std::string(*v.v_variable32);
-	} else {
-	    v_variable32 = NULL;
-	}
+        switch (gvtype) {
+        case ExtentType::ft_variable32:
+            v_variable32 = new std::string(*v.v_variable32);
+            v_fixedwidth = NULL;
+            break;
+        case ExtentType::ft_fixedwidth:
+            v_fixedwidth = new std::vector<uint8_t>(*v.v_fixedwidth);
+            v_variable32 = NULL;
+            break;
+        default:
+            v_variable32 = NULL;
+            v_fixedwidth = NULL;
+        }
     }
     GeneralValue(const GeneralField &from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { set(from); }
 
     GeneralValue(const GeneralField *from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { set(from); }
 
-    // TODO-tomer: delete v_fixedwidth caused a ruckus. I think delete
-    // v_varabile32 may also be bad. Note the BUG/FEATURE comment above. Look
-    // at this in valgrind and see if you can easily fix this. Otherwise, talk
-    // with Eric about how best to commit not quite great code.
-    ~GeneralValue() {}
-    // ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
+    ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) {

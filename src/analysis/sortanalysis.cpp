@@ -123,11 +123,10 @@ int main(int argc, char *argv[]) {
     }
 
     if (!memOnlyOption.get()) {
-        // TODO-tomer: use Extent::foo and get it to build!
         DataSeriesSink sink(outputFileOption.get(),
                             compressOutputOption.get() ?
-                                8 /* Extent::compress_lzf */ :
-                                0 /* Extent::compress_none */);
+                                Extent::compress_lzf :
+                                Extent::compress_none);
         bool wroteLibrary = false;
         Extent *extent = NULL;
         while ((extent = sortModule->getExtent()) != NULL) {
@@ -150,6 +149,4 @@ int main(int argc, char *argv[]) {
             delete extent;
         }
     }
-    // TODO-tomer: run under valgrind --tool=memcheck and see how we are doing
-    // cleaning up after ourselves...
 }
