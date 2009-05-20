@@ -65,7 +65,12 @@ public:
 	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
-    ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
+    // TODO-tomer: delete v_fixedwidth caused a ruckus. I think delete
+    // v_varabile32 may also be bad. Note the BUG/FEATURE comment above. Look
+    // at this in valgrind and see if you can easily fix this. Otherwise, talk
+    // with Eric about how best to commit not quite great code.
+    ~GeneralValue() {}
+    // ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) {
