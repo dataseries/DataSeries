@@ -232,7 +232,23 @@ public:
             return std::string((char *)val(),size());
         }
     }
-    void set(const void *data, int32 datasize);
+
+    /// Allocate, data_size bytes of space.  The space may not be
+    /// initialized.  This function is intended to be used with
+    /// partialSet in order to efficiently put together multiple parts
+    /// into a single variable32 value.
+    void allocateSpace(uint32_t data_size);
+
+    /// Overwrite @param data_size bytes at offset @param offset with
+    /// the bytes @param data.  Invalid to call with data_size +
+    /// offset > currently allocated space.
+    void partialSet(const void *data, uint32_t data_size, uint32_t offset);
+
+    void set(const void *data, int32 datasize) {
+	allocateSpace(datasize);
+	partialSet(data, datasize, 0);
+    }
+
     void set(const std::string &data) { // note this doesn't propagate the C '\0' at the end (neither does a C++ string)
         set(data.data(),data.size());
     }
@@ -247,11 +263,14 @@ public:
         set(from.val(),from.size());
     }
     void clear() {
-        DEBUG_INVARIANT(dataseries.extent() != NULL,
-                        "internal error; extent not set\n");
+        DEBUG_INVARIANT(dataseries.extent() != NULL,  "internal error; extent not set");
         dataseries.pos.checkOffset(offset_pos);
-        *(int32 *)(dataseries.pos.record_start() + offset_pos) = 0;
+        *reinterpret_cast<int32_t *>(dataseries.pos.record_start() + offset_pos) = 0;
+	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(dataseries.extent()->variabledata.begin()) 
+			 == 0);
+	setNull(false);
     }
+
     bool equal(const std::string &to) {
         if ((int)to.size() != size())
             return false;
