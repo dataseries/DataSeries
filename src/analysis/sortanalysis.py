@@ -123,7 +123,7 @@ if __name__ == "__main__":
 	command = sys.argv.pop(1)
 	
 	try:                                
-		opts, args = getopt.getopt(sys.argv[1:], "", ["copies=", "iterations=", "cache", "tag=", "records=", "gensort", "extentLimit=", "memoryLimit=", "compressTemp", "compressTemp?", "compressOutput", "compressOutput?"])
+		opts, args = getopt.getopt(sys.argv[1:], "", ["copies=", "iterations=", "cache", "tag=", "records=", "gensort", "extentLimit=", "memoryLimit=", "compressTemp", "compressTemp?", "compressOutput", "compressOutput?", "memOnly", "memOnly?"])
 		opts = dict(opts)
 	except getopt.GetoptError, err:
 		print "ERROR: %s" % err
