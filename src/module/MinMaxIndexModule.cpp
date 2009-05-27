@@ -183,7 +183,8 @@ MinMaxIndexModule::lockedGetCompressedExtent()
     }
     if (cur_source_filename != kept_extents[cur_extent].filename) {
 	delete cur_source;
-	cur_source = new DataSeriesSource(kept_extents[cur_extent].filename);
+        cur_source_filename = kept_extents[cur_extent].filename;
+	cur_source = new DataSeriesSource(cur_source_filename);
     }
     PrefetchExtent *ret = 
 	readCompressed(cur_source,
