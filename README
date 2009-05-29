@@ -9,10 +9,33 @@ made of it.
 
 COMPILATION:
 
-1) You need to build and install Lintel.
+0) You need to build and install Lintel.
 
-2) configure the package, e.g. in ~/build/optimize/DataSeries:
-   % ccmake .../path/to/source/DataSeries/configure 
+1a) Get source code (via version control, inside HP only):
+   [ -d ~/.monotone ] || mkdir ~/.monotone
+   mtn -d ~/.monotone/ssd.db db init
+   mtn -d ~/.monotone/ssd.db pull usi.hpl.hp.com ssd.hpl.hp.com/DataSeries\*
+   [ -d ~/projects ] || mkdir ~/projects
+   cd ~/projects
+   mtn -d ~/.monotone/ssd.db co -b ssd.hpl.hp.com/DataSeries DataSeries
+   cd DataSeries
+   # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro
 
-3) build and install the package, e.g. in ~/build/optimize/DataSeries:
-   % make && make test && make install
+1b) Get source code (via tarball, from anywhere):
+   [ -d ~/projects ] || mkdir ~/projects
+   cd ~/projects
+   # visit http://tesla.hpl.hp.com/opensource/ to find the most recent version
+   wget http://tesla.hpl.hp.com/opensource/DataSeries-2007-11-07.tar.bz2
+   bunzip2 -c < DataSeries-2007-11-07.tar.bz2 | tar xvvf -
+   mv DataSeries-2007-11-07 DataSeries
+
+2) configure the package:
+   mkdir -p ~/build/optimize/DataSeries
+   cd ~/build/optimize/DataSeries
+   ccmake [-DCMAKE_INSTALL_PREFIX=<install-prefix>] ~/projects/DataSeries
+   # we use an install prefix like ~/build/optimize; it needs to be the
+   # same as for Lintel.
+
+3) compile and install the package:
+   cd ~/build/optimize/DataSeries:
+   make && make test && make install

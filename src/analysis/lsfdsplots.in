@@ -10,7 +10,7 @@ use Getopt::Long;
 use FileHandle;
 use Fcntl ':seek';
 use POSIX;
-@PERL_MODULES_INC_UNSHIFT@
+@PERL5_MODULES_INC_UNSHIFT@
 
 use DataSeries::LSFcommon ':all';
 use DataSeries::Crypt;

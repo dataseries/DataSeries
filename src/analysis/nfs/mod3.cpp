@@ -16,6 +16,7 @@
 #include "analysis/nfs/mod3.hpp"
 
 using namespace std;
+using boost::format;
 
 class FileSizeByType : public NFSDSModule {
 public:
@@ -249,42 +250,41 @@ public:
     }
     
     virtual void printResult() {
-	printf("Begin-%s\n",__PRETTY_FUNCTION__);
-	printf("common bytes:");
+	cout << format("Begin-%s\n") % __PRETTY_FUNCTION__;
+	cout << "common bytes:";
 	for(int i=0;i<max_seen_fh_size;++i) {
 	    if (commonbytes[i]) {
-		printf("%d ",i);
+		cout << format("%d ") % i;
 	    }
 	}
-	printf("\n");
+	cout << "\n";
 	for(int i=0;i<max_seen_fh_size/4;++i) {
-	    printf("quad %d: ",i);
+	    cout << format("quad %d: ") % i;
 	    if (used_ints[i].size() >= max_used_count) {
-		printf("> %d used\n",used_ints[i].size());
+		cout << format("> %d used\n") % used_ints[i].size();
 	    } else {
-		printf("%d used: ",used_ints[i].size());
+		cout << format("%d used: ") % used_ints[i].size();
 		if (used_ints[i].size() < 50) {
 		    for(map<uint32_t,bool>::iterator j = used_ints[i].begin();
 			j != used_ints[i].end();++j) {
-			printf("%08x, ",j->first);
+			cout << format("%08x, ") % j->first;
 		    }
 		}
-		printf("\n");
+		cout << "\n";
 	    }
 	}
-	printf("%d mount entries\n",fh2mount.size());
+	cout << format("%d mount entries\n") % fh2mount.size();
 	for(fh2mountT::iterator i = fh2mount.begin();
 	    i != fh2mount.end();++i) {
 	    if (i->common_bytes_seen_count > 0) {
-		AssertAlways(i->fullfh.size() >= 32,("unhandled"));
+		INVARIANT(i->fullfh.size() >= 32,("unhandled"));
 		const ExtentType::int32 *v = (const ExtentType::int32 *)i->fullfh.data();
-		printf("mount %13s:%s seen %4d times; quads(0,1,6,7): %08x %08x  %08x %08x\n",
-		       ipv4tostring(i->server).c_str(),
-		       maybehexstring(i->pathname).c_str(),
-		       i->common_bytes_seen_count,v[0],v[1],v[6],v[7]);
+		cout << format("mount %13s:%s seen %4d times; quads(0,1,6,7): %08x %08x  %08x %08x\n")
+		    % ipv4tostring(i->server) % maybehexstring(i->pathname)
+		    % i->common_bytes_seen_count % v[0] % v[1] % v[6] % v[7];
 	    }
 	}
-	printf("End-%s\n",__PRETTY_FUNCTION__);
+	cout << format("End-%s\n") % __PRETTY_FUNCTION__;
     }
     
     DataSeriesModule &source;

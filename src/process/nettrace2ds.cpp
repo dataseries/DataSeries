@@ -2545,14 +2545,12 @@ duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
     }
     if (hval->rpcreqhashval != d.rpcreqhashval) {
 	++counts[bad_retransmit];
-	fprintf(stderr, "bad-retransmit { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n",
-		hval->request_id - first_record_id,
-		d.request_id - first_record_id,
-		hval->rpcreqhashval, d.rpcreqhashval,
-		hval->server, hval->client,
-		tracename.c_str());
-	fprintf(stderr, " // bad retransmit  prog=%d/%d, ver=%d/%d, proc=%d/%d, xid=%x\n",d.program,hval->program,
-		d.version,hval->version,d.procnum,hval->procnum, hval->xid);
+	cerr << format("bad-retransmit { %lld, %lld, 0x%08x, 0x%08x, 0x%08x, 0x%08x }, // %s\n")
+	    % (hval->request_id - first_record_id) % (d.request_id - first_record_id)
+	    % hval->rpcreqhashval % d.rpcreqhashval % hval->server % hval->client % tracename;
+	cerr << format(" // bad retransmit  prog=%d/%d, ver=%d/%d, proc=%d/%d, xid=%x\n")
+	    % d.program % hval->program % d.version % hval->version % d.procnum 
+	    % hval->procnum % hval->xid;
     }
     // can't remove the original request in case we get a pair of
     // retransmissions; matching is a litle bit odd in this case,

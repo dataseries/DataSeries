@@ -150,6 +150,22 @@ void GeneralValue::setInt32(int32_t val) {
     gvval.v_int32 = val;
 }
 
+void GeneralValue::setInt64(int64_t val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_int64,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_int64;
+    gvval.v_int64 = val;
+}
+
+void GeneralValue::setDouble(double val) {
+    INVARIANT(gvtype == ExtentType::ft_unknown || 
+	      gvtype == ExtentType::ft_double,
+	      "invalid to change type of generalvalue");
+    gvtype = ExtentType::ft_double;
+    gvval.v_double = val;
+}
+
 void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown ||
 	      gvtype == ExtentType::ft_variable32,
@@ -226,6 +242,17 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
 
 }
 
+namespace {
+    char *long_int_format() {
+	BOOST_STATIC_ASSERT(sizeof(long) == 4 || sizeof(long) == 8); 
+	if (sizeof(long) == 8) {
+	    return (char *)"%ld";
+	} else if (sizeof(long) == 4) {
+	    return (char *)"%lld";
+	}
+    }
+}
+
 void GeneralValue::write(FILE *to) {
     switch(gvtype)
 	{
@@ -242,7 +269,7 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to,"%d",gvval.v_int32);
 	    break;
 	case ExtentType::ft_int64:
-	    fprintf(to,"%lld",gvval.v_int64);
+	    fprintf(to, long_int_format(),gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
 	    fprintf(to,"%.12g",gvval.v_double);
@@ -324,6 +351,68 @@ double GeneralValue::valDouble() {
 	}
 	default:
 	    FATAL_ERROR("internal error, unexpected type");
+	}
+    return 0;
+}
+
+uint8_t GeneralValue::valByte() {
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt32()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return static_cast<uint8_t>(gvval.v_double);
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToInteger<int32_t>(*v_variable32);
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
+	}
+    return 0;
+}
+
+int32_t GeneralValue::valInt32() {
+    switch(gvtype) 
+	{
+	case ExtentType::ft_unknown: 
+	    FATAL_ERROR("value undefined, can't run valInt32()");
+	    break;
+	case ExtentType::ft_bool:
+	    return gvval.v_bool ? 1 : 0;
+	    break;
+	case ExtentType::ft_byte:
+	    return gvval.v_byte;
+	    break;
+	case ExtentType::ft_int32:
+	    return gvval.v_int32;
+	    break;
+	case ExtentType::ft_int64:
+	    return gvval.v_int64;
+	    break;
+	case ExtentType::ft_double:
+	    return static_cast<int32_t>(gvval.v_double);
+	    break;
+	case ExtentType::ft_variable32: {
+	    return stringToInteger<int32_t>(*v_variable32);
+	    break;
+	}
+	default:
+	    FATAL_ERROR("internal error, unexpected type"); 
 	}
     return 0;
 }
@@ -419,7 +508,7 @@ const std::string GeneralValue::valString() {
 	    FATAL_ERROR("haven't decided how to translate int32 to strings");
 	    break;
 	case ExtentType::ft_int64:
-	    FATAL_ERROR("haven't decided how to translate int64 to strings");
+	    FATAL_ERROR("haven't decided how to translate int64 to strings, Need to take printspec into account, can't just use boost::lexical_cast");
 	    break;
 	case ExtentType::ft_double:
 	    FATAL_ERROR("haven't decided how to translate double to strings");
@@ -478,6 +567,10 @@ GF_Bool::~GF_Bool() { }
 
 bool GF_Bool::isNull() {
     return myfield.isNull();
+}
+
+void GF_Bool::setNull(bool val) {
+    myfield.setNull(val);
 }
 
 void GF_Bool::write(FILE *to) {
@@ -594,6 +687,10 @@ bool GF_Byte::isNull() {
     return myfield.isNull();
 }
 
+void GF_Byte::setNull(bool val) {
+    myfield.setNull(val);
+}
+
 void GF_Byte::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -687,6 +784,10 @@ void GF_Int32::write(std::ostream &to) {
 
 bool GF_Int32::isNull() {
     return myfield.isNull();
+}
+
+void GF_Int32::setNull(bool val) {
+    myfield.setNull(val);
 }
 
 void GF_Int32::set(GeneralField *from) {
@@ -834,6 +935,10 @@ bool GF_Int64::isNull() {
     return myfield.isNull();
 }
 
+void GF_Int64::setNull(bool val) {
+    myfield.setNull(val);
+}
+
 void GF_Int64::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -951,6 +1056,10 @@ void GF_Double::write(std::ostream &to) {
 
 bool GF_Double::isNull() {
     return myfield.isNull();
+}
+
+void GF_Double::setNull(bool val) {
+    myfield.setNull(val);
 }
 
 void GF_Double::set(GeneralField *from) {
@@ -1168,6 +1277,10 @@ void GF_Variable32::write(std::ostream &to) {
 
 bool GF_Variable32::isNull() {
     return myfield.isNull();
+}
+
+void GF_Variable32::setNull(bool val) {
+    myfield.setNull(val);
 }
 
 static const string str_true("true");

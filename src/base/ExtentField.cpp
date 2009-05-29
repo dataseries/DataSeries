@@ -206,11 +206,13 @@ Variable32Field::dosetandguard(byte *vardatapos,
 			       const void *data, int32 datasize,
 			       int32 roundup)
 {
+    FATAL_ERROR("xx");
     *(int32 *)vardatapos = datasize;
     byte *i = vardatapos + 4;
     SINVARIANT((unsigned long)i % 8 == 0);
     memcpy(i,data,datasize);
     i += datasize;
+    // Might be smarter to zero as int32's first and then memcpy.
     switch(roundup - datasize)
 	{ // all cases fall through...
 	case 7: *i = 0; ++i;
@@ -232,36 +234,62 @@ Variable32Field::dosetandguard(byte *vardatapos,
 				+ (roundup - datasize)));
 }
 
-void
-Variable32Field::set(const void *data, int32 datasize)
-{
-    int32 varoffset = getVarOffset();
-    INVARIANT(datasize >= 0, format("invalid datasize, %d < 0") % datasize);
-    if (datasize == 0) {
-	*(int32 *)(dataseries.pos.record_start() + offset_pos) = 0;
-	SINVARIANT(*(int32 *)dataseries.extent()->variabledata.begin() == 0)
-	setNull(false);
+void Variable32Field::allocateSpace(uint32_t data_size) {
+    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+
+    if (data_size == 0) {
+	clear(); 
 	return;
     }
-    int32 roundup = roundupSize(datasize);
-    SINVARIANT((roundup+4) % 8 == 0);
-    int32 old_size = size(dataseries.extent()->variabledata,
-			  varoffset);
-    if (old_size != 0 && datasize < roundupSize(old_size) && unique == false) {
-	// can repack into the same location
-    } else {
-	// need to repack at the end of the variable data
-	varoffset = dataseries.extent()->variabledata.size();
-	dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
-	*(int32 *)(dataseries.pos.record_start() + offset_pos) = varoffset;
+    int32_t roundup = roundupSize(data_size);
+    DEBUG_SINVARIANT((roundup+4) % 8 == 0);
+		    
+    // TODO: we can eventually decide to support overwrites at some
+    // point, but it doesn't seem worth it now since I (Eric) don't
+    // think that feature is used at all -- pack_unique is effectively
+    // the default.  Se revs before 2009-05-19 for the version that
+    // supports overwrite.
+
+    // need to repack at the end of the variable data
+    int32_t varoffset = dataseries.extent()->variabledata.size();
+    dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
+    *reinterpret_cast<int32 *>(dataseries.pos.record_start() + offset_pos) = varoffset;
+
+    int32_t *var_data 
+	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
+					      
+    *var_data = data_size;
+
+#if defined(COMPILE_DEBUG)
+    // we get to avoid zeroing since it happens automatically for us
+    // when we resize the bytearray
+    for(++var_data; data_size > 0; data_size -= 4) {
+	SINVARIANT(*var_data == 0);
     }
-    SINVARIANT(data != NULL);
-    dosetandguard((byte *)vardata(dataseries.extent()->variabledata,varoffset),
-		  data,datasize,roundup);
-#if defined(COMPILE_DEBUG) || defined(DEBUG)
+#endif
+
+#if defined(COMPILE_DEBUG)
     selfcheck(dataseries.extent()->variabledata,varoffset);
 #endif
+
     setNull(false);
+}    
+
+void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t offset) {
+    if (data_size == 0) {
+	return; // occurs on set("");
+    }
+    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+    SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+    int32_t varoffset = *reinterpret_cast<int32 *>(dataseries.pos.record_start() + offset_pos);
+    int32_t *var_data 
+	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
+    
+    uint32_t cur_size = *var_data;
+    INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,
+	      boost::format("%d + %d > %d") % offset % data_size % cur_size);
+    uint8_t *var_bits = reinterpret_cast<byte *>(var_data + 1); // + 1 as it's int32_t
+    memcpy(var_bits + offset, data, data_size);
 }
 
 void

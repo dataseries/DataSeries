@@ -8,7 +8,7 @@
 
 set -e 
 
-LINTEL_REGRESSION_TEST_INC_DIR=$1/src/perl-modules perl ../analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=../analysis/lsfdsanalysis
+PERL5LIB=$1/src/perl-modules:$2/share/perl5:$PERL5LIB perl ../analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=../analysis/lsfdsanalysis
 
 # TODO: come up with another way to test this; the following test
 # doesn't work since different versions of gnuplot generate very

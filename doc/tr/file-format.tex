@@ -1,0 +1,151 @@
+\section{File format specification}
+
+This section provides a precise specification of the DataSeries
+version 1 file format.  A conformant dataseries file must consist of
+the following sections, as shown in figure~\ref{fig:dsorg}:
+
+\begin{enumerate}
+\item {\bf header}: The header includes the version number and check values.
+\item {\bf extent-type extent}: The extent defining the types used in the file.
+\item {\bf data extent}: Zero or more extents comprising data types defined in the extent-type extent.
+\item {\bf index extent}: An extent indexing the types and locations of each exxtent.
+\item {\bf trailer}: The trailer contains the offset of the index extent, and some additonal check values.
+\end{enumerate}
+
+A conformant implementation may parse files that are missing the index
+or the trailer.  The extent-type extent and index extent are simply
+data extents with pre-known types, and so will be described after we
+specify the extent format.  A valid file must use the same byte
+ordering for all values in a file.  A conformant implementation must
+support both big endian and little endian orderings.
+
+\subsection{types}
+
+This specification defines the following types:
+
+\begin{enumerate}
+\item {\bf byte}: A one byte (8 bit), value ranging from 0..255
+\item {\bf int32}: A four byte (32 bit) signed two's complement value stored in host-byte order.
+\item {\bf int64}: An eight byte (64 bit) signed two's complement value stored in host-byte order.
+\item {\bf double}: An eight byte (64 bit) IEEE 754 floating point value stored in host-byte order.
+\end{enumerate}
+
+\subsection{header}
+
+The DataSeries header is used to validate that a file is being
+properly parsed. A conformant implementation should validate the
+contents of the header, e.g. by calling isnan on the NaN check value.
+The header must consist of the following values:
+
+\begin{enumerate}
+\item {\bf file-type}: Four bytes, 'DSv1' in ASCII, 0x44, 0x53, 0x76, 0x31 in hexadecimal
+\item {\bf int32 check value}: In file byte order, 0x12345678
+  (big endian = 0x12, 0x34, 0x56, 0x78; little endian = 0x78, 0x56, 0x34, 0x12).
+\item {\bf int64 check value}: In file byte order, 0x123456789ABCDEF0
+  (big endian 0x12 0x34 0x56 0x78 0x9a 0xbc 0xde 0xf0; little endian =
+  0xf0 0xde 0xbc 0x9a 0x78 0x56 0x34 0x12).
+\item {\bf double check value}: The double constant
+  3.1415926535897932384 in file byte order.  (big endian 40 09 21 fb
+  54 44 2d 18; little endian 18 2d 44 54 fb 21 09 40)
+\item {\bf infinity check value}: The double IEEE +$\infty$ floating
+  point constant  (big endian 7f f0 00 00 00 00 00 00; little endian
+  00 00 00 00 00 00 f0 7f).
+\item {\bf NaN check value}: Any double IEEE NaN floating point
+  constant in file byte order.
+\end{enumerate}
+
+\subsection{trailer}
+
+The DataSeries trailer is used to locate the index extent.  A
+conformant implementation should validate the trailer, but may choose
+to tolerate an invalid trailer.  The trailer consists of the following
+bytes:
+
+\begin{enumerate}
+  \item {\bf constant bytes}: Four bytes, 0xFF, 0xFF, 0xFF, 0xFF.
+  \item {\bf index extent size}: int32 in file byte order, byte size of
+    the index extent in the file.
+  \item {\bf inverse extent size}: int32 in file byte order, bitwise
+    complement of the index extent size.
+  \item {\bf semi-random bytes}: int32 in file byte order, an arbitrary
+    32 bit integer.  The implementation should chose this value derived
+    from the extents in a file so that file contents are reproducable.
+  \item {\bf index extent offset}: int64 in file byte order, offset in
+    bytes from the beginning of the file for the index extent.
+  \item {\bf hash bytes}: int32 in file byte order, bob-jenkins lookup-2
+    hash~\cite{bob-jenkins-hash-lookup-2} of the above bytes. 
+\end{enumerate}
+
+\subsection{extent}
+
+An extent in a dataseries file stores the actual data of a dataseries
+file, or the two special extents in the file.  An extent consists of
+the following bytes:
+
+\begin{enumerate}
+
+  \item {\bf compressed fixed-data size}: int32 in file byte order,
+    byte size of the compressed representation of the fixed data.
+
+  \item {\bf compressed variable-data size}: int32 in file byte order,
+    byte size of the compressed representation of the variable data.
+
+  \item {\bf number of records}: int32 in file byte order, count of
+    the number of records (rows) in this extent.
+
+  \item {\bf uncompressed variable-data size}: int32 in file byte order, 
+    byte size of the variable representation after it has been uncompressed.
+   TODO-eric: does this include the 4 0 bytes in the in-memory rep?
+
+  \item {\bf compressed adler32 digest}: int32 in file byte order, 
+    adler32 digest of the compressed data.
+    TODO-eric: how calculated...
+
+  \item {\bf partly-unpacked bob-jenkins hash}: int32 in file byte order,
+    bob-jenkins hash of the data after it has been partly unpacked.
+    TODO-eric: how calculated...
+
+  \item {\bf fixed-records compression algorithm}: byte; index of the
+    compression algorithm used for the fixed-data.  Valid compression algorithms
+    are shown in section~\ref{sec:ff:compression-types}.
+
+  \item {\bf variable-records compression algorithm}: byte; index of the
+    compression algorithm used for the variable-data.  Valid compression algorithms
+    are shown in section~\ref{sec:ff:compression-types}.
+
+  \item {\bf extent type name length:} byte; length of the extent-type
+    name.
+
+  \item {\bf unused zero byte} byte; 0.  (pad to round up the header to multiple of 4 bytes)
+
+  \item {\bf type name} {\it extent type name length} bytes.  Extent
+    type name for the current extent.  Must be either one of the two
+    pre-defined types, or one of the types defined in the extent-type
+    extent.
+
+  \item {\bf padding} 0--3 bytes; sufficient 0 bytes to pad the
+    current offset to 4 byte alignment.  For example, if the type name
+    is 7 bytes long, the padding would consist of 1 byte of 0.
+
+  \item {\bf compressed fixed-data} {\it compressed fixed-data size}
+    bytes.  The compressed bytes storing the fixed data.
+
+  \item {\bf padding} 0--3 bytes; sufficient 0 bytes to pad the
+    current offset to 4 byte alignment.  For example, if the
+    compressed fixed-data size is 128, there would be no padding.
+
+  \item {\bf compressed variable-data} {\it compressed variable-data size}
+    bytes.  The compressed bytes storing the variable data.
+
+  \item {\bf padding} 0--3 bytes; sufficient 0 bytes to pad the
+    current offset to 4 byte alignment.  For example, if the
+    compressed variable-data size is 9, the padding would consist of 3
+    bytes of 0's.
+\end{enumerate}
+
+\subsection{Compression types}
+\label{sec:ff:compression-types}
+
+TODO-eric: fill-in
+
+

@@ -18,5 +18,6 @@ if [ -z "$DATADIR" ]; then
     exit 0
 fi
 
-../analysis/nfs/ipnfscrosscheck $DATADIR/animation-bear/nfs-2/set-0/236500-236542.ds > ipnfscrosscheck.txt
+../analysis/nfs/ipnfscrosscheck $DATADIR/animation-bear/nfs-2/set-0/236500-236542.ds > ipnfscrosscheck.tmp
+sed "s,$DATADIR,DATADIR,g" <ipnfscrosscheck.tmp >ipnfscrosscheck.txt
 cmp ipnfscrosscheck.txt $1/check-data/ipnfscrosscheck.ref

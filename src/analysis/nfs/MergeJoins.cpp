@@ -493,12 +493,12 @@ public:
 		out_replyat.setRaw(in_packetat.valRaw());
 		out_unified_op_id.set(d->unified_op_id);
 		if (in_packetat.valRaw() <= d->request_at_raw) {
-		    if (false)
-			fprintf(stderr,"Warning: %lld <= %lld on ids %lld/%lld; forcing 1us turnaround\n",
-				d->request_at_raw, in_packetat.valRaw(),
-				in_requestid.val(), in_replyid.val());
-		    out_replyat.setRaw(d->request_at_raw 
-				       + in_packetat.secNanoToRaw(0,1000));
+		    if (false) {
+			cerr << format("Warning: %d <= %d on ids %d/%d; forcing 1us turnaround\n")
+			    % d->request_at_raw % in_packetat.valRaw() 
+			    % in_requestid.val() % in_replyid.val();
+		    }
+		    out_replyat.setRaw(d->request_at_raw + in_packetat.secNanoToRaw(0,1000));
 		    ++force_1us_turnaround_count;
 		}
 		out_server.set(in_source.val());

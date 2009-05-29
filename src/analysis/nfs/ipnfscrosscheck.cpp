@@ -512,6 +512,7 @@ int main(int argc, char *argv[]) {
 
     Extent *tmp_nfs_extent = nfs_input->getExtent();
     SINVARIANT(tmp_nfs_extent != NULL);
+    nfs_series.setExtent(tmp_nfs_extent);
 
     registerUnitsEpoch();
 
