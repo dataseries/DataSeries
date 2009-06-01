@@ -12,6 +12,8 @@ DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
 # TODO-tomer: {grep,sort}analysis -> ds{grep,sort} (probably)
 DATASERIES_PROGRAM(grepanalysis)
 DATASERIES_PROGRAM(sortanalysis)
+DATASERIES_PROGRAM(parallelgrepanalysis)
+DATASERIES_PROGRAM(parallelsortanalysis)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
     LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)
