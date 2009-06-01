@@ -1174,9 +1174,7 @@ Extent::unpackData(Extent::ByteArray &from,
     INVARIANT(header_len + rounded_fixed + rounded_variable == from.size(),
 	      "Invalid extent data");
 
-    // decompress fixed-size data
-
-    // allocate memory for the fixed-size data
+    // uncompact fixed-size data
     fixeddata.resize(nrecords * type.rep.fixed_record_size, false);
     int32 fixed_uncompressed_size
         = uncompressBytes(fixeddata.begin(),compressed_fixed_begin,
@@ -1189,12 +1187,10 @@ Extent::unpackData(Extent::ByteArray &from,
     }
     INVARIANT(fixed_uncompressed_size == nrecords * type.rep.fixed_record_size, "internal");
 
-    // decompress variable-size data
-
-    // allocate memory for the variable-size data of this data extent
+    // uncompact variable-size data
     variabledata.resize(variable_size, false);
     INVARIANT(variable_size >= 4, "error unpacking, invalid variable size");
-    *(int32 *)variabledata.begin() = 0; // 4 empty bytes for the null pointers
+    *(int32 *)variabledata.begin() = 0; // zero length var32 present in all variable datas.
     int32 variable_uncompressed_size
         = uncompressBytes(variabledata.begin()+4, compressed_variable_begin,
                           compressed_variable_mode,
@@ -1243,10 +1239,11 @@ Extent::unpackData(Extent::ByteArray &from,
 	= type.rep.pack_self_relative;
 
     // iterate over the field types in this extent type that are packed self-relative
-    // TODO: why are we doing this for each and every extent?
+    // TODO: move this sanity check into the type initialization code, probably leave the
+    // check on the psr_copy is all 0 as a debug invariant.
     for(unsigned int j=0;j<type.rep.pack_self_relative.size();++j) {
         INVARIANT(psr_copy[j].field_num < type.rep.field_info.size(),
-                "oops! there are more self-relative packed fields than fields in general");
+		  "some field is packed relative to a non-existent field");
 
 	SINVARIANT(psr_copy[j].double_prev_v == 0 &&
 		   psr_copy[j].int32_prev_v == 0 &&

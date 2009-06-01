@@ -151,6 +151,7 @@ public:
 	pos.setPos(position);
     }
 
+    // TODO-tomer: document.
     void relocate(Extent *extent, const void *position) {
         DEBUG_SINVARIANT(extent != NULL);
         my_extent = extent;
@@ -263,15 +264,24 @@ public:
 	    }
 	}
 
+	// TODO: remove uses of setpos, record_start(), deprecate them
+	// for a release round and then remove.
+
 	/// old api
 	void setpos(byte *new_pos) {
 	    setPos(new_pos);
 	}
+
+	// TODO-tomer: make cur_pos non-const and do the transform in
+	// setPos
 	/// old api
 	byte *record_start() { return const_cast<byte*>(cur_pos); }
 
 	void setPos(const void *_new_pos) {
 #if LINTEL_ASSERT_BOOST_DEBUG
+	    // TODO-tomer: move from here to #else back into cpp; call this
+	    // code checkedSetPos(), and use it in debug mode, otherwise do
+	    // the fast thing.
 	    const byte *new_pos = static_cast<const byte *>(_new_pos);
 	    byte *cur_begin = cur_extent->fixeddata.begin();
 	    unsigned recnum = (new_pos - cur_begin) / recordsize;
@@ -289,6 +299,8 @@ public:
 #endif
 	}
 
+	// TODO: this should really return class ExtentLocation { byte
+	// *pos; }; as a entirely private, opaque inner class. 
 	const void *getPos() {
 	    return cur_pos;
 	}
@@ -316,13 +328,19 @@ public:
 	}
 	void forceCheckOffset(long offset);
 
+	// TODO-tomer: rename this to unsafeRelocate(); add
+	// documentation explaining the conditions of use, add in
+	// debug only checks that verify you have done the right
+	// thing.  
 	void relocate(Extent *extent, const void *position) {
+	    // SINVARIANT(extent->type == cur_extent->type);
 	    cur_extent = extent;
 	    cur_pos = static_cast<const byte *>(position);
 	}
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;
+	// TODO-tomer: this goes away.
         // Note in the "old api" constness is cast away. In the future the old
         // api should be deprecated.
 	const byte *cur_pos;

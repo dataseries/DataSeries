@@ -44,7 +44,8 @@ void GeneralValue::set(const GeneralField &from) {
 	    gvval.v_double = ((GF_Double *)&from)->val(); break;
 	case ExtentType::ft_fixedwidth: {
 	    if (NULL == v_fixedwidth) {
-                v_fixedwidth = new vector<uint8_t>;
+		// TODO: make this be a lintel::ByteArray
+		v_fixedwidth = new vector<uint8_t>;
             }
 	    const GF_FixedWidth *tmp = reinterpret_cast<const GF_FixedWidth *>(&from);
 	    v_fixedwidth->resize(tmp->myfield.size());
@@ -275,6 +276,7 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_fixedwidth:
+	    // TODO-tomer: use maybehexstring
 	    fprintf(to,"%s",hexstring(&v_fixedwidth[0], v_fixedwidth->size()).c_str());
             break;
 	case ExtentType::ft_variable32: {
@@ -284,7 +286,6 @@ void GeneralValue::write(FILE *to) {
 	default:
 	    FATAL_ERROR("internal error, unexpected type");
 	}
-
 }
 
 ostream &GeneralValue::write(ostream &to) const {

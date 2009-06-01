@@ -30,7 +30,7 @@ Extent Structure:
         1 byte variable-records compression type
         1 byte extent type name length
         1 byte zero fill
-    bytes extent type name (extent header indicates the size of this field)
+    <extent type name length> bytes that specify the extent type name 
     zero pad to 4 byte alignment
     <compressed fixed-data size> bytes fixed data
     zero pad to 4 byte alignment

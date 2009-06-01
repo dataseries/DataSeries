@@ -9,6 +9,7 @@ DATASERIES_PROGRAM(wcanalysis)
 DATASERIES_PROGRAM(lsfdsanalysis 
 	lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
 DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
+# TODO-tomer: {grep,sort}analysis -> ds{grep,sort} (probably)
 DATASERIES_PROGRAM(grepanalysis)
 DATASERIES_PROGRAM(sortanalysis)
 

@@ -306,6 +306,10 @@ protected:
     int32 getVarOffset() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
+	// TODO: standardize on DEBUG, and make sure there is a Lintel
+	// header that sets something else that lintel can use based
+	// on debug so we can have a consistent way of handling this.
+	// AssertBoost is probably a reasonable place to put it.
 #if defined(COMPILE_DEBUG) || defined(DEBUG)
         dataseries.pos.checkOffset(offset_pos);
 #endif

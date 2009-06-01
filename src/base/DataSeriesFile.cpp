@@ -261,9 +261,7 @@ DataSeriesSink::~DataSeriesSink()
     }
 }
 
-void
-DataSeriesSink::close()
-{
+void DataSeriesSink::close() {
     INVARIANT(wrote_library,
 	      "error: never wrote the extent type library?!");
     INVARIANT(cur_offset >= 0, "error: close called twice?!");
@@ -282,7 +280,7 @@ DataSeriesSink::close()
     compressors.clear();
     writer->join();
     delete writer;
-    writer=NULL;
+    writer = NULL;
 
     writeOutPending();
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");

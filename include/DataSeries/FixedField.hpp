@@ -20,7 +20,7 @@ public:
     typedef ExtentType::byte byte;
 
 protected:
-    FixedField(ExtentSeries &_dataseries, const std::string &field,
+    FixedField(ExtentSeries &dataseries, const std::string &field,
 	       ExtentType::fieldType ft, int flags);
     virtual ~FixedField();
 
@@ -33,6 +33,7 @@ protected:
 
     virtual void newExtentType();
 
+    // TODO-tomer: size -> field_size 
     int _size, offset;
     ExtentType::fieldType fieldtype;
 };
