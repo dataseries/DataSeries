@@ -11,6 +11,8 @@ DATASERIES_PROGRAM(lsfdsanalysis
 DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
 DATASERIES_PROGRAM(grepanalysis)
 DATASERIES_PROGRAM(sortanalysis)
+DATASERIES_PROGRAM(parallelgrepanalysis)
+DATASERIES_PROGRAM(parallelsortanalysis)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
     LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)

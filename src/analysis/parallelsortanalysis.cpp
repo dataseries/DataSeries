@@ -4,9 +4,15 @@
    See the file named COPYING for license details
 */
 
+#include <math.h>
+
 #include <string>
 #include <algorithm>
 #include <memory>
+#include <vector>
+
+#include <boost/foreach.hpp>
+#include <boost/format.hpp>
 
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/ProgramOptions.hpp>
@@ -14,8 +20,7 @@
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentWriter.hpp>
-#include <DataSeries/MemorySortModule.hpp>
-#include <DataSeries/SortModule.hpp>
+#include <DataSeries/ParallelMemorySortModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
@@ -30,12 +35,55 @@ public:
     }
 };
 
+class Variable32FieldPartitioner {
+public:
+    void initialize(uint32_t partitionCount) {}
+
+    uint32_t getPartition(const Variable32Field &field) {
+        return 0;
+    }
+};
+
 class FixedWidthFieldComparator {
 public:
     bool operator()(const FixedWidthField &fieldLhs, const FixedWidthField &fieldRhs) {
         DEBUG_SINVARIANT(fieldLhs.size() == fieldRhs.size());
         return memcmp(fieldLhs.val(), fieldRhs.val(), fieldLhs.size()) <= 0;
     }
+};
+
+class FixedWidthFieldPartitioner {
+public:
+    void initialize(uint32_t partitionCount) {
+        DEBUG_INVARIANT(partitionCount <= 256, "This partitioner partitions based on the first byte.");
+        float increment = 256.0 / partitionCount;
+        LintelLogDebug("parallelsortanalysis",
+                       boost::format("Determining %s partitioning limits with an increment of %s.") %
+                       partitionCount % increment);
+        float currentLimit = increment;
+        for (uint32_t i = 0; i < partitionCount - 1; ++i) {
+            limits.push_back(static_cast<uint8_t>(round(currentLimit)));
+            LintelLogDebug("parallelsortanalysis", boost::format("Partition limit: %s") % (uint32_t)limits.back());
+            currentLimit += increment;
+        }
+        SINVARIANT(limits.size() == partitionCount - 1);
+    }
+
+    uint32_t getPartition(const FixedWidthField &field) {
+        // Return a value between 0 and partitionCount - 1. A value in partition i
+        // must be less than a value in partition j if i < j.
+        uint8_t firstByte = static_cast<uint8_t*>(field.val())[0];
+        uint32_t partition = 0;
+        BOOST_FOREACH(uint8_t limit, limits) {
+            if (firstByte <= limit) {
+                return partition;
+            }
+            ++partition;
+        }
+        return limits.size();
+    }
+private:
+    vector<uint8_t> limits;
 };
 
 
@@ -79,8 +127,13 @@ lintel::ProgramOption<string>
 lintel::ProgramOption<bool> helpOption("help", "get help");
 
 
-typedef SortModule<Variable32Field, Variable32FieldComparator> Variable32SortModule;
-typedef SortModule<FixedWidthField, FixedWidthFieldComparator> FixedWidthSortModule;
+typedef ParallelMemorySortModule<Variable32Field,
+                                 Variable32FieldComparator,
+                                 Variable32FieldPartitioner> Variable32SortModule;
+
+typedef ParallelMemorySortModule<FixedWidthField,
+                                 FixedWidthFieldComparator,
+                                 FixedWidthFieldPartitioner> FixedWidthSortModule;
 
 
 int main(int argc, char *argv[]) {
@@ -88,8 +141,8 @@ int main(int argc, char *argv[]) {
 
     vector<string> args(lintel::parseCommandLine(argc, argv, false));
 
-    INVARIANT(!inputFileOption.get().empty(), "an input file is required");
-    INVARIANT(!outputFileOption.get().empty() || memOnlyOption.get(), "an output file is required if we are not doing a memory-only execution");
+    INVARIANT(!inputFileOption.get().empty(), "An input file is required.");
+    INVARIANT(!outputFileOption.get().empty() || memOnlyOption.get(), "An output file is required if we are not doing a memory-only execution.");
 
     string extentTypeName(extentTypeNameOption.get());
     if (extentTypeName.empty()) {
@@ -98,28 +151,21 @@ int main(int argc, char *argv[]) {
     TypeIndexModule inputModule(extentTypeName);
     inputModule.addSource(inputFileOption.get());
 
-
     auto_ptr<DataSeriesModule> sortModule;
     if (fixedWidthOption.get()) {
-        LintelLogDebug("sortanalysis", "Creating sort module for gensort data");
+        LintelLogDebug("parallelsortanalysis", "Creating sort module for gensort data.");
         string fieldName(fieldNameOption.get().empty() ? "key" : fieldNameOption.get());
         sortModule.reset(new FixedWidthSortModule(inputModule,
                                                   fieldName,
                                                   FixedWidthFieldComparator(),
-                                                  extentLimitOption.get(),
-                                                  memoryLimitOption.get(),
-                                                  compressTempOption.get(),
-                                                  tempFilePrefixOption.get()));
+                                                  FixedWidthFieldPartitioner()));
     } else {
-        LintelLogDebug("sortanalysis", "Creating sort module for txt2ds data");
+        LintelLogDebug("parallelsortanalysis", "Creating sort module for txt2ds data.");
         string fieldName(fieldNameOption.get().empty() ? "line" : fieldNameOption.get());
         sortModule.reset(new Variable32SortModule(inputModule,
                                                   fieldName,
                                                   Variable32FieldComparator(),
-                                                  extentLimitOption.get(),
-                                                  memoryLimitOption.get(),
-                                                  compressTempOption.get(),
-                                                  tempFilePrefixOption.get()));
+                                                  Variable32FieldPartitioner()));
     }
 
     if (!memOnlyOption.get()) {
@@ -130,9 +176,9 @@ int main(int argc, char *argv[]) {
         bool wroteLibrary = false;
         Extent *extent = NULL;
         while ((extent = sortModule->getExtent()) != NULL) {
-            LintelLogDebug("sortanalysis", "Read an extent");
+            LintelLogDebug("parallelsortanalysis", "Read an extent.");
             if (!wroteLibrary) {
-                LintelLogDebug("sortanalysis", "Writing extent type library to output file");
+                LintelLogDebug("parallelsortanalysis", "Writing extent type library to output file.");
                 ExtentTypeLibrary library;
                 library.registerType(extent->getType());
                 sink.writeExtentLibrary(library);
@@ -141,7 +187,7 @@ int main(int argc, char *argv[]) {
             sink.writeExtent(*extent, NULL);
             delete extent;
         }
-        LintelLogDebug("sortanalysis", "Closing the sink");
+        LintelLogDebug("parallelsortanalysis", "Closing the sink.");
         sink.close();
     } else {
         Extent *extent = NULL;
