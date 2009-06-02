@@ -405,6 +405,7 @@ public:
     virtual void write(std::ostream &to);
 
     virtual bool isNull();
+    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);

@@ -152,7 +152,7 @@ void GeneralValue::setInt32(int32_t val) {
 }
 
 void GeneralValue::setInt64(int64_t val) {
-    INVARIANT(gvtype == ExtentType::ft_unknown || 
+    INVARIANT(gvtype == ExtentType::ft_unknown ||
 	      gvtype == ExtentType::ft_int64,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_int64;
@@ -160,7 +160,7 @@ void GeneralValue::setInt64(int64_t val) {
 }
 
 void GeneralValue::setDouble(double val) {
-    INVARIANT(gvtype == ExtentType::ft_unknown || 
+    INVARIANT(gvtype == ExtentType::ft_unknown ||
 	      gvtype == ExtentType::ft_double,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_double;
@@ -245,7 +245,7 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
 
 namespace {
     char *long_int_format() {
-	BOOST_STATIC_ASSERT(sizeof(long) == 4 || sizeof(long) == 8); 
+	BOOST_STATIC_ASSERT(sizeof(long) == 4 || sizeof(long) == 8);
 	if (sizeof(long) == 8) {
 	    return (char *)"%ld";
 	} else if (sizeof(long) == 4) {
@@ -357,9 +357,9 @@ double GeneralValue::valDouble() {
 }
 
 uint8_t GeneralValue::valByte() {
-    switch(gvtype) 
+    switch(gvtype)
 	{
-	case ExtentType::ft_unknown: 
+	case ExtentType::ft_unknown:
 	    FATAL_ERROR("value undefined, can't run valInt32()");
 	    break;
 	case ExtentType::ft_bool:
@@ -382,15 +382,15 @@ uint8_t GeneralValue::valByte() {
 	    break;
 	}
 	default:
-	    FATAL_ERROR("internal error, unexpected type"); 
+	    FATAL_ERROR("internal error, unexpected type");
 	}
     return 0;
 }
 
 int32_t GeneralValue::valInt32() {
-    switch(gvtype) 
+    switch(gvtype)
 	{
-	case ExtentType::ft_unknown: 
+	case ExtentType::ft_unknown:
 	    FATAL_ERROR("value undefined, can't run valInt32()");
 	    break;
 	case ExtentType::ft_bool:
@@ -413,7 +413,7 @@ int32_t GeneralValue::valInt32() {
 	    break;
 	}
 	default:
-	    FATAL_ERROR("internal error, unexpected type"); 
+	    FATAL_ERROR("internal error, unexpected type");
 	}
     return 0;
 }
@@ -1138,6 +1138,10 @@ void GF_FixedWidth::write(std::ostream &to) {
 
 bool GF_FixedWidth::isNull() {
     return myfield.isNull();
+}
+
+void GF_FixedWidth::setNull(bool val) {
+    myfield.setNull(val);
 }
 
 void GF_FixedWidth::set(GeneralField *from) {
