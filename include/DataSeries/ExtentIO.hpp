@@ -12,7 +12,17 @@
 #ifndef EXTENT_IO_H
 #define EXTENT_IO_H
 
+// TODO-tomer: rename ExtentReader/Writer to
+// TemporaryFileReader/TemporaryFileWriter, and make this
+// TemporaryExtentHeader.  Remove the attribute packed.
+
 struct ExtentDataHeader {
+    // TODO-tomer: add TemporaryFileHeader (or some better name so you
+    // can use it for the network exchange also); header_size and
+    // magic number will go in there.
+    // TODO-tomer: add uint32_t header_size to this and check it matches
+
+    // TODO-tomer: naming convention is variable_name
     uint32_t fixedDataSize; // (compressed) size
     uint32_t variableDataSize; // (compressed) size
     uint8_t fixedDataCompressed; // effectively a bool.

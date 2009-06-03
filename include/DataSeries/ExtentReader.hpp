@@ -6,13 +6,16 @@
 */
 
 /** @file
-    A simple class for reading temporary extents from files. It is used in
-    conjunction with ExtentWriter.
+
+    A dataseries module for reading temporary dataseries files that
+    were probably written by ExtentWriter.
+
     This class supports LZF compression.
 */
 
-#ifndef __DATASERIES_EXTENTREADER_H
-#define __DATASERIES_EXTENTREADER_H
+// TODO-tomer: no __ at the beginning of ndefs, HPP at end
+#ifndef DATASERIES_EXTENTREADER_HPP
+#define DATASERIES_EXTENTREADER_HPP
 
 #include <string>
 
@@ -24,7 +27,7 @@ class ExtentDataHeader;
 
 class ExtentReader : public DataSeriesModule {
 public:
-    ExtentReader(const std::string &fileName, const ExtentType &extentType);
+    ExtentReader(const std::string &file_name, const ExtentType &extentType);
     virtual ~ExtentReader();
 
     /** Read the next extent from the file. The caller is responsible for deallocating
@@ -35,14 +38,13 @@ public:
     void close();
 
 private:
-    void readExtentBuffers(const ExtentDataHeader &header,
-                           Extent::ByteArray &fixedData,
+    void readExtentBuffers(const ExtentDataHeader &header, Extent::ByteArray &fixedData,
                            Extent::ByteArray &variableData);
     void decompressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
     bool readBuffer(void *buffer, size_t size);
 
     int fd;
-    const ExtentType &extentType;
+    const ExtentType &extentType; // TODO-tomer extent_type (and many others)
     size_t offset;
 };
 

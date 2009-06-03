@@ -33,8 +33,11 @@ protected:
 
     virtual void newExtentType();
 
+    // TODO: check to see if -1 is used as a special anywhere for
+    // size, offset; both should be uint32_t
+
     // TODO-tomer: size -> field_size 
-    int _size, offset;
+    int32_t _size, offset; 
     ExtentType::fieldType fieldtype;
 };
 

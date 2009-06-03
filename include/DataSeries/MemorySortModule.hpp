@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <memory>
 
+// TODO: add CMakeConfig check for foreach.hpp
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -47,8 +48,9 @@ public:
 
     virtual ~MemorySortModule();
 
-    /** Returns the next @c Extent according to the sorted order. Note that the first call to
-        getExtent will be significantly slower than the rest, because it triggers the sorting process. */
+    /** Returns the next @c Extent according to the sorted order. Note
+        that the first call to getExtent will be significantly slower
+        than the rest, because it triggers the sorting process. */
     virtual Extent *getExtent();
 
     /** Resets the object so that it can be used again if the upstream module has data. */

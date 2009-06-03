@@ -49,19 +49,19 @@ void TypeIndexModule::lockedResetModule() {
 
 TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
     while(true) {
-	if (indexSeries.curExtent() == NULL) { // is this a new DS file?
+	if (indexSeries.curExtent() == NULL) { 
+	    // advance to next file.
 	    if (cur_file == inputFiles.size()) {
 		INVARIANT(!inputFiles.empty(), "type index module had no input files??");
 		return NULL;
 	    }
 
-	    // read the headers and trailers of the DS file (we need the index)
 	    cur_source = new DataSeriesSource(inputFiles[cur_file]);
 	    INVARIANT(cur_source->indexExtent != NULL,
 		      "can't handle source with null index extent\n");
 
 	    if (type_match.empty()) {
-		// nothing to do (any type is fine)
+		// nothing to do, match all types
 	    } else if (my_type == NULL) {
 		my_type = matchType();
 	    } else {
@@ -74,43 +74,41 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 			  % tmp->getXmlDescriptionString());
 	    }
 
-	    // we'll use an ExtentSeries (with just one extent!) to read the index extent
+	    // index extent is exactly one extent/file
 	    indexSeries.setExtent(cur_source->indexExtent);
 	}
 
-	// loop through all the records in the index extent of the current DS file
-	// (each record refers to a single data extent in the file)
-	for(;indexSeries.pos.morerecords();++indexSeries.pos) {
-	    // does this record refer an extent with the type we're interested in?
-	    if (type_match.empty() ||
-		(my_type != NULL &&
-		 extentType.stringval() == my_type->getName())) {
-		off64_t v = extentOffset.val(); // the offset of this data extent
 
-		// read this data extent (PrefetchExtent includes the byte array)
+	// each row refers to a single extent in the file
+	for(;indexSeries.pos.morerecords(); ++indexSeries.pos) {
+	    if (type_match.empty() || 
+		(my_type != NULL && extentType.stringval() == my_type->getName())) {
+		off64_t v = extentOffset.val(); 
+
 		PrefetchExtent *ret
 		    = readCompressed(cur_source, v, extentType.stringval());
 
-		// move on to the next record in the index (referencing the next extent in the file)
-		// (the next call to lockedGetCompressedExtent will start from there)
 		++indexSeries.pos;
 
-		return ret; // we found an extent of the desired type so return it
+		return ret; 
 	    }
 	}
 
+	SINVARIANT(indexSeries.pos.morerecords() == false);
 	// we're done with the current DS file (no more records in the index)
-	if (indexSeries.pos.morerecords() == false) { // TODO: isn't this always false?
+
+	// TODO-tomer: if the above invariant passes regression tests remove the next check
+	if (indexSeries.pos.morerecords() == false) { 
 	    indexSeries.clearExtent();
-	    delete cur_source; // release resources associated with current DS file (eg, index extent)
+	    delete cur_source; 
 	    cur_source = NULL;
-	    ++cur_file; // move on to the next DS file
+	    ++cur_file; 
 	}
     }
 }
 
 const ExtentType *TypeIndexModule::matchType() {
-    INVARIANT(cur_source != NULL, "bad");
+    SINVARIANT(cur_source != NULL);
     const ExtentType *t = cur_source->getLibrary().getTypeMatch(type_match, true);
     const ExtentType *u = NULL;
     if (!second_type_match.empty()) {
