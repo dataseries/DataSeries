@@ -16,15 +16,14 @@
 
 SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 				     const std::string &index_type,
-				     const std::string &fieldname) :
-    source_(NULL),
-    cur_extent_(0),
-    index_type_(index_type),
-    firstTime(true) {
+				     const std::string &fieldname) 
+    : source_(NULL), cur_extent_(0), index_type_(index_type),
+      firstTime(true) 
+{
     TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
     tim.addSource(index_filename);
     ExtentSeries s;
-    Int64Field extent_offset(s,"extent_offset");
+    Int64Field extent_offset(s, "extent_offset");
     GeneralField *min_field = NULL;
     GeneralField *max_field = NULL;
     while(true) {
@@ -40,9 +39,13 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 	for (; s.pos.morerecords(); ++s.pos) {
 	    addIndexEntry(GeneralValue(min_field), GeneralValue(max_field),
 			  extent_offset.val());
+	    // TODO-brad/alistair: verify that the index entries are
+	    // sorted, and verify that there is only a single filename
+	    // in the index since this code is horribly wrong if that
+	    // isn't true.
 	    if (source_ == NULL) {
-		Variable32Field filename(s,"filename");
-		sourceFilename =  filename.stringval();
+		Variable32Field filename(s, "filename");
+		sourceFilename = filename.stringval();
 		source_ = new DataSeriesSource(filename.stringval(), false);
 	    }
 	}
@@ -52,8 +55,7 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
     delete max_field;
 }
 
-void
-SortedIndexModule::lookup(int64_t value) {
+void SortedIndexModule::lookup(int64_t value) {
     if (!firstTime) {
 	lockedResetModule();
 	source_ = new DataSeriesSource(sourceFilename, false);
@@ -72,8 +74,7 @@ void SortedIndexModule::lockedResetModule() {
     cur_extent_ = 0;
 }
 
-IndexSourceModule::PrefetchExtent *
-SortedIndexModule::lockedGetCompressedExtent() {
+IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent() {
     if (cur_extent_ >= extents_.size()) {
 	return NULL;
     }

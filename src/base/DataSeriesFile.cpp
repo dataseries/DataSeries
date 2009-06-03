@@ -44,8 +44,9 @@ using boost::format;
 #define O_LARGEFILE 0
 #endif
 
-DataSeriesSource::DataSeriesSource(const string &_filename, bool read_ind)
-    : filename(_filename), fd(-1), cur_offset(0), read_index(read_ind)
+DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
+    : filename(filename), fd(-1), cur_offset(0), read_index(read_index),
+      indexExtent(NULL)
 {
     reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
@@ -102,6 +103,9 @@ DataSeriesSource::DataSeriesSource(const string &_filename, bool read_ind)
 	mylibrary.registerType(v);
     }
     delete e;
+    // TODO-brad/alistair: Make skipping the tail check a separate
+    // flag, you may want the verify the file was properly closed
+    // separately from reading the index.
     if (read_index) {
 	struct stat ds_file_stats;
 	int ret_val = fstat(fd,&ds_file_stats);
@@ -133,6 +137,11 @@ DataSeriesSource::~DataSeriesSource()
     if (isactive()) {
 	closefile();
     }
+    // TODO-brad/alistair: why protect the delete?  It should have
+    // been null (it wasn't I fixed it).  Also check users of the
+    // indexExtent in a source and verify they all check if it's not
+    // null before accessing it.  DSS's opened with the read_index
+    // flag == false could leak out.
     if (read_index) {
 	delete indexExtent;
     }
