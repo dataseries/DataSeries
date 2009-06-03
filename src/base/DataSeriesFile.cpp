@@ -102,27 +102,27 @@ DataSeriesSource::DataSeriesSource(const string &_filename, bool read_ind)
 	mylibrary.registerType(v);
     }
     delete e;
-    struct stat ds_file_stats;
-    int ret_val = fstat(fd,&ds_file_stats);
-    INVARIANT(ret_val == 0,
-	      boost::format("fstat failed: %s")
-	      % strerror(errno));
-    BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
-    off64_t tailoffset = ds_file_stats.st_size-7*4;
-    INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
-    byte tail[7*4];
-    Extent::checkedPread(fd,tailoffset,tail,7*4);
-    DataSeriesSink::verifyTail(tail,need_bitflip,filename);
-    if (need_bitflip) {
-	Extent::flip4bytes(tail+4);
-	Extent::flip8bytes(tail+16);
-    }
-    int32 packedsize = *(int32 *)(tail + 4);
-    off64_t indexoffset = *(int64 *)(tail + 16);
-    INVARIANT(tailoffset - packedsize == indexoffset,
-	      boost::format("mismatch on index offset %d - %d != %d!")
-	      % tailoffset % packedsize % indexoffset);
     if (read_index) {
+	struct stat ds_file_stats;
+	int ret_val = fstat(fd,&ds_file_stats);
+	INVARIANT(ret_val == 0,
+		boost::format("fstat failed: %s")
+		% strerror(errno));
+	BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
+	off64_t tailoffset = ds_file_stats.st_size-7*4;
+	INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
+	byte tail[7*4];
+	Extent::checkedPread(fd,tailoffset,tail,7*4);
+	DataSeriesSink::verifyTail(tail,need_bitflip,filename);
+	if (need_bitflip) {
+	    Extent::flip4bytes(tail+4);
+	    Extent::flip8bytes(tail+16);
+	}
+	int32 packedsize = *(int32 *)(tail + 4);
+	off64_t indexoffset = *(int64 *)(tail + 16);
+	INVARIANT(tailoffset - packedsize == indexoffset,
+		boost::format("mismatch on index offset %d - %d != %d!")
+		% tailoffset % packedsize % indexoffset);
 	indexExtent = preadExtent(indexoffset);
 	INVARIANT(indexExtent != NULL, "index extent read failed");
     }
