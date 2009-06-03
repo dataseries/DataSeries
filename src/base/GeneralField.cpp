@@ -289,7 +289,7 @@ ostream &GeneralValue::write(ostream &to) const {
     return to;
 }
 
-double GeneralValue::valDouble() {
+double GeneralValue::valDouble() const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -320,7 +320,7 @@ double GeneralValue::valDouble() {
     return 0;
 }
 
-uint8_t GeneralValue::valByte() {
+uint8_t GeneralValue::valByte() const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -351,7 +351,7 @@ uint8_t GeneralValue::valByte() {
     return 0;
 }
 
-int32_t GeneralValue::valInt32() {
+int32_t GeneralValue::valInt32() const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -382,7 +382,7 @@ int32_t GeneralValue::valInt32() {
     return 0;
 }
 
-int64_t GeneralValue::valInt64() {
+int64_t GeneralValue::valInt64() const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -413,7 +413,7 @@ int64_t GeneralValue::valInt64() {
     return 0;
 }
 
-bool GeneralValue::valBool() {
+bool GeneralValue::valBool() const {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
@@ -448,7 +448,7 @@ bool GeneralValue::valBool() {
 static string s_true("true");
 static string s_false("false");
 
-const std::string GeneralValue::valString() {
+const std::string GeneralValue::valString() const {
     switch(gvtype) {
 	case ExtentType::ft_unknown: 
 	    FATAL_ERROR("value undefined, can't run valString()");

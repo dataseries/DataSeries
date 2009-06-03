@@ -119,12 +119,12 @@ public:
     void setDouble(double val);
     void setVariable32(const std::string &from);
 
-    bool valBool();
-    uint8_t valByte();
-    int32_t valInt32();
-    int64_t valInt64();
-    double valDouble();
-    const std::string valString();
+    bool valBool() const;
+    uint8_t valByte() const;
+    int32_t valInt32() const;
+    int64_t valInt64() const;
+    double valDouble() const;
+    const std::string valString() const;
 
 protected:
     // let all of the general field classes get at our value/type
