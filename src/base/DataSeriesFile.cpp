@@ -44,8 +44,8 @@ using boost::format;
 #define O_LARGEFILE 0
 #endif
 
-DataSeriesSource::DataSeriesSource(const string &_filename)
-    : filename(_filename), fd(-1), cur_offset(0)
+DataSeriesSource::DataSeriesSource(const string &_filename, bool read_ind)
+    : filename(_filename), fd(-1), cur_offset(0), read_index(read_ind)
 {
     reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
@@ -122,8 +122,10 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
     INVARIANT(tailoffset - packedsize == indexoffset,
 	      boost::format("mismatch on index offset %d - %d != %d!")
 	      % tailoffset % packedsize % indexoffset);
-    indexExtent = preadExtent(indexoffset);
-    INVARIANT(indexExtent != NULL, "index extent read failed");
+    if (read_index) {
+	indexExtent = preadExtent(indexoffset);
+	INVARIANT(indexExtent != NULL, "index extent read failed");
+    }
 }
 
 DataSeriesSource::~DataSeriesSource()
@@ -131,7 +133,9 @@ DataSeriesSource::~DataSeriesSource()
     if (isactive()) {
 	closefile();
     }
-    delete indexExtent;
+    if (read_index) {
+	delete indexExtent;
+    }
 }
 
 void

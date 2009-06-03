@@ -59,6 +59,7 @@ SET(LIBDATASERIES_SOURCES
 	module/DataSeriesModule.cpp
 	module/IndexSourceModule.cpp
 	module/MinMaxIndexModule.cpp
+	module/SortedIndexModule.cpp
 	module/PrefetchBufferModule.cpp
 	module/RowAnalysisModule.cpp
 	module/SequenceModule.cpp
