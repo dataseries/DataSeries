@@ -45,8 +45,8 @@ using boost::format;
 #endif
 
 DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
-    : filename(filename), fd(-1), cur_offset(0), read_index(read_index),
-      indexExtent(NULL)
+    : filename(filename), fd(-1), cur_offset(0), indexExtent(NULL),
+      read_index(read_index)
 {
     reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
