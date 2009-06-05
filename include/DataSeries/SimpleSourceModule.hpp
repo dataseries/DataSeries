@@ -5,8 +5,13 @@
    See the file named COPYING for license details
 */
 
+// TODO-tomer: move this into just src, and note that it's for the
+// purpose of benchmarking implementation overhead from compression
+// and endianness conversion.  Also note we considered and discarded
+// the DataSeries/{benchmark,experimental}/SSM.hpp names.
+
 /** @file
-    DataSeries Module for reading a single DataSeries file with no compression and correct endianess
+    DataSeries Module for reading a single DataSeries file with no compression and endianess
 */
 
 #ifndef __SIMPLE_SOURCE_MODULE_H
@@ -22,7 +27,7 @@ class SimpleSourceModule : public DataSeriesModule {
 public:
     SimpleSourceModule(const std::string &filename);
     virtual ~SimpleSourceModule();
-    virtual Extent* getExtent();
+    virtual Extent *getExtent();
 
 private:
     void init();

@@ -1,5 +1,9 @@
 #!/bin/sh
 
+# TODO-tomer: same changes as autogrepanalysis.sh
+
+# TODO-tomer: Quote the arguments with ? in them.
+
 # 100MB = 1000000 records
 ./sortanalysis.py prepareGensort --records=1000000 /tmp/gensort
 ./sortanalysis.py experiment --tag="gensort 100MB" --gensort --iterations=3 --extentLimit=200000 --memoryLimit=2000000000 --compressOutput? --compressTemp? /tmp/gensort /tmp/gensort.out

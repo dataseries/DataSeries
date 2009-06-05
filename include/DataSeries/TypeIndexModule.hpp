@@ -51,6 +51,12 @@ public:
     void sameInputFiles(TypeIndexModule &from) {
 	inputFiles = from.inputFiles;
     }
+    
+    /// Returns the unique type that is being used as the output of
+    /// this TypeIndexModule.
+    const ExtentType *getMyType() {
+	return my_type;
+    }
 protected:
     std::string type_match, second_type_match;
     ExtentSeries indexSeries;

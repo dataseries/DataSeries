@@ -10,6 +10,9 @@
     and sorts all the records in memory. getExtent returns new extents.
 */
 
+// TODO-tomer: move this in to an examples directory or something like
+// that because it's obsolete before it even got to mainline.
+
 #ifndef __DATASERIES_MEMORYSORTMODULE_H
 #define __DATASERIES_MEMORYSORTMODULE_H
 
@@ -30,7 +33,13 @@
 #include <DataSeries/Field.hpp>
 #include <DataSeries/GeneralField.hpp>
 
-template <typename FieldType, typename FieldComparator>
+// TODO-tomer: document properties needed for template arguments; see
+// PriorityQueue.hpp, try to make it show up in doxygen.  Also
+// document how much memory could be used overall.  I think the answer
+// is about input-size + output-extent-size + # rows * sizeof(void *) + #
+// extents * sizeof(something) + ....
+// TODO-tomer: try to do the default compartor trick.
+template <typename FieldType, typename FieldComparator = std::less<FieldType> >
 class MemorySortModule : public DataSeriesModule {
 public:
     /** Constructs a new @c MemorySortModule that will sort all the records based on the field
@@ -50,29 +59,37 @@ public:
 
     /** Returns the next @c Extent according to the sorted order. Note
         that the first call to getExtent will be significantly slower
-        than the rest, because it triggers the sorting process. */
+        than the rest, because it gets all of the extents from
+        upstream module, sorts each extent, and merges enough of the
+        rows to get the first extent.  The remaining calls just have
+        to do more of the merge operations. */
     virtual Extent *getExtent();
 
-    /** Resets the object so that it can be used again if the upstream module has data. */
+    /** Resets the object so that it can be used again if the upstream
+	module has data. It is invalid to call this if there are any
+	extents still being merged. TODO-tomer: make it invalid. */
     void reset();
 
 private:
     /** An internal class that wraps a single extent and allows it to be sorted. Sorting the
         extent simply involves sorting the positions variable. The purpose of the iterator
-        variable is to iterate over the positions vector. */
+        variable is to facilitate the incremental merge */ 
     class SortedExtent {
     public:
+	// use the better boost ptr if you want to do this.
         boost::shared_ptr<Extent> extent;
-        std::vector<const void*> positions; // the positions in sorted order
+        std::vector<const void *> positions; // the positions in sorted order
                                             // (positions.size() == # of records in this extent)
-        std::vector<const void*>::iterator iterator;
+        std::vector<const void *>::iterator iterator;
 
         void resetIterator();
     };
 
-    /** A data class to hold data that is needed by an AbstractComparator. This cannot
-        be stored directly in AbstractComparator because std::sort copies the comparator
-        (once for each item!), resulting in a performance hit. */
+    /** A data class to hold data that is needed by an
+        AbstractComparator. This cannot be stored directly in
+        AbstractComparator because std::sort copies the comparator
+        (once for each item!), resulting in a performance
+        hit. TODO-tomer: put reference to online discussion in here. */
     class ComparatorData {
     public:
         ComparatorData(const std::string &fieldName, FieldComparator &fieldComparator);
@@ -110,11 +127,16 @@ private:
     void retrieveExtents();
     void sortExtents();
     void sortExtent(SortedExtent &sortedExtent);
-    Extent* createNextExtent();
+    Extent *createNextExtent();
 
+    // extents are not sorted relative to each other, just sorted within an extent.
     std::vector<boost::shared_ptr<SortedExtent> > sortedExtents;
 
-    bool initialized; // starts as false, becomes true after first call to upstreamModule.getExtent
+    // Initialized tells us the difference between we haven't yet
+    // gotten extents from upstream module and we have finished
+    // merging everything without requiring that the upstream module
+    // consistently returning NULL at the end of extents.
+    bool initialized; 
     DataSeriesModule &upstreamModule;
     std::string fieldName;
     FieldComparator fieldComparator;
@@ -128,6 +150,7 @@ private:
     SortedExtentComparator sortedExtentComparator;
     PriorityQueue <SortedExtent*, SortedExtentComparator> sortedExtentQueue;
 
+    // TODO-tomer: Use lintel::Clock::Tfrac
     struct timeval startSortTime;
     struct timeval endSortTime;
     struct timeval endMergeTime;
@@ -135,34 +158,29 @@ private:
 
 
 template <typename FieldType, typename FieldComparator>
-MemorySortModule<FieldType, FieldComparator>::
-MemorySortModule(DataSeriesModule &upstreamModule,
-                 const std::string &fieldName,
-                 const FieldComparator &fieldComparator,
-                 size_t extentSizeLimit)
+MemorySortModule<FieldType, FieldComparator>
+::MemorySortModule(DataSeriesModule &upstreamModule,
+		   const std::string &fieldName,
+		   const FieldComparator &fieldComparator,
+		   size_t extentSizeLimit)
     : initialized(false),
       upstreamModule(upstreamModule), fieldName(fieldName), fieldComparator(fieldComparator),
       extentSizeLimit(extentSizeLimit),
       comparatorData(fieldName, this->fieldComparator),
       positionComparator(comparatorData),
       sortedExtentComparator(comparatorData),
-      sortedExtentQueue(sortedExtentComparator) {
-}
+      sortedExtentQueue(sortedExtentComparator) 
+{ }
 
 template <typename FieldType, typename FieldComparator>
-MemorySortModule<FieldType, FieldComparator>::
-~MemorySortModule() {
-}
+MemorySortModule<FieldType, FieldComparator>::~MemorySortModule() { }
 
 template <typename FieldType, typename FieldComparator>
-Extent *MemorySortModule<FieldType, FieldComparator>::
-getExtent() {
+Extent *MemorySortModule<FieldType, FieldComparator>::getExtent() {
     // retrieve the extents and sort them if this is the first call to getExtent
     if (!initialized) {
         retrieveExtents();
-        if (sortedExtents.size() > 0) {
-            sortExtents();
-        }
+	sortExtents();
         initialized = true;
     }
 
@@ -171,16 +189,14 @@ getExtent() {
 }
 
 template <typename FieldType, typename FieldComparator>
-void MemorySortModule<FieldType, FieldComparator>::
-reset() {
+void MemorySortModule<FieldType, FieldComparator>::reset() {
     sortedExtents.clear();
     sortedExtentQueue.clear();
     initialized = false;
 }
 
 template <typename FieldType, typename FieldComparator>
-void MemorySortModule<FieldType, FieldComparator>::
-retrieveExtents() {
+void MemorySortModule<FieldType, FieldComparator>::retrieveExtents() {
     Extent *extent = NULL;
     while ((extent = upstreamModule.getExtent()) != NULL) {
         boost::shared_ptr<SortedExtent> sortedExtent(new SortedExtent);
@@ -193,8 +209,11 @@ retrieveExtents() {
 }
 
 template <typename FieldType, typename FieldComparator>
-void MemorySortModule<FieldType, FieldComparator>::
-sortExtents() {
+void MemorySortModule<FieldType, FieldComparator>::sortExtents() {
+    if (sortedExtents.empty()) {
+	return;
+    }
+    SINVARIANT(!initialized);
     // the next two calls initialize the extent series types so we can use the
     // relocate method later instead of setExtent and setCurPos
     sortedExtentComparator.setExtent(sortedExtents[0]->extent.get());
@@ -243,8 +262,7 @@ sortExtent(SortedExtent &sortedExtent) {
 }
 
 template <typename FieldType, typename FieldComparator>
-Extent* MemorySortModule<FieldType, FieldComparator>::
-createNextExtent() {
+Extent* MemorySortModule<FieldType, FieldComparator>::createNextExtent() {
     if (sortedExtentQueue.empty()) {
         gettimeofday(&endMergeTime, NULL);
 

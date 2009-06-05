@@ -10,6 +10,11 @@
     in memory, an external sort is used.
 */
 
+// TODO-tomer: since we want to propagate, put a note on this file and
+// GrepModule that both of them are expected to be subsumed by the
+// parallel versions.  Expect to move this into src/paper once the
+// parallel one is in.
+
 #ifndef __DATASERIES_SORTMODULE_H
 #define __DATASERIES_SORTMODULE_H
 
