@@ -65,6 +65,7 @@ IF(SRT_ENABLED)
 ENDIF(SRT_ENABLED)
 
 ### Manual tests
+# TODO-tomer: make joe fix this name
 ADD_EXECUTABLE(stringSorter stringSorter.cpp ${ARGN})
 TARGET_LINK_LIBRARIES(stringSorter ${LINTELPTHREAD_LIBRARIES})
 ADD_EXECUTABLE(sortexperiment sortexperiment.cpp ${ARGN})

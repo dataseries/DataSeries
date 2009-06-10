@@ -60,6 +60,7 @@ void ExtentWriter::writeExtentBuffers(bool fixedDataCompressed,
     writeBuffer(fixedData.begin(), fixedData.size());
     writeBuffer(variableData.begin(), variableData.size());
 
+    // TODO-tomer: use the ExtentWriter convention for debug's on a class.
     LintelLogDebug("extentwriter", boost::format("Wrote extent to file (header: %s bytes, "
                    "fixed data: %s bytes, variable data: %s bytes)") %
                    sizeof(header) %
@@ -98,7 +99,6 @@ void ExtentWriter::close() {
     if (fd == -1) {
         return;
     }
-    CHECKED(::close(fd) == 0,
-            boost::format("Close failed: %s") % strerror(errno));
+    CHECKED(::close(fd) == 0, boost::format("Close failed: %s") % strerror(errno));
     fd = -1;
 }

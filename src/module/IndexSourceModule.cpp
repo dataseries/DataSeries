@@ -215,13 +215,11 @@ IndexSourceModule::getWaitStats(WaitStats &stats)
     return true;
 }
 
-void
-IndexSourceModule::compressedPrefetchThread()
-{
+void IndexSourceModule::compressedPrefetchThread() {
     prefetch->mutex.lock();
     while(true) {
 	if (prefetch->abort_prefetching) {
-	    break;
+	    break; // TODO: should be able to move condition into while()
 	} else if (prefetch->reset_flag) {
 	    SINVARIANT(prefetch->compressed.empty() &&
 		       prefetch->compressed.cur == 0);
@@ -244,39 +242,32 @@ IndexSourceModule::compressedPrefetchThread()
 		SINVARIANT(p->extent_source != Extent::in_memory_str &&
 			   p->extent_source_offset > 0);
 
-		// add the data extent that we just fetched to prefetch->compressed
 		prefetch->compressed.add(p, p->bytes.size());
 
-		// is enough room for the unpacked data in prefetch->unpacked?
-		// (can_add with a PrefetchExtent first calculates the unpacked size)
+		// can_add operates on the unpacked size of the extent.
 		if (prefetch->unpacked.can_add(prefetch->compressed.front())) {
-		    prefetch->unpack_cond.signal(); // wake up the unpacking thread
+		    prefetch->unpack_cond.signal(); 
 		} else {
 		    // no point in waking up the unpacking thread since it won't have
-		    // anywhere to store its results - so just remember that we have compressed
-		    // data waiting for unpacking
+		    // anywhere to store its results
 		    ++prefetch->stats.skip_unpack_signal;
 		}
 	    }
 	} else {
-	    // we can't read the data extent from the DS file because there's no room in
-	    // prefetch->compressed to store it
+	    // usually waiting for outgoing buffer space
 	    prefetch->compressed_cond.wait(prefetch->mutex);
 	}
     }
     prefetch->mutex.unlock();
 }
 
-void
-IndexSourceModule::unpackThread()
-{
+void IndexSourceModule::unpackThread() {
     prefetch->mutex.lock();
     ++prefetch->stats.active_unpackers;
 
     while(prefetch->abort_prefetching == false) {
 	if(prefetch->compressed.data.empty() ||
 	   !prefetch->unpacked.can_add(prefetch->compressed.front())) {
-	    // there's nothing to unpack or there's no room for the unpacked data
 	    --prefetch->stats.active_unpackers;
 	    if (prefetch->compressed.data.empty()) {
 		++prefetch->stats.unpack_no_upstream;
@@ -293,28 +284,24 @@ IndexSourceModule::unpackThread()
 
 	prefetch->stats.lockedUpdateActive();
 
-	// check the same condition again now that we're out of the CV's wait
+	// re-check condition after potentially waiting
 	if (!prefetch->compressed.data.empty() &&
 	    prefetch->unpacked.can_add(prefetch->compressed.front())) {
 
-	    // take the data extent off the compressed queue
+	    // move first extent from compressed to uncompressed queue
+	    // so compressed prefetching can keep going.
+
 	    PrefetchExtent *pe = prefetch->compressed.getFront();
 
-	    // the compressed queue now has more room available
 	    prefetch->compressed.subtract(pe->bytes.size());
 
-	    // and the unpacked queue has less room available
-	    uint32_t unpacked_size
-		= Extent::unpackedSize(pe->bytes, pe->need_bitflip,
-				       *pe->type);
+	    uint32_t unpacked_size = Extent::unpackedSize(pe->bytes, pe->need_bitflip, *pe->type);
 
-	    // add the unpacked extent to the unpacked queue (we haven't really unpacked it yet,
-	    // but we are certainly going to and we don't the prefetching thread to wait for us
-	    // to actually do that)
 	    prefetch->unpacked.add(pe, unpacked_size);
 
-	    // the prefetching thread can go ahead and read the next data extent from the DS file
 	    prefetch->compressed_cond.signal();
+
+	    // now decide if we're going to wait before we unpack the extent.
 
 	    bool should_yield;
 	    if (prefetch->unpackedReady()) {
@@ -339,7 +326,7 @@ IndexSourceModule::unpackThread()
 		sched_yield();
 	    }
 
-	    // this is what actually unpacks/decompresses the data!
+	    // finally unpack the extent.
 	    Extent *e = new Extent(*pe->type, pe->bytes, pe->need_bitflip);
 
 	    e->extent_source = pe->extent_source;
@@ -354,9 +341,7 @@ IndexSourceModule::unpackThread()
 	    total_compressed_bytes += pe->bytes.size();
 	    total_uncompressed_bytes += e->size();
 
-	    // release the compressed data 
-	    // (we can clear the compressed bytes because the uncompressed bytes are stored separately)
-	    pe->bytes.clear();
+	    pe->bytes.clear(); // save memory as soon as possible.
 	    
 	    pe->unpacked = e;
 	    SINVARIANT(!prefetch->unpacked.empty());

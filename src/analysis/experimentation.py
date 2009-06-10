@@ -3,6 +3,8 @@ from subprocess import call
 import sys	
 import os
 
+# TODO-tomer, add as = enum {text, lines, stdout} parameter, and merge these three function.
+# also add checks that the program actually ran (e.g. ret = os.system(cmd) == 0)
 def runText(command):
 	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
 	pair = (stdoutHandle.read(), stderrHandle.read())
@@ -11,7 +13,7 @@ def runText(command):
 	stderrHandle.close()
 	return pair
 
-def runLines(command, echo=True):
+def runLines(command):
 	(stdinHandle, stdoutHandle, stderrHandle) = os.popen3(command)
 	pair = (stdoutHandle.readlines(), stderrHandle.readlines())
 	stdinHandle.close()
@@ -20,13 +22,14 @@ def runLines(command, echo=True):
 	return pair
 
 def run(command):
-	os.system(command)
+	if os.system(command) != 0:
+		raise "badness"
 
 class MeasurementDatabase:
 	def __init__(self, experimentTableName, measurementTableName, databaseName="test"):
 		self.experimentTableName = experimentTableName
 		self.measurementTableName = measurementTableName
-		self.databaseName = databaseName # mercury only works with "test" database
+		self.databaseName = databaseName 
 		self.lastExperimentId = None
 		self.connection = None
 
@@ -74,9 +77,11 @@ class MeasurementDatabase:
 		cursor.close()
 		
 	def addExperiment(self, tag=None):
-		"""Adds a new experiment to the database and returns it's ID. The ID can then be used when
-		calling addMeasurement."""
+		"""Adds a new experiment to the database and returns
+		it's ID. The ID can then be used when calling
+		addMeasurement."""
 		cursor = self.connection.cursor()
+		# TODO-tomer: try removeing the should be unnecessary "'s around %%s
 		cursor.execute("""INSERT INTO %s (tag) VALUES ("%%s");""" % self.experimentTableName, (tag,))
 		self.lastExperimentId = cursor.lastrowid
 		cursor.close()
@@ -122,7 +127,7 @@ class Experiment:
 def buildCombinations(options):	
     if len(options) == 0:
         return [""]
-    
+
     (key, values) = options.pop(0)
     result = []
     remaining = buildCombinations(options)

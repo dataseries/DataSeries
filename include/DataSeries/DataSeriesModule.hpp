@@ -9,13 +9,6 @@
      first attempt at trying to build a modular structure for data series
 */
 
-// ***** WARNING WARNING WARNING *****
-// This interface is completely subject to change, it should be
-// considered alpha quality at best, the interface is highly
-// changeable based on further experience.  One desirable improvement
-// is to allow the use of threads so that we can take advantage of SMPs
-// ***** WARNING WARNING WARNING *****
-
 #ifndef DATASERIES_MODULE_H
 #define DATASERIES_MODULE_H
 

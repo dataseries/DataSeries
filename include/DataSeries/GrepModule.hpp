@@ -1,5 +1,6 @@
 // -*-C++-*-
 /*
+  // TODO-tomer: probably 2008-2009, and others
    (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -19,15 +20,20 @@
 #include <DataSeries/ExtentField.hpp>
 #include <DataSeries/GeneralField.hpp>
 
+// TODO-tomer: namespace dataseries {
+// TODO-tomer: shiny new documentation to be added all over.
 template <typename FieldType, typename FieldMatcher>
 class GrepModule : public DataSeriesModule {
 public:
     GrepModule(DataSeriesModule &upstreamModule,
                const std::string &fieldName,
-               const FieldMatcher &fieldMatcher);
+               const FieldMatcher &fieldMatcher) 
+	: upstreamModule(upstreamModule), fieldName(fieldName), fieldMatcher(fieldMatcher),
+	  field(sourceSeries, fieldName), recordCopier(sourceSeries, destinationSeries) 
+    { }
 
     /// Currently returns exactly one extent. If your grep is non-selective,
-    /// this extent could be very large.
+    /// this extent could overflow available memory.
     Extent *getExtent();
 private:
     DataSeriesModule &upstreamModule;
@@ -43,28 +49,14 @@ private:
 };
 
 template <typename FieldType, typename FieldMatcher>
-GrepModule<FieldType, FieldMatcher>::GrepModule(DataSeriesModule &upstreamModule,
-                       const std::string &fieldName,
-                       const FieldMatcher &fieldMatcher)
-    : upstreamModule(upstreamModule), fieldName(fieldName), fieldMatcher(fieldMatcher),
-      field(sourceSeries, fieldName), recordCopier(sourceSeries, destinationSeries) {
-}
-
-template <typename FieldType, typename FieldMatcher>
-Extent* GrepModule<FieldType, FieldMatcher>::getExtent() {
-    Extent *destinationExtent = NULL;
-    bool matchFound = false;
-
+Extent *GrepModule<FieldType, FieldMatcher>::getExtent() {
+    // TODO-tomer: I think there's a boost scoped_ptr
     std::auto_ptr<Extent> sourceExtent(upstreamModule.getExtent());
     while (sourceExtent.get() != NULL) {
-        sourceSeries.setExtent(sourceExtent.get());
-
-        for (; sourceSeries.more(); sourceSeries.next()) {
+        for (sourceSeries.start(sourceExtent.get()); sourceSeries.more(); sourceSeries.next()) {
             if (fieldMatcher(field)) {
-                if (!matchFound) { // the first match for the user's call to getExtent
-                    destinationExtent = new Extent(sourceExtent->getType());
-                    destinationSeries.setExtent(destinationExtent);
-                    matchFound = true;
+                if (destinationSeries.getExtent() == NULL) { // the first match found
+                    destinationSeries.setExtent(new Extent(sourceExtent->getType()));
                 }
                 destinationSeries.newRecord();
                 recordCopier.copyRecord();
@@ -74,7 +66,7 @@ Extent* GrepModule<FieldType, FieldMatcher>::getExtent() {
         sourceExtent.reset(upstreamModule.getExtent()); // the next extent
     }
 
-    return destinationExtent;
+    return destinationSeries.getExtent();
 }
-
+// }
 #endif

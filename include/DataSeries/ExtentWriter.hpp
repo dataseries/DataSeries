@@ -26,7 +26,7 @@ public:
     /** Write the specified extent to a file. */
     void writeExtent(Extent *extent);
 
-    /** Close and flush the file. */
+    /** Close the file. */
     void close();
 
 private:
