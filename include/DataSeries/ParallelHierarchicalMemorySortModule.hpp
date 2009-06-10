@@ -9,8 +9,8 @@
     A module which sorts DataSeries records in memory via multiple threads.
 */
 
-#ifndef __DATASERIES_PARALLELMEMORYSORTMODULE_H
-#define __DATASERIES_PARALLELMEMORYSORTMODULE_H
+#ifndef __DATASERIES_PARALLELHIERARCHICALMEMORYSORTMODULE_H
+#define __DATASERIES_PARALLELHIERARCHICALMEMORYSORTMODULE_H
 
 #include <deque>
 #include <vector>
@@ -27,16 +27,16 @@
 #include <DataSeries/GeneralField.hpp>
 
 template <typename FieldType, typename FieldComparator>
-class ParallelMemorySortModule : public DataSeriesModule {
+class ParallelHierarchicalMemorySortModule : public DataSeriesModule {
 public:
-    ParallelMemorySortModule(DataSeriesModule &upstreamModule,
+    ParallelHierarchicalMemorySortModule(DataSeriesModule &upstreamModule,
                              const std::string &fieldName,
                              const FieldComparator &fieldComparator,
                              uint32_t threadCount = 0,
                              size_t extentSizeLimit = 1 * 1000000,
                              uint32_t mergeFactor = 2); // 1 MB
 
-    virtual ~ParallelMemorySortModule();
+    virtual ~ParallelHierarchicalMemorySortModule();
 
     /** Returns the next @c Extent according to the sorted order. Note that the first call to
         getExtent will be significantly slower than the rest, because it triggers the sorting process. */
@@ -137,7 +137,7 @@ private:
     typedef boost::shared_ptr<PThread> PThreadPtr;
     class MergeThread: public PThread {
     public:
-        MergeThread(ParallelMemorySortModule<FieldType, FieldComparator> *module) : module(module) {}
+        MergeThread(ParallelHierarchicalMemorySortModule<FieldType, FieldComparator> *module) : module(module) {}
         virtual ~MergeThread() {}
 
         virtual void *run() {
@@ -146,7 +146,7 @@ private:
         }
 
     private:
-        ParallelMemorySortModule<FieldType, FieldComparator> *module;
+        ParallelHierarchicalMemorySortModule<FieldType, FieldComparator> *module;
     };
 
     class ThreadLocalStorage {
@@ -187,8 +187,8 @@ private:
 };
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
-ParallelMemorySortModule(DataSeriesModule &upstreamModule,
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
+ParallelHierarchicalMemorySortModule(DataSeriesModule &upstreamModule,
                          const std::string &fieldName,
                          const FieldComparator &fieldComparator,
                          uint32_t threadCount,
@@ -204,12 +204,12 @@ ParallelMemorySortModule(DataSeriesModule &upstreamModule,
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
-~ParallelMemorySortModule() {
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
+~ParallelHierarchicalMemorySortModule() {
 }
 
 template <typename FieldType, typename FieldComparator>
-Extent *ParallelMemorySortModule<FieldType, FieldComparator>::
+Extent *ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 getExtent() {
     if (!finalSev) {
         createMergeThreads();
@@ -236,13 +236,13 @@ getExtent() {
 }
 
 template <typename FieldType, typename FieldComparator>
-void ParallelMemorySortModule<FieldType, FieldComparator>::
+void ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 createMergeThreads() {
     MergeLevelPtr mergeLevel0(new MergeLevel(0));
     mergeLevels.push_back(mergeLevel0);
 
     // All we need to do is create the threads. They do all the work.
-    LintelLogDebug("parallelmemorysortmodule", boost::format("Using %s merge threads.") % threadCount);
+    LintelLogDebug("ParallelHierarchicalMemorySortModule", boost::format("Using %s merge threads.") % threadCount);
     for (uint32_t i = 0; i < threadCount; ++i) {
         PThreadPtr mergeThread(new MergeThread(this));
         mergeThreads.push_back(mergeThread);
@@ -251,7 +251,7 @@ createMergeThreads() {
 }
 
 template <typename FieldType, typename FieldComparator>
-bool ParallelMemorySortModule<FieldType, FieldComparator>::
+bool ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 mergeData(bool allowDifferentLevels) {
     std::vector<SevPtr> sevs;
     uint32_t level = 0;
@@ -301,7 +301,7 @@ mergeData(bool allowDifferentLevels) {
 
     }
 
-    LintelLogDebug("parallelmemorysortmodule",
+    LintelLogDebug("ParallelHierarchicalMemorySortModule",
                    boost::format("Merging %s level-%s SEVs.") % mergeFactor % level);
 
     // Check that we're not losing any data.
@@ -330,7 +330,7 @@ mergeData(bool allowDifferentLevels) {
 }
 
 template <typename FieldType, typename FieldComparator>
-bool ParallelMemorySortModule<FieldType, FieldComparator>::
+bool ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 retrieveData() {
     ExtentPtr extent;
     {
@@ -344,7 +344,7 @@ retrieveData() {
 
     SevPtr sev(new Sev(extent, *tls)); // sort an extent!
 
-    LintelLogDebug("parallelmemorysortmodule", "Created a level-0 SEV.");
+    LintelLogDebug("ParallelHierarchicalMemorySortModule", "Created a level-0 SEV.");
 
     {
         // Add the SEV to the lowest merge level.
@@ -364,9 +364,9 @@ retrieveData() {
 }
 
 template <typename FieldType, typename FieldComparator>
-void ParallelMemorySortModule<FieldType, FieldComparator>::
+void ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 startMergeThread() {
-    LintelLogDebug("parallelmemorysortmodule", "Creating thread local storage.");
+    LintelLogDebug("ParallelHierarchicalMemorySortModule", "Creating thread local storage.");
     tls.reset(createTls());
 
     // If there is stuff to merge then do so. Otherwise, fetch more data from upstream.
@@ -378,8 +378,8 @@ startMergeThread() {
 
 template <typename
 FieldType, typename FieldComparator>
-typename ParallelMemorySortModule<FieldType, FieldComparator>::ThreadLocalStorage*
-ParallelMemorySortModule<FieldType, FieldComparator>::
+typename ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::ThreadLocalStorage*
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 createTls() {
     ThreadLocalStorage *tls = new ThreadLocalStorage();
 
@@ -393,7 +393,7 @@ createTls() {
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::Sev::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::Sev::
 Sev(ExtentPtr &extent, ThreadLocalStorage &tls) {
     extents.push_back(extent);
     positions.reserve(extent->getRecordCount());
@@ -413,7 +413,7 @@ Sev(ExtentPtr &extent, ThreadLocalStorage &tls) {
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::Sev::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::Sev::
 Sev(std::vector<SevPtr> &sevs, ThreadLocalStorage &tls) {
     DEBUG_SINVARIANT(!sevs.empty());
     DEBUG_SINVARIANT(!sevs[0]->extents.empty());
@@ -451,20 +451,20 @@ Sev(std::vector<SevPtr> &sevs, ThreadLocalStorage &tls) {
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 AbstractComparator::AbstractComparator(ComparatorData &data)
     : data(data) {
 }
 
 template <typename FieldType, typename FieldComparator>
-void ParallelMemorySortModule<FieldType, FieldComparator>::
+void ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 AbstractComparator::setExtent(Extent *extent) {
     data.seriesLhs.setExtent(extent);
     data.seriesRhs.setExtent(extent);
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 ComparatorData::ComparatorData(const std::string &fieldName,
                                FieldComparator &fieldComparator)
     : fieldComparator(fieldComparator),
@@ -472,13 +472,13 @@ ComparatorData::ComparatorData(const std::string &fieldName,
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 PositionComparator::PositionComparator(ComparatorData &data)
     : AbstractComparator(data) {
 }
 
 template <typename FieldType, typename FieldComparator>
-bool ParallelMemorySortModule<FieldType, FieldComparator>::
+bool ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 PositionComparator::operator()(const AbsolutePosition &positionLhs, const AbsolutePosition &positionRhs) {
     this->data.seriesLhs.setCurPos(positionLhs.position);
     this->data.seriesRhs.setCurPos(positionRhs.position);
@@ -486,13 +486,13 @@ PositionComparator::operator()(const AbsolutePosition &positionLhs, const Absolu
 }
 
 template <typename FieldType, typename FieldComparator>
-ParallelMemorySortModule<FieldType, FieldComparator>::
+ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 SevComparator::SevComparator(ComparatorData &data)
     : AbstractComparator(data) {
 }
 
 template <typename FieldType, typename FieldComparator>
-bool ParallelMemorySortModule<FieldType, FieldComparator>::
+bool ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 SevComparator::operator()(Sev *sevLhs, Sev *sevRhs) {
     // sevLhs->iterator and sevLhs->iterator are valid entries
     DEBUG_SINVARIANT(sevLhs->iterator != sevLhs->positions.end());
@@ -506,7 +506,7 @@ SevComparator::operator()(Sev *sevLhs, Sev *sevRhs) {
 }
 
 template <typename FieldType, typename FieldComparator>
-Extent* ParallelMemorySortModule<FieldType, FieldComparator>::
+Extent* ParallelHierarchicalMemorySortModule<FieldType, FieldComparator>::
 createNextExtent() {
     if (finalSev->iterator == finalSev->positions.end()) {
         return NULL;

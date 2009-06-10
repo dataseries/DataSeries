@@ -400,7 +400,7 @@ private:
     void compactNulls(Extent::ByteArray &fixed_coded);
     void uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size);
     friend class ExtentSeries;
-    void createRecords(unsigned int nrecords); // will leave iterator pointing at the current record
+    void createRecords(unsigned int nrecords, bool zero_it = true); // will leave iterator pointing at the current record
     void init();
     /// \endcond
 };

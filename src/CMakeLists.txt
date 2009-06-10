@@ -65,6 +65,7 @@ SET(LIBDATASERIES_SOURCES
 	module/TypeIndexModule.cpp
 	module/SimpleSourceModule.cpp
 	module/ParallelFilterModule.cpp
+	module/PushModule.cpp
 	base/ExtentWriter.cpp
 	base/ExtentReader.cpp
 	liblzf-1.6/lzf_c.c

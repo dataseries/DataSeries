@@ -238,9 +238,9 @@ Extent::swap(Extent &with)
 }
 
 void
-Extent::createRecords(unsigned int nrecords)
+Extent::createRecords(unsigned int nrecords, bool zero_it)
 {
-    fixeddata.resize(fixeddata.size() + nrecords * type.rep.fixed_record_size);
+    fixeddata.resize(fixeddata.size() + nrecords * type.rep.fixed_record_size, zero_it);
 }
 
 struct variableDuplicateEliminate {

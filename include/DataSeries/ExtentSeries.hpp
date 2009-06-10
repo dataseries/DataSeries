@@ -209,36 +209,41 @@ public:
 
     /** Appends a record to the end of the current Extent. Invalidates any
         other @c ExtentSeries operating on the same Extent. i.e. you must
-        restart the Extent in every such series.  The new record will contain
-        all zeros. Variable32 fields will be empty. Nullable fields will be
-        initialized just like non-nullable field--They will not be set to null.
-        After this function returns, the current position will point to the
-        new record.
+        restart the Extent in every such series. If zero_it is true, the new
+        record will contain all zeros, Variable32 fields will be empty.
+        Nullable fields will be initialized just like non-nullable field--
+        They will not be set to null. After this function returns, the current
+        position will point to the new record.
 
         Preconditions:
             - The current Extent is not null.
 
         \todo are multiple @c ExtentSeries even supported?
         \todo should nullable fields be set to null? */
-    void newRecord() {
+    void newRecords(int nrecords, bool zero_it = true) {
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()");
 	int offset = my_extent->fixeddata.size();
-	my_extent->createRecords(1);
+	my_extent->createRecords(nrecords, zero_it);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
+
+    void newRecord(bool zero_it = true) {
+        newRecords(1, zero_it);
+    }
+
     /** Appends a specified number of records onto the end of the current
         @c Extent.  The same cautions apply as for @c newRecord. The current
         record will be the first one inserted.
 
         Preconditions:
             - The current extent cannot be null */
-    void createRecords(int nrecords) {
+    void createRecords(int nrecords, bool zero_it = true) {
 	// leaves the current record position unchanged
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()\n");
 	int offset = pos.cur_pos - my_extent->fixeddata.begin();
-	my_extent->createRecords(nrecords);
+	my_extent->createRecords(nrecords, zero_it);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
     /// \cond INTERNAL_ONLY
@@ -300,7 +305,7 @@ public:
 	}
 
 	// TODO: this should really return class ExtentLocation { byte
-	// *pos; }; as a entirely private, opaque inner class. 
+	// *pos; }; as a entirely private, opaque inner class.
 	const void *getPos() {
 	    return cur_pos;
 	}
@@ -331,7 +336,7 @@ public:
 	// TODO-tomer: rename this to unsafeRelocate(); add
 	// documentation explaining the conditions of use, add in
 	// debug only checks that verify you have done the right
-	// thing.  
+	// thing.
 	void relocate(Extent *extent, const void *position) {
 	    // SINVARIANT(extent->type == cur_extent->type);
 	    cur_extent = extent;

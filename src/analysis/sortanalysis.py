@@ -78,7 +78,7 @@ def prepareGensort(outputFilePrefix, recordCount):
 		run("gensort2ds --compress-%(compressionType)s %(outputFileBin)s %(outputFilePrefix)s.%(compressionType)s.in" % \
 			{'outputFileBin': outputFileBin, 'outputFilePrefix': outputFilePrefix, 'compressionType': compressionType})
 			
-	run('rm "%s"' % outputFileBin)
+	# run('rm "%s"' % outputFileBin)
 
 def experiment(inputFilePrefix, outputFile, cache, iterations, tag, gensort, options): # outputFile is temporary
 	experiment = Experiment(database, tag)

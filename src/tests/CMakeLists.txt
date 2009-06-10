@@ -67,3 +67,5 @@ ENDIF(SRT_ENABLED)
 ### Manual tests
 ADD_EXECUTABLE(stringSorter stringSorter.cpp ${ARGN})
 TARGET_LINK_LIBRARIES(stringSorter ${LINTELPTHREAD_LIBRARIES})
+ADD_EXECUTABLE(sortexperiment sortexperiment.cpp ${ARGN})
+TARGET_LINK_LIBRARIES(sortexperiment ${LINTELPTHREAD_LIBRARIES})

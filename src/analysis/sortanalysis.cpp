@@ -16,6 +16,7 @@
 #include <DataSeries/ExtentWriter.hpp>
 #include <DataSeries/MemorySortModule.hpp>
 #include <DataSeries/SortModule.hpp>
+#include <DataSeries/MemoryRadixSortModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
@@ -82,7 +83,6 @@ lintel::ProgramOption<bool> helpOption("help", "get help");
 typedef SortModule<Variable32Field, Variable32FieldComparator> Variable32SortModule;
 typedef SortModule<FixedWidthField, FixedWidthFieldComparator> FixedWidthSortModule;
 
-
 int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
 
@@ -103,13 +103,14 @@ int main(int argc, char *argv[]) {
     if (fixedWidthOption.get()) {
         LintelLogDebug("sortanalysis", "Creating sort module for gensort data");
         string fieldName(fieldNameOption.get().empty() ? "key" : fieldNameOption.get());
-        sortModule.reset(new FixedWidthSortModule(inputModule,
+        /*sortModule.reset(new FixedWidthSortModule(inputModule,
                                                   fieldName,
                                                   FixedWidthFieldComparator(),
                                                   extentLimitOption.get(),
                                                   memoryLimitOption.get(),
                                                   compressTempOption.get(),
-                                                  tempFilePrefixOption.get()));
+                                                  tempFilePrefixOption.get()));*/
+        sortModule.reset(new MemoryRadixSortModule(inputModule, fieldName));
     } else {
         LintelLogDebug("sortanalysis", "Creating sort module for txt2ds data");
         string fieldName(fieldNameOption.get().empty() ? "line" : fieldNameOption.get());
