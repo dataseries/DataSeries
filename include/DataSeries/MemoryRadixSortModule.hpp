@@ -263,6 +263,7 @@ Extent* MemoryRadixSortModule::createNextExtent() {
             record_copier.copyRecord();
             ++position_iterator;
             --record_count;
+            destination_series.next();
             if (record_count == 0) {
                 stop_clock = Clock::todTfrac();
                 copy_clock += (stop_clock - start_clock);
