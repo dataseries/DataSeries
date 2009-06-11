@@ -414,7 +414,7 @@ main(int argc, char *argv[])
 	int ret = stat(index_filename,&statbuf);
 	INVARIANT(ret == -1 && errno == ENOENT,
 		  format("refusing to run with existing index dataseries %s"
-			 "in --new mode (%d,%s)") % index_filename % errno
+			 " in --new mode (%d,%s)") % index_filename % errno
 		  % strerror(errno));
     } else {
 	index_filename = argv[1];

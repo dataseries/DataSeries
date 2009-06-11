@@ -10,8 +10,10 @@ set -e
 
 SRC=$1
 
+[ ! -f sortedindex.ds ] || rm sortedindex.ds
+
 # create data file
-../process/dsextentindex --compress-none --new 'NFS trace: common' packet-at sortedindex.ds $SRC/check-data/nfs.set6.20k.ds
+../process/dsextentindex --compress-lzf --new 'NFS trace: common' packet-at sortedindex.ds $SRC/check-data/nfs.set6.20k.ds
 
 # run program and compare
 ./sortedindex > sortedindex.txt

@@ -9,20 +9,19 @@
     implementation of SortedIndexModule
 */
 
-#include <boost/scoped_ptr.hpp>
 #include <boost/foreach.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <Lintel/AssertBoost.hpp>
 
-#include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/SortedIndexModule.hpp>
+#include <DataSeries/TypeIndexModule.hpp>
 
 SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 				     const std::string &index_type,
-				     const std::string &fieldname) :
-    cur_extent(0),
-    index_type(index_type),
-    first_time(true) {
+				     const std::string &fieldname) 
+    : cur_extent(0), index_type(index_type)
+{
     // we are going to read all index entries for the fieldname specified,
     // set up series and relevant fields to read from it
     TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
@@ -38,7 +37,6 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
     boost::shared_ptr<DataSeriesSource> cur_source;
     IndexEntryVector *cur_index = NULL;
     // these variables are used to check if input file is sorted
-    bool check = true;
     GeneralValue last_max;
     while(true) {
 	boost::scoped_ptr<Extent> e(tim.getExtent());
@@ -57,63 +55,56 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 		cur_source.reset(new DataSeriesSource(cur_fname, false));
 		index.push_back(IndexEntryVector());
 		cur_index = &index[index.size()-1];
-		check = false;
 	    }
+	    if (!cur_index->empty()) {
+		INVARIANT(last_max <= min_field->val(),
+			  boost::format("file %s is not sorted, %s > %s") 
+			  % cur_fname % last_max % min_field->val());
+	    }
+	    last_max = max_field->val();
+
 	    cur_index->push_back(IndexEntry(cur_source,
 					    min_field->val(), max_field->val(),
 					    extent_offset.val()));
-	    if (check && (last_max > min_field->val())) {
-		// TODO: throw exception instead
-		FATAL_ERROR("unsorted data file");
-	    }
-	    last_max = max_field->val();
-	    check = true;
 	}
     }
 }
 
-SortedIndexModule::~SortedIndexModule() {
-    // nothing to be done
-}
+SortedIndexModule::~SortedIndexModule() { }
 
-void
-SortedIndexModule::search(const GeneralValue &value) {
-    // clear old results
+void SortedIndexModule::search(const GeneralValue &value) {
+    // TODO-aveitch: make sure this is right, remove from header.
+    bool need_reset = !extents.empty();
+    SINVARIANT(extents.size() == cur_extent);
     extents.clear();
     cur_extent = 0;
     // search each index for relevant extents
     BOOST_FOREACH(IndexEntryVector &iev, index) {
-	// lower bound is used to find the first entry that may contain the
-	// value being looked up. This is ensured by defining an < operator
-	// that compares against max (rather than min). 
+	// See comment in header for use of lower bound and < operator.
 	for(std::vector<IndexEntry>::iterator i = 
 		std::lower_bound(iev.begin(), iev.end(), value);
 	    i != iev.end() && i->inRange(value); ++i) {
 	    extents.push_back(&(*i));
 	}
     }
-    // if this isn't the first time we have done a search, reset prefetching
-    // N.B. must do this *after* extents have been built
-    // TODO: check if possible to rewrite resetPos to work without first_time
-    // check
-    if (first_time) {
-	first_time = false;
-    }
-    else {
+
+    // Currently invalid to call resetPos unless we have already
+    // gotten some things out.  Must not call resetPos until after we
+    // prepare the extents or the prefetching code may incorrectly
+    // determine there is nothing to prefetch.
+    if (need_reset) {
 	resetPos();  // N.B. calls lockedResetModule()
     }
 }
 
-void SortedIndexModule::lockedResetModule() {
-    // nothing to be done
-}
+void SortedIndexModule::lockedResetModule() { }
 
-IndexSourceModule::PrefetchExtent *
-SortedIndexModule::lockedGetCompressedExtent() {
+IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent() {
     // while there are more extents, read them. Return NULL if no more
-    if (cur_extent >= extents.size()) {
+    if (cur_extent == extents.size()) {
 	return NULL;
     }
+    SINVARIANT(cur_extent < extents.size());
     PrefetchExtent *ret = readCompressed(extents[cur_extent]->source.get(), 
 					 extents[cur_extent]->offset,
 					 index_type);
