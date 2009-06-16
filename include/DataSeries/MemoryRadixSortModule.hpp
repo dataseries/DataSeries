@@ -192,19 +192,6 @@ void MemoryRadixSortModule::retrieveExtents() {
 }
 
 void MemoryRadixSortModule::prepareBuckets() {
-    //const uint8_t bucket_power = 16;
-    //const uint16_t bucket_mask = 0xFF;
-    start_clock = Clock::todTfrac();
-
-    // Count the number of elements in each bucket.
-    /*BOOST_FOREACH(Extent *extent, extents) {
-        for (series.start(extent); series.more(); series.next()) {
-            //uint16_t bucket_index = bucket_mask & htons(*reinterpret_cast<uint16_t*>(field.val()));
-            uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
-            ++buckets[bucket_index].count;
-        }
-    }*/
-
     // Allocate enough memory in each bucket for the positions.
     BOOST_FOREACH(Bucket &bucket, buckets) {
         bucket.positions.reserve(bucket.count);
