@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 
 #include <boost/foreach.hpp>
+#include <boost/filesystem.hpp>
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashMap.hpp>
@@ -28,6 +29,7 @@
 
 using namespace std;
 using boost::format;
+namespace bf = boost::filesystem;
 
 struct IndexValues {
     string filename;
@@ -37,20 +39,22 @@ struct IndexValues {
     int64_t rowcount;
     IndexValues() : offset(-1), rowcount(0) { }
 
-    void reset() {
+    void reset(int64_t o, int64_t r = 0) {
         mins.clear();
         maxs.clear();
         hasnulls.clear();
-        rowcount = 0;
+
+        rowcount = r;
+        offset = o;
+    }
+
+    void reset(int64_t o, int64_t r, const std::string &f) {
+        reset(o, r);
+        filename = f;
     }
 };
 
 vector<string> fields;
-
-// TODO: make these all LintelLogDebug()
-static const bool verbose_index = false;
-static const bool verbose_read = false;
-static const bool verbose_results = false;
 
 static const string str_min("min:");
 static const string str_max("max:");
@@ -82,60 +86,175 @@ const string indexinfo_xml =
 // reads in existing DSIndex::Extent::ModifyTimes extent(s) and creates 
 // a hash table for efficient checking if a file has changed.
 class ModTimesModule : public RowAnalysisModule {
-    // TODO-soules: coding convention puts public stuff first, then
-    // protected, then private.
 public:
-    // TODO-soules: coding convention aims for vertical compaction, so puts
-    // multiple things on one line if they fit.  100 columns max width.
     ModTimesModule(DataSeriesModule &source, ModifyTimesT &times)
-        : RowAnalysisModule(source), filenameF(series, "filename"),
-          mtimeF(series, "modify-time"), times(times)
+        : RowAnalysisModule(source), times(times),
+          filename(series, "filename"), mtime(series, "modify-time")
     { }
 
     void processRow() {
-        times[filenameF.stringval()] = mtimeF.val();
+        times[filename.stringval()] = mtime.val();
     }
 
     ModifyTimesT &times; // needed by others so make it public
+
 private:
-    // TODO-soules: this is not coding convention, it would say
-    // filename_f if you were going to do this, but I'd just leave the
-    // _f off entirely for consistency with all the other programs.
-    Variable32Field filenameF;
-    Int64Field mtimeF;
+    Variable32Field filename;
+    Int64Field mtime;
 };
 
 
 // reads an existing index, manages the creation of a new DSIndex file
 class MinMaxOutput {
-private:
-    commonPackingArgs packing_args;
+public:
+    MinMaxOutput(const commonPackingArgs &packing_args)
+        : packing_args(packing_args), is_open(false), is_finished(false), type_namespace(NULL)
+    { }
 
-    ExtentTypeLibrary library;
-    const ExtentType *infotype;
-    const ExtentType *minmaxtype;
-    const ExtentType *modifytype;
-    DataSeriesSink *output;
+    ~MinMaxOutput() {
+        minmaxmodule->flushExtent();
 
-    ExtentSeries *minmaxseries;
-    vector<GeneralField *> mins, maxs;
-    vector<BoolField *> hasnulls;
+        if(!is_finished) {
+            finish();
+        }
+    }
 
-    Variable32Field *filenameF;
-    Int64Field *extent_offsetF;
-    Int32Field *rowcountF;
+    void finish() {
+        // write modify extents
+        ExtentSeries modifyseries(modifytype);
+        Variable32Field modifyfilename(modifyseries,"filename");
+        Int64Field modifytime(modifyseries,"modify-time");
+        OutputModule *modifymodule = new OutputModule(*output, modifyseries, modifyseries.type,
+                                                      packing_args.extent_size);
 
-    OutputModule *minmaxmodule;
-    bool is_open;
-    const char *index_filename;
-    // TODO-soules: naming convention is old_index
-    string oldIndex, type_prefix, fieldlist;
+	// sort so we get consistent output for regression testing.
+        typedef ModifyTimesT::HashTableT::hte_vectorT mt_vectorT;
+        mt_vectorT mt_rawtable = modify.getHashTable().unsafeGetRawDataVector();
+        sort(mt_rawtable.begin(), mt_rawtable.end(), ModifyTimesByFilename());
+        for (mt_vectorT::iterator i = mt_rawtable.begin(); i != mt_rawtable.end(); ++i) {
+            modifymodule->newRecord();
+            modifyfilename.set(i->data.first);
+            modifytime.set(i->data.second);
+        }
 
-    ModifyTimesT modify;
+        modifymodule->flushExtent();
+        delete modifymodule;
 
-    const string *type_namespace;
-    unsigned major_version, minor_version;
+        // clean up the fields
+        GeneralField::deleteFields(mins);
+        GeneralField::deleteFields(maxs);
+        for (vector<BoolField *>::iterator i = hasnulls.begin(); i != hasnulls.end(); ++i) {
+            delete *i;
+        }
 
+        delete rowcount;
+        delete extent_offset;
+        delete filename;
+        delete minmaxseries;
+        delete minmaxmodule;
+
+        // fsync() and rename
+        if(!old_index.empty()) {
+            output->close(true);
+            rename(index_filename.c_str(), old_index.c_str());
+        }
+        delete output;
+
+        is_finished = true;
+    }
+
+    const string &typePrefix() {
+        return type_prefix;
+    }
+
+    void newIndex(const char *index_filename, const string &type_prefix, const string &fieldlist) {
+        this->type_prefix = type_prefix;
+        this->fieldlist = fieldlist;
+        this->index_filename = index_filename;
+    }
+
+    void openIndex(const char *index) {
+        index_filename = index;
+        index_filename += ".new.ds";
+        old_index = index;
+
+        // read the mtimes from the old index
+        TypeIndexModule modTimes("DSIndex::Extent::ModifyTimes");
+        modTimes.addSource(old_index);
+
+        ModTimesModule modModule(modTimes, modify);
+        modModule.getAndDelete();
+
+        // read the type info from the old index
+        TypeIndexModule info_mod("DSIndex::Extent::Info");
+        info_mod.addSource(old_index);
+
+        Extent *e = info_mod.getExtent();
+        INVARIANT(e != NULL, format("must have an DSIndex::Extent::Info extent"
+                                    " in index %s!") % old_index);
+        ExtentSeries infoseries(e);
+        Variable32Field info_type_prefix(infoseries,"type-prefix");
+        Variable32Field info_fields(infoseries,"fields");
+        INVARIANT(infoseries.pos.morerecords(),
+                  "must have at least one rows in info extent");
+        this->type_prefix = info_type_prefix.stringval();
+        this->fieldlist = info_fields.stringval();
+	split(this->fieldlist,",",fields);
+
+        ++infoseries.pos;
+        INVARIANT(infoseries.pos.morerecords() == false,
+                  "must have at most one row in info extent");
+        e = info_mod.getExtent();
+        INVARIANT(e == NULL, format("must have only one DSIndex::Extent::Info in"
+                                    " index %s!") % old_index);
+
+        // update the namespace/version information
+        string minmax_typename("DSIndex::Extent::MinMax::");
+        minmax_typename.append(type_prefix);
+
+        DataSeriesSource source(old_index);
+        const ExtentType *type = source.getLibrary().getTypeByName(minmax_typename);
+        updateNamespaceVersions(type);
+    }
+
+    void add(IndexValues &v) {
+	// TODO-future: pre-determine the infieldtypes during the type
+        // library scans and do the open when you start indexing
+
+        // Note: it is not safe to open the file until we know the
+        // infieldtypes, which are unknown until we open the first
+        // file.  This is guaranteed to happen after that.
+        if(!is_open) {
+            open();
+        }
+
+        for (unsigned i = 0; i < fields.size(); ++i) {
+            LintelLogDebug("VerboseIndex", format("  field %1% min'%2%' max '%3%' rowcount %4%\n")
+                           % fields[i].c_str() % v.mins[i] % v.maxs[i] % v.rowcount);
+        }
+
+        // create a new min/max index record
+	minmaxmodule->newRecord();
+
+	filename->set(v.filename);
+	extent_offset->set(v.offset);
+	rowcount->set(v.rowcount);
+        LintelLogDebug("VerboseResults", format("%s:%d %d rows\n")
+                       % v.filename % v.offset % v.rowcount);
+
+	for (unsigned i = 0; i < fields.size(); ++i) {
+	    mins[i]->set(v.mins[i]);
+	    maxs[i]->set(v.maxs[i]);
+	    hasnulls[i]->set(v.hasnulls[i]);
+            LintelLogDebug("VerboseResults", format("  field %1% min '%2%' max '%3%'\n")
+                           % fields[i].c_str() % v.mins[i] % v.maxs[i]);
+	}
+    }
+
+    // defined below
+    void indexFiles(const vector<string> &files);
+
+protected:
     // update the namespace/version info from an extent type
     void updateNamespaceVersions(const ExtentType *type) {
         if (type->getNamespace().empty()) {
@@ -163,43 +282,29 @@ private:
 
     // create the DSIndex::Extent::MinMax::* xml string
     string generateMinMaxType(const string &type_prefix) {
-	// TODO: use boost::format to make lots of this cleaner.
         string minmaxtype_xml = "<ExtentType";
         if (type_namespace != NULL) {
-            minmaxtype_xml.append((boost::format(" namespace=\"%s\" version=\"%d.%d\"")
-                                   % *type_namespace % major_version % minor_version).str());
+            minmaxtype_xml += (format(" namespace=\"%s\" version=\"%d.%d\"")
+                               % *type_namespace % major_version % minor_version).str();
         }
-        minmaxtype_xml.append(" name=\"DSIndex::Extent::MinMax::");
-        minmaxtype_xml.append(type_prefix);
-        minmaxtype_xml.append("\">\n");
-        minmaxtype_xml.append("  <field type=\"variable32\" name=\"filename\" />\n");
-        minmaxtype_xml.append("  <field type=\"int64\" name=\"extent_offset\" />\n");
-        minmaxtype_xml.append("  <field type=\"int32\" name=\"rowcount\" />\n");
+        minmaxtype_xml += (format(" name=\"DSIndex::Extent::MinMax::%s\">\n") % type_prefix).str();
+        minmaxtype_xml += "  <field type=\"variable32\" name=\"filename\" />\n";
+        minmaxtype_xml += "  <field type=\"int64\" name=\"extent_offset\" />\n";
+        minmaxtype_xml += "  <field type=\"int32\" name=\"rowcount\" />\n";
         INVARIANT(fields.size() == infieldtypes.size(),
-                  boost::format("internal %d %d") % fields.size()
-                  % infieldtypes.size());
-        for(unsigned i = 0;i<fields.size();++i) {
-            minmaxtype_xml.append("  <field type=\"");
-            minmaxtype_xml.append(ExtentType::fieldTypeString(infieldtypes[i]));
-            minmaxtype_xml.append("\" name=\"min:");
-            minmaxtype_xml.append(fields[i]);
-            minmaxtype_xml.append("\" />\n");
-            minmaxtype_xml.append("  <field type=\"");
-            minmaxtype_xml.append(ExtentType::fieldTypeString(infieldtypes[i]));
-            minmaxtype_xml.append("\" name=\"max:");
-            minmaxtype_xml.append(fields[i]);
-            minmaxtype_xml.append("\" />\n");
-            minmaxtype_xml.append("  <field type=\"bool\" name=\"hasnull:");
-            minmaxtype_xml.append(fields[i]);
-            minmaxtype_xml.append("\" />\n");
+                  format("internal %d %d") % fields.size() % infieldtypes.size());
+        for (unsigned i = 0; i < fields.size(); ++i) {
+            minmaxtype_xml += (format("  <field type=\"%1%\" name=\"min:%2%\" />\n"
+                                      "  <field type=\"%1%\" name=\"max:%2%\" />\n"
+                                      "  <field type=\"bool\" name=\"hasnull:%2%\" />\n")
+                               % ExtentType::fieldTypeString(infieldtypes[i]) % fields[i]).str();
         }
-        minmaxtype_xml.append("</ExtentType>\n");
-        LintelLogDebug("MinMaxOutput", boost::format("final MinMaxXML\n%s\n") % minmaxtype_xml);
+        minmaxtype_xml += "</ExtentType>\n";
 
+        LintelLogDebug("MinMaxOutput", boost::format("final MinMaxXML\n%s\n") % minmaxtype_xml);
         return minmaxtype_xml;
     }
 
-    // TODO-soules: coding convention has all of function declaration on one line (if it fits).
     void setFieldList(const string &fieldlist) {
         // write info extents -- one row
         ExtentSeries infoseries(infotype);
@@ -213,18 +318,13 @@ private:
         infomodule.flushExtent();
 
         for(unsigned i = 0; i < fields.size(); ++i) {
-            mins.push_back(GeneralField::create(NULL, *minmaxseries,
-                                                str_min + fields[i]));
-            maxs.push_back(GeneralField::create(NULL, *minmaxseries,
-                                                str_max + fields[i]));
-            hasnulls.push_back(new BoolField(*minmaxseries,
-                                             str_hasnull + fields[i]));
+            mins.push_back(GeneralField::create(NULL, *minmaxseries, str_min + fields[i]));
+            maxs.push_back(GeneralField::create(NULL, *minmaxseries, str_max + fields[i]));
+            hasnulls.push_back(new BoolField(*minmaxseries, str_hasnull + fields[i]));
         }
     }
 
-    void
-    open()
-    {
+    void open() {
 	SINVARIANT(!is_open);
         is_open = true;
 
@@ -238,9 +338,9 @@ private:
 
         minmaxseries = new ExtentSeries(minmaxtype);
 
-        filenameF = new Variable32Field(*minmaxseries, "filename");
-        extent_offsetF = new Int64Field(*minmaxseries, "extent_offset");
-        rowcountF = new Int32Field(*minmaxseries, "rowcount");
+        filename = new Variable32Field(*minmaxseries, "filename");
+        extent_offset = new Int64Field(*minmaxseries, "extent_offset");
+        rowcount = new Int32Field(*minmaxseries, "rowcount");
 
         minmaxmodule = new OutputModule(*output, *minmaxseries, minmaxtype,
                                         packing_args.extent_size);
@@ -250,189 +350,40 @@ private:
         setFieldList(fieldlist);
     }
 
-public:
-    MinMaxOutput(const commonPackingArgs &packing_args)
-        : packing_args(packing_args),
-          is_open(false),
-          type_namespace(NULL)
-    { }
+private:
+    commonPackingArgs packing_args;
 
-    ~MinMaxOutput() {
-        minmaxmodule->flushExtent();
+    ExtentTypeLibrary library;
+    const ExtentType *infotype;
+    const ExtentType *minmaxtype;
+    const ExtentType *modifytype;
+    DataSeriesSink *output;
 
-	// TODO-soules: seems odd to do this in the destructor; seems
-	// better to have a finish() call that does all this and just
-	// check in here that we finished.
+    ExtentSeries *minmaxseries;
+    vector<GeneralField *> mins, maxs;
+    vector<BoolField *> hasnulls;
 
-        // write modify extents ...
+    Variable32Field *filename;
+    Int64Field *extent_offset;
+    Int32Field *rowcount;
 
-        ExtentSeries modifyseries(modifytype);
-        Variable32Field modifyfilename(modifyseries,"filename");
-        Int64Field modifytime(modifyseries,"modify-time");
-        OutputModule *modifymodule =
-            new OutputModule(*output, modifyseries, modifyseries.type,
-                             packing_args.extent_size);
+    OutputModule *minmaxmodule;
+    bool is_open;
+    bool is_finished;
+    string index_filename, old_index, type_prefix, fieldlist;
 
-	// sort so we get consistent output for regression testing.
-        typedef ModifyTimesT::HashTableT::hte_vectorT mt_vectorT;
-        mt_vectorT mt_rawtable = modify.getHashTable().unsafeGetRawDataVector();
-        sort(mt_rawtable.begin(), mt_rawtable.end(), ModifyTimesByFilename());
-        for(mt_vectorT::iterator i = mt_rawtable.begin(); i != mt_rawtable.end(); ++i) {
-            modifymodule->newRecord();
-            modifyfilename.set(i->data.first);
-            modifytime.set(i->data.second);
-        }
+    ModifyTimesT modify;
 
-        modifymodule->flushExtent();
-        delete modifymodule;
-
-        GeneralField::deleteFields(mins);
-        GeneralField::deleteFields(maxs);
-        for(vector<BoolField *>::iterator i = hasnulls.begin(); i != hasnulls.end(); ++i) {
-            delete *i;
-        }
-
-        delete rowcountF;
-        delete extent_offsetF;
-        delete filenameF;
-        delete minmaxseries;
-        delete minmaxmodule;
-        delete output;
-    }
-
-    const string &typePrefix() {
-        return type_prefix;
-    }
-
-    void newIndex(const char *index_filename,
-                  const string &type_prefix,
-                  const string &fieldlist) {
-        this->type_prefix = type_prefix;
-        this->index_filename = index_filename;
-        this->fieldlist = fieldlist;
-    }
-
-    void openIndex(const char *index_filename) {
-        this->index_filename = index_filename;
-
-	// TODO-soules: seems better (if you want to do this) to write
-	// to a new file, and when done fsync and move over the old
-	// one.  This will happen to leave around .old.ds files.  If
-	// you really want that, then it should be a command line
-	// option.
-
-        // save the existing index
-        oldIndex = index_filename;
-        oldIndex += ".old.ds";
-
-        // rename
-        link(index_filename, oldIndex.c_str());
-        unlink(index_filename);
-
-        // read the mtimes from the old index
-        TypeIndexModule modTimes("DSIndex::Extent::ModifyTimes");
-        modTimes.addSource(oldIndex);
-
-        ModTimesModule modModule(modTimes, modify);
-        modModule.getAndDelete();
-
-        // read the type info from the old index
-        TypeIndexModule info_mod("DSIndex::Extent::Info");
-        info_mod.addSource(oldIndex);
-
-        Extent *e = info_mod.getExtent();
-        INVARIANT(e != NULL, format("must have an DSIndex::Extent::Info extent"
-                                    " in index %s!") % oldIndex);
-        ExtentSeries infoseries(e);
-        Variable32Field info_type_prefix(infoseries,"type-prefix");
-        Variable32Field info_fields(infoseries,"fields");
-        INVARIANT(infoseries.pos.morerecords(),
-                  "must have at least one rows in info extent");
-        this->type_prefix = info_type_prefix.stringval();
-        this->fieldlist = info_fields.stringval();
-	split(this->fieldlist,",",fields);
-
-        ++infoseries.pos;
-        INVARIANT(infoseries.pos.morerecords() == false,
-                  "must have at most one row in info extent");
-        e = info_mod.getExtent();
-        INVARIANT(e == NULL,
-                  format("must have only one DSIndex::Extent::Info in"
-                         " index %s!") % oldIndex);
-
-        // update the namespace/version information
-        string minmax_typename("DSIndex::Extent::MinMax::");
-        minmax_typename.append(type_prefix);
-
-        DataSeriesSource source(oldIndex);
-        const ExtentType *type =
-            source.getLibrary().getTypeByName(minmax_typename);
-        updateNamespaceVersions(type);
-    }
-
-    void add(IndexValues &v) {
-	// TODO-soules: why not do the open once when you start indexing?
-        // open the file if its not already open
-        if(!is_open) {
-            open();
-        }
-
-        // print if the indexing is verbose
-        if (verbose_index) {
-            for(unsigned i = 0; i < fields.size(); ++i) {
-                printf("  field %s min '", fields[i].c_str());
-                v.mins[i].write(stdout);
-                printf("' max '");
-                v.maxs[i].write(stdout);
-                printf("' rowcount %d\n", v.rowcount);
-            }
-            printf("\n");
-        }
-
-        // create a new min/max index record
-	minmaxmodule->newRecord();
-
-	filenameF->set(v.filename);
-	extent_offsetF->set(v.offset);
-	rowcountF->set(v.rowcount);
-	if (verbose_results) {
-	    cout << format("%s:%d %d rows\n") % v.filename
-		% v.offset % v.rowcount;
-	}
-
-	for(unsigned i = 0; i < fields.size(); ++i) {
-	    mins[i]->set(v.mins[i]);
-	    maxs[i]->set(v.maxs[i]);
-	    hasnulls[i]->set(v.hasnulls[i]);
-	    if (verbose_results) {
-		printf("  field %s min '",fields[i].c_str());
-		v.mins[i].write(stdout);
-		printf("' max '");
-		v.maxs[i].write(stdout);
-		printf("'\n");
-	    }
-	}
-    }
-
-    // defined below
-    void indexFiles(const vector<string> &files);
+    const string *type_namespace;
+    unsigned major_version, minor_version;
 };
 
 class IndexFileModule : public RowAnalysisModule {
-private:
-    vector<GeneralField *> infields;
-    IndexValues iv;
-    MinMaxOutput *minMaxOutput;
-
 public:
-    IndexFileModule(DataSeriesModule &source,
-                    const string &filename,
-                    MinMaxOutput *minMaxOutput)
-        : RowAnalysisModule(source, ExtentSeries::typeExact),
-          minMaxOutput(minMaxOutput)
+    IndexFileModule(DataSeriesModule &source, const string &filename, MinMaxOutput *minMaxOutput)
+        : RowAnalysisModule(source, ExtentSeries::typeLoose), minMaxOutput(minMaxOutput)
     {
-        // set the filename in the index values
-        iv.filename = filename;
+        iv.filename = filename; // set the filename in the index values
     }
 
     virtual ~IndexFileModule() {
@@ -466,13 +417,9 @@ public:
             minMaxOutput->add(iv);
         }
 
-        iv.reset();
+        iv.reset(e.extent_source_offset);
 
-        iv.offset = e.extent_source_offset;
-
-        if (verbose_index) {
-            cout << format("index extent %s:%d\n") % iv.filename % iv.offset;
-        }
+        LintelLogDebug("VerboseIndex", format("index extent %s:%d\n") % iv.filename % iv.offset);
     }
 
     virtual void processRow() {
@@ -501,67 +448,74 @@ public:
         }
         ++iv.rowcount;
     }
+
+private:
+    vector<GeneralField *> infields;
+    IndexValues iv;
+    MinMaxOutput *minMaxOutput;
 };
 
 
-ExtentType::int64 
-mtimens(const char *filename)
+int64_t 
+mtimens(const std::string &filename)
 {
     struct stat statbuf;
-    INVARIANT(stat(filename,&statbuf)==0,
-              format("stat failed: %s") % strerror(errno));
+    INVARIANT(stat(filename.c_str(),&statbuf)==0, format("stat failed: %s") % strerror(errno));
 
 #ifdef __HP_aCC
     // don't know how to get ns time on HPUX
-    return ((ExtentType::int64)statbuf.st_mtime *
-            (ExtentType::int64)1000000000);
+    return ((int64_t)statbuf.st_mtime * (int64_t)1000000000);
 #else    
-    return ((ExtentType::int64)statbuf.st_mtime *
-            (ExtentType::int64)1000000000 + statbuf.st_mtim.tv_nsec);
+    return ((int64_t)statbuf.st_mtime * (int64_t)1000000000 + statbuf.st_mtim.tv_nsec);
 #endif
 }
 
 
-class OldIndexModule : public RowAnalysisModule {
-private:
-    MinMaxOutput *minMaxOutput;
-    Variable32Field filenameF;
-    Int64Field extent_offsetF;
-    Int32Field rowcountF;
-    vector<GeneralField *> mins, maxs;
-    vector<BoolField *> hasnulls;
-
-    ModifyTimesT &modify;
-    string curName;
-    bool reprocessFile;
-    unsigned int filePos;
-    const vector<string> &files;
-
+class OldIndexModule : public DataSeriesModule {
 public:
-    OldIndexModule(DataSeriesModule &source,
-                   MinMaxOutput *minMaxOutput,
-                   ModifyTimesT &modify,
-                   const vector<string> &files)
-        : RowAnalysisModule(source),
-          minMaxOutput(minMaxOutput),
-          filenameF(series, "filename"),
-          extent_offsetF(series, "extent_offset"),
-          rowcountF(series, "rowcount"),
-          modify(modify),
-          filePos(0),
-          files(files)
+    OldIndexModule(DataSeriesModule *source, MinMaxOutput *minMaxOutput,
+                   ModifyTimesT &modify, const vector<string> &files,
+                   ExtentSeries::typeCompatibilityT type_compatibility = ExtentSeries::typeExact)
+        : source(source), minMaxOutput(minMaxOutput), series(type_compatibility),
+          filename(series, "filename"), extent_offset(series, "extent_offset"),
+          rowcount(series, "rowcount"), modify(modify), filePos(0), files(files)
     { }
 
-    ~OldIndexModule() {
-        GeneralField::deleteFields(mins);
-        GeneralField::deleteFields(maxs);
-        for(vector<BoolField *>::iterator
-                i = hasnulls.begin(); i != hasnulls.end(); ++i) {
-            delete *i;
+    Extent *getExtent() {
+        if (source) {
+            // setting to NULL here just means skipping the index processing loop
+            series.setExtent(source->getExtent());
+
+            if (series.getExtent() != NULL) {
+                processIndex();
+            }
         }
+
+        // process any remaining files that weren't in the old index
+        while (filePos < files.size()) {
+            processCurrentFile();
+            ++filePos;
+        }
+
+        return NULL;
     }
 
-    void prepareForProcessing() {
+protected:
+    bool nextRow() {
+        ++series.pos;
+        if(!series.pos.morerecords()) {
+            Extent *e = source->getExtent();
+            if(e == NULL) {
+                series.clearExtent();
+                return false;
+            }
+            series.setExtent(e);
+        }
+        return true;
+    }
+
+    void processIndex() {
+        // prepare the fields
         for (unsigned i = 0; i < fields.size(); ++i) {
             GeneralField *f = GeneralField::create(NULL, series,
                                                    str_min + fields[i]);
@@ -576,101 +530,100 @@ public:
                 SINVARIANT((infieldtypes[i]) == f->getType());
             }
         }
-    }
 
-    // TODO-soules: this whole construction feels awkward as a row
-    // analysis module; it seems like it really wants to be a terminal
-    // module, in which case it advances through the rows and
-    // processes them, and this avoids a bunch of the code that you
-    // have in here that keeps track of what state we are in. 
-
-    void processRow() {
-        if (filenameF.stringval() != curName) {
-            curName = filenameF.stringval();
-	    // TODO-soules: print out filename here to go with already indexed printout later?
-
+        // go through the old index
+        while (series.getExtent() != NULL) {
+            curName = filename.stringval();
+                
             // index any missing files
-            while(filePos < files.size() && files[filePos] < curName) {
-		// TODO-soules: duplicated code with processRemaining?
-                ExtentType::int64 modify_time = mtimens(files[filePos].c_str());
-                modify[files[filePos]] = modify_time;
-
-                TypeIndexModule module(minMaxOutput->typePrefix());
-                module.addSource(files[filePos]);
-                IndexFileModule index(module, files[filePos], minMaxOutput);
-                index.getAndDelete();
-
+            while (filePos < files.size() && files[filePos] < curName) {
+                processCurrentFile();
                 ++filePos;
             }
 
-            // new filename... check the mtime
-            int64_t modify_time = mtimens(curName.c_str());
+            // process the current file
+            int64_t modify_time = mtimens(curName);
             int64_t *stored = modify.lookup(curName);
             if(stored && (*stored) == modify_time) {
-                // ++already_indexed_files;
-                cout << "already indexed.\n";
-                reprocessFile = false;
+                cout << curName << " already indexed.\n";
+
+                // pull the index data from the existing index
+                IndexValues iv;
+                do {
+                    iv.reset(extent_offset.val(), rowcount.val(), filename.stringval());
+                        
+                    LintelLogDebug("VerboseRead", format("%s:%d %d rows\n")
+                                   % iv.filename % iv.offset % iv.rowcount);
+
+                    for (unsigned i = 0; i < fields.size(); ++i) {
+                        iv.mins.push_back(GeneralValue(mins[i]));
+                        iv.maxs.push_back(GeneralValue(maxs[i]));
+                        iv.hasnulls.push_back(hasnulls[i]->val());
+
+                        LintelLogDebug("VerboseRead",
+                                       format("  field %1% min '%2%' max '%3%'\n")
+                                       % fields[i].c_str() % iv.mins[i] % iv.maxs[i]);
+                    }
+
+                    minMaxOutput->add(iv);
+                } while (nextRow() && curName == filename.stringval());
+
             } else {
                 if (stored && modify_time < (*stored)) {
-                    cerr << format("warning, curName %s has gone backards in time, now %.2f, was %.2f\n")
-			% curName % (modify_time/1.0e9) % (modify[curName]/1.0e9);
+                    cerr << (format("warning, curName %s has gone backards in time"
+                                    ", now %.2f, was %.2f\n") % curName.c_str()
+                             % ((double)modify_time/1.0e9) % ((double)modify[curName]/1.0e9));
                 }
-
-                modify[curName] = modify_time;
-                reprocessFile = true;
 
                 // re-index the file
-                TypeIndexModule module(minMaxOutput->typePrefix());
-                module.addSource(curName);
-                IndexFileModule index(module, curName, minMaxOutput);
-                index.getAndDelete();
+                processFile(curName, modify_time);
+
+                // skip the data in the old index
+                while (nextRow() && curName == filename.stringval()) { }
+            }
+
+            // now that we've processed the file, skip ahead if it was requested
+            if (filePos < files.size() && files[filePos] == curName) {
+                ++filePos;
             }
         }
 
-        if (!reprocessFile) { // TODO-soules: call this copy_existing_values?
-            IndexValues iv;
-
-	    // TODO-soules: iv.reset(filename, offset, rowcount)?
-            iv.filename = filenameF.stringval();
-            iv.offset = extent_offsetF.val();
-            iv.rowcount = rowcountF.val();
-            iv.mins.clear();
-            iv.maxs.clear();
-            iv.hasnulls.clear();
-            for(unsigned i = 0; i < fields.size(); ++i) {
-                iv.mins.push_back(GeneralValue(mins[i]));
-                iv.maxs.push_back(GeneralValue(maxs[i]));
-                iv.hasnulls.push_back(hasnulls[i]->val());
-            }
-            if (verbose_read) {
-                cout << format("%s:%d %d rows\n") % iv.filename
-                    % iv.offset % iv.rowcount;
-                for(unsigned i = 0; i < fields.size(); ++i) {
-                    printf("  field %s min '",fields[i].c_str());
-                    iv.mins[i].write(stdout);
-                    printf("' max '");
-                    iv.maxs[i].write(stdout);
-                    printf("'\n");
-                }
-            }
-
-            minMaxOutput->add(iv);
+        // clear the fields
+        GeneralField::deleteFields(mins);
+        GeneralField::deleteFields(maxs);
+        for (vector<BoolField *>::iterator i = hasnulls.begin(); i != hasnulls.end(); ++i) {
+            delete *i;
         }
     }
 
-    void processRemaining() {
-        while(filePos < files.size()) {
-            ExtentType::int64 modify_time = mtimens(files[filePos].c_str());
-            modify[files[filePos]] = modify_time;
+    void processFile(const std::string &file, int64_t modify_time) {
+        modify[file] = modify_time;
 
-            TypeIndexModule module(minMaxOutput->typePrefix());
-            module.addSource(files[filePos]);
-            IndexFileModule index(module, files[filePos], minMaxOutput);
-            index.getAndDelete();
-
-            ++filePos;
-        }
+        TypeIndexModule module(minMaxOutput->typePrefix());
+        module.addSource(file);
+        IndexFileModule index(module, file, minMaxOutput);
+        index.getAndDelete();
     }
+
+    void processCurrentFile() {
+        int64_t modify_time = mtimens(files[filePos]);
+        processFile(files[filePos], modify_time);
+    }
+
+private:
+    DataSeriesModule *source;
+    MinMaxOutput *minMaxOutput;
+    ExtentSeries series;
+    Variable32Field filename;
+    Int64Field extent_offset;
+    Int32Field rowcount;
+    vector<GeneralField *> mins, maxs;
+    vector<BoolField *> hasnulls;
+
+    ModifyTimesT &modify;
+    string curName;
+    unsigned int filePos;
+    const vector<string> &files;
 };
 
 void
@@ -679,42 +632,25 @@ MinMaxOutput::indexFiles(const vector<string> &files)
     // update the namespace/version information
     BOOST_FOREACH(const string &file, files) {
         ExtentType::int64 *time = modify.lookup(file);
-        if(!time || mtimens(file.c_str()) != *time) {
+        if(!time || mtimens(file) != *time) {
             DataSeriesSource source(file);
-            const ExtentType *type =
-                source.getLibrary().getTypeByName(type_prefix);
+            const ExtentType *type = source.getLibrary().getTypeMatch(type_prefix);
             updateNamespaceVersions(type);
         }
     }
 
-    // TODO-soules: why can't old and new be essentially the same
-    // class?  This explains why the new code is longer than
-    // the old one.
-    if (oldIndex.empty()) {
-        // no old index, index each file
-        BOOST_FOREACH(const string &file, files) {
-            modify[file] = mtimens(file.c_str());
-
-            TypeIndexModule module(type_prefix);
-            module.addSource(file);
-
-            IndexFileModule index(module, file, this);
-            index.getAndDelete();
-        }
-    } else {
-        // merge with the old index
-        string minmax_typename("DSIndex::Extent::MinMax::");
-        minmax_typename.append(type_prefix);
-        TypeIndexModule minmax_mod(minmax_typename);
-        minmax_mod.addSource(oldIndex);
-
-        OldIndexModule old(minmax_mod, this, modify, files);
-        old.getAndDelete();
-        old.processRemaining();
-
-        // remove the old index
-        unlink(oldIndex.c_str());
+    // merge with the old index (if it exists)
+    string minmax_typename("DSIndex::Extent::MinMax::");
+    minmax_typename.append(type_prefix);
+    DataSeriesModule *source = NULL;
+    TypeIndexModule minmax_mod(minmax_typename);
+    if(!old_index.empty()) {
+        minmax_mod.addSource(old_index);
+        source = &minmax_mod;
     }
+
+    OldIndexModule old(source, this, modify, files);
+    old.getAndDelete();
 }
 
 
