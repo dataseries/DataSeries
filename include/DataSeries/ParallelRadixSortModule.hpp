@@ -259,6 +259,7 @@ void ParallelRadixSortModule::retrieveExtents() {
     LintelLogDebug("ParallelRadixSortModule", boost::format("retrieveExtents ran in %s seconds") % Clock::TfracToDouble(stop_clock - start_clock));
 }
 
+// TODO: parallelizing bucketing (divide buckets among threads) might be worth further exploration
 void ParallelRadixSortModule::startPrepareThread(uint32_t thread_index) {
     ExtentSeries series;
     FixedWidthField field(series, field_name);
@@ -373,6 +374,8 @@ void ParallelRadixSortModule::sortBuckets() {
 void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
     uint32_t actual_thread_count = (thread_count == 0) ? 1 : thread_count;
     while (true) {
+        Clock::Tfrac extent_copy_start_clock = Clock::todTfrac();
+
         // Step 1: Find out what extents/records to copy to a destination extent.
         downstream_lock.lock();
 
@@ -453,7 +456,6 @@ void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
             ++first_position;
         }
 
-
         // Step 3: Add the destination extent to the downstream queue.
         downstream_lock.lock();
 
@@ -469,6 +471,11 @@ void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
         downstream_not_empty_cond.broadcast();
 
         downstream_lock.unlock();
+
+        Clock::Tfrac extent_copy_stop_clock = Clock::todTfrac();
+
+        LintelLogDebug("ParallelRadixSortModule", boost::format("Copied extent in %s seconds") %
+                       Clock::TfracToDouble(extent_copy_stop_clock - extent_copy_start_clock));
     }
 }
 

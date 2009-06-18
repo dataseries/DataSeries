@@ -16,6 +16,7 @@
 #include <DataSeries/ExtentWriter.hpp>
 #include <DataSeries/MemorySortModule.hpp>
 #include <DataSeries/SortModule.hpp>
+#include <DataSeries/ParallelSortModule.hpp>
 #include <DataSeries/ParallelRadixSortModule.hpp>
 #include <DataSeries/MemoryRadixSortModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
@@ -111,7 +112,7 @@ int main(int argc, char *argv[]) {
                                                   memoryLimitOption.get(),
                                                   compressTempOption.get(),
                                                   tempFilePrefixOption.get()));*/
-        sortModule.reset(new ParallelRadixSortModule(inputModule, fieldName, 1 << 20));
+        sortModule.reset(new ParallelSortModule(inputModule, fieldName, 1 << 20));
     } else {
         LintelLogDebug("sortanalysis", "Creating sort module for txt2ds data");
         string fieldName(fieldNameOption.get().empty() ? "line" : fieldNameOption.get());

@@ -39,6 +39,7 @@ private:
 
     int fd;
     bool compress;
+    size_t extent_index;
 };
 
 #endif

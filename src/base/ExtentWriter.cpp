@@ -14,13 +14,14 @@ extern "C" {
 
 #include <boost/format.hpp>
 
+#include <Lintel/Clock.hpp>
 #include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/ExtentIO.hpp>
 #include <DataSeries/ExtentWriter.hpp>
 
 ExtentWriter::ExtentWriter(const std::string &fileName, bool compress)
-    : fd(-1), compress(compress) {
+    : fd(-1), compress(compress), extent_index(0) {
     fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_LARGEFILE, 0640);
     INVARIANT(fd >= 0, boost::format("Error opening file '%s' for write: %s")
               % fileName % strerror(errno));
@@ -31,6 +32,8 @@ ExtentWriter::~ExtentWriter() {
 }
 
 void ExtentWriter::writeExtent(Extent *extent) {
+    Clock::Tfrac start_clock = Clock::todTfrac();
+
     if (!compress) {
         writeExtentBuffers(false, false, extent->fixeddata, extent->variabledata);
     } else {
@@ -43,6 +46,11 @@ void ExtentWriter::writeExtent(Extent *extent) {
                            fixedDataCompressed ? fixedData : extent->fixeddata,
                            variableDataCompressed ? variableData : extent->variabledata);
     }
+
+    Clock::Tfrac stop_clock = Clock::todTfrac();
+
+    LintelLogDebug("ExtentWriter", boost::format("Wrote extent #%s (%s seconds, %s bytes).") % extent_index % Clock::TfracToDouble(stop_clock - start_clock) % extent->size());
+    ++extent_index;
 }
 
 void ExtentWriter::writeExtentBuffers(bool fixedDataCompressed,
@@ -70,6 +78,7 @@ void ExtentWriter::writeExtentBuffers(bool fixedDataCompressed,
 
 void ExtentWriter::writeBuffer(const void *buffer, size_t size) {
     ssize_t ret = write(fd, buffer, size);
+
     INVARIANT(ret != -1,
               boost::format("Error on write of %s bytes: %s")
               % (unsigned long)size % strerror(errno));
