@@ -31,6 +31,10 @@ using namespace std;
 using boost::format;
 namespace bf = boost::filesystem;
 
+// TODO-soules: convention that seems to work is class name for class
+// debugging and otherwise lower case for non-class based debugging.
+static LintelLog::Category debug_index("index");
+
 struct IndexValues {
     string filename;
     int64_t offset;
@@ -120,6 +124,7 @@ public:
     }
 
     void finish() {
+	SINVARIANT(!is_finished); // TODO-soules: good idea to check invariants.
         // write modify extents
         ExtentSeries modifyseries(modifytype);
         Variable32Field modifyfilename(modifyseries,"filename");
@@ -228,10 +233,15 @@ public:
             open();
         }
 
-        for (unsigned i = 0; i < fields.size(); ++i) {
-            LintelLogDebug("VerboseIndex", format("  field %1% min'%2%' max '%3%' rowcount %4%\n")
-                           % fields[i].c_str() % v.mins[i] % v.maxs[i] % v.rowcount);
-        }
+	if (LintelLog::wouldDebug(debug_index)) {
+	    // TODO-soules: unfortunately I don't think the compiler
+	    // will properly hoist the lintel log checks, so it's
+	    // better to explicitly check if we'd debug this in the parent.
+	    for (unsigned i = 0; i < fields.size(); ++i) {
+		LintelLog::debug(format("  field %1% min'%2%' max '%3%' rowcount %4%\n")
+				 % fields[i] % v.mins[i] % v.maxs[i] % v.rowcount);
+	    }
+	}
 
         // create a new min/max index record
 	minmaxmodule->newRecord();
@@ -239,15 +249,15 @@ public:
 	filename->set(v.filename);
 	extent_offset->set(v.offset);
 	rowcount->set(v.rowcount);
-        LintelLogDebug("VerboseResults", format("%s:%d %d rows\n")
+        LintelLogDebug("results", format("%s:%d %d rows\n")
                        % v.filename % v.offset % v.rowcount);
 
 	for (unsigned i = 0; i < fields.size(); ++i) {
 	    mins[i]->set(v.mins[i]);
 	    maxs[i]->set(v.maxs[i]);
 	    hasnulls[i]->set(v.hasnulls[i]);
-            LintelLogDebug("VerboseResults", format("  field %1% min '%2%' max '%3%'\n")
-                           % fields[i].c_str() % v.mins[i] % v.maxs[i]);
+            LintelLogDebug("results", format("  field %1% min '%2%' max '%3%'\n")
+                           % fields[i] % v.mins[i] % v.maxs[i]);
 	}
     }
 
@@ -419,7 +429,7 @@ public:
 
         iv.reset(e.extent_source_offset);
 
-        LintelLogDebug("VerboseIndex", format("index extent %s:%d\n") % iv.filename % iv.offset);
+        LintelLogDebug("index", format("index extent %s:%d\n") % iv.filename % iv.offset);
     }
 
     virtual void processRow() {
@@ -456,9 +466,7 @@ private:
 };
 
 
-int64_t 
-mtimens(const std::string &filename)
-{
+int64_t mtimens(const std::string &filename) {
     struct stat statbuf;
     INVARIANT(stat(filename.c_str(),&statbuf)==0, format("stat failed: %s") % strerror(errno));
 
@@ -535,7 +543,7 @@ protected:
         while (series.getExtent() != NULL) {
             curName = filename.stringval();
                 
-            // index any missing files
+            // index any missing files at the appropriate place
             while (filePos < files.size() && files[filePos] < curName) {
                 processCurrentFile();
                 ++filePos;
@@ -552,7 +560,7 @@ protected:
                 do {
                     iv.reset(extent_offset.val(), rowcount.val(), filename.stringval());
                         
-                    LintelLogDebug("VerboseRead", format("%s:%d %d rows\n")
+                    LintelLogDebug("read", format("%s:%d %d rows\n")
                                    % iv.filename % iv.offset % iv.rowcount);
 
                     for (unsigned i = 0; i < fields.size(); ++i) {
@@ -560,9 +568,8 @@ protected:
                         iv.maxs.push_back(GeneralValue(maxs[i]));
                         iv.hasnulls.push_back(hasnulls[i]->val());
 
-                        LintelLogDebug("VerboseRead",
-                                       format("  field %1% min '%2%' max '%3%'\n")
-                                       % fields[i].c_str() % iv.mins[i] % iv.maxs[i]);
+                        LintelLogDebug("read", format("  field %1% min '%2%' max '%3%'\n")
+                                       % fields[i] % iv.mins[i] % iv.maxs[i]);
                     }
 
                     minMaxOutput->add(iv);
@@ -571,7 +578,7 @@ protected:
             } else {
                 if (stored && modify_time < (*stored)) {
                     cerr << (format("warning, curName %s has gone backards in time"
-                                    ", now %.2f, was %.2f\n") % curName.c_str()
+                                    ", now %.2f, was %.2f\n") % curName
                              % ((double)modify_time/1.0e9) % ((double)modify[curName]/1.0e9));
                 }
 
@@ -626,9 +633,7 @@ private:
     const vector<string> &files;
 };
 
-void
-MinMaxOutput::indexFiles(const vector<string> &files)
-{
+void MinMaxOutput::indexFiles(const vector<string> &files) {
     // update the namespace/version information
     BOOST_FOREACH(const string &file, files) {
         ExtentType::int64 *time = modify.lookup(file);
