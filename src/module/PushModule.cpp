@@ -30,9 +30,7 @@ Extent* PushModule::getExtent() {
 void PushModule::close() {
     PThreadScopedLock lock(mutex);
     closed = true;
-    if (extents.empty()) {
-        cond.broadcast();
-    }
+    cond.broadcast();
 }
 
 size_t PushModule::getSize() {

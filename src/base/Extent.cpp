@@ -238,6 +238,12 @@ Extent::swap(Extent &with)
 }
 
 void
+Extent::reserveRecords(unsigned int nrecords)
+{
+    fixeddata.reserve(fixeddata.size() + nrecords * type.rep.fixed_record_size);
+}
+
+void
 Extent::createRecords(unsigned int nrecords, bool zero_it)
 {
     fixeddata.resize(fixeddata.size() + nrecords * type.rep.fixed_record_size, zero_it);

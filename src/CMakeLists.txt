@@ -68,6 +68,7 @@ SET(LIBDATASERIES_SOURCES
 	module/PushModule.cpp
 	base/ExtentWriter.cpp
 	base/ExtentReader.cpp
+	base/NetworkTcp.cpp
 	liblzf-1.6/lzf_c.c
 	liblzf-1.6/lzf_d.c
 )

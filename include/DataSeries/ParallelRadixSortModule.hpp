@@ -215,6 +215,12 @@ ParallelRadixSortModule(DataSeriesModule &upstream_module,
       total_record_count(0), total_size(0), current_position(0),
       current_extent_before_copy(0), current_extent_after_copy(0) {
     LintelLogDebug("ParallelRadixSortModule", boost::format("Using %s threads.") % this->thread_count);
+    buckets.resize(1 << 16);
+
+    extents.reserve(20000 /*(1 << 30) / (64 << 10)*/);
+    BOOST_FOREACH(Bucket &bucket, buckets) {
+        bucket.positions.reserve(200);
+    }
 }
 
 ParallelRadixSortModule::~ParallelRadixSortModule() {
@@ -237,19 +243,33 @@ Extent *ParallelRadixSortModule::getExtent() {
 }
 
 void ParallelRadixSortModule::retrieveExtents() {
+
+
+    ExtentSeries series;
+        FixedWidthField field(series, field_name);
     start_clock = Clock::todTfrac();
-    buckets.resize(1 << 16);
     Extent *extent = NULL;
     while ((extent = upstream_module.getExtent()) != NULL) {
-        for (series.start(extent); series.more(); series.next()) {
+        /*for (series.start(extent); series.more(); series.next()) {
             uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
             ++buckets[bucket_index].count;
-        }
+        }*/
         total_record_count += extent->getRecordCount();
-
-
         total_size += extent->size();
         extents.push_back(extent);
+
+
+
+                        for (series.start(extent); series.more(); series.next()) {
+                            uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
+                            uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                            buckets[bucket_index].positions.push_back(Position(extent, series.getCurPos(), cache));
+
+                        }
+
+
+
+
     }
 
     average_record_size = total_size / total_record_count;
@@ -291,7 +311,7 @@ void ParallelRadixSortModule::startPrepareThread(uint32_t thread_index) {
 void ParallelRadixSortModule::prepareBuckets() {
     start_clock = Clock::todTfrac();
 
-    // Allocate enough memory in each bucket for the positions.
+    /*// Allocate enough memory in each bucket for the positions.
     BOOST_FOREACH(Bucket &bucket, buckets) {
         bucket.positions.resize(bucket.count);
         bucket.forward_iterator = bucket.positions.begin();
@@ -299,10 +319,27 @@ void ParallelRadixSortModule::prepareBuckets() {
         bucket.backward_iterator--;
     }
 
+
+
+    BOOST_FOREACH(Bucket &bucket, buckets) {
+            bucket.positions.reserve(200);
+        }
+    ExtentSeries series;
+        FixedWidthField field(series, field_name);
+
+        BOOST_FOREACH(Extent *extent, extents) {
+                for (series.start(extent); series.more(); series.next()) {
+                    uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
+                    uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                    buckets[bucket_index].positions.push_back(Position(extent, series.getCurPos(), cache));
+
+                }
+        }
+
+
+
     stop_clock = Clock::todTfrac();
     LintelLogDebug("ParallelRadixSortModule", boost::format("prepareBuckets/0 ran in %s seconds") % Clock::TfracToDouble(stop_clock - start_clock));
-    start_clock = Clock::todTfrac();
-
     if (thread_count == 0) {
         startPrepareThread(0); // Don't create the thread.
         startPrepareThread(1);
@@ -329,6 +366,7 @@ void ParallelRadixSortModule::prepareBuckets() {
 
     stop_clock = Clock::todTfrac();
     LintelLogDebug("ParallelRadixSortModule", boost::format("prepareBuckets/1 ran in %s seconds") % Clock::TfracToDouble(stop_clock - start_clock));
+    */
 }
 
 
@@ -374,7 +412,7 @@ void ParallelRadixSortModule::sortBuckets() {
 void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
     uint32_t actual_thread_count = (thread_count == 0) ? 1 : thread_count;
     while (true) {
-        Clock::Tfrac extent_copy_start_clock = Clock::todTfrac();
+        //Clock::Tfrac extent_copy_start_clock = Clock::todTfrac();
 
         // Step 1: Find out what extents/records to copy to a destination extent.
         downstream_lock.lock();
@@ -394,8 +432,8 @@ void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
         size_t record_count = 0;
 
         while (record_count < records_per_destination_extent && current_bucket != buckets.end()) {
-            SINVARIANT(current_bucket->count == current_bucket->positions.size());
-            size_t remaining_positions = current_bucket->count - current_position;
+            //SINVARIANT(current_bucket->count == current_bucket->positions.size());
+            size_t remaining_positions = current_bucket->positions.size() - current_position;
             if (record_count + remaining_positions <= records_per_destination_extent) {
                 // Take all the remaining positions in this bucket.
                 current_position = 0;
@@ -472,10 +510,10 @@ void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
 
         downstream_lock.unlock();
 
-        Clock::Tfrac extent_copy_stop_clock = Clock::todTfrac();
+        //Clock::Tfrac extent_copy_stop_clock = Clock::todTfrac();
 
-        LintelLogDebug("ParallelRadixSortModule", boost::format("Copied extent in %s seconds") %
-                       Clock::TfracToDouble(extent_copy_stop_clock - extent_copy_start_clock));
+        //LintelLogDebug("ParallelRadixSortModule", boost::format("Copied extent in %s seconds") %
+                       //Clock::TfracToDouble(extent_copy_stop_clock - extent_copy_start_clock));
     }
 }
 

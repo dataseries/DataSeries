@@ -17,6 +17,8 @@
 #ifndef DATASERIES_EXTENTREADER_HPP
 #define DATASERIES_EXTENTREADER_HPP
 
+#include <sys/socket.h>
+
 #include <string>
 
 #include <DataSeries/DataSeriesModule.hpp>
@@ -28,6 +30,8 @@ class ExtentDataHeader;
 class ExtentReader : public DataSeriesModule {
 public:
     ExtentReader(const std::string &file_name, const ExtentType &extentType);
+    ExtentReader(int fd, const ExtentType &extentType, bool is_socket = true);
+
     virtual ~ExtentReader();
 
     /** Read the next extent from the file. The caller is responsible for deallocating
@@ -41,11 +45,19 @@ private:
     void readExtentBuffers(const ExtentDataHeader &header, Extent::ByteArray &fixedData,
                            Extent::ByteArray &variableData);
     void decompressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
-    bool readBuffer(void *buffer, size_t size);
+    bool readBuffer(void *buffer, size_t size) {
+        return is_socket ? readBufferFromSocket(buffer, size) : readBufferFromFile(buffer, size);
+    }
+
+    bool readBufferFromFile(void *buffer, size_t size);
+    bool readBufferFromSocket(void *buffer, size_t size);
 
     int fd;
     const ExtentType &extentType; // TODO-tomer extent_type (and many others)
     size_t offset;
+    bool is_socket;
+
+    double total_time;
 };
 
 #endif

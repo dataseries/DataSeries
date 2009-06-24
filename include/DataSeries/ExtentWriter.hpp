@@ -20,8 +20,13 @@
 
 class ExtentWriter {
 public:
-    ExtentWriter(const std::string &fileName, bool compress=true);
+    ExtentWriter(const std::string &fileName, bool compress=false);
+    ExtentWriter(int fd, bool compress=false);
+    ExtentWriter(bool compress=false);
+
     virtual ~ExtentWriter();
+
+    void setFileDescriptor(int fd);
 
     /** Write the specified extent to a file. */
     void writeExtent(Extent *extent);
@@ -35,11 +40,13 @@ private:
                             Extent::ByteArray &fixedData,
                             Extent::ByteArray &variableData);
     bool compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
-    void writeBuffer(const void *buffer, size_t size);
 
     int fd;
     bool compress;
     size_t extent_index;
+
+    size_t total_size;
+    double total_time;
 };
 
 #endif

@@ -112,7 +112,9 @@ int main(int argc, char *argv[]) {
                                                   memoryLimitOption.get(),
                                                   compressTempOption.get(),
                                                   tempFilePrefixOption.get()));*/
-        sortModule.reset(new ParallelSortModule(inputModule, fieldName, 1 << 20));
+        //sortModule.reset(new ParallelSortModule(inputModule, fieldName, 16 << 20, -1, 1 << 30, false, "/usr/local/share/kba-disk-map/array/tmp/sort"));
+        sortModule.reset(new ParallelSortModule(inputModule, fieldName, 16 << 20, -1, 1 << 30, false));
+        //sortModule.reset(new ParallelRadixSortModule(inputModule, fieldName, 1 << 20, -1));
     } else {
         LintelLogDebug("sortanalysis", "Creating sort module for txt2ds data");
         string fieldName(fieldNameOption.get().empty() ? "line" : fieldNameOption.get());

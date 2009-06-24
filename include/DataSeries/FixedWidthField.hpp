@@ -43,7 +43,7 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. */
     void set(byte *val, uint32_t val_size = 0) {
-	DEBUG_SINVARIANT(val_size == _size);
+	DEBUG_SINVARIANT(val_size == (uint32_t)_size);
         if (val == NULL) {
             setNull(true);
             return;

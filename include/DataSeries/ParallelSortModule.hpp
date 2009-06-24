@@ -117,6 +117,9 @@ private:
     ExtentSeries series_rhs;
     FixedWidthField field_lhs;
     FixedWidthField field_rhs;
+
+    Clock::Tfrac phase_start_clock;
+    Clock::Tfrac phase_stop_clock;
 };
 
 ParallelSortModule::ParallelSortModule(DataSeriesModule &upstream_module,
@@ -146,6 +149,7 @@ ParallelSortModule::~ParallelSortModule() {
 Extent *ParallelSortModule::getExtent() {
     if (!initialized) {
         initialized = true;
+        phase_start_clock = Clock::todTfrac();
         Extent *firstExtent = memorySortModule->getExtent();
         external = throttle_module.limitReached();
         if (!external) {
@@ -153,6 +157,11 @@ Extent *ParallelSortModule::getExtent() {
         }
         createTemporaryDir();
         createSortedFiles(firstExtent);
+        phase_stop_clock = Clock::todTfrac();
+        LintelLogDebug("ParallelSortModule",
+                       boost::format("Completed phase 1 of two-phase sort in %s seconds.") %
+                       Clock::TfracToDouble(phase_stop_clock - phase_start_clock));
+        phase_start_clock = phase_stop_clock;
         prepareSortedMergeFiles();
     }
 
@@ -173,10 +182,10 @@ void ParallelSortModule::createSortedFiles(Extent *extent) {
                 extent->getType()));
         sortedMergeFiles.push_back(sorted_merge_file);
 
-        Clock::Tfrac start_clock = Clock::todTfrac();
-
         // create the sink
         ExtentWriter sink(sorted_merge_file->file_name, compress_temp);
+
+        Clock::Tfrac start_clock = Clock::todTfrac();
 
         LintelLogDebug("ParallelSortModule",
                        boost::format("Created a temporary file for the external sort: '%s'") %
@@ -192,6 +201,7 @@ void ParallelSortModule::createSortedFiles(Extent *extent) {
         sink.close();
 
         Clock::Tfrac stop_clock = Clock::todTfrac();
+
         LintelLogDebug("ParallelSortModule",
                        boost::format("Wrote the file '%s' in %s seconds.") %
                        sorted_merge_file->file_name % Clock::TfracToDouble(stop_clock - start_clock));
@@ -201,7 +211,7 @@ void ParallelSortModule::createSortedFiles(Extent *extent) {
         }
 
         resetMemorySortModule(); // Clear all the memory and prepare for the next batch.
-        extent = throttle_module.getExtent();
+        extent = memorySortModule->getExtent();
 
         if (extent == NULL) {
             break;
@@ -210,8 +220,8 @@ void ParallelSortModule::createSortedFiles(Extent *extent) {
 }
 
 void ParallelSortModule::resetMemorySortModule() {
-    throttle_module.reset();
     memorySortModule.reset(new ParallelRadixSortModule(throttle_module, field_name, extent_size_limit, thread_count));
+    throttle_module.reset();
 }
 
 void ParallelSortModule::prepareSortedMergeFiles() {
@@ -223,7 +233,13 @@ void ParallelSortModule::prepareSortedMergeFiles() {
 }
 
 Extent *ParallelSortModule::createNextExtent() {
-    if (sorted_merge_file_queue.empty()) return NULL;
+    if (sorted_merge_file_queue.empty()) {
+        phase_stop_clock = Clock::todTfrac();
+        LintelLogDebug("ParallelSortModule",
+                       boost::format("Completed phase 2 of two-phase sort in %s seconds.") %
+                       Clock::TfracToDouble(phase_stop_clock - phase_start_clock));
+        return NULL;
+    }
 
     SortedMergeFile *sorted_merge_file = sorted_merge_file_queue.top();
     INVARIANT(sorted_merge_file->extent != NULL, "each file must have at least one extent"
@@ -289,7 +305,7 @@ bool ParallelSortModule::compareSortedMergeFiles(SortedMergeFile *sorted_merge_f
 
     // swap field_rhs and field_lhs because compareSortedExtents == "less important" and
     // fieldComparator == "less than"
-    return memcmp(field_rhs.val(), field_lhs.val(), field_lhs.size());
+    return memcmp(field_rhs.val(), field_lhs.val(), field_lhs.size()) <= 0;
 }
 
 void ParallelSortModule::createTemporaryDir() {
@@ -301,9 +317,9 @@ void ParallelSortModule::createTemporaryDir() {
         this->temp_file_dir = path;
         this->temp_file_prefix = path;
         this->temp_file_prefix += "/batch";
-        LintelLogDebug("ParallelSortModule", boost::format("Temporary files will have the prefix '%s'") %
-                       this->temp_file_prefix);
     }
+    LintelLogDebug("ParallelSortModule", boost::format("Temporary files will have the prefix '%s'") %
+                   this->temp_file_prefix);
 }
 
 ParallelSortModule::SortedMergeFile::SortedMergeFile(const std::string &file_name,
@@ -314,7 +330,7 @@ ParallelSortModule::SortedMergeFile::SortedMergeFile(const std::string &file_nam
 void ParallelSortModule::SortedMergeFile::open() {
     input_module.reset(new ExtentReader(file_name, extent_type));
     extent.reset(input_module->getExtent());
-    INVARIANT(extent.get() != NULL, "why do we have an empty file?");
+    INVARIANT(extent.get() != NULL, boost::format("Why do we have an empty file (%s)?") % file_name);
 
     ExtentSeries series(extent.get());
     position = series.getCurPos();
