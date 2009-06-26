@@ -19,10 +19,8 @@
 #include <DataSeries/IndexSourceModule.hpp>
 
 /** SortedIndexModule assumes that for each file referenced by the
-    index, the index field is sorted for that file.  I.e. we can have
-    two files which overlap in the ranges of the index field, but each
-    file has to be sorted (at least in the index).  It is an error to
-    violate this rule. TODO-aveitch: make this better */
+    index, that files rows are sorted on the index field. It is an error to
+    violate this rule. */
 class SortedIndexModule : public IndexSourceModule {
 public:
     /** Create a new SortedIndexModule
@@ -38,9 +36,10 @@ public:
     virtual ~SortedIndexModule();
 
     /** Searches the index, subsequent calls to getExtent will result
-	in only those extents that contain the value being searched
-	returned.  TODO-aveitch: make this invalid to call unless
-	everything has been pulled out.
+	in only those extents that might contain the value being searched
+	returned. Calling this before all the extents from a previous call
+	to getExtent has returned NULL (i.e. all extents have been read) is
+	an error.
      */
     void search(const GeneralValue &value);
 

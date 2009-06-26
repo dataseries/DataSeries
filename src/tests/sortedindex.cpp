@@ -5,6 +5,11 @@
 //
 // test program for SortedIndexModule
 #include <iostream>
+#include <string>
+
+#include <boost/scoped_ptr.hpp>
+
+#include <Lintel/AssertBoost.hpp>
 
 #include <DataSeries/SortedIndexModule.hpp>
 
@@ -17,27 +22,44 @@ void doSearch(SortedIndexModule &index, int64_t val) {
     Int64Field record_id(series, "record-id");
     std::cout << val << ": ";
     while (true) {
-	Extent *e = index.getExtent();
-	if (e == NULL) {
+	boost::scoped_ptr<Extent> e(index.getExtent());
+	if (!e) {
 	    break;
 	}
-	series.setExtent(e);
+	series.setExtent(e.get());
 	for (; series.pos.morerecords(); ++series.pos) {
 	    if (packet_at.val() == val) {
 		std::cout << record_id.val() << " ";
 	    }
 	}
-	delete e;
     }
     std::cout << "\n";
 }
 
 int main(int argc, char *argv[]) {
     SortedIndexModule index("sortedindex.ds", "NFS trace: common", "packet-at");
-    // TODO-aveitch: pick one at the beginning, middle, end, and non-existent
-    doSearch(index, 1063931188268856000LL);
-    doSearch(index, 1063931191484179000LL);
+    // These are in the first extent
+    doSearch(index, 1063931188266052000LL);
+    doSearch(index, 1063931188271036000LL);
+    doSearch(index, 1063931188607278000LL);
+    // these are in middle extents
+    doSearch(index, 1063931190602259000LL);
+    doSearch(index, 1063931191880891000LL);
+    doSearch(index, 1063931192724801000LL);
+    // these are in the end extent
+    doSearch(index, 1063931192803710000LL);
+    doSearch(index, 1063931192806206000LL);
+    // these don't exist
+    doSearch(index, 1063931190284050000LL);
+    doSearch(index, 1063931191880891001LL);
+    
+    // using an unsorted index is an error
+    AssertBoostFnBefore(AssertBoostThrowExceptionFn);
+    try {
+	SortedIndexModule uindex("unsortedindex.ds", "NFS trace: common", "source");
+    } catch (AssertBoostException &e) {
+	std::cout << "Error: " << e.msg.substr(e.msg.find("nfs.set6.20k.ds")) << "\n";
+    }
 
-    // TODO-aveitch: add a test for unsorted
     return 0;
 }

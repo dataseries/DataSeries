@@ -58,7 +58,7 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 	    }
 	    if (!cur_index->empty()) {
 		INVARIANT(last_max <= min_field->val(),
-			  boost::format("file %s is not sorted, %s > %s") 
+			  boost::format("file %s is not sorted, %s <= %s") 
 			  % cur_fname % last_max % min_field->val());
 	    }
 	    last_max = max_field->val();
@@ -73,9 +73,9 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 SortedIndexModule::~SortedIndexModule() { }
 
 void SortedIndexModule::search(const GeneralValue &value) {
-    // TODO-aveitch: make sure this is right, remove from header.
     bool need_reset = !extents.empty();
-    SINVARIANT(extents.size() == cur_extent);
+    INVARIANT(extents.size() == cur_extent,
+	      boost::format("did not finish reading all extents before search"));
     extents.clear();
     cur_extent = 0;
     // search each index for relevant extents
@@ -104,7 +104,7 @@ IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent(
     if (cur_extent == extents.size()) {
 	return NULL;
     }
-    SINVARIANT(cur_extent < extents.size());
+    DEBUG_SINVARIANT(cur_extent < extents.size());
     PrefetchExtent *ret = readCompressed(extents[cur_extent]->source.get(), 
 					 extents[cur_extent]->offset,
 					 index_type);
