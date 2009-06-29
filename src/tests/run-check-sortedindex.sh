@@ -7,8 +7,7 @@
 # test script for SortedIndexModule
 # 
 # Generates three index files for testing purposes:
-#    * sortedindex1 - multiple extents indexed from a single file
-#    * sortedindex2 - single extents from multiple files
+#    * sortedindex - multiple extents indexed from a single file
 #    * unsortedindex - used to check that unsorted indices generate error
 
 set -e
@@ -26,6 +25,6 @@ SRC=$1
 ./sortedindex > sortedindex.txt
 
 cmp $SRC/check-data/sortedindex.txt sortedindex.txt
-#rm -f sortedindex.ds unsortedindex.ds sortedindex.txt
+rm -f sortedindex.ds unsortedindex.ds sortedindex.txt
 
 exit 0
