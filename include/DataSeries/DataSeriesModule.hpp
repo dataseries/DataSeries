@@ -19,6 +19,8 @@
 #ifndef DATASERIES_MODULE_H
 #define DATASERIES_MODULE_H
 
+#include <boost/utility.hpp>
+
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/Extent.hpp>
@@ -59,7 +61,7 @@ returns null |    | |               | |               | |
 \endverbatim
     
     */
-class DataSeriesModule {
+class DataSeriesModule : boost::noncopyable {
 public:
     /** Returns an Extent which ought to have been allocated with
         global new. It is the caller's responsibility to delete

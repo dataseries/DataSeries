@@ -1,15 +1,8 @@
 INCLUDE(LintelCMakeUtil)
 
-ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
-    COMMAND ln 
-    ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/references.bib
-      ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib)
-
-SET(fast2008-nfs-analysis_EXTRA_DEPENDS 
-    ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
-)
-
 IF(LINTEL_LATEX_REBUILD_ENABLED)
+    SET(fast2009-nfs-analysis_LINTEL_LATEX_ARGS --error-on-warnings)
+
     LINTEL_LATEX(fast2009-nfs-analysis)
     INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/fast2009-nfs-analysis.pdf
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc/Lintel)
