@@ -13,6 +13,7 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <Lintel/LintelLog.hpp>
@@ -36,6 +37,7 @@ class ParallelNetworkTcpClient : public ParallelNetworkClient {
 public:
     ParallelNetworkTcpClient(std::vector<std::string> node_names,
                              uint32_t client_node_index,
+                             std::string log_file_name = "",
                              uint16_t port = 13131);
 
     virtual ~ParallelNetworkTcpClient() { }
@@ -47,7 +49,11 @@ public:
 
 private:
     std::vector<NetworkEndpointPtr> servers;
+    std::string log_file_name;
     uint16_t port;
+
+    boost::scoped_ptr<DataSeriesSink> log_sink;
+    bool first_extent;
 };
 
 class ParallelNetworkTcpServer : public ParallelNetworkServer {

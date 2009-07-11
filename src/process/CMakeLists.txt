@@ -21,6 +21,7 @@ DATASERIES_PROGRAM(ds2wcweb)
 DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(indexnfscommon)
 DATASERIES_PROGRAM(lvpvprocessusage)
+DATASERIES_PROGRAM(parallelnetworkgrep)
 DATASERIES_PROGRAM(parallelnetworksort)
 
 IF(CRYPTO_ENABLED)

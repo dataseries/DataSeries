@@ -16,46 +16,50 @@
 
 #include <Lintel/ProgramOptions.hpp>
 #include <Lintel/Clock.hpp>
+#include <Lintel/BoyerMooreHorspool.hpp>
 
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
 #include <DataSeries/ParallelHierarchicalMemorySortModule.hpp>
 #include <DataSeries/ParallelNetworkProgram.hpp>
-#include <DataSeries/ParallelSortModule.hpp>
+#include <DataSeries/SortModule.hpp>
 #include <DataSeries/PushModule.hpp>
 
 using namespace std;
 
-class FixedWidthFieldComparator {
+class Variable32FieldComparator {
 public:
-    bool operator()(const FixedWidthField &fieldLhs, const FixedWidthField &fieldRhs) {
-        DEBUG_SINVARIANT(fieldLhs.size() == fieldRhs.size());
-        return memcmp(fieldLhs.val(), fieldRhs.val(), fieldLhs.size()) <= 0;
+    bool operator()(const Variable32Field &fieldLhs, const Variable32Field &fieldRhs) {
+        int result = memcmp(fieldLhs.val(), fieldRhs.val(), std::min(fieldLhs.size(), fieldRhs.size()));
+        return result == 0 ? (fieldLhs.size() < fieldRhs.size()) : (result < 0);
     }
 };
 
-class FixedWidthFieldPartitioner {
+class Variable32FieldPartitioner {
 public:
     void initialize(uint32_t partitionCount) {
         DEBUG_INVARIANT(partitionCount <= 256, "This partitioner partitions based on the first byte.");
         float increment = 256.0 / partitionCount;
-        LintelLogDebug("parallelnetworksort",
+        LintelLogDebug("parallelnetworkgrep",
                        boost::format("Determining %s partitioning limits with an increment of %s.") %
                        partitionCount % increment);
         float currentLimit = increment;
         for (uint32_t i = 0; i < partitionCount - 1; ++i) {
             limits.push_back(static_cast<uint8_t>(round(currentLimit)));
-            LintelLogDebug("parallelnetworksort", boost::format("Partition limit: %s") % (uint32_t)limits.back());
+            LintelLogDebug("parallelnetworkgrep", boost::format("Partition limit: %s") % (uint32_t)limits.back());
             currentLimit += increment;
         }
         SINVARIANT(limits.size() == partitionCount - 1);
     }
 
-    uint32_t getPartition(const FixedWidthField &field) {
+    uint32_t getPartition(const Variable32Field &field) {
         // Return a value between 0 and partitionCount - 1. A value in partition i
         // must be less than a value in partition j if i < j.
-        uint8_t firstByte = static_cast<uint8_t*>(field.val())[0];
+        if (field.size() == 0) {
+            return 0;
+        }
+        uint8_t firstByte = static_cast<const uint8_t*>(field.val())[0];
         uint32_t partition = 0;
         BOOST_FOREACH(uint8_t limit, limits) {
             if (firstByte <= limit) {
@@ -69,10 +73,10 @@ private:
     vector<uint8_t> limits;
 };
 
-class ParallelNetworkSortProgram;
+class ParallelNetworkGrepProgram;
 class OutputThread : public PThread {
 public:
-    OutputThread(ParallelNetworkSortProgram *program)
+    OutputThread(ParallelNetworkGrepProgram *program)
         : program(program) {}
 
     virtual ~OutputThread() {}
@@ -80,30 +84,33 @@ public:
     virtual void* run();
 
 private:
-    ParallelNetworkSortProgram *program;
+    ParallelNetworkGrepProgram *program;
 };
 
 
-class ParallelNetworkSortProgram : public dataseries::ParallelNetworkProgram<FixedWidthField,
-    FixedWidthFieldPartitioner> {
+class ParallelNetworkGrepProgram : public dataseries::ParallelNetworkProgram<Variable32Field,
+    Variable32FieldPartitioner> {
 public:
-    ParallelNetworkSortProgram(std::vector<std::string> node_names,
+    ParallelNetworkGrepProgram(std::vector<std::string> node_names,
                                uint32_t node_index,
                                const std::string &input_file_prefix,
                                const std::string &extent_type_match,
                                const std::string &output_file_prefix,
-                               const std::string &field_name)
-        : dataseries::ParallelNetworkProgram<FixedWidthField, FixedWidthFieldPartitioner>(
+                               const std::string &field_name,
+                               const std::string &needle)
+        : dataseries::ParallelNetworkProgram<Variable32Field, Variable32FieldPartitioner>(
               node_names, node_index, input_file_prefix, extent_type_match,
-              field_name, FixedWidthFieldPartitioner()),
-          sort_module(push_module, field_name), received_from_network(false),
-          output_file_prefix(output_file_prefix) {
-        LintelLogDebug("ParallelNetworkSortProgram",
+              field_name, Variable32FieldPartitioner()),
+          sort_module(push_module, field_name, Variable32FieldComparator()),
+          received_from_network(false), output_file_prefix(output_file_prefix),
+          field(source_series, field_name), copier(source_series, destination_series),
+          matcher(needle.c_str(), needle.size()) {
+        LintelLogDebug("ParallelNetworkGrepProgram",
                        boost::format("Starting parallel sort on %s nodes (extent type match: %s).") %
                        node_names.size() % extent_type_match);
         uint32_t i = 0;
         BOOST_FOREACH(string &node_name, node_names) {
-            LintelLogDebug("ParallelNetworkSortProgram",
+            LintelLogDebug("ParallelNetworkGrepProgram",
                            boost::format("%sNode: %s") %
                            ((i == node_index) ? "* " : "") %
                            node_name);
@@ -116,14 +123,25 @@ public:
         }
     }
 
-    virtual ~ParallelNetworkSortProgram() {
+    virtual ~ParallelNetworkGrepProgram() {
         if (output_thread.get() != NULL) {
             output_thread->join();
         }
     }
 
     virtual Extent* processExtentFromFile(Extent *extent) {
-        return extent;
+        Extent *destination_extent = new Extent(extent->getType());
+        destination_series.setExtent(destination_extent);
+
+        for (source_series.start(extent); source_series.more(); source_series.next()) {
+            if (matcher.matches(field.val(), field.size())) {
+                destination_series.newRecord();
+                copier.copyRecord();
+            }
+        }
+
+        delete extent;
+        return destination_extent;
     }
 
     virtual void processExtentFromNetwork(Extent *extent) {
@@ -131,7 +149,7 @@ public:
         if (!received_from_network) {
             if (!output_file_prefix.empty()) {
                 ExtentTypeLibrary library;
-                LintelLogDebug("ParallelNetworkSortProgram",
+                LintelLogDebug("ParallelNetworkGrepProgram",
                                boost::format("Registering extent type '%s' with sink.") % extent->getType().getName());
                 library.registerType(extent->getType());
                 sink->writeExtentLibrary(library);
@@ -144,12 +162,12 @@ public:
     }
 
     virtual void finishedFile() {
-        LintelLogDebug("ParallelNetworkSortProgram",
+        LintelLogDebug("ParallelNetworkGrepProgram",
                        boost::format("Finished reading %s extents from file.") % getFileExtentCount());
     }
 
     virtual void finishedNetwork() {
-        LintelLogDebug("ParallelNetworkSortProgram",
+        LintelLogDebug("ParallelNetworkGrepProgram",
                        boost::format("Finished reading %s extents from network. Closing push module.") % getNetworkExtentCount());
 
         push_module.close();
@@ -165,13 +183,13 @@ public:
             }
         } else {
             Extent *extent = NULL;
-            LintelLogDebug("ParallelNetworkSortProgram", "Starting to write output.");
+            LintelLogDebug("ParallelNetworkGrepProgram", "Starting to write output.");
             while ((extent = sort_module.getExtent()) != NULL) {
-                LintelLogDebug("ParallelNetworkSortProgram", "Writing an extent to the sink.");
+                LintelLogDebug("ParallelNetworkGrepProgram", "Writing an extent to the sink.");
                 sink->writeExtent(*extent, NULL);
                 delete extent;
             }
-            LintelLogDebug("ParallelNetworkSortProgram", "Closing the sink.");
+            LintelLogDebug("ParallelNetworkGrepProgram", "Closing the sink.");
             sink->close();
         }
 
@@ -181,13 +199,19 @@ public:
 
 private:
     PushModule push_module;
-    ParallelSortModule sort_module;
+    SortModule<Variable32Field, Variable32FieldComparator> sort_module;
     boost::scoped_ptr<OutputThread> output_thread;
     bool received_from_network;
     string output_file_prefix;
     string output_file;
     boost::scoped_ptr<DataSeriesSink> sink;
     PThreadMutex mutex;
+
+    ExtentSeries source_series, destination_series;
+    Variable32Field field;
+    ExtentRecordCopy copier;
+
+    BoyerMooreHorspool matcher;
 };
 
 void* OutputThread::run() {
@@ -202,7 +226,7 @@ lintel::ProgramOption<string>
     output_file_prefix_option("output-file-prefix", "the output file prefix (.node-index will be appended)");
 
 lintel::ProgramOption<string>
-    extent_type_match_option("extent-type-match", "the extent type", string("Gensort"));
+    extent_type_match_option("extent-type-match", "the extent type", string("Text"));
 
 lintel::ProgramOption<int>
     node_index_option("node-index", "index of this node in the nodeNames list", -1);
@@ -214,7 +238,11 @@ lintel::ProgramOption<string>
     node_names_option("node-names", "list of nodes");
 
 lintel::ProgramOption<string>
-    field_name_option("field-name", "name of the key field", string("key"));
+    field_name_option("field-name", "name of the key field", string("line"));
+
+
+lintel::ProgramOption<string>
+    needle("needle", "substring to search for", string("seven"));
 
 int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
@@ -227,7 +255,7 @@ int main(int argc, char *argv[]) {
 
     SINVARIANT(!node_names_option.get().empty());
     SINVARIANT(!input_file_prefix_option.get().empty());
-
+    SINVARIANT(!needle.get().empty());
     int32_t i = 0;
     int32_t node_index = node_index_option.get();
     if (node_index_option.get() == -1) {
@@ -243,14 +271,15 @@ int main(int argc, char *argv[]) {
             ++i;
         }
     }
-    LintelLogDebug("ParallelNetworkSortProgram", boost::format("Node index: %s") % node_index);
+    LintelLogDebug("ParallelNetworkGrepProgram", boost::format("Node index: %s") % node_index);
 
-    ParallelNetworkSortProgram program(node_names,
+    ParallelNetworkGrepProgram program(node_names,
                                        node_index,
                                        input_file_prefix_option.get(),
                                        extent_type_match_option.get(),
                                        output_file_prefix_option.get(),
-                                       field_name_option.get());
+                                       field_name_option.get(),
+                                       needle.get());
     program.start();
     return 0;
 }

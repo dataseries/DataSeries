@@ -55,7 +55,8 @@ void ExtentReader::close() {
     if (fd == -1) {
         return;
     }
-    LintelLogDebug("ExtentReader", boost::format("Finished reading from file descriptor. Throughput was %s MB/s.") %  ((double)offset / total_time / (1 << 20)));
+    double mb = (double)offset / (1 << 20);
+    LintelLogDebug("ExtentReader", boost::format("Finished reading from file descriptor. Throughput was %s MB/s (%s MB).") %  (mb / total_time) % mb);
     CHECKED(::close(fd) == 0,
             boost::format("Close failed: %s") % strerror(errno));
     fd = -1;

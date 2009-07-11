@@ -475,7 +475,7 @@ void ParallelRadixSortModule::startCopyThread(uint32_t thread_index) {
 
         // Step 2: Copy the extents/records to the destination extent.
         while (first_bucket != last_bucket) {
-            while (first_position < first_bucket->count) {
+            while (first_position < first_bucket->positions.size()) {
                 Position &position = first_bucket->positions[first_position];
                 source_series.relocate(position.extent, position.position);
                 record_copier.copyRecord();

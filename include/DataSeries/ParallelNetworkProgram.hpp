@@ -15,6 +15,8 @@
 
 #include <vector>
 
+#include <Lintel/Clock.hpp>
+
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/NetworkTcp.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
@@ -80,7 +82,7 @@ private:
     ParallelNetworkTcpClient client;
     ParallelNetworkTcpServer server;
 
-    void startFile();
+    void processFile();
     void startNetwork();
     void stopNetwork();
 
@@ -113,16 +115,24 @@ protected:
 
 template <typename F, typename P>
 ParallelNetworkProgram<F, P>::~ParallelNetworkProgram() {
-    LintelLogDebug("ParallelNetworkProgram", "Making sure that connect thread has terminated.");
-    connect_thread.join();
-    LintelLogDebug("ParallelNetworkProgram", "The connect thread has terminated.");
 }
 
 template <typename F, typename P>
 void ParallelNetworkProgram<F, P>::start() {
+    Clock::Tfrac start_clock = Clock::todTfrac();
     startNetwork();
-    startFile();
+    Clock::Tfrac stop_clock = Clock::todTfrac();
+    LintelLogDebug("ParallelNetworkProgram", boost::format("******** startNetwork: %s") % Clock::TfracToDouble(stop_clock - start_clock));
+
+    start_clock = Clock::todTfrac();
+    processFile();
+    stop_clock = Clock::todTfrac();
+    LintelLogDebug("ParallelNetworkProgram", boost::format("******** processFile: %s") % Clock::TfracToDouble(stop_clock - start_clock));
+
+    start_clock = Clock::todTfrac();
     stopNetwork();
+    stop_clock = Clock::todTfrac();
+    LintelLogDebug("ParallelNetworkProgram", boost::format("******** stopNetwork (we're done so wait for the other clients to disconnects): %s") % Clock::TfracToDouble(stop_clock - start_clock));
 }
 
 template <typename F, typename P>
@@ -130,17 +140,21 @@ void ParallelNetworkProgram<F, P>::startNetwork() {
     LintelLogDebug("ParallelNetworkProgram", "Connecting to all servers.");
     connect_thread.start();
 
-    LintelLogDebug("ParallelNetworkProgram", "Waiting for all client connections to establish.");
+    LintelLogDebug("ParallelNetworkProgram", "Waiting for all clients.");
     server.waitForAllConnect(); // Wait for all clients to connect.
+    LintelLogDebug("ParallelNetworkProgram", "Connected to all clients.");
+
+    connect_thread.join();
+    LintelLogDebug("ParallelNetworkProgram", "Connected to all servers.");
 }
 
 template <typename F, typename P>
 void ParallelNetworkProgram<F, P>::stopNetwork() {
-    LintelLogDebug("ParallelNetworkProgram", "************ Stopping network.");
     client.close();
 
     LintelLogDebug("ParallelNetworkProgram", "Waiting for all client connections to terminate.");
     server.waitForAllClose(); // Wait for all connections to close (the clients close the connections).
+
     finishedNetwork();
     LintelLogDebug("ParallelNetworkProgram", "Finished network.");
 }
@@ -164,7 +178,7 @@ void ParallelNetworkProgram<F, P>::sendExtent(uint32_t partition) {
 }
 
 template <typename F, typename P>
-void ParallelNetworkProgram<F, P>::startFile() {
+void ParallelNetworkProgram<F, P>::processFile() {
     TypeIndexModule input_module(extent_type_match);
     std::string input_file_name((boost::format("%s.%s") % input_file_prefix % node_index).str());
     input_module.addSource(input_file_name);

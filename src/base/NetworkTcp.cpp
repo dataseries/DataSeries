@@ -12,14 +12,33 @@
 
 using namespace std;
 
-ParallelNetworkTcpClient::ParallelNetworkTcpClient(vector<std::string> node_names,
+ParallelNetworkTcpClient::ParallelNetworkTcpClient(vector<string> node_names,
                                                    uint32_t client_node_index,
+                                                   string log_file_name,
                                                    uint16_t port)
-    : ParallelNetworkClient(node_names, client_node_index), port(port) {
+    : ParallelNetworkClient(node_names, client_node_index), log_file_name(log_file_name) , port(port),
+      first_extent(true) {
+    if (!log_file_name.empty()) {
+        LintelLogDebug("NetworkTcp", boost::format("Creating client log file at '%s'.") % log_file_name);
+        log_sink.reset(new DataSeriesSink(log_file_name, Extent::compress_none));
+    }
 }
 
 void ParallelNetworkTcpClient::sendExtent(Extent *extent, uint32_t server_node_index) {
-    servers[server_node_index]->writer.writeExtent(extent);
+    if (first_extent) {
+        first_extent = false;
+        if (log_sink.get() != NULL) {
+            ExtentTypeLibrary library;
+            library.registerType(extent->getType());
+            log_sink->writeExtentLibrary(library);
+        }
+    }
+    if (log_sink.get() != NULL) {
+        LintelLogDebug("NetworkTcp", "Writing an extent to the client log file.");
+        log_sink->writeExtent(*extent, NULL);
+    } else {
+        servers[server_node_index]->writer.writeExtent(extent);
+    }
 }
 
 void ParallelNetworkTcpClient::connectToAllServers() {
@@ -65,14 +84,15 @@ void ParallelNetworkTcpClient::connectToAllServers() {
             }
         }
     }
-
-    LintelLogDebug("NetworkTcp", "Connected to all servers. Terminating thread.");
 }
 
 void ParallelNetworkTcpClient::close() {
     BOOST_FOREACH(NetworkEndpointPtr &server, servers) {
         //::close(server->socket_fd);
         server->writer.close();
+    }
+    if (log_sink.get() != NULL) {
+        log_sink->close();
     }
 }
 
