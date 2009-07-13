@@ -13,7 +13,6 @@
 #include <sys/stat.h>
 
 #include <boost/foreach.hpp>
-#include <boost/filesystem.hpp>
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashMap.hpp>
@@ -29,7 +28,6 @@
 
 using namespace std;
 using boost::format;
-namespace bf = boost::filesystem;
 
 static LintelLog::Category debug_min_max_output("MinMaxOutput");
 
