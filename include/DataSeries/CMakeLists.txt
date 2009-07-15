@@ -23,6 +23,8 @@ SET(INCLUDE_FILES
 	Int64TimeField.hpp
 	MinMaxIndexModule.hpp
 	SortedIndexModule.hpp
+	SortedIndex.hpp
+	ExtentVectorModule.hpp
 	DataSeriesModule.hpp
 	PrefetchBufferModule.hpp
 	RowAnalysisModule.hpp

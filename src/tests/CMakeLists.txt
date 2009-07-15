@@ -41,6 +41,10 @@ DATASERIES_SCRIPT_TEST(expr)
 DATASERIES_PROGRAM_NOINST(sortedindex)
 DATASERIES_SCRIPT_TEST(sortedindex)
 
+DATASERIES_PROGRAM_NOINST(sortedIndexTest)
+DATASERIES_SCRIPT_TEST(sortedindex)
+
+
 ### Conditional tests...
 
 IF(LZO_ENABLED)
