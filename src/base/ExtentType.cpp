@@ -341,14 +341,20 @@ ExtentType::parseXML(const string &xmldesc)
     unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0, 
 	eight_fields = 0, variable_fields = 0;
     while (true) {
-	while (cur != NULL && xmlIsBlankNode(cur)) {
+	// TODO-soules: I thought that we decided not to do this since
+	// you didn't have to change the XML to do your external
+	// indices. (re-enable invariant also)
+	while (cur != NULL &&
+               (xmlIsBlankNode(cur) ||
+                xmlStrcmp(cur->name, (const xmlChar *)"field") != 0)) {
 	    cur = cur->next;
 	}
 	if (cur == NULL) 
 	    break;
-	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
-		  boost::format("Error: ExtentType sub-element should be"
-				" field, not '%s'") % cur->name);
+// 	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
+// 		  boost::format("Error: ExtentType sub-element should be"
+// 				" field, not '%s'") % cur->name);
+
 	for(xmlAttr *prop = cur->properties; prop != NULL; prop = prop->next) {
 	    // if you add a new type or type option, you should update
 	    // test.C:test_makecomplexfile() and the regression test.

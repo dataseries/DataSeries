@@ -45,8 +45,7 @@ using boost::format;
 #endif
 
 DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
-    : filename(filename), fd(-1), cur_offset(0), indexExtent(NULL),
-      read_index(read_index)
+    : indexExtent(NULL), filename(filename), fd(-1), cur_offset(0), read_index(read_index)
 {
     reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
@@ -275,7 +274,7 @@ DataSeriesSink::~DataSeriesSink()
 }
 
 void
-DataSeriesSink::close()
+DataSeriesSink::close(bool do_fsync)
 {
     INVARIANT(wrote_library,
 	      "error: never wrote the extent type library?!");
@@ -339,6 +338,9 @@ DataSeriesSink::close()
     *(int32 *)(tail + 24) = lintel::bobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
+    if(do_fsync) {
+        fsync(fd);
+    }
     int ret = ::close(fd);
     INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
     fd = -1;

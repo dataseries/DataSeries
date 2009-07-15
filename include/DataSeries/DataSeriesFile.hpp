@@ -233,7 +233,7 @@ public:
     /** Blocks until all queued extents have been written and closes the file.  An
         @c ExtentTypeLibrary must have been written using
         \link DataSeriesSink::writeExtentLibrary writeExtentLibrary \endlink. */
-    void close();
+    void close(bool do_fsync = false);
 
     /** Writes the ExtentTypes that are used in the file.  This function
         must be called exactly once before calling writeExtent.  The
