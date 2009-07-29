@@ -20,7 +20,7 @@
 SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 				     const std::string &index_type,
 				     const std::string &fieldname) 
-    : cur_extent(0), index_type(index_type)
+    : need_reset(false), cur_extent(0), index_type(index_type)
 {
     // we are going to read all index entries for the fieldname specified,
     // set up series and relevant fields to read from it
@@ -73,7 +73,6 @@ SortedIndexModule::SortedIndexModule(const std::string &index_filename,
 SortedIndexModule::~SortedIndexModule() { }
 
 void SortedIndexModule::search(const GeneralValue &value) {
-    bool need_reset = !extents.empty();
     INVARIANT(extents.size() == cur_extent,
 	      boost::format("did not finish reading all extents before search"));
     extents.clear();
@@ -88,8 +87,8 @@ void SortedIndexModule::search(const GeneralValue &value) {
 	}
     }
 
-    // Currently invalid to call resetPos unless we have already
-    // gotten some things out.  Must not call resetPos until after we
+    // Currently invalid to call resetPos unless we have already tried
+    // to get some extents out.  Must not call resetPos until after we
     // prepare the extents or the prefetching code may incorrectly
     // determine there is nothing to prefetch.
     if (need_reset) {
@@ -102,6 +101,7 @@ void SortedIndexModule::lockedResetModule() { }
 IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent() {
     // while there are more extents, read them. Return NULL if no more
     if (cur_extent == extents.size()) {
+        need_reset = true;
 	return NULL;
     }
     SINVARIANT(cur_extent < extents.size());

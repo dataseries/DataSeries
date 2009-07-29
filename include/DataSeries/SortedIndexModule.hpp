@@ -80,7 +80,8 @@ private:
 
     typedef std::vector<IndexEntry> IndexEntryVector;
 
-    size_t cur_extent;		        // current extent being processed, indexes into extents
+    bool need_reset; // need to reset the prefetch information
+    size_t cur_extent; // current extent being processed, indexes into extents
     const std::string index_type;	// type of extent indexed
     std::vector<IndexEntryVector> index;// one index for each indexed file
     std::vector<IndexEntry *> extents;	// extents that contain searched value
