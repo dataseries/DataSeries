@@ -145,6 +145,9 @@ public:
     }
 
     virtual void processExtentFromNetwork(Extent *extent) {
+        if (extent == NULL) {
+            return;
+        }
         PThreadScopedLock lock(mutex);
         if (!received_from_network) {
             if (!output_file_prefix.empty()) {

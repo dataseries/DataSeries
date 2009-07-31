@@ -224,10 +224,14 @@ ParallelRadixSortModule(DataSeriesModule &upstream_module,
 }
 
 ParallelRadixSortModule::~ParallelRadixSortModule() {
+    BOOST_FOREACH(PThreadPtr &copy_thread, copy_threads) {
+    	copy_thread->join();
+    }
     BOOST_FOREACH(Extent *extent, extents) {
         delete extent;
     }
     extents.clear();
+    LintelLogDebug("ParallelRadixSortModule", "************* Destroyed ParallelRadixSortModule");
 }
 
 Extent *ParallelRadixSortModule::getExtent() {
@@ -261,9 +265,14 @@ void ParallelRadixSortModule::retrieveExtents() {
 
 
                         for (series.start(extent); series.more(); series.next()) {
-                            uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
-                            uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                            //uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
+                            //uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                            uint8_t *val = field.val();
+                            uint16_t bucket_index = (((uint32_t)val[0]) << 8) | (uint32_t)val[1];
+                            val += 2;
+                            uint32_t cache = (((uint32_t)val[0]) << 24) | (((uint32_t)val[1]) << 16) | (((uint32_t)val[2]) << 8) | (uint32_t)val[3];
                             buckets[bucket_index].positions.push_back(Position(extent, series.getCurPos(), cache));
+                            //SINVARIANT((uint32_t)field.val()[2] * 256 * 256 * 256 + (uint32_t)field.val()[3] * 256  * 256 + (uint32_t)field.val()[4] * 256 + field.val()[5]  == cache);
 
                         }
 
@@ -272,9 +281,13 @@ void ParallelRadixSortModule::retrieveExtents() {
 
     }
 
-    average_record_size = total_size / total_record_count;
-    records_per_destination_extent = extent_size_limit / average_record_size + 1;
-
+    if (total_record_count == 0) {
+    	average_record_size = 0;
+    	records_per_destination_extent = 0;
+    } else {
+    	average_record_size = total_size / total_record_count;
+    	records_per_destination_extent = extent_size_limit / average_record_size + 1;
+    }
     stop_clock = Clock::todTfrac();
     LintelLogDebug("ParallelRadixSortModule", boost::format("retrieveExtents ran in %s seconds") % Clock::TfracToDouble(stop_clock - start_clock));
 }
@@ -376,6 +389,14 @@ void ParallelRadixSortModule::startSortThread(uint32_t thread_index) {
     position_comparator.setExtent(extents[0]); // Initialize the comparator.
 
     uint32_t actual_thread_count = (thread_count == 0) ? 1 : thread_count;
+
+    // TODO shirant: Get rid of this check
+    BOOST_FOREACH(Bucket &bucket, buckets) {
+        BOOST_FOREACH(Position &position, bucket.positions) {
+            SINVARIANT(position.extent != NULL);
+            comparator_data.series_lhs.relocate(position.extent, position.position);
+        }
+    }
 
     for (uint32_t i = thread_index; i < buckets.size(); i += actual_thread_count) {
         Bucket &bucket = buckets[i];
@@ -608,7 +629,7 @@ PositionComparator::PositionComparator(ComparatorData &data)
 }
 
 bool ParallelRadixSortModule::PositionComparator::operator()(const Position &position_lhs,
-                                                           const Position &position_rhs) {
+                                                             const Position &position_rhs) {
     if (position_lhs.cache < position_rhs.cache) {
         return true;
     }
@@ -617,7 +638,10 @@ bool ParallelRadixSortModule::PositionComparator::operator()(const Position &pos
     }
     this->data.series_lhs.relocate(position_lhs.extent, position_lhs.position);
     this->data.series_rhs.relocate(position_rhs.extent, position_rhs.position);
-    return memcmp(this->data.field_lhs.val(), this->data.field_rhs.val(), this->data.field_lhs.size()) <= 0;
+    //SINVARIANT(this->data.field_lhs.val()[0] == this->data.field_rhs.val()[0]);
+    //SINVARIANT(this->data.field_lhs.val()[1] == this->data.field_rhs.val()[1]);
+    //SINVARIANT((uint32_t)this->data.field_lhs.val()[2] * 256 * 256 * 256 + (uint32_t)this->data.field_lhs.val()[3] * 256  * 256 + (uint32_t)this->data.field_lhs.val()[4] * 256 + this->data.field_lhs.val()[5]  == position_lhs.cache);
+    return memcmp(this->data.field_lhs.val(), this->data.field_rhs.val(), this->data.field_lhs.size()) < 0;
 }
 
 ParallelRadixSortModule::

@@ -35,6 +35,7 @@
 #include <DataSeries/ParallelRadixSortModule.hpp>
 #include <DataSeries/ThrottleModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
+#include <DataSeries/ThreadSafeBuffer.hpp>
 
 
 /** A class that sorts input of any size. It uses an external (ie, two-phase) sort when there
@@ -69,10 +70,8 @@ public:
     virtual Extent *getExtent();
 
 private:
-
-
-    class SortedMergeFile {
-    public:
+    typedef boost::shared_ptr<ParallelRadixSortModule> ParallelRadixSortModulePtr;
+    struct SortedMergeFile {
         SortedMergeFile(const std::string &file, const ExtentType &extent_type);
         void open();
 
@@ -83,16 +82,41 @@ private:
         boost::shared_ptr<Extent> extent; // the extent that we're currently reading from
         const void *position; // where are we in the current extent?
     };
-
     typedef boost::function <bool (SortedMergeFile*, SortedMergeFile*)> SortedMergeFileComparator;
 
-    void createSortedFiles(Extent *extent);
+    struct BatchWorkItem {
+    	BatchWorkItem(Extent *first_extent, ParallelRadixSortModulePtr module) :
+				first_extent(first_extent), module(module) {}
+
+    	Extent *first_extent;
+    	ParallelRadixSortModulePtr module;
+    };
+
+    typedef boost::shared_ptr<BatchWorkItem> BatchWorkItemPtr;
+
+    class WriteThread : public PThread {
+	public:
+		WriteThread(ParallelSortModule *module) :
+			module(module) {}
+		virtual ~WriteThread() {}
+
+		virtual void* run() {
+			module->startWriteThread();
+			return NULL;
+		}
+
+	private:
+		ParallelSortModule *module;
+    };
+
+    void createSortedFiles(Extent *first_extent);
     void prepareSortedMergeFiles();
     Extent *createNextExtent();
     bool compareSortedMergeFiles(SortedMergeFile *sorted_merge_file_lhs,
                                  SortedMergeFile *sorted_merge_file_rhs);
     void resetMemorySortModule();
     void createTemporaryDir();
+    void startWriteThread();
 
     bool initialized;
     bool external; // automatically set to true when upstream module provides more data than
@@ -108,9 +132,10 @@ private:
     std::string temp_file_prefix;
 
     ThrottleModule throttle_module;
-    boost::scoped_ptr<ParallelRadixSortModule> memorySortModule;
+    ParallelRadixSortModulePtr memory_sort_module;
+    ThreadSafeBuffer<BatchWorkItemPtr> batch_sort_buffer;
 
-    std::vector<boost::shared_ptr<SortedMergeFile> > sortedMergeFiles;
+    std::vector<boost::shared_ptr<SortedMergeFile> > sorted_merge_files;
     PriorityQueue<SortedMergeFile*, SortedMergeFileComparator> sorted_merge_file_queue;
 
     ExtentSeries series_lhs;
@@ -120,6 +145,8 @@ private:
 
     Clock::Tfrac phase_start_clock;
     Clock::Tfrac phase_stop_clock;
+
+    WriteThread write_thread;
 };
 
 ParallelSortModule::ParallelSortModule(DataSeriesModule &upstream_module,
@@ -133,9 +160,10 @@ ParallelSortModule::ParallelSortModule(DataSeriesModule &upstream_module,
       upstream_module(upstream_module), field_name(field_name),
       extent_size_limit(extent_size_limit), thread_count(thread_count), memory_limit(memory_limit),
       compress_temp(compress_temp), temp_file_prefix(temp_file_prefix),
-      throttle_module(this->upstream_module, memory_limit),
+      throttle_module(this->upstream_module, memory_limit / 2),
+      batch_sort_buffer(1),
       sorted_merge_file_queue(boost::bind(&ParallelSortModule::compareSortedMergeFiles, this, _1, _2)),
-      field_lhs(series_lhs, field_name), field_rhs(series_rhs, field_name) {
+      field_lhs(series_lhs, field_name), field_rhs(series_rhs, field_name), write_thread(this) {
     resetMemorySortModule();
 }
 
@@ -150,13 +178,14 @@ Extent *ParallelSortModule::getExtent() {
     if (!initialized) {
         initialized = true;
         phase_start_clock = Clock::todTfrac();
-        Extent *firstExtent = memorySortModule->getExtent();
+        Extent *first_extent = memory_sort_module->getExtent();
         external = throttle_module.limitReached();
         if (!external) {
-            return firstExtent;
+            return first_extent;
         }
+        write_thread.start();
         createTemporaryDir();
-        createSortedFiles(firstExtent);
+        createSortedFiles(first_extent);
         phase_stop_clock = Clock::todTfrac();
         LintelLogDebug("ParallelSortModule",
                        boost::format("Completed phase 1 of two-phase sort in %s seconds.") %
@@ -166,67 +195,84 @@ Extent *ParallelSortModule::getExtent() {
     }
 
     // for external sort we need to merge from the files; for memory sort we just return an extent
-    return external ? createNextExtent() : memorySortModule->getExtent();
+    return external ? createNextExtent() : memory_sort_module->getExtent();
 }
 
-void ParallelSortModule::createSortedFiles(Extent *extent) {
-    int i = 0;
+void ParallelSortModule::startWriteThread() {
+	uint32_t i = 0;
+	BatchWorkItemPtr work_item;
+	while (batch_sort_buffer.remove(&work_item)) {
+		Extent *extent = work_item->first_extent;
+		INVARIANT(extent != NULL, "Why are we making an empty file?");
 
-    // one iteration for each batch/file (exits when we are out of data)
+		// create a new input file entry
+		boost::shared_ptr<SortedMergeFile> sorted_merge_file(new SortedMergeFile(
+				temp_file_prefix + (boost::format("%d") % i++).str(),
+				extent->getType()));
+		sorted_merge_files.push_back(sorted_merge_file);
+
+		// create the sink
+		ExtentWriter sink(sorted_merge_file->file_name, compress_temp, false);
+
+		Clock::Tfrac start_clock = Clock::todTfrac();
+
+		LintelLogDebug("ParallelSortModule",
+					   boost::format("Created a temporary file for the external sort: '%s'") %
+					   sorted_merge_file->file_name);
+
+		uint32_t extent_count = 0;
+		do {
+			//LintelLogDebug("ParallelSortModule", boost::format("Writing extent #%s to the temporary file.") % extent_count);
+			++extent_count;
+			sink.writeExtent(extent);
+			delete extent;
+			extent = work_item->module->getExtent();
+		} while (extent != NULL);
+
+		// close the sink
+		sink.close();
+
+		LintelLogDebug("ParallelSortModule", "Finished creating the temporary file.");
+
+		Clock::Tfrac stop_clock = Clock::todTfrac();
+
+		LintelLogDebug("ParallelSortModule",
+					   boost::format("Wrote the file '%s' in %s seconds.") %
+					   sorted_merge_file->file_name % Clock::TfracToDouble(stop_clock - start_clock));
+	}
+}
+
+void ParallelSortModule::createSortedFiles(Extent *first_extent) {
+    bool last_batch = !throttle_module.limitReached();
+    SINVARIANT(!last_batch); // We already know this is an external sort.
+
+    Extent *extent = first_extent;
     while (true) {
-        INVARIANT(extent != NULL, "Why are we making an empty file?");
+    	// Take memory_sort_module and start writing its extents to a temporary file.
+    	BatchWorkItemPtr work_item(new BatchWorkItem(extent, memory_sort_module));
+    	batch_sort_buffer.add(work_item);
 
-        // create a new input file entry
-        boost::shared_ptr<SortedMergeFile> sorted_merge_file(new SortedMergeFile(
-                temp_file_prefix + (boost::format("%d") % i++).str(),
-                extent->getType()));
-        sortedMergeFiles.push_back(sorted_merge_file);
+    	if (last_batch) {
+    		break;
+    	}
 
-        // create the sink
-        ExtentWriter sink(sorted_merge_file->file_name, compress_temp);
+    	resetMemorySortModule();
+    	extent = memory_sort_module->getExtent(); // This will cause extents to start flowing through our throttle module.
+    	last_batch = !throttle_module.limitReached();
+    };
 
-        Clock::Tfrac start_clock = Clock::todTfrac();
-
-        LintelLogDebug("ParallelSortModule",
-                       boost::format("Created a temporary file for the external sort: '%s'") %
-                       sorted_merge_file->file_name);
-
-        do {
-            sink.writeExtent(extent);
-            delete extent;
-            extent = memorySortModule->getExtent();
-        } while (extent != NULL);
-
-        // close the sink
-        sink.close();
-
-        Clock::Tfrac stop_clock = Clock::todTfrac();
-
-        LintelLogDebug("ParallelSortModule",
-                       boost::format("Wrote the file '%s' in %s seconds.") %
-                       sorted_merge_file->file_name % Clock::TfracToDouble(stop_clock - start_clock));
-
-        if (!throttle_module.limitReached()) { // The limit wasn't reached so we must be done.
-            break;
-        }
-
-        resetMemorySortModule(); // Clear all the memory and prepare for the next batch.
-        extent = memorySortModule->getExtent();
-
-        if (extent == NULL) {
-            break;
-        }
-    }
+    batch_sort_buffer.signalDone();
+    write_thread.join();
 }
 
 void ParallelSortModule::resetMemorySortModule() {
-    memorySortModule.reset(new ParallelRadixSortModule(throttle_module, field_name, extent_size_limit, thread_count));
+    memory_sort_module.reset(new ParallelRadixSortModule(throttle_module, field_name, extent_size_limit, thread_count));
     throttle_module.reset();
 }
 
 void ParallelSortModule::prepareSortedMergeFiles() {
     // create the input modules and read/store the first extent from each one
-    BOOST_FOREACH(boost::shared_ptr<SortedMergeFile> &sorted_merge_file, sortedMergeFiles) {
+    BOOST_FOREACH(boost::shared_ptr<SortedMergeFile> &sorted_merge_file, sorted_merge_files) {
         sorted_merge_file->open();
         sorted_merge_file_queue.push(sorted_merge_file.get()); // add the file to our priority queue
     }

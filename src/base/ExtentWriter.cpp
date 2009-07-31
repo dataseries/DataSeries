@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/uio.h>
+#include <sys/socket.h>
 
 extern "C" {
 #include <lzf.h>
@@ -21,20 +22,20 @@ extern "C" {
 #include <DataSeries/ExtentIO.hpp>
 #include <DataSeries/ExtentWriter.hpp>
 
-ExtentWriter::ExtentWriter(const std::string &fileName, bool compress)
-    : fd(-1), compress(compress), extent_index(0), total_size(0), total_time(0.0) {
-    fd = open(fileName.c_str(), O_CREAT | O_WRONLY | O_LARGEFILE, 0640);
+ExtentWriter::ExtentWriter(const std::string &fileName, bool compress, bool is_socket)
+    : fileName(fileName), fd(-1), compress(compress), is_socket(is_socket), extent_index(0), total_size(0), total_time(0.0) {
+    fd = open(fileName.c_str(), O_CREAT | O_TRUNC | O_WRONLY | O_LARGEFILE, 0640);
     INVARIANT(fd >= 0, boost::format("Error opening file '%s' for write: %s")
               % fileName % strerror(errno));
     CHECKED(posix_fadvise(fd, 0, 0, POSIX_FADV_DONTNEED) == 0, "fadvise failed.");
 }
 
-ExtentWriter::ExtentWriter(int fd, bool compress)
-    : fd(fd), compress(compress), extent_index(0), total_size(0), total_time(0.0) {
+ExtentWriter::ExtentWriter(int fd, bool compress, bool is_socket)
+    : fd(fd), compress(compress), is_socket(is_socket), extent_index(0), total_size(0), total_time(0.0) {
 }
 
-ExtentWriter::ExtentWriter(bool compress)
-    : fd(-1), compress(compress), extent_index(0), total_size(0), total_time(0.0) {
+ExtentWriter::ExtentWriter(bool compress, bool is_socket)
+    : fd(-1), compress(compress), is_socket(is_socket), extent_index(0), total_size(0), total_time(0.0) {
 }
 
 void ExtentWriter::setFileDescriptor(int fd) {
@@ -42,13 +43,15 @@ void ExtentWriter::setFileDescriptor(int fd) {
 }
 
 ExtentWriter::~ExtentWriter() {
-    this->close();
 }
 
 void ExtentWriter::writeExtent(Extent *extent) {
     Clock::Tfrac start_clock = Clock::todTfrac();
 
-    if (!compress) {
+    if (extent == NULL) {
+        Extent::ByteArray emptyArray;
+        writeExtentBuffers(false, false, emptyArray, emptyArray);
+    } else if (!compress) {
         writeExtentBuffers(false, false, extent->fixeddata, extent->variabledata);
     } else {
         Extent::ByteArray fixedData;
@@ -76,25 +79,42 @@ void ExtentWriter::writeExtentBuffers(bool fixedDataCompressed,
     header.fixedDataSize = fixedData.size();
     header.variableDataSize = variableData.size();
 
-    struct iovec iov[3];
-    iov[0].iov_base = &header;
-    iov[0].iov_len = sizeof(header);
-    iov[1].iov_base = fixedData.begin();
-    iov[1].iov_len = fixedData.size();
-    iov[2].iov_base = variableData.begin();
-    iov[2].iov_len = variableData.size();
-
-    ssize_t ret = writev(fd, iov, sizeof(iov) / sizeof(struct iovec));
-
     size_t size = sizeof(header) + fixedData.size() + variableData.size();
-    INVARIANT(ret != -1,
-              boost::format("Error on write of %s bytes: %s")
-              % (unsigned long)size % strerror(errno));
-    INVARIANT((size_t)ret == size,
-              boost::format("Partial write %s bytes out of %s bytes (disk full?): %s")
-              % ret % size % strerror(errno));
 
+    if (is_socket) {
+        writeBufferToSocket(&header, sizeof(header));
+        writeBufferToSocket(fixedData.begin(), fixedData.size());
+        writeBufferToSocket(variableData.begin(), variableData.size());
+    } else {
+        struct iovec iov[3];
+        iov[0].iov_base = &header;
+        iov[0].iov_len = sizeof(header);
+        iov[1].iov_base = fixedData.begin();
+        iov[1].iov_len = fixedData.size();
+        iov[2].iov_base = variableData.begin();
+        iov[2].iov_len = variableData.size();
+
+        ssize_t ret = writev(fd, iov, sizeof(iov) / sizeof(struct iovec));
+
+        INVARIANT(ret != -1,
+                  boost::format("Error on write of %s bytes: %s")
+                  % (unsigned long)size % strerror(errno));
+        INVARIANT((size_t)ret == size,
+                  boost::format("Partial write %s bytes out of %s bytes (disk full?): %s")
+                  % ret % size % strerror(errno));
+    }
     total_size += size;
+}
+
+void ExtentWriter::writeBufferToSocket(void *buffer, size_t size) {
+    uint8_t *data = static_cast<uint8_t*>(buffer);
+    while (size > 0) {
+        ssize_t ret = ::send(fd, data, size, 0);
+        INVARIANT(ret > 0, "Unable to write buffer to socket.");
+        LintelLogDebug("ExtentWriter", boost::format("Wrote %s/%s bytes.") % ret % size);
+        size -= ret;
+        data += ret;
+    }
 }
 
 bool ExtentWriter::compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination) {
@@ -111,15 +131,23 @@ bool ExtentWriter::compressBuffer(Extent::ByteArray &source, Extent::ByteArray &
     return true;
 }
 
+double ExtentWriter::getThroughput() {
+    return (total_time == 0.0) ? 0.0 : (double)total_size / total_time / (1 << 20);
+}
+
+double ExtentWriter::getTotalTime() {
+    return total_time;
+}
+
+uint64_t ExtentWriter::getTotalSize() {
+    return total_size;
+}
+
 void ExtentWriter::close() {
     if (fd == -1) {
         return;
     }
+    LintelLogDebug("ExtentWriter", "Finished writing to file descriptor.");
     CHECKED(::close(fd) == 0, boost::format("Close failed: %s") % strerror(errno));
     fd = -1;
-    if (total_time == 0.0) {
-        LintelLogDebug("ExtentWriter", boost::format("Finished writing. [%s]") % this);
-    } else {
-        LintelLogDebug("ExtentWriter", boost::format("Finished writing. Throughput was %s MB/s. [%s]") % ((double)total_size / total_time / (1 << 20)) % this);
-    }
 }

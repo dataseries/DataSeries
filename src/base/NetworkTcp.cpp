@@ -141,6 +141,7 @@ void ParallelNetworkTcpServer::startReceiveExtents(uint32_t node_index, const Ex
     PThreadScopedLock lock(active_connections_lock);
     --active_connections;
     if (active_connections == 0) {
+        handler.handleExtent(NULL);
         active_connections_cond.signal();
     }
 

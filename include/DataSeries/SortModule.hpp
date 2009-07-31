@@ -232,7 +232,7 @@ createSortedFiles() {
         sortedMergeFiles.push_back(sortedMergeFile);
 
         // create the sink
-        ExtentWriter sink(sortedMergeFile->fileName, compressTemp);
+        ExtentWriter sink(sortedMergeFile->fileName, compressTemp, false);
 
         LintelLogDebug("sortmodule",
                 boost::format("Created a temporary file for the external sort: %s") %

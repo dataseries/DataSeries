@@ -25,6 +25,7 @@
 
 class NetworkEndpoint {
 public:
+	NetworkEndpoint() : writer(false, true) {}
     struct sockaddr_in address;
     int socket_fd;
     std::string name;

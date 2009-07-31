@@ -20,7 +20,7 @@
 
 #include <DataSeries/TypeIndexModule.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
-#include <DataSeries/GrepModule.hpp>
+#include <DataSeries/ParallelGrepModule.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/SimpleSourceModule.hpp>
 
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
 
     StringFieldMatcher fieldMatcher(needle.get());
-    GrepModule<Variable32Field, StringFieldMatcher>
+    ParallelGrepModule<Variable32Field, StringFieldMatcher>
         grepModule(*inputModule, fieldName.get(), fieldMatcher);
 
     size_t matches = 0;
@@ -98,7 +98,10 @@ int main(int argc, char *argv[]) {
 	// TODO-tomer: generate the empty output file with the type
 	// from the type index module.  lintel::PointerUtil for the downcast.
 	// safeDownCast<TypeIndexModule>(inputModule.get())->...
+
         if (extent != NULL) {
+            cout << extent->getType().getName() << endl;
+            cout.flush();
 	    // TODO-tomer: set output options based on commonargs
             DataSeriesSink sink(outputFile.get(), Extent::compress_none, 0);
             ExtentTypeLibrary library;
@@ -114,6 +117,6 @@ int main(int argc, char *argv[]) {
             }
             sink.close();
         }
-    } 
-    cerr << boost::format("Found %d occurrence(s) of the string '%s'") % matches % needle.get() << endl;
+    }
+    cerr << boost::format("Found %s occurrence(s) of the string '%s'") % matches % needle.get() << endl;
 }

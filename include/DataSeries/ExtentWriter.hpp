@@ -20,9 +20,9 @@
 
 class ExtentWriter {
 public:
-    ExtentWriter(const std::string &fileName, bool compress=false);
-    ExtentWriter(int fd, bool compress=false);
-    ExtentWriter(bool compress=false);
+    ExtentWriter(const std::string &fileName, bool compress, bool is_socket);
+    ExtentWriter(int fd, bool compress, bool is_socket);
+    ExtentWriter(bool compress, bool is_socket);
 
     virtual ~ExtentWriter();
 
@@ -34,15 +34,22 @@ public:
     /** Close the file. */
     void close();
 
+    double getThroughput();
+    uint64_t getTotalSize();
+    double getTotalTime();
+
 private:
     void writeExtentBuffers(bool fixedDataCompressed,
                             bool variableDataCompressed,
                             Extent::ByteArray &fixedData,
                             Extent::ByteArray &variableData);
     bool compressBuffer(Extent::ByteArray &source, Extent::ByteArray &destination);
+    void writeBufferToSocket(void *buffer, size_t size);
 
+    std::string fileName;
     int fd;
     bool compress;
+    bool is_socket;
     size_t extent_index;
 
     size_t total_size;

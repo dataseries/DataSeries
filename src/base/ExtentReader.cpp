@@ -32,7 +32,6 @@ ExtentReader::ExtentReader(int fd, const ExtentType &extentType, bool is_socket)
 }
 
 ExtentReader::~ExtentReader() {
-    this->close();
 }
 
 Extent *ExtentReader::getExtent() {
@@ -41,6 +40,11 @@ Extent *ExtentReader::getExtent() {
 
     ExtentDataHeader header;
     if (readBuffer(&header, sizeof(header))) {
+        if (header.fixedDataSize == 0 && header.variableDataSize == 0) {
+            Clock::Tfrac stop_clock = Clock::todTfrac();
+            total_time += Clock::TfracToDouble(stop_clock - start_clock);
+            return NULL;
+        }
         extent = new Extent(extentType);
         readExtentBuffers(header, extent->fixeddata, extent->variabledata);
     }
@@ -51,12 +55,25 @@ Extent *ExtentReader::getExtent() {
     return extent;
 }
 
+double ExtentReader::getTotalTime() {
+    return total_time;
+}
+
+uint64_t ExtentReader::getTotalSize() {
+    return offset;
+}
+
+double ExtentReader::getThroughput() {
+    double mb = (double)offset / (1 << 20);
+    return mb / total_time;
+}
+
 void ExtentReader::close() {
     if (fd == -1) {
         return;
     }
     double mb = (double)offset / (1 << 20);
-    LintelLogDebug("ExtentReader", boost::format("Finished reading from file descriptor. Throughput was %s MB/s (%s MB).") %  (mb / total_time) % mb);
+    LintelLogDebug("ExtentReader", boost::format("Finished reading from file descriptor. Read %s MB.") % mb);
     CHECKED(::close(fd) == 0,
             boost::format("Close failed: %s") % strerror(errno));
     fd = -1;
@@ -65,7 +82,7 @@ void ExtentReader::close() {
 void ExtentReader::readExtentBuffers(const ExtentDataHeader &header,
                                      Extent::ByteArray &fixedData,
                                      Extent::ByteArray &variableData) {
-    if (!header.fixedDataCompressed) {
+	if (!header.fixedDataCompressed) {
         fixedData.resize(header.fixedDataSize);
         readBuffer(fixedData.begin(), header.fixedDataSize);
     } else {
@@ -99,7 +116,9 @@ bool ExtentReader::readBufferFromSocket(void *buffer, size_t size) {
     size_t bytes_left = size;
     uint8_t *byte_buffer = reinterpret_cast<uint8_t*>(buffer);
     while (bytes_left > 0) {
-        ssize_t bytes_received = recv(fd, byte_buffer, bytes_left, 0);
+        LintelLogDebug("ExtentReader", boost::format("Waiting (or not) to read %s bytes.") % bytes_left);
+        ssize_t bytes_received = ::recv(fd, byte_buffer, bytes_left, 0);
+        LintelLogDebug("ExtentReader", boost::format("Read %s/%s bytes.") % bytes_received % bytes_left);
         INVARIANT(bytes_received != -1, "Unable to read from socket.");
         if (bytes_received == 0) {
             INVARIANT(bytes_left == size, "Partial read.");

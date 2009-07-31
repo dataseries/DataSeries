@@ -1,0 +1,52 @@
+=stackcluster;Phase 1;Sort Buckets;Phase 2;Other
+=patterns
+=noupperright
+#=gridx
+legendx=7100
+legendy=1800
+yformat=%g
+xlabel=n (# of nodes)
+ylabel=t (seconds)
+
+=table
+multimulti=
+Optimal 10.48218029	0	10.48218029	0
+Actual  8.755	0.45	12.576	0.835
+
+multimulti=
+Optimal 43.47826087	0	10.48218029	0
+Actual  47.716	0.473	12.089	0.792
+
+multimulti=
+Optimal 57.97101449	0	10.48218029	0
+Actual  71.771 0.492 10.4179 1.349
+
+multimulti=
+Optimal 65.2173913	0	10.48218029	0
+Actual  73.804 0.496 12.062 1.568
+
+multimulti=
+Optimal 69.56521739	0	10.48218029	0
+Actual  78.345 0.495 11.904 1.526
+
+multimulti=
+Optimal 72.46376812	0	10.48218029	0
+Actual  80.584	0.532	12.355	1.049
+
+multimulti=
+Optimal 74.53416149	0	10.48218029	0
+Actual  82.93	0.522	12.3269	1.1911
+
+multimulti=
+Optimal 76.08695652	0	10.48218029	0
+Actual  83.851	0.543	12.173	1.423
+
+multimulti=
+Optimal 77.29468599	0	10.48218029	0
+Actual  83.195	0.535	11.976	1.444
+
+multimulti=
+Optimal 78.26086957	0	10.48218029	0
+Actual  83.661	0.498	12.307	1.554
+
+

@@ -41,6 +41,10 @@ public:
     /** Close the file. */
     void close();
 
+    uint64_t getTotalSize();
+    double getTotalTime();
+    double getThroughput();
+
 private:
     void readExtentBuffers(const ExtentDataHeader &header, Extent::ByteArray &fixedData,
                            Extent::ByteArray &variableData);

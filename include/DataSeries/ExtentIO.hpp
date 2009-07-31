@@ -23,6 +23,7 @@ struct ExtentDataHeader {
     // TODO-tomer: add uint32_t header_size to this and check it matches
 
     // TODO-tomer: naming convention is variable_name
+	ExtentDataHeader() : fixedDataSize(0), variableDataSize(0), fixedDataCompressed(0), variableDataCompressed(0) {}
     uint32_t fixedDataSize; // (compressed) size
     uint32_t variableDataSize; // (compressed) size
     uint8_t fixedDataCompressed; // effectively a bool.
