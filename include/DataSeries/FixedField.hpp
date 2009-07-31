@@ -18,9 +18,9 @@
 class FixedField : public Field {
 public:
     typedef ExtentType::byte byte;
-    
+
 protected:
-    FixedField(ExtentSeries &_dataseries, const std::string &field, 
+    FixedField(ExtentSeries &dataseries, const std::string &field,
 	       ExtentType::fieldType ft, int flags);
     virtual ~FixedField();
 
@@ -33,7 +33,11 @@ protected:
 
     virtual void newExtentType();
 
-    int size, offset;
+    // TODO: check to see if -1 is used as a special anywhere for
+    // size, offset; both should be uint32_t
+
+    // TODO-tomer: size -> field_size 
+    int32_t _size, offset; 
     ExtentType::fieldType fieldtype;
 };
 

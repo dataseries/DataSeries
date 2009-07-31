@@ -12,6 +12,8 @@
 #ifndef DATASERIES_FIELD_HPP
 #define DATASERIES_FIELD_HPP
 
+#include <boost/noncopyable.hpp>
+
 #include <Lintel/AssertBoost.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
@@ -27,7 +29,7 @@
   * on the current record of the associated @c ExtentSeries. It is important to
   * note that when an @c ExtentSeries is destroyed, all the associated fields
   * must have been destroyed first. */
-class Field {
+class Field : boost::noncopyable {
 public:
     /** Initialize a Field associated with the specified ExtentSeries.
         The field name can legitimately be empty, in which case this
@@ -40,12 +42,12 @@ public:
         may be nullable.  Note that If flag nullable is specified, it is
         still ok if the field is not in fact nullable.  flag_nullable
         only means that you are prepared to deal with null fields. */
-    Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
+    Field(ExtentSeries &_dataseries, const std::string &_fieldname,
 	  uint32_t _flags);
 
     /** Unregisters the @c Field object from the @c ExtentSeries. */
     virtual ~Field();
-    
+
     /** This value of the initialization flags indicates that the field
         may be nullable. */
     static const int flag_nullable = 1;
@@ -65,10 +67,10 @@ public:
 	DEBUG_INVARIANT(dataseries.extent() != NULL,
 			"internal error; extent not set");
 	if (nullable) {
-	    DEBUG_INVARIANT(null_offset >= 0, 
+	    DEBUG_INVARIANT(null_offset >= 0,
 			    "internal error; field not ready");
 	    dataseries.pos.checkOffset(null_offset);
-	    return (*(dataseries.pos.record_start() + null_offset) 
+	    return (*(dataseries.pos.record_start() + null_offset)
 		    & null_bit_mask) ? true : false;
 	} else {
 	    return false;
@@ -121,8 +123,8 @@ protected:
     /** A mask representing the position of the hidden bool field
         which determines whether this field is null. For example
         if it is the third boolean field, then the mask will be
-        0x4. This member is only meaningful for nullable fields. 
-        
+        0x4. This member is only meaningful for nullable fields.
+
         Invariants:
             - null_bit_mask has at most one bit set which must
               be one of the 8 lowest order bits. */
