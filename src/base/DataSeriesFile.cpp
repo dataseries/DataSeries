@@ -274,7 +274,7 @@ DataSeriesSink::~DataSeriesSink()
 }
 
 void
-DataSeriesSink::close(bool do_fsync)
+DataSeriesSink::close(bool do_fsync) {
     INVARIANT(wrote_library,
 	      "error: never wrote the extent type library?!");
     INVARIANT(cur_offset >= 0, "error: close called twice?!");
