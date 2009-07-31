@@ -178,6 +178,7 @@ possible direction for future work would be automatically inferring
 the ``best'' packing options.
 
 \subsubsection{Extent-level options}
+\label{sec:design:extent-options}
 
 Extent level options control the way the entire extent is stored.
 Currently there are three options here:
@@ -204,6 +205,7 @@ an evaluation of this option.
 \end{enumerate}
 
 \subsection{Field-level Options}
+\label{sec:design:field-options}
 
 Field-level options control the meaning of individual fields (for
 opt\_* options), or how that field is represented before compression
@@ -220,23 +222,20 @@ the value is null.
 doubles.  This is used to gain additional precision in the double
 without losing the absolute value.  
 This is particularly useful for storing Unix time stamps with nanosecond
+precision. In particular, we have found this
+useful for storing time in seconds in Unix time\footnote{Unix time has an epoch
+start of 12AM, 1 January 1970.}, but with a precision in nanoseconds, which
+would otherwise be impossible as an IEEE double has insufficient
 precision.
-%In particular, we have found this
-%useful for storing time in seconds in Unix time\footnote{Unix time has an epoch
-%start of 12AM, 1 January 1970.}, but with a precision in nanoseconds, which
-%would otherwise be impossible as an IEEE double has insufficient
-%precision.
 
 \item pack\_scale={\it scale-value}: This specifies the precision to use for
-double values.
-% INCLUDE IN EXTENDED VERSION
-%; in particular it means that the double will be
-%multiplied by 1/{\it scale-value}, and rounded to an integer before
-%being compressed, with the reverse transform applied after the data is
-%uncompressed.  This option is useful because values that are stored as
-%doubles sometimes accumulate pseudo-random bits in the low
-%digits.  These pseudo-random bits contain no useful information and
-%reduce the achievable compression.
+double values; in particular it means that the double will be
+multiplied by 1/{\it scale-value}, and rounded to an integer before
+being compressed, with the reverse transform applied after the data is
+uncompressed.  This option is useful because values that are stored as
+doubles sometimes accumulate pseudo-random bits in the low
+digits.  These pseudo-random bits contain no useful information and
+reduce the achievable compression.
 This option improves compression by removing the pseudo-random bits in the low 
 bits of doubles by scaling and rounding the double.  
 
