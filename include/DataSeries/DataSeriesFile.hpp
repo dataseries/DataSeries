@@ -26,14 +26,16 @@
 class DataSeriesSource {
 public:
     /** Opens the specified file and reads its @c ExtentTypeLibary and
-        its index @c Extent. Sets the current offset to the first
-        @c Extent in the file.
+        its index @c Extent. Sets the current offset to the first @c
+        Extent in the file.  Optionally does not read extentIndex at
+        the end of the file to optimize open time when using an
+        external extent index (as with dsextentindex).
 
         Preconditions:
             - The file must exist and must be a DataSeries file.
         Postconditions:
             - isactive() */
-    DataSeriesSource(const std::string &filename);
+    DataSeriesSource(const std::string &filename, bool read_index = true);
     ~DataSeriesSource();
 
     /** Returns the @c Extent at the current offset. Sets the current offset
@@ -123,6 +125,7 @@ private:
     int fd;
     off64_t cur_offset;
     bool need_bitflip;
+    bool read_index;
 };
 
 /** \brief Writes Extents to a DataSeries file.
@@ -230,7 +233,7 @@ public:
     /** Blocks until all queued extents have been written and closes the file.  An
         @c ExtentTypeLibrary must have been written using
         \link DataSeriesSink::writeExtentLibrary writeExtentLibrary \endlink. */
-    void close();
+    void close(bool do_fsync = false);
 
     /** Writes the ExtentTypes that are used in the file.  This function
         must be called exactly once before calling writeExtent.  The

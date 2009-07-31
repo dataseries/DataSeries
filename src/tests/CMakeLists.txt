@@ -35,11 +35,15 @@ DATASERIES_SCRIPT_TEST(ds2txt)
 DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
 
 ### Script tests of testing-only programs
-DATASERIES_PROGRAM_NOINST(misc)
-DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
-
 DATASERIES_PROGRAM_NOINST(expr)
 DATASERIES_SCRIPT_TEST(expr)
+
+DATASERIES_PROGRAM_NOINST(sortedindex)
+DATASERIES_SCRIPT_TEST(sortedindex)
+
+DATASERIES_PROGRAM_NOINST(sortedIndexTest)
+DATASERIES_SCRIPT_TEST(sortedindex)
+
 
 ### Conditional tests...
 
@@ -63,6 +67,13 @@ ENDIF(PERL_DATE_PARSE_ENABLED AND PERL_CRYPT_RIJNDAEL_ENABLED)
 IF(SRT_ENABLED)
     DATASERIES_SCRIPT_TEST(srt)
 ENDIF(SRT_ENABLED)
+
+### Long tests
+
+# TODO: split misc into multiple pieces so that it can be run in
+# parallel.
+DATASERIES_PROGRAM_NOINST(misc)
+DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
 ### Manual tests
 # TODO-tomer: make joe fix this name

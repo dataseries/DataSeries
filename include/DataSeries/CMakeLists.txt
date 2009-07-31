@@ -1,5 +1,5 @@
 #
-# (c) Copyright 2007-2008, Hewlett-Packard Development Company, LP
+# (c) Copyright 2007-2009, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
 #
@@ -22,6 +22,9 @@ SET(INCLUDE_FILES
 	Int64Field.hpp
 	Int64TimeField.hpp
 	MinMaxIndexModule.hpp
+	SortedIndexModule.hpp
+	SortedIndex.hpp
+	ExtentVectorModule.hpp
 	DataSeriesModule.hpp
 	PrefetchBufferModule.hpp
 	RowAnalysisModule.hpp

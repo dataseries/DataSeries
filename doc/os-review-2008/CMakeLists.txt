@@ -1,24 +1,14 @@
 INCLUDE(LintelCMakeUtil)
 
-#
-# cmake sometimes run this twice, so use -f to avoid an error.   later,
-# we should figure out why this is running twice.
-ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
-    COMMAND ln 
-    ARGS -sf ${CMAKE_CURRENT_SOURCE_DIR}/../tr/references.bib
-      ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib)
-
-# ditto
-ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tr-fig
-    COMMAND ln 
-    ARGS -sfT ${CMAKE_CURRENT_SOURCE_DIR}/../tr/fig
-      ${CMAKE_CURRENT_BINARY_DIR}/tr-fig)
-
-SET(dataseries-osr-2008_EXTRA_DEPENDS 
-    ${CMAKE_CURRENT_BINARY_DIR}/tr-references.bib
-    ${CMAKE_CURRENT_BINARY_DIR}/tr-fig
-)
-
 IF(LINTEL_LATEX_REBUILD_ENABLED)
+    SET(dataseries-osr-2008_LINTEL_LATEX_ARGS
+        --bib ${DataSeries_SOURCE_DIR}/doc/tr
+        --error-on-warnings
+    )
+    
+    SET(dataseries-osr-2008_EXTRA_DEPENDS 
+        ${DataSeries_SOURCE_DIR}/doc/tr/references.bib
+    )
+
     LINTEL_LATEX(dataseries-osr-2008)
 ENDIF(LINTEL_LATEX_REBUILD_ENABLED)

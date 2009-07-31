@@ -44,8 +44,8 @@ using boost::format;
 #define O_LARGEFILE 0
 #endif
 
-DataSeriesSource::DataSeriesSource(const string &_filename)
-    : filename(_filename), fd(-1), cur_offset(0)
+DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
+    : indexExtent(NULL), filename(filename), fd(-1), cur_offset(0), read_index(read_index)
 {
     reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
@@ -102,28 +102,33 @@ DataSeriesSource::DataSeriesSource(const string &_filename)
 	mylibrary.registerType(v);
     }
     delete e;
-    struct stat ds_file_stats;
-    int ret_val = fstat(fd,&ds_file_stats);
-    INVARIANT(ret_val == 0,
-	      boost::format("fstat failed: %s")
-	      % strerror(errno));
-    BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
-    off64_t tailoffset = ds_file_stats.st_size-7*4;
-    INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
-    byte tail[7*4];
-    Extent::checkedPread(fd,tailoffset,tail,7*4);
-    DataSeriesSink::verifyTail(tail,need_bitflip,filename);
-    if (need_bitflip) {
-	Extent::flip4bytes(tail+4);
-	Extent::flip8bytes(tail+16);
+    // TODO-brad/alistair: Make skipping the tail check a separate
+    // flag, you may want the verify the file was properly closed
+    // separately from reading the index.
+    if (read_index) {
+	struct stat ds_file_stats;
+	int ret_val = fstat(fd,&ds_file_stats);
+	INVARIANT(ret_val == 0,
+		boost::format("fstat failed: %s")
+		% strerror(errno));
+	BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
+	off64_t tailoffset = ds_file_stats.st_size-7*4;
+	INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
+	byte tail[7*4];
+	Extent::checkedPread(fd,tailoffset,tail,7*4);
+	DataSeriesSink::verifyTail(tail,need_bitflip,filename);
+	if (need_bitflip) {
+	    Extent::flip4bytes(tail+4);
+	    Extent::flip8bytes(tail+16);
+	}
+	int32 packedsize = *(int32 *)(tail + 4);
+	off64_t indexoffset = *(int64 *)(tail + 16);
+	INVARIANT(tailoffset - packedsize == indexoffset,
+		boost::format("mismatch on index offset %d - %d != %d!")
+		% tailoffset % packedsize % indexoffset);
+	indexExtent = preadExtent(indexoffset);
+	INVARIANT(indexExtent != NULL, "index extent read failed");
     }
-    int32 packedsize = *(int32 *)(tail + 4);
-    off64_t indexoffset = *(int64 *)(tail + 16);
-    INVARIANT(tailoffset - packedsize == indexoffset,
-	      boost::format("mismatch on index offset %d - %d != %d!")
-	      % tailoffset % packedsize % indexoffset);
-    indexExtent = preadExtent(indexoffset);
-    INVARIANT(indexExtent != NULL, "index extent read failed");
 }
 
 DataSeriesSource::~DataSeriesSource()
@@ -131,7 +136,14 @@ DataSeriesSource::~DataSeriesSource()
     if (isactive()) {
 	closefile();
     }
-    delete indexExtent;
+    // TODO-brad/alistair: why protect the delete?  It should have
+    // been null (it wasn't I fixed it).  Also check users of the
+    // indexExtent in a source and verify they all check if it's not
+    // null before accessing it.  DSS's opened with the read_index
+    // flag == false could leak out.
+    if (read_index) {
+	delete indexExtent;
+    }
 }
 
 void
@@ -261,7 +273,8 @@ DataSeriesSink::~DataSeriesSink()
     }
 }
 
-void DataSeriesSink::close() {
+void
+DataSeriesSink::close(bool do_fsync) {
     INVARIANT(wrote_library,
 	      "error: never wrote the extent type library?!");
     INVARIANT(cur_offset >= 0, "error: close called twice?!");
@@ -328,6 +341,9 @@ void DataSeriesSink::close() {
     *(int32 *)(tail + 24) = lintel::bobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
+    if(do_fsync) {
+        fsync(fd);
+    }
     int ret = ::close(fd);
     INVARIANT(ret == 0, boost::format("close failed: %s") % strerror(errno));
     fd = -1;
