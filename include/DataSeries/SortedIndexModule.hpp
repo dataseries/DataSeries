@@ -43,6 +43,14 @@ public:
      */
     void search(const GeneralValue &value);
 
+    /** Searches the index for a set of values, subsequent calls to
+        getExtent will result in all of the extents that may contain
+        values within the search set, sorted by offset (to remove
+        duplicates from the search process and hopefully improve read
+        performance).
+    */
+    void searchSet(const std::vector<GeneralValue> &values);
+
 protected:
     virtual PrefetchExtent *lockedGetCompressedExtent();
     virtual void lockedResetModule();
@@ -77,6 +85,17 @@ private:
 	    return v >= minv && v <= maxv;
 	}
     };
+
+    static bool entrySorter(const IndexEntry *lhs, const IndexEntry *rhs) {
+        return((int)(lhs->source.get()) < (int)(rhs->source.get()) ||
+               ((int)(lhs->source.get()) == (int)(rhs->source.get()) &&
+                lhs->offset < rhs->offset));
+    }
+
+    static bool entryEqual(const IndexEntry *lhs, const IndexEntry *rhs) {
+        return ((int)(lhs->source.get()) == (int)(rhs->source.get()) &&
+                lhs->offset == rhs->offset);
+    }
 
     typedef std::vector<IndexEntry> IndexEntryVector;
 

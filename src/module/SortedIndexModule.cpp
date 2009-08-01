@@ -96,6 +96,28 @@ void SortedIndexModule::search(const GeneralValue &value) {
     }
 }
 
+void SortedIndexModule::searchSet(const std::vector<GeneralValue> &values) {
+    INVARIANT(extents.size() == cur_extent,
+	      boost::format("did not finish reading all extents before search"));
+    extents.clear();
+    cur_extent = 0;
+
+    BOOST_FOREACH(const GeneralValue &value, values) {
+        // search each index for relevant extents
+        BOOST_FOREACH(IndexEntryVector &iev, index) {
+            // See comment in header for use of lower bound and < operator.
+            for(std::vector<IndexEntry>::iterator i = 
+                    std::lower_bound(iev.begin(), iev.end(), value);
+                i != iev.end() && i->inRange(value); ++i) {
+                extents.push_back(&(*i));
+            }
+        }
+    }
+
+    // sort the extents by file and then location
+    std::sort(extents.begin(), extents.end(), entrySorter);
+}
+
 void SortedIndexModule::lockedResetModule() { }
 
 IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent() {
@@ -104,6 +126,13 @@ IndexSourceModule::PrefetchExtent *SortedIndexModule::lockedGetCompressedExtent(
         need_reset = true;
 	return NULL;
     }
+
+    // skip duplicate extents
+    while (cur_extent + 1 != extents.size() &&
+           entryEqual(extents[cur_extent], extents[cur_extent + 1])) {
+        ++cur_extent;
+    }
+
     SINVARIANT(cur_extent < extents.size());
     PrefetchExtent *ret = readCompressed(extents[cur_extent]->source.get(), 
 					 extents[cur_extent]->offset,
