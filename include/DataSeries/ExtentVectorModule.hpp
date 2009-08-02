@@ -4,7 +4,9 @@
    See the file named COPYING for license details
 */
 
-/** @file A module which is intended to be used as the destination
+/** @file 
+
+    A module which is intended to be used as the destination
     module for searches done using the SortedIndex.  It takes a vector
     of filenames, a vector of extents, and an index_type and allows
     for sequential processing of the extents in that vector.

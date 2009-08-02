@@ -87,14 +87,12 @@ private:
     };
 
     static bool entrySorter(const IndexEntry *lhs, const IndexEntry *rhs) {
-        return((int)(lhs->source.get()) < (int)(rhs->source.get()) ||
-               ((int)(lhs->source.get()) == (int)(rhs->source.get()) &&
-                lhs->offset < rhs->offset));
+        return lhs->source.get() < rhs->source.get() 
+	    || (lhs->source.get() == rhs->source.get() && lhs->offset < rhs->offset);
     }
 
     static bool entryEqual(const IndexEntry *lhs, const IndexEntry *rhs) {
-        return ((int)(lhs->source.get()) == (int)(rhs->source.get()) &&
-                lhs->offset == rhs->offset);
+        return lhs->source.get() == rhs->source.get() && lhs->offset == rhs->offset;
     }
 
     typedef std::vector<IndexEntry> IndexEntryVector;

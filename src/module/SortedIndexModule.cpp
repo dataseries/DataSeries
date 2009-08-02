@@ -114,6 +114,10 @@ void SortedIndexModule::searchSet(const std::vector<GeneralValue> &values) {
         }
     }
 
+    // TODO: the following comment is wrong, it's sorting by the address of the
+    // source pointer and then the location.  Alistair/Craig/Brad should check this
+    // to figure out if comment is wrong or code is wrong.
+
     // sort the extents by file and then location
     std::sort(extents.begin(), extents.end(), entrySorter);
 }
