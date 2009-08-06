@@ -43,6 +43,14 @@ public:
      */
     void search(const GeneralValue &value);
 
+    /** Searches the index for a set of values, subsequent calls to
+        getExtent will result in all of the extents that may contain
+        values within the search set, sorted by offset (to remove
+        duplicates from the search process and hopefully improve read
+        performance).
+    */
+    void searchSet(const std::vector<GeneralValue> &values);
+
 protected:
     virtual PrefetchExtent *lockedGetCompressedExtent();
     virtual void lockedResetModule();
@@ -78,9 +86,19 @@ private:
 	}
     };
 
+    static bool entrySorter(const IndexEntry *lhs, const IndexEntry *rhs) {
+        return lhs->source.get() < rhs->source.get() 
+	    || (lhs->source.get() == rhs->source.get() && lhs->offset < rhs->offset);
+    }
+
+    static bool entryEqual(const IndexEntry *lhs, const IndexEntry *rhs) {
+        return lhs->source.get() == rhs->source.get() && lhs->offset == rhs->offset;
+    }
+
     typedef std::vector<IndexEntry> IndexEntryVector;
 
-    size_t cur_extent;		        // current extent being processed, indexes into extents
+    bool need_reset; // need to reset the prefetch information
+    size_t cur_extent; // current extent being processed, indexes into extents
     const std::string index_type;	// type of extent indexed
     std::vector<IndexEntryVector> index;// one index for each indexed file
     std::vector<IndexEntry *> extents;	// extents that contain searched value

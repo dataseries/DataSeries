@@ -23,7 +23,7 @@ private:
     int64_t id;
     
 public:
-    SearchID(DataSeriesModule *source, uint64_t id)
+    SearchID(DataSeriesModule *source, int64_t id)
 	: RowAnalysisModule(*source, ExtentSeries::typeExact),
 	  packet_at(series, "packet-at"), 
 	  record_id(series, "record-id"), id(id)

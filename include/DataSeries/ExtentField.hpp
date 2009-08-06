@@ -240,8 +240,12 @@ public:
     void allocateSpace(uint32_t data_size);
 
     /// Overwrite @param data_size bytes at offset @param offset with
-    /// the bytes @param data.  Invalid to call with data_size +
+    /// the bytes @param data  Invalid to call with data_size +
     /// offset > currently allocated space.
+    /// 
+    /// @param data The data to set into the field.
+    /// @param data_size Number of bytes to copy from data into the field.
+    /// @param offset Offset in bytes from the start of the field for the first copied byte.
     void partialSet(const void *data, uint32_t data_size, uint32_t offset);
 
     void set(const void *data, int32 datasize) {
