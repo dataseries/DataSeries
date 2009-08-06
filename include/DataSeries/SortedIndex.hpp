@@ -17,6 +17,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include <DataSeries/GeneralField.hpp>
+#include <DataSeries/IndexSourceModule.hpp>
 
 /** SortedIndex assumes that for each file referenced by the
     index, that files rows are sorted on the index field. It is an error to
@@ -37,11 +38,11 @@ public:
 
     // IndexEntry describes a single extent in the index
     struct IndexEntry {
-	uint64_t source; 	// Source file ID to be matched with ID vector
+	boost::shared_ptr<DataSeriesSource> source;
 	GeneralValue minv;	// min value of index field in extent
 	GeneralValue maxv;	// max value of index field in extent
 	uint64_t offset;	// offset of extent in source
-	IndexEntry(uint64_t source,
+	IndexEntry(boost::shared_ptr<DataSeriesSource> source,
 		   const GeneralValue &minv, const GeneralValue &maxv, 
 		   uint64_t offset) 
 	    : source(source), minv(minv), maxv(maxv), offset(offset) 
@@ -72,6 +73,7 @@ public:
     */
     std::vector<IndexEntry*>* search(const GeneralValue &value);
 
+#if 0
     /** Returns the file_names vector.  Used as a cache of
 	id->filename translations to avoid copying strings around.
      */
@@ -80,13 +82,15 @@ public:
 
     const std::string& getIndexType()
     { return index_type; }
+#endif
 
-protected:
 private:
     typedef std::vector<IndexEntry> IndexEntryVector;
-    const std::string index_type;	// type of extent indexed
     std::vector<IndexEntryVector> index;// one index for each indexed file
+#if 0
+    const std::string index_type;	// type of extent indexed
     std::vector<std::string> file_names; // vector of source filenames. Index is ID
+#endif
 };
 
 #endif

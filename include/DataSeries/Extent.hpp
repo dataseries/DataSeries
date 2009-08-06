@@ -99,11 +99,11 @@ public:
         }
         void clear(); // frees allocated memory
         void reserve(size_t reserve_bytes);
-        bool empty() { return endV == beginV; }
-        byte *begin() { return beginV; };
-        byte *begin(size_t offset) { return beginV + offset; }
-        byte *end() { return endV; };
-        byte &operator[] (size_t offset) { return *(begin(offset)); }
+        bool empty() const { return endV == beginV; }
+        byte *begin() const { return beginV; };
+        byte *begin(size_t offset) const { return beginV + offset; }
+        byte *end() const { return endV; };
+        byte &operator[] (size_t offset) const { return *(begin(offset)); }
     
         void swap(ByteArray &with) {
             swap(beginV,with.beginV);
@@ -149,7 +149,7 @@ public:
         If needs_bitflip is true, it indicates that the endianness
         of the host processor is opposite the endianness of the
         input data. */
-    Extent(ExtentTypeLibrary &library, 
+    Extent(const ExtentTypeLibrary &library, 
            Extent::ByteArray &packeddata, 
            const bool need_bitflip);
     /** Similar to the above constructor, except that
@@ -289,7 +289,7 @@ public:
         
         Preconditions:
           - from must be in the external representation of Extents. */
-    static const std::string getPackedExtentType(Extent::ByteArray &from);
+    static const std::string getPackedExtentType(const Extent::ByteArray &from);
 
     /// \cond INTERNAL_ONLY
     // the various pack routines return false if packing the data with a 

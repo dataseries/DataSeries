@@ -783,28 +783,31 @@ ExtentTypeLibrary::registerType(const ExtentType &type)
 }    
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
+ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
 {
     if (name == ExtentType::getDataSeriesXMLType().getName()) {
 	return &ExtentType::getDataSeriesXMLType();
     } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
 	return &ExtentType::getDataSeriesIndexTypeV0();
     }
-    if (null_ok) {
-	if (name_to_type.find(name) == name_to_type.end()) {
+    std::map<const std::string, const ExtentType *>::const_iterator i 
+	= name_to_type.find(name);
+    if (i == name_to_type.end()) {
+	if (null_ok) {
 	    return NULL;
 	}
+	FATAL_ERROR(format("No type named %s registered") % name);
     }
-    const ExtentType *f = name_to_type[name];
-    INVARIANT(f != NULL, format("No type named %s registered") % name);
+    const ExtentType *f = i->second;
+    SINVARIANT(f != NULL);
     return f;
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
+ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
@@ -820,10 +823,10 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
+ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,

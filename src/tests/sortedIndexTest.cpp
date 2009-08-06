@@ -20,18 +20,18 @@ class SearchID : public RowAnalysisModule {
 private:
     Int64Field packet_at;
     Int64Field record_id;
-    uint64_t _id;
+    int64_t id;
     
 public:
     SearchID(DataSeriesModule *source, uint64_t id)
 	: RowAnalysisModule(*source, ExtentSeries::typeExact),
 	  packet_at(series, "packet-at"), 
-	  record_id(series, "record-id"), _id(id)
+	  record_id(series, "record-id"), id(id)
     { }
 
     virtual void processRow()
     {
-	if(packet_at.val() == _id) {
+	if (packet_at.val() == id) {
 	    std::cout << record_id.val() << " ";
 	}
     }
@@ -42,7 +42,7 @@ void doSearch(SortedIndex &index, int64_t val) {
     search_val.setInt64(val);
     std::vector<SortedIndex::IndexEntry*> *extents = index.search(search_val);
     std::cout << val << ": ";
-    ExtentVectorModule evm(index.getFileNames(), extents, index.getIndexType());
+    ExtentVectorModule evm(extents, "NFS trace: common");
     SearchID search(&evm, val);
     search.getAndDelete();
     std::cout << "\n";
