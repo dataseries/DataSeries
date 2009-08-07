@@ -149,11 +149,11 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-void 
-ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
-{
-    if (debug_packing) printf("packing byte fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+// TODO: rename to parsePackByteAlignedFields
+void ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos) {
+    // TODO: this and others should be LintelLogDebug
+    if (debug_packing) printf("packing byte-aligned fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); ++i) {
 	if (ret.field_info[i].type == ft_byte) {
 	    ret.field_info[i].size = 1;
 	    ret.field_info[i].offset = byte_pos;
@@ -162,6 +162,14 @@ ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
 		    % ret.field_info[i].name % byte_pos;
 	    }
 	    byte_pos += 1;
+	}else if (ret.field_info[i].type == ft_fixedwidth) {
+	    INVARIANT(ret.field_info[i].size > 0, "the size should have been set already");
+	    ret.field_info[i].offset = byte_pos;
+	    if (debug_packing) {
+                cout << boost::format("  field %s at position %d\n")
+                    % ret.field_info[i].name % byte_pos;
+            }
+	    byte_pos += ret.field_info[i].size;
 	}
     }
 }
@@ -413,6 +421,10 @@ ExtentType::parseXML(const string &xmldesc)
 	} else if (type_str == "variable32") {
 	    info.type = ft_variable32;
 	    ++variable_fields;
+	} else if (type_str == "fixedwidth") {
+	    cerr << "Warning, fixed width fields are experimental.\n";
+	    info.type = ft_fixedwidth;
+	    ++byte_fields;
 	} else {
 	    FATAL_ERROR(boost::format("Unknown field type '%s'") % type_str);
 	}
@@ -439,6 +451,14 @@ ExtentType::parseXML(const string &xmldesc)
 		      "opt_doublebase only allowed for double fields");
 	    info.doublebase = stringToDouble(opt_doublebase);
 	}	    
+
+	string size = strGetXMLProp(cur, "size");
+        if (!size.empty()) {
+            INVARIANT(info.type == ft_fixedwidth,
+                      "size only allowed for fixed width fields");
+            info.size = stringToInteger<int32_t>(size);
+            INVARIANT(info.size > 0, "size must be positive");
+        }
 
 	// TODO: consider a variant of pack_scale where you can
 	// specify Q#.#[b#] as an alternative specification following
@@ -581,7 +601,7 @@ ExtentType::parseXML(const string &xmldesc)
 	}
 	switch(n.type)
 	    {
-	    case ft_byte:
+	    case ft_byte: case ft_fixedwidth:
 		ret.nonbool_compact_info_size1.push_back(n);
 		break;
 	    case ft_int32: case ft_variable32:
@@ -590,7 +610,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    case ft_int64: case ft_double:
 		ret.nonbool_compact_info_size8.push_back(n);
 		break;
-	    default: FATAL_ERROR("?");
+	    default: FATAL_ERROR(boost::format("Unrecognized type #%s") % n.type);
 	    }
     }
 
@@ -747,6 +767,7 @@ static const string fieldtypes[] = {
     "int64",
     "double",
     "variable32",
+    "fixedwidth"
 };
 
 static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const string);
