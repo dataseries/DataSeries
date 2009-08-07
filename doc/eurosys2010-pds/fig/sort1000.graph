@@ -9,33 +9,33 @@ xlabel=n (# of nodes)
 ylabel=t (seconds)
 
 =table
-multimulti=
+multimulti=1
 Optimal 10.482 0 10.482 0
 Actual  9.193  0.448	12.27	0.939
-multimulti=
+multimulti=2
 Optimal 10.482 0 10.482 0
 Actual  9.143  0.476	12.0918	1.2482
-multimulti=
+multimulti=3
 Optimal 10.482 0 10.482 0
 Actual  9.422  0.496	11.996	1.058
-multimulti=
+multimulti=4
 Optimal 10.482 0 10.482 0
 Actual  9.492  0.49	12.148	1.467
-multimulti=
+multimulti=5
 Optimal 10.482 0 10.482 0
 Actual  9.896  0.5	12.298	1.372
-multimulti=
+multimulti=6
 Optimal 10.482 0 10.482 0
 Actual  10.468 0.515	12.09	1.374
-multimulti=
+multimulti=7
 Optimal 10.482 0 10.482 0
 Actual  10.323 0.523	12.358	1.261
-multimulti=
+multimulti=8
 Optimal 10.482 0 10.482 0
 Actual  11.207 0.522	12.011	0.856
-multimulti=
+multimulti=9
 Optimal 10.482 0 10.482 0
 Actual  11.045 0.519	11.94	0.944
-multimulti=
+multimulti=10
 Optimal 10.482 0 10.482 0
 Actual  10.692 0.539	12.05	1.254
