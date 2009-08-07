@@ -18,7 +18,7 @@
 class FixedField : public Field {
 public:
     typedef ExtentType::byte byte;
-    
+
 protected:
     FixedField(ExtentSeries &dataseries, const std::string &field, 
 	       ExtentType::fieldType ft, int flags);
@@ -35,6 +35,9 @@ protected:
 
     // -1 is used as a flag for uninitialized, otherwise would be uint32_t
     int32_t field_size, offset;
+
+    // TODO-tomer: size -> field_size 
+    int32_t _size, offset; 
     ExtentType::fieldType fieldtype;
 };
 

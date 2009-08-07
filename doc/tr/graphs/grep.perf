@@ -1,0 +1,24 @@
+# Input file for: http://www.burningcutlery.com/derek/bargraph/
+
+=cluster;100 MiB;1 GiB;10 GiB
+
+# Use patterns instead of colors.
+=patterns
+
+title=Grep
+ylabel=Effective Throughput (MiB/s)
+#extraops=set size 0.8
+fontsz=10
+=nogridy
+#legendx=5900
+#legendy=2600
+legendx=2100
+legendy=1600
+=norotate
+xlabel=Analysis
+=table;
+UNIX grep;	94.3396242;	105.3001026;	103.2773356
+DS/none;	74.25742425;	91.54714817;	88.84413624
+DS/lzf;		129.8701297;	179.4258345;	165.4807207
+DS/gzip;	160.4278071;	279.5899405;	277.4694811
+
