@@ -47,25 +47,36 @@ class GeneralField;
 class GeneralValue {
 public:
     GeneralValue()
-	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { }
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
-	if (gvtype == ExtentType::ft_variable32) {
-	    v_variable32 = new std::string(*v.v_variable32);
-	} else {
-	    v_variable32 = NULL;
-	}
+	switch (gvtype) {
+        case ExtentType::ft_variable32:
+            v_variable32 = new std::string(*v.v_variable32);
+            v_fixedwidth = NULL;
+            break;
+        case ExtentType::ft_fixedwidth:
+            v_fixedwidth = new std::vector<uint8_t>(*v.v_fixedwidth);
+            v_variable32 = NULL;
+            break;
+        default:
+            v_variable32 = NULL;
+            v_fixedwidth = NULL;
+        }
     }
     GeneralValue(const GeneralField &from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { set(from); }
 
     GeneralValue(const GeneralField *from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { set(from); }
 
-    ~GeneralValue() { delete v_variable32; }
+    ~GeneralValue() { 
+	delete v_variable32; 
+	delete v_fixedwidth;
+    }
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) { 
@@ -133,6 +144,7 @@ protected:
     friend class GF_Int32;
     friend class GF_Int64;
     friend class GF_Double;
+    friend class GF_FixedWidth;
     friend class GF_Variable32;
     ExtentType::fieldType gvtype;
     /// \cond INTERNAL_ONLY
@@ -145,6 +157,7 @@ protected:
     } gvval;
     /// \endcond
     std::string *v_variable32; // only valid if gvtype = ft_variable32
+    std::vector<uint8_t> *v_fixedwidth; // only valid if gvtype == ft_fixedwidth
 };
 
 inline bool operator < (const GeneralValue &a, const GeneralValue &b) {
@@ -384,6 +397,28 @@ public:
     DoubleField *relative_field;
     char *printspec;
     double offset, multiplier;
+};
+
+class GF_FixedWidth : public GeneralField {
+public:
+    GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
+    virtual ~GF_FixedWidth();
+
+    virtual void write(FILE *to);
+    virtual void write(std::ostream &to);
+
+    virtual bool isNull();
+    virtual void setNull(bool val);
+
+    virtual void set(GeneralField *from);
+    virtual void set(const GeneralValue *from);
+
+    virtual double valDouble();
+
+    // TODO-tomer: make this return a vector<uint8_t>
+    const uint8_t* val() const { return myfield.val(); }
+
+    FixedWidthField myfield;
 };
 
 class GF_Variable32 : public GeneralField {

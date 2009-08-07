@@ -82,7 +82,9 @@ public:
 	    portion is a 32 bit index into a string pool.  The first
 	    four bytes at the indicated position are the length of the
 	    string. */
-        ft_variable32
+        ft_variable32,
+        /** Indicates a fixed-width byte array. */
+        ft_fixedwidth
     };
 
     /** Determines which fields can be removed before compression when
