@@ -33,7 +33,7 @@ public:
 
     /** Returns the size of the field (in bytes). */
     int32_t size() const {
-        return _size;
+        return field_size;
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.
@@ -43,12 +43,12 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. */
     void set(const byte *val, uint32_t val_size = 0) {
-	DEBUG_SINVARIANT(val_size == (uint32_t)_size);
+	DEBUG_SINVARIANT(val_size == (uint32_t)field_size);
         if (val == NULL) {
             setNull(true);
             return;
         }
-        memmove(rawval(), val, _size);
+        memmove(rawval(), val, field_size);
         setNull(false);
 	(void)val_size;
     }

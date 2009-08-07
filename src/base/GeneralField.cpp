@@ -54,8 +54,8 @@ void GeneralValue::set(const GeneralField &from) {
 	}
 	case ExtentType::ft_variable32: {
 	    if (NULL == v_variable32) {
-                v_variable32 = new string;
-            }
+		v_variable32 = new string;
+	    }
 	    const GF_Variable32 *tmp = reinterpret_cast<const GF_Variable32 *>(&from);
 	    *v_variable32 = tmp->myfield.stringval();
 	    break;
@@ -90,8 +90,8 @@ void GeneralValue::set(const GeneralValue &from) {
             break;
 	case ExtentType::ft_variable32:
 	    if (NULL == v_variable32) {
-                v_variable32 = new string;
-            }
+		v_variable32 = new string;
+	    }
 	    *v_variable32 = *from.v_variable32;
 	    break;
 	default: FATAL_ERROR("internal error, unexpected type"); break;
@@ -1124,7 +1124,7 @@ GF_FixedWidth::GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const st
     : GeneralField(ExtentType::ft_fixedwidth),
       myfield(series, column, Field::flag_nullable)
 {
-    // TODO: do we want some of the fancy printspec stuff like in var32 fields?    
+    // TODO: do we want some of the fancy printspec stuff like in var32 fields?
 }
 
 GF_FixedWidth::~GF_FixedWidth() {

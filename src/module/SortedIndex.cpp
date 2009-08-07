@@ -18,9 +18,9 @@
 #include <DataSeries/TypeIndexModule.hpp>
 
 SortedIndex::SortedIndex(const std::string &index_filename,
-				     const std::string &index_type,
-				     const std::string &fieldname) 
-    : index_type(index_type)
+			 const std::string &index_type,
+			 const std::string &fieldname) 
+// : index_type(index_type)
 {
     // we are going to read all index entries for the fieldname specified,
     // set up series and relevant fields to read from it
@@ -34,7 +34,7 @@ SortedIndex::SortedIndex(const std::string &index_filename,
     // keep track of current filename and source being processed
     // along with the index for that filename
     std::string cur_fname("");
-    uint64_t cur_source = 0;
+    boost::shared_ptr<DataSeriesSource> cur_source;
     IndexEntryVector *cur_index = NULL;
     // these variables are used to check if input file is sorted
     GeneralValue last_max;
@@ -52,8 +52,7 @@ SortedIndex::SortedIndex(const std::string &index_filename,
 	    // check to see if this is a new set of per-file entries
 	    if (cur_fname != filename.stringval()) {
 		cur_fname = filename.stringval();
-		file_names.push_back(cur_fname);
-		cur_source = file_names.size() - 1;
+		cur_source.reset(new DataSeriesSource(cur_fname, false));
 		index.push_back(IndexEntryVector());
 		cur_index = &index[index.size()-1];
 	    }

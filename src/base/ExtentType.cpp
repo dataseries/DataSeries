@@ -152,7 +152,7 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
 // TODO: rename to parsePackByteAlignedFields
 void ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos) {
     // TODO: this and others should be LintelLogDebug
-    if (debug_packing)  printf("packing byte-aligned fields...\n");
+    if (debug_packing) printf("packing byte-aligned fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); ++i) {
 	if (ret.field_info[i].type == ft_byte) {
 	    ret.field_info[i].size = 1;
@@ -162,7 +162,7 @@ void ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
 		    % ret.field_info[i].name % byte_pos;
 	    }
 	    byte_pos += 1;
-	} else if (ret.field_info[i].type == ft_fixedwidth) {
+	}else if (ret.field_info[i].type == ft_fixedwidth) {
 	    INVARIANT(ret.field_info[i].size > 0, "the size should have been set already");
 	    ret.field_info[i].offset = byte_pos;
 	    if (debug_packing) {
@@ -804,28 +804,31 @@ ExtentTypeLibrary::registerType(const ExtentType &type)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
+ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
 {
     if (name == ExtentType::getDataSeriesXMLType().getName()) {
 	return &ExtentType::getDataSeriesXMLType();
     } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
 	return &ExtentType::getDataSeriesIndexTypeV0();
     }
-    if (null_ok) {
-	if (name_to_type.find(name) == name_to_type.end()) {
+    std::map<const std::string, const ExtentType *>::const_iterator i 
+	= name_to_type.find(name);
+    if (i == name_to_type.end()) {
+	if (null_ok) {
 	    return NULL;
 	}
+	FATAL_ERROR(format("No type named %s registered") % name);
     }
-    const ExtentType *f = name_to_type[name];
-    INVARIANT(f != NULL, format("No type named %s registered") % name);
+    const ExtentType *f = i->second;
+    SINVARIANT(f != NULL);
     return f;
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
+ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
@@ -841,10 +844,10 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
+ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,

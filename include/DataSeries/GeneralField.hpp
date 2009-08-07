@@ -47,11 +47,11 @@ class GeneralField;
 class GeneralValue {
 public:
     GeneralValue()
-        : gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
+	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { }
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
-        switch (gvtype) {
+	switch (gvtype) {
         case ExtentType::ft_variable32:
             v_variable32 = new std::string(*v.v_variable32);
             v_fixedwidth = NULL;
@@ -73,7 +73,10 @@ public:
 	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
     { set(from); }
 
-    ~GeneralValue() {delete v_variable32; delete v_fixedwidth;}
+    ~GeneralValue() { 
+	delete v_variable32; 
+	delete v_fixedwidth;
+    }
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) {
