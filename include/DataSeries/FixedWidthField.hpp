@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2009, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -15,7 +15,7 @@
 /** \brief Accessor for byte array fields. */
 class FixedWidthField : public FixedField {
 public:
-    // TODO-tomer: document constructor
+    // TODO: document constructor
     FixedWidthField(ExtentSeries &_dataseries, const std::string &field,
                     int flags = 0, bool auto_add = true);
 
@@ -24,7 +24,7 @@ public:
         Preconditions:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
-    byte *val() const {
+    const byte *val() const {
         if (isNull()) {
             return NULL;
         }
@@ -42,7 +42,7 @@ public:
         Preconditions:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. */
-    void set(byte *val, uint32_t val_size = 0) {
+    void set(const byte *val, uint32_t val_size = 0) {
 	DEBUG_SINVARIANT(val_size == (uint32_t)_size);
         if (val == NULL) {
             setNull(true);

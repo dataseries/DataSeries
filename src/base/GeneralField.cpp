@@ -167,6 +167,8 @@ void GeneralValue::setDouble(double val) {
     gvval.v_double = val;
 }
 
+// TODO: do we need a setFixedWidth
+
 void GeneralValue::setVariable32(const string &val) {
     INVARIANT(gvtype == ExtentType::ft_unknown ||
 	      gvtype == ExtentType::ft_variable32,
@@ -276,8 +278,7 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_fixedwidth:
-	    // TODO-tomer: use maybehexstring
-	    fprintf(to,"%s",hexstring(&v_fixedwidth[0], v_fixedwidth->size()).c_str());
+	    fprintf(to,"%s",maybehexstring(&v_fixedwidth[0], v_fixedwidth->size()).c_str());
             break;
 	case ExtentType::ft_variable32: {
 	    fprintf(to,"%s",maybehexstring(*v_variable32).c_str());
@@ -310,7 +311,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << boost::format("%.12g") % gvval.v_double;
 	    break;
 	case ExtentType::ft_fixedwidth:
-            to << hexstring(&v_fixedwidth[0], v_fixedwidth->size());
+            to << maybehexstring(&v_fixedwidth[0], v_fixedwidth->size());
             break;
 	case ExtentType::ft_variable32: {
 	    to << maybehexstring(*v_variable32);
@@ -377,6 +378,9 @@ uint8_t GeneralValue::valByte() const {
 	case ExtentType::ft_double:
 	    return static_cast<uint8_t>(gvval.v_double);
 	    break;
+	case ExtentType::ft_fixedwidth:
+	    FATAL_ERROR("haven't decided how to translate byte arrays to bytes");
+	    break;
 	case ExtentType::ft_variable32: {
 	    return stringToInteger<int32_t>(*v_variable32);
 	    break;
@@ -407,6 +411,9 @@ int32_t GeneralValue::valInt32() const {
 	    break;
 	case ExtentType::ft_double:
 	    return static_cast<int32_t>(gvval.v_double);
+	    break;
+	case ExtentType::ft_fixedwidth:
+	    FATAL_ERROR("haven't decided how to turn a byte array into an int");
 	    break;
 	case ExtentType::ft_variable32: {
 	    return stringToInteger<int32_t>(*v_variable32);
@@ -714,6 +721,9 @@ void GF_Byte::set(GeneralField *from) {
 	    break;
 	case ExtentType::ft_double:
 	    val = static_cast<ByteField::byte>(round(((GF_Double *)from)->val()));
+	    break;
+	case ExtentType::ft_fixedwidth:
+	    FATAL_ERROR("unimplemented conversion from fixed width -> byte");
 	    break;
 	case ExtentType::ft_variable32:
 	    FATAL_ERROR("unimplemented conversion from variable32 -> byte");
@@ -1114,6 +1124,7 @@ GF_FixedWidth::GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const st
     : GeneralField(ExtentType::ft_fixedwidth),
       myfield(series, column, Field::flag_nullable)
 {
+    // TODO: do we want some of the fancy printspec stuff like in var32 fields?    
 }
 
 GF_FixedWidth::~GF_FixedWidth() {
@@ -1123,7 +1134,7 @@ void GF_FixedWidth::write(FILE *to) {
     if (myfield.isNull()) {
         fprintf(to, "null");
     } else {
-        string hex(hexstring(myfield.val(), myfield.size()));
+        string hex(maybehexstring(myfield.val(), myfield.size()));
         fprintf(to, hex.c_str());
     }
 }
@@ -1132,7 +1143,7 @@ void GF_FixedWidth::write(std::ostream &to) {
     if (myfield.isNull()) {
         to << "null";
     } else {
-        to << hexstring(myfield.val(), myfield.size());
+        to << maybehexstring(myfield.val(), myfield.size());
     }
 }
 

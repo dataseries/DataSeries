@@ -267,7 +267,7 @@ void ParallelRadixSortModule::retrieveExtents() {
                         for (series.start(extent); series.more(); series.next()) {
                             //uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
                             //uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
-                            uint8_t *val = field.val();
+                            const uint8_t *val = field.val();
                             uint16_t bucket_index = (((uint32_t)val[0]) << 8) | (uint32_t)val[1];
                             val += 2;
                             uint32_t cache = (((uint32_t)val[0]) << 24) | (((uint32_t)val[1]) << 16) | (((uint32_t)val[2]) << 8) | (uint32_t)val[3];
@@ -302,8 +302,8 @@ void ParallelRadixSortModule::startPrepareThread(uint32_t thread_index) {
         for (uint32_t i = 0; i < extents.size(); i += 2) {
             Extent *extent = extents[i];
             for (series.start(extent); series.more(); series.next()) {
-                uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
-                uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                uint16_t bucket_index = htons(*reinterpret_cast<const uint16_t*>(field.val()));
+                uint32_t cache = htonl(*reinterpret_cast<const uint32_t*>(field.val() + 2));
                 *buckets[bucket_index].forward_iterator = Position(extent, series.getCurPos(), cache);
                 ++buckets[bucket_index].forward_iterator;
             }
@@ -312,8 +312,8 @@ void ParallelRadixSortModule::startPrepareThread(uint32_t thread_index) {
         for (uint32_t i = 1; i < extents.size(); i += 2) {
             Extent *extent = extents[i];
             for (series.start(extent); series.more(); series.next()) {
-                uint16_t bucket_index = htons(*reinterpret_cast<uint16_t*>(field.val()));
-                uint32_t cache = htonl(*reinterpret_cast<uint32_t*>(field.val() + 2));
+                uint16_t bucket_index = htons(*reinterpret_cast<const uint16_t*>(field.val()));
+                uint32_t cache = htonl(*reinterpret_cast<const uint32_t*>(field.val() + 2));
                 *buckets[bucket_index].backward_iterator = Position(extent, series.getCurPos(), cache);
                 --buckets[bucket_index].backward_iterator;
             }

@@ -149,10 +149,10 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-// TODO-tomer: rename to parsePackByteAlignedFields
+// TODO: rename to parsePackByteAlignedFields
 void ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos) {
     // TODO: this and others should be LintelLogDebug
-    if (debug_packing) cout << "packing byte-aligned fields...\n"; 
+    if (debug_packing)  printf("packing byte-aligned fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); ++i) {
 	if (ret.field_info[i].type == ft_byte) {
 	    ret.field_info[i].size = 1;
@@ -301,7 +301,6 @@ ExtentType::parseXML(const string &xmldesc)
     {
 	string field_ordering_opt = strGetXMLProp(cur, "pack_field_ordering");
 	if (!field_ordering_opt.empty()) {
-	    // TODO-tomer: add a warning about fixedwidths being experimental
 	    cerr << "Warning, pack_field_ordering under testing, may not be safe for use.\n";
 	    if (field_ordering_opt == "small_to_big_sep_var32") {
 		ret.field_ordering = FieldOrderingSmallToBigSepVar32;
@@ -423,6 +422,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.type = ft_variable32;
 	    ++variable_fields;
 	} else if (type_str == "fixedwidth") {
+	    cerr << "Warning, fixed width fields are experimental.\n";
 	    info.type = ft_fixedwidth;
 	    ++byte_fields;
 	} else {
@@ -456,8 +456,7 @@ ExtentType::parseXML(const string &xmldesc)
         if (!size.empty()) {
             INVARIANT(info.type == ft_fixedwidth,
                       "size only allowed for fixed width fields");
-	    // TODO-tomer: this should be uint32_t, or int32_t
-            info.size = stringToInteger<int>(size);
+            info.size = stringToInteger<int32_t>(size);
             INVARIANT(info.size > 0, "size must be positive");
         }
 

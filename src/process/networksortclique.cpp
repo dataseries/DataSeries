@@ -55,7 +55,7 @@ public:
     }
 
     uint32_t getPartition(const FixedWidthField &field) {
-        uint8_t first_byte = static_cast<uint8_t*>(field.val())[0];
+        uint8_t first_byte = static_cast<const uint8_t*>(field.val())[0];
         return partitions[first_byte];
     }
 private:
