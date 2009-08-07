@@ -122,8 +122,9 @@ int main(int argc, char *argv[]) {
             network_clique(&input_module, node_names, node_index, field_name_option.get(), FixedWidthFieldPartitioner(), 1 << 20);
     network_clique.start();
 
+    uint64_t memory_limit = 2500; memory_limit *= 1000000;
     ParallelSortModule
-            sort_module(network_clique, field_name_option.get(), 1 << 20, -1, 500 * (1 << 20), false, "/opt/array/tmp/sort");
+            sort_module(network_clique, field_name_option.get(), 1000000, -1, memory_limit, false, "/opt/array/tmp/sort");
 
     ExtentWriter writer(output_file_name_option.get(), false, false);
     Extent *extent = NULL;

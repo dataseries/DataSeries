@@ -59,7 +59,7 @@ public:
                const std::string &field_name,
                size_t extent_size_limit = 1 << 20, // 1 MB
                int32_t thread_count = -1,
-               size_t memory_limit = 1 << 30, // 1 GB
+               uint64_t memory_limit = 1 << 30, // 1 GB
                bool compress_temp = false,
                const std::string &temp_file_prefix = "");
 
@@ -126,7 +126,7 @@ private:
     std::string field_name;
     size_t extent_size_limit;
     uint32_t thread_count;
-    size_t memory_limit;
+    uint64_t memory_limit;
     bool compress_temp;
     std::string temp_file_dir;
     std::string temp_file_prefix;
@@ -153,7 +153,7 @@ ParallelSortModule::ParallelSortModule(DataSeriesModule &upstream_module,
                                        const std::string &field_name,
                                        size_t extent_size_limit,
                                        int32_t thread_count,
-                                       size_t memory_limit,
+                                       uint64_t memory_limit,
                                        bool compress_temp,
                                        const std::string &temp_file_prefix)
     : initialized(false), external(false),
