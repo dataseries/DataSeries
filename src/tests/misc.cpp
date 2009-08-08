@@ -190,35 +190,38 @@ test_varcompress()
 	}
 	++psn;
     }
-    Clock::Tdbl start_time,end_time;
+    Clock::Tfrac start_time, end_time;
     Extent::ByteArray compressed;
     cout << format("packing %d bytes on non-duplicate strings:\n")
 	% packed.size();
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packBZ2(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  bz2 compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
+
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  zlib compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
+
 #if DATASERIES_ENABLE_LZO
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  lzo compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
 #endif
+
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  lzf compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
 
     packed.resize(4);
     *(int32 *)packed.begin() = 0;
@@ -240,34 +243,38 @@ test_varcompress()
 	memcpy(offset,pslist[psn].data(),datasize);
 	++psn;
     }
+
     cout << format("packing %d bytes of %d repetitions\n")
 	% packed.size() % reps;
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packBZ2(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  bz2 compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
+
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packZLib(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  zlib compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
+
 #if DATASERIES_ENABLE_LZO
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packLZO(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  lzo compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
 #endif
+
     compressed.resize(0);
-    start_time = Clock::tod();
+    start_time = Clock::todTfrac();
     Extent::packLZF(packed.begin(),packed.size(),compressed,9);
-    end_time = Clock::tod();
+    end_time = Clock::todTfrac();
     cout << format("  lzf compress -> %d, %.2fus\n")
-	% compressed.size() % (end_time-start_time);
+	% compressed.size() % (1.0e6 * Clock::TfracToDouble(end_time - start_time));
 }
 
 void
