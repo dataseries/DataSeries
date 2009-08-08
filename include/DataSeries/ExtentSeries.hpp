@@ -37,7 +37,7 @@ public:
     enum typeCompatibilityT {
         /** The ExtentSeries can only hold Extents of a single type. */
         typeExact,
-        /** The ExtentSeries can hold Extents of any type which is 
+        /** The ExtentSeries can hold Extents of any type which is
             compatible with all of its fields.  This effectively means
             that it doesn't matter what the ExtentSeries held previously. */
         typeLoose
@@ -48,7 +48,7 @@ public:
 
         Postconditions:
             - getType() == 0 and getExtent() == 0 */
-    explicit ExtentSeries(typeCompatibilityT _tc = typeExact) 
+    explicit ExtentSeries(typeCompatibilityT _tc = typeExact)
 	: type(NULL), my_extent(NULL), typeCompatibility(_tc) {
     }
 
@@ -91,13 +91,13 @@ public:
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
         type to the type of the @c Extent. */
-    explicit ExtentSeries(Extent *e, 
+    explicit ExtentSeries(Extent *e,
 		 typeCompatibilityT _tc = typeExact);
     /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype,
 		 typeCompatibilityT _tc = typeExact)
 	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
-	  my_extent(NULL), typeCompatibility(_tc) { 
+	  my_extent(NULL), typeCompatibility(_tc) {
     }
 
     /** Preconditions:
@@ -143,14 +143,21 @@ public:
     /** Restores the current position to a saved state.  position must be the
         the result of a previous call to @c getCurPos() with the current
         @c Extent and must not have been invalidated.
-        
+
         This function may be slow. (Slow means that it does a handful of
         arithmetic and comparisons to verify that the call leaves that
         the @c ExtentSeries in a valid state.) */
     void setCurPos(const void *position) {
 	pos.setPos(position);
     }
-    
+
+    // TODO-tomer: document.
+    void relocate(Extent *extent, const void *position) {
+        DEBUG_SINVARIANT(extent != NULL);
+        my_extent = extent;
+        pos.relocate(extent, position);
+    }
+
     /** Sets the type of Extents. If the type has already been set in any way,
         requires that the new type be compatible with the existing type as
         specified by the typeCompatibilityT of all the constructors. */
@@ -164,9 +171,9 @@ public:
     /** Sets the current extent being processed. If e is null, clears the
         current Extent.  If the type has already been set, requires that
         the type of the new Extent be compatible with the existing type.
-        it is valid to call this with NULL which is equivalent to a call 
+        it is valid to call this with NULL which is equivalent to a call
         to clearExtent()
-        
+
         Postconditions:
             - getExtent() = e
             - the current position will be set to the beginning of the
@@ -182,7 +189,7 @@ public:
     void clearExtent() { setExtent(NULL); }
 
     /** Returns the current extent. */
-    Extent *extent() { 
+    Extent *extent() {
 	return my_extent;
     }
     Extent *getExtent() {
@@ -202,36 +209,41 @@ public:
 
     /** Appends a record to the end of the current Extent. Invalidates any
         other @c ExtentSeries operating on the same Extent. i.e. you must
-        restart the Extent in every such series.  The new record will contain
-        all zeros. Variable32 fields will be empty. Nullable fields will be
-        initialized just like non-nullable field--They will not be set to null.
-        After this function returns, the current position will point to the
-        new record.
+        restart the Extent in every such series. If zero_it is true, the new
+        record will contain all zeros, Variable32 fields will be empty.
+        Nullable fields will be initialized just like non-nullable field--
+        They will not be set to null. After this function returns, the current
+        position will point to the new record.
 
         Preconditions:
-            - The current Extent is not null. 
+            - The current Extent is not null.
 
         \todo are multiple @c ExtentSeries even supported?
         \todo should nullable fields be set to null? */
-    void newRecord() {
+    void newRecords(int nrecords, bool zero_it = true) {
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()");
 	int offset = my_extent->fixeddata.size();
-	my_extent->createRecords(1);
+	my_extent->createRecords(nrecords, zero_it);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
+
+    void newRecord(bool zero_it = true) {
+        newRecords(1, zero_it);
+    }
+
     /** Appends a specified number of records onto the end of the current
         @c Extent.  The same cautions apply as for @c newRecord. The current
         record will be the first one inserted.
 
         Preconditions:
             - The current extent cannot be null */
-    void createRecords(int nrecords) {
+    void createRecords(int nrecords, bool zero_it = true) {
 	// leaves the current record position unchanged
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()\n");
 	int offset = pos.cur_pos - my_extent->fixeddata.begin();
-	my_extent->createRecords(nrecords);
+	my_extent->createRecords(nrecords, zero_it);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
     /// \cond INTERNAL_ONLY
@@ -245,7 +257,7 @@ public:
 	iterator(Extent *e) { reset(e); }
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }
-	void reset(Extent *e) { 
+	void reset(Extent *e) {
 	    if (e == NULL) {
 		cur_extent = NULL;
 		cur_pos = NULL;
@@ -256,15 +268,44 @@ public:
 		recordsize = e->type.fixedrecordsize();
 	    }
 	}
-	
+
+	// TODO: remove uses of setpos, record_start(), deprecate them
+	// for a release round and then remove.
+
 	/// old api
 	void setpos(byte *new_pos) {
 	    setPos(new_pos);
 	}
-	/// old api
-	byte *record_start() { return cur_pos; }
 
-	void setPos(const void *new_pos);
+	// TODO-tomer: make cur_pos non-const and do the transform in
+	// setPos
+	/// old api
+	byte *record_start() { return const_cast<byte*>(cur_pos); }
+
+	void setPos(const void *_new_pos) {
+#if LINTEL_ASSERT_BOOST_DEBUG
+	    // TODO-tomer: move from here to #else back into cpp; call this
+	    // code checkedSetPos(), and use it in debug mode, otherwise do
+	    // the fast thing.
+	    const byte *new_pos = static_cast<const byte *>(_new_pos);
+	    byte *cur_begin = cur_extent->fixeddata.begin();
+	    unsigned recnum = (new_pos - cur_begin) / recordsize;
+	    INVARIANT(cur_extent != NULL, "no current extent?");
+	    INVARIANT(new_pos >= cur_begin,
+	              "new pos before start");
+	    INVARIANT(new_pos <= cur_extent->fixeddata.end(),
+	              "new pos after end");
+	    size_t offset = new_pos - cur_begin;
+	    INVARIANT(recnum * recordsize == offset,
+	              "new position not aligned to record boundary");
+	    cur_pos = cur_begin + offset;
+#else
+	    cur_pos = static_cast<const byte *>(_new_pos);
+#endif
+	}
+
+	// TODO: this should really return class ExtentLocation { byte
+	// *pos; }; as a entirely private, opaque inner class.
 	const void *getPos() {
 	    return cur_pos;
 	}
@@ -291,10 +332,23 @@ public:
 #endif
 	}
 	void forceCheckOffset(long offset);
+
+	// TODO-tomer: rename this to unsafeRelocate(); add
+	// documentation explaining the conditions of use, add in
+	// debug only checks that verify you have done the right
+	// thing.
+	void relocate(Extent *extent, const void *position) {
+	    // SINVARIANT(extent->type == cur_extent->type);
+	    cur_extent = extent;
+	    cur_pos = static_cast<const byte *>(position);
+	}
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;
-	byte *cur_pos;
+	// TODO-tomer: this goes away.
+        // Note in the "old api" constness is cast away. In the future the old
+        // api should be deprecated.
+	const byte *cur_pos;
 	unsigned recordsize;
     };
 
@@ -316,6 +370,7 @@ public:
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     /** Returns the current Extent. */
     const Extent *curExtent() { return my_extent; }
+
 private:
     Extent *my_extent;
     const typeCompatibilityT typeCompatibility;

@@ -1,0 +1,30 @@
+# Input file for: http://www.burningcutlery.com/derek/bargraph/
+
+#=cluster;100 MiB;1 GiB;10 GiB
+=cluster;none/none;none/lzf;lzf/none;lzf/lzf;gzip/none;gzip/lzf
+
+# Use patterns instead of colors.
+=patterns
+
+title=Sort
+ylabel=Effective Throughput (MiB/s)
+#extraops=set size 0.8
+fontsz=10
+=nogridy
+#legendx=5900
+#legendy=2600
+legendx=6100
+legendy=1600
+=norotate
+xlabel=File Size (Number of Records)
+=table;
+100 MiB\n(1M records);		28.84615358;	;		35.6718189;	;		35.252643;
+1 GiB\n(10M records);		16.45368306;	;		18.18732899;	;		19.98002028;
+10 GiB\n(100M records);		8.95378048;	8.697618358;	9.499622756;	8.834546586;	9.552862594; 9.309339863
+#none/none;		28.84615358;	16.45368306;	8.95378048
+#none/lzf;;;						8.697618358
+#lzf/none;		35.6718189;	18.18732899;	9.499622756
+#lzf/lzf;;;						8.834546586
+#gzip/none;		35.252643;	19.98002028;	9.552862594
+#gzip/lzf;;;						9.309339863
+

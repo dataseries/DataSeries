@@ -18,7 +18,7 @@
 #include <fstream>
 
 #include <libxml/xmlmemory.h>
-#include <libxml/parser.h> 
+#include <libxml/parser.h>
 #include <boost/static_assert.hpp>
 
 #include <Lintel/CompilerMarkup.hpp>
@@ -39,7 +39,7 @@ class GeneralField;
  * general value type with a collection of operations on that type
  * that would allow additional values to be added to dataseries in the
  * future. It is currently invalid to change the type of a general
- * value once it has acquired a type. 
+ * value once it has acquired a type.
  *
  * BUG/FEATURE: doesn't correctly track nulls right now, not clear
  * exactly the right way to implement that. */
@@ -79,20 +79,20 @@ public:
     }
 
     void set(const GeneralValue &from);
-    void set(const GeneralValue *from) { 
-	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+    void set(const GeneralValue *from) {
+	DEBUG_INVARIANT(from != NULL, "bad"); set(*from);
     }
     void set(const GeneralField &from);
-    void set(const GeneralField *from) { 
-	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+    void set(const GeneralField *from) {
+	DEBUG_INVARIANT(from != NULL, "bad"); set(*from);
     }
 
-    /** \brief return this < gv 
+    /** \brief return this < gv
 
      * for ft_unknown, always false
      * for ft_bool, true < false
      * for integer/double types, works as normal
-     * for ft_variable32, works as if memcmp on values padded with '\\0' to 
+     * for ft_variable32, works as if memcmp on values padded with '\\0' to
      *   the maximum length
      *
      * we implement strictlylessthan rather than compare as is done
@@ -100,7 +100,7 @@ public:
      * compare sufficiently efficiently that it would be as efficent
      * as implmenting strictlylessthan and using that to build the
      * comparison. */
-    bool strictlylessthan(const GeneralValue &gv) const; 
+    bool strictlylessthan(const GeneralValue &gv) const;
     /** return this == gv */
     bool equal(const GeneralValue &gv) const;
 
@@ -206,12 +206,12 @@ public:
 
     /** create a new general field for a particular series; assumes that
 	the field type doesn't change over the course of the series. */
-    static GeneralField *create(ExtentSeries &series, 
+    static GeneralField *create(ExtentSeries &series,
 				const std::string &column) {
 	return create(NULL, series, column);
     }
     /** fieldxml can be null, in which case it gets it from the series type. */
-    static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
+    static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series,
 				const std::string &column);
 
     // see comment in DStoTextModule.H for why we have both
@@ -228,7 +228,7 @@ public:
     void set(GeneralField &from) {
         set(&from);
     }
- 
+
     virtual void set(const GeneralValue *from) = 0;
 
     void set(const GeneralValue &from) {
@@ -246,7 +246,7 @@ public:
     static void deleteFields(std::vector<GeneralField *> &fields);
 protected:
     // TODO: to go away once this moves from ExtentType to somewhere sane.
-    static std::string strGetXMLProp(xmlNodePtr cur, 
+    static std::string strGetXMLProp(xmlNodePtr cur,
 				     const std::string &option_name) {
 	return ExtentType::strGetXMLProp(cur, option_name);
     }
@@ -259,7 +259,7 @@ protected:
 
 class GF_Bool : public GeneralField {
 public:
-    GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
+    GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Bool();
 
     virtual void write(FILE *to);
@@ -289,7 +289,7 @@ public:
     bool val() const { return myfield.val(); }
 
     BoolField myfield;
-    std::string s_true, s_false;  
+    std::string s_true, s_false;
 };
 
 class GF_Byte : public GeneralField {
@@ -350,7 +350,7 @@ public:
 
 class GF_Int64 : public GeneralField {
 public:
-    GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, 
+    GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
 	     const std::string &column);
     virtual ~GF_Int64();
 
@@ -377,7 +377,7 @@ public:
 
 class GF_Double : public GeneralField {
 public:
-    GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
+    GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Double();
 
     virtual void write(FILE *to);
@@ -467,7 +467,7 @@ public:
 
 /** \brief Copies records from one @c Extent to another.
 
-    \todo TODO: add an output module as an optional argument; if it exists, 
+    \todo TODO: add an output module as an optional argument; if it exists,
     automatically do the newRecord stuff. */
 class ExtentRecordCopy {
 public:

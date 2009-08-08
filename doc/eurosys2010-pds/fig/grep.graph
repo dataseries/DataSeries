@@ -1,0 +1,24 @@
+# clustered graph example from Derek Bruening's CGO 2005 talk
+=cluster;Optimal;Actual
+=patterns
+=table
+yformat=%g
+=norotate
+legendx=7100
+legendy=1800
+ylabel=t (seconds)
+xlabel=n (# of nodes)
+# stretch it out in x direction
+
+1	72.72727273	75.01
+2	72.72727273	75.63
+3	72.72727273	78.17
+4	72.72727273	75.54
+5	72.72727273	76.28
+6	72.72727273	77.76
+7	72.72727273	76.4
+8	72.72727273	77.02
+9	72.72727273	76.91
+10	72.72727273	76.59
+
+
