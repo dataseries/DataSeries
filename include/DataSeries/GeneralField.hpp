@@ -415,7 +415,7 @@ public:
 
     virtual double valDouble();
 
-    // TODO-tomer: make this return a vector<uint8_t>
+    // TODO: make this return a vector<uint8_t>
     const uint8_t* val() const { return myfield.val(); }
 
     FixedWidthField myfield;

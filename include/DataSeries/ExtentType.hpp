@@ -461,8 +461,8 @@ public:
 private:
     static void parsePackBitFields(ParsedRepresentation &ret, 
 				   int32 &byte_pos);
-    static void parsePackByteFields(ParsedRepresentation &ret, 
-				    int32 &byte_pos);
+    static void parsePackByteAlignedFields(ParsedRepresentation &ret, 
+                                           int32 &byte_pos);
     static void parsePackInt32Fields(ParsedRepresentation &ret, 
 				     int32 &byte_pos);
     static void parsePackVar32Fields(ParsedRepresentation &ret, 
