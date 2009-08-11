@@ -14,18 +14,15 @@
 #include <libxml/parser.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/PThread.hpp>
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
+#include <Lintel/PThread.hpp>
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/ExtentType.hpp>
 
 using namespace std;
 using boost::format;
-
-static const bool debug_getcolnum = false;
-static const bool debug_xml_decode = false;
-static const bool debug_packing = false;
 
 static const string dataseries_xml_type_xml = 
   "<ExtentType name=\"DataSeries: XmlType\">\n"
@@ -124,7 +121,7 @@ ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci)
 
 void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
 {
-    if (debug_packing) printf("packing bool fields...\n");
+    LintelLogDebug("ExtentType::Packing", "packing bool fields...\n");
     int32 bit_pos = 0;
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_bool) {
@@ -132,10 +129,8 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
 	    ret.field_info[i].offset = byte_pos;
 	    ret.field_info[i].bitpos = bit_pos;
 	    DEBUG_INVARIANT(bit_pos < 8, "?");
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d:%d\n")
-		    % ret.field_info[i].name % byte_pos % bit_pos;
-	    }
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s at position %d:%d\n")
+                           % ret.field_info[i].name % byte_pos % bit_pos);
 	    ++bit_pos;
 	    if (bit_pos == 8) {
 		byte_pos += 1;
@@ -149,19 +144,21 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-void 
-ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
-{
-    if (debug_packing) printf("packing byte fields...\n");
-    for(unsigned int i=0; i<ret.field_info.size(); i++) {
+void ExtentType::parsePackByteAlignedFields(ParsedRepresentation &ret, int32 &byte_pos) {
+    LintelLogDebug("ExtentType::Packing", "packing byte-aligned fields...\n");
+    for(unsigned int i=0; i<ret.field_info.size(); ++i) {
 	if (ret.field_info[i].type == ft_byte) {
 	    ret.field_info[i].size = 1;
 	    ret.field_info[i].offset = byte_pos;
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d\n")
-		    % ret.field_info[i].name % byte_pos;
-	    }
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s at position %d\n")
+                           % ret.field_info[i].name % byte_pos);
 	    byte_pos += 1;
+	} else if (ret.field_info[i].type == ft_fixedwidth) {
+	    INVARIANT(ret.field_info[i].size > 0, "the size should have been set already");
+	    ret.field_info[i].offset = byte_pos;
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s at position %d\n")
+                           % ret.field_info[i].name % byte_pos);
+	    byte_pos += ret.field_info[i].size;
 	}
     }
 }
@@ -169,16 +166,14 @@ ExtentType::parsePackByteFields(ParsedRepresentation &ret, int32 &byte_pos)
 void
 ExtentType::parsePackInt32Fields(ParsedRepresentation &ret, int32 &byte_pos)
 {
-    if (debug_packing) printf("packing int32 fields...\n");
+    LintelLogDebug("ExtentType::Packing", "packing int32 fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_int32) {
 	    ret.field_info[i].size = 4;
 	    ret.field_info[i].offset = byte_pos;
 	    SINVARIANT((byte_pos % 4) == 0);
-	    if (debug_packing) {
-		cout << boost::format("  field %s (#%d) at position %d\n")
-		    % ret.field_info[i].name % i % byte_pos;
-	    }
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s (#%d) at position %d\n")
+                           % ret.field_info[i].name % i % byte_pos);
 	    byte_pos += 4;
 	}
     }
@@ -190,16 +185,14 @@ ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos)
     // these tend to have lots of different values making compression
     // worse, so we pack them after the other int32 fields, but to
     // avoid alignment glitches before the 8 byte fields
-    if (debug_packing) printf("packing variable32 fields...\n");
+    LintelLogDebug("ExtentType::Packing", "packing variable32 fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_variable32) {
 	    ret.field_info[i].size = 4;
 	    ret.field_info[i].offset = byte_pos;
 	    SINVARIANT((byte_pos % 4) == 0);
-	    if (debug_packing) {
-		cout << boost::format("  field %s (#%d) at position %d\n")
-		    % ret.field_info[i].name % i % byte_pos;
-	    }
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s (#%d) at position %d\n")
+                           % ret.field_info[i].name % i % byte_pos);
 	    byte_pos += 4;
 	}
     }
@@ -208,17 +201,15 @@ ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos)
 void
 ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos)
 {
-    if (debug_packing) printf("packing int64 and double fields...\n");
+    LintelLogDebug("ExtentType::Packing", "packing int64 and double fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_int64 
 	    || ret.field_info[i].type == ft_double) {
 	    ret.field_info[i].size = 8;
 	    ret.field_info[i].offset = byte_pos;
 	    SINVARIANT((byte_pos % 8) == 0);
-	    if (debug_packing) {
-		cout << boost::format("  field %s at position %d\n")
-		    % ret.field_info[i].name % byte_pos;
-	    }
+            LintelLogDebug("ExtentType::Packing", boost::format("  field %s at position %d\n")
+                           % ret.field_info[i].name % byte_pos);
 	    byte_pos += 8;
 	}
     }
@@ -264,7 +255,7 @@ ExtentType::parseXML(const string &xmldesc)
 	string pack_option = strGetXMLProp(cur, "pack_null_compact");
 	if (!pack_option.empty()) {
 	    // TODO: remove the warning once we try this with a second data set.
-	    cerr << "Warning, pack_null_compact under testing, may not be safe for use.\n";
+	    LintelLog::warn("pack_null_compact under testing, may not be safe for use.\n");
 	    if (pack_option == "non_bool") {
 		ret.pack_null_compact = CompactNonBool;
 	    } else if (pack_option == "no") {
@@ -279,7 +270,7 @@ ExtentType::parseXML(const string &xmldesc)
     {
 	string pad_record_option = strGetXMLProp(cur, "pack_pad_record");
 	if (!pad_record_option.empty()) {
-	    cerr << "Warning, pack_pad_record under testing, may not be safe for use.\n";
+	    LintelLog::warn("Warning, pack_pad_record under testing, may not be safe for use.\n");
 	    if (pad_record_option == "original") {
 		ret.pad_record = PadRecordOriginal;
 	    } else if (pad_record_option == "max_column_size") {
@@ -293,7 +284,7 @@ ExtentType::parseXML(const string &xmldesc)
     {
 	string field_ordering_opt = strGetXMLProp(cur, "pack_field_ordering");
 	if (!field_ordering_opt.empty()) {
-	    cerr << "Warning, pack_field_ordering under testing, may not be safe for use.\n";
+	    LintelLog::warn("Warning, pack_field_ordering under testing, may not be safe for use.\n");
 	    if (field_ordering_opt == "small_to_big_sep_var32") {
 		ret.field_ordering = FieldOrderingSmallToBigSepVar32;
 	    } else if (field_ordering_opt == "big_to_small_sep_var32") {
@@ -316,10 +307,7 @@ ExtentType::parseXML(const string &xmldesc)
 		      format("Unrecognized global option %s") % opt);
 	}
     }
-
-    if (debug_xml_decode) {
-	cout << boost::format("ExtentType '%s'\n") % ret.name;
-    }
+    LintelLogDebug("ExtentType::XMLDecode", boost::format("ExtentType '%s'\n") % ret.name);
 
     string extentversion = strGetXMLProp(cur, "version");
     if (extentversion.empty()) {
@@ -413,11 +401,14 @@ ExtentType::parseXML(const string &xmldesc)
 	} else if (type_str == "variable32") {
 	    info.type = ft_variable32;
 	    ++variable_fields;
+	} else if (type_str == "fixedwidth") {
+	    LintelLog::warn("Fixed width fields are experimental.\n");
+	    info.type = ft_fixedwidth;
+	    ++byte_fields;
 	} else {
 	    FATAL_ERROR(boost::format("Unknown field type '%s'") % type_str);
 	}
-	
-	if (debug_xml_decode) cout << boost::format("  field type='%s', name='%s'\n") % type_str % info.name;
+        LintelLogDebug("ExtentType::XMLDecode", boost::format("  field type='%s', name='%s'\n") % type_str % info.name);
 
 	string pack_unique = strGetXMLProp(cur, "pack_unique");
 	if (info.type == ft_variable32) {
@@ -440,6 +431,14 @@ ExtentType::parseXML(const string &xmldesc)
 	    info.doublebase = stringToDouble(opt_doublebase);
 	}	    
 
+	string size = strGetXMLProp(cur, "size");
+        if (!size.empty()) {
+            INVARIANT(info.type == ft_fixedwidth,
+                      "size only allowed for fixed width fields");
+            info.size = stringToInteger<int32_t>(size);
+            INVARIANT(info.size > 0, "size must be positive");
+        }
+
 	// TODO: consider a variant of pack_scale where you can
 	// specify Q#.#[b#] as an alternative specification following
 	// http://en.wikipedia.org/wiki/Fixed-point_arithmetic#Nomenclature
@@ -452,10 +451,8 @@ ExtentType::parseXML(const string &xmldesc)
 	    double scale = stringToDouble(pack_scale_v);
 	    INVARIANT(scale != 0, "pack_scale=0 invalid");
 	    ret.pack_scale.push_back(pack_scaleT(ret.field_info.size(),scale));
-	    if (debug_xml_decode) {
-		cout << boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
-		    % ret.field_info.size() % (1.0/scale) % scale;
-	    }
+            LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
+                           % ret.field_info.size() % (1.0/scale) % scale);
 	}
 	string pack_relative = strGetXMLProp(cur, "pack_relative");
 	if (!pack_relative.empty()) {
@@ -474,7 +471,7 @@ ExtentType::parseXML(const string &xmldesc)
 		    ret.pack_self_relative.back().multiplier 
 			= ret.pack_scale.back().multiplier;
 		}
-		if (debug_xml_decode) printf("pack_self_relative field %d\n",field_num);
+                LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_self_relative field %s\n") % field_num);
 	    } else {
 		int base_field_num = getColumnNumber(ret, pack_relative);
 		INVARIANT(base_field_num != -1,
@@ -484,10 +481,8 @@ ExtentType::parseXML(const string &xmldesc)
 			  boost::format("Both fields for relative packing must have same type type(%s) != type(%s)")
 			  % info.name % pack_relative);
 		ret.pack_other_relative.push_back(pack_other_relativeT(field_num, base_field_num));
-		if (debug_xml_decode) {
-		    cout << boost::format("pack_relative_other field %d based on field %d\n")
-			% field_num % base_field_num;
-		}
+                LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_relative_other field %d based on field %d\n")
+                               % field_num % base_field_num);
 	    }
 	}
 	cur = cur->next;
@@ -517,18 +512,18 @@ ExtentType::parseXML(const string &xmldesc)
 
     if (ret.field_ordering == FieldOrderingSmallToBigSepVar32) {
 	parsePackBitFields(ret, byte_pos);
-	parsePackByteFields(ret, byte_pos);
+	parsePackByteAlignedFields(ret, byte_pos);
 	if (ret.pad_record == PadRecordOriginal || 
 	    int32_fields > 0 || variable_fields > 0) {
 	    unsigned zero_pad = (4 - (byte_pos % 4)) % 4;
-	    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
+            LintelLogDebug("ExtentType::Packing", boost::format("%s bytes of zero padding\n") % zero_pad);
 	    byte_pos += zero_pad;
 	}
 	parsePackInt32Fields(ret, byte_pos);
 	parsePackVar32Fields(ret, byte_pos);
 	if (ret.pad_record == PadRecordOriginal || eight_fields > 0) {
 	    unsigned zero_pad = (8 - (byte_pos % 8)) % 8;
-	    if (debug_packing) printf("%d bytes of zero padding\n",zero_pad);
+            LintelLogDebug("ExtentType::Packing", boost::format("%s bytes of zero padding\n") % zero_pad);
 	    byte_pos += zero_pad;
 	}
 	parsePackSize8Fields(ret, byte_pos);
@@ -536,7 +531,7 @@ ExtentType::parseXML(const string &xmldesc)
 	parsePackSize8Fields(ret, byte_pos);
 	parsePackInt32Fields(ret, byte_pos);
 	parsePackVar32Fields(ret, byte_pos);
-	parsePackByteFields(ret, byte_pos);
+	parsePackByteAlignedFields(ret, byte_pos);
 	parsePackBitFields(ret, byte_pos);
 	uint32_t align_size = 1;
 	if (int32_fields > 0 || variable_fields > 0) {
@@ -581,7 +576,7 @@ ExtentType::parseXML(const string &xmldesc)
 	}
 	switch(n.type)
 	    {
-	    case ft_byte:
+	    case ft_byte: case ft_fixedwidth:
 		ret.nonbool_compact_info_size1.push_back(n);
 		break;
 	    case ft_int32: case ft_variable32:
@@ -590,7 +585,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    case ft_int64: case ft_double:
 		ret.nonbool_compact_info_size8.push_back(n);
 		break;
-	    default: FATAL_ERROR("?");
+	    default: FATAL_ERROR(boost::format("Unrecognized type #%s") % n.type);
 	    }
     }
 
@@ -623,15 +618,11 @@ ExtentType::getColumnNumber(const ParsedRepresentation &rep,
 {
     for(unsigned int i=0; i<rep.field_info.size(); i++) {
 	if (rep.field_info[i].name == column) {
-	    if (debug_getcolnum) {
-		cout << boost::format("column %s -> %d\n") % column % i;
-	    }
+            LintelLogDebug("ExtentType::GetColNum", boost::format("column %s -> %d\n") % column % i);
 	    return i;
 	}
     }
-    if (debug_getcolnum) {
-	cout << boost::format("column %s -> -1\n") % column;
-    }
+    LintelLogDebug("ExtentType::GetColNum", boost::format("column %s -> -1\n") % column);
     INVARIANT(missing_ok, boost::format("Unknown column '%s' in type '%s'") 
 	      % column % rep.name);
     return -1;
@@ -747,6 +738,7 @@ static const string fieldtypes[] = {
     "int64",
     "double",
     "variable32",
+    "fixedwidth"
 };
 
 static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const string);
@@ -783,28 +775,31 @@ ExtentTypeLibrary::registerType(const ExtentType &type)
 }    
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok)
+ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
 {
     if (name == ExtentType::getDataSeriesXMLType().getName()) {
 	return &ExtentType::getDataSeriesXMLType();
     } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
 	return &ExtentType::getDataSeriesIndexTypeV0();
     }
-    if (null_ok) {
-	if (name_to_type.find(name) == name_to_type.end()) {
+    std::map<const std::string, const ExtentType *>::const_iterator i 
+	= name_to_type.find(name);
+    if (i == name_to_type.end()) {
+	if (null_ok) {
 	    return NULL;
 	}
+	FATAL_ERROR(format("No type named %s registered") % name);
     }
-    const ExtentType *f = name_to_type[name];
-    INVARIANT(f != NULL, format("No type named %s registered") % name);
+    const ExtentType *f = i->second;
+    SINVARIANT(f != NULL);
     return f;
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
+ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
@@ -820,10 +815,10 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok)
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok)
+ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
 {
     const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,

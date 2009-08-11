@@ -184,7 +184,7 @@ void Extent::init() {
     extent_source_offset = -1;
 }
 
-Extent::Extent(ExtentTypeLibrary &library, 
+Extent::Extent(const ExtentTypeLibrary &library, 
 	       Extent::ByteArray &packeddata,
 	       const bool need_bitflip)
     : type(*library.getTypeByName(getPackedExtentType(packeddata)))
@@ -1104,7 +1104,7 @@ Extent::uncompressBytes(byte *into, byte *from,
 #define TIME_UNPACKING(x)
 
 const string
-Extent::getPackedExtentType(Extent::ByteArray &from)
+Extent::getPackedExtentType(const Extent::ByteArray &from)
 {
     INVARIANT(from.size() > (6*4+2), "Invalid extent data, too small.");
 

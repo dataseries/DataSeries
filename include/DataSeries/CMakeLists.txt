@@ -15,6 +15,7 @@ SET(INCLUDE_FILES
 	ExtentType.hpp
 	Field.hpp
 	FixedField.hpp
+	FixedWidthField.hpp
 	GeneralField.hpp
 	GroupByModule.hpp
 	IndexSourceModule.hpp

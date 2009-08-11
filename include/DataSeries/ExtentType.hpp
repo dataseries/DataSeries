@@ -82,7 +82,9 @@ public:
 	    portion is a 32 bit index into a string pool.  The first
 	    four bytes at the indicated position are the length of the
 	    string. */
-        ft_variable32
+        ft_variable32,
+        /** Indicates a fixed-width byte array. */
+        ft_fixedwidth
     };
 
     /** Determines which fields can be removed before compression when
@@ -459,8 +461,8 @@ public:
 private:
     static void parsePackBitFields(ParsedRepresentation &ret, 
 				   int32 &byte_pos);
-    static void parsePackByteFields(ParsedRepresentation &ret, 
-				    int32 &byte_pos);
+    static void parsePackByteAlignedFields(ParsedRepresentation &ret, 
+                                           int32 &byte_pos);
     static void parsePackInt32Fields(ParsedRepresentation &ret, 
 				     int32 &byte_pos);
     static void parsePackVar32Fields(ParsedRepresentation &ret, 
@@ -502,19 +504,19 @@ public:
         Otherwise, it is an error if there is no @c ExtentType
         with the given name in the library */
     const ExtentType *getTypeByName(const std::string &name, 
-				    bool null_ok = false);
+				    bool null_ok = false) const;
     /** Find an ExtentType whose name begins with a known prefix.
         null_ok has the same meaning as in @c getTypeByName.
         Preconditions:
         - Only one type in the library matches. */
     const ExtentType *getTypeByPrefix(const std::string &prefix, 
-				      bool null_ok = false);
+				      bool null_ok = false) const;
     /** Find an ExtentType whose name contains some substring.
         null_ok has the same meaning as in @c getTypeByName.
         Preconditions:
         - Only one type in the library matches. */
     const ExtentType *getTypeBySubstring(const std::string &substr,
-					 bool null_ok = false);
+					 bool null_ok = false) const;
     /* tries ByName, ByPrefix and BySubstring in that order.
        selects a single unique non-dataseries type if match is "*" */
     const ExtentType *getTypeMatch(const std::string &match,
