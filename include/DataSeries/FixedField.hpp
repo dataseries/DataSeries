@@ -20,7 +20,7 @@ public:
     typedef ExtentType::byte byte;
     
 protected:
-    FixedField(ExtentSeries &_dataseries, const std::string &field, 
+    FixedField(ExtentSeries &dataseries, const std::string &field, 
 	       ExtentType::fieldType ft, int flags);
     virtual ~FixedField();
 
@@ -33,7 +33,8 @@ protected:
 
     virtual void newExtentType();
 
-    int size, offset;
+    // -1 is used as a flag for uninitialized, otherwise would be uint32_t
+    int32_t field_size, offset;
     ExtentType::fieldType fieldtype;
 };
 

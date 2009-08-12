@@ -64,7 +64,7 @@ Field::newExtentType()
 
 FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field, 
 		       ExtentType::fieldType ft, int flags)
-    : Field(_dataseries,field, flags), size(-1), offset(-1),
+    : Field(_dataseries,field, flags), field_size(-1), offset(-1),
       fieldtype(ft)
 {
     INVARIANT(dataseries.type == NULL || field.empty() || 
@@ -83,7 +83,7 @@ FixedField::newExtentType()
     if (getName().empty())
 	return; // Don't have a name yet.
     Field::newExtentType();
-    size = dataseries.type->getSize(getName());
+    field_size = dataseries.type->getSize(getName());
     offset = dataseries.type->getOffset(getName());
     INVARIANT(dataseries.type->getFieldType(getName()) == fieldtype,
 	      format("mismatch on field types for field named %s in type %s")
@@ -142,6 +142,15 @@ Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field,
 
 Int64Field::~Int64Field()
 {
+}
+
+FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &field,
+                                 int flags, bool auto_add)
+    : FixedField(_dataseries, field, ExtentType::ft_fixedwidth, flags)
+{
+    if (auto_add) {
+        dataseries.addField(*this);
+    }
 }
 
 DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
