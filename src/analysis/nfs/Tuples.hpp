@@ -18,7 +18,7 @@ namespace boost { namespace tuples {
     inline uint32_t hash(const null_type &) { return 0; }
     inline uint32_t hash(const bool a) { return a; }
     inline uint32_t hash(const int32_t a) { return a; }
-    inline uint64_t hash(const uint64_t a) { return BobJenkinsHashMixULL(a); }
+    inline uint64_t hash(const uint64_t a) { return lintel::BobJenkinsHashMixULL(a); }
 
     template<class Head>
     inline uint32_t hash(const cons<Head, null_type> &v) {
@@ -33,7 +33,7 @@ namespace boost { namespace tuples {
 	uint32_t a = hash(v.get_head());
 	uint32_t b = hash(v.get_tail().get_head());
 	uint32_t c = hash(v.get_tail().get_tail());
-	return BobJenkinsHashMix3(a,b,c);
+	return lintel::BobJenkinsHashMix3(a,b,c);
     }
 
     template<class BitSet>
@@ -53,7 +53,7 @@ namespace boost { namespace tuples {
 	uint32_t a = used[cur_pos] ? hash(v.get_head()) : 0;
 	uint32_t b = used[cur_pos+1] ? hash(v.get_tail().get_head()) : 0;
 	uint32_t c = partial_hash(v.get_tail().get_tail(), used, cur_pos + 2);
-	return BobJenkinsHashMix3(a,b,c);
+	return lintel::BobJenkinsHashMix3(a,b,c);
     }
 
     template<class BitSet>

@@ -83,19 +83,19 @@ uint32_t GeneralValue::hash(uint32_t partial_hash) const {
 	{
 	case ExtentType::ft_unknown: return partial_hash;
 	case ExtentType::ft_bool: 
-	    return BobJenkinsHashMix3(gvval.v_bool, 1492, partial_hash);
+	    return lintel::BobJenkinsHashMix3(gvval.v_bool, 1492, partial_hash);
 	case ExtentType::ft_byte: 
-	    return BobJenkinsHashMix3(gvval.v_byte, 1941, partial_hash);
+	    return lintel::BobJenkinsHashMix3(gvval.v_byte, 1941, partial_hash);
 	case ExtentType::ft_int32: 
-	    return BobJenkinsHashMix3(gvval.v_int32, 1861, partial_hash);
+	    return lintel::BobJenkinsHashMix3(gvval.v_int32, 1861, partial_hash);
 	case ExtentType::ft_int64: 
-	    return BobJenkinsHashMixULL(gvval.v_int64, partial_hash);
+	    return lintel::BobJenkinsHashMixULL(gvval.v_int64, partial_hash);
 	case ExtentType::ft_double: 
 	    BOOST_STATIC_ASSERT(sizeof(ExtentType::int64) == sizeof(double));
 	    BOOST_STATIC_ASSERT(offsetof(gvvalT, v_double) 
 				== offsetof(gvvalT, v_int64));
-	    return BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
-					partial_hash);
+	    return lintel::BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
+						partial_hash);
 	case ExtentType::ft_variable32: 
 	    return lintel::hashBytes(v_variable32->data(),
 				     v_variable32->size(), partial_hash);

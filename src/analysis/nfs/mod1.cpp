@@ -140,7 +140,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const hteData &k) const {
-	    return BobJenkinsHashMix3(k.client,k.server,k.is_udp ? 0x55555555 : 0x0);
+	    return lintel::BobJenkinsHashMix3(k.client,k.server,k.is_udp ? 0x55555555 : 0x0);
 	}
     };
 
@@ -366,7 +366,7 @@ public:
     };
     class tidHash {
     public: unsigned int operator()(const tidData &t) const {
-	return BobJenkinsHashMix3(t.transaction_id,t.clientip,2004); // transaction id assigned by client
+	return lintel::BobJenkinsHashMix3(t.transaction_id,t.clientip,2004); // transaction id assigned by client
     }};
     class tidEqual {
     public: bool operator()(const tidData &t1, const tidData &t2) const {

@@ -550,7 +550,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
 	checkedWrite(tc->compressed.begin(), tc->compressed.size());
 	cur_offset += tc->compressed.size();
 	chained_checksum 
-	    = BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
+	    = lintel::BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
 	bytes_written += tc->compressed.size();
 	delete tc;
     }

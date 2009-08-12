@@ -159,13 +159,13 @@ public:
 
     struct hteHash {
 	unsigned operator()(const hteData &k) const {
-	    return BobJenkinsHashMix3(k.source,k.dest,1972);
+	    return lintel::BobJenkinsHashMix3(k.source,k.dest,1972);
 	}
     };
 
     struct nodeHash {
 	unsigned operator()(const nodeData &k) const {
-	    return BobJenkinsHashMix3(k.node,1776,1972);
+	    return lintel::BobJenkinsHashMix3(k.node,1776,1972);
 	}
     };
 

@@ -102,7 +102,8 @@ public:
     struct hteHash {
 	unsigned operator()(const hteData &k) const {
 	    return lintel::hashBytes(k.filehandle.data(),k.filehandle.size(),
-				     BobJenkinsHashMix3(k.server,k.client,(k.is_read ? 0x5555 : 0xAAAA)));
+				     lintel::BobJenkinsHashMix3(k.server,k.client,
+								(k.is_read ? 0x5555 : 0xAAAA)));
 	}
     };
 
@@ -512,7 +513,7 @@ public:
 	unsigned operator()(const hteData &k) const {
 	    unsigned a = lintel::hashBytes(k.filehandle.data(),
 					     k.filehandle.size(), 1492);
-	    return BobJenkinsHashMix3(a, k.server, k.unified_op_id);
+	    return lintel::BobJenkinsHashMix3(a, k.server, k.unified_op_id);
 	}
     };
 

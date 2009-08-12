@@ -26,16 +26,14 @@ static const int64_t two32 = static_cast<int64_t>(1) << 32;
 typedef Int64TimeField::SecNano SecNano;
 
 void check_one_frac32_convert(Int64TimeField &nsec, int64_t ifrac32, 
-			      int64_t nsec_conv, int64_t ofrac32)
-{
+			      int64_t nsec_conv, int64_t ofrac32) {
     int64_t a = nsec.frac32ToRaw(ifrac32);
     SINVARIANT(a == nsec_conv);
     int64_t b = nsec.rawToFrac32(a);
     SINVARIANT(b == ofrac32);
 }
 
-void check_many_conversion_static_frac32(Int64TimeField &nsec)
-{
+void check_many_conversion_static_frac32(Int64TimeField &nsec) {
     // randomly generated using tests/time-field.pl which uses
     // multi-precision arithmetic to get exact results.
     check_one_frac32_convert(nsec, -1232098685620695424LL, -286870330018153280LL, -1232098685620695424LL);
@@ -141,8 +139,7 @@ void check_many_conversion_static_frac32(Int64TimeField &nsec)
 
 }
 
-void check_conversion_static()
-{
+void check_conversion_static() {
     ExtentSeries s;
     Int64TimeField frac32(s, "");
     Int64TimeField nsec(s, "");
@@ -198,11 +195,9 @@ void check_conversion_static()
     cout << "static time checks successful" << endl;
 }
 
-void check_conversion_tfrac_micro()
-{
-}
-void check_conversion_tfrac_epoch_unknown_random()
-{
+void check_conversion_tfrac_micro() { }
+
+void check_conversion_tfrac_epoch_unknown_random() {
     ExtentSeries s;
     Int64TimeField unknown_epoch(s,"");
     Int64TimeField unix_epoch(s,"");
@@ -214,12 +209,9 @@ void check_conversion_tfrac_epoch_unknown_random()
     //unix.
 }
 
-void check_conversion_tfrac_nano_random()
-{
-}
+void check_conversion_tfrac_nano_random() { }
 
-void check_conversion_random()
-{
+void check_conversion_random() {
     ExtentSeries s;
     Int64TimeField frac32(s, "");
     Int64TimeField nsec(s, "");
@@ -230,8 +222,8 @@ void check_conversion_random()
     boost::mt19937 rng;
 
     uint32_t seed =
-	BobJenkinsHashMix3(getpid(), getppid(),
-			   BobJenkinsHashMixULL(Clock::todTfrac()));
+	lintel::BobJenkinsHashMix3(getpid(), getppid(),
+				   lintel::BobJenkinsHashMixULL(Clock::todTfrac()));
 
     cout << format("Randomized testing with seed %d\n") % seed;
     rng.seed(seed);
@@ -303,8 +295,7 @@ void check_conversion_random()
 // TODO: add an explicit test for the registerUnitsEpoch code; it's
 // currently implicitly tested by running the nfsanalysis test.
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     check_conversion_static();
     check_conversion_random();
     //check_conversion_tfrac_nano_random();
