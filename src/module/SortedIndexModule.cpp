@@ -117,6 +117,31 @@ void SortedIndexModule::searchSet(const std::vector<GeneralValue> &values) {
     // sort the extents co-located by file (source pointer sorted) and
     // then ordered by location
     std::sort(extents.begin(), extents.end(), entrySorter);
+
+    if (need_reset) {
+	resetPos();  // N.B. calls lockedResetModule()
+    }
+}
+
+void SortedIndexModule::searchRange(const GeneralValue &start, const GeneralValue &end) {
+    INVARIANT(extents.size() == cur_extent,
+	      boost::format("did not finish reading all extents before search"));
+    extents.clear();
+    cur_extent = 0;
+
+    // search each index for relevant extents
+    BOOST_FOREACH(IndexEntryVector &iev, index) {
+        // See comment in header for use of lower bound and < operator.
+        for(std::vector<IndexEntry>::iterator i = 
+                std::lower_bound(iev.begin(), iev.end(), start);
+            i != iev.end() && i->overlaps(start, end); ++i) {
+            extents.push_back(&(*i));
+        }
+    }
+
+    if (need_reset) {
+	resetPos();  // N.B. calls lockedResetModule()
+    }
 }
 
 void SortedIndexModule::lockedResetModule() { }

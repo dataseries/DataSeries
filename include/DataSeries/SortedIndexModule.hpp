@@ -51,6 +51,12 @@ public:
     */
     void searchSet(const std::vector<GeneralValue> &values);
 
+    /** Searches the index for a range of values inclusive, subsequent
+        calls to getExtent will result in all of the extents that may
+        contain values within the search range.
+    */
+    void searchRange(const GeneralValue &start, const GeneralValue &end);
+
 protected:
     virtual PrefetchExtent *lockedGetCompressedExtent();
     virtual void lockedResetModule();
@@ -84,6 +90,10 @@ private:
 	bool inRange(const GeneralValue &v) const {
 	    return v >= minv && v <= maxv;
 	}
+
+        bool overlaps(const GeneralValue &min, const GeneralValue &max) const {
+            return (maxv >= min && minv <= max);
+        }
     };
 
     static bool entrySorter(const IndexEntry *lhs, const IndexEntry *rhs) {

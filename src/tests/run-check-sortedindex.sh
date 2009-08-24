@@ -26,7 +26,7 @@ SRC=$1
 ./sortedIndexTest > sortedindextest.txt
 
 cmp $SRC/check-data/sortedindex.txt sortedindex.txt
-cmp $SRC/check-data/sortedindex.txt sortedindextest.txt
+cmp $SRC/check-data/sortedindextest.txt sortedindextest.txt
 
 rm -f sortedindex.ds unsortedindex.ds sortedindex.txt sortedindextest.txt
 
