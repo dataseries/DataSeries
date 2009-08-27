@@ -755,9 +755,9 @@ public:
 	} else {
 	    LintelLogDebug("CommonAttrRWJoin", format("got rw extent %s:%d") % tmp->extent_source
 			   % tmp->extent_source_offset);
-	}
-	if (!did_field_names_init) {
-	    doFieldNameInit(*tmp);
+	    if (!did_field_names_init) {
+		doFieldNameInit(*tmp);
+	    }
 	}
 	es_rw.setExtent(tmp);
     }
@@ -874,7 +874,15 @@ public:
 	    SINVARIANT(es_commonattr.extent() == NULL
 		       && es_rw.extent() == NULL);
 	    nextCommonAttrExtent();
+	    if (es_commonattr.extent() == NULL) {
+		SINVARIANT(commonattr_done);
+		return NULL;
+	    }
 	    nextRWExtent();
+	    if (es_rw.extent() == NULL) {
+		SINVARIANT(rw_done);
+		return NULL;
+	    }
 	    initOutType();
 	}
 	Extent *outextent = new Extent(*es_out.getType());
