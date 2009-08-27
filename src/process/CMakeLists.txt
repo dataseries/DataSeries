@@ -19,6 +19,7 @@ DATASERIES_PROGRAM(ds2wcweb)
 DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(indexnfscommon)
 DATASERIES_PROGRAM(lvpvprocessusage)
+DATASERIES_PROGRAM(extract-cache-sim ../analysis/nfs/common.cpp ../analysis/nfs/MergeJoins.cpp)
 
 IF(CRYPTO_ENABLED)
     DATASERIES_PROGRAM(iphost2ds)

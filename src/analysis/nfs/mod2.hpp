@@ -4,16 +4,13 @@
    See the file named COPYING for license details
 */
 
-#ifndef __NFSDSANALYSIS_MOD2_H
-#define __NFSDSANALYSIS_MOD2_H
+#ifndef NFSDSANALYSIS_MOD2_HPP
+#define NFSDSANALYSIS_MOD2_HPP
 
 #include "analysis/nfs/common.hpp"
 
 namespace NFSDSAnalysisMod {
     // nfsdsanalysis-mod2:
-    NFSDSModule *newAttrOpsCommonJoin();
-    void setAttrOpsSources(DataSeriesModule *join, SequenceModule &common_seq,
-			   SequenceModule &attrops_seq);
     NFSDSModule *newLargeSizeFileHandle(DataSeriesModule &prev,int nkeept);
     NFSDSModule *newLargeSizeFilename(DataSeriesModule &prev, int nkeep);
     NFSDSModule *newLargeSizeFilenameWrite(DataSeriesModule &prev, int nkeep);

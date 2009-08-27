@@ -94,4 +94,8 @@ unsigned getMaxUnifiedId();
 uint64_t md5FileHash(const Variable32Field &filehandle);
 
 double doubleModArg(const std::string &optname, const std::string &arg);
+
+namespace NFSDSAnalysisMod {
+    void registerUnitsEpoch();
+}
 #endif

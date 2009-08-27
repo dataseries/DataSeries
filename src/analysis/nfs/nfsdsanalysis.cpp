@@ -31,6 +31,7 @@
 #include <DataSeries/SequenceModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
+#include <analysis/nfs/join.hpp>
 #include "analysis/nfs/mod1.hpp"
 #include "analysis/nfs/mod2.hpp"
 #include "analysis/nfs/mod3.hpp"
@@ -1257,19 +1258,6 @@ isnumber(const char *v)
 	}
     }
     return true;
-}
-
-void registerUnitsEpoch() {
-    // Register time types for some of the old traces so we don't have to
-    // do it in each of the modules.
-    Int64TimeField::registerUnitsEpoch("packet-at", "NFS trace: common", "", 0,
-				       "nanoseconds", "unix");
-    Int64TimeField::registerUnitsEpoch("packet-at", "Trace::NFS::common", 
-				       "ssd.hpl.hp.com", 1, "2^-32 seconds", 
-				       "unix");
-    Int64TimeField::registerUnitsEpoch("packet_at", "Trace::NFS::common", 
-				       "ssd.hpl.hp.com", 2, "2^-32 seconds", 
-				       "unix");
 }
 
 static int32_t timebound_start = 0;

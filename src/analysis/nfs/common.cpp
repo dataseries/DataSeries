@@ -355,3 +355,17 @@ double doubleModArg(const string &optname, const string &arg) {
     SINVARIANT(arg.size() > optname.size() && arg[optname.size()] == '=');
     return stringToDouble(arg.substr(optname.size()+1));
 }
+
+namespace NFSDSAnalysisMod {
+    void registerUnitsEpoch() {
+	// Register time types for some of the old traces so we don't have to
+	// do it in each of the modules.
+	Int64TimeField::registerUnitsEpoch("packet-at", "NFS trace: common", "", 0,
+					   "nanoseconds", "unix");
+	Int64TimeField::registerUnitsEpoch("packet-at", "Trace::NFS::common", 
+					   "ssd.hpl.hp.com", 1, "2^-32 seconds", "unix");
+	Int64TimeField::registerUnitsEpoch("packet_at", "Trace::NFS::common", 
+					   "ssd.hpl.hp.com", 2, "2^-32 seconds", "unix");
+    }
+}
+

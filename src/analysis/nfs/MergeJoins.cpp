@@ -999,10 +999,10 @@ namespace NFSDSAnalysisMod {
 
     void setCommonAttrRWSources(DataSeriesModule *join, 
 				SequenceModule &commonattr_seq,
-				SequenceModule &attrops_seq) {
+				SequenceModule &rw_seq) {
 	lintel::safeDownCast<CommonAttrRWJoin>(join)
 	    ->setInputs(*commonattr_seq.begin(), 
-			commonattr_seq.tail(), attrops_seq.tail());
+			commonattr_seq.tail(), rw_seq.tail());
     }
 }
 
