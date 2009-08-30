@@ -20,6 +20,7 @@ DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(indexnfscommon)
 DATASERIES_PROGRAM(lvpvprocessusage)
 DATASERIES_PROGRAM(extract-cache-sim ../analysis/nfs/common.cpp ../analysis/nfs/MergeJoins.cpp)
+DATASERIES_PROGRAM(sort-cache-sim)
 
 IF(CRYPTO_ENABLED)
     DATASERIES_PROGRAM(iphost2ds)

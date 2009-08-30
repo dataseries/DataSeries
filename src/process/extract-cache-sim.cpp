@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 	args.push_back(string(argv[i]));
     }
 
-    INVARIANT(args.size() >= 3, "Usage: extractCacheSim animation <input...> output");
+    INVARIANT(args.size() >= 3, "Usage: extract-cache-sim animation <input...> output");
 
     if (args[0] == "animation") {
 	doAnimation(args, packing_args);
