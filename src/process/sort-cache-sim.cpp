@@ -61,7 +61,7 @@ public:
     }
 
     virtual void processRow() {
-	if (ops.size() < 10000) {
+	if (ops.size() < 100000) {
 	    ops.push(Op(in_request_at(), in_reply_at(), in_operation_type(), 
 			in_client_id(), in_file_id.stringval(), in_offset(), in_bytes()));
 	} else {
@@ -81,7 +81,9 @@ public:
 
     void writeRow() {
 	Op &top = ops.top();
-	SINVARIANT(last <= top.req_at);
+	INVARIANT(last <= top.req_at, boost::format("%d > %d; increase reorder window?")
+		  % last % top.req_at);
+	last = top.req_at;
 	out_module->newRecord();
 	out_request_at.set(top.req_at);
 	out_reply_at.set(top.rep_at);
