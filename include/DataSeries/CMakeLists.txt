@@ -6,6 +6,7 @@
 # cmake description for the include/DataSeries directory
 
 SET(INCLUDE_FILES
+	ByteField.hpp
 	DataSeriesFile.hpp
 	DSExpr.hpp
 	DStoTextModule.hpp
