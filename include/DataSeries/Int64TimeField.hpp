@@ -173,6 +173,7 @@ private:
     static void frac32ToSecNano(int64_t tfrac, SecNano &secnano);
     static int64_t secNanoToFrac32(const SecNano &secnano);
     static void splitSecNano(int64_t isecnano, SecNano &osecnano);
+    static void splitSecMicro(int64_t isecmicro, SecNano &osecnano);
     static inline int64_t joinSecNano(int32_t sec, uint32_t nsec) {
 	DEBUG_SINVARIANT(nsec < 1000 * 1000 * 1000);
 	return static_cast<int64_t>(sec) * 1000 * 1000 * 1000 

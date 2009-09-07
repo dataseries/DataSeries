@@ -56,17 +56,25 @@ Int64TimeField::~Int64TimeField() { }
 
 int64_t Int64TimeField::rawToFrac32(Raw raw) const
 {
-    if (time_type == UnixFrac32) {
-	return raw;
-    } else if (time_type == UnixNanoSec) {
-	SecNano secnano;
-	splitSecNano(raw, secnano);
-	return secNanoToFrac32(secnano);
-    } else if (time_type == Unknown) {
-	FATAL_ERROR("time type has not been set yet; no extent?");
-    } else {
-	FATAL_ERROR("internal error");
-    }
+    // TODO: make other if (...) functions switches also
+    switch (time_type)
+	{
+	case UnixFrac32: return raw;
+	case UnixNanoSec: {
+	    SecNano secnano;
+	    splitSecNano(raw, secnano);
+	    return secNanoToFrac32(secnano);
+	}
+	case UnixMicroSec: {
+	    SecNano secnano;
+	    splitSecMicro(raw, secnano);
+	    return secNanoToFrac32(secnano);
+	}
+	case Unknown:
+	    FATAL_ERROR("time type has not been set yet; no extent?");
+	default:
+	    FATAL_ERROR(format("internal error, unhandled time type %d") % time_type);
+	}
 }
 
 Int64TimeField::Raw Int64TimeField::frac32ToRaw(int64_t frac32) const
@@ -224,10 +232,7 @@ int64_t Int64TimeField::secNanoToFrac32(const SecNano &secnano)
     return tfrac + static_cast<int64_t>(tfrac_ns);
 }
 
-void 
-Int64TimeField::splitSecNano(int64_t isecnano, SecNano &osecnano)
-				  
-{
+void Int64TimeField::splitSecNano(int64_t isecnano, SecNano &osecnano) {
     // convert to double and floor rounds badly in the 2^32-1 * 1e9 case
     // straight integer division seems to round toward 0.
     int64_t tmp = isecnano / (1000 * 1000 * 1000);
@@ -241,6 +246,20 @@ Int64TimeField::splitSecNano(int64_t isecnano, SecNano &osecnano)
     int64_t tmp2 = isecnano - static_cast<int64_t>(tmp) * 1000 * 1000 * 1000;
     SINVARIANT(tmp2 >= 0 && tmp2 <= 999999999);
     osecnano.nanoseconds = static_cast<uint32_t>(tmp2);
+}
+
+void Int64TimeField::splitSecMicro(int64_t isecmicro, SecNano &osecnano) {
+    int64_t tmp = isecmicro / (1000 * 1000);
+    if ((tmp*1000*1000) > isecmicro) {
+	tmp -= 1;
+	SINVARIANT(tmp*1000*1000 < isecmicro);
+    }
+    SINVARIANT(tmp >= numeric_limits<int32_t>::min() &&
+	       tmp <= numeric_limits<int32_t>::max());
+    osecnano.seconds = static_cast<int32_t>(tmp);
+    int64_t tmp2 = isecmicro - static_cast<int64_t>(tmp) * 1000 * 1000;
+    SINVARIANT(tmp2 >= 0 && tmp2 <= 999999);
+    osecnano.nanoseconds = static_cast<uint32_t>(tmp2) * 1000;
 }
 
 void Int64TimeField::registerUnitsEpoch(const std::string &field_name,
