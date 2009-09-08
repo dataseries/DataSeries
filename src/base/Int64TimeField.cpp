@@ -95,15 +95,23 @@ Int64TimeField::Raw Int64TimeField::frac32ToRaw(int64_t frac32) const
 Int64TimeField::SecNano Int64TimeField::rawToSecNano(Raw raw) const
 {
     SecNano ret;
-    if (time_type == UnixFrac32) {
-	frac32ToSecNano(raw, ret);
-    } else if (time_type == UnixNanoSec) {
-	splitSecNano(raw, ret);
-    } else if (time_type == Unknown) {
-	FATAL_ERROR("time type has not been set yet; no extent?");
-    } else {
-	FATAL_ERROR("internal error");
-    }
+    switch (time_type)
+	{
+	case UnixFrac32: 
+	    frac32ToSecNano(raw, ret);
+	    break;
+	case UnixNanoSec:
+	    splitSecNano(raw, ret);
+	    break;
+	case UnixMicroSec:
+	    splitSecMicro(raw, ret);
+	    break;
+	case Unknown:
+	    FATAL_ERROR("time type has not been set yet; no extent?");
+	default:
+	    FATAL_ERROR(format("internal error, unhandled time type %d") % time_type);
+	}
+
     return ret;
 }
 

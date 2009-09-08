@@ -139,7 +139,7 @@ main(int argc, char *argv[])
 	xmlspec.append("\">");
 	if (select_fields == "*") {
 	    const ExtentType *t = 
-		first_source->getLibrary().getTypeByPrefix(match_extent_type);
+		first_source->getLibrary().getTypeMatch(match_extent_type);
 	    INVARIANT(t != NULL, "internal");
 	    for(unsigned i = 0; i < t->getNFields(); ++i) {
 		xmlspec.append((format("<field name=\"%s\"/>")

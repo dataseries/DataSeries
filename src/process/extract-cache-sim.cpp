@@ -11,6 +11,7 @@
 #include <analysis/nfs/join.hpp>
 
 using namespace std;
+using boost::format;
 
 const string output_xml(
   "<ExtentType namespace=\"ticoli.hpl.hp.com\" name=\"CooperativeCacheSimulation\" version=\"1.0\" >\n"
@@ -301,14 +302,14 @@ public:
 	    if (table.exists(key)) {
 		++duplicate_requests;
 	    } else {
-		SINVARIANT(nfs_version() == 2 && !offset.isNull()
-			   || nfs_version() == 3 && !off.isNull());
+		SINVARIANT((nfs_version() == 2 && !offset.isNull())
+			   || (nfs_version() == 3 && !off.isNull()));
 		SINVARIANT(!fh.isNull());
 		int64_t tmp = nfs_version() == 2 ? offset() : off();
 		table[key] = RpcValue(time.valFrac32(), is_read, fh.stringval(), tmp);
 	    }
 	} else {
-	    SINVARIANT(!return_value.isNull() && !count.isNull());
+	    INVARIANT(!return_value.isNull(), format("rv null @ %s") % time.valStrSecNano());
 	    RpcKey key(source_ip(), source_port(), dest_ip(), dest_port(), rpc_transaction_id());
 	    
 	    RpcValue *v = table.lookup(key);
@@ -318,6 +319,7 @@ public:
 		++failed_requests;
 		table.remove(key);
 	    } else {
+		INVARIANT(!count.isNull(), format("count null @ %s") % time.valStrSecNano());
 		out_module.newRecord();
 
 		out_request_at.set(v->at);
@@ -336,9 +338,9 @@ public:
     }
 
     virtual void printResult() {
-	cout << boost::format("%d duplicate requests, %d duplicate replies\n")
+	cout << format("%d duplicate requests, %d duplicate replies\n")
 	    % duplicate_requests % duplicate_replies;
-	cout << boost::format("%d requests w/o replies, %d failed requests\n") 
+	cout << format("%d requests w/o replies, %d failed requests\n") 
 	    % table.size() % failed_requests;
     }
 
@@ -430,6 +432,7 @@ void doEllard(const vector<string> &args, const commonPackingArgs &packing_args)
 
     EllardConvert convert(*source, out_module);
     convert.getAndDelete();
+    convert.printResult();
 }
 
 int main(int argc, char *argv[]) {
