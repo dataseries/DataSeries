@@ -95,7 +95,7 @@ public:
 	    FATAL_ERROR("unhandled");
 	}
 
-	if (ops.size() < 5000000) { // > 1m required for deasna
+	if (ops.size() < 5000000) { // > 100k required for deasna
 	    ops.push(Op(in_request_at(), in_reply_at(), in_operation_type(), 
 			in_client_id(), file_id, in_offset(), in_bytes()));
 	} else {
