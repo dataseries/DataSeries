@@ -12,6 +12,7 @@
 #include <boost/scoped_ptr.hpp>
 
 #include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/PriorityQueue.hpp>
 
@@ -85,6 +86,7 @@ public:
     virtual void processRow() {
 	string file_id(in_file_id.stringval());
 
+	unique_clients.add(in_client_id());
 	FileInfo &file_info(file_id_to_file_info[file_id]);
 	if (in_operation_type() == 0) { // read
 	    file_info.size = max(file_info.size, in_offset() + in_bytes());
@@ -131,6 +133,9 @@ public:
 	}
 	cout << format("%d unique files accessed by read in trace\n") 
 	    % file_id_to_file_info.size();
+
+	cout << format("%d unique clients in trace\n") 
+	    % unique_clients.size();
 	
 	vector<DataVal> &data(file_id_to_file_info.getHashTable().unsafeGetRawDataVector());
 
@@ -219,6 +224,8 @@ private:
     ExtentSeries file_out_series;
     Variable32Field file_out_file_id;
     Int64Field file_out_file_size, file_out_first_read;
+
+    HashUnique<int32_t> unique_clients;
 };
 
 int main(int argc, char *argv[]) {
