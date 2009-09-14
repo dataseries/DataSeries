@@ -279,14 +279,9 @@ public:
 	// TODO: unify next bit with ellardanalysis
 	if (nfs_version.val() == 2) {
 	    INVARIANT(rpc_function_id.val() < n_nfsv2ops, "?");
-	    DEBUG_INVARIANT(operation.equal(nfsv2ops[rpc_function_id.val()].name), "?");
 	    unified_id = nfsv2ops[rpc_function_id.val()].unified_id;
 	} else if (nfs_version.val() == 3) {
 	    INVARIANT(rpc_function_id.val() < n_nfsv3ops, "?");
-	    DEBUG_INVARIANT(operation.equal(nfsv3ops[rpc_function_id.val()].name), 
-			    format("? %d %s %s")
-			    % rpc_function_id.val() % operation.stringval() 
-			    % nfsv3ops[rpc_function_id.val()].name);
 	    unified_id = nfsv3ops[rpc_function_id.val()].unified_id;
 	} else {
 	    FATAL_ERROR("bad nfs version");
