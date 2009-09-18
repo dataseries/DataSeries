@@ -44,6 +44,8 @@ DATASERIES_SCRIPT_TEST(sortedindex)
 DATASERIES_PROGRAM_NOINST(sortedIndexTest)
 DATASERIES_SCRIPT_TEST(sortedindex)
 
+DATASERIES_PROGRAM_NOINST(typefiltermodule)
+DATASERIES_SCRIPT_TEST(typefiltermodule)
 
 ### Conditional tests...
 
