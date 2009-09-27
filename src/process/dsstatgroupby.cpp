@@ -17,6 +17,7 @@
 #include <DataSeries/SequenceModule.hpp>
 
 using namespace std;
+using boost::format;
 
 void 
 usage(const std::string &program_name, const std::string &error)
@@ -24,7 +25,7 @@ usage(const std::string &program_name, const std::string &error)
     // TODO: should we make the usage ... from <prefix> in <file...>?
     cerr << error << "\n"
 	 << "Usage: " << program_name 
-	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] group by <group-by>)*\n"
+	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] [group by <group-by>])*\n"
 	 << "  from file...\n"
 	 << "\n"
 	 << "  stat-types include:\n\n"
@@ -43,7 +44,7 @@ main(int argc, char *_argv[])
     for(int i=0; i<argc; ++i) {
 	argv.push_back(string(_argv[i]));
     }
-    if (argc <= 8) usage(argv[0], "insufficient arguments");
+    if (argc <= 5) usage(argv[0], "insufficient arguments");
 
     string extent_type_match(argv[1]);
     
@@ -52,36 +53,45 @@ main(int argc, char *_argv[])
 
     SequenceModule seq(prefetch);
 
-    int argpos;
-    for(argpos = 2; argpos < argc;) {
+    uint32_t argpos;
+    for(argpos = 2; argpos < argv.size();) {
 	if (argv[argpos] == "from") 
 	    break;
-	if (argpos + 5 >= argc) usage(argv[0], "missing from in arguments");
+	if (argpos + 2 + 2 > argv.size()) { // stat-type, expr + from, file
+	    usage(argv[0], "missing from in arguments");
+	}
 	string stat_type(argv[argpos]); 
 	++argpos;
+	if (!DSStatGroupByModule::validStatType(stat_type)) {
+	    usage(argv[0], str(format("'%s' is an invalid stat type") % stat_type));
+	}
+
 	string expr(argv[argpos]); 
 	++argpos;
+
 	string where_expr;
 	if (argv[argpos] == "where") {
 	    ++argpos;
 	    where_expr = argv[argpos]; 
 	    ++argpos;
 	}
-	if (argpos + 3 >= argc || argv[argpos] != "group" ||
-	    argv[argpos+1] != "by") {
-	    usage(argv[0], "missing group by <fieldname>");
+
+	string group_by;
+
+	if (argv[argpos] == "group" && argv[argpos+1] == "by" && argpos + 2 < argv.size()) {
+	    group_by = argv[argpos + 2];
+	    argpos += 3;
 	}
-	argpos += 2;
-	string group_by(argv[argpos]);
-	++argpos;
 
 	seq.addModule(new DSStatGroupByModule(seq.tail(), expr, group_by, 
 					      stat_type, where_expr));
     }
 
+    if (argpos >= argv.size() || argv[argpos] != "from") {
+	usage(argv[0], "missing from in arguments");
+    }
     ++argpos;
-    if (argpos >= argc) usage(argv[0], "missing from in arguments");
-    for(;argpos<argc; ++argpos) {
+    for(;argpos<argv.size(); ++argpos) {
 	source.addSource(argv[argpos]);
     }
 

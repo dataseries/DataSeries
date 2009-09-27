@@ -16,6 +16,11 @@
 
 using namespace std;
 
+namespace {
+    const string str_basic("basic");
+    const string str_quantile("quantile");
+}
+
 DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
 					 const string &_expression,
 					 const string &_groupby,
@@ -26,72 +31,89 @@ DSStatGroupByModule::DSStatGroupByModule(DataSeriesModule &source,
       groupby_name(_groupby), stattype(_stattype), groupby(NULL),
       expr(NULL)
 {
+    SINVARIANT(validStatType(stattype));
     if (!where_expr.empty()) {
 	setWhereExpr(where_expr);
     }
 }
 
-DSStatGroupByModule::~DSStatGroupByModule()
-{
+DSStatGroupByModule::~DSStatGroupByModule() {
     delete expr;
     expr = NULL;
     delete groupby;
     groupby = NULL;
 }
 
-void
-DSStatGroupByModule::prepareForProcessing()
-{
+void DSStatGroupByModule::prepareForProcessing() {
     // Have to do this here rather than constructor as we need the XML
     // from the first extent in order to build the generalfields
 
     expr = DSExpr::make(series, expression);
-    groupby = GeneralField::create(NULL, series, groupby_name);
+    if (!groupby_name.empty()) {
+	groupby = GeneralField::create(NULL, series, groupby_name);
+    }
 }
 
-void 
-DSStatGroupByModule::processRow() 
-{
-    GeneralValue groupby_val(groupby);
+void DSStatGroupByModule::processRow() {
+    GeneralValue groupby_val;
+    if (groupby != NULL) {
+	groupby_val.set(groupby);
+    } else {
+	groupby_val.setInt32(1);
+    }
     Stats *stat = mystats[groupby_val];
     if (stat == NULL) {
-	if (stattype == "basic") {
+	if (stattype == str_basic) {
 	    stat = new Stats();
-	} else if (stattype == "quantile") {
+	} else if (stattype == str_quantile) {
 	    stat = new StatsQuantile();
 	} else {
 	    FATAL_ERROR(boost::format("unknown stattype %s") % stattype);
 	}
-	mystats[groupby->val()] = stat;
+	mystats[groupby_val] = stat;
     }
     stat->add(expr->valDouble());
 }
 
-void
-DSStatGroupByModule::printResult()
-{
+void DSStatGroupByModule::printResult() {
     cout << "# Begin DSStatGroupByModule" << endl;
     cout << boost::format("# processed %d rows, where clause eliminated %d rows\n") 
 	% processed_rows % ignored_rows;
-    if (stattype == "basic") {
-	cout << boost::format("# %s, count(*), mean(%s), stddev, min, max\n")
-	    % groupby_name % expression;
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
-	    cout << boost::format("%1%, %2%, %3$.6g, %4$.6g, %5$.6g, %6$.6g\n")
-		% i->first % i->second->count() % i->second->mean() % i->second->stddev()
+
+    if (stattype == str_basic) {
+	if (groupby_name.empty()) {
+	    cout << boost::format("# count(*), mean(%s), stddev, min, max\n") % expression;
+	} else {
+	    cout << boost::format("# %s, count(*), mean(%s), stddev, min, max\n")
+		% groupby_name % expression;
+	}
+	for(mytableT::iterator i = mystats.begin(); i != mystats.end(); ++i) {
+	    if (!groupby_name.empty()) {
+		cout << i->first << ", ";
+	    }
+	    cout << boost::format("%1%, %2$.6g, %3$.6g, %4$.6g, %5$.6g\n")
+		% i->second->count() % i->second->mean() % i->second->stddev()
 		% i->second->min() % i->second->max();
 	}
-    } else {
-	cout << boost::format("# %s(%s) group by %s\n")
-	    % stattype % expression % groupby_name;
+    } else if (stattype == str_quantile) {
+	if (groupby_name.empty()) {
+	    cout << boost::format("# %s(%s)\n") % stattype % expression;
+	} else {
+	    cout << boost::format("# %s(%s) group by %s\n") % stattype % expression % groupby_name;
+	}
 	for(mytableT::iterator i = mystats.begin(); 
 	    i != mystats.end(); ++i) {
-	    cout << boost::format("# group %1%\n")
-		% i->first;
+	    if (!groupby_name.empty()) {
+		cout << boost::format("# group %1%\n") % i->first;
+	    }
 	    i->second->printText(cout);
 	}
+    } else {
+	FATAL_ERROR("wasn't stat type already checked?");
     }
     cout << "# End DSStatGroupByModule" << endl;
 }
 
+bool DSStatGroupByModule::validStatType(const string &stat_type) {
+    return stat_type == str_basic || stat_type == str_quantile;
+}
