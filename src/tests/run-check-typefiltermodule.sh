@@ -12,10 +12,6 @@ set -e
 
 SRC=$1
 
-[ ! -f sortedindex.ds ] || rm sortedindex.ds
-[ ! -f unsortedindex.ds ] || rm unsortedindex.ds
-
-# run program and compare
 ./typefiltermodule $SRC/check-data/nfs-2.set-0.20k.ds > typefiltermodule.txt
 
 cmp $SRC/check-data/typefiltermodule.txt typefiltermodule.txt
