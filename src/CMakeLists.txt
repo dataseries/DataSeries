@@ -66,8 +66,14 @@ SET(LIBDATASERIES_SOURCES
 	module/RowAnalysisModule.cpp
 	module/SequenceModule.cpp
 	module/TypeIndexModule.cpp
+	module/SimpleSourceModule.cpp
+	module/ParallelFilterModule.cpp
+	module/PushModule.cpp
+	base/ExtentWriter.cpp
+	base/ExtentReader.cpp
+	base/NetworkTcp.cpp
 	liblzf-1.6/lzf_c.c
-	liblzf-1.6/lzf_d.c 
+	liblzf-1.6/lzf_d.c
 )
 
 ################################## SUBDIRS

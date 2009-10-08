@@ -1,0 +1,20 @@
+# -*- perl -*-
+
+define
+
+sub plot_elapsed_time {
+	my ($experimentTable, $measurementTable) = @_;
+	return qq{
+unplot
+
+plot LENGTH(tag) AS x, elapsed AS y FROM $measurementTable WHERE experimentId=(SELECT MAX(id) FROM $experimentTable)
+
+gnuplot set xlabel "Mode"
+gnuplot set ylabel "Elapsed time (seconds)"
+pngpsplot --mode=eps --fontsize=22 fgrep-elapsed-time
+};
+}
+
+enddefine
+
+plot_elapsed_time("FgrepExperiments", "FgrepMeasurements")
