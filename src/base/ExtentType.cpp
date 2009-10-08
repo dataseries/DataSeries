@@ -24,7 +24,7 @@
 using namespace std;
 using boost::format;
 
-static const string dataseries_xml_type_xml = 
+static const string dataseries_xml_type_xml =
   "<ExtentType name=\"DataSeries: XmlType\">\n"
   "  <field type=\"variable32\" name=\"xmltype\" />\n"
   "</ExtentType>\n";
@@ -37,7 +37,7 @@ const string dataseries_index_type_v0_xml =
 
 // The following is here as we are working out what the next version
 // of the extent index should look like; I think we will be able to
-// get away with putting it into the xmltype index and hence be able 
+// get away with putting it into the xmltype index and hence be able
 // to update this as we see fit.
 
 const string dataseries_index_type_v1_xml =
@@ -73,7 +73,7 @@ string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool
     if (option == NULL) {
 	return string();
     } else {
-	INVARIANT(empty_ok || *option != '\0', 
+	INVARIANT(empty_ok || *option != '\0',
 		  format("Invalid specification of empty property '%s'") % option_name);
 	string ret(reinterpret_cast<char *>(option));
 	xmlFree(option);
@@ -85,7 +85,7 @@ static bool
 parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 {
     string option = ExtentType::strGetXMLProp(cur, option_name);
-    
+
     if (option.empty()) {
 	return default_val;
     }
@@ -101,7 +101,7 @@ parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
 }
 
 struct NonBoolCompactByPosition {
-    bool operator()(const ExtentType::nullCompactInfo &a, 
+    bool operator()(const ExtentType::nullCompactInfo &a,
 		    const ExtentType::nullCompactInfo &b) const {
 	return a.offset < b.offset;
     }
@@ -136,7 +136,7 @@ void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
 		byte_pos += 1;
 		bit_pos = 0;
 	    }
-	} 
+	}
     }
 
     if (bit_pos > 0) {
@@ -203,7 +203,7 @@ ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos)
 {
     LintelLogDebug("ExtentType::Packing", "packing int64 and double fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
-	if (ret.field_info[i].type == ft_int64 
+	if (ret.field_info[i].type == ft_int64
 	    || ret.field_info[i].type == ft_double) {
 	    ret.field_info[i].size = 8;
 	    ret.field_info[i].offset = byte_pos;
@@ -227,7 +227,7 @@ ExtentType::parseXML(const string &xmldesc)
 
     LIBXML_TEST_VERSION;
     xmlKeepBlanksDefault(0);
-    ret.xml_description_doc 
+    ret.xml_description_doc
 	= xmlParseMemory(xmldesc.c_str(),xmldesc.size());
     INVARIANT(ret.xml_description_doc != NULL,
 	      "Error: parsing ExtentType description failed");
@@ -235,7 +235,7 @@ ExtentType::parseXML(const string &xmldesc)
     xmlNodePtr cur = xmlDocGetRootElement(ret.xml_description_doc);
     INVARIANT(cur != NULL, "Error: ExtentType description missing document");
     INVARIANT(xmlStrcmp(cur->name, (const xmlChar *) "ExtentType") == 0,
-	      boost::format("Error: ExtentType description has wrong type, '%s' != '%s'") 
+	      boost::format("Error: ExtentType description has wrong type, '%s' != '%s'")
 	      % cur->name % "ExtentType");
 
     ret.name = strGetXMLProp(cur, "name");
@@ -316,8 +316,8 @@ ExtentType::parseXML(const string &xmldesc)
     } else {
 	vector<string> bits;
 	split(extentversion, ".", bits);
-	INVARIANT(bits.size() == 2, 
-		  boost::format("bad version '%s' should be #.#") 
+	INVARIANT(bits.size() == 2,
+		  boost::format("bad version '%s' should be #.#")
 		  % extentversion);
 	ret.major_version = stringToInteger<int32_t>(bits[0]);
 	ret.minor_version = stringToInteger<int32_t>(bits[1]);
@@ -326,7 +326,7 @@ ExtentType::parseXML(const string &xmldesc)
     ret.type_namespace = strGetXMLProp(cur, "namespace", true);
 
     cur = cur->xmlChildrenNode;
-    unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0, 
+    unsigned bool_fields = 0, byte_fields = 0, int32_fields = 0,
 	eight_fields = 0, variable_fields = 0;
     while (true) {
 	// TODO-soules: I thought that we decided not to do this since
@@ -337,7 +337,7 @@ ExtentType::parseXML(const string &xmldesc)
                 xmlStrcmp(cur->name, (const xmlChar *)"field") != 0)) {
 	    cur = cur->next;
 	}
-	if (cur == NULL) 
+	if (cur == NULL)
 	    break;
 // 	INVARIANT(xmlStrcmp(cur->name, (const xmlChar *)"field") == 0,
 // 		  boost::format("Error: ExtentType sub-element should be"
@@ -380,7 +380,7 @@ ExtentType::parseXML(const string &xmldesc)
 	INVARIANT(getColumnNumber(ret, info.name) == -1,
 		  boost::format("Error: ExtentType '%s', duplicate field '%s'")
 		  % ret.name % info.name);
-	
+
 	string type_str = strGetXMLProp(cur, "type");
 	INVARIANT(!type_str.empty(), "Error: ExtentType field missing type attribute");
 	if (type_str == "bool") {
@@ -418,10 +418,10 @@ ExtentType::parseXML(const string &xmldesc)
 	    INVARIANT(pack_unique.empty(),
 		      "pack_unique only allowed for variable32 fields");
 	}
-	
+
 	bool nullable = parseYesNo(cur, "opt_nullable", false);
 	// Real field will go into size, so null field into size+1.
-	info.null_fieldnum 
+	info.null_fieldnum
 	    = nullable ? static_cast<int>(ret.field_info.size()) + 1 : -1;
 
 	string opt_doublebase = strGetXMLProp(cur, "opt_doublebase");
@@ -429,7 +429,7 @@ ExtentType::parseXML(const string &xmldesc)
 	    INVARIANT(info.type == ft_double,
 		      "opt_doublebase only allowed for double fields");
 	    info.doublebase = stringToDouble(opt_doublebase);
-	}	    
+	}
 
 	string size = strGetXMLProp(cur, "size");
         if (!size.empty()) {
@@ -466,9 +466,9 @@ ExtentType::parseXML(const string &xmldesc)
 		if (info.type == ft_double) {
 		    INVARIANT(!pack_scale_v.empty(),
 			      "for self-relative packing of a double, scaling is required -- otherwise errors in unpacking accumulate");
-		    ret.pack_self_relative.back().scale 
+		    ret.pack_self_relative.back().scale
 			= ret.pack_scale.back().scale;
-		    ret.pack_self_relative.back().multiplier 
+		    ret.pack_self_relative.back().multiplier
 			= ret.pack_scale.back().multiplier;
 		}
                 LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_self_relative field %s\n") % field_num);
@@ -490,7 +490,7 @@ ExtentType::parseXML(const string &xmldesc)
 	ret.visible_fields.push_back(ret.field_info.size()-1);
 	if (nullable) {
 	    DEBUG_SINVARIANT(info.null_fieldnum == static_cast<int>(ret.field_info.size()));
-			    
+
 	    // auto-generate the boolean "null" field
 	    info.name = nullableFieldname(info.name);
 	    info.type = ft_bool;
@@ -513,7 +513,7 @@ ExtentType::parseXML(const string &xmldesc)
     if (ret.field_ordering == FieldOrderingSmallToBigSepVar32) {
 	parsePackBitFields(ret, byte_pos);
 	parsePackByteAlignedFields(ret, byte_pos);
-	if (ret.pad_record == PadRecordOriginal || 
+	if (ret.pad_record == PadRecordOriginal ||
 	    int32_fields > 0 || variable_fields > 0) {
 	    unsigned zero_pad = (4 - (byte_pos % 4)) % 4;
             LintelLogDebug("ExtentType::Packing", boost::format("%s bytes of zero padding\n") % zero_pad);
@@ -540,7 +540,7 @@ ExtentType::parseXML(const string &xmldesc)
 	if (eight_fields > 0 || ret.pad_record == PadRecordOriginal) {
 	    align_size = 8;
 	}
-	unsigned zero_pad = (align_size - (byte_pos % align_size)) 
+	unsigned zero_pad = (align_size - (byte_pos % align_size))
 	    % align_size;
 	byte_pos += zero_pad;
 	SINVARIANT((byte_pos % align_size) == 0);
@@ -559,7 +559,7 @@ ExtentType::parseXML(const string &xmldesc)
 		ret.bool_bytes = field.offset + 1;
 	    }
 	    continue;
-	} 
+	}
 	nullCompactInfo n;
 	n.type = field.type;
 	n.field_num = i;
@@ -567,7 +567,7 @@ ExtentType::parseXML(const string &xmldesc)
 	n.offset = field.offset;
 
 	if (field.null_fieldnum > 0) {
-	    INVARIANT(static_cast<unsigned>(field.null_fieldnum) == i+1, 
+	    INVARIANT(static_cast<unsigned>(field.null_fieldnum) == i+1,
 		      format("? %d != %d") % field.null_fieldnum % (i+1));
 	    fieldInfo &null_field(ret.field_info[field.null_fieldnum]);
 	    INVARIANT(null_field.type == ft_bool, "?");
@@ -594,7 +594,7 @@ ExtentType::parseXML(const string &xmldesc)
     // decide to just allow compaction in all cases, even if we don't
     // have nulls, which could save a little bit of space, e.g. 7
     // bytes with 1 byte of bools|byte and then a double or int64.
-    INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0, 
+    INVARIANT(ret.pack_null_compact == CompactNo || ret.bool_bytes > 0,
 	      "should not enable null compaction with no nullable fields");
 
     ret.sortAssignNCI(ret.nonbool_compact_info_size1);
@@ -605,16 +605,16 @@ ExtentType::parseXML(const string &xmldesc)
 }
 
 ExtentType::ExtentType(const string &_xmldesc)
-    : rep(parseXML(_xmldesc)), name(rep.name), 
-      xmldesc(rep.xml_description_str), 
+    : rep(parseXML(_xmldesc)), name(rep.name),
+      xmldesc(rep.xml_description_str),
       field_desc_doc(rep.xml_description_doc)
 {
 }
 
-int 
+int
 ExtentType::getColumnNumber(const ParsedRepresentation &rep,
 			    const string &column,
-			    bool missing_ok) 
+			    bool missing_ok)
 {
     for(unsigned int i=0; i<rep.field_info.size(); i++) {
 	if (rep.field_info[i].name == column) {
@@ -623,7 +623,7 @@ ExtentType::getColumnNumber(const ParsedRepresentation &rep,
 	}
     }
     LintelLogDebug("ExtentType::GetColNum", boost::format("column %s -> -1\n") % column);
-    INVARIANT(missing_ok, boost::format("Unknown column '%s' in type '%s'") 
+    INVARIANT(missing_ok, boost::format("Unknown column '%s' in type '%s'")
 	      % column % rep.name);
     return -1;
 }
@@ -755,14 +755,14 @@ const ExtentType *
 ExtentTypeLibrary::registerType(const string &xmldesc)
 {
     const ExtentType &type(sharedExtentType(xmldesc));
-    
+
     INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
 	      boost::format("Type %s already registered")
 	      % type.name);
 
     name_to_type[type.name] = &type;
     return &type;
-}    
+}
 
 void
 ExtentTypeLibrary::registerType(const ExtentType &type)
@@ -772,7 +772,7 @@ ExtentTypeLibrary::registerType(const ExtentType &type)
 	      % type.name);
 
     name_to_type[type.name] = &type;
-}    
+}
 
 const ExtentType *
 ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
@@ -834,7 +834,7 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
 }
 
 const ExtentType *
-ExtentTypeLibrary::getTypeMatch(const std::string &match, 
+ExtentTypeLibrary::getTypeMatch(const std::string &match,
 				bool null_ok, bool skip_info)
 {
     const ExtentType *t = NULL;
@@ -850,7 +850,7 @@ ExtentTypeLibrary::getTypeMatch(const std::string &match,
 	    if (skip_info && prefixequal(i->first,str_Info)) {
 		continue;
 	    }
-	    INVARIANT(t == NULL, 
+	    INVARIANT(t == NULL,
 		      boost::format("Invalid getTypeMatch, '*' matches both '%s' and '%s'")
 		      % t->getName() % i->first);
 	    t = i->second;
@@ -914,7 +914,7 @@ const ExtentType &ExtentTypeLibrary::sharedExtentType(const string &xmldesc) {
     return *tmp;
 }
 
-ExtentType::~ExtentType() { 
+ExtentType::~ExtentType() {
     SINVARIANT(dataseries::in_tilde_xml_decode);
     xmlFreeDoc(field_desc_doc);
 }

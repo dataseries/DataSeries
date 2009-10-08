@@ -35,6 +35,9 @@ SET(INCLUDE_FILES
 	TypeIndexModule.hpp
 	commonargs.hpp
 	cryptutil.hpp
+	NetworkClique.hpp
+	ThreadSafeBuffer.hpp
+	ParallelSortModule.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
