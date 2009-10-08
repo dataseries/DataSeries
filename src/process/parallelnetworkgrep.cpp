@@ -27,11 +27,12 @@
 #include <DataSeries/PushModule.hpp>
 
 using namespace std;
+using lintel::BoyerMooreHorspool;
 
 class Variable32FieldComparator {
 public:
     bool operator()(const Variable32Field &fieldLhs, const Variable32Field &fieldRhs) {
-        int result = memcmp(fieldLhs.val(), fieldRhs.val(), std::min(fieldLhs.size(), fieldRhs.size()));
+        int result = memcmp(fieldLhs.val(), fieldRhs.val(), min(fieldLhs.size(), fieldRhs.size()));
         return result == 0 ? (fieldLhs.size() < fieldRhs.size()) : (result < 0);
     }
 };
@@ -91,13 +92,13 @@ private:
 class ParallelNetworkGrepProgram : public dataseries::ParallelNetworkProgram<Variable32Field,
     Variable32FieldPartitioner> {
 public:
-    ParallelNetworkGrepProgram(std::vector<std::string> node_names,
+    ParallelNetworkGrepProgram(vector<string> node_names,
                                uint32_t node_index,
-                               const std::string &input_file_prefix,
-                               const std::string &extent_type_match,
-                               const std::string &output_file_prefix,
-                               const std::string &field_name,
-                               const std::string &needle)
+                               const string &input_file_prefix,
+                               const string &extent_type_match,
+                               const string &output_file_prefix,
+                               const string &field_name,
+                               const string &needle)
         : dataseries::ParallelNetworkProgram<Variable32Field, Variable32FieldPartitioner>(
               node_names, node_index, input_file_prefix, extent_type_match,
               field_name, Variable32FieldPartitioner()),

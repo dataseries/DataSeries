@@ -299,7 +299,7 @@ void NetworkClique<F, P>::start() {
 template <typename F, typename P>
 void NetworkClique<F, P>::startSendThread(uint32_t remote_node_index) {
     LintelLogDebug("NetworkClique", "startSendThread() was called.");
-    Extent *outgoing_extent;
+    Extent *outgoing_extent = NULL;
     NodePtr &node = nodes[remote_node_index];
     while (node->outgoing_buffer.remove(&outgoing_extent)) {
         //LintelLogDebug("NetworkClique", boost::format("SendThread: Waiting (or not) to write an extent (node %s).") % remote_node_index);

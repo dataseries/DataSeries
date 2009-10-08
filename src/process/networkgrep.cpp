@@ -21,6 +21,7 @@
 
 using namespace std;
 using namespace dataseries;
+using lintel::BoyerMooreHorspool;
 
 class Variable32FieldMatcher {
 public:

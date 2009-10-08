@@ -23,6 +23,7 @@
 #include <DataSeries/SimpleSourceModule.hpp>
 
 using namespace std;
+using lintel::BoyerMooreHorspool;
 
 class StringFieldMatcher {
 public:
