@@ -33,6 +33,7 @@ SET(INCLUDE_FILES
 	SequenceModule.hpp
 	TFixedField.hpp
 	TypeIndexModule.hpp
+	TypeFilterModule.hpp
 	commonargs.hpp
 	cryptutil.hpp
 )
