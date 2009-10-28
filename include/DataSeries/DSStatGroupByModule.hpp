@@ -22,10 +22,10 @@
 class DSStatGroupByModule : public RowAnalysisModule {
 public:
     DSStatGroupByModule(DataSeriesModule &source,
-			const std::string &_expression,
-			const std::string &_groupby,
-			const std::string &_stattype = "basic",
-			const std::string &_whereexpr = "",
+			const std::string &expression,
+			const std::string &groupby,
+			const std::string &stattype = "basic",
+			const std::string &whereexpr = "",
 			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeExact);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;
@@ -33,11 +33,12 @@ public:
     virtual ~DSStatGroupByModule();
     
     virtual void prepareForProcessing();
-
     virtual void processRow();
-
     virtual void printResult();
 
+    /// return true if the specified stat_type is valid for constructing a
+    /// DSStatGroupByModule.
+    static bool validStatType(const std::string &stat_type);
 private:
     mytableT mystats;
     std::string expression, groupby_name, stattype;

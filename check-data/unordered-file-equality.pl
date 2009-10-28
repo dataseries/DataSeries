@@ -14,7 +14,7 @@ map { ++$found2{$_} } @f2;
 my $lines1 = 0;
 foreach $_ (@f1) {
     ++$lines1;
-    die "missing line found in $ARGV[0] in $ARGV[1]:\n$_"
+    die "missing line found in $ARGV[0], not in $ARGV[1]:\n$_"
 	unless $found2{$_};
     --$found2{$_};
 }
@@ -22,7 +22,7 @@ foreach $_ (@f1) {
 my $lines2 = 0;
 foreach $_ (@f2) {
     ++$lines2;
-    die "missing line found in $ARGV[1] in $ARGV[0]:\n$_"
+    die "missing line found in $ARGV[1], not in $ARGV[0]:\n$_"
 	unless $found1{$_};
     --$found1{$_};
 }
