@@ -1358,9 +1358,9 @@ public:
       ret = k.xid;
       a = k.server;
       b = k.client;
-      BobJenkinsHashMix(a,b,ret);
+      lintel_BobJenkinsHashMix(a,b,ret);
       a = k.server_port;
-      BobJenkinsHashMix(a,b,ret);
+      lintel_BobJenkinsHashMix(a,b,ret);
       return ret;
     }
 };
