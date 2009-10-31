@@ -1,0 +1,6 @@
+# bool,byte,int32,int64,double,var32
+true,33,1000,56,1,"Hello, World"
+false,88,-15331,1000000000000,3.14159,"I said ""hello there."""
+true,10,11,5,2.718281828,unquoted
+
+

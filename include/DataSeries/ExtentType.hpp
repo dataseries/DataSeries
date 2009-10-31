@@ -33,7 +33,22 @@ namespace dataseries {
 
   * Provides the mapping from the DataSeries XML descriptions to 
   *  - the total space used by the fixed size portion record.
-  *  - the offsets of each member */
+  *  - the offsets of each member 
+  *  - options specified for each member
+
+  Example:
+\verbatim
+  <ExtentType name="test-type" namespace="example.com" version="1.0" comment="an example type">
+      <field type="int32" name="input1" pack_relative="input1" />
+      <field type="int32" name="input2" pack_relative="input1" />
+      <field type="int64" name="int64-1" pack_relative="int64-1" opt_nullable="yes" />
+      <field type="int64" name="int64-2" />
+      <field type="double" name="double1" pack_scale="1e-6" pack_relative="double1" />
+      <field type="variable32" name="var1" pack_unique="yes"/>\n"
+      <field type="variable32" name="var2"/>\n"
+  </ExtentType>
+\endverbatim
+  */
 class ExtentType : boost::noncopyable {
 public:
     /** A type that is guaranteed to be a 1 byte unsigned integer;

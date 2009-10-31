@@ -41,7 +41,7 @@ class GeneralField;
  * future. It is currently invalid to change the type of a general
  * value once it has acquired a type. 
  *
- * BUG/FEATURE: doesn't correctly track nulls right now, not clear
+ * TODO: doesn't correctly track nulls right now, not clear
  * exactly the right way to implement that. */
 
 class GeneralValue {
@@ -234,6 +234,10 @@ public:
     void set(const GeneralValue &from) {
 	set(&from);
     }
+
+    /// Set a general field from a string, equivalent to creating a general
+    /// value and setting from that value.
+    virtual void set(const std::string &from);
 
     GeneralValue val() const { return GeneralValue(this); }
     virtual double valDouble() = 0;

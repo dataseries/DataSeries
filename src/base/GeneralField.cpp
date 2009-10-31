@@ -21,6 +21,15 @@
 using namespace std;
 using boost::format;
 
+namespace {
+    string s_true("true");
+    string s_false("false");
+    string s_on("on");
+    string s_off("off");
+    string s_yes("yes");
+    string s_no("no");
+}
+
 // TODO: performance time boost::format, and if possible, unify the
 // write(ostream) and write(FILE *) code paths.
 
@@ -485,8 +494,15 @@ bool GeneralValue::valBool() const {
             FATAL_ERROR("haven't decided how to translate byte arrays to bools");
             break;
 	case ExtentType::ft_variable32: {
-	    FATAL_ERROR("haven't decided how to translate strings to bools");
-	    return false;
+	    SINVARIANT(v_variable32 != NULL);
+	    if (*v_variable32 == s_true || *v_variable32 == s_on || *v_variable32 == s_yes) {
+		return true;
+	    } else if (*v_variable32 == s_false || *v_variable32 == s_off 
+		       || *v_variable32 == s_no) {
+		return false;
+	    } else {
+		FATAL_ERROR(format("Unable to convert string '%s' to boolean, expecting true, on, yes, false, off, or no") % *v_variable32);
+	    }
 	    break;
 	}
 	default:
@@ -494,9 +510,6 @@ bool GeneralValue::valBool() const {
 	}
     return 0;
 }
-
-static string s_true("true");
-static string s_false("false");
 
 const std::string GeneralValue::valString() const {
     switch(gvtype) {
@@ -532,6 +545,13 @@ const std::string GeneralValue::valString() const {
 	    FATAL_ERROR("internal error, unexpected type"); 
     }
     return 0;
+}
+
+void GeneralField::set(const string &from) {
+    GeneralValue tmp;
+    tmp.setVariable32(from);
+    
+    set(tmp);
 }
 
 void GeneralField::enableCSV(void) {
@@ -649,9 +669,7 @@ void GF_Bool::set(GeneralField *from) {
 }
 
 void GF_Bool::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_bool,
-	      "can't set GF_Bool from non-bool general value");
-    myfield.set(from->gvval.v_bool);
+    myfield.set(from->valBool());
 }
 
 double GF_Bool::valDouble() {
@@ -737,9 +755,7 @@ void GF_Byte::set(GeneralField *from) {
 }
 
 void GF_Byte::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_byte,
-	      "can't set GF_Byte from non-byte general value");
-    myfield.set(from->gvval.v_byte);
+    myfield.set(from->valByte());
 }
 
 double GF_Byte::valDouble() {
@@ -837,9 +853,7 @@ void GF_Int32::set(GeneralField *from) {
 }
 
 void GF_Int32::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_int32,
-	      "can't set GF_Int32 from non-int32 general value");
-    myfield.set(from->gvval.v_int32);
+    myfield.set(from->valInt32());
 }
 
 
@@ -986,9 +1000,7 @@ void GF_Int64::set(GeneralField *from) {
 }
 
 void GF_Int64::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_int64,
-	      "can't set GF_Int64 from non-int64 general value");
-    myfield.set(from->gvval.v_int64);
+    myfield.set(from->valInt64());
 }
 
 double GF_Int64::valDouble() {
@@ -1111,9 +1123,7 @@ void GF_Double::set(GeneralField *from) {
 }
 
 void GF_Double::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_double,
-	      "can't set GF_Double from non-double general value");
-    myfield.set(from->gvval.v_double);
+    myfield.set(from->valDouble());
 }
 
 double GF_Double::valDouble() {
@@ -1352,9 +1362,11 @@ void GF_Variable32::set(GeneralField *from) {
 }
 
 void GF_Variable32::set(const GeneralValue *from) {
-    INVARIANT(from->gvtype == ExtentType::ft_variable32,
-	      "can't set GF_Variable32 from non-variable32 general value");
-    myfield.set(*from->v_variable32);
+    if (from->gvtype == ExtentType::ft_variable32) {
+	myfield.set(*from->v_variable32);
+    } else {
+	myfield.set(from->valString());
+    }
 }
 
 double GF_Variable32::valDouble() {

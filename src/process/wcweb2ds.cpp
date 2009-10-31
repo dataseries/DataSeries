@@ -91,11 +91,9 @@ struct record {
     uint8_t method, status, type, server;
 };
 
-unsigned nrecords;
+uint64_t nrecords;
 
-int
-main(int argc,char *argv[])
-{
+int main(int argc,char *argv[]) {
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);
 

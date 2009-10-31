@@ -1,0 +1,24 @@
+# Extent Types ...
+<ExtentType name="DataSeries: ExtentIndex">
+  <field type="int64" name="offset" />
+  <field type="variable32" name="extenttype" />
+</ExtentType>
+
+<ExtentType name="DataSeries: XmlType">
+  <field type="variable32" name="xmltype" />
+</ExtentType>
+
+<ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="bool" name="bool" />
+  <field type="byte" name="byte" />
+  <field type="int32" name="int32" />
+  <field type="int64" name="int64" />
+  <field type="double" name="double" />
+  <field type="variable32" name="variable32" pack_unique="yes" />
+</ExtentType>
+
+# Extent, type='test-csv2ds'
+bool byte int32 int64 double variable32
+T 33 1000 56 1 Hello, World
+F 88 -15331 1000000000000 3.14159 I said "hello there."
+T 10 11 5 2.71828183 unquoted
