@@ -189,5 +189,5 @@ main(int argc, char *argv[])
     }
 
     psdsout.close();
-    psdsout.getStats().printText(cout, pstype->name);
+    psdsout.getStats().printText(cout, pstype->getName());
 }

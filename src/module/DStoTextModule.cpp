@@ -215,7 +215,7 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     if (header_only_once && header_printed) return;
     header_printed = true;
 
-    const string &type_name = state.series.type->name;
+    const string &type_name = state.series.type->getName();
     if (print_extent_type) {
 	if (text_dest == NULL) {
 	    *stream_text_dest << "# Extent, type='" << type_name << "'";

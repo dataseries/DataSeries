@@ -44,11 +44,12 @@ ExtentSeries::setType(const ExtentType &_type)
     switch(typeCompatibility)
 	{
 	case typeExact: 
-	    INVARIANT(type == NULL || type->xmldesc != _type.xmldesc, 
+	    INVARIANT(type == NULL || type->getXmlDescriptionString() 
+		      != _type.getXmlDescriptionString(), 
 		      "internal -- same xmldesc should get same type");
 	    INVARIANT(type == NULL,
 		      boost::format("Unable to change type with typeExact compatibility\nType 1:\n%s\nType 2:\n%s\n")
-		      % type->xmldesc % _type.xmldesc);
+		      % type->getXmlDescriptionString() % _type.getXmlDescriptionString());
 	    break;
 	case typeLoose:
 	    break;

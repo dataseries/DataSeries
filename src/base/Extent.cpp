@@ -809,7 +809,7 @@ Extent::packData(Extent::ByteArray &into,
 			compression_modes, compression_level,
 			&compressed_variable_mode);
 
-    int headersize = 6*4+4*1+type.name.size();
+    int headersize = 6*4+4*1+type.getName().size();
     headersize += (4 - headersize % 4) % 4;
     int extentsize = headersize;
     extentsize += compressed_fixed->size();
@@ -827,9 +827,9 @@ Extent::packData(Extent::ByteArray &into,
     *(int32 *)l = bjhash; l += 4;
     *l = compressed_fixed_mode; l += 1;
     *l = compressed_variable_mode; l += 1;
-    *l = (byte)type.name.size(); l += 1;
+    *l = (byte)type.getName().size(); l += 1;
     *l = 0; l += 1;
-    memcpy(l,type.name.data(),type.name.size()); l += type.name.size();
+    memcpy(l, type.getName().data(), type.getName().size()); l += type.getName().size();
     // TODO: verify that aligning speeds up the copy, I'm 90% sure
     // that's why it was done here since we will always copy out the
     // two parts when we read the extent back in.
@@ -1125,7 +1125,7 @@ Extent::unpackData(Extent::ByteArray &from,
     if (!did_checks_init) {
 	setReadChecksFromEnv();
     }
-    INVARIANT(type.name == getPackedExtentType(from), 
+    INVARIANT(type.getName() == getPackedExtentType(from), 
 	      "Internal: type mismatch") ;
 
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());

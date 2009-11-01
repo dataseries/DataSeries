@@ -605,17 +605,12 @@ ExtentType::parseXML(const string &xmldesc)
 }
 
 ExtentType::ExtentType(const string &_xmldesc)
-    : rep(parseXML(_xmldesc)), name(rep.name), 
-      xmldesc(rep.xml_description_str), 
-      field_desc_doc(rep.xml_description_doc)
-{
-}
+    : rep(parseXML(_xmldesc))
+{ }
 
-int 
-ExtentType::getColumnNumber(const ParsedRepresentation &rep,
-			    const string &column,
-			    bool missing_ok) 
-{
+int ExtentType::getColumnNumber(const ParsedRepresentation &rep,
+				const string &column,
+				bool missing_ok) {
     for(unsigned int i=0; i<rep.field_info.size(); i++) {
 	if (rep.field_info[i].name == column) {
             LintelLogDebug("ExtentType::GetColNum", boost::format("column %s -> %d\n") % column % i);
@@ -716,7 +711,7 @@ ExtentType::xmlFieldDesc(int field_num) const
 	      "bad field num");
     xmlBufferPtr buf = xmlBufferCreate();
     xmlBufferSetAllocationScheme(buf,XML_BUFFER_ALLOC_DOUBLEIT);
-    xmlNodeDump(buf, field_desc_doc, rep.field_info[field_num].xmldesc, 2, 1);
+    xmlNodeDump(buf, rep.xml_description_doc, rep.field_info[field_num].xmldesc, 2, 1);
     string ret((char *)xmlBufferContent(buf));
     xmlBufferFree(buf);
     return ret;
@@ -756,22 +751,22 @@ ExtentTypeLibrary::registerType(const string &xmldesc)
 {
     const ExtentType &type(sharedExtentType(xmldesc));
     
-    INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
+    INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
 	      boost::format("Type %s already registered")
-	      % type.name);
+	      % type.getName());
 
-    name_to_type[type.name] = &type;
+    name_to_type[type.getName()] = &type;
     return &type;
 }    
 
 void
 ExtentTypeLibrary::registerType(const ExtentType &type)
 {
-    INVARIANT(name_to_type.find(type.name) == name_to_type.end(),
+    INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
 	      boost::format("Type %s already registered")
-	      % type.name);
+	      % type.getName());
 
-    name_to_type[type.name] = &type;
+    name_to_type[type.getName()] = &type;
 }    
 
 const ExtentType *
@@ -804,7 +799,7 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
 		      boost::format("Invalid getTypeByPrefix, two types match prefix '%s': %s and %s\n")
-		      % prefix % f->name % i->first);
+		      % prefix % f->getName() % i->first);
 	    f = i->second;
 	}
     }
@@ -823,7 +818,7 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,
 		      boost::format("Invalid getTypeBySubstring, two types match substring %s: %s and %s\n")
-		      % substr % f->name % i->first);
+		      % substr % f->getName() % i->first);
 	    f = i->second;
 	}
     }
@@ -916,5 +911,4 @@ const ExtentType &ExtentTypeLibrary::sharedExtentType(const string &xmldesc) {
 
 ExtentType::~ExtentType() { 
     SINVARIANT(dataseries::in_tilde_xml_decode);
-    xmlFreeDoc(field_desc_doc);
 }

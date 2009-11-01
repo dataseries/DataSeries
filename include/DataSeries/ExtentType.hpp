@@ -295,14 +295,6 @@ public:
     /** Returns the string used to represent the type in XML */
     static const std::string &fieldTypeString(fieldType ft);
 
-    /** Returns true iff the string prefix is a prefix of the string
-        a; this function is deprecated in preference to
-        Lintel/StringUtil.hpp:prefixequal. */
-    static bool prefixmatch(const std::string &a, const std::string &prefix) {
-	// TODO: deprecate this in preference
-	return prefixequal(a, prefix);
-    }
-
     /** versionCompatible() determines whether Extents created using this type
         are compatible with an application created for a possibly different
         version of the ExtentType.  The version number is of the form
@@ -448,6 +440,10 @@ private:
 	PackPadRecord pad_record;
 	PackFieldOrdering field_ordering;
 	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
+
+	~ParsedRepresentation() {
+	    xmlFreeDoc(xml_description_doc);
+	}
     };
     
     static int getColumnNumber(const ParsedRepresentation &rep,
@@ -460,19 +456,13 @@ private:
     static ParsedRepresentation parseXML(const std::string &xmldesc);
     const ParsedRepresentation rep;
 
-    friend class Variable32Field;
     friend class Extent;
+    friend class Variable32Field;
     friend class ExtentTypeLibrary;
     friend class dataseries::xmlDecode;
 
     ExtentType(const std::string &xmldesc);
     ~ExtentType();
-public:
-    // TODO: switch users of these to getters, then eliminate duplication
-    // with ParsedRepresentation
-    const std::string name;
-    const std::string xmldesc;
-    const xmlDocPtr field_desc_doc;
 private:
     static void parsePackBitFields(ParsedRepresentation &ret, 
 				   int32 &byte_pos);

@@ -48,7 +48,7 @@ Extent *FilterModule::getExtent() {
 	Extent *e = from.getExtent();
 	if (e == NULL)
 	    return NULL;
-	if (ExtentType::prefixmatch(e->type.getName(), type_prefix))
+	if (prefixequal(e->type.getName(), type_prefix))
 	    return e;
 	delete e;
     }
@@ -126,5 +126,5 @@ DataSeriesSink::Stats OutputModule::getStats() {
 }
 
 void OutputModule::printStats(std::ostream &to) {
-    getStats().printText(to, outputtype->name);
+    getStats().printText(to, outputtype->getName());
 }

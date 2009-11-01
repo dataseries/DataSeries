@@ -302,7 +302,7 @@ void DataSeriesSink::close(bool do_fsync) {
     // until after we've already compressed the data.
     index_series.newRecord(); 
     field_extentOffset.set(cur_offset);
-    field_extentType.set(index_extent.type.name);
+    field_extentType.set(index_extent.type.getName());
 
     mutex.lock();
     bytes_in_progress += index_extent.size();
@@ -363,7 +363,7 @@ void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
 	      "must write extent type library before writing extents!\n");
     INVARIANT(valid_types[&e.type],
 	      boost::format("type %s (%p) wasn't in your type library")
-	      % e.type.name % &e.type);
+	      % e.type.getName() % &e.type);
     INVARIANT(!shutdown_workers,
 	      "must not call writeExtent after calling close()");
     queueWriteExtent(e, stats);
@@ -378,20 +378,21 @@ void DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib) {
     for(map<const string, const ExtentType *>::iterator i = lib.name_to_type.begin();
 	i != lib.name_to_type.end();++i) {
 	const ExtentType *et = i->second;
-	if (et->name == "DataSeries: XmlType") {
+	if (et->getName() == "DataSeries: XmlType") {
 	    continue; // no point of writing this out; can't use it.
 	}
 
 	type_extent_series.newRecord();
-	INVARIANT(et->xmldesc.size() > 0, "whoa extenttype has no xml data?!");
-	typevar.set(et->xmldesc.data(),et->xmldesc.size());
+	const string &type_desc(et->getXmlDescriptionString());
+	INVARIANT(!type_desc.empty(), "whoa extenttype has no xml data?!");
+	typevar.set(type_desc);
 	valid_types[et] = true;
 	if ((et->majorVersion() == 0 && et->minorVersion() == 0) ||
 	    et->getNamespace().empty()) {
 	    // Once we have a version of dsrepack/dsselect that can
 	    // change the XML type, we can make this an error.
 	    cerr << boost::format("Warning: type '%s' is missing either a version or a namespace")
-		% et->name << endl;
+		% et->getName() << endl;
 	}
     }
     queueWriteExtent(type_extent, NULL);
@@ -529,7 +530,7 @@ void DataSeriesSink::writeOutPending(bool have_lock) {
 	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
 	index_series.newRecord();
 	field_extentOffset.set(cur_offset);
-	field_extentType.set(tc->extent.type.name);
+	field_extentType.set(tc->extent.type.getName());
 	
 	checkedWrite(tc->compressed.begin(), tc->compressed.size());
 	cur_offset += tc->compressed.size();

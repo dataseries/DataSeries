@@ -176,7 +176,7 @@ main(int argc, char *argv[])
 	for(map<const string, const ExtentType *>::iterator i 
 		= first_source->getLibrary().name_to_type.begin();
 	    i != first_source->getLibrary().name_to_type.end(); ++i) {
-	    cout << i->second->xmldesc << "\n";
+	    cout << i->second->getXmlDescriptionString() << "\n";
 	}
     }
 

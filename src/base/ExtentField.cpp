@@ -70,7 +70,7 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
     INVARIANT(dataseries.type == NULL || field.empty() || 
 	      dataseries.type->getFieldType(field) == ft,
 	      format("mismatch on field types for field %s in type %s")
-	      % field % dataseries.type->name);
+	      % field % dataseries.type->getName());
 }
 
 FixedField::~FixedField()
@@ -198,7 +198,7 @@ Variable32Field::newExtentType()
     INVARIANT(dataseries.type->getFieldType(getName()) 
 	      == ExtentType::ft_variable32,
 	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.type->name);
+	      % getName() % dataseries.type->getName());
 }
 
 void

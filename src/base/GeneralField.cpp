@@ -1432,7 +1432,7 @@ void ExtentRecordCopy::prep() {
     INVARIANT(fixed_copy_size == -1, "internal");
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
-	&& source.type->xmldesc == dest.type->xmldesc) {
+	&& &source.type == &dest.type) {
 	// Can do a bitwise copy.
 	fixed_copy_size = source.type->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
@@ -1448,6 +1448,8 @@ void ExtentRecordCopy::prep() {
 	for(unsigned i=0;i<source.type->getNFields(); ++i) {
 	    const std::string &fieldname = source.type->getFieldName(i);
 	    sourcefields.push_back(GeneralField::create(NULL,source,fieldname));
+	    INVARIANT(dest.type->hasColumn(fieldname),
+		      format("Destination for copy is missing field %s") % fieldname);
 	    destfields.push_back(GeneralField::create(NULL,dest,fieldname));
 	}
     }
@@ -1483,8 +1485,9 @@ void ExtentRecordCopy::copyRecord() {
 	    destvarfields[i]->set(sourcevarfields[i]);
 	}
     } else {
+	SINVARIANT(destfields.size() == sourcefields.size());
 	for(unsigned int i=0;i<sourcefields.size();++i) {
-	    destfields[i]->set(sourcevarfields[i]);
+	    destfields[i]->set(sourcefields[i]);
 	}
     }	
 }

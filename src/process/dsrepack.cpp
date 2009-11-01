@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
 		if (debug) {
 		    cout << "Registering type of name " << j->first << endl;
 		}
-		const ExtentType *t = library.registerType(j->second->xmldesc);
+		const ExtentType *t = library.registerType(j->second->getXmlDescriptionString());
 		per_type_work[j->first] = 
 		    new PerTypeWork(*output, packing_args.extent_size, t);
 	    }
