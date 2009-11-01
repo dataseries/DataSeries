@@ -826,7 +826,7 @@ int main(int argc, char *argv[]) {
 								       ip_time_series_bandwidth_packets_per_second_arg));
     }
 
-    DataSeriesModule::getAndDelete(ipSequence.tail());
+    ipSequence.tail().getAndDelete();
 
     for(SequenceModule::iterator i = ipSequence.begin() + 1;
 	i != ipSequence.end(); ++i) {

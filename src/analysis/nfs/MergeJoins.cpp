@@ -530,7 +530,7 @@ public:
 
 	delete es_attrops.curExtent();
 	es_attrops.clearExtent();
-	output_bytes += outextent->extentsize();
+	output_bytes += outextent->size();
 	return outextent;
     }
 
@@ -891,7 +891,7 @@ public:
 				       % es_commonattr.extent()->extent_source
 				       % es_rw.extent()->extent_source);
 
-	while(outextent->extentsize() < 128*1024) {
+	while(outextent->size() < 128*1024) {
 	restart:
 	    if (es_rw.extent() == NULL || es_rw.morerecords() == false) {
 		nextRWExtent();
@@ -955,7 +955,7 @@ public:
 	    }
 	}
 
-	output_bytes += outextent->extentsize();
+	output_bytes += outextent->size();
 	return outextent;
     }
 

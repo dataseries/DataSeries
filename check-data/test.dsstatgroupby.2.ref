@@ -34,9 +34,8 @@
   tails: 
 # End DSStatGroupByModule
 
-# extents: 0.24 MB -> 0.31 MB in 0.00 secs decode time
+# extents: 0.24 MB -> 0.31 MB
 #                    common
 # MB compressed:       0.24
 # MB uncompressed:     0.31
-# decode seconds:      0.00
 # wait fraction:       0.00

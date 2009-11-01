@@ -44,14 +44,43 @@ using boost::format;
 #define O_LARGEFILE 0
 #endif
 
-DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
-    : indexExtent(NULL), filename(filename), fd(-1), cur_offset(0), read_index(read_index)
+DataSeriesSource::DataSeriesSource(const string &filename, bool read_index, bool check_tail)
+    : indexExtent(NULL), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
+      check_tail(check_tail)
 {
-    reopenfile();
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
     mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0());
-    INVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") 
-	      == &ExtentType::getDataSeriesXMLType(), "internal");
+    SINVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") 
+	      == &ExtentType::getDataSeriesXMLType());
+    reopenfile();
+}
+
+DataSeriesSource::~DataSeriesSource() {
+    if (isactive()) {
+	closefile();
+    }
+    delete indexExtent;
+}
+
+void DataSeriesSource::closefile() {
+    CHECKED(close(fd) == 0,
+	    boost::format("close failed: %s") % strerror(errno));
+    fd = -1;
+}
+
+void DataSeriesSource::reopenfile() {
+    INVARIANT(fd == -1, "trying to reopen non-closed source?!");
+    fd = open(filename.c_str(), O_RDONLY | O_LARGEFILE);
+    INVARIANT(fd >= 0,boost::format("error opening file '%s' for read: %s")
+	      % filename % strerror(errno));
+
+    checkHeader();
+    readTypeExtent();
+    readTailIndex();
+}
+
+void DataSeriesSource::checkHeader() {
+    cur_offset = 0;
     Extent::ByteArray data;
     const int file_header_size = 2*4 + 4*8;
     data.resize(file_header_size);
@@ -60,9 +89,7 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
     INVARIANT(data[0] == 'D' && data[1] == 'S' &&
 	      data[2] == 'v' && data[3] == '1',
 	      "Invalid data series source, not DSv1");
-    typedef ExtentType::int32 int32;
-    typedef ExtentType::int64 int64;
-    int32 check_int = *(int32 *)(data.begin() + 4);
+    int32_t check_int = *(int32_t *)(data.begin() + 4);
     if (check_int == 0x12345678) {
 	need_bitflip = false;
     } else if (check_int == 0x78563412) {
@@ -78,9 +105,9 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
 	Extent::flip8bytes(data.begin()+24);
 	Extent::flip8bytes(data.begin()+32);
     }
-    INVARIANT(*(int32 *)(data.begin() + 4) == 0x12345678,
+    INVARIANT(*(int32_t *)(data.begin() + 4) == 0x12345678,
 	      "int32 check failed");
-    INVARIANT(*(int64 *)(data.begin() + 8) == 0x123456789ABCDEF0LL,
+    INVARIANT(*(int64_t *)(data.begin() + 8) == 0x123456789ABCDEF0LL,
 	      "int64 check failed");
     INVARIANT(fabs(3.1415926535897932384 - *(double *)(data.begin() + 16)) 
 	      < 1e-18, "fixed double check failed");
@@ -88,6 +115,9 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
 	      "infinity double check failed");
     INVARIANT(*(double *)(data.begin() + 32) != *(double *)(data.begin() + 32),
 	      "NaN double check failed");
+}
+
+void DataSeriesSource::readTypeExtent() {
     Extent::ByteArray extentdata;
     INVARIANT(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 	      "Invalid file, must have a first extent");
@@ -102,10 +132,15 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
 	mylibrary.registerType(v);
     }
     delete e;
-    // TODO-brad/alistair: Make skipping the tail check a separate
-    // flag, you may want the verify the file was properly closed
-    // separately from reading the index.
+}
+
+void DataSeriesSource::readTailIndex() {
     if (read_index) {
+	check_tail = true;
+    }
+
+    off64_t indexoffset = -1;
+    if (check_tail) {
 	struct stat ds_file_stats;
 	int ret_val = fstat(fd,&ds_file_stats);
 	INVARIANT(ret_val == 0,
@@ -121,50 +156,21 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index)
 	    Extent::flip4bytes(tail+4);
 	    Extent::flip8bytes(tail+16);
 	}
-	int32 packedsize = *(int32 *)(tail + 4);
-	off64_t indexoffset = *(int64 *)(tail + 16);
+	int32_t packedsize = *(int32_t *)(tail + 4);
+	indexoffset = *(int64_t *)(tail + 16);
 	INVARIANT(tailoffset - packedsize == indexoffset,
 		boost::format("mismatch on index offset %d - %d != %d!")
 		% tailoffset % packedsize % indexoffset);
+    }
+    delete indexExtent;
+    indexExtent = NULL;
+    if (read_index) {
 	indexExtent = preadExtent(indexoffset);
 	INVARIANT(indexExtent != NULL, "index extent read failed");
     }
-}
+}    
 
-DataSeriesSource::~DataSeriesSource()
-{
-    if (isactive()) {
-	closefile();
-    }
-    // TODO-brad/alistair: why protect the delete?  It should have
-    // been null (it wasn't I fixed it).  Also check users of the
-    // indexExtent in a source and verify they all check if it's not
-    // null before accessing it.  DSS's opened with the read_index
-    // flag == false could leak out.
-    if (read_index) {
-	delete indexExtent;
-    }
-}
-
-void
-DataSeriesSource::closefile()
-{
-    CHECKED(close(fd) == 0,
-	    boost::format("close failed: %s") % strerror(errno));
-    fd = -1;
-}
-
-void
-DataSeriesSource::reopenfile()
-{
-    INVARIANT(fd == -1, "trying to reopen non-closed source?!");
-    fd = open(filename.c_str(), O_RDONLY | O_LARGEFILE);
-    INVARIANT(fd >= 0,boost::format("error opening file '%s' for read: %s")
-	      % filename % strerror(errno));
-}
-
-Extent *
-DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize) {
+Extent *DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize) {
     Extent::ByteArray extentdata;
     
     off64_t save_offset = offset;
@@ -226,12 +232,9 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
 {
     stats.packed_size += 2*4 + 4*8;
 
-    if (filename == "-") {
-	fd = fileno(stdout);
-    } else {
-	fd = open(filename.c_str(), 
-		  O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
-    }
+    INVARIANT(filename != "-", "opening stdout as a file isn't expected to work, and '-' as a filename makes little sense");
+    fd = open(filename.c_str(), 
+	      O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
     INVARIANT(fd >= 0, boost::format("Error opening %s for write: %s")
 	      % filename % strerror(errno));
     const string filetype = "DSv1";
@@ -266,16 +269,13 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
     }
 }
 
-DataSeriesSink::~DataSeriesSink()
-{
+DataSeriesSink::~DataSeriesSink() {
     if (cur_offset > 0) {
 	close();
     }
 }
 
-void
-DataSeriesSink::close(bool do_fsync)
-{
+void DataSeriesSink::close(bool do_fsync) {
     INVARIANT(wrote_library,
 	      "error: never wrote the extent type library?!");
     INVARIANT(cur_offset >= 0, "error: close called twice?!");
@@ -296,8 +296,6 @@ DataSeriesSink::close(bool do_fsync)
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");
     ExtentType::int64 index_offset = cur_offset;
     
-    // TODO: make a warning and/or test case for this?
-
     // Special case handling of record for index series; this will
     // present "difficulties" in the future when we want to put the
     // compression type into the index series since we don't know that
@@ -350,9 +348,7 @@ DataSeriesSink::close(bool do_fsync)
     mutex.unlock();
 }
 
-void
-DataSeriesSink::checkedWrite(const void *buf, int bufsize)
-{
+void DataSeriesSink::checkedWrite(const void *buf, int bufsize) {
     ssize_t ret = write(fd,buf,bufsize);
     INVARIANT(ret != -1,
 	      boost::format("Error on write of %d bytes: %s")
@@ -362,9 +358,7 @@ DataSeriesSink::checkedWrite(const void *buf, int bufsize)
 	      % ret % bufsize % strerror(errno));
 }
 
-void
-DataSeriesSink::writeExtent(Extent &e, Stats *stats)
-{
+void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
     INVARIANT(wrote_library,
 	      "must write extent type library before writing extents!\n");
     INVARIANT(valid_types[&e.type],
@@ -375,9 +369,7 @@ DataSeriesSink::writeExtent(Extent &e, Stats *stats)
     queueWriteExtent(e, stats);
 }
 
-void
-DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
-{
+void DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib) {
     INVARIANT(!wrote_library, "Can only write extent library once");
     ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
     Extent type_extent(type_extent_series);
@@ -409,9 +401,7 @@ DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib)
     mutex.unlock();
 }
 
-void
-DataSeriesSink::removeStatsUpdate(Stats *would_update)
-{
+void DataSeriesSink::removeStatsUpdate(Stats *would_update) {
     // need this to keep stats updates in processToCompress from getting a half-written pointer
     PThreadAutoLocker lock1(Stats::getMutex()); 
     // need this to keep anyone else from changing pending_work while we fiddle with it.
@@ -427,11 +417,9 @@ DataSeriesSink::removeStatsUpdate(Stats *would_update)
     }
 }
 
-void
-DataSeriesSink::verifyTail(ExtentType::byte *tail,
+void DataSeriesSink::verifyTail(ExtentType::byte *tail,
 			   bool need_bitflip,
-			   const string &filename)
-{
+			   const string &filename) {
     // Only thing we can't check here is a match between the offset of
     // the tail and the offset stored in the tail.
     for(int i=0;i<4;i++) {
@@ -506,9 +494,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 	
 }
 
-void
-DataSeriesSink::flushPending()
-{
+void DataSeriesSink::flushPending() {
     mutex.lock();
     while(bytes_in_progress > 0) {
 	available_queue_cond.wait(mutex);
@@ -523,9 +509,7 @@ DataSeriesSink::Stats DataSeriesSink::getStats() {
     return ret;
 }
 
-void
-DataSeriesSink::writeOutPending(bool have_lock)
-{
+void DataSeriesSink::writeOutPending(bool have_lock) {
     if (!have_lock) {
 	mutex.lock();
     }
@@ -568,8 +552,7 @@ DataSeriesSink::writeOutPending(bool have_lock)
     mutex.unlock();
 }
 
-static void get_thread_cputime(struct timespec &ts)
-{
+static void get_thread_cputime(struct timespec &ts) {
     ts.tv_sec = 0; ts.tv_nsec = 0;
 
     // getrusage combines all the threads together so results in
@@ -589,12 +572,8 @@ static void get_thread_cputime(struct timespec &ts)
 
 // This function assumes that bytes_in_progress was updated to the
 // uncompressed size prior to calling the function.
-void
-DataSeriesSink::lockedProcessToCompress(toCompress *work)
-{
-    // TODO: consider switching all of the size updates over to
-    // looking at the reserved space rather than the used space.
-    INVARIANT(bytes_in_progress >= work->extent.size(), "internal");
+void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
+    SINVARIANT(bytes_in_progress >= work->extent.size());
     size_t uncompressed_size = work->extent.size();
     bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
     LintelLogDebug("DataSeriesSink", 
@@ -657,9 +636,7 @@ DataSeriesSink::lockedProcessToCompress(toCompress *work)
     bytes_in_progress += work->compressed.size(); // add in the compressed bits
 }
 
-void 
-DataSeriesSink::compressorThread() 
-{
+void  DataSeriesSink::compressorThread()  {
 #if 0
     // This didn't seem to have any actual effect; it should have let the
     // copy thread run at 100%, but it didn't seem to have that effect.
@@ -708,9 +685,7 @@ DataSeriesSink::compressorThread()
     mutex.unlock();
 }
 
-void
-DataSeriesSink::writerThread()
-{
+void DataSeriesSink::writerThread() {
     mutex.lock();
     while(!shutdown_workers) {
 	if (!pending_work.empty() &&
@@ -724,9 +699,7 @@ DataSeriesSink::writerThread()
     mutex.unlock();
 }
 
-void
-DataSeriesSink::Stats::reset()
-{
+void DataSeriesSink::Stats::reset() {
     use_count = 0;
 
     extents = compress_none = compress_lzo = compress_gzip 
@@ -736,17 +709,14 @@ DataSeriesSink::Stats::reset()
     pack_time = 0;
 }
 
-DataSeriesSink::Stats::~Stats()
-{
+DataSeriesSink::Stats::~Stats() {
     INVARIANT(use_count == 0, 
 	      boost::format("deleting Stats %p before %d == use_count == 0\n"
 			    "you need to have called sink.removeStatsUpdate()")
 	      % this % use_count);
 }
 
-DataSeriesSink::Stats &
-DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
-{
+DataSeriesSink::Stats &DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from) {
     extents += from.extents;
     compress_none += from.compress_none;
     compress_lzo += from.compress_lzo;
@@ -764,9 +734,7 @@ DataSeriesSink::Stats::operator+=(const DataSeriesSink::Stats &from)
     return *this;
 }
 
-DataSeriesSink::Stats &
-DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
-{
+DataSeriesSink::Stats &DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from) {
     extents -= from.extents;
     compress_none -= from.compress_none;
     compress_lzo -= from.compress_lzo;
@@ -783,9 +751,7 @@ DataSeriesSink::Stats::operator-=(const DataSeriesSink::Stats &from)
     return *this;
 }
 
-DataSeriesSink::Stats &
-DataSeriesSink::Stats::operator =(const Stats &from)
-{
+DataSeriesSink::Stats &DataSeriesSink::Stats::operator =(const Stats &from) {
     if (this == &from) {
 	return *this;
     }
@@ -794,14 +760,12 @@ DataSeriesSink::Stats::operator =(const Stats &from)
     return *this;
 }
 
-void
-DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed, 
-			      uint32_t unp_var_raw, uint32_t unp_variable, 
-			      uint32_t pkd_size, uint32_t pkd_var_size, 
-			      double pkd_time, 
-			      unsigned char fixed_compress_mode,
-			      unsigned char variable_compress_mode)
-{
+void DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed, 
+				   uint32_t unp_var_raw, uint32_t unp_variable, 
+				   uint32_t pkd_size, uint32_t pkd_var_size, 
+				   double pkd_time, 
+				   unsigned char fixed_compress_mode,
+				   unsigned char variable_compress_mode) {
     ++extents;
     unpacked_size += unp_size;
     unpacked_fixed += unp_fixed;
@@ -817,9 +781,7 @@ DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed,
     }
 }
 
-void
-DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode)
-{
+void DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode) {
     switch(compress_mode) 
 	{
 	case 0: ++compress_none; break;
@@ -835,9 +797,7 @@ DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode)
 
 // TODO: make this take a int64 records argument also, default -1, and
 // print out record counts, etc, like logfu2ds.C
-void
-DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
-{
+void DataSeriesSink::Stats::printText(ostream &to, const string &extent_type) {
     if (extent_type.empty()) {
 	to << boost::format("  wrote %d extents\n")
 	    % extents;
@@ -856,9 +816,7 @@ DataSeriesSink::Stats::printText(ostream &to, const string &extent_type)
 	% packed_size % pack_time;
 }
 
-PThreadMutex &
-DataSeriesSink::Stats::getMutex()
-{
+PThreadMutex &DataSeriesSink::Stats::getMutex() {
     static PThreadMutex mutex;
     
     return mutex;

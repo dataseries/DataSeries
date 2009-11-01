@@ -38,26 +38,6 @@ SET(INCLUDE_FILES
 	cryptutil.hpp
 )
 
-SET(TRANSITIONAL_INCLUDE_FILES
-	DataSeriesFile.H
-	DStoTextModule.H
-	Extent.H
-	ExtentField.H
-	ExtentSeries.H
-	ExtentType.H
-	GeneralField.H
-	GroupByModule.H
-	IndexSourceModule.H
-	MinMaxIndexModule.H
-	DataSeriesModule.H
-	PrefetchBufferModule.H
-	RowAnalysisModule.H
-	SequenceModule.H
-	TypeIndexModule.H
-	commonargs.H
-	cryptutil.H
-)
-
 SET(DATASERIES_BZIP2_ENABLED ${BZIP2_ENABLED})
 SET(DATASERIES_LZO_ENABLED ${LZO_ENABLED})
 SET(DATASERIES_CRYPTO_ENABLED ${CRYPTO_ENABLED})
@@ -67,7 +47,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Config.hpp.in
 
 ################################## INSTALL
 
-INSTALL(FILES ${INCLUDE_FILES} ${TRANSITIONAL_INCLUDE_FILES}
+INSTALL(FILES ${INCLUDE_FILES} 
         ${CMAKE_CURRENT_BINARY_DIR}/Config.hpp
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/include/DataSeries)
 

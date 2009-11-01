@@ -260,7 +260,7 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
 					      
     *var_data = data_size;
 
-#if defined(COMPILE_DEBUG)
+#if LINTEL_DEBUG
     // we get to avoid zeroing since it happens automatically for us
     // when we resize the bytearray
     for(++var_data; data_size > 0; data_size -= 4) {
@@ -268,7 +268,7 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
     }
 #endif
 
-#if defined(COMPILE_DEBUG)
+#if LINTEL_DEBUG
     selfcheck(dataseries.extent()->variabledata,varoffset);
 #endif
 

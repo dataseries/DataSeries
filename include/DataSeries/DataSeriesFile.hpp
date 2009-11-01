@@ -29,13 +29,15 @@ public:
         its index @c Extent. Sets the current offset to the first @c
         Extent in the file.  Optionally does not read extentIndex at
         the end of the file to optimize open time when using an
-        external extent index (as with dsextentindex).
+        external extent index (as with dsextentindex), similarly, the check
+	that the file was properly closed can also be skipped.  Note that if
+	you want to read the index, the tail will be automatically checked.
 
         Preconditions:
             - The file must exist and must be a DataSeries file.
         Postconditions:
             - isactive() */
-    DataSeriesSource(const std::string &filename, bool read_index = true);
+    DataSeriesSource(const std::string &filename, bool read_index = true, bool check_tail = true);
     ~DataSeriesSource();
 
     /** Returns the @c Extent at the current offset. Sets the current offset
@@ -82,12 +84,8 @@ public:
             - The file must be open. */
     void closefile();
 
-    /** Opens the file. Note that there is no way to change the name of
+    /** Re-opens the file. Note that there is no way to change the name of
         the file.
-	TODO-eric: fix reopen to reset the offset to the start of the file.
-        Warning: the offset is unchanged by a close/reopen. There is no
-        way to adjust the offset, so if the underlying file is changed,
-        @c readExtent may become unusable.
 
         Preconditions:
             - The file must be closed. */
@@ -118,14 +116,17 @@ public:
     /** get the Filename associated with this file */
     const std::string &getFilename() { return filename; }
 private:
+    void checkHeader();
+    void readTypeExtent();
+    void readTailIndex();
+
     ExtentTypeLibrary mylibrary;
 
     const std::string filename;
     typedef ExtentType::byte byte;
     int fd;
     off64_t cur_offset;
-    bool need_bitflip;
-    bool read_index;
+    bool need_bitflip, read_index, check_tail;
 };
 
 /** \brief Writes Extents to a DataSeries file.
@@ -212,7 +213,6 @@ public:
     };
 
     /** \arg filename is the name of the file to write to.
-            If it is "-", will write to stdout.
 
         \arg compression_modes Indicates which compression
             algorithms should be tried.  See \link Extent_compress Extent::compress \endlink
@@ -221,7 +221,6 @@ public:
             9 gives the best compression in general.  See the documentation of the
             underlying compression libraries for detail. 
             
-        \todo TODO-eric: Remove the use of "-" == stdout). 
     */
     DataSeriesSink(const std::string &filename,
 		   int compression_modes = Extent::compress_all,

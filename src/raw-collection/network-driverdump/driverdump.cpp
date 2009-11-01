@@ -19,12 +19,14 @@
 // now is to make stop-tracing send a signal to all of the threads.
 
 #include <string>
-using namespace std;
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/PThread.hpp>
 #include <linux/wait.h>
 #include "kernel-driver-add.h"
+
+using namespace std;
+using boost::format;
 
 PThreadMutex mutex;
 PThreadCond cond;
@@ -51,9 +53,7 @@ int sigcount = 0;
 static void 
 signal_handler(int sig) {
     ++sigcount;
-    fprintf(stderr,"signal %d recieved %d count, abort after 20\n",
-	    sig,sigcount);
-    fflush(stderr);
+    cerr << format("signal %d recieved %d count, abort after 20") % sig % sigcount << endl;
     everyone_ok = false;
     if (sigcount > 20)
 	abort();
@@ -64,8 +64,7 @@ bool
 check_enough_freespace(FILE *fp)
 {
     struct statvfs fs_stats;
-    AssertAlways(fstatvfs(fileno(fp),&fs_stats) == 0,
-		 ("fstatfs failed: %s\n",strerror(errno)));
+    CHECKED(fstatvfs(fileno(fp),&fs_stats) == 0, format("fstatfs failed: %s") % strerror(errno));
 
     if (false) {
 	cout << boost::format("freespace %ld available blocks %ld free blocks %ld blocksize\n")
@@ -74,9 +73,8 @@ check_enough_freespace(FILE *fp)
     long long freebytes = (long long)fs_stats.f_bsize * (long long)fs_stats.f_bavail;
     long long needbytes = (long long)buffer_size * (long long)nthreads;
     if (freebytes < needbytes) {
-	printf("Not enough free space on output filesystem, %lld < %lld\n",
-	       freebytes,needbytes);
-	fflush(stdout);
+	cout << format("Not enough free space on output filesystem, %d < %d")
+	    % freebytes % needbytes << endl;
 	return false;
     } else {
 	return true;
@@ -94,7 +92,7 @@ dpd_dofile(struct ifreq *ifreq,
     sprintf(dpd->filename,"%s.drvdump.pending.%d",
 	    output_basename,my_unique_id);
     FILE *pending_file = fopen(dpd->filename,"w");
-    AssertAlways(pending_file != NULL, ("can't open file"));
+    INVARIANT(pending_file != NULL, "can't open file");
 
     if (!check_enough_freespace(pending_file)) {
 	fclose(pending_file);
@@ -111,20 +109,18 @@ dpd_dofile(struct ifreq *ifreq,
     hdr.snaplen = 32768;
     hdr.linktype = 1; // LINKTYPE_ETHERNET
 
-    AssertAlways(fwrite(&hdr,sizeof(hdr),1,pending_file) == 1,
-		 ("write failed"));
-    AssertAlways(fseek(pending_file,dpd->npages * page_size,SEEK_SET) == 0,
-		 ("fseek failed"));
-    AssertAlways(fwrite(&dpd->npages,sizeof(int),1,pending_file) == 1,
-		 ("write failed"));
-    AssertAlways(fflush(pending_file) == 0,("fflush failed"));
+    CHECKED(fwrite(&hdr,sizeof(hdr),1,pending_file) == 1, "write failed");
+    CHECKED(fseek(pending_file,dpd->npages * page_size,SEEK_SET) == 0, "fseek failed");
+    CHECKED(fwrite(&dpd->npages,sizeof(int),1,pending_file) == 1, "write failed");
+    CHECKED(fflush(pending_file) == 0, "fflush failed");
     if (!check_enough_freespace(pending_file)) {
 	fclose(pending_file);
 	return false;
     }
     dpd->subcmd = driver_packet_dump_file;
-    if (debug_dpd_dofile)
-	printf("%d make ioctl %s\n",my_unique_id, dpd->filename);
+    if (debug_dpd_dofile) {
+	cout << format("%d make ioctl %s\n") % my_unique_id % dpd->filename;
+    }
     int err = ioctl(socket_fd, SIOCDRIVERPACKETDUMP, ifreq);
     if (err == 0) {
 	char *foo = new char[strlen(output_basename) + 64];
@@ -136,30 +132,27 @@ dpd_dofile(struct ifreq *ifreq,
 	total_output_bytes += dpd->bytes_written;
 	long long tmp_bytes = total_output_bytes;
 	mutex.unlock();
-	if (debug_dpd_dofile)
-	    printf("dofile %d bytes, idx %d -> %s\n",
-		   dpd->bytes_written, dpd->file_index, foo);
-	AssertAlways(ftruncate(fileno(pending_file), dpd->bytes_written) == 0,
-		     ("truncate failed: %s\n",strerror(errno)));
-	AssertAlways(fclose(pending_file) == 0,
-		     ("close failed"));
+	if (debug_dpd_dofile) {
+	    cout << format("dofile %d bytes, idx %d -> %s\n")
+		% dpd->bytes_written % dpd->file_index % foo;
+	}
+	CHECKED(ftruncate(fileno(pending_file), dpd->bytes_written) == 0,
+		format("truncate failed: %s") % strerror(errno));
+	CHECKED(fclose(pending_file) == 0, "close failed");
     
-	AssertAlways(rename(dpd->filename,foo) == 0,
-		     ("rename failed"));
-	printf("finished with file %s, %.2f GiB total output\n",
-	       foo,(double)tmp_bytes/(1024.0*1024.0*1024.0));
+	CHECKED(rename(dpd->filename,foo) == 0, "rename failed");
+	cout << format("finished with file %s, %.2f GiB total output\n")
+	    % foo % ((double)tmp_bytes/(1024.0*1024.0*1024.0));
 	fflush(stdout);
 	delete foo;
 	if ((dpd->file_index+1) >= global_max_file_count) {
-	    printf("Finished with all files\n");
+	    cout << "Finished with all files\n";
 	    return false;
 	}
 	return true;
     } else {
-	printf("failure on processing file: %s (%d)\n", strerror(errno),err);
-	fflush(stdout);
-	AssertAlways(fclose(pending_file) == 0,
-		     ("close failed"));
+	cout << format("failure on processing file: %s (%d)") % strerror(errno) % err << endl;
+	CHECKED(fclose(pending_file) == 0, "close failed");
     
 	return false;
     }
@@ -185,22 +178,19 @@ dofile_pthread_start(void *arg)
     while(dpd_dofile(&ifreq,&dpd,my_id)) {
 	mutex.lock();
 	if (!everyone_ok) {
-	    printf("everyone not ok, worker %d exiting\n", my_id);
-	    fflush(stdout);
+	    cout << format("everyone not ok, worker %d exiting") % my_id << endl;
 	    mutex.unlock();
 	    break;
 	}
 	mutex.unlock();
     }
-    printf("finishing dumper %d\n",my_id);
-    fflush(stdout);
+    cout << format("finishing dumper %d") % my_id << endl;
     mutex.lock();
     everyone_ok = false;
     --threads_running;
     cond.signal();
     mutex.unlock();
-    printf("dumper returning\n");
-    fflush(stdout);
+    cout << "dumper returning" << endl;
     return NULL;
 }
 
@@ -208,7 +198,7 @@ double
 gettime()
 {
     struct timeval tv;
-    AssertAlways(gettimeofday(&tv,NULL) == 0,("gettimeofday failed"));
+    CHECKED(gettimeofday(&tv,NULL) == 0, "gettimeofday failed");
     return tv.tv_sec + tv.tv_usec/1.0e6;
 }
 
@@ -219,8 +209,7 @@ print_stats(struct driver_packet_dump_ioctl &cur, double curtime,
 {
     double elapsed_time = curtime - prevtime;
     if (elapsed_time < 0.01) {
-	printf("whoa, instant return\n");
-	fflush(stdout);
+	cout << "whoa, instant return" << endl;
 	return;
     }
     double pps = (cur.copy_packets - prev.copy_packets) / elapsed_time;
@@ -232,12 +221,11 @@ print_stats(struct driver_packet_dump_ioctl &cur, double curtime,
 
     struct tm *date = localtime(&now);
 
-    printf("%02d-%02d %02d:%02d:%02d.%02d - %s: %.3f kpps, %.6f MiB/s; drops: %.0f pps %.2f KiB/s\n",
-	   date->tm_mon+1,date->tm_mday, date->tm_hour, date->tm_min, date->tm_sec,
-	   (int)floor(100*(curtime - (double)now)),
-	   prefix.c_str(), pps/1024.0, bps/(1024.0*1024.0), 
-	   dpps, dbps/1024.0);
-    fflush(stdout);
+    cout << format("%02d-%02d %02d:%02d:%02d.%02d - %s: %.3f kpps, %.6f MiB/s; drops: %.0f pps %.2f KiB/s\n")
+	% (date->tm_mon+1) % date->tm_mday % date->tm_hour % date->tm_min % date->tm_sec
+	% ((int)floor(100*(curtime - (double)now))) % prefix % (pps/1024.0)
+	% (bps/(1024.0*1024.0)) % dpps % (dbps/1024.0);
+    cout.flush();
 }
 
 void *
@@ -257,7 +245,7 @@ dostats_pthread_start(void *arg)
     cond.signal();
     mutex.unlock();
 
-    printf("starting stats thread...\n");
+    cout << "starting stats thread...\n";
 
     struct driver_packet_dump_ioctl start; double start_time, last_long_stats;
     struct driver_packet_dump_ioctl dpd_prev; double dpd_prev_time;
@@ -265,8 +253,8 @@ dostats_pthread_start(void *arg)
 
     dpd.subcmd = driver_packet_dump_getstats;
 
-    AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
-		 ("error in test: %s\n",strerror(errno)));
+    CHECKED(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
+	    format("error in test: %s") % strerror(errno));
     start = dpd;
     dpd_prev = dpd;
     dpd_prev_60 = dpd;
@@ -282,8 +270,8 @@ dostats_pthread_start(void *arg)
     sprintf(quick_header,"%ds int",quick_stats_interval);
 
     while(true) {
-	AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
-		     ("error in test: %s\n",strerror(errno)));
+	CHECKED(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
+		format("error in test: %s") % strerror(errno));
 	double curtime = gettime();
 	if ((curtime - dpd_prev_time) >= quick_stats_interval_min) {
 	    print_stats(dpd,curtime,dpd_prev,dpd_prev_time,quick_header);
@@ -291,8 +279,8 @@ dostats_pthread_start(void *arg)
 	    if ((curtime - dpd_prev_60_time) >= 60.0) {
 		print_stats(dpd,curtime,dpd_prev_60,dpd_prev_60_time,"60s int");
 		mutex.lock();
-		printf("  last output index %d; %.2f GiB total output\n",
-		       last_output_filenum, (double)total_output_bytes/(1024.0*1024.0*1024.0));
+		cout << format("  last output index %d; %.2f GiB total output\n")
+		    % last_output_filenum % ((double)total_output_bytes/(1024.0*1024.0*1024.0));
 		fflush(stdout);
 		mutex.unlock();
 		dpd_prev_60 = dpd;
@@ -306,7 +294,7 @@ dostats_pthread_start(void *arg)
 
 	mutex.lock();
 	if (stop_stats) {
-	    printf("finishing stats threads.\n");
+	    cout << "finishing stats threads.\n";
 	    fflush(stdout);
 	    print_stats(dpd,curtime,start,start_time,"overall");
 	    --threads_running;
@@ -320,7 +308,7 @@ dostats_pthread_start(void *arg)
 	tv.tv_usec = 0;
 	select(0,NULL,NULL,NULL,&tv);
     }
-    printf("stats thread returning\n");
+    cout << "stats thread returning\n";
     fflush(stdout);
     return NULL;
 }
@@ -328,14 +316,13 @@ dostats_pthread_start(void *arg)
 void
 usage(char *progname)
 {
-    printf("Usage: %s [-b <buffer_mb>] [-h (help)]\n",
-	   progname);
-    printf("     [-i <interface-name>] [-o <output-basename>] [-t <nthreads>]\n");
-    printf("     [-s (getstats)] [-q <quick-stats-interval-secs>]\n");
-    printf("     default basename: %s\n", output_basename);
-    printf("     interface name: %s\n", interface_name);
-    printf("     buffer_size: %dMB\n",buffer_size/(1024*1024));
-    printf("     threads: %d\n",nthreads);
+    cout << format("Usage: %s [-b <buffer_mb>] [-h (help)]\n") % progname;
+    cout << format("     [-i <interface-name>] [-o <output-basename>] [-t <nthreads>]\n");
+    cout << format("     [-s (getstats)] [-q <quick-stats-interval-secs>]\n");
+    cout << format("     default basename: %s\n") % output_basename;
+    cout << format("     interface name: %s\n") % interface_name;
+    cout << format("     buffer_size: %dMB\n") % (buffer_size/(1024*1024));
+    cout << format("     threads: %d\n") % nthreads;
 }
 
 void
@@ -350,9 +337,9 @@ get_driverdump_options(int argc, char *argv[])
 		buffer_size = atoi(optarg) * 1024 * 1024;
 		if (buffer_size == 0) {
 		    buffer_size = 262144;
-		    printf("using special case buffer size of %d bytes\n", buffer_size);
+		    cout << format("using special case buffer size of %d bytes\n") % buffer_size;
 		}
-		AssertAlways(buffer_size > 0,("invalid buffer size\n"));
+		INVARIANT(buffer_size > 0, "invalid buffer size");
 		break;
 	    case 'h':
 		usage(argv[0]);
@@ -364,36 +351,36 @@ get_driverdump_options(int argc, char *argv[])
 		break;
 	    case 'n':
 		global_max_file_count = atoi(optarg);
-		AssertAlways(global_max_file_count > 0, ("no"));
+		SINVARIANT(global_max_file_count > 0);
 		break;
 	    case 'o':
 		strcpy(output_basename,optarg);
 		break;
 	    case 'q':
 		quick_stats_interval = atoi(optarg);
-		AssertAlways(quick_stats_interval > 0,("invalid quick stats interval"));
+		INVARIANT(quick_stats_interval > 0, "invalid quick stats interval");
 		break;
 	    case 's': 
 		getstats = true;
 		break;
 	    case 't':
 		nthreads = atoi(optarg);
-		AssertAlways(nthreads > 0,("invalid nthreads\n"));
+		INVARIANT(nthreads > 0, "invalid nthreads");
 		break;
 	    case 'z':
 		do_driverdump_test = true;
 		break;
 	    case '?':
 		usage(argv[0]);
-		AssertFatal(("invalid option %c",optopt));
+		FATAL_ERROR(format("invalid option %c") % optopt);
 		break;
 	    default:
-		AssertFatal(("internal"));
+		FATAL_ERROR("internal");
 	    }
     }
     if (optind != argc) {
 	usage(argv[0]);
-	AssertFatal(("unexpected option %s",argv[optind]));
+	FATAL_ERROR(format("unexpected option %s") % argv[optind]);
     }
 }
 
@@ -446,15 +433,15 @@ main(int argc, char *argv[])
     memset(&dpd, 0, sizeof(dpd));
 
     socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    AssertAlways(socket_fd > 0,("can't get socket: %s",strerror(errno)));
+    INVARIANT(socket_fd > 0, format("can't get socket: %s") % strerror(errno));
 
     dpd.subcmd = driver_packet_dump_finish;
     ifreq.ifr_data = (char *)&dpd;
 
     if (getstats) {
 	dpd.subcmd = driver_packet_dump_getstats;
-	AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
-		     ("error in test: %s\n",strerror(errno)));
+	CHECKED(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
+		format("error in test: %s") % strerror(errno));
 	cout << boost::format("copy: packets %d; bytes %d\n")
 	    % dpd.copy_packets % dpd.copy_bytes;
 	cout << boost::format("drop: packets %d; bytes %d\n")
@@ -466,24 +453,21 @@ main(int argc, char *argv[])
     if (err == 0 || (err == -1 && errno == ENOENT)) {
 	// ok
     } else {
-	AssertFatal(("prepare 'finish' ioctl failed: (%d,%d) %s",
-		     err,errno,strerror(errno)));
+	FATAL_ERROR(format("prepare 'finish' ioctl failed: (%d,%d) %s")
+		    % err % errno % strerror(errno));
     }
 
     if (do_driverdump_test) {
 	dpd.subcmd = driver_packet_dump_test;
 	sprintf(dpd.filename,"/mnt/tmpfs/drvdump.1731.pending");
 	FILE *pending_file = fopen(dpd.filename,"w");
-	AssertAlways(fseek(pending_file,1024*1024,SEEK_SET) == 0,
-		     ("fseek failed"));
-	AssertAlways(fwrite(&dpd.npages,sizeof(int),1,pending_file) == 1,
-		     ("write failed"));
-	AssertAlways(fflush(pending_file) == 0,("fflush failed"));
-	AssertAlways(fclose(pending_file) == 0,
-		     ("close failed"));
-	AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
-		     ("error in test: %s\n",strerror(errno)));
-	printf("**** TEST SUCCESSFULL\n");
+	CHECKED(fseek(pending_file,1024*1024,SEEK_SET) == 0, "fseek failed");
+	CHECKED(fwrite(&dpd.npages,sizeof(int),1,pending_file) == 1, "write failed");
+	CHECKED(fflush(pending_file) == 0, "fflush failed");
+	CHECKED(fclose(pending_file) == 0, "close failed");
+	CHECKED(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
+		format("error in test: %s") % strerror(errno));
+	cout << "**** TEST SUCCESSFULL\n";
 	exit(0);
     }
 
@@ -492,29 +476,28 @@ main(int argc, char *argv[])
     sa.sa_handler = signal_handler;
     sigemptyset(&(sa.sa_mask));
     sa.sa_flags = 0;
-    AssertAlways(sigaction(SIGINT,&sa,0) == 0 && sigaction(SIGHUP,&sa,0) == 0 &&
-		 sigaction(SIGTERM,&sa,0) == 0,
-		 ("sigaction failed"));
+    CHECKED(sigaction(SIGINT,&sa,0) == 0 && sigaction(SIGHUP,&sa,0) == 0 &&
+	    sigaction(SIGTERM,&sa,0) == 0, "sigaction failed");
+	    
 
     dpd.subcmd = driver_packet_dump_setup;
     page_size = ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq);
-    AssertAlways(page_size > 0,
-		 ("bad pagesize %d %s\n",page_size,strerror(errno)));
+    INVARIANT(page_size > 0, format("bad pagesize %d %s\n") % page_size % strerror(errno));
 
     for(int i=1;i<nthreads;i++) {
 	pthread_t tid;
-	printf("starting file thread\n");
-	AssertAlways(pthread_create(&tid,NULL,dofile_pthread_start,NULL) == 0,
-		     ("pthread_create failed"));
+	cout << "starting file thread\n";
+	CHECKED(pthread_create(&tid,NULL,dofile_pthread_start,NULL) == 0,
+		"pthread_create failed");
     }
 
     bool do_stats_thread = true || buffer_size > 64*1024;
     if (do_stats_thread) {
 	pthread_t tid;
-	AssertAlways(pthread_create(&tid,NULL,dostats_pthread_start,NULL) == 0,
-		     ("pthread_create failed"));
+	CHECKED(pthread_create(&tid,NULL,dostats_pthread_start,NULL) == 0,
+		"pthread_create failed");
     } else {
-	printf("skipping stats thread\n");
+	cout << "skipping stats thread\n";
 	mutex.lock();
 	++threads_running;
 	mutex.unlock();
@@ -527,7 +510,7 @@ main(int argc, char *argv[])
     mutex.unlock();
 
     int promisc_fd=socket(PF_PACKET, SOCK_RAW, 0);
-    AssertAlways(promisc_fd > 0,("error on socket\n"));
+    INVARIANT(promisc_fd > 0, "error on socket");
 
     // enable promiscuous....
     promiscuous_modify(promisc_fd, interface_name,true);
@@ -542,20 +525,18 @@ main(int argc, char *argv[])
 	threads_running--;
     }
     while (threads_running > 0) {
-	printf("waiting %d\n",threads_running);
-	fflush(stdout);
+	cout << format("waiting %d") % threads_running << endl;
 	cond.wait(mutex);
     }
     mutex.unlock();
-    printf("closing down packet dumping...\n");
+    cout << "closing down packet dumping...\n";
     fflush(stdout);
     promiscuous_modify(promisc_fd, interface_name,false);
 
     dpd.subcmd = driver_packet_dump_finish;
-    AssertAlways(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
-		 ("'finish' ioctl failed: (%d,%s)\n",errno,strerror(errno)));
+    CHECKED(ioctl(socket_fd, SIOCDRIVERPACKETDUMP, &ifreq) == 0,
+	    format("'finish' ioctl failed: (%d,%s)") % errno % strerror(errno));
 
-    printf("exiting...\n");
-    fflush(stdout);
+    cout << "exiting..." << endl;
     exit(0);
 }

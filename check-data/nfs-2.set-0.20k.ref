@@ -3832,9 +3832,8 @@ eof_count:
     91%: 0, 0, 0, 0, 0, 0, 0, 0, 0
 End-virtual void Sequentiality::printResult()
 
-extents: 0.26 MB -> 2.11 MB in 0.00 secs decode time
+extents: 0.26 MB -> 2.11 MB
                    common  attr-ops read-write  mount
 MB compressed:       0.13     0.07     0.06     0.00
 MB uncompressed:     1.07     0.69     0.34     0.00
-decode seconds:      0.00     0.00     0.00     0.00
 wait fraction:       0.00     0.00     0.00     0.00

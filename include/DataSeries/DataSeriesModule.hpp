@@ -21,6 +21,7 @@
 
 #include <boost/utility.hpp>
 
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/Extent.hpp>
@@ -72,8 +73,8 @@ public:
     /** get all the extents from module and delete them. */
     void getAndDelete();
     /// \cond INTERNAL_ONLY
-    // TODO: deprecate static getAndDelete.
-    static void getAndDelete(DataSeriesModule &from) {
+    // TODO-2010-04-01: remove function
+    FUNC_DEPRECATED_PREFIX static void getAndDelete(DataSeriesModule &from) FUNC_DEPRECATED {
 	from.getAndDelete();
     }
     /// \endcond
@@ -101,11 +102,6 @@ public:
         the actual module doesn't, or is unable to calculate the
         statistic */
     long long total_uncompressed_bytes, total_compressed_bytes;
-    // TODO: deprecate decode_time, it's pretty much useless given that
-    // all the ways that I can find to get resource usage work poorly.
-    // getrusage is per-process, /proc is slow, clock_gettime can go
-    // backwards on RHEL4.
-    double decode_time;
 };
 
 /** \brief Module for filtering out any extents not matching type_prefix */

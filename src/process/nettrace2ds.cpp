@@ -12,8 +12,6 @@
 // should only protect record creation/setting operations, not
 // assertions.
 
-// TODO: convert all AssertAlways to INVARIANT
-
 // TODO: Modify the short data assert code to make sure that we are at
 // wire size for the packet so that if there is something missing in
 // an RPC request/reply we don't incorrectly claim it is short and
@@ -53,7 +51,6 @@
 
 #include <string>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/AssertException.hpp>
@@ -2366,7 +2363,7 @@ fillcommonNFSRecord(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	// caches seem to use NFS version 1 null op occasionally
 	SINVARIANT(procnum == 0);
     } else {
-	AssertFatal(("bad; nfs version %d",v_nfsversion));
+	FATAL_ERROR(format("bad; nfs version %d") % v_nfsversion);
     }
 
     if (mode == Convert) {
@@ -2512,9 +2509,7 @@ void
 duplicateRequestCheck(RPCRequestData &d, RPCRequestData *hval)
 {
     ++counts[duplicate_request];
-    AssertAlways(hval->server == d.server &&
-		 hval->client == d.client &&
-		 hval->xid == d.xid,("internal error\n"));
+    SINVARIANT(hval->server == d.server && hval->client == d.client && hval->xid == d.xid);
     if (warn_duplicate_reqs) { // disabled because of tons of them showing up in set-8
 	cout << format("Probable duplicate request detected s=%08x c=%08x xid=%08x; #%d duped by #%d\n")
 	    % hval->server % hval->client % hval->xid % hval->request_id % d.request_id;
@@ -2661,7 +2656,7 @@ handleUDPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
     struct udphdr *udp_hdr = (struct udphdr *)p;
     p += 8;
 
-    AssertAlways(p < pend,("short capture?"));
+    INVARIANT(p < pend, "short capture?");
     uint32_t *rpcmsg = (uint32_t *)p;
     if ((p+2*4+2*4) > pend) {
 	printf("short packet?!\n");
@@ -2705,7 +2700,7 @@ handleTCPPacket(Clock::Tfrac time, const struct iphdr *ip_hdr,
 	      format("bad doff %d %d")
 	      % (tcp_hdr->doff * 4) % sizeof(struct tcphdr));
     p += tcp_hdr->doff * 4;
-    AssertAlways(p <= pend,("short capture? %p %p",p,pend));
+    INVARIANT(p <= pend, format("short capture? %p %p") % p % pend);
     bool multiple_rpcs = false;
     while((pend-p) >= 4) { // handle multiple RPCs in single TCP message; hope they are aligned to start
 	uint32_t rpclen = ntohl(*(uint32_t *)p);

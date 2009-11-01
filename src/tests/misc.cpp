@@ -20,7 +20,6 @@
 
 #include <boost/bind.hpp>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/Clock.hpp>
@@ -184,8 +183,7 @@ test_varcompress()
 	    byte *offset = packed.begin() + pos;
 	    *(int32 *)offset = datasize;
 	    offset += 4;
-	    AssertAlways(((unsigned long)offset % 8) == 0,
-			 ("?!\n"));
+	    SINVARIANT(((unsigned long)offset % 8) == 0);
 	    memcpy(offset,pslist[psn].data(),datasize);
 	}
 	++psn;
@@ -297,85 +295,85 @@ test_primitives()
     unsigned char md_value[EVP_MAX_MD_SIZE];
     unsigned int md_len;
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	for(int i=0;i<reps;i++) {
 	    EVP_MD_CTX_init(&mdctx);
 	    EVP_DigestInit_ex(&mdctx, EVP_sha1(), NULL);
 	    EVP_DigestUpdate(&mdctx, packed.begin(), packed.size());
 	    EVP_DigestFinal_ex(&mdctx, md_value, &md_len);
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("SHA-1 Hash of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	for(int i=0;i<reps;i++) {
 	    EVP_MD_CTX_init(&mdctx);
 	    EVP_DigestInit_ex(&mdctx, EVP_md5(), NULL);
 	    EVP_DigestUpdate(&mdctx, packed.begin(), packed.size());
 	    EVP_DigestFinal_ex(&mdctx, md_value, &md_len);
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("MD5 Hash of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
 #endif
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	uLong adler = adler32(0L, Z_NULL, 0);
 	for(int i=0;i<reps;i++) {
 	    adler = adler32(adler,packed.begin(), packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("Adler Hash(%ld) of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       adler,reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	uLong adler = crc32(0L, Z_NULL, 0);
 	for(int i=0;i<reps;i++) {
 	    adler = crc32(adler,packed.begin(), packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("CRC32(%ld) of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       adler, reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
 #if DATASERIES_ENABLE_LZO
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	uLong adler = lzo_adler32(0L, Z_NULL, 0);
 	for(int i=0;i<reps;i++) {
 	    adler = lzo_adler32(adler,packed.begin(), packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("lzo_adler(%ld) of %d * %d bytes in %.6gs, %.4g MB/s \n",
 	       adler,reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	uLong adler = lzo_crc32(0L, Z_NULL, 0);
 	for(int i=0;i<reps;i++) {
 	    adler = lzo_crc32(adler,packed.begin(), packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("lzo_crc(%ld) of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       adler, reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
     }
 #endif
     {
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	unsigned int hash = 1972;
 	for(int i=0;i<reps;i++) {
 	    hash = lintel::bobJenkinsHash(hash, packed.begin(), packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("bjhash of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
@@ -383,11 +381,11 @@ test_primitives()
     {
 	Extent::ByteArray copy;
 	copy.resize(packed.size());
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_start)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_start)==0);
 	for(int i=0;i<reps;i++) {
 	    memcpy(copy.begin(),packed.begin(),packed.size());
 	}
-	AssertAlways(getrusage(RUSAGE_SELF,&hash_end)==0,("?!"));
+	SINVARIANT(getrusage(RUSAGE_SELF,&hash_end)==0);
 	elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
 	printf("memcpy of %d * %d bytes in %.6gs, %.4g MB/s\n",
 	       reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
@@ -435,28 +433,28 @@ test_extentpackunpack()
 	int64_1.set((ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000);
 	int64_2.set((ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000);
 	double1.set((double)i/1000000.0);
-	AssertAlways(var1.size() == 0,("?!\n"));
+	SINVARIANT(var1.size() == 0);
 	var1.set(variablestuff.begin(),i+1);
-	AssertAlways(var1.size() == i+1,("??"));
-	AssertAlways(memcmp(var1.val(),variablestuff.begin(),i+1)==0,("??"));
-	AssertAlways(var2.size() == 0,("?!\n"));
+	SINVARIANT(var1.size() == i+1);
+	SINVARIANT(memcmp(var1.val(),variablestuff.begin(),i+1)==0);
+	SINVARIANT(var2.size() == 0);
 	var2.set(variablestuff.begin(),2*i+1);
-	AssertAlways(var2.size() == 2*i+1,("??"));
-	AssertAlways(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0,("??"));
+	SINVARIANT(var2.size() == 2*i+1);
+	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
 	++testseries.pos;
     }
 
     testseries.pos.reset(testseries.extent());
     for(int i=0;i<nrecords;i++) {
-	AssertAlways(int1.val() == i,("?? %d",int1.val()));
-	AssertAlways(int2.val() == nrecords-i,("??"));;
-	AssertAlways(int64_1.val() == (ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000,("??"));
-	AssertAlways(int64_2.val() == (ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000,("??"));
-	AssertAlways((int)round(double1.val() * 1000000.0) == i,("??"));
-	AssertAlways(var1.size() == i+1,("??"));
-	AssertAlways(memcmp(var1.val(),variablestuff.begin(),i+1)==0,("??"));
-	AssertAlways(var2.size() == 2*i+1,("??"));
-	AssertAlways(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0,("??"));
+	INVARIANT(int1.val() == i, format("?? %d") % int1.val());
+	SINVARIANT(int2.val() == nrecords-i);;
+	SINVARIANT(int64_1.val() == (ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000);
+	SINVARIANT(int64_2.val() == (ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000);
+	SINVARIANT((int)round(double1.val() * 1000000.0) == i);
+	SINVARIANT(var1.size() == i+1);
+	SINVARIANT(memcmp(var1.val(),variablestuff.begin(),i+1)==0);
+	SINVARIANT(var2.size() == 2*i+1);
+	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
 	++testseries.pos;
     }
 
@@ -467,19 +465,19 @@ test_extentpackunpack()
 
     testseries.setExtent(unpackextent);
     for(int i=0;i<nrecords;i++) {
-	AssertAlways(int1.val() == i,("?? %d %d",int1.val(),i));
-	AssertAlways(int2.val() == nrecords-i,("??"));;
-	AssertAlways(int64_1.val() == (ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000,("??"));
-	AssertAlways(int64_2.val() == (ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000,("??"));
-	AssertAlways((int)round(double1.val() * 1000000.0) == i,("??"));
-	AssertAlways(var1.size() == i+1,("??"));
-	AssertAlways(memcmp(var1.val(),variablestuff.begin(),i+1)==0,("??"));
-	AssertAlways(var2.size() == 2*i+1,("??"));
-	AssertAlways(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0,("??"));
+	INVARIANT(int1.val() == i, format("?? %d %d") % int1.val() % i);
+	SINVARIANT(int2.val() == nrecords-i);;
+	SINVARIANT(int64_1.val() == (ExtentType::int64)i * (ExtentType::int64)1000000 * (ExtentType::int64)1000000);
+	SINVARIANT(int64_2.val() == (ExtentType::int64)i * (ExtentType::int64)19721776 * (ExtentType::int64)1000000);
+	SINVARIANT((int)round(double1.val() * 1000000.0) == i);
+	SINVARIANT(var1.size() == i+1);
+	SINVARIANT(memcmp(var1.val(),variablestuff.begin(),i+1)==0);
+	SINVARIANT(var2.size() == 2*i+1);
+	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
 	++testseries.pos;
     }
     cout << format("unpacked bytes %d, packed %d\n")
-	% unpackextent.extentsize() % packed.size();
+	% unpackextent.size() % packed.size();
     printf("test_extentpackunpack - end\n");
 }
 
@@ -607,7 +605,7 @@ bool range_overlap(double a_min, double a_max, double b_min, double b_max) {
 
 
 void test_byteflip() {
-#ifdef DEBUG
+#if LINTEL_DEBUG
     // With debugging turned on, even with the functions marked
     // inline, it seems gcc still generates a function call, which
     // makes elapsed_flip4 much slower
@@ -931,7 +929,7 @@ test_makecomplexfile()
 	    f_bool_null.setNull(true);
 	} else {
 	    f_bool_null.set(randBool(rand));
-	    AssertAlways(f_bool_null.isNull() == false,("internal error\n"));
+	    SINVARIANT(f_bool_null.isNull() == false);
 	}
 
 	f_byte.set((ExtentType::byte)(rand.randInt() & 0xFF));
@@ -1089,7 +1087,7 @@ test_compactnull()
     extent1.packData(packed, Extent::compress_none);
 
     cout << format("all null: %d rows, original bytes %d, packed %d\n")
-	% nrecords % extent1.extentsize() % packed.size();
+	% nrecords % extent1.size() % packed.size();
     uint32_t overhead = 48 + (4 - (nrecords % 4)) % 4;
     INVARIANT(packed.size() == static_cast<size_t>(overhead + nrecords), 
 	      "size check failed");
@@ -1133,7 +1131,7 @@ test_compactnull()
     packed.clear();
     extent1.packData(packed, Extent::compress_lzf);
     cout << format("random null: %d rows, original bytes %d, packed %d\n")
-	% nrecords % extent1.extentsize() % packed.size();
+	% nrecords % extent1.size() % packed.size();
 
     BoolField g_bool(series2, "", Field::flag_nullable);
     ByteField g_byte(series2, "byte", Field::flag_nullable);

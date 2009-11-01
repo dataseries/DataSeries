@@ -23,6 +23,7 @@ class ExtentVectorModule : public IndexSourceModule {
 public:
     /** Create a new ExtentVectorModule
 	@param extents vector of extents to read
+	@param index_type index type to pass on to prefetching for debugging.
      */
     ExtentVectorModule(const std::vector<SortedIndex::IndexEntry *>* extents,
 		       const std::string &index_type);

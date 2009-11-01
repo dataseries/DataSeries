@@ -14,7 +14,6 @@
 #include <ostream>
 #include <algorithm>
 
-#include <Lintel/LintelAssert.hpp> // TODO: remove-this
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/ConstantString.hpp>
 #include <Lintel/HashTable.hpp>
@@ -138,7 +137,7 @@ public:
 	    } else if (operation.equal(str_write)) {
 		k.is_read = 0;
 	    } else {
-		AssertFatal(("internal"));
+		FATAL_ERROR("internal");
 	    }
 	    k.filehandle = filehandle.stringval();
 	    hteData *v = seqaccessexact.lookup(k);
@@ -196,7 +195,7 @@ public:
 		    string *filename = fnByFileHandle(v->filehandle);
 		    if (filename == NULL) filename = &v->filehandle;
 		    if (offset.val() > filesize.val()) {
-			AssertAlways(bytes.val() == 0,("whoa, read beyond file size got bytes"));
+			INVARIANT(bytes.val() == 0, "whoa, read beyond file size got bytes");
 			cout << format("tolerating weird over %s on %s at %lld from %08x? %lld > %lld ; %d\n")
 			    % (v->is_read ? "read" : "write")
 			    % maybehexstring(*filename) % packetat.val()
@@ -1157,7 +1156,7 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	case 'c': FATAL_ERROR("untested");{
 	    options[optFileageByFilehandle] = 1;
 	    int tmp = atoi(optarg);
-	    AssertAlways(tmp > 0,("invalid -c %d\n",tmp));
+	    INVARIANT(tmp > 0, format("invalid -c %d") % tmp);
 	    FileageByFilehandle_recent_secs.push_back(tmp);
 	    break;
 	}
@@ -1197,8 +1196,8 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	    }
 	    break;
 	case 'v': print_input_series = atoi(optarg);
-	    AssertAlways(print_input_series >= 1 && print_input_series <= 5,
-			 ("invalid print input series '%s'\n",optarg));
+	    INVARIANT(print_input_series >= 1 && print_input_series <= 5,
+		      format("invalid print input series '%s'") % optarg);
 	    break;
 	case 'w': FATAL_ERROR("untested");options[optServersPerFilehandle] = 1; break;
 	case 'x': FATAL_ERROR("untested");options[optTransactions] = 1; break;
@@ -1207,9 +1206,9 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
 	  break;
 #endif
 
-	case '?': AssertFatal(("invalid option"));
+	case '?': FATAL_ERROR("invalid option");
 	default:
-	    AssertFatal(("getopt returned '%c'\n",opt));
+	    FATAL_ERROR(format("getopt returned '%c'\n") % opt);
 	}
     }
     if (any_selected == false) {
@@ -1341,7 +1340,7 @@ int main(int argc, char *argv[]) {
 	} else {
 	    PrefetchBufferModule *ptmp = new PrefetchBufferModule(*sourceb,32*1024*1024);
 	    NFSDSModule *tmp = NFSDSAnalysisMod::newFillFH2FN_HashTable(*ptmp);
-	    DataSeriesModule::getAndDelete(*tmp);
+	    tmp->getAndDelete();
 	    
 	    sourceb->resetPos();
 	    delete tmp;
@@ -1351,7 +1350,7 @@ int main(int argc, char *argv[]) {
 
     if (need_mount_by_filehandle) {
 	NFSDSModule *tmp = NFSDSAnalysisMod::newFillMount_HashTable(*sourced);
-	DataSeriesModule::getAndDelete(*tmp);
+	tmp->getAndDelete();
 	delete tmp;
     }
 
@@ -1376,26 +1375,26 @@ int main(int argc, char *argv[]) {
 	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
-	DataSeriesModule::getAndDelete(merge123Sequence);
+	merge123Sequence.getAndDelete();
     } else if (merge12Sequence.size()> 1) {
 	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
-	DataSeriesModule::getAndDelete(merge12Sequence);
+	merge12Sequence.getAndDelete();
 	if (rwSequence.size() > 1) {
-	    DataSeriesModule::getAndDelete(rwSequence);
+	    rwSequence.getAndDelete();
 	}
     } else {
 	if (commonSequence.size() > 1) {
 	    sourcea->startPrefetching(8*32*1024*1024, 8*96*1024*1024);
-	    DataSeriesModule::getAndDelete(commonSequence);
+	    commonSequence.getAndDelete();
 	}
 	if (attrOpsSequence.size() > 1) {
 	    sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
-	    DataSeriesModule::getAndDelete(attrOpsSequence);
+	    attrOpsSequence.getAndDelete();
 	}
 	if (rwSequence.size() > 1) {
 	    sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
-	    DataSeriesModule::getAndDelete(rwSequence);
+	    rwSequence.getAndDelete();
 	}
     }
 
@@ -1422,10 +1421,10 @@ int main(int argc, char *argv[]) {
 	printResult(*i);
     }
 	
-    printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",
+    printf("extents: %.2f MB -> %.2f MB\n",
 	   (double)(sourcea->total_compressed_bytes + sourceb->total_compressed_bytes + sourcec->total_compressed_bytes + sourced->total_compressed_bytes)/(1024.0*1024),
-	   (double)(sourcea->total_uncompressed_bytes + sourceb->total_uncompressed_bytes + sourcec->total_uncompressed_bytes + sourced->total_uncompressed_bytes)/(1024.0*1024),
-	   sourcea->decode_time + sourceb->decode_time + sourcec->decode_time + sourced->decode_time);
+	   (double)(sourcea->total_uncompressed_bytes + sourceb->total_uncompressed_bytes + sourcec->total_uncompressed_bytes + sourced->total_uncompressed_bytes)/(1024.0*1024));
+
     printf("                   common  attr-ops read-write  mount\n");
     printf("MB compressed:   %8.2f %8.2f %8.2f %8.2f\n",
 	   (double)sourcea->total_compressed_bytes/(1024.0*1024),
@@ -1437,11 +1436,6 @@ int main(int argc, char *argv[]) {
 	   (double)sourceb->total_uncompressed_bytes/(1024.0*1024),
 	   (double)sourcec->total_uncompressed_bytes/(1024.0*1024),
 	   (double)sourced->total_uncompressed_bytes/(1024.0*1024));
-    printf("decode seconds:  %8.2f %8.2f %8.2f %8.2f\n",
-	   sourcea->decode_time,
-	   sourceb->decode_time,
-	   sourcec->decode_time,
-	   sourced->decode_time);
     printf("wait fraction :  %8.2f %8.2f %8.2f %8.2f\n",
 	   sourcea->waitFraction(),
 	   sourceb->waitFraction(),

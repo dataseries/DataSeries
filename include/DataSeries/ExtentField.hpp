@@ -13,6 +13,8 @@
 #ifndef EXTENT_FIELD_H
 #define EXTENT_FIELD_H
 
+#include <Lintel/DebugFlag.hpp>
+
 #include <DataSeries/Field.hpp>
 
 // Note that if a sufficient case is made that the accessors which
@@ -277,16 +279,12 @@ protected:
     int32 getVarOffset() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
-	// TODO: standardize on DEBUG, and make sure there is a Lintel
-	// header that sets something else that lintel can use based
-	// on debug so we can have a consistent way of handling this.
-	// AssertBoost is probably a reasonable place to put it.
-#if defined(COMPILE_DEBUG) || defined(DEBUG)
+#if LINTEL_DEBUG
         dataseries.pos.checkOffset(offset_pos);
 #endif
         int32 varoffset = getVarOffset(dataseries.pos.record_start(),
                                        offset_pos);
-#if defined(COMPILE_DEBUG) || defined(DEBUG)
+#if LINTEL_DEBUG
         selfcheck(varoffset);
 #endif
         return varoffset;

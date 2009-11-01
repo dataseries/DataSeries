@@ -66,7 +66,7 @@ PrefetchBufferModule::getExtent()
 	if (buffer.empty() == false) {
 	    ret = buffer.front();
 	    buffer.pop_front();
-	    cur_used_memory -= ret->extentsize();
+	    cur_used_memory -= ret->size();
 	    break;
 	} else if (source_done) {
 	    ret = NULL;
@@ -119,7 +119,7 @@ PrefetchBufferModule::prefetcherThread()
 	    }
 	    buffer.push_back(e);
 	    cond.signal();
-	    cur_used_memory += e->extentsize();
+	    cur_used_memory += e->size();
 	} else {
 	    SINVARIANT(buffer.empty() == false);
 	    cond.wait(mutex);

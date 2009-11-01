@@ -102,9 +102,8 @@ Begin Group production; subent 90f6c50bbfe393b1b04f995ed4659764
   1167681540 0.00 0.10 0.01 0.00 0.09
 End Group production; subent 90f6c50bbfe393b1b04f995ed4659764
 End-virtual void LSFDSAnalysisMod::FarmLoad::printResult()
-extents: 0.24 MB -> 0.31 MB in 0.00 secs decode time
+extents: 0.24 MB -> 0.31 MB
                    common
 MB compressed:       0.24
 MB uncompressed:     0.31
-decode seconds:      0.00
 wait fraction:       0.00

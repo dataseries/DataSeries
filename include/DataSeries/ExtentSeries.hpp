@@ -15,6 +15,8 @@
 class Field;
 class Extent;
 
+#include <Lintel/DebugFlag.hpp>
+
 #include <DataSeries/ExtentType.hpp>
 #include <DataSeries/Extent.hpp>
 
@@ -284,7 +286,7 @@ public:
 	    return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
 	}
 	void checkOffset(long offset) {
-#if defined(COMPILE_DEBUG) || defined(DEBUG)
+#if LINTEL_DEBUG
 	    forceCheckOffset(offset);
 #else
 	    (void)offset; // eliminate compilation warning

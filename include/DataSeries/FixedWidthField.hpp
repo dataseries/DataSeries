@@ -40,16 +40,20 @@ public:
 
         Preconditions:
             - The name of the Field must have been set and the associated
-              @c ExtentSeries must have a current record. */
+              @c ExtentSeries must have a current record. 
+
+	@param val source value for the copy
+	@param val_size size of the value
+    */
     void set(const byte *val, uint32_t val_size = 0) {
 	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
+	(void)val_size;
         if (val == NULL) {
             setNull(true);
             return;
         }
         memmove(rawval(), val, field_size);
         setNull(false);
-	(void)val_size;
     }
 };
 

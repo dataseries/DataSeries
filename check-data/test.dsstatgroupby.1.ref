@@ -101,9 +101,8 @@
   tails: 90%: 9.9714335e+09, 95%: 1.3780582e+10, 99%: 1.4530191e+10, 99.5%: 1.7275302e+10, 99.9%: 1.7282859e+10, 99.95%: 1.7282859e+10
 # End DSStatGroupByModule
 
-# extents: 0.46 MB -> 3.28 MB in 0.00 secs decode time
+# extents: 0.46 MB -> 3.28 MB
 #                    common
 # MB compressed:       0.46
 # MB uncompressed:     3.28
-# decode seconds:      0.00
 # wait fraction:       0.00

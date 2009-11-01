@@ -139,7 +139,7 @@ main(int argc, char *argv[])
     while(1) {
 	readString(infile,buffer);
 	++nread;
-	if ((int)(psextent->extentsize()+buffer.size()) > packing_args.extent_size ||
+	if ((int)(psextent->size()+buffer.size()) > packing_args.extent_size ||
 	    feof(infile)) {
 	    psdsout.writeExtent(*psextent, NULL);
 	    psextent->clear();

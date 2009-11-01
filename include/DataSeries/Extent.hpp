@@ -36,13 +36,12 @@ extern "C" {
 #      warning "Automatically defining __i486__ on the assumption you have at least that type of CPU"
 #      warning "Not doing this gets a much slower byte swap routine"
 #      define __i486__ 1
-#      ifdef COMPILE_OPTIMIZE
-#        error ".../configure --enable-optmode=optimize should have set this up"
-#      endif
 #    endif
 #  endif
 #  include <byteswap.h>
 #endif
+
+#include <Lintel/CompilerMarkup.hpp>
 
 #include <DataSeries/ExtentType.hpp>
 
@@ -187,9 +186,8 @@ public:
         return fixeddata.size() + variabledata.size();
     }
     
-    /** Equivalent to size() 
-        \deprecated */
-    unsigned int extentsize() { // TODO deprecate this function
+    // TODO-2010-04-01: remove; use size
+    FUNC_DEPRECATED_PREFIX unsigned int extentsize() FUNC_DEPRECATED { 
         return size();
     }
 

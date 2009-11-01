@@ -6,7 +6,7 @@
 
 #include <list>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StringUtil.hpp>

@@ -1584,20 +1584,17 @@ main(int argc, char *argv[])
     }
 
     if (&(lsfSequence.tail()) != prefetcha) {
-	DataSeriesModule::getAndDelete(lsfSequence);
+	lsfSequence.getAndDelete();
 
 	RowAnalysisModule::printAllResults(lsfSequence,1);
-	printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",
+	printf("extents: %.2f MB -> %.2f MB\n",
 	       (double)(sourcea->total_compressed_bytes)/(1024.0*1024),
-	       (double)(sourcea->total_uncompressed_bytes)/(1024.0*1024),
-	       sourcea->decode_time);
+	       (double)(sourcea->total_uncompressed_bytes)/(1024.0*1024));
 	printf("                   common\n");
 	printf("MB compressed:   %8.2f\n",
 	       (double)sourcea->total_compressed_bytes/(1024.0*1024));
 	printf("MB uncompressed: %8.2f\n",
 	       (double)sourcea->total_uncompressed_bytes/(1024.0*1024));
-	printf("decode seconds:  %8.2f\n",
-	       sourcea->decode_time);
 	printf("wait fraction :  %8.2f\n",
 	       sourcea->waitFraction());
     }

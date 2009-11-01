@@ -6,7 +6,7 @@
 
 #include <list>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/PointerUtil.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -219,7 +219,7 @@ public:
 	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
 	    if (dirfilehandle.isNull())
 		continue;
-	    AssertAlways(filehandle.size() == dirfilehandle.size(),("can't handle size mismatch"));
+	    INVARIANT(filehandle.size() == dirfilehandle.size(), "can't handle size mismatch");
 	    fh2mountData d(dirfilehandle.val(),dirfilehandle.size());
 	    fh2mountData *v = fh2mount.lookup(d);
 
