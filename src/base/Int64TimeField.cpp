@@ -54,9 +54,7 @@ Int64TimeField::Int64TimeField(ExtentSeries &series, const std::string &field,
 
 Int64TimeField::~Int64TimeField() { }
 
-int64_t Int64TimeField::rawToFrac32(Raw raw) const
-{
-    // TODO: make other if (...) functions switches also
+int64_t Int64TimeField::rawToFrac32(Raw raw) const {
     switch (time_type)
 	{
 	case UnixFrac32: return raw;
@@ -77,23 +75,23 @@ int64_t Int64TimeField::rawToFrac32(Raw raw) const
 	}
 }
 
-Int64TimeField::Raw Int64TimeField::frac32ToRaw(int64_t frac32) const
-{
-    if (time_type == UnixFrac32) {
-	return frac32;
-    } else if (time_type == UnixNanoSec) {
-	SecNano secnano;
-	frac32ToSecNano(frac32, secnano);
-	return joinSecNano(secnano);
-    } else if (time_type == Unknown) {
-	FATAL_ERROR("time type has not been set yet; no extent?");
-    } else {
-	FATAL_ERROR("internal error");
-    }
+Int64TimeField::Raw Int64TimeField::frac32ToRaw(int64_t frac32) const {
+    switch(time_type)
+	{
+	case UnixFrac32: return frac32;
+	case UnixNanoSec: {
+	    SecNano secnano;
+	    frac32ToSecNano(frac32, secnano);
+	    return joinSecNano(secnano);
+	}
+	case Unknown:
+	    FATAL_ERROR("time type has not been set yet; no extent?");
+	default:
+	    FATAL_ERROR("internal error");
+	}
 }
 
-Int64TimeField::SecNano Int64TimeField::rawToSecNano(Raw raw) const
-{
+Int64TimeField::SecNano Int64TimeField::rawToSecNano(Raw raw) const {
     SecNano ret;
     switch (time_type)
 	{
@@ -115,23 +113,18 @@ Int64TimeField::SecNano Int64TimeField::rawToSecNano(Raw raw) const
     return ret;
 }
 
-Int64TimeField::Raw 
-Int64TimeField::secNanoToRaw(int32_t seconds, uint32_t nanoseconds) const
-{
+Int64TimeField::Raw Int64TimeField::secNanoToRaw(int32_t seconds, uint32_t nanoseconds) const {
     SINVARIANT(nanoseconds < (1000*1000*1000));
-    if (time_type == UnixFrac32) {
-	return secNanoToFrac32(SecNano(seconds, nanoseconds));
-    } else if (time_type == UnixNanoSec) {
-	return joinSecNano(seconds, nanoseconds);
-    } else if (time_type == Unknown) {
-	FATAL_ERROR("time type has not been set yet; no extent?");
-    } else {
-	FATAL_ERROR("internal error");
-    }
+    switch(time_type)
+	{
+	case UnixFrac32: return secNanoToFrac32(SecNano(seconds, nanoseconds));
+	case UnixNanoSec: return joinSecNano(seconds, nanoseconds);
+	case Unknown: FATAL_ERROR("time type has not been set yet; no extent?");
+	default: FATAL_ERROR("internal error");
+	}
 }
 
-string Int64TimeField::rawToStrSecNano(Raw raw) const
-{
+string Int64TimeField::rawToStrSecNano(Raw raw) const {
     SecNano v(rawToSecNano(raw));
     
     if (v.seconds >= 0) {
@@ -144,33 +137,30 @@ string Int64TimeField::rawToStrSecNano(Raw raw) const
     }
 }
 
-double
-Int64TimeField::rawToDoubleSeconds(Raw raw, bool precision_check) const {
+double Int64TimeField::rawToDoubleSeconds(Raw raw, bool precision_check) const {
     // max_seconds = floor(2^52/(1000^3)), using 52 bits to give us 1
     // bit of extra precision to achive nanosecond resolution on the
     // return value.
     static const int32_t max_seconds = 4503599;
-    if (time_type == UnixFrac32) {
-	int32_t seconds = raw >> 32;
-	SINVARIANT(!precision_check || 
-		   (seconds <= max_seconds && seconds >= -max_seconds));
-	return Clock::int64TfracToDouble(raw);
-    } else if (time_type == UnixNanoSec) {
-	SecNano tmp;
-	splitSecNano(raw, tmp);
-	SINVARIANT(!precision_check || (tmp.seconds <= max_seconds 
-					&& tmp.seconds >= -max_seconds));
-	return tmp.seconds + tmp.nanoseconds / (1.0e9);
-    } else if (time_type == Unknown) {
-	FATAL_ERROR("time type has not been set yet; no extent?");
-    } else {
-	FATAL_ERROR("internal error");
-    }
-    return 0; // unreached
+    switch (time_type) 
+	{
+	case UnixFrac32: {
+	    int32_t seconds = raw >> 32;
+	    SINVARIANT(!precision_check || (seconds <= max_seconds && seconds >= -max_seconds));
+	    return Clock::int64TfracToDouble(raw);
+	}
+	case UnixNanoSec: {
+	    SecNano tmp;
+	    splitSecNano(raw, tmp);
+	    SINVARIANT(!precision_check 
+		       || (tmp.seconds <= max_seconds && tmp.seconds >= -max_seconds));
+	    return tmp.seconds + tmp.nanoseconds / (1.0e9);
+	}
+	case Unknown: FATAL_ERROR("time type has not been set yet; no extent?");
+	default: FATAL_ERROR("internal error");
+	}
 }
 
-// TODO: should be able to get better precision by doing type-specific
-// conversions.
 Int64TimeField::Raw Int64TimeField::doubleSecondsToRaw(double seconds) const {
     SINVARIANT(seconds > numeric_limits<int32_t>::min() && 
 	       seconds < numeric_limits<int32_t>::max());
@@ -183,8 +173,7 @@ Int64TimeField::Raw Int64TimeField::doubleSecondsToRaw(double seconds) const {
     return secNanoToRaw(i_seconds, nanosec);
 }
 
-void Int64TimeField::newExtentType()
-{
+void Int64TimeField::newExtentType() {
     Int64Field::newExtentType();
     DEBUG_SINVARIANT(dataseries.getType() != NULL);
     RegisteredInfo ri(getName(),
@@ -212,9 +201,7 @@ void Int64TimeField::newExtentType()
 // direction has some amount of precision loss because tfrac can
 // represent ~250 picoseconds, but does so in non-decimal units.
 
-void 
-Int64TimeField::frac32ToSecNano(int64_t tfrac, SecNano &secnano)
-{
+void Int64TimeField::frac32ToSecNano(int64_t tfrac, SecNano &secnano) {
     static const double ns_conversion
 	= (1000.0 * 1000 * 1000) / (4.0 * 1024 * 1024 * 1024);
     secnano.seconds = tfrac >> 32;
@@ -289,8 +276,7 @@ void Int64TimeField::registerUnitsEpoch(const std::string &field_name,
 }
 
 void Int64TimeField::setUnitsEpoch(const std::string &units,
-				   const std::string &epoch)
-{
+				   const std::string &epoch) {
     TimeType new_type = convertUnitsEpoch(units, epoch, getName(), true);
     if (new_type == Unknown) {
 	INVARIANT(time_type != Unknown,
@@ -310,12 +296,10 @@ static string str_tfrac_seconds("2^-32 seconds");
 static string str_nanoseconds("nanoseconds");
 static string str_microseconds("microseconds");
 
-Int64TimeField::TimeType 
-Int64TimeField::convertUnitsEpoch(const std::string &units,
-				  const std::string &epoch,
-				  const std::string &field_name,
-				  bool unknown_return_ok)
-{
+Int64TimeField::TimeType Int64TimeField::convertUnitsEpoch(const std::string &units,
+							   const std::string &epoch,
+							   const std::string &field_name,
+							   bool unknown_return_ok) {
     if (epoch != str_unix && unknown_return_ok) {
 	return Unknown;
     }
