@@ -18,7 +18,8 @@ ENDMACRO(DATASERIES_SCRIPT_TEST)
 DATASERIES_SIMPLE_TEST(time-field)
 DATASERIES_SIMPLE_TEST(pack-pad-record)
 DATASERIES_SIMPLE_TEST(pack-field-ordering)
-DATASERIES_SIMPLE_TEST(general)
+DATASERIES_PROGRAM_NOINST(general general2.cpp)
+ADD_TEST(general ./general)
 
 ### Script tests of public programs
 # *** WARNING, don't use | in any of the test scripts; if you do, then

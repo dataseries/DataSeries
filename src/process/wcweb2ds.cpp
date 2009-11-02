@@ -113,8 +113,8 @@ int main(int argc,char *argv[]) {
 			 packing_args.compress_modes,
 			 packing_args.compress_level);
     ExtentTypeLibrary library;
-    const ExtentType *extent_type = library.registerType(web_wc_custom_xml);
-    series.setType(*extent_type);
+    const ExtentType &extent_type(library.registerTypeR(web_wc_custom_xml));
+    series.setType(extent_type);
     outmodule = new OutputModule(outds, series, extent_type, 
 				 packing_args.extent_size);
     outds.writeExtentLibrary(library);

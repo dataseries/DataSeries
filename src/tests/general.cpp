@@ -10,22 +10,22 @@
 
 // TODO: Test all of the other GeneralField and GeneralValue conversions
 
+#include <Lintel/Double.hpp>
+
 #include <DataSeries/GeneralField.hpp>
 #include <boost/format.hpp>
 #include <stdio.h>
 
-void check_set()
-{
+uint8_t dblToUint8(double v);
+
+void check_set() {
     GeneralValue test;
     test.setInt64(1234567890987654321LL);
     SINVARIANT(test.valBool());
     SINVARIANT(test.valByte() == 1234567890987654321LL % 256);
     SINVARIANT(static_cast<uint32_t>(test.valInt32())== 1234567890987654321LL % 4294967296LL);
     SINVARIANT(test.valInt64() == 1234567890987654321LL);
-    // TODO-brad : the previous version breaks if the compiler was
-    // compiled with different floating point options than what it is
-    // compiling with (e.g. fast math)
-    SINVARIANT(test.valDouble() - 1234567890987654400.0 < 1000.0);
+    SINVARIANT(Double::eq(test.valDouble(),1234567890987654400.0));
     //valString is unimplemented for all values except bool
     //SINVARIANT(test.valString() == "1234567890987654321LL");
     
@@ -34,15 +34,16 @@ void check_set()
     SINVARIANT(testAgain.valBool());
     SINVARIANT(testAgain.valInt32() == 1234567);
     SINVARIANT(testAgain.valInt64() == 1234567);
-    SINVARIANT(testAgain.valDouble() == 1234567.890987654216587543487548828125);
+    SINVARIANT(Double::eq(testAgain.valDouble(), 1234567.890987654321));
 
-    // TODO-brad: again, this one fails funny depending on the math lib; I'm not sure if
-    // I know how to fix it.
-    /*
-    INVARIANT(testAgain.valByte() == static_cast<uint32_t>(1234567.890987654321) % 256,
-	      boost::format("Got %d, expected %d") % ((int)testAgain.valByte())
-	      % (int)(static_cast<uint8_t>(1234567.890987654216587543487548828125)) );
-    */
+    double v = 1234567.890987654321;
+    // Re-enabling the below test.  If it fails, please document the result that you got and
+    // the compiler, OS, flags that it failed under.
+    INVARIANT(testAgain.valByte() == dblToUint8(v),
+	      boost::format("Got %d, expected %d/%d") % static_cast<uint32_t>(testAgain.valByte())
+	      % static_cast<uint32_t>(dblToUint8(v))
+	      % static_cast<uint32_t>(static_cast<uint8_t>(v)));
+
     //valString is unimplemented for all values except bool
     //SINVARIANT(testAgain.valString() == "123456789.0987654321");
 }

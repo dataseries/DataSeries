@@ -125,7 +125,7 @@ public:
         ExtentSeries modifyseries(modifytype);
         Variable32Field modifyfilename(modifyseries,"filename");
         Int64Field modifytime(modifyseries,"modify-time");
-        OutputModule *modifymodule = new OutputModule(*output, modifyseries, modifyseries.type,
+        OutputModule *modifymodule = new OutputModule(*output, modifyseries, *modifyseries.type,
                                                       packing_args.extent_size);
 
 	// sort so we get consistent output for regression testing.
@@ -314,7 +314,7 @@ protected:
         ExtentSeries infoseries(infotype);
         Variable32Field info_type_prefix(infoseries, "type-prefix");
         Variable32Field info_fields(infoseries, "fields");
-        OutputModule infomodule(*output, infoseries, infotype, packing_args.extent_size);
+        OutputModule infomodule(*output, infoseries, *infotype, packing_args.extent_size);
 
         infomodule.newRecord();
         info_type_prefix.set(type_prefix);
@@ -346,7 +346,7 @@ protected:
         extent_offset = new Int64Field(*minmaxseries, "extent_offset");
         rowcount = new Int32Field(*minmaxseries, "rowcount");
 
-        minmaxmodule = new OutputModule(*output, *minmaxseries, minmaxtype,
+        minmaxmodule = new OutputModule(*output, *minmaxseries, *minmaxtype,
                                         packing_args.extent_size);
 
         output->writeExtentLibrary(library);
