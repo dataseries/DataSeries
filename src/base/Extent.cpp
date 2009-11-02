@@ -537,11 +537,9 @@ static const unsigned variable_sizes_batch_size = 1024;
 // Note: Can't split this into pack fixed and pack variable because 
 // packing the variable data can involve updating the fixed dat
 
-uint32_t
-Extent::packData(Extent::ByteArray &into,
-		 int compression_modes,
-		 int compression_level,
-		 int *header_packed, int *fixed_packed, int *variable_packed)
+uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes, 
+			  uint32_t compression_level, uint32_t *header_packed, 
+			  uint32_t *fixed_packed, uint32_t *variable_packed)
 {
     // Don't need to zero the coded arrays as we will be filling them
     // all in.

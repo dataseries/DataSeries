@@ -176,7 +176,9 @@ public:
                 include duplicate fields marked with pack_unique. */
 	    unpacked_variable_raw,
             /** The total number of bytes after compression. */
-            packed_size;
+            packed_size,
+	    /** The number of records that were written */
+	    nrecords;
 
 	/** The time spent packing/compressing Extents.  This is
             supposed to be the thread time, rather than wall clock time.
@@ -205,7 +207,7 @@ public:
 	void update(uint32_t unpacked_size, uint32_t unpacked_fixed,
 		    uint32_t unpacked_variable_raw,
 		    uint32_t unpacked_variable, uint32_t packed_size,
-		    uint32_t packed_variable_size, double pack_time, 
+		    uint32_t packed_variable_size, size_t nrecords, double pack_time, 
 		    unsigned char fixed_compress_mode,
 		    unsigned char variable_compress_mode);
 	void updateCompressMode(unsigned char compress_mode);

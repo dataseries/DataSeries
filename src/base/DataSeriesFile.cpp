@@ -586,10 +586,11 @@ void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
 
     mutex.unlock();
 
+    size_t nrecords = work->extent.nRecords();
     struct timespec pack_start, pack_end;
     get_thread_cputime(pack_start);
     
-    int headersize, fixedsize, variablesize;
+    uint32_t headersize, fixedsize, variablesize;
     work->checksum = work->extent.packData(work->compressed, compression_modes,
 					   compression_level, &headersize,
 					   &fixedsize, &variablesize);
@@ -609,7 +610,7 @@ void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
 	       work->extent.variabledata.size(), variablesize, 
 	       work->compressed.size(), 
 	       *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
-	       pack_extent_time, work->compressed[6*4], 
+	       nrecords, pack_extent_time, work->compressed[6*4], 
 	       work->compressed[6*4+1]);
 
     INVARIANT(work->compressed.size() > 0, "??");
@@ -703,10 +704,9 @@ void DataSeriesSink::writerThread() {
 void DataSeriesSink::Stats::reset() {
     use_count = 0;
 
-    extents = compress_none = compress_lzo = compress_gzip 
-	= compress_bz2 = compress_lzf = 0;
-    unpacked_size = unpacked_fixed = unpacked_variable 
-	= unpacked_variable_raw = packed_size = 0;
+    extents = compress_none = compress_lzo = compress_gzip = compress_bz2 = compress_lzf = 0;
+    unpacked_size = unpacked_fixed = unpacked_variable = unpacked_variable_raw = packed_size 
+	= nrecords = 0;
     pack_time = 0;
 }
 
@@ -729,6 +729,7 @@ DataSeriesSink::Stats &DataSeriesSink::Stats::operator+=(const DataSeriesSink::S
     unpacked_variable += from.unpacked_variable;
     unpacked_variable_raw += from.unpacked_variable_raw;
     packed_size += from.packed_size;
+    nrecords += from.nrecords;
     INVARIANT(from.pack_time >= 0, 
 	      boost::format("from.pack_time = %.6g < 0") % from.pack_time);
     pack_time += from.pack_time;
@@ -747,6 +748,7 @@ DataSeriesSink::Stats &DataSeriesSink::Stats::operator-=(const DataSeriesSink::S
     unpacked_variable -= from.unpacked_variable;
     unpacked_variable_raw -= from.unpacked_variable_raw;
     packed_size -= from.packed_size;
+    nrecords -= from.nrecords;
     pack_time -= from.pack_time;
 
     return *this;
@@ -764,7 +766,7 @@ DataSeriesSink::Stats &DataSeriesSink::Stats::operator =(const Stats &from) {
 void DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed, 
 				   uint32_t unp_var_raw, uint32_t unp_variable, 
 				   uint32_t pkd_size, uint32_t pkd_var_size, 
-				   double pkd_time, 
+				   size_t nrecs, double pkd_time, 
 				   unsigned char fixed_compress_mode,
 				   unsigned char variable_compress_mode) {
     ++extents;
@@ -773,6 +775,7 @@ void DataSeriesSink::Stats::update(uint32_t unp_size, uint32_t unp_fixed,
     unpacked_variable_raw += unp_var_raw;
     unpacked_variable += unp_variable;
     packed_size += pkd_size;
+    nrecords += nrecs;
     INVARIANT(pkd_time >= 0, 
 	      boost::format("update(pkd_time = %.6g < 0)") % pkd_time);
     pack_time += pkd_time;
@@ -796,15 +799,13 @@ void DataSeriesSink::Stats::updateCompressMode(unsigned char compress_mode) {
 	}
 }
 
-// TODO: make this take a int64 records argument also, default -1, and
-// print out record counts, etc, like logfu2ds.C
 void DataSeriesSink::Stats::printText(ostream &to, const string &extent_type) {
     if (extent_type.empty()) {
-	to << boost::format("  wrote %d extents\n")
-	    % extents;
+	to << boost::format("  wrote %d extents, %d records\n")
+	    % extents % nrecords;
     } else {
-	to << boost::format("  wrote %d extents of type %s\n")
-	    % extents % extent_type;
+	to << boost::format("  wrote %d extents, %d records of type %s\n")
+	    % extents % nrecords % extent_type;
     }
 
     to << boost::format("  compression (none,lzo,gzip,bz2,lzf): (%d,%d,%d,%d,%d)\n")

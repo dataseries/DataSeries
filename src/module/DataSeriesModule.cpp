@@ -114,7 +114,10 @@ void OutputModule::newRecord() {
 void OutputModule::flushExtent() {
     INVARIANT(cur_extent != NULL, "??");
     if (cur_extent->fixeddata.size() > 0) {
-	stats.unpacked_variable_raw += cur_extent->variabledata.size();
+	{
+	    PThreadScopedLock lock(DataSeriesSink::Stats::getMutex());
+	    stats.unpacked_variable_raw += cur_extent->variabledata.size();
+	}
 
 	sink.writeExtent(*cur_extent, &stats);
 	cur_extent->clear();

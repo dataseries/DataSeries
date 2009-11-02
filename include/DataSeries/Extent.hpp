@@ -186,6 +186,11 @@ public:
         return fixeddata.size() + variabledata.size();
     }
     
+    /** Returns the number of records in this Extent */
+    size_t nRecords() {
+	return fixeddata.size() / type.fixedrecordsize();
+    }
+
     // TODO-2010-04-01: remove; use size
     FUNC_DEPRECATED_PREFIX unsigned int extentsize() FUNC_DEPRECATED { 
         return size();
@@ -249,11 +254,11 @@ public:
     
         \return a "checksum" calculated from the underlying checksums in the packed extent */
     uint32_t packData(Extent::ByteArray &into, 
-                      int compression_modes = compress_all,
-                      int compression_level = 9,
-                      int *header_packed = NULL, 
-                      int *fixed_packed = NULL, 
-                      int *variable_packed = NULL); 
+                      uint32_t compression_modes = compress_all,
+                      uint32_t compression_level = 9,
+                      uint32_t *header_packed = NULL, 
+                      uint32_t *fixed_packed = NULL, 
+                      uint32_t *variable_packed = NULL); 
 
     /** Loads an Extent from the external representation.
 
