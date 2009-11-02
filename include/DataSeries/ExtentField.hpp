@@ -301,9 +301,7 @@ protected:
         selfcheck(dataseries.extent()->variabledata,varoffset);
     }
     static void selfcheck(Extent::ByteArray &varbytes, int32 varoffset);
-    static void dosetandguard(byte *vardatapos, 
-                              const void *data, int32 datasize,
-                              int32 roundup);
+
     static int32 roundupSize(int32 size) {
         return size + (12 - (size % 8)) % 8;
     }

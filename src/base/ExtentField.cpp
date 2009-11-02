@@ -14,22 +14,13 @@ Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname,
 	     uint32_t _flags)
     : nullable(0),null_offset(0), null_bit_mask(0), 
       dataseries(_dataseries), flags(_flags), fieldname(_fieldname) 
-{
-}
+{ }
 
-Field::~Field()
-{
-    // could be not present if the constructor failed somehow.  TODO:
-    // think about how best to handle this since the call in the
-    // type-specific fields that registers the field is wrong if the
-    // series already has a type.  If we can figure out that side,
-    // then we can also fix this side.
+Field::~Field() {
     dataseries.removeField(*this, false);
 }
 
-void
-Field::setFieldName(const string &new_name)
-{
+void Field::setFieldName(const string &new_name) {
     INVARIANT(!new_name.empty(), "Can't set field name to empty");
     fieldname = new_name;
     if (dataseries.getType() != NULL) {
@@ -37,9 +28,7 @@ Field::setFieldName(const string &new_name)
     }
 }
 
-void 
-Field::newExtentType()
-{
+void Field::newExtentType() {
     SINVARIANT(!fieldname.empty());
     if (flags & flag_nullable) {
 	nullable = dataseries.type->getNullable(fieldname);
@@ -73,13 +62,9 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
 	      % field % dataseries.type->getName());
 }
 
-FixedField::~FixedField()
-{
-}
+FixedField::~FixedField() { }
 
-void
-FixedField::newExtentType()
-{
+void FixedField::newExtentType() {
     if (getName().empty())
 	return; // Don't have a name yet.
     Field::newExtentType();
@@ -100,9 +85,7 @@ BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field,
     }
 }
 
-void 
-BoolField::newExtentType()
-{
+void BoolField::newExtentType() {
     FixedField::newExtentType();
     if (getName().empty())
 	return; // Not ready yet
@@ -140,9 +123,7 @@ Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field,
     }
 }
 
-Int64Field::~Int64Field()
-{
-}
+Int64Field::~Int64Field() { }
 
 FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &field,
                                  int flags, bool auto_add)
@@ -163,9 +144,7 @@ DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
     }
 }
 
-void 
-DoubleField::newExtentType()
-{
+void DoubleField::newExtentType() {
     if (getName().empty())
 	return;
     FixedField::newExtentType();
@@ -189,9 +168,7 @@ Variable32Field::Variable32Field(ExtentSeries &_dataseries,
     }
 }
 
-void 
-Variable32Field::newExtentType()
-{
+void Variable32Field::newExtentType() {
     Field::newExtentType();
     offset_pos = dataseries.type->getOffset(getName());
     unique = dataseries.type->getUnique(getName());
@@ -199,39 +176,6 @@ Variable32Field::newExtentType()
 	      == ExtentType::ft_variable32,
 	      format("mismatch on field types for field named %s in type %s")
 	      % getName() % dataseries.type->getName());
-}
-
-void
-Variable32Field::dosetandguard(byte *vardatapos, 
-			       const void *data, int32 datasize,
-			       int32 roundup)
-{
-    FATAL_ERROR("xx");
-    *(int32 *)vardatapos = datasize;
-    byte *i = vardatapos + 4;
-    SINVARIANT((unsigned long)i % 8 == 0);
-    memcpy(i,data,datasize);
-    i += datasize;
-    // Might be smarter to zero as int32's first and then memcpy.
-    switch(roundup - datasize) 
-	{ // all cases fall through...
-	case 7: *i = 0; ++i;
-	case 6: *i = 0; ++i;
-	case 5: *i = 0; ++i;
-	case 4: *i = 0; ++i;
-	case 3: *i = 0; ++i;
-	case 2: *i = 0; ++i;
-	case 1: *i = 0; ++i;
-	case 0: 
-	    break;
-	default: FATAL_ERROR("internal error");
-	}
-    INVARIANT((unsigned long)(i + 4) % 8 == 0,
-	      format("internal error %lx %lx %lx\n")
-	      % (unsigned long)vardatapos 
-	      % (unsigned long)(vardatapos + 4 + datasize)
-	      % (unsigned long)(vardatapos + 4 + datasize 
-				+ (roundup - datasize)));
 }
 
 void Variable32Field::allocateSpace(uint32_t data_size) {
@@ -292,9 +236,7 @@ void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t 
     memcpy(var_bits + offset, data, data_size);
 }
 
-void
-Variable32Field::selfcheck(Extent::ByteArray &varbytes, int32 varoffset)
-{
+void Variable32Field::selfcheck(Extent::ByteArray &varbytes, int32 varoffset) {
     INVARIANT(varoffset >= 0 
 	      && (uint32_t)varoffset <= (varbytes.size() - 4),
 	      format("Internal error, bad variable offset %d") % varoffset);
