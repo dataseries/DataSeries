@@ -57,15 +57,30 @@ Extent *FilterModule::getExtent() {
 OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
 			   const ExtentType *_outputtype, 
 			   int _target_extent_size)
+    : outputtype(*_outputtype),
+      target_extent_size(_target_extent_size),
+      sink(_sink), series(_series)
+{
+    SINVARIANT(&series != NULL);
+    INVARIANT(&outputtype != NULL, "can't create output module without type");
+    INVARIANT(series.curExtent() == NULL,
+	      "series specified for output module already had an extent");
+    cur_extent = new Extent(outputtype);
+    series.setExtent(cur_extent);
+}
+
+OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
+			   const ExtentType &_outputtype, 
+			   int _target_extent_size)
     : outputtype(_outputtype),
       target_extent_size(_target_extent_size),
       sink(_sink), series(_series)
 {
     SINVARIANT(&series != NULL);
-    INVARIANT(outputtype != NULL, "can't create output module without type");
+    INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");
-    cur_extent = new Extent(*outputtype);
+    cur_extent = new Extent(outputtype);
     series.setExtent(cur_extent);
 }
 
@@ -80,7 +95,7 @@ void OutputModule::newRecord() {
     INVARIANT(series.curExtent() == cur_extent,
 	      "usage error, someone else changed the series extent");
     INVARIANT(cur_extent != NULL, "called newRecord() after close()");
-    if ((cur_extent->size() + outputtype->fixedrecordsize()) > target_extent_size) {
+    if ((cur_extent->size() + outputtype.fixedrecordsize()) > target_extent_size) {
 	double fixedsize = cur_extent->fixeddata.size();
 	double variablesize = cur_extent->variabledata.size();
 	double sumsize = fixedsize + variablesize;
@@ -126,5 +141,5 @@ DataSeriesSink::Stats OutputModule::getStats() {
 }
 
 void OutputModule::printStats(std::ostream &to) {
-    getStats().printText(to, outputtype->getName());
+    getStats().printText(to, outputtype.getName());
 }

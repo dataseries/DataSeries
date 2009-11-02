@@ -88,7 +88,7 @@ namespace {
     lintel::ProgramOption<string> po_comment_prefix("comment-prefix", "Specify a string that starts lines and causes them to be ignored; empty string for no comment prefix", "#");
 }
 
-const ExtentType *getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
+const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
     ifstream xml_desc_input(filename.c_str());
     INVARIANT(xml_desc_input.good(), 
 	      format("error opening %s: %s") % filename % strerror(errno));
@@ -113,16 +113,24 @@ const ExtentType *getXMLDescFromFile(const string &filename, ExtentTypeLibrary &
 
     LintelLogDebug("csv2ds::xml", format("XML description:\n%s") % xml_desc);
 
-    return lib.registerType(xml_desc);
+    return lib.registerTypeR(xml_desc);
 }
 
-vector<GeneralField *> makeFields(const ExtentType *type, ExtentSeries &series) {
+vector<GeneralField *> makeFields(const ExtentType &type, ExtentSeries &series) {
     vector<GeneralField *> ret;
 
-    for(uint32_t i = 0; i < type->getNFields(); ++i) {
-	ret.push_back(GeneralField::create(series, type->getFieldName(i)));
+    for(uint32_t i = 0; i < type.getNFields(); ++i) {
+	ret.push_back(GeneralField::create(series, type.getFieldName(i)));
     }
     return ret;
+}
+
+const ExtentType &getType(ExtentTypeLibrary &lib) {
+    if (po_xml_desc_file.used()) {
+	return getXMLDescFromFile(po_xml_desc_file.get(), lib);
+    } else {
+	FATAL_ERROR("--xml-desc-file=path required right now");
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -150,12 +158,7 @@ int main(int argc, char *argv[]) {
 
     ExtentTypeLibrary lib;
 
-    const ExtentType *type;
-    if (po_xml_desc_file.used()) {
-	type = getXMLDescFromFile(po_xml_desc_file.get(), lib);
-    } else {
-	FATAL_ERROR("--xml-desc-file=path required right now");
-    }
+    const ExtentType &type(getType(lib));
 
     DataSeriesSink outds(ds_output_filename, packing_args.compress_modes,
 			 packing_args.compress_level);

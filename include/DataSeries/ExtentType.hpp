@@ -23,6 +23,7 @@
 #include <boost/utility.hpp>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/StringUtil.hpp>
 
@@ -490,15 +491,20 @@ class ExtentTypeLibrary : boost::noncopyable {
 public:
     ExtentTypeLibrary() {};
 
-    /** Creates an ExtentType from an XML description using
-        @c sharedExtentType and stores it in the map.  Returns
-        a pointer to the ExtentType.
+    const ExtentType *registerType(const std::string &xmldesc) FUNC_DEPRECATED {
+	return &registerTypeR(xmldesc);
+    }
+
+    /** Creates an ExtentType from an XML description using @c sharedExtentType
+        and stores it in the map.  Returns a reference to the ExtentType.  This
+        name is transitory, and will revert back to registerType once we have
+        completed deprecating registerType()
 
         Preconditions:
         - xmldesc must be valid XML.
 
-        \todo TODO: make this return a reference (and change all the users) */
-    const ExtentType *registerType(const std::string &xmldesc);
+    */
+    const ExtentType &registerTypeR(const std::string &xmldesc);
 
     /** Adds an ExtentType to the map */
     void registerType(const ExtentType &type);

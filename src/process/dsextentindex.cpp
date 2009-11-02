@@ -332,9 +332,9 @@ protected:
 	SINVARIANT(!is_open);
         is_open = true;
 
-        infotype = library.registerType(indexinfo_xml);
-        minmaxtype = library.registerType(generateMinMaxType(type_prefix));
-        modifytype = library.registerType(modifytype_xml);
+        infotype = &library.registerTypeR(indexinfo_xml);
+        minmaxtype = &library.registerTypeR(generateMinMaxType(type_prefix));
+        modifytype = &library.registerTypeR(modifytype_xml);
 
         output = new DataSeriesSink(index_filename,
                                     packing_args.compress_modes,

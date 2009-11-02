@@ -129,7 +129,7 @@ void DataSeriesSource::readTypeExtent() {
     Variable32Field typevar(type_extent_series,"xmltype");
     for(;type_extent_series.pos.morerecords();++type_extent_series.pos) {
 	string v = typevar.stringval();
-	mylibrary.registerType(v);
+	mylibrary.registerTypeR(v);
     }
     delete e;
 }

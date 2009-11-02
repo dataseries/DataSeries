@@ -1126,8 +1126,8 @@ main(int argc,char *argv[])
 			 packing_args.compress_modes,
 			 packing_args.compress_level);
     ExtentTypeLibrary library;
-    const ExtentType *type = library.registerType(ellard_nfs_expanded_xml);
-    series.setType(*type);
+    const ExtentType &type(library.registerTypeR(ellard_nfs_expanded_xml));
+    series.setType(type);
     outmodule = new OutputModule(outds, series, type, 
 				 packing_args.extent_size);
     outds.writeExtentLibrary(library);

@@ -99,10 +99,9 @@ int main(int argc, char *argv[]) {
     cout << xmloutdesc << "\n";
 
     ExtentTypeLibrary library;
-    const ExtentType *outputtype = library.registerType(xmloutdesc);
+    const ExtentType &outputtype(library.registerTypeR(xmloutdesc));
     output.writeExtentLibrary(library);
-    INVARIANT(outputtype != NULL, "bad");
-    outputseries.setType(*outputtype);
+    outputseries.setType(outputtype);
     for(vector<string>::iterator i = fields.begin();
 	i != fields.end();++i) {
 	outfields.push_back(GeneralField::create(NULL,outputseries,*i));

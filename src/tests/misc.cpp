@@ -398,15 +398,15 @@ test_extentpackunpack()
     printf("test_extentpackunpack - start\n");
     ExtentTypeLibrary typelib;
 
-    typelib.registerType("<ExtentType name=\"test type\">\n"
-			 "  <field type=\"int32\" name=\"input1\" pack_relative=\"input1\" />\n"
-			 "  <field type=\"int32\" name=\"input2\" pack_relative=\"input1\" />\n"
-			 "  <field type=\"int64\" name=\"int64-1\" pack_relative=\"int64-1\" />\n"
-			 "  <field type=\"int64\" name=\"int64-2\" pack_relative=\"int64-2\" />\n"
-			 "  <field type=\"double\" name=\"double1\" pack_scale=\"1e-6\" pack_relative=\"double1\" />\n"
-			 "  <field type=\"variable32\" name=\"var1\"/>\n"
-			 "  <field type=\"variable32\" name=\"var2\"/>\n"
-			 "</ExtentType>\n");
+    typelib.registerTypeR("<ExtentType name=\"test type\">\n"
+			  "  <field type=\"int32\" name=\"input1\" pack_relative=\"input1\" />\n"
+			  "  <field type=\"int32\" name=\"input2\" pack_relative=\"input1\" />\n"
+			  "  <field type=\"int64\" name=\"int64-1\" pack_relative=\"int64-1\" />\n"
+			  "  <field type=\"int64\" name=\"int64-2\" pack_relative=\"int64-2\" />\n"
+			  "  <field type=\"double\" name=\"double1\" pack_scale=\"1e-6\" pack_relative=\"double1\" />\n"
+			  "  <field type=\"variable32\" name=\"var1\"/>\n"
+			  "  <field type=\"variable32\" name=\"var2\"/>\n"
+			  "</ExtentType>\n");
 
     ExtentSeries testseries(typelib,"test type");
     Extent testextent(testseries);
@@ -901,10 +901,10 @@ test_makecomplexfile()
 "  <field type=\"variable32\" name=\"null_variable32\" opt_nullable=\"yes\"/>\n"
 "</ExtentType>");
     ExtentTypeLibrary library;
-    const ExtentType *outputtype = library.registerType(complextype);
+    const ExtentType &outputtype(library.registerTypeR(complextype));
     DataSeriesSink output("test.ds");
     output.writeExtentLibrary(library);
-    ExtentSeries outputseries(*outputtype);
+    ExtentSeries outputseries(outputtype);
     OutputModule outmodule(output,outputseries,outputtype,30000);
 
     BoolField f_bool(outputseries,"bool");
@@ -986,11 +986,12 @@ test_doublebase_nullable()
 "</ExtentType>");
 
     ExtentTypeLibrary library;
-    const ExtentType *dbntype = library.registerType(dbntype_xml);
-    ExtentSeries dbnseries(*dbntype);
-    DoubleField f_double(dbnseries,"double",Field::flag_nullable | DoubleField::flag_allownonzerobase);
+    const ExtentType &dbntype(library.registerTypeR(dbntype_xml));
+    ExtentSeries dbnseries(dbntype);
+    DoubleField f_double(dbnseries,"double",
+			 Field::flag_nullable | DoubleField::flag_allownonzerobase);
     
-    Extent *cur_extent = new Extent(*dbntype);
+    Extent *cur_extent = new Extent(dbntype);
     dbnseries.setExtent(cur_extent);
     
     dbnseries.newRecord();
@@ -1032,16 +1033,16 @@ test_compactnull()
     ExtentTypeLibrary typelib;
 
     // One real bool, 7 hidden ones
-    typelib.registerType("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
-			 "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
-			 "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
-			 "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
-			 "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
-			 "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
-			 "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
-			 "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
-			 "</ExtentType>\n");
-
+    typelib.registerTypeR("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
+			  "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
+			  "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
+			  "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
+			  "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
+			  "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
+			  "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
+			  "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+			  "</ExtentType>\n");
+    
     ExtentSeries series1(typelib,"Test::CompactNulls");
     Extent extent1(series1);
     series1.setExtent(extent1);
@@ -1185,10 +1186,10 @@ test_empty_field_name()
     ExtentTypeLibrary typelib;
 
     // One real bool, 7 hidden ones
-    typelib.registerType("<ExtentType name=\"Test::EmptyFieldName\" >\n"
-			 "  <field type=\"int32\" name=\"int32a\" />\n"
-			 "  <field type=\"int32\" name=\"int32b\" />\n"
-			 "</ExtentType>\n");
+    typelib.registerTypeR("<ExtentType name=\"Test::EmptyFieldName\" >\n"
+			  "  <field type=\"int32\" name=\"int32a\" />\n"
+			  "  <field type=\"int32\" name=\"int32b\" />\n"
+			  "</ExtentType>\n");
 
     ExtentSeries series1(typelib,"Test::EmptyFieldName");
     Extent extent1(series1);

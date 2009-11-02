@@ -81,9 +81,7 @@ string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool
     }
 }
 
-static bool
-parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val)
-{
+static bool parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val) {
     string option = ExtentType::strGetXMLProp(cur, option_name);
     
     if (option.empty()) {
@@ -107,9 +105,7 @@ struct NonBoolCompactByPosition {
     }
 };
 
-void
-ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci)
-{
+void ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci) {
     sort(nci.begin(), nci.end(), NonBoolCompactByPosition());
 
     for(vector<nullCompactInfo>::iterator i = nci.begin();
@@ -119,8 +115,7 @@ ExtentType::ParsedRepresentation::sortAssignNCI(vector<nullCompactInfo> &nci)
     }
 }
 
-void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos)
-{
+void ExtentType::parsePackBitFields(ParsedRepresentation &ret, int32 &byte_pos) {
     LintelLogDebug("ExtentType::Packing", "packing bool fields...\n");
     int32 bit_pos = 0;
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
@@ -163,9 +158,7 @@ void ExtentType::parsePackByteAlignedFields(ParsedRepresentation &ret, int32 &by
     }
 }
 
-void
-ExtentType::parsePackInt32Fields(ParsedRepresentation &ret, int32 &byte_pos)
-{
+void ExtentType::parsePackInt32Fields(ParsedRepresentation &ret, int32 &byte_pos) {
     LintelLogDebug("ExtentType::Packing", "packing int32 fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_int32) {
@@ -179,9 +172,7 @@ ExtentType::parsePackInt32Fields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-void
-ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos)
-{
+void ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos) {
     // these tend to have lots of different values making compression
     // worse, so we pack them after the other int32 fields, but to
     // avoid alignment glitches before the 8 byte fields
@@ -198,9 +189,7 @@ ExtentType::parsePackVar32Fields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-void
-ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos)
-{
+void ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos) {
     LintelLogDebug("ExtentType::Packing", "packing int64 and double fields...\n");
     for(unsigned int i=0; i<ret.field_info.size(); i++) {
 	if (ret.field_info[i].type == ft_int64 
@@ -215,9 +204,8 @@ ExtentType::parsePackSize8Fields(ParsedRepresentation &ret, int32 &byte_pos)
     }
 }
 
-ExtentType::ParsedRepresentation
-ExtentType::parseXML(const string &xmldesc)
-{
+// TODO: figure out how to split up this function.
+ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
     ParsedRepresentation ret;
 
     INVARIANT(sizeof(byte) == 1 && sizeof(int32) == 4 &&
@@ -623,9 +611,7 @@ int ExtentType::getColumnNumber(const ParsedRepresentation &rep,
     return -1;
 }
 
-ExtentType::int32
-ExtentType::getSize(int column) const
-{
+ExtentType::int32 ExtentType::getSize(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
@@ -634,9 +620,7 @@ ExtentType::getSize(int column) const
     return rep.field_info[column].size;
 }
 
-ExtentType::int32
-ExtentType::getOffset(int column) const
-{
+ExtentType::int32 ExtentType::getOffset(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
@@ -646,9 +630,7 @@ ExtentType::getOffset(int column) const
     return rep.field_info[column].offset;
 }
 
-int
-ExtentType::getBitPos(int column) const
-{
+int ExtentType::getBitPos(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
@@ -659,54 +641,42 @@ ExtentType::getBitPos(int column) const
 }
 
 
-ExtentType::fieldType
-ExtentType::getFieldType(int column) const
-{
+ExtentType::fieldType ExtentType::getFieldType(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
     return rep.field_info[column].type;
 }
 
-bool
-ExtentType::getUnique(int column) const
-{
+bool ExtentType::getUnique(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
     return rep.field_info[column].unique;
 }
 
-bool
-ExtentType::getNullable(int column) const
-{
+bool ExtentType::getNullable(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
     return rep.field_info[column].null_fieldnum > 0;
 }
 
-double
-ExtentType::getDoubleBase(int column) const
-{
+double ExtentType::getDoubleBase(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
     return rep.field_info[column].doublebase;
 }
 
-string
-ExtentType::nullableFieldname(const string &fieldname)
-{
+string ExtentType::nullableFieldname(const string &fieldname) {
     string ret(" ");
 
     ret += fieldname;
     return ret;
 }
 
-string
-ExtentType::xmlFieldDesc(int field_num) const
-{
+string ExtentType::xmlFieldDesc(int field_num) const {
     INVARIANT(field_num >= 0 && field_num < (int)rep.field_info.size(),
 	      "bad field num");
     xmlBufferPtr buf = xmlBufferCreate();
@@ -717,9 +687,7 @@ ExtentType::xmlFieldDesc(int field_num) const
     return ret;
 }
 
-xmlNodePtr
-ExtentType::xmlNodeFieldDesc(int field_num) const
-{
+xmlNodePtr ExtentType::xmlNodeFieldDesc(int field_num) const {
     INVARIANT(field_num >= 0 && field_num < (int)rep.field_info.size(),
 	      "bad field num");
     return rep.field_info[field_num].xmldesc;
@@ -738,17 +706,13 @@ static const string fieldtypes[] = {
 
 static int Nfieldtypes = sizeof(fieldtypes)/sizeof(const string);
 
-const string &
-ExtentType::fieldTypeString(fieldType ft)
-{
+const string &ExtentType::fieldTypeString(fieldType ft) {
     INVARIANT(ft >= 0 && ft < Nfieldtypes,
 	      boost::format("invalid fieldtype %d") % ft);
     return fieldtypes[ft];
 }
 
-const ExtentType *
-ExtentTypeLibrary::registerType(const string &xmldesc)
-{
+const ExtentType &ExtentTypeLibrary::registerTypeR(const string &xmldesc) {
     const ExtentType &type(sharedExtentType(xmldesc));
     
     INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
@@ -756,12 +720,10 @@ ExtentTypeLibrary::registerType(const string &xmldesc)
 	      % type.getName());
 
     name_to_type[type.getName()] = &type;
-    return &type;
+    return type;
 }    
 
-void
-ExtentTypeLibrary::registerType(const ExtentType &type)
-{
+void ExtentTypeLibrary::registerType(const ExtentType &type) {
     INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
 	      boost::format("Type %s already registered")
 	      % type.getName());
@@ -769,9 +731,7 @@ ExtentTypeLibrary::registerType(const ExtentType &type)
     name_to_type[type.getName()] = &type;
 }    
 
-const ExtentType *
-ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
-{
+const ExtentType * ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const {
     if (name == ExtentType::getDataSeriesXMLType().getName()) {
 	return &ExtentType::getDataSeriesXMLType();
     } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
@@ -790,9 +750,7 @@ ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const
     return f;
 }
 
-const ExtentType *
-ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
-{
+const ExtentType * ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const {
     const ExtentType *f = NULL;
     for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
@@ -809,9 +767,7 @@ ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const
     return f;
 }
 
-const ExtentType *
-ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
-{
+const ExtentType * ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const {
     const ExtentType *f = NULL;
     for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
 	i != name_to_type.end();++i) {
@@ -828,10 +784,8 @@ ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const
     return f;
 }
 
-const ExtentType *
-ExtentTypeLibrary::getTypeMatch(const std::string &match, 
-				bool null_ok, bool skip_info)
-{
+const ExtentType * ExtentTypeLibrary::getTypeMatch(const std::string &match, 
+						   bool null_ok, bool skip_info) {
     const ExtentType *t = NULL;
 
     static string str_DataSeries("DataSeries:");

@@ -68,15 +68,15 @@ public:
 	ExtentTypeLibrary library;
 	library.registerType(e.getType());
 
-	const ExtentType *extent_type = &e.getType();
-	out_series.setType(*extent_type);
+	const ExtentType &extent_type(e.getType());
+	out_series.setType(extent_type);
 
 	out_module.reset(new OutputModule(*out_sink, out_series, extent_type, 
 					  pack_args.extent_size));
 
 
-	const ExtentType *file_extent_type = library.registerType(output_xml);
-	file_out_series.setType(*file_extent_type);
+	const ExtentType &file_extent_type(library.registerTypeR(output_xml));
+	file_out_series.setType(file_extent_type);
 	file_out_module.reset(new OutputModule(*out_sink, file_out_series, file_extent_type,
 					       pack_args.extent_size));
 

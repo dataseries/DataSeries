@@ -72,18 +72,18 @@ lowerCaseString(const string &src)
 class Indexer {
 public:
     Indexer(const string &index_filename, commonPackingArgs &packing_args) 
-    : id_out(word_series,"id"), type_out(word_series,"type"), word_out(word_series,"word"),
-      id_in(text_entries_series,"id"), text_in(text_entries_series,"text"),
-      filename_out(word_series, "filename"), offset_out(word_series, "offset") {
+	: library(), word_index_type(library.registerTypeR(textindex_word_xml)),
+	  id_out(word_series,"id"), type_out(word_series,"type"), word_out(word_series,"word"),
+	  id_in(text_entries_series,"id"), text_in(text_entries_series,"text"),
+	  filename_out(word_series, "filename"), offset_out(word_series, "offset") {
 	check_file_missing(index_filename.c_str());
-	word_index_type = library.registerType(textindex_word_xml);
 	
 	output = new DataSeriesSink(index_filename, 
 				    packing_args.compress_modes,
 				    packing_args.compress_level);
 	output->writeExtentLibrary(library);
 
-	word_series.setType(*word_index_type);
+	word_series.setType(word_index_type);
 	word_module = new OutputModule(*output, word_series, word_index_type,
 				       packing_args.extent_size);
     }
@@ -130,7 +130,7 @@ public:
 
 protected:
     ExtentTypeLibrary library;
-    const ExtentType *word_index_type;
+    const ExtentType &word_index_type;
     DataSeriesSink *output;
 
     ExtentSeries word_series;
@@ -304,7 +304,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
     check_file_missing(entries_filename);
 
     ExtentTypeLibrary library;
-    const ExtentType *entries_type = library.registerType(text_entries_xml);
+    const ExtentType &entries_type(library.registerTypeR(text_entries_xml));
 
     DataSeriesSink output(entries_filename, packing_args.compress_modes,
 			  packing_args.compress_level);

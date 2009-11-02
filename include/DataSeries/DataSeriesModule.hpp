@@ -136,7 +136,10 @@ public:
     // have lots of duplicates than you may want to increase the
     // target extent size.
     OutputModule(DataSeriesSink &sink, ExtentSeries &series,
-		 const ExtentType *outputtype, int target_extent_size);
+		 const ExtentType *outputtype, int target_extent_size) FUNC_DEPRECATED;
+
+    OutputModule(DataSeriesSink &sink, ExtentSeries &series,
+		 const ExtentType &outputtype, int target_extent_size);
     /** Calls close unless you have already called close manually. */
     ~OutputModule();
 
@@ -166,7 +169,7 @@ public:
     }
 
     void printStats(std::ostream &to);
-    const ExtentType *outputtype;
+    const ExtentType &outputtype;
 
     size_t curExtentSize() {
 	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();

@@ -275,10 +275,10 @@ writeIndexMap(char *out_filename)
 {
     DataSeriesSink sink(out_filename);
     ExtentTypeLibrary library;
-    const ExtentType *indextype = library.registerType(indextype_xml);
+    const ExtentType &indextype(library.registerTypeR(indextype_xml));
     sink.writeExtentLibrary(library);
 
-    Extent *e = new Extent(*indextype);
+    Extent *e = new Extent(indextype);
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
 	start_time(s,"start-time"), end_time(s,"end-time"),

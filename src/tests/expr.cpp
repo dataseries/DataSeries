@@ -30,10 +30,10 @@ int main(int argc, char **argv)
 			 packing_args.compress_level);
 
     ExtentTypeLibrary library;
-    const ExtentType *extent_type = library.registerType(extent_type_xml);
+    const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
     dsout.writeExtentLibrary(library);
     
-    ExtentSeries extent_series(*extent_type);
+    ExtentSeries extent_series(extent_type);
     DoubleField a(extent_series, "a");
     DoubleField b(extent_series, "b");
     DoubleField c(extent_series, "c");

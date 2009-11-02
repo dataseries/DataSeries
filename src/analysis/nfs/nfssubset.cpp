@@ -87,7 +87,7 @@ doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
     }
     ExtentSeries output_series(extenttype);
     OutputModule output_module(output, output_series, 
-			       &extenttype, extent_size);
+			       extenttype, extent_size);
 
     string sel1, sel2;
     if (extenttype.hasColumn("request-id")) {
@@ -154,8 +154,8 @@ main(int argc, char *argv[])
 	
 	for(vector<string>::iterator i = copy_names.begin();
 	    i != copy_names.end(); ++i) {
-	    const ExtentType *t = tmp.getLibrary().getTypeByName(*i);
-	    out_library.registerType(t->getXmlDescriptionString());
+	    const ExtentType &t(*tmp.getLibrary().getTypeByName(*i));
+	    out_library.registerTypeR(t.getXmlDescriptionString());
 	}
 
 	output.writeExtentLibrary(out_library);

@@ -136,17 +136,17 @@ struct PerTypeWork {
 
     double sum_unpacked_size, sum_packed_size;
     PerTypeWork(DataSeriesSink &output, unsigned extent_size, 
-		const ExtentType *t) 
+		const ExtentType &t) 
 	: inputseries(t), outputseries(t), 
 	  sum_unpacked_size(0), sum_packed_size(0) 
     {
-	for(unsigned i = 0; i < t->getNFields(); ++i) {
-	    const string &s = t->getFieldName(i);
+	for(unsigned i = 0; i < t.getNFields(); ++i) {
+	    const string &s = t.getFieldName(i);
 	    GeneralField *in = GeneralField::create(NULL, inputseries, s);
 	    GeneralField *out = GeneralField::create(NULL, outputseries, s);
 	    all_fields.push_back(in);
 	    all_fields.push_back(out);
-	    switch(t->getFieldType(s)) 
+	    switch(t.getFieldType(s)) 
 		{
 		case ExtentType::ft_bool: 
 		    in_boolfields.push_back(safe_downcast<GF_Bool>(in));
@@ -242,7 +242,7 @@ writeRepackInfo(DataSeriesSink &sink,
 	return;
     }
     ExtentSeries series(*dsrepack_info_type);
-    OutputModule out_module(sink, series, dsrepack_info_type, 
+    OutputModule out_module(sink, series, *dsrepack_info_type, 
 			    cpa.extent_size);
     BoolField enable_bz2(series, "enable_bz2");
     BoolField enable_gz(series, "enable_gz");
@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
     TypeIndexModule source("");
     ExtentTypeLibrary library;
     if (generate_info_extent) {
-	dsrepack_info_type = library.registerType(dsrepack_info_type_xml);
+	dsrepack_info_type = &library.registerTypeR(dsrepack_info_type_xml);
     }
     map<string, PerTypeWork *> per_type_work;
 
@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
 		if (debug) {
 		    cout << "Registering type of name " << j->first << endl;
 		}
-		const ExtentType *t = library.registerType(j->second->getXmlDescriptionString());
+		const ExtentType &t(library.registerTypeR(j->second->getXmlDescriptionString()));
 		per_type_work[j->first] = 
 		    new PerTypeWork(*output, packing_args.extent_size, t);
 	    }
