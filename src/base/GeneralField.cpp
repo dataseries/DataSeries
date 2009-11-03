@@ -52,13 +52,13 @@ void GeneralValue::set(const GeneralField &from) {
 	case ExtentType::ft_double: 
 	    gvval.v_double = ((GF_Double *)&from)->val(); break;
 	case ExtentType::ft_fixedwidth: {
-	    if (NULL == v_fixedwidth) {
-		// TODO: make this be a lintel::ByteArray
-		v_fixedwidth = new vector<uint8_t>;
-            }
 	    const GF_FixedWidth *tmp = reinterpret_cast<const GF_FixedWidth *>(&from);
-	    v_fixedwidth->resize(tmp->myfield.size());
-	    memcpy(&v_fixedwidth[0], tmp->myfield.val(), tmp->myfield.size());
+	    if (NULL == v_variable32) {
+		v_variable32 = new string(reinterpret_cast<const char *>(tmp->val()), tmp->size());
+            } else {
+		SINVARIANT(v_variable32->size() == static_cast<size_t>(tmp->size()));
+		memcpy(&((*v_variable32)[0]), tmp->myfield.val(), tmp->myfield.size());
+	    }
 	    break;
 	}
 	case ExtentType::ft_variable32: {
@@ -91,13 +91,7 @@ void GeneralValue::set(const GeneralValue &from) {
 	    gvval.v_int64 = from.gvval.v_int64; break;
 	case ExtentType::ft_double: 
 	    gvval.v_double = from.gvval.v_double; break;
-        case ExtentType::ft_fixedwidth:
-            if (NULL == v_fixedwidth) {
-                v_fixedwidth = new vector<uint8_t>;
-            }
-            *v_fixedwidth = *from.v_fixedwidth;
-            break;
-	case ExtentType::ft_variable32: 
+        case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: 
 	    if (NULL == v_variable32) {
 		v_variable32 = new string;
 	    }
@@ -125,10 +119,7 @@ uint32_t GeneralValue::hash(uint32_t partial_hash) const {
 				== offsetof(gvvalT, v_int64));
 	    return lintel::BobJenkinsHashMixULL(static_cast<uint64_t>(gvval.v_int64),
 						partial_hash);
-	case ExtentType::ft_fixedwidth:
-	    return lintel::hashBytes(&v_fixedwidth[0],
-	                             v_fixedwidth->size(), partial_hash);
-	case ExtentType::ft_variable32: 
+	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: 
 	    return lintel::hashBytes(v_variable32->data(),
 				     v_variable32->size(), partial_hash);
 	default: FATAL_ERROR("internal error, unexpected type"); 
@@ -203,17 +194,8 @@ bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
 	    return gvval.v_int64 < gv.gvval.v_int64;
 	case ExtentType::ft_double:
 	    return gvval.v_double < gv.gvval.v_double;
-	case ExtentType::ft_fixedwidth:
-	    return *v_fixedwidth < *gv.v_fixedwidth;
-	case ExtentType::ft_variable32: {
-	    int diff = memcmp(v_variable32->data(),gv.v_variable32->data(),
-			      min(v_variable32->size(),gv.v_variable32->size()));
-	    if (diff != 0) {
-		return diff < 0;
-	    } else {
-		return v_variable32->size() < gv.v_variable32->size();
-	    }
-	}
+	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: 
+	    return *v_variable32 < *gv.v_variable32;
 	default:
 	    FATAL_ERROR("internal error, unexpected type");
 	    return false;
@@ -237,16 +219,8 @@ bool GeneralValue::equal(const GeneralValue &gv) const {
 	    return gvval.v_int64 == gv.gvval.v_int64;
 	case ExtentType::ft_double:
 	    return gvval.v_double == gv.gvval.v_double;
-        case ExtentType::ft_fixedwidth:
-            return *v_fixedwidth == *gv.v_fixedwidth;
-	case ExtentType::ft_variable32: {
-	    if (v_variable32->size() == gv.v_variable32->size()) {
-		return memcmp(v_variable32->data(),gv.v_variable32->data(),
-			      v_variable32->size()) == 0;
-	    } else {
-		return false;
-	    }
-	}
+        case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: 
+	    return *v_variable32 == *gv.v_variable32;
 	default:
 	    FATAL_ERROR("internal error, unexpected type");
 	    return false;
@@ -286,10 +260,7 @@ void GeneralValue::write(FILE *to) {
 	case ExtentType::ft_double:
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
-	case ExtentType::ft_fixedwidth:
-	    fprintf(to,"%s",maybehexstring(&v_fixedwidth[0], v_fixedwidth->size()).c_str());
-            break;
-	case ExtentType::ft_variable32: {
+	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: {
 	    fprintf(to,"%s",maybehexstring(*v_variable32).c_str());
 	    break;
 	}
@@ -320,10 +291,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	case ExtentType::ft_double:
 	    to << boost::format("%.12g") % gvval.v_double;
 	    break;
-	case ExtentType::ft_fixedwidth:
-            to << maybehexstring(&v_fixedwidth[0], v_fixedwidth->size());
-            break;
-	case ExtentType::ft_variable32: {
+	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: {
 	    to << maybehexstring(*v_variable32);
 	    break;
 	}
@@ -1202,7 +1170,8 @@ void GF_FixedWidth::set(GeneralField *from) {
 void GF_FixedWidth::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_double,
               "can't set GF_FixedWidth from non-fixedwidth general value");
-    myfield.set(&(*from->v_fixedwidth)[0]);
+    SINVARIANT(from->v_variable32->size() == static_cast<size_t>(myfield.size()));
+    myfield.set(from->v_variable32->data());
 }
 
 double GF_FixedWidth::valDouble() {

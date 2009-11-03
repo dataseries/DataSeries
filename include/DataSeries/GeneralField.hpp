@@ -46,36 +46,37 @@ class GeneralField;
 
 class GeneralValue {
 public:
-    GeneralValue()
-	 : gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
-    { }
+    GeneralValue() : gvtype(ExtentType::ft_unknown), v_variable32(NULL) { }
+
     GeneralValue(const GeneralValue &v)
 	: gvtype(v.gvtype), gvval(v.gvval) {
 	switch (gvtype) {
-        case ExtentType::ft_variable32:
+        case ExtentType::ft_variable32: case ExtentType::ft_fixedwidth:
             v_variable32 = new std::string(*v.v_variable32);
-            v_fixedwidth = NULL;
-            break;
-        case ExtentType::ft_fixedwidth:
-            v_fixedwidth = new std::vector<uint8_t>(*v.v_fixedwidth);
-            v_variable32 = NULL;
             break;
         default:
             v_variable32 = NULL;
-            v_fixedwidth = NULL;
         }
     }
     GeneralValue(const GeneralField &from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
     GeneralValue(const GeneralField *from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL), v_fixedwidth(NULL)
+	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
     ~GeneralValue() { 
 	delete v_variable32; 
-	delete v_fixedwidth;
+    }
+
+    GeneralValue &operator =(const GeneralValue &from) {
+	set(from);
+	return *this;
+    }
+    GeneralValue &operator =(const GeneralField &from) {
+	set(from);
+	return *this;
     }
 
     void set(const GeneralValue &from);
@@ -110,14 +111,6 @@ public:
 
     std::ostream &write(std::ostream &to) const;
 
-    GeneralValue &operator =(const GeneralValue &from) {
-	set(from);
-	return *this;
-    }
-    GeneralValue &operator =(const GeneralField &from) {
-	set(from);
-	return *this;
-    }
     ExtentType::fieldType getType() const { return gvtype; }
     /** calculate a hash of this value, use partial_hash as the
 	starting hash. */
@@ -156,8 +149,7 @@ protected:
 	double v_double;
     } gvval;
     /// \endcond
-    std::string *v_variable32; // only valid if gvtype = ft_variable32
-    std::vector<uint8_t> *v_fixedwidth; // only valid if gvtype == ft_fixedwidth
+    std::string *v_variable32; // only valid if gvtype = ft_variable32 | ft_fixedwidth
 };
 
 inline bool operator < (const GeneralValue &a, const GeneralValue &b) {
@@ -419,8 +411,8 @@ public:
 
     virtual double valDouble();
 
-    // TODO: make this return a vector<uint8_t>
     const uint8_t* val() const { return myfield.val(); }
+    const int32_t size() const { return myfield.size(); }
 
     FixedWidthField myfield;
 };

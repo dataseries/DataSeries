@@ -18,7 +18,7 @@
 
 uint8_t dblToUint8(double v);
 
-void check_set() {
+void checkSet() {
     GeneralValue test;
     test.setInt64(1234567890987654321LL);
     SINVARIANT(test.valBool());
@@ -48,8 +48,27 @@ void check_set() {
     //SINVARIANT(testAgain.valString() == "123456789.0987654321");
 }
 
-int main(int argc, char **argv)
-{
-    check_set();
+void checkCopy() {
+    GeneralValue v1,v2;
+    
+    v1.setInt32(7);
+    v2 = v1;
+
+    SINVARIANT(v2 == v1);
+    v1.setInt32(8);
+    SINVARIANT(v2 != v1);
+
+    GeneralValue v3,v4;
+    v3.setVariable32("xyzzy");
+    v4 = v3;
+    SINVARIANT(v4 == v3);
+
+    v3.setVariable32("abcde");
+    SINVARIANT(v4 != v3);
+}
+
+int main(int argc, char **argv) {
+    checkSet();
+    checkCopy();
     std::cout << "GeneralValue checks successful" << std::endl;
 }

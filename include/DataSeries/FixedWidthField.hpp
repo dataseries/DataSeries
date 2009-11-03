@@ -45,7 +45,7 @@ public:
 	@param val source value for the copy
 	@param val_size size of the value
     */
-    void set(const byte *val, uint32_t val_size = 0) {
+    void set(const void *val, uint32_t val_size = 0) {
 	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
 	(void)val_size;
         if (val == NULL) {
