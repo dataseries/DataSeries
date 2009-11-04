@@ -10,12 +10,16 @@ set -e
 
 PERL5LIB=$1/src/perl-modules:$2/share/perl5:$PERL5LIB perl ../analysis/lsfdsplots --indexfile=test.index.2.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=../analysis/lsfdsanalysis
 
-# TODO: come up with another way to test this; the following test
-# doesn't work since different versions of gnuplot generate very
-# different postscript.  (First found on gnuplot 4.2 with debian lenny
-# vs. 4.0 with debian etch)  Visualization looks the same.
-
-# grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
-# cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref
+# Gnuplot generates different postscript for different versions; this seems the best
+# approach to checking that we're getting something valid out.
+grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps >check-lsfdsplots/all/all.ps-nodate
+if cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.0; then
+    echo "plot ok, gnuplot 4.0 equivalent"
+elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.2; then
+    echo "plot ok, gnuplot 4.2 equivalent"
+else
+    echo "Can't find gnuplot reference data consistent with input"
+    exit 1
+fi
 
 exit 0
