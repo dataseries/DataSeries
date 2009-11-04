@@ -365,6 +365,7 @@ public:
 	    bufsize = destlen;
 	} else if (suffixequal(filename, ".128MiB.bz2") ||
 		   suffixequal(filename, ".128MiB.bz2-new")) { // latter occurs during conversion
+#if DATASERIES_ENABLE_BZ2
 	    buffer = new unsigned char[128*1024*1024];
 	    unsigned int destlen = 128*1024*1024;
 	    int ret = BZ2_bzBuffToBuffDecompress(reinterpret_cast<char *>(buffer),
@@ -373,6 +374,10 @@ public:
 						 myprefetcher->datasize, 0, 0);
 	    INVARIANT(ret == BZ_OK && destlen > 0 && destlen <= 128*1024*1024, "bad");
 	    bufsize = destlen;
+#else
+	    FATAL_ERROR(format("Can not unpack %s, nettrace2ds built without bz2 support")
+			% filename);
+#endif
 	} else {
 	    FATAL_ERROR(format("Don't know how to unpack %s") % filename);
 	}
@@ -3127,8 +3132,8 @@ uncompressFile(const string &src, const string &dest)
     exit(0);
 }
 
-void recompressFileBZ2(const string &src, const string &dest)
-{
+void recompressFileBZ2(const string &src, const string &dest) {
+#if DATASERIES_ENABLE_BZ2
     check_file_missing(dest);
 
     ERFReader myerfreader(src);
@@ -3155,6 +3160,9 @@ void recompressFileBZ2(const string &src, const string &dest)
     ret = close(outfd);
     INVARIANT(ret == 0, "bad close");
     exit(0);
+#else
+    FATAL_ERROR("Unable to recompress with bz2, nettrace2ds built without bz2 support");
+#endif
 }
 
 void checkERFEqual(const string &src1, const string &src2)

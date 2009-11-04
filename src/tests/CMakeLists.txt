@@ -35,6 +35,8 @@ DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
 DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
 DATASERIES_SCRIPT_TEST(csv2ds)
+DATASERIES_SCRIPT_TEST(ipdsanalysis)
+DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
 ### Script tests of testing-only programs
 DATASERIES_PROGRAM_NOINST(expr)
@@ -50,11 +52,6 @@ DATASERIES_PROGRAM_NOINST(typefiltermodule)
 DATASERIES_SCRIPT_TEST(typefiltermodule)
 
 ### Conditional tests...
-
-IF(LZO_ENABLED)
-    # TODO: repack the nfs*.ip.ds files with only gz and lzf
-    DATASERIES_SCRIPT_TEST(ipdsanalysis)
-ENDIF(LZO_ENABLED)
 
 IF(BZIP2_ENABLED)
     DATASERIES_SCRIPT_TEST(pssimple)
@@ -74,8 +71,4 @@ ENDIF(SRT_ENABLED)
 
 ### Long tests
 
-# TODO: split misc into multiple pieces so that it can be run in
-# parallel.
-DATASERIES_PROGRAM_NOINST(misc)
-DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
-
+DATASERIES_SIMPLE_TEST(byteflip)
