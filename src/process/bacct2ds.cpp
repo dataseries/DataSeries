@@ -15,8 +15,6 @@
 // "standard" LSF fields and a portion which parses any cluster
 // specific lsf naming/directory naming conventions.
 
-// TODO: remove printf, replace with boost::format
-
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -115,10 +113,6 @@ int jobname_parse_fail_count = 0;
 int jobname_odd_fail_count = 0;
 int jobdirectory_parse_fail_count = 0;
 int jobdirectory_odd_fail_count = 0;
-
-// needed to make g++-3.3 not suck.
-extern int printf (__const char *__restrict __format, ...)
-   __attribute__ ((format (printf, 1, 2)));
 
 // TODO: add conversion statistics
 const string lsf_grizzly_xml(
@@ -291,8 +285,9 @@ extract_fields(char *buf, vector<string> &fields, int linenum)
 {
     static const bool debug_extract_fields = false;
 
-    if (debug_extract_fields)
-	printf("%s parsed as:\n",buf);
+    if (debug_extract_fields) {
+	cout << format("%s parsed as:\n") % buf;
+    }
     int maxlen = strlen(buf);
     while(*buf != '\n') {
 	string tmp;
@@ -322,8 +317,7 @@ bool encmatch(const string &in, const string &match)
     if (encryptString(in) == match)
 	return true;
     if (match == empty_string) {
-	fprintf(stderr,"%s -> %s\n",in.c_str(),
-		hexstring(encryptString(in)).c_str());
+	cerr << format("%s -> %s\n") % in % hexstring(encryptString(in));
     }
     return false;
 }
@@ -474,10 +468,10 @@ struct job_info {
 	command_name = command.substr(slash_idx,space_idx - slash_idx);
 	command_path = command.substr(0,space_idx);
 
-	if (false)
-	    printf("XX %s -> '%s' ; '%s'\n",
-		   command.c_str(),command_name.c_str(),
-		   command_path.c_str());
+	if (false) {
+	    cout << format("XX %s -> '%s' ; '%s'\n") % command % command_name
+		% command_path;
+	}
 	job_resolution = -1;
 	job_frame = 0;
 	int res_idx = lsf_command.find("-r ");
@@ -511,8 +505,8 @@ struct job_info {
 		} else {
 		    found_res = false;
 		    if (print_parse_warnings) {
-		      fprintf(stderr,"bad resolution char '%c' '%c' in %s\n",
-			      lsf_command[res_end],lsf_command[res_end+1],lsf_command.c_str());
+			cerr << format("bad resolution char '%c' '%c' in %s\n")
+			    % lsf_command[res_end] % lsf_command[res_end+1] % lsf_command;
 		    }
 		    break;
 		}
@@ -525,9 +519,10 @@ struct job_info {
 		} else {
 		    job_resolution = atof(res_str.c_str());
 		}
-		if (false)
-		    printf("%s -> %d..%d %s ; %f\n",lsf_command.c_str(),res_idx,res_end,
-			   res_str.c_str(),job_resolution);
+		if (false) {
+		    cout << format("%s -> %d..%d %s ; %f\n") % lsf_command % res_idx % res_end
+			% res_str % job_resolution;
+		}
 	    } else {
 		job_resolution = -1;
 	    }
@@ -539,7 +534,7 @@ struct job_info {
 	if (lsf_idx == 0) {
 	    if (frame_idx >= 0 && isdigit(lsf_command[frame_idx+3])) { // some commands take -c, but it isn't a frame #
 		job_frame = atoi(lsf_command.c_str() + (frame_idx + 3));
-		if (false) printf("XX %s -> %d\n",lsf_command.c_str(),job_frame);
+		if (false) cout << format("XX %s -> %d\n") % lsf_command % job_frame;
 	    }
 	    //	    INVARIANT(frame_idx == -1, format("bad %s %d") % lsf_command % lsf_idx);
 	} else if (array_idx > 0) {
@@ -550,8 +545,8 @@ struct job_info {
 	    if (v) {
 		SINVARIANT(*v);
 	    } else if (print_frame_lsfidx_warnings) {
-		fprintf(stderr,"Warning, got lsf_idx (but not frame option) for unrecognized '%s'/'%s'/'%s'\n",
-			command_name.c_str(),hexstring(encryptString(command_name)).c_str(),command.c_str());
+		cerr << format("Warning, got lsf_idx (but not frame option) for unrecognized '%s'/'%s'/'%s'\n")
+		    % command_name % hexstring(encryptString(command_name)) % command;
 	    }
 	    job_frame = 0;
 	} else if (frame_idx > 0 && frames_idx > 0) {
@@ -563,17 +558,16 @@ struct job_info {
 	    } else {
 		job_frame = 0;
 		if (print_parse_warning_non_override_frame_number) {
-		    fprintf(stderr,"Warning non-override frame numbers in '%s':\n",
-			    lsf_command.c_str());
+		    cerr << format("Warning non-override frame numbers in '%s':\n")
+			% lsf_command;
 		    if (encx != encrypted_parse_special[2]) {
-			fprintf(stderr, "  '%s' => '%s' != '%s'\n",
-				lsf_command.substr(frame_idx, 6).c_str(),
-				hexstring(encx).c_str(), hexstring(encrypted_parse_special[2]).c_str());
+			cerr << format("  '%s' => '%s' != '%s'\n")
+			    % lsf_command.substr(frame_idx, 6)
+			    % hexstring(encx) % hexstring(encrypted_parse_special[2]);
 		    }
 		    if (lsf_command.substr(frames_idx+9, 12) != str_lsb_jobindex) {
-			fprintf(stderr, "  '%s' != '%s'\n",
-				lsf_command.substr(frames_idx+9, 12).c_str(),
-				str_lsb_jobindex.c_str());
+			cerr << format("  '%s' != '%s'\n") % lsf_command.substr(frames_idx+9, 12)
+			    % str_lsb_jobindex;
 		    }			
 		}
 	    }
@@ -581,8 +575,10 @@ struct job_info {
 	    INVARIANT(frame_idx >= 0,
 		      format("bad frame index %d in command '%s' lsf_idx=%d")
 		      % frame_idx % lsf_command % lsf_idx);
-	    if (false) printf("XX %s -> %d %d '%s'\n",lsf_command.c_str(),
-		   lsf_idx,frame_idx,lsf_command.substr(frame_idx,5).c_str());
+	    if (false) {
+		cout << format("XX %s -> %d %d '%s'\n") % lsf_command
+		    % lsf_idx % frame_idx % lsf_command.substr(frame_idx,5);
+	    }
 	    if (lsf_command.substr(frame_idx+3,13) == str_dollar_lsb_jobindex ||
 		lsf_command.substr(frame_idx+3,15) == str_quote_dollar_lsb_jobindex ||
 		lsf_command.substr(frame_idx+3,12) == str_frame_number ||
@@ -592,12 +588,11 @@ struct job_info {
 	    } else {
 		job_frame = 0;
 		if (print_parse_warnings) {
-		  fprintf(stderr,"Warning, inconsistent frame numbers lsf_idx = %d; -c = %s ; %s\n",
-			  lsf_idx, lsf_command.substr(frame_idx+3,13).c_str(),
-			  lsf_command.c_str());
+		    cerr << format("Warning, inconsistent frame numbers lsf_idx = %d; -c = %s ; %s\n")
+			% lsf_idx % lsf_command.substr(frame_idx+3,13) % lsf_command;
 		}
 	    }
-	    if (false) printf("YY %s -> %d\n",lsf_command.c_str(),job_frame);
+	    if (false) cout << format("YY %s -> %d\n") % lsf_command % job_frame;
 	}
     }
     static const int jStatusPEND = 1;
@@ -654,7 +649,7 @@ struct job_info {
 	    exec_host = fields[25+tailoffset];
 	} else {
 	    exec_host = "*lots; not handled correctly yet*";
-	    fprintf(stderr,"Warning, got %d exechosts\n",nhosts);
+	    cerr << format("Warning, got %d exechosts\n") % nhosts;
 	}
     }
     void parse_maxrmem(vector<string> &fields, int tailoffset, int linenum) {
@@ -663,7 +658,7 @@ struct job_info {
 	if (start_time > 0) {
 	    if (rmem_kb <= 0 || rswap_kb <= 0) {
 		if (print_parse_warnings) {
-		    fprintf(stderr,"warning, invalid rmem/rswap for started job %d/%d on line %d, sse %d .. %d .. %d\n",rmem_kb,rswap_kb,linenum,submit_time,start_time-submit_time,end_time-start_time);
+		    cerr << format("warning, invalid rmem/rswap for started job %d/%d on line %d, sse %d .. %d .. %d\n") % rmem_kb % rswap_kb % linenum % submit_time % (start_time-submit_time) % (end_time-start_time);
 		}
 		rmem_kb = -1;
 		rswap_kb = -1;
@@ -675,7 +670,8 @@ struct job_info {
 	    if (rswap_kb == -1) rswap_kb = 0;
 	    if (rmem_kb != 0 || rswap_kb != 0) {
 		if (print_parse_warnings) {
-		    fprintf(stderr,"warning, invalid rmem/rswap %d/%d on line %d\n",rmem_kb,rswap_kb,linenum);
+		    cerr << format("warning, invalid rmem/rswap %d/%d on line %d\n")
+			% rmem_kb % rswap_kb % linenum;
 		}
 		rmem_kb = 0;
 		rswap_kb = 0;
@@ -857,9 +853,10 @@ parse_frameinfo(const string &framebits, job_info &jinfo)
 	return true;
     }
 
-    if (false)
-	printf("Unable to parse frameinfo %s // %s\n",
-	       framebits.c_str(),hexstring(encryptString(framebits)).c_str());
+    if (false) {
+	cout << format("Unable to parse frameinfo %s // %s\n")
+	    % framebits % hexstring(encryptString(framebits));
+    }
     return false;
 
 }
@@ -1186,8 +1183,7 @@ parse_pipesep_jobname(const string &jobname, job_info &jinfo)
 		    jinfo.object = tasks[1];
 		} else {
 		    if (print_parse_warnings) {
-			fprintf(stderr, "confused (tasks.size() == 3) on %s\n",
-				jobname.c_str());
+			cerr << format("confused (tasks.size() == 3) on %s\n") % jobname;
 		    }
 		}
 	    } else if (tasks.size() == 4) {
@@ -1209,11 +1205,9 @@ parse_pipesep_jobname(const string &jobname, job_info &jinfo)
 		    jinfo.subtask = tasks[3];
 		} else {
 		    if (print_parse_warnings) {
-			fprintf(stderr, "pipesep: 4 subtask mismatch (%s,%s), (%s,%s), (%s,%s) in %s\n",
-				tasks[0].c_str(), jinfo.production.c_str(),
-				tasks[1].c_str(), jinfo.sequence.c_str(),
-				tasks[2].c_str(), jinfo.shot.c_str(),
-				jobname.c_str());
+			cerr << format("pipesep: 4 subtask mismatch (%s,%s), (%s,%s), (%s,%s) in %s\n")
+			    % tasks[0] % jinfo.production % tasks[1] % jinfo.sequence
+			    % tasks[2] % jinfo.shot % jobname;
 		    }
 		}
 	    } else {
@@ -1262,7 +1256,6 @@ parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
 {
     vector<string> fields;
     unsigned start_offset = 0;
-    //    printf("XX %s\n",jobname.c_str());
     while (start_offset < jobname.size()) {
 	bool inbracket = jobname[start_offset] == '[';
 	unsigned end_offset = start_offset;
@@ -2545,11 +2538,11 @@ period_parse_any(string &tmp_jobname, string &write_into,
 {
     int idx = tmp_jobname.find(sepstr);
     if (idx > 0) {
-	if (false) printf("XX %s -> ",tmp_jobname.c_str());
+	if (false) cout << format("XX %s -> ") % tmp_jobname;
 	write_into = tmp_jobname.substr(0,idx);
 	tmp_jobname = tmp_jobname.substr(idx+1,
 					 tmp_jobname.length() - (idx+1));
-	if (false) printf("%s/%s\n",write_into.c_str(),tmp_jobname.c_str());
+	if (false) cout << format("%s/%s\n") % write_into % tmp_jobname;
 	return true;
     } else if (idx == -1 && entire_string_ok) {
 	write_into = tmp_jobname;
@@ -2595,10 +2588,10 @@ period_parse_xmatch(string &tmp_jobname, const string &encrypted_str,
 	return true;
     } else {
 	if (encrypted_str.size() == 0) { // finding new string...
-	    fprintf(stderr,"Unable to match %s -> %s == '%s'\n",
-		    tmp_jobname.substr(0,period_idx).c_str(),
-		    hexstring(encryptString(tmp_jobname.substr(0,period_idx))).c_str(),
-		    hexstring(encrypted_str).c_str());
+	    cerr << format("Unable to match %s -> %s == '%s'\n")
+		% tmp_jobname.substr(0,period_idx) 
+		% hexstring(encryptString(tmp_jobname.substr(0,period_idx)))
+		% hexstring(encrypted_str);
 	}
 	return false;
     }
@@ -2640,19 +2633,19 @@ parse_jobname_trim_framespec(string &jobname, job_info &jinfo)
 	xpcre_get_substring(jobname,ovector,rc,1,str);
 	if (parse_frameinfo(str,jinfo) == false) {
 	    if (print_parse_warnings) {
-		fprintf(stderr,"can't parse '%s' in '%s'\n",str.c_str(),jobname.c_str());
+		cerr << format("can't parse '%s' in '%s'\n") % str % jobname;
 	    }
-	    return true; //
+	    return true; 
 	}
 	xpcre_get_substring(jobname,ovector,rc,0,str);
-	if (false) printf("trimmed %s to ",jobname.c_str());
+	if (false) cout << format("trimmed %s to ") % jobname;
 	jobname = jobname.substr(0,jobname.length() - str.length());
 	if(jobname.size() > 0 && jobname[jobname.size()-1] == '.') {
 	    jobname = jobname.substr(0,jobname.length() - 1);
 	}
-	if (false) printf("%s\n",jobname.c_str());
+	if (false) cout << format("%s\n") % jobname;
     } else {
-	if (false) printf("nomatch on %s\n",jobname.c_str());
+	if (false) cout << format("nomatch on %s\n") % jobname;
 	INVARIANT(rc == PCRE_ERROR_NOMATCH,
 		  format("inexplicable error from pcre: %d on %s")
 		  % rc % jobname);
@@ -2734,7 +2727,7 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	parse_periodsep_trim_periods(jobname) &&
 	period_parse_any(jobname,jinfo.task,true) &&
 	jobname == empty_string) {
-	if (false) printf("YY %s -> ss %s\n",jobname.c_str(),jinfo.task.c_str());
+	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
 	return true;
     } else {
 	jinfo.task = empty_string;
@@ -2747,7 +2740,7 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	period_parse_any(jobname,jinfo.task) &&
 	period_parse_any(jobname,jinfo.subtask,true) &&
 	jobname == empty_string) {
-	if (false) printf("YY %s -> ss %s\n",jobname.c_str(),jinfo.task.c_str());
+	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
 	return true;
     } else {
 	jinfo.task = empty_string;
@@ -2762,7 +2755,7 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	period_parse_any(jobname,jinfo.subtask) &&
 	period_parse_any(jobname,jinfo.object,true) &&
 	jobname == empty_string) {
-	if (false) printf("YY %s -> ss %s\n",jobname.c_str(),jinfo.task.c_str());
+	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
 	return true;
     } else {
 	jinfo.task = empty_string;
@@ -2877,9 +2870,10 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	     encryptString(jinfo.subtask) == encrypted_parse_periodsep[5])) {
 	    return true;
 	} else {
-	    if (false)
-		fprintf(stderr,"XX %s -> %s\n",jinfo.subtask.c_str(),
-			hexstring(encryptString(jinfo.subtask)).c_str());
+	    if (false) {
+		cerr << format("XX %s -> %s\n") % jinfo.subtask 
+		    % hexstring(encryptString(jinfo.subtask));
+	    }
 	    jinfo.task = empty_string;
 	    jinfo.subtask = empty_string;
 	}
@@ -3124,7 +3118,7 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	    xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
 	    return true;
 	} else {
-	    printf("nomatch %s\n",hexstring(encryptString(str)).c_str());
+	    cout << format("nomatch %s\n") % hexstring(encryptString(str));
 	}
     } else {
 	INVARIANT(rc == PCRE_ERROR_NOMATCH,
@@ -3141,7 +3135,7 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
 	    xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
 	    return true;
 	} else {
-	    printf("nomatch %s\n",hexstring(encryptString(str)).c_str());
+	    cout << format("nomatch %s\n") % hexstring(encryptString(str));
 	}
     } else {
 	INVARIANT(rc == PCRE_ERROR_NOMATCH,
@@ -3448,11 +3442,10 @@ parse_jobname(const string &jobname, const string &jobcommand,
 
     if (parse_colonsep_jobname(jobname,jobdirectory,jinfo)) {
 	if (false) {
-	    printf("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n",
-		   jobname.c_str(),jinfo.meta_id,jinfo.production.c_str(),jinfo.sequence.c_str(),
-		   jinfo.shot.c_str(),jinfo.task.c_str(),jinfo.object.c_str(),jinfo.subtask.c_str(),
-		   jinfo.frames.c_str(),jinfo.start_frame,jinfo.end_frame,jinfo.frame_step,
-		   jinfo.nframes);
+	    cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
+		% jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
+		% jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
+		% jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
 	}
 	jinfo.job_name_unpacked = true;
 	return;
@@ -3460,11 +3453,10 @@ parse_jobname(const string &jobname, const string &jobcommand,
 
     if (jinfo.directory_name_unpacked && parse_periodsep_jobname(jobname,jobdirectory,jinfo)) {
 	if (false) {
-	    printf("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n",
-		   jobname.c_str(),jinfo.meta_id,jinfo.production.c_str(),jinfo.sequence.c_str(),
-		   jinfo.shot.c_str(),jinfo.task.c_str(),jinfo.object.c_str(),jinfo.subtask.c_str(),
-		   jinfo.frames.c_str(),jinfo.start_frame,jinfo.end_frame,jinfo.frame_step,
-		   jinfo.nframes);
+	    cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
+		% jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
+		% jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
+		% jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
 	}
 	jinfo.job_name_unpacked = true;
 	return;
@@ -3477,12 +3469,11 @@ parse_jobname(const string &jobname, const string &jobcommand,
 
     if (print_parse_warnings) {
 	if (jinfo.directory_name_unpacked) {
-	    fprintf(stderr,"Warning: unable to parse jobname, directory ok; linenum %d name = '%s'\n  cmd='%s'\n  dir='%s'\n",
-		    linenum,
-		    jobname.c_str(),jobcommand.c_str(),jobdirectory.c_str());
+	    cerr << format("Warning: unable to parse jobname, directory ok; linenum %d name = '%s'\n  cmd='%s'\n  dir='%s'\n")
+		% linenum % jobname % jobcommand % jobdirectory;
 	} else {
-	    fprintf(stderr,"Warning: unable to parse jobname or directory\n  name='%s'\n  cmd='%s'\n  dir='%s'\n",
-		    jobname.c_str(),jobcommand.c_str(),jobdirectory.c_str());
+	    cerr << format("Warning: unable to parse jobname or directory\n  name='%s'\n  cmd='%s'\n  dir='%s'\n")
+	    % jobname % jobcommand % jobdirectory;
 	}
     }
     ++jobname_parse_fail_count;
@@ -3491,9 +3482,7 @@ parse_jobname(const string &jobname, const string &jobcommand,
 Clock::Tll encrypt_cycles, hex_cycles, lookup_cycles;
 int hexcount;
 
-string
-sqluint(unsigned val) // "NULL" value is 0
-{
+string sqluint(unsigned val) { // "NULL" value is 0
     if (val == 0) {
 	return "NULL";
     }
@@ -3503,9 +3492,7 @@ sqluint(unsigned val) // "NULL" value is 0
     return ret;
 }
 
-string
-sqlint(int val, int null_val = -1)
-{
+string sqlint(int val, int null_val = -1) {
     if (val == null_val) {
 	return "NULL";
     }
@@ -3696,11 +3683,11 @@ process_line(char *buf, int linenum)
 	if (jinfo.dir_production != jinfo.production ||
 	    jinfo.dir_sequence != jinfo.sequence ||
 	    jinfo.dir_shot != jinfo.shot) {
-	    if (false)
-		fprintf(stderr,"Error: mismatch on shot info '%s;%s;%s' vs '%s;%s;%s' '%s'\n",
-			jinfo.production.c_str(), jinfo.sequence.c_str(), jinfo.shot.c_str(),
-			jinfo.dir_production.c_str(), jinfo.dir_sequence.c_str(), jinfo.dir_shot.c_str(),
-		    fields[17].c_str());
+	    if (false) {
+		cerr << format("Error: mismatch on shot info '%s;%s;%s' vs '%s;%s;%s' '%s'\n")
+		    % jinfo.production % jinfo.sequence % jinfo.shot
+		    % jinfo.dir_production % jinfo.dir_sequence % jinfo.dir_shot % fields[17];
+	    }
 	    jinfo_pss_match = false;
 	}
     }
@@ -3708,16 +3695,16 @@ process_line(char *buf, int linenum)
     {
 	int i = jinfo.sequence.find(str_imax);
 	if (i > 0) {
-	    if (false) printf("rewrite IMAX %s %s -> ",jinfo.production.c_str(),jinfo.sequence.c_str());
+	    if (false) cout << format("rewrite IMAX %s %s -> ") % jinfo.production % jinfo.sequence;
 	    jinfo.production.append(str_imax);
 	    jinfo.sequence = jinfo.sequence.substr(0,jinfo.sequence.length() - str_imax.length());
-	    if (false) printf("%s %s\n",jinfo.production.c_str(),jinfo.sequence.c_str());
+	    if (false) cout << format("%s %s\n") % jinfo.production % jinfo.sequence;
 	}
     }
 
     if (false) cout << format("%d fields\n") % (fields.size() - tailoffset);
-    if (false) cout << format("YY %d %s %s\n") % jinfo.job_name_unpacked % sqlstring(jinfo.production) % sqlstring(jinfo.team).c_str();
-    if (false) printf("%s\n",sqlstring(jinfo.team).c_str());
+    if (false) cout << format("YY %d %s %s\n") % jinfo.job_name_unpacked % sqlstring(jinfo.production) % sqlstring(jinfo.team);
+    if (false) cout << format("%s\n") % sqlstring(jinfo.team);
     framelike(jinfo.frames);
     INVARIANT(!jinfo.queue.empty(), "internal error queue empty?!");
 
@@ -3777,9 +3764,7 @@ process_line(char *buf, int linenum)
     exec_host_group.nset(hostGroup(jinfo.exec_host), empty_string);
 }
 
-int
-main(int argc,char *argv[])
-{
+int main(int argc,char *argv[]) {
     commonPackingArgs packing_args;
     packing_args.extent_size = 8*1024*1024;
     getPackingArgs(&argc,argv,&packing_args);
@@ -3825,16 +3810,13 @@ main(int argc,char *argv[])
 	INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
 	process_line(buf,nlines);
     }
-    fprintf(stderr,"\nProcessed %d lines; failed to decode %d jobnames (%.2f%%), %d directories (%.2f%%), %d/%d odd names/directories\n",
-	    nlines, jobname_parse_fail_count,
-	    jobname_parse_fail_count * 100.0 / (double)nlines,
-	    jobdirectory_parse_fail_count,
-	    jobdirectory_parse_fail_count * 100.0 / (double)nlines,
-	    jobname_odd_fail_count,
-	    jobdirectory_odd_fail_count);
+    cerr << format("\nProcessed %d lines; failed to decode %d jobnames (%.2f%%), %d directories (%.2f%%), %d/%d odd names/directories\n")
+	% nlines % jobname_parse_fail_count
+	% (jobname_parse_fail_count * 100.0 / (double)nlines)
+	% jobdirectory_parse_fail_count % (jobdirectory_parse_fail_count * 100.0 / (double)nlines)
+	% jobname_odd_fail_count % jobdirectory_odd_fail_count;
     lsf_grizzly_outmodule->flushExtent();
     delete lsf_grizzly_outmodule;
-    //     fprintf(stderr,"PCRE cycles: %lld\n",pcre_cycles);
 
     return 0;
 }
