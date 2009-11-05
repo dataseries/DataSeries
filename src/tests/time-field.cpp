@@ -317,10 +317,10 @@ void checkRegisterUnitsEpoch() {
     for(uint32_t i = 0; i < 10; ++i) {
 	double seconds = (rng() % (1000*1000)) + (rng() % 1000000)/1.0e6;
 
-	int64_t nsec = round(seconds * 1.0e9);
-	int64_t usec = round(seconds * 1.0e6);
+	int64_t nsec = static_cast<int64_t>(round(seconds * 1.0e9));
+	int64_t usec = static_cast<int64_t>(round(seconds * 1.0e6));
 	double frac32_d = seconds * (4*1024.0*1024.0*1024.0);
-	int64_t frac32 = round(frac32_d);
+	int64_t frac32 = static_cast<int64_t>(round(frac32_d));
 	
 	nsec_unix.setRaw(nsec);
 	usec_unix.setRaw(usec);

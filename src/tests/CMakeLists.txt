@@ -36,7 +36,6 @@ DATASERIES_SCRIPT_TEST(ds2txt)
 DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
 DATASERIES_SCRIPT_TEST(csv2ds)
 DATASERIES_SCRIPT_TEST(ipdsanalysis)
-DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
 ### Script tests of testing-only programs
 DATASERIES_PROGRAM_NOINST(expr)
@@ -50,6 +49,9 @@ DATASERIES_SCRIPT_TEST(sortedindex)
 
 DATASERIES_PROGRAM_NOINST(typefiltermodule)
 DATASERIES_SCRIPT_TEST(typefiltermodule)
+
+DATASERIES_PROGRAM_NOINST(misc)
+DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
 ### Conditional tests...
 
