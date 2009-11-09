@@ -1,6 +1,6 @@
 # Find the DataSeries includes and library
 #
-#  DATASERIES_INCLUDE_DIR - where to find DataSeries/*.H
+#  DATASERIES_INCLUDE_DIR - where to find DataSeries/*.hpp
 #  DATASERIES_LIBRARIES   - List of libraries when using DataSeries
 #  DATASERIES_FOUND       - True if DataSeries found.
 
@@ -10,7 +10,7 @@ IF (DATASERIES_INCLUDE_DIR)
   SET(DATASERIES_FIND_QUIETLY TRUE)
 ENDIF (DATASERIES_INCLUDE_DIR)
 
-FIND_PATH(DATASERIES_INCLUDE_DIR DataSeries/Extent.H
+FIND_PATH(DATASERIES_INCLUDE_DIR DataSeries/Extent.hpp
   ${CMAKE_INSTALL_PREFIX}/include
 )
 
