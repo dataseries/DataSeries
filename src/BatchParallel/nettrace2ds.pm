@@ -168,14 +168,15 @@ or \\w+.pcap#{,.bz2}"
 	print ".";
 	my @group;
 	my $first_num = $nums[$i];
-	my $last_num = $nums[$i+$this->{groupsize}-1] || $nums[@nums-1];
+	my $last_num = $nums[$i+$this->{groupsize}-1];
+	$last_num = $nums[@nums-1] unless defined $last_num;
 	for(my $j = $first_num; $j <= $last_num; ++$j) {
 	    my $k = $j;
 	    $k = sprintf("%06d", $j)
 		if $this->{file_type} eq 'erf';
 	    $k = sprintf("%0$this->{pcap_numlen}d", $j)
 		if defined $this->{pcap_numlen};
-	    die "missing num $k" unless defined $num_to_file{$k};
+	    die "missing num '$k'" unless defined $num_to_file{$k};
 	    push(@group, $num_to_file{$k});
 	    delete $num_to_file{$k};
 	}
@@ -195,7 +196,7 @@ or \\w+.pcap#{,.bz2}"
 		unless defined $_;
 	    $_ = <INFO>; chomp;
 	    die "?? '$_'"
-		unless /^last_record_id \(inclusive\): (\d+)$/o;
+		unless /^last_record_id \(inclusive\): (-?\d+)$/o;
 	    my $record_count = $1 + 1;
 	    my $dsname = "$this->{dsdir}/$first_num-$last_num\.ds";
 	    push(@ret, { 'first' => $first_num, 'last' => $last_num, 'files' => \@group,
