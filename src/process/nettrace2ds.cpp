@@ -3209,7 +3209,32 @@ void testBWRolling() {
     exit(0);
 }
 
+/*
+
+=pod
+
+=head1 EXAMPLES
+
+=head2 Bulk conversion with lindump-mmap...
+
+...
+
+=head2 Continuous conversion with tcpdump...
+
+  % sudo tcpdump -i eth0 -s 2000 -w /dev/shm/trace.pcap -C 1
+  % CUR_FILES=`echo /dev/shm/trace.pcap*`
+  % batch-parallel nettrace2ds info infodir=/tmp/info groupsize=1 -- ${=CUR_FILES}
+  % batch-parallel nettrace2ds convert infodir=/tmp/info dsdir=/tmp/ds record-start=0 groupsize=1 -- ${=CUR_FILES}
+  % sudo rm -f ${=CUR_FILES}
+  # and repeat from the CUR_FILES line.  I tried it manually and it seemed
+  # to work.
+
+=cut
+*/
+
+
 int main(int argc, char **argv) {
+    FATAL_ERROR("TODO: add docs, see above");
     FATAL_ERROR("TODO: stamp the revision into the output file");
     FATAL_ERROR("TODO: add in the raw RPC size, and the packet overhead, so we can do a proper accounting w.r.t the IP table");
     if (false) testBWRolling();
