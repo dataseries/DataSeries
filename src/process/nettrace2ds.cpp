@@ -17,6 +17,11 @@
 // an RPC request/reply we don't incorrectly claim it is short and
 // incorrectly pass the "at end of packet" check.
 
+// TODO: Do TCP stream reassembly.  From the FAST nfs analysis paper (page 11,
+// first column, last paragraph, we fail to properly process back to back
+// writes).  This means that we under-count writes.  For the animation
+// workload, this mattered little.  For other workloads it can matter a lot.
+
 // For TCP stream reassembly: 
 // http://www.circlemud.org/~jelson/software/tcpflow/
 
