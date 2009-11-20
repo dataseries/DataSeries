@@ -75,7 +75,7 @@ public:
 	    } else if (args[i] == "request_order") {
 		mode = RequestOrder;
 	    } else {
-		FATAL_ERROR("?");
+		FATAL_ERROR(format("unknown option %s") % args[i]);
 	    }
 	}
 	if (LintelLog::wouldDebug("memory_usage")) {
