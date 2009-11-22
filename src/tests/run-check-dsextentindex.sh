@@ -32,6 +32,6 @@ fi
 perl $1/check-data/index-fixup.pl < test.index.tmp >test.index.2.ds.txt
 cmp test.index.2.ds.txt $1/check-data/test.index.2.ref
 
-rm test.index.tmp
+rm test.index.tmp test.index.1.ds test.index.2.ds
 
 exit 0
