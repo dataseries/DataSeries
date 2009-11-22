@@ -392,10 +392,6 @@ private:
                                 byte compression_mode, int32 intosize,
                                 int32 fromsize);
 
-    const ExtentType &packedType(ExtentTypeLibrary &library,
-                                 Extent::ByteArray &packeddata,
-                                 const bool need_bitflip);
-
     void compactNulls(Extent::ByteArray &fixed_coded);
     void uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size);
     friend class ExtentSeries;

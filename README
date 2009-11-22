@@ -39,3 +39,21 @@ COMPILATION:
 3) compile and install the package:
    cd ~/build/optimize/DataSeries:
    make && make test && make install
+
+
+----- 
+
+Download/compilation using version control
+
+% cd ~
+% wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
+% eval `perl deptool-bootstrap for-sh`
+# (or for-csh if you have a csh-based shell)
+% perl deptool-bootstrap init --server endpin.cs.hmc.edu
+% perl deptool-bootstrap co DataSeries
+% cd ~/projects/DataSeries
+% perl ~/deptool-bootstrap build -t
+# You can leave off the -t to avoid building tests.
+% PATH=$BUILD_OPT:$PATH
+% echo "DataSeries installed into $BUILD_OPT, and added to your path"
+
