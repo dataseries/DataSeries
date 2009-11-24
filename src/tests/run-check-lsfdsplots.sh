@@ -8,6 +8,7 @@
 
 set -e 
 
+[ ! -f lsfdsplots.index.ds ] || rm lsfdsplots.index.ds
 ../process/dsextentindex --compress-lzf --new Batch::LSF::Grizzly cluster_name,submit_time,end_time lsfdsplots.index.ds $1/check-data/lsb.acct.2007-01-01-p1.ds 
 
 PERL5LIB=$1/src/perl-modules:$2/share/perl5:$PERL5LIB perl ../analysis/lsfdsplots --indexfile=lsfdsplots.index.ds --psonly --plotdir=check-lsfdsplots --groups=all --starttime=1167681250 --endtime=1167681547 --lsfdsanalysis=../analysis/lsfdsanalysis

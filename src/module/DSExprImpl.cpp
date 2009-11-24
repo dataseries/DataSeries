@@ -8,7 +8,6 @@
 
 #include <ios>
 
-#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
 #include "DSExprParse.hpp"
