@@ -3226,6 +3226,13 @@ void testBWRolling() {
 
 =head2 Continuous conversion with tcpdump...
 
+# TODO: this process doesn't actually generate valid .ds files for analysis.
+# Likely fix is to change nettrace2ds.pm such that when the we are doing
+# conversion, we set finished_before to the first number we found, and we set
+# @nums to 0..last_num_found.  Then it should scan all the info files (and so
+# properly track the last record number), but not try to do a conversion on any
+# of the files we've already handled.
+
   % sudo tcpdump -i eth0 -s 2000 -w /dev/shm/trace.pcap -C 1
   % CUR_FILES=`echo /dev/shm/trace.pcap*`
   % batch-parallel nettrace2ds info infodir=/tmp/info groupsize=1 -- ${=CUR_FILES}
