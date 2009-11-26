@@ -24,8 +24,6 @@ SET(INCLUDE_FILES
 	Int64Field.hpp
 	Int64TimeField.hpp
 	MinMaxIndexModule.hpp
-	SortedIndexModule.hpp
-	SortedIndex.hpp
 	ExtentVectorModule.hpp
 	DataSeriesModule.hpp
 	PrefetchBufferModule.hpp
@@ -44,6 +42,12 @@ SET(DATASERIES_CRYPTO_ENABLED ${CRYPTO_ENABLED})
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Config.hpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/Config.hpp)
+
+################################## CONDITIONAL BITS
+
+IF(BOOST_FOREACH_ENABLED)
+    LIST(APPEND INCLUDE_FILES SortedIndexModule.hpp SortedIndex.hpp)
+ENDIF(BOOST_FOREACH_ENABLED)
 
 ################################## INSTALL
 

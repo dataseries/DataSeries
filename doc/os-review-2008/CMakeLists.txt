@@ -1,6 +1,6 @@
 INCLUDE(LintelCMakeUtil)
 
-IF(LINTEL_LATEX_REBUILD_ENABLED)
+IF(BUILD_OSR_2008)
     SET(dataseries-osr-2008_LINTEL_LATEX_ARGS
         --bib ${DataSeries_SOURCE_DIR}/doc/tr
         --error-on-warnings
@@ -15,4 +15,4 @@ IF(LINTEL_LATEX_REBUILD_ENABLED)
     INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/dataseries-osr-2008.pdf
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share/doc/DataSeries)
 
-ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
+ENDIF(BUILD_OSR_2008)

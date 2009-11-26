@@ -12,8 +12,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <boost/foreach.hpp>
-
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/LintelLog.hpp>
@@ -631,10 +629,10 @@ private:
 
 void MinMaxOutput::indexFiles(const vector<string> &files) {
     // update the namespace/version information
-    BOOST_FOREACH(const string &file, files) {
-        ExtentType::int64 *time = modify.lookup(file);
-        if(!time || mtimens(file) != *time) {
-            DataSeriesSource source(file);
+    for(vector<string>::const_iterator i = files.begin(); i != files.end(); ++i) {
+        ExtentType::int64 *time = modify.lookup(*i);
+        if(!time || mtimens(*i) != *time) {
+            DataSeriesSource source(*i);
             const ExtentType *type = source.getLibrary().getTypeMatch(type_prefix);
             updateNamespaceVersions(type);
         }

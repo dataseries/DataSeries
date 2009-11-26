@@ -59,8 +59,6 @@ SET(LIBDATASERIES_SOURCES
 	module/DataSeriesModule.cpp
 	module/IndexSourceModule.cpp
 	module/MinMaxIndexModule.cpp
-	module/SortedIndexModule.cpp
-	module/SortedIndex.cpp
 	module/ExtentVectorModule.cpp
 	module/PrefetchBufferModule.cpp
 	module/RowAnalysisModule.cpp
@@ -117,9 +115,13 @@ IF(LZO_ENABLED)
 ENDIF(LZO_ENABLED)
 
 IF(CRYPTO_ENABLED)
-    SET(LIBDATASERIES_SOURCES ${LIBDATASERIES_SOURCES} module/cryptutil.cpp)
+    LIST(APPEND LIBDATASERIES_SOURCES module/cryptutil.cpp)
     ADD_DEFINITIONS(-DDATASERIES_ENABLE_CRYPTO=1)
 ENDIF(CRYPTO_ENABLED)
+
+IF(BOOST_FOREACH_ENABLED)
+    LIST(APPEND LIBDATASERIES_SOURCES module/SortedIndex.cpp module/SortedIndexModule.cpp)
+ENDIF(BOOST_FOREACH_ENABLED)
 
 ################################## LIBRARY
 

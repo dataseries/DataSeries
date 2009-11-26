@@ -8,7 +8,6 @@
 
 /// analysis module/program for CooperativeCacheSimulation (ns = ticoli.hpl.hp.com, version = 1.0)
 
-#include <boost/foreach.hpp>
 #include <boost/scoped_ptr.hpp>
 
 #include <Lintel/HashMap.hpp>
@@ -141,8 +140,8 @@ public:
 
 	sort(data.begin(), data.end(), sortHTE());
 
-	BOOST_FOREACH(const DataVal &di, data) {
-	    const pair<string, FileInfo> &i(di.data);
+	for(vector<DataVal>::iterator di = data.begin(); di != data.end(); ++di) {
+	    const pair<string, FileInfo> &i(di->data);
 	    if (i.second.first_read == numeric_limits<int64_t>::max()) {
 		LintelLogDebug("info", format("skip %s - noread") % maybehexstring(i.first));
 		continue;
