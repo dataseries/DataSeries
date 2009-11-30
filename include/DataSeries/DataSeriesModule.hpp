@@ -104,6 +104,10 @@ public:
     long long total_uncompressed_bytes, total_compressed_bytes;
 };
 
+// TODO: deprecate this module, replace with TypeFilterModule, and then rename
+// TypeFilterModule back to filtermodule, or if it's sufficiently compatible,
+// just replace.
+
 /** \brief Module for filtering out any extents not matching type_prefix */
 class FilterModule : public DataSeriesModule {
 public:
