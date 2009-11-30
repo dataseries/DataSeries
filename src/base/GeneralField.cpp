@@ -243,10 +243,10 @@ void GeneralValue::write(FILE *to) {
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: 
-	    fprintf(to,"*unknown-type*");
+	    fputs("*unknown-type*", to);
 	    break;
 	case ExtentType::ft_bool:
-	    fprintf(to,gvval.v_bool ? "true" : "false");
+	    fputs((gvval.v_bool ? "true" : "false"), to);
 	    break;
 	case ExtentType::ft_byte:
 	    fprintf(to,"%d",(unsigned char)gvval.v_byte);
@@ -260,10 +260,10 @@ void GeneralValue::write(FILE *to) {
 	case ExtentType::ft_double:
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
-	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: {
-	    fprintf(to,"%s",maybehexstring(*v_variable32).c_str());
+	case ExtentType::ft_fixedwidth: 
+	case ExtentType::ft_variable32:
+	    fputs(maybehexstring(*v_variable32).c_str(), to);
 	    break;
-	}
 	default:
 	    FATAL_ERROR("internal error, unexpected type");
 	}
@@ -572,12 +572,12 @@ void GF_Bool::setNull(bool val) {
 
 void GF_Bool::write(FILE *to) {
     if (myfield.isNull()) {
-	fprintf(to,"null");
+	fputs("null", to);
     } else {
 	if (myfield.val()) {
-	    fprintf(to,"%s",s_true.c_str());
+	    fputs(s_true.c_str(), to);
 	} else {
-	    fprintf(to,"%s",s_false.c_str());
+	    fputs(s_false.c_str(), to);
 	}
     }
 }
@@ -660,7 +660,7 @@ GF_Byte::~GF_Byte() { }
 
 void GF_Byte::write(FILE *to) {
     if (myfield.isNull()) {
-	fprintf(to,"null");
+	fputs("null", to);
     } else {
 	fprintf(to,printspec,myfield.val());
     }
@@ -754,7 +754,7 @@ static const string ipv4addr("ipv4");
 
 void GF_Int32::write(FILE *to) {
     if (myfield.isNull()) {
-	fprintf(to,"null");
+	fputs("null", to);
     } else if (printspec == ipv4addr) {
 	SINVARIANT(divisor == 1);
 	uint32_t v = static_cast<uint32_t>(myfield.val());
@@ -892,7 +892,7 @@ GF_Int64::~GF_Int64() {
 
 void GF_Int64::write(FILE *to) {
     if (myfield.isNull()) {
-	fprintf(to,"null");
+	fputs("null", to);
     } else {
 	if (offset_first) {
 	    offset = myfield.val();
@@ -1012,7 +1012,7 @@ GF_Double::~GF_Double() {
 
 void GF_Double::write(FILE *to) {
     if (myfield.isNull()) {
-	fprintf(to,"null");
+	fputs("null", to);
     } else {
 	if (isnan(offset)) {
 	    offset = myfield.val();
@@ -1110,10 +1110,10 @@ GF_FixedWidth::~GF_FixedWidth() {
 
 void GF_FixedWidth::write(FILE *to) {
     if (myfield.isNull()) {
-        fprintf(to, "null");
+        fputs("null", to);
     } else {
         string hex(maybehexstring(myfield.val(), myfield.size()));
-        fprintf(to, hex.c_str());
+        fputs(hex.c_str(), to);
     }
 }
 
@@ -1244,7 +1244,7 @@ void GF_Variable32::write(FILE *to) {
     // as this write has extra behavior in that always applies a
     // printf format.
     if (myfield.isNull()) {
-	fprintf(to, "null");
+	fputs("null", to);
     } else {
 	string v = valFormatted();
         fprintf(to, printspec, v.c_str());

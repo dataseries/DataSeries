@@ -271,8 +271,8 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
 		*stream_text_dest << *i;
 	    } else {
 		if (printed_any)
-		    fprintf(text_dest,separator.c_str());
-		fprintf(text_dest,"%s",i->c_str());
+		    fputs(separator.c_str(), text_dest);
+		fputs(i->c_str(), text_dest);
 	    }
 	    printed_any = true;
 	}
@@ -282,7 +282,7 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
 	if (text_dest == NULL) {
 	    *stream_text_dest << "\n";
 	} else {
-	    fprintf(text_dest,"\n");
+	    fputc('\n', text_dest);
 	}
     }
 }
@@ -325,13 +325,13 @@ DStoTextModule::getExtent()
 		} else {
 		    state.fields[i]->write(text_dest);
 		    if (i != (state.fields.size() - 1))
-			fprintf(text_dest,separator.c_str());
+			fputs(separator.c_str(), text_dest);
 		}
 	    }
 	    if (text_dest == NULL) {
 		*stream_text_dest << "\n";
 	    } else {
-		fprintf(text_dest,"\n");
+		fputs("\n", text_dest);
 	    }
 	}
     }
