@@ -1140,7 +1140,8 @@ main(int argc,char *argv[])
     char buf[bufsize];
     while(true) {
 	buf[0] = '\0';
-	fgets(buf,bufsize,infile);
+	char *rv = fgets(buf,bufsize,infile);
+	(void) rv;		// SINVARIANT(rv != NULL) does not work
 	++nlines;
 	if (buf[0] == '#') {
 	    continue;

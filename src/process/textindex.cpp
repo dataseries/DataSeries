@@ -279,7 +279,8 @@ readLine(FILE *f)
     while(true) {
 	buf[0] = '\0';
 	buf[1023] = '\0';
-	fgets(buf,1023,f);
+	char *rv = fgets(buf,1023,f);
+	SINVARIANT(rv != NULL);
 	SINVARIANT('\0' == buf[1023]);
 	if ('\0' == buf[0]) {
 	    SINVARIANT(ret.size() == 0);
