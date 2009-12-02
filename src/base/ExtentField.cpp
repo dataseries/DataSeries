@@ -207,7 +207,7 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
 #if LINTEL_DEBUG
     // we get to avoid zeroing since it happens automatically for us
     // when we resize the bytearray
-    for(++var_data; data_size > 0; data_size -= 4) {
+    for(++var_data; roundup > 0; roundup -= 4) {
 	SINVARIANT(*var_data == 0);
     }
 #endif
