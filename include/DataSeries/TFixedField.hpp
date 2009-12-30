@@ -81,7 +81,7 @@ namespace dataseries {
 
 	void set(FIELD_TYPE val) {
 	    *reinterpret_cast<FIELD_TYPE *>(rawval()) = val;
-	    setNull(false);
+	    // Don't need normal setNull(false); field can't be nullable
 	}
     };
 
