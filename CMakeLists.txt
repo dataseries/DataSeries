@@ -38,3 +38,14 @@ SET(CMAKE_MODULE_FILES
 
 INSTALL(FILES ${CMAKE_MODULE_FILES}
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cmake-modules)
+
+IF(LINTEL_FIND_ALL_NOTFOUND)
+    MESSAGE("")
+    MESSAGE("************************************")
+    MESSAGE("  Some optional dependency was not found.")
+    MESSAGE("  ${CMAKE_CURRENT_SOURCE_DIR}/doc/dependencies.txt")
+    MESSAGE("  may help identify the right packages")
+    MESSAGE("************************************")
+    MESSAGE("")
+ENDIF(LINTEL_FIND_ALL_NOTFOUND)
+

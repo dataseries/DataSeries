@@ -1,0 +1,29 @@
+----------------------------
+Fedora Core 12:
+  DataSeries required: Lintel
+     % yum install -y libxml2-devel
+
+  DataSeries optional:
+     # Extra compression choices
+     % yum install -y bzip2-devel
+
+     # nettrace2ds
+     % yum install -y openssl-devel libpcap-devel bzip2-devel
+
+     # iphost2ds, nfsdsanalysis
+     % yum install -y openssl-devel
+
+     ...
+
+----------------------------
+
+Debian Lenny:
+   DataSeries required: Lintel
+     ...
+
+   DataSeries optional:
+     # nfsdsanalysis
+     % aptitude install libssl-dev
+
+     ...
+
