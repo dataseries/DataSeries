@@ -249,7 +249,7 @@ void GeneralValue::write(FILE *to) {
 	    fputs((gvval.v_bool ? "true" : "false"), to);
 	    break;
 	case ExtentType::ft_byte:
-	    fprintf(to,"%d",(unsigned char)gvval.v_byte);
+	    fprintf(to,"%d", static_cast<uint32_t>(gvval.v_byte));
 	    break;
 	case ExtentType::ft_int32:
 	    fprintf(to,"%d",gvval.v_int32);
@@ -280,7 +280,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << (gvval.v_bool ? "true" : "false");
 	    break;
 	case ExtentType::ft_byte:
-	    to << boost::format("%d") % (unsigned char)gvval.v_byte;
+	    to << boost::format("%d") % static_cast<uint32_t>(gvval.v_byte);
 	    break;
 	case ExtentType::ft_int32:
 	    to << boost::format("%d") % gvval.v_int32;
