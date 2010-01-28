@@ -1,5 +1,5 @@
 ----------------------------
-Fedora Core 12:
+Fedora Core 12 (fedora12):
   DataSeries required: Lintel
      % yum install -y libxml2-devel
 
@@ -17,11 +17,17 @@ Fedora Core 12:
 
 ----------------------------
 
-Debian Lenny:
+Debian Lenny (debian-5.0):
    DataSeries required: Lintel
-     ...
+     % aptitude install libxml2-dev libz-dev
 
    DataSeries optional:
+     # Extra compression choices
+     % aptitutde install libbz2-dev
+
+     # Enable crypto
+     % aptitude install libssl-dev
+
      # nfsdsanalysis
      % aptitude install libssl-dev
 

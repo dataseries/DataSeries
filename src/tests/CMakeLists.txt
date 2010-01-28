@@ -43,6 +43,7 @@ DATASERIES_SCRIPT_TEST(expr)
 DATASERIES_PROGRAM_NOINST(typefiltermodule)
 DATASERIES_SCRIPT_TEST(typefiltermodule)
 
+# TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)
 DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
