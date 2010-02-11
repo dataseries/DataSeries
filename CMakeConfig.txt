@@ -96,6 +96,8 @@ INCLUDE(FindBoost)
 SET(BOOST_FOREACH_MISSING_EXTRA "  will skip building SortedIndex and SortedIndexModule")
 LINTEL_BOOST_EXTRA(BOOST_FOREACH boost/foreach.hpp None)
 
+LINTEL_WITH_LIBRARY(AVRO avro.h avro)
+
 #### Perl
 
 LINTEL_WITH_PERL_MODULE(PERL_XML_PARSER XML::Parser)
