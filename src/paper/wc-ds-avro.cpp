@@ -124,6 +124,7 @@ public:
 	if (rval == 0) {
 	    return true;
 	} else {
+	    cout << format("return %d\n") % rval;
 	    // Can I do = NULL here and have that work with decref?
 	    record = avro_record("Unknown", NULL); 
 	    return false;
