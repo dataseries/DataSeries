@@ -6,7 +6,6 @@
 # cmake rules for the src/process directory
 
 DATASERIES_PROGRAM(dsextentindex)
-DATASERIES_PROGRAM(dsselect)
 DATASERIES_PROGRAM(dsrepack)
 DATASERIES_PROGRAM(dsstatgroupby)
 DATASERIES_PROGRAM(ds2txt)
@@ -20,7 +19,11 @@ DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(indexnfscommon)
 DATASERIES_PROGRAM(lvpvprocessusage)
 DATASERIES_PROGRAM(sort-cache-sim)
-DATASERIES_PROGRAM(csv2ds)
+
+IF(LINTEL_program-options_ENABLED)
+    DATASERIES_PROGRAM(csv2ds)
+    DATASERIES_PROGRAM(dsselect)
+ENDIF(LINTEL_program-options_ENABLED)
 
 IF(CRYPTO_ENABLED)
     DATASERIES_PROGRAM(iphost2ds)

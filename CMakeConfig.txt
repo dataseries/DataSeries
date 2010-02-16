@@ -30,6 +30,12 @@ SET(LINTEL_FIND_REQUIRED ON)
 SET(LINTELPTHREAD_FIND_REQUIRED ON)
 INCLUDE(FindLintel)
 
+LINTEL_HAS_FEATURE(program-options)
+
+IF(NOT LINTEL_program-options_ENABLED)
+    MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
+ENDIF(NOT LINTEL_program-options_ENABLED)
+
 #### LibXML2
 
 INCLUDE(FindLibXml2)
