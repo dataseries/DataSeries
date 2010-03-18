@@ -60,6 +60,7 @@ IndexSourceModule::IndexSourceModule()
 
 IndexSourceModule::~IndexSourceModule()
 {
+    // TODO: All of this should be in the PrefetchInfo destructor
     if (prefetch != NULL) {
 	prefetch->mutex.lock();
 	prefetch->abort_prefetching = true;
@@ -79,6 +80,7 @@ IndexSourceModule::~IndexSourceModule()
 	while (prefetch->unpacked.empty() == false) {
 	    delete prefetch->unpacked.getFront();
 	}
+	delete prefetch->compressed_prefetch_thread;
 	delete prefetch;
 	prefetch = NULL;
     }
@@ -92,7 +94,7 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
     INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
     SINVARIANT(prefetch_max_compressed > 0);
     SINVARIANT(prefetch_max_unpacked > 0);
-    
+
     PrefetchInfo *tmp = new PrefetchInfo(prefetch_max_compressed,
 					 prefetch_max_unpacked);
     prefetch = tmp;

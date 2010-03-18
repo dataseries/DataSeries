@@ -24,7 +24,6 @@ SET(INCLUDE_FILES
 	Int64Field.hpp
 	Int64TimeField.hpp
 	MinMaxIndexModule.hpp
-	ExtentVectorModule.hpp
 	DataSeriesModule.hpp
 	PrefetchBufferModule.hpp
 	RowAnalysisModule.hpp
@@ -46,7 +45,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/Config.hpp.in
 ################################## CONDITIONAL BITS
 
 IF(BOOST_FOREACH_ENABLED)
-    LIST(APPEND INCLUDE_FILES SortedIndexModule.hpp SortedIndex.hpp)
+    LIST(APPEND INCLUDE_FILES SortedIndexModule.hpp )
 ENDIF(BOOST_FOREACH_ENABLED)
 
 ################################## INSTALL

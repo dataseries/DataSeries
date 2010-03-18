@@ -23,13 +23,16 @@ Debian Lenny (debian-5.0):
 
    DataSeries optional:
      # Extra compression choices
-     % aptitutde install libbz2-dev
+     % aptitutde install libbz2-dev liblzo-dev
 
      # Enable crypto
      % aptitude install libssl-dev
 
      # nfsdsanalysis
      % aptitude install libssl-dev
+
+     # dsdecrypt 
+     % aptitude install libcrypt-rijndael-perl
 
      ...
 

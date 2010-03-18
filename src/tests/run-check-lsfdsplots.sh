@@ -15,7 +15,7 @@ PERL5LIB=$1/src/perl-modules:$2/share/perl5:$PERL5LIB perl ../analysis/lsfdsplot
 
 # Gnuplot generates different postscript for different versions; this seems the best
 # approach to checking that we're getting something valid out.
-grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps | grep -v ' /CreationDate' >check-lsfdsplots/all/all.ps-nodate
+grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps | grep -v ' /CreationDate' | grep -v ' /Author' >check-lsfdsplots/all/all.ps-nodate
 if cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.0; then
     echo "plot ok, gnuplot 4.0 equivalent"
 elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.2; then

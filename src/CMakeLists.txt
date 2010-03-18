@@ -59,7 +59,6 @@ SET(LIBDATASERIES_SOURCES
 	module/DataSeriesModule.cpp
 	module/IndexSourceModule.cpp
 	module/MinMaxIndexModule.cpp
-	module/ExtentVectorModule.cpp
 	module/PrefetchBufferModule.cpp
 	module/RowAnalysisModule.cpp
 	module/SequenceModule.cpp
@@ -120,7 +119,7 @@ IF(CRYPTO_ENABLED)
 ENDIF(CRYPTO_ENABLED)
 
 IF(BOOST_FOREACH_ENABLED)
-    LIST(APPEND LIBDATASERIES_SOURCES module/SortedIndex.cpp module/SortedIndexModule.cpp)
+    LIST(APPEND LIBDATASERIES_SOURCES )
 ENDIF(BOOST_FOREACH_ENABLED)
 
 ################################## LIBRARY
