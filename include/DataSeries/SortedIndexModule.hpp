@@ -14,6 +14,7 @@
 #define DATASERIES_SORTED_INDEX_MODULE_HPP
 
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/IndexSourceModule.hpp>
