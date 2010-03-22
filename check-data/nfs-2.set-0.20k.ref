@@ -2352,7 +2352,7 @@ server operation   #ops  #dups mean ; firstlat mean 50% 90%
  *          *      9967      0 0.00 ;   6.640  1.988 18.100 
 End-virtual void ServerLatency::printResult()
 
-request 10033; good 0 0.00%; skip 0 (nan%); backwards 0; old 0; bad-endianess-guess 0, unknown 10033
+request 10033; good 0 0.00%; skip 0 (0.0000%); backwards 0; old 0; bad-endianess-guess 0, unknown 10033
 skip-after: 
 
 Begin-virtual void UniqueFileHandles::printResult()

@@ -76,9 +76,14 @@ void DSStatGroupByModule::processRow() {
 }
 
 void DSStatGroupByModule::printResult() {
-    cout << "# Begin DSStatGroupByModule" << endl;
+    cout << "# Begin DSStatGroupByModule\n";
     cout << boost::format("# processed %d rows, where clause eliminated %d rows\n") 
 	% processed_rows % ignored_rows;
+
+    // Someone might call printResult on an interim basis so we can't sort 
+    // the underlying hashtable.
+    vector<GeneralValue> keys = mystats.keys();
+    sort(keys.begin(), keys.end());
 
     if (stattype == str_basic) {
 	if (groupby_name.empty()) {
@@ -87,13 +92,15 @@ void DSStatGroupByModule::printResult() {
 	    cout << boost::format("# %s, count(*), mean(%s), stddev, min, max\n")
 		% groupby_name % expression;
 	}
-	for(mytableT::iterator i = mystats.begin(); i != mystats.end(); ++i) {
+	for(vector<GeneralValue>::iterator i = keys.begin(); i != keys.end(); ++i) {
+	    GeneralValue &k(*i);
+	    Stats *v = mystats[k];
+
 	    if (!groupby_name.empty()) {
-		cout << i->first << ", ";
+		cout << k << ", ";
 	    }
 	    cout << boost::format("%1%, %2$.6g, %3$.6g, %4$.6g, %5$.6g\n")
-		% i->second->count() % i->second->mean() % i->second->stddev()
-		% i->second->min() % i->second->max();
+		% v->count() % v->mean() % v->stddev() % v->min() % v->max();
 	}
     } else if (stattype == str_quantile) {
 	if (groupby_name.empty()) {
@@ -101,17 +108,18 @@ void DSStatGroupByModule::printResult() {
 	} else {
 	    cout << boost::format("# %s(%s) group by %s\n") % stattype % expression % groupby_name;
 	}
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
+	for(vector<GeneralValue>::iterator i = keys.begin(); i != keys.end(); ++i) {
+	    GeneralValue &k(*i);
+	    Stats *v = mystats[k];
 	    if (!groupby_name.empty()) {
-		cout << boost::format("# group %1%\n") % i->first;
+		cout << boost::format("# group %1%\n") % k;
 	    }
-	    i->second->printText(cout);
+	    v->printText(cout);
 	}
     } else {
 	FATAL_ERROR("wasn't stat type already checked?");
     }
-    cout << "# End DSStatGroupByModule" << endl;
+    cout << "# End DSStatGroupByModule\n";
 }
 
 bool DSStatGroupByModule::validStatType(const string &stat_type) {

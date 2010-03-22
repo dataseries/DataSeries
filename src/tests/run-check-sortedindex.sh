@@ -23,11 +23,9 @@ SRC=$1
 
 # run program and compare
 ./sortedindex > sortedindex.txt
-./sortedIndexTest > sortedindextest.txt
 
 cmp $SRC/check-data/sortedindex.txt sortedindex.txt
-cmp $SRC/check-data/sortedindextest.txt sortedindextest.txt
 
-rm -f sortedindex.ds unsortedindex.ds sortedindex.txt sortedindextest.txt
+rm -f sortedindex.ds unsortedindex.ds sortedindex.txt 
 
 exit 0

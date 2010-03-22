@@ -609,21 +609,18 @@ int main(int argc, char *argv[]) {
     for(int i=optind; i<argc; ++i) {
 	source->addSource(argv[i]);
     }
-    DataSeriesModule::getAndDelete(seq);
+    seq.getAndDelete();
     
     RowAnalysisModule::printAllResults(seq,1);
 
-    printf("extents: %.2f MB -> %.2f MB in %.2f secs decode time\n",
+    printf("extents: %.2f MB -> %.2f MB\n",
 	   (double)(source->total_compressed_bytes)/(1024.0*1024),
-	   (double)(source->total_uncompressed_bytes)/(1024.0*1024),
-	   source->decode_time);
+	   (double)(source->total_uncompressed_bytes)/(1024.0*1024));
     printf("                   common\n");
     printf("MB compressed:   %8.2f\n",
 	   (double)source->total_compressed_bytes/(1024.0*1024));
     printf("MB uncompressed: %8.2f\n",
 	   (double)source->total_uncompressed_bytes/(1024.0*1024));
-    printf("decode seconds:  %8.2f\n",
-	   source->decode_time);
     printf("wait fraction :  %8.2f\n",
 	   source->waitFraction());
     

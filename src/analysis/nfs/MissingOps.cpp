@@ -246,9 +246,13 @@ public:
     }
 
     void report(uint64_t unknown_count) {
+	double skip_percent = (100.0*skip_count / (good_count + skip_count));
+	if (good_count + skip_count == 0) {
+	    skip_percent = 0;
+	}
 	cout << format("request %d; good %d %.2f%%; skip %d (%.4f%%); backwards %d; old %d; bad-endianess-guess %d, unknown %d\n") 
 	    % request_count % good_count % (100.0*good_count / request_count)
-	    % skip_count % (100.0*skip_count / (good_count + skip_count))
+	    % skip_count % skip_percent
 	    % backwards_count % old_count % bad_guess_count % unknown_count;
 	cout << "skip-after: ";
 	bool not_first = false;

@@ -25,16 +25,13 @@ ADD_TEST(general ./general)
 # *** WARNING, don't use | in any of the test scripts; if you do, then
 # *** the error conditions are not checked properly.
 
-DATASERIES_SCRIPT_TEST(dsselect)
 DATASERIES_SCRIPT_TEST(dsextentindex BZ2-${BZIP2_ENABLED})
 DATASERIES_SCRIPT_TEST(dsstatgroupby)
 DATASERIES_SCRIPT_TEST(lsfdsanalysis)
-DATASERIES_SCRIPT_TEST(nfsdsanalysis)
 DATASERIES_SCRIPT_TEST(ellard)
 DATASERIES_SCRIPT_TEST(worldcup)
 DATASERIES_SCRIPT_TEST(ds2txt)
 DATASERIES_SCRIPT_TEST(ipnfscrosscheck)
-DATASERIES_SCRIPT_TEST(csv2ds)
 DATASERIES_SCRIPT_TEST(ipdsanalysis)
 
 ### Script tests of testing-only programs
@@ -44,10 +41,16 @@ DATASERIES_SCRIPT_TEST(expr)
 DATASERIES_PROGRAM_NOINST(typefiltermodule)
 DATASERIES_SCRIPT_TEST(typefiltermodule)
 
+# TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)
 DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 
 ### Conditional tests...
+
+IF (LINTEL_program-options_ENABLED)
+    DATASERIES_SCRIPT_TEST(dsselect)
+    DATASERIES_SCRIPT_TEST(csv2ds)
+ENDIF (LINTEL_program-options_ENABLED)
 
 IF(BZIP2_ENABLED)
     DATASERIES_SCRIPT_TEST(pssimple)
@@ -66,11 +69,13 @@ IF(SRT_ENABLED)
 ENDIF(SRT_ENABLED)
 
 IF(BOOST_FOREACH_ENABLED)
-    DATASERIES_PROGRAM_NOINST(sortedIndexTest)
     DATASERIES_PROGRAM_NOINST(sortedindex)
     DATASERIES_SCRIPT_TEST(sortedindex)
 ENDIF(BOOST_FOREACH_ENABLED)
 
+IF(CRYPTO_ENABLED)
+    DATASERIES_SCRIPT_TEST(nfsdsanalysis)
+ENDIF(CRYPTO_ENABLED)
 ### Long tests
 
 DATASERIES_SIMPLE_TEST(byteflip)

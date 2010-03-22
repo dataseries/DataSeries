@@ -30,6 +30,12 @@ SET(LINTEL_FIND_REQUIRED ON)
 SET(LINTELPTHREAD_FIND_REQUIRED ON)
 INCLUDE(FindLintel)
 
+LINTEL_HAS_FEATURE(program-options)
+
+IF(NOT LINTEL_program-options_ENABLED)
+    MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
+ENDIF(NOT LINTEL_program-options_ENABLED)
+
 #### LibXML2
 
 INCLUDE(FindLibXml2)
@@ -59,7 +65,7 @@ ENDIF(WITH_BZIP2 AND BZIP2_FOUND)
 
 IF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
     MESSAGE("WITH_BZIP2 on, but could not find bzip2 includes/libraries.")
-    MESSAGE("  bzip2 compression support will be skipped.")
+    MESSAGE("  bzip2 compression support and nettrace2ds will be skipped.")
 ENDIF(WITH_BZIP2 AND NOT BZIP2_ENABLED)
 
 SET(BUNZIP2_PROGRAM_MISSING_EXTRA 
@@ -95,6 +101,8 @@ INCLUDE(FindBoost)
 
 SET(BOOST_FOREACH_MISSING_EXTRA "  will skip building SortedIndex and SortedIndexModule")
 LINTEL_BOOST_EXTRA(BOOST_FOREACH boost/foreach.hpp None)
+
+LINTEL_WITH_LIBRARY(AVRO avro.h avro)
 
 #### Perl
 

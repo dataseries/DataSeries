@@ -569,7 +569,7 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 	    }
     }
 
-    // TODO fix this check so that we are properly verifying we have
+    // TODO: fix this check so that we are properly verifying we have
     // nullable fields, not just that we have boolean fields; or
     // decide to just allow compaction in all cases, even if we don't
     // have nulls, which could save a little bit of space, e.g. 7

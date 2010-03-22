@@ -3,303 +3,316 @@ change log (without the merge revisions) can be found in the Changelog.mtn file
 in the tar releases, or by using mtn log if you got the sources via version
 control.
 
+2010-02-15:
+   * Release
+
+2010-02-15:
+   * Add program for testing out the world cup data using the Avro file format.
+
+2010-12-30:
+   * DSStatGroupByModule (and hence dsstatgroupby) will now sort output by the
+     group by variable.
+
+2009-12-01:
+   * Release
+
 2009-11-01:
-  * Return type of registerType changed to ExtentType & from ExtentType *
-    since it can never be null.
+   * Return type of registerType changed to ExtentType & from ExtentType *
+     since it can never be null.
 
 2009-10-31:
-  * Added csv2ds program.  Right now it requires you to specify the extent
-    type in order to operate.
+   * Added csv2ds program.  Right now it requires you to specify the extent
+     type in order to operate.
 
 2009-09-27:
-  * Extend dsstatgroupby so that it doesn't need to have a group by column.
+   * Extend dsstatgroupby so that it doesn't need to have a group by column.
 
 2009-09-18:
-  * Add TypeFilterModule that generalizes the FilterModule by supporting
-    a class in order to select matching extents.
+   * Add TypeFilterModule that generalizes the FilterModule by supporting
+     a class in order to select matching extents.
 
 2009-09-07:
-  * Support microseconds + seconds with unix epoch in Int64TimeField
+   * Support microseconds + seconds with unix epoch in Int64TimeField
 
 2009-08-30:
-  * Add sort-cache-sim program that can sort the inputs from traces in request
-    order for use in cache simulation.
+   * Add sort-cache-sim program that can sort the inputs from traces in request
+     order for use in cache simulation.
 
 2009-08-27:
-  * Add extract-cache-sim program for extracting the relevant part of both the
-    animation-bear and ellard traces for use in cache simulation.
+   * Add extract-cache-sim program for extracting the relevant part of both the
+     animation-bear and ellard traces for use in cache simulation.
 
 2009-08-07:
-  * Add FixedWidthField class for use in the sort benchmark.
+   * Add FixedWidthField class for use in the sort benchmark.
 
 2009-07-31:
-  * Initial version of file format technical report.  Paused in spending
-    additional time on this after feedback that a user guide is more useful.
+   * Initial version of file format technical report.  Paused in spending
+     additional time on this after feedback that a user guide is more useful.
 
 2009-07-15:
-  * Factor the SortedIndex out of the SortedIndexModule so that a single index
-    can be shared across multiple modules.
+   * Factor the SortedIndex out of the SortedIndexModule so that a single index
+     can be shared across multiple modules.
 
 2009-06-16:
-  * Add flag so that DataSeriesSinks know to call fsync on close.
+   * Add flag so that DataSeriesSinks know to call fsync on close.
 
 
 2009-06-11:
-  * Add talk given at HP system's lunch.
+   * Add talk given at HP system's lunch.
 
 2009-06-03:
-  * Add SortedIndexModule, a class that enables fast indexing into a 
-    dataseries file multiple times.
+   * Add SortedIndexModule, a class that enables fast indexing into a
+     dataseries file multiple times.
 
 2009-05-21:
-  * Add support for constructing a variable32 field in multiple stages
-    to reduce the number of necessary copies.
+   * Add support for constructing a variable32 field in multiple stages
+     to reduce the number of necessary copies.
 
 2009-05-15:
-  * Extend the MinMaxIndexModule to match a union instead of an intersection.
+   * Extend the MinMaxIndexModule to match a union instead of an intersection.
 
 2009-05-01:
-  * Add setNull to GeneralField.
+   * Add setNull to GeneralField.
 
 2009-03-20:
-  * Add in DataSeries/Config.hpp file for checking the configuration used by
-    DataSeries.
+   * Add in DataSeries/Config.hpp file for checking the configuration used by
+     DataSeries.
 
 2009-03-01:
-  * Add in FAST 2009 presentation.
+   * Add in FAST2009 presentation.
 
-2008-01-14: 
-  * Final version of the FAST 2009 paper "Capture, conversion, and
-    analysis of an intense NFS workload" on analyzing the animation
-    bear traces using DataSeries. doc/fast2009-nfs-analysis
+2008-01-14:
+   * Final version of the FAST2009 paper "Capture, conversion, and
+     analysis of an intense NFS workload" on analyzing the animation
+     bear traces using DataSeries. doc/fast2009-nfs-analysis
 
 2009-01-02:
-  * operator () added to fields for easier use.
-  * Added analysis/nfs/ipnfscrosscheck to compare the packets in the
-    IP and NFS traces.  This analysis conservatively identifies
-    un-converted packets.
+   * operator () added to fields for easier use.
+   * Added analysis/nfs/ipnfscrosscheck to compare the packets in the
+     IP and NFS traces.  This analysis conservatively identifies
+     un-converted packets.
 
 2008-12-12:
-  * Extensive documentation patch from Steven Watanabe.
+   * Extensive documentation patch from Steven Watanabe.
 
 2008-12-04:
-  * Updates to srt2ds, cmpsrtds, cmpsrtds.pm to convert cello-1999
-    traces (32 bit only)
+   * Updates to srt2ds, cmpsrtds, cmpsrtds.pm to convert cello-1999
+     traces (32 bit only)
 
 2008-12-01:
-  * --where option added to dsselect
+   * --where option added to dsselect
 
 2008-11-10:
-  * Final version of the Operating Systems Review paper "DataSeries:
-    An Efficient, Flexible Data Format for Structured Serial Data"
+   * Final version of the Operating Systems Review paper "DataSeries:
+     An Efficient, Flexible Data Format for Structured Serial Data"
 
-2008-09-12: 
-  * Add sequentiality analysis to nfsdsanalysis.
-  * Add analysis that looks for gaps in the transaction id sequence to
-    nfsdsanalysis.
+2008-09-12:
+   * Add sequentiality analysis to nfsdsanalysis.
+   * Add analysis that looks for gaps in the transaction id sequence to
+     nfsdsanalysis.
 
 2008-09-10:
-  * Add sql output mode to server latency analysis in nfsdsanalysis.
+   * Add sql output mode to server latency analysis in nfsdsanalysis.
 
 2008-09-09:
-  * Multiple rolling bandwidth calculations can be done in one pass in
-    ipdsanalysis.
+   * Multiple rolling bandwidth calculations can be done in one pass in
+     ipdsanalysis.
 
 2008-09-07:
-  * Add firstExtent() function to RowAnalysisModule
+   * Add firstExtent() function to RowAnalysisModule
 
 2008-09-05:
-  * Extend Extent class to record file and offset of extents -- useful
-    for debugging.
+   * Extend Extent class to record file and offset of extents -- useful
+     for debugging.
 
 2008-09-01:
-  * Add analysis to look at statistics of unique file handles to
-    nfsdsanalysis
-  * Add option to print out merged and base series in nfsdsanalysis
+   * Add analysis to look at statistics of unique file handles to
+     nfsdsanalysis
+   * Add option to print out merged and base series in nfsdsanalysis
 
 2008-08-28:
-  * Add sql output mode for HostInfo analysis in nfsdsanalysis
+   * Add sql output mode for HostInfo analysis in nfsdsanalysis
 
 2008-07-28:
-  * Add analysis of the 1998 World Cup traces; update TR to include
-    analysis.
-  * Add support for templated fixed fields that can be significantly
-    faster than the non-templated ones for very simple analysis.
+   * Add analysis of the 1998 World Cup traces; update TR to include
+     analysis.
+   * Add support for templated fixed fields that can be significantly
+     faster than the non-templated ones for very simple analysis.
 
 2008-07-09:
-  * Add support for many different operations and comparisons in the
-    expression support of dsstatgroupby.
+   * Add support for many different operations and comparisons in the
+     expression support of dsstatgroupby.
 
 2008-06-26:
-  * Add support for --where to ds2txt
+   * Add support for --where to ds2txt
 
-2008-06-14: 
-  * DataSeries should now build on cygwin.
+2008-06-14:
+   * DataSeries should now build on cygwin.
 
 2008-06-12:
-  * nfsdsanalysis should work on the v1.0, v2.0, v2.1 trace files.
+   * nfsdsanalysis should work on the v1.0, v2.0, v2.1 trace files.
 
 2008-05-19:
-  * DataSeries has switched over to using .hpp for the header names.  .H
-    files are still present for transition; a warning will be present for
-    one release and then the transitional files will be removed.
+   * DataSeries has switched over to using .hpp for the header names.  .H
+     files are still present for transition; a warning will be present for
+     one release and then the transitional files will be removed.
 
-2008-05-09: 
-  * Switched over to using cmake for building instead of autoconf.  This
-    change is intended to move us toward being able to build on Windows.
-  * Added support for building and installing doxygen based documentation.
+2008-05-09:
+   * Switched over to using cmake for building instead of autoconf.  This
+     change is intended to move us toward being able to build on Windows.
+   * Added support for building and installing doxygen based documentation.
 
-2008-04-14: 
-  * Created code to convert the 1998 World Cup traces and to perform the
-    same analysis as shipped with the data.
+2008-04-14:
+   * Created code to convert the 1998 World Cup traces and to perform the
+     same analysis as shipped with the data.
 
-2008-04-07: 
-  * Added a new packing option pack_pad_record to avoid rounding records
-    up to 8 bytes. 
-  * Added a new packing option pack_field_ordering to control the order
-    used for packing fields.
+2008-04-07:
+   * Added a new packing option pack_pad_record to avoid rounding records
+     up to 8 bytes.
+   * Added a new packing option pack_field_ordering to control the order
+     used for packing fields.
 
 2008-04-02:
-  * Added the Int64TimeField class to start dealing with the problems of
-    different units for times.  Used primarily in the NFS analysis since
-    those have different time units.
+   * Added the Int64TimeField class to start dealing with the problems of
+     different units for times.  Used primarily in the NFS analysis since
+     those have different time units.
 
 2008-03-28:
-  * You can now set the name of a field after the constructor.
+   * You can now set the name of a field after the constructor.
 
 2008-03-26:
-  * Added the lindump-mmap raw collection program.  lindump-mmap is
-    roughly twice as efficient at doing packet capture as tcpdump, but
-    is linux specific.
+   * Added the lindump-mmap raw collection program.  lindump-mmap is
+     roughly twice as efficient at doing packet capture as tcpdump, but
+     is linux specific.
 
 2008-02-27:
-  * Fix up nfsds host analysis module, useful for figuring out how many 
-    operations are going in/out of each of the hosts.  Example of how to make
-    a plot is included in src/analysis/nfs/mod1.cpp
+   * Fix up nfsds host analysis module, useful for figuring out how many
+     operations are going in/out of each of the hosts.  Example of how to make
+     a plot is included in src/analysis/nfs/mod1.cpp
 
 2008-01-27:
-  * Add in doc/tr; the technical report we've been writing.  Includes the
-    writeup of the Ellard work.
+   * Add in doc/tr; the technical report we've been writing.  Includes the
+     writeup of the Ellard work.
 
-2008-01-21: 
-  * Tune parallel reading; potentially more to be done.
+2008-01-21:
+   * Tune parallel reading; potentially more to be done.
 
 2008-01-08:
-  * Make ExtentType const everywhere; this allows us to use it in more places,
-    but requires users to change their code.
+   * Make ExtentType const everywhere; this allows us to use it in more places,
+     but requires users to change their code.
 
 2008-01-04:
-  * Add support for parallel reading in the IndexSourceModule's.  Has tuning
-    parameters for size of uncompressed and compressed data to be prefetching.
+   * Add support for parallel reading in the IndexSourceModule's.  Has tuning
+     parameters for size of uncompressed and compressed data to be prefetching.
 
-2007-12-31: 
-  * Three programs for working with the Daniel Ellard Harvard NFS traces have
-    been implemented and tested on the home04 set of traces.  ellardnfs2ds
-    converts the data from the Ellard text format to dataseries format.
-    ds2ellardnfs converts the data from dataseries back to the Ellard
-    text format.  ellardanalysis implements the first three example questions
-    in nfsscan-v0.16-040509/EXAMPLES.  There is also a batch-parallel
-    module for converting the Ellard traces, it will convert the traces to
-    dataseries and check that the conversion was correct by converting back.
-    When both formats are compressed using gzip, the DataSeries files are
-    approximately 0.76x the size of the text ones.  Analysis runs 76-107x
-    faster on a 4 core machine, and uses about 25x less cpu time.
+2007-12-31:
+   * Three programs for working with the Daniel Ellard Harvard NFS traces have
+     been implemented and tested on the home04 set of traces.  ellardnfs2ds
+     converts the data from the Ellard text format to dataseries format.
+     ds2ellardnfs converts the data from dataseries back to the Ellard
+     text format.  ellardanalysis implements the first three example questions
+     in nfsscan-v0.16-040509/EXAMPLES.  There is also a batch-parallel
+     module for converting the Ellard traces, it will convert the traces to
+     dataseries and check that the conversion was correct by converting back.
+     When both formats are compressed using gzip, the DataSeries files are
+     approximately 0.76x the size of the text ones.  Analysis runs 76-107x
+     faster on a 4 core machine, and uses about 25x less cpu time.
 
-2007-12-28: 
-  * Null compacting has been implemented.  This performs a transform on the
-    fixed data that removes all of the null data and only leaves the boolean
-    to indicate the value is null.  It is used as part of the Ellard nfs
-    traces.  Null compaction is enabled by putting 
-    pack_null_compact="non_bool" in as an option for the extent type.  Use of
-    it currently generates a warning; the warning will be removed once null
-    compaction is tried with a second data type.
+2007-12-28:
+   * Null compacting has been implemented.  This performs a transform on the
+     fixed data that removes all of the null data and only leaves the boolean
+     to indicate the value is null.  It is used as part of the Ellard nfs
+     traces.  Null compaction is enabled by putting
+     pack_null_compact="non_bool" in as an option for the extent type.  Use of
+     it currently generates a warning; the warning will be removed once null
+     compaction is tried with a second data type.
 
 2007-12-07:
-  * Extent ExtentType matching to be substring so we don't have to remember
-    the entire name for programs like ds2txt and dsstatgroupby.
+   * Extent ExtentType matching to be substring so we don't have to remember
+     the entire name for programs like ds2txt and dsstatgroupby.
 
 2007-11-05:
-  * nfsdsanalysis program added, only one of the analysis has been tested,
-    so it is the only one enabled.
-  * NEWS file created
+   * nfsdsanalysis program added, only one of the analysis has been tested,
+     so it is the only one enabled.
+   * NEWS file created
 
 2007-10-30:
-  * dstypes2cxx gets a mode that automatically generates a row analysis 
-    module; this is probably how you want to make an initial program.
+   * dstypes2cxx gets a mode that automatically generates a row analysis
+     module; this is probably how you want to make an initial program.
 
 2007-10-11:
-  * Add in lsfdsplots -- a program that uses lsfdsanalysis to generate graphs.
-  * Add in dsdecrypt -- a program that can detect and decrypt encrypted strings
-    in DataSeries files.
+   * Add in lsfdsplots -- a program that uses lsfdsanalysis to generate graphs.
+   * Add in dsdecrypt -- a program that can detect and decrypt encrypted strings
+     in DataSeries files.
 
 2007-10-02:
-  * Add in initial where clause support to dsstatgroupby.
+   * Add in initial where clause support to dsstatgroupby.
 
 2007-09-30:
-  * Add in lsfdsanalysis program for analyzing LSF batch accounting logs
+   * Add in lsfdsanalysis program for analyzing LSF batch accounting logs
 
 2007-09-27:
-  * Add in filesystem enumerator.  Useful for finding all of the files that
-    are not in use; this can then be combined with tcpdump and
-    nettrace2ds to get ds files
-  * Add in host pinger so we can detect which file servers are local.
+   * Add in filesystem enumerator.  Useful for finding all of the files that
+     are not in use; this can then be combined with tcpdump and
+     nettrace2ds to get ds files
+   * Add in host pinger so we can detect which file servers are local.
 
 2007-09-26:
-  * dsrepack batch-parallel module so we can repack in parallel over a 
-    directory hierarchy
+   * dsrepack batch-parallel module so we can repack in parallel over a
+     directory hierarchy
 
 2007-09-15:
-  * Switch license to BSD.
-  * Add support for general expressions to dsstatgroupby.
+   * Switch license to BSD.
+   * Add support for general expressions to dsstatgroupby.
 
 2007-09-11:
-  * Add support for parallel compression.  As a side effect this means that
-    writing to data series files does not impact latency much because
-    compression happens in a separate thread.
+   * Add support for parallel compression.  As a side effect this means that
+     writing to data series files does not impact latency much because
+     compression happens in a separate thread.
 
 2007-09-01:
-  * Optimize extent reading to avoid zeroing byte arrays when it's unnecessary.
+   * Optimize extent reading to avoid zeroing byte arrays when it's unnecessary.
 
 2007-08-30:
-  * Extend dsrepack so that it can split files into multiple pieces.
+   * Extend dsrepack so that it can split files into multiple pieces.
 
 2007-08-28:
-  * Change defaults on validating checksums so that we only do validation
-    if things are otherwise going to be slow (e.g. dsrepack, ds2txt), or if
-    the user sets the environment variable.
+   * Change defaults on validating checksums so that we only do validation
+     if things are otherwise going to be slow (e.g. dsrepack, ds2txt), or if
+     the user sets the environment variable.
 
 2007-08-07:
-  * iphost2ds.C: new program for converting ip hostnames pairs into
-    dataseries.
+   * iphost2ds.C: new program for converting ip hostnames pairs into
+     dataseries.
 
 2007-08-02:
-  * bacct2ds.C: new program for converting LSF batch accounting logs
-    into dataseries.  Also parses job names and directories to extract out
-    some site-specific features.
+   * bacct2ds.C: new program for converting LSF batch accounting logs
+     into dataseries.  Also parses job names and directories to extract out
+     some site-specific features.
 
 2007-04-20:
-  * Use a chained checksum rather than a random value in the tail of the file
-    so cmp will agree files are identical.
-  * Add support for version numbers and namespaces to ExtentType
-  * Add support to process pcap files in nettrace2ds
+   * Use a chained checksum rather than a random value in the tail of the file
+     so cmp will agree files are identical.
+   * Add support for version numbers and namespaces to ExtentType
+   * Add support to process pcap files in nettrace2ds
 
-2007-02-23: 
-  * Add nettrace2ds batch-parallel module so we can do big runs over
-    many files.
+2007-02-23:
+   * Add nettrace2ds batch-parallel module so we can do big runs over
+     many files.
 
 2007-01-08:
-  * New dsstatgroupby program and module for calculating statistics over
-    an expression grouped by a column.  Initial expressions very limited.
+   * New dsstatgroupby program and module for calculating statistics over
+     an expression grouped by a column.  Initial expressions very limited.
 
 2007-01-05:
-  * Import liblzf-1.6 into DataSeries so we will always have that compression 
-    algorithm.
+   * Import liblzf-1.6 into DataSeries so we will always have that compression
+     algorithm.
 
 2007-01-02:
-  * Rename all the includes to be #include <DataSeries/...>
+   * Rename all the includes to be #include <DataSeries/...>
 
 2006-12-26:
-  * Implement dsrepack that lets you take a dataseries file and repack it 
-    into another file with different extent size and compression options.
+   * Implement dsrepack that lets you take a dataseries file and repack it
+     into another file with different extent size and compression options.
 
 ---- Updates before here not yet put into NEWS ----
