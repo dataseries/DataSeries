@@ -12,6 +12,8 @@
 #ifndef DATASERIES_FILE_H
 #define DATASERIES_FILE_H
 
+#include <boost/function.hpp>
+
 #include <Lintel/Deque.hpp>
 #include <Lintel/PThread.hpp>
 
@@ -231,6 +233,10 @@ public:
     /** automatically calls close() if close has not already been called. */
     ~DataSeriesSink();
 
+    /** Sets a callback function for when extents are written out. */
+    void setExtentWriteCallback(boost::function<void (off64_t, Extent &)> callback)
+    { extent_write_callback = callback; }
+
     /** Blocks until all queued extents have been written and closes the file.  An
         @c ExtentTypeLibrary must have been written using
         \link DataSeriesSink::writeExtentLibrary writeExtentLibrary \endlink. */
@@ -351,6 +357,7 @@ private:
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
     PThreadCond available_queue_cond, available_work_cond, 
 				   available_write_cond;
+    boost::function<void (off64_t, Extent &)> extent_write_callback;
 
     const std::string filename;
     friend class DataSeriesSinkPThreadCompressor;

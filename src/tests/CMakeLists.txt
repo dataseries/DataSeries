@@ -41,6 +41,9 @@ DATASERIES_SCRIPT_TEST(expr)
 DATASERIES_PROGRAM_NOINST(typefiltermodule)
 DATASERIES_SCRIPT_TEST(typefiltermodule)
 
+DATASERIES_PROGRAM_NOINST(extent-write-callback)
+DATASERIES_SCRIPT_TEST(extent-write-callback)
+
 # TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)
 DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})

@@ -517,7 +517,6 @@ void DataSeriesSink::writeOutPending(bool have_lock) {
     Deque<toCompress *> to_write;
     while(!pending_work.empty() 
 	  && pending_work.front()->readyToWrite()) {
-	pending_work.front()->wipeExtent();
 	to_write.push_back(pending_work.front());
 	pending_work.pop_front();
     }
@@ -528,6 +527,12 @@ void DataSeriesSink::writeOutPending(bool have_lock) {
 	toCompress *tc = to_write.front();
 	to_write.pop_front();
 	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
+
+        if(extent_write_callback) {
+            extent_write_callback(cur_offset, tc->extent);
+        }
+        tc->wipeExtent();
+
 	index_series.newRecord();
 	field_extentOffset.set(cur_offset);
 	field_extentType.set(tc->extent.type.getName());
