@@ -632,7 +632,6 @@ void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
 	}
     }
     INVARIANT(work->extent.size() == uncompressed_size, "internal");
-    work->extent.clear();
     mutex.lock();
     work->in_progress = false; 
     INVARIANT(!pending_work.empty(), "bad");
@@ -679,6 +678,7 @@ void  DataSeriesSink::compressorThread()  {
 	    available_work_cond.wait(mutex);
 	} else {
 	    lockedProcessToCompress(work);
+
 	    if (false) cout << boost::format("qwe broadcast compr? %d %d\n") % bytes_in_progress % pending_work.size();
     
 	    if (canQueueWork()) { // may be able to queue work since we just freed up space.

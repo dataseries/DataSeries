@@ -5,7 +5,8 @@
 const std::string type_string = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Test::Garbage\" version=\"1.0\" >\n    <field type=\"int64\" name=\"number\" />\n</ExtentType>";
 
 void printIndex(off64_t offset, Extent &extent) {
-    std::cout << offset << "\t" << extent.type.getName() << "\n";
+    std::cout << offset << "\t" << extent.type.getName()
+              << "\t" << extent.size() << "\n";
 }
 
 int main(int argc, char *argv[]) {
