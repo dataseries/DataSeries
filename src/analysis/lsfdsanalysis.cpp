@@ -367,7 +367,7 @@ public:
 	}
 	int hourused(int day, int hour) {
 	    unsigned index = 24*day + hour;
-	    SINVARIANT(index >= 0 && index < weekdayHourAvailability.size());
+	    SINVARIANT(index < weekdayHourAvailability.size());
 	    return weekdayHourAvailability[index];
 	}
 	static const int max_separation_seconds = 3*24*3600 + 12*3600; // 3.5 days of no jobs ==> down
@@ -386,8 +386,7 @@ public:
 		}
 	    }
 	    unsigned offset = weekday * 24 + hour;
-	    SINVARIANT(offset >= 0 && offset 
-		       <= weekdayHourAvailability.size());
+	    SINVARIANT(offset <= weekdayHourAvailability.size());
 		       
 	    if ((weekdayPrevSeconds[offset] + 7200) < seconds) {
 		// don't duplicate count hours

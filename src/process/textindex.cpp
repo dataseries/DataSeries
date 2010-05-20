@@ -320,6 +320,10 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
     int cur_id = 0;
     for(unsigned i=3;i<args.size();++i) {
 	FILE *f = fopen(args[i].c_str(), "r");
+	if (f == NULL) {
+	    cerr << "error opening: " << args[i] << ".\n";
+	    exit(1);
+	}
 	cout << "open " << args[i] << ".\n";
 	cout << "importing...";
 	cout.flush();
@@ -343,6 +347,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
 	    message.append(line);
 	}
 	cout << "\n";
+	fclose(f);
     }
 }
 

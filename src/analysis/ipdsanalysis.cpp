@@ -498,7 +498,7 @@ public:
 	} else {
 	    // Allow packets to be out of order
 	    uint64_t interval = (packet_at.valRaw() - intervals_base)/interval_raw;
-	    SINVARIANT(interval >= 0 && interval < sum_bytes.size() - 1);
+	    SINVARIANT(interval < sum_bytes.size() - 1);
 	    sum_packets[interval] += 1;
 	    sum_bytes[interval] += wire_len.val();
 	}
