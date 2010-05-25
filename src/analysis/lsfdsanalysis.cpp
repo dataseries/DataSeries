@@ -980,7 +980,7 @@ public:
 	    unsigned a = ent.job_id;
 	    unsigned b = ent.cluster_id;
 	    unsigned ret = 1972;
-	    BobJenkinsHashMix(a,b,ret);
+	    lintel::BobJenkinsHashMix3(a,b,ret);
 	    return ret;
 	}
     };

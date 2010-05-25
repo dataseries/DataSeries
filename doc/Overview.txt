@@ -4,7 +4,6 @@
 #  See the file named COPYING for license details
 #
 
-
 Initial checkin of the DataSeries, generic trace format work that I
 described a few weeks ago.  It should build on Linux with gcc-2.95 and
 HP-UX.  It has regression tests for most of the programs.

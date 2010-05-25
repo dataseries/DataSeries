@@ -195,7 +195,7 @@ public:
 	    a = (unsigned)(k.request_id >> 32);
 	    b = (unsigned)(k.request_id & 0xFFFFFFFF);
 	    ret = 1972;
-	    BobJenkinsHashMix(a,b,ret);
+	    lintel::BobJenkinsHashMix3(a,b,ret);
 	    return ret;
 	}
     };
