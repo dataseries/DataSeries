@@ -194,7 +194,7 @@ void NetworkClique<F, P>::incrementOwnedExtents() {
 	++owned_extent_count; // No locking. We're not looking for 100% accuracy.
 	if (owned_extent_count > highest_owned_extent_count) {
 		highest_owned_extent_count = owned_extent_count;
-		LintelLogDebug("NetworkClique", boost::format("Owned extents: %s") % owned_extent_count);
+		//LintelLogDebug("NetworkClique", boost::format("Owned extents: %s") % owned_extent_count);
 	}
 }
 
@@ -237,6 +237,22 @@ void NetworkClique<F, P>::connectToNode(const NodePtr &node) {
 
     int node_fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     INVARIANT(node_fd != -1, "Unable to create a client socket.");
+
+    // increasing buffer sizes for high bandwidth low latency link                
+    int sndsize = 512000;
+    setsockopt(node_fd, SOL_SOCKET, SO_RCVBUF, (char*)&sndsize, (int)sizeof(sndsize));
+    setsockopt(node_fd, SOL_SOCKET, SO_SNDBUF, (char*)&sndsize, (int)sizeof(sndsize));
+
+    int sockbufsizesend = 0;
+    int sockbufsizerecv = 0;
+    socklen_t sizeb = sizeof(int);
+    int err = getsockopt(node_fd, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsizesend, &sizeb);
+
+    err = getsockopt(node_fd, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsizerecv, &sizeb);
+
+    LintelLogDebug("NetworkClique",
+                   boost::format("Socket buffer size set.  send=%s recv=%s") 
+		   % sockbufsizesend % sockbufsizerecv);
 
     // Keep trying to connect until we succeed. There are smarter ways, but this is good enough.
     while (::connect(node_fd, (struct sockaddr*)&node_sin, sizeof(node_sin)) == -1);

@@ -46,6 +46,7 @@ ExtentWriter::~ExtentWriter() {
 }
 
 void ExtentWriter::writeExtent(Extent *extent) {
+    //LintelLogDebug("ExtentWriter", boost::format("writeExtent called."));
     Clock::Tfrac start_clock = Clock::todTfrac();
 
     if (extent == NULL) {
@@ -82,10 +83,11 @@ void ExtentWriter::writeExtentBuffers(bool fixedDataCompressed,
     size_t size = sizeof(header) + fixedData.size() + variableData.size();
 
     if (is_socket) {
-        writeBufferToSocket(&header, sizeof(header));
+	writeBufferToSocket(&header, sizeof(header));
         writeBufferToSocket(fixedData.begin(), fixedData.size());
         writeBufferToSocket(variableData.begin(), variableData.size());
     } else {
+        //LintelLogDebug("ExtentWriter", boost::format("Writing with vector: fixed %s/variable %s bytes.") % fixedData.size() % variableData.size());
         struct iovec iov[3];
         iov[0].iov_base = &header;
         iov[0].iov_len = sizeof(header);
@@ -111,7 +113,7 @@ void ExtentWriter::writeBufferToSocket(void *buffer, size_t size) {
     while (size > 0) {
         ssize_t ret = ::send(fd, data, size, 0);
         INVARIANT(ret > 0, "Unable to write buffer to socket.");
-        LintelLogDebug("ExtentWriter", boost::format("Wrote %s/%s bytes.") % ret % size);
+        //LintelLogDebug("ExtentWriter", boost::format("Wrote %s/%s bytes.") % ret % size);
         size -= ret;
         data += ret;
     }
@@ -147,7 +149,7 @@ void ExtentWriter::close() {
     if (fd == -1) {
         return;
     }
-    LintelLogDebug("ExtentWriter", "Finished writing to file descriptor.");
+    //LintelLogDebug("ExtentWriter", "Finished writing to file descriptor.");
     CHECKED(::close(fd) == 0, boost::format("Close failed: %s") % strerror(errno));
     fd = -1;
 }

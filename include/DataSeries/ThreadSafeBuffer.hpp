@@ -8,13 +8,14 @@
 template <typename T>
 class ThreadSafeBuffer {
 public:
-    ThreadSafeBuffer(uint32_t size = 3) : size(size), done(false) {
+    ThreadSafeBuffer(uint32_t size = 60) : size(size), done(false) {
     }
 
     void add(T element) {
         PThreadScopedLock lock(mutex);
         while (buffer.size() == size) {
-            not_full_cond.wait(mutex); // Wait for the buffer to be "not full"
+	    //LintelLogDebug("NetworkClique", boost::format("ThreadSafeBuffer of size %s is full, waiting to add,,,") % size);
+	    not_full_cond.wait(mutex); // Wait for the buffer to be "not full"
         }
         buffer.push_back(element);
         not_empty_cond.signal(); // The buffer is certainly not empty.

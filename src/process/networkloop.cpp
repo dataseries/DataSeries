@@ -57,16 +57,16 @@ private:
 int main(int argc, char *argv[]) {
     LintelLog::parseEnv();
 
-    while (true) {
+    //    while (true) {
 		TypeIndexModule input_module("Gensort");
-		input_module.addSource("/opt/array/gensort1gb.ds");
+		input_module.addSource("/mnt/local/sdb/pds/gensort40000000.ds");
 
 		//ParallelSortModule sort_module(input_module, "key", 1 << 20, -1, 600 * 1000 * 1000, false, "/opt/array/tmp/sort");
 
 		//ParallelRadixSortModule sort_module(input_module, "key");
 		vector<string> node_names;
-		node_names.push_back("10.10.10.10");
-		node_names.push_back("10.10.10.11");
+		node_names.push_back("cirrus1u20");
+		node_names.push_back("cirrus1u21");
 
 		NetworkClique<FixedWidthField, FixedWidthFieldPartitioner>
 		            network_clique(&input_module, node_names, atoi(argv[1]), "key", FixedWidthFieldPartitioner(), 1 << 20);
@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 		while ((extent = network_clique.getExtent()) != NULL) {
 			delete extent;
 		}
-    }
+		// }
     return 0;
 }
 

@@ -3,7 +3,6 @@
 #include <iostream>
 #include <stdlib.h>
 #include <sys/time.h>
-#include <arpa/inet.h>
 
 #include <boost/foreach.hpp>
 #include <boost/shared_ptr.hpp>
@@ -33,71 +32,6 @@ public:
         return memcmp(fieldLhs.val(), fieldRhs.val(), fieldLhs.size()) <= 0;
     }
 };
-
-class AccuratePartitioner {
-public:
-    void initialize(uint32_t partition_count) {
-	DEBUG_INVARIANT(partition_count <= 256, "This partitioner only supports 256 partitions.");
-	float increment = 65536.0 / partition_count;
-	float current_limit = 0;
-
-	partitions = new uint16_t[partition_count+1];
-	count = partition_count;
-
-	for (uint32_t i = 0; i < count; ++i) {
-	    partitions[i] = static_cast<uint16_t>(round(current_limit));
-	    current_limit += increment;
-	}
-	partitions[partition_count] = 0xFFFF; //max
-
-	uint32_t j=0;
-	increment = 256.0 / partition_count;
-	current_limit = increment;
-	for (uint32_t i = 0; i < partition_count - 1; ++i) {
-	    uint8_t top = static_cast<uint8_t>(round(current_limit));
-
-	    while (j < top) {
-		LintelLogDebug("networksortclique", boost::format("partitions[%s] == %s") % j % i);
-		quick_par[j] = i;
-		++j;
-	    }
-
-	    // Delimit border with a hint
-	    quick_par[j-1]=-(i+1);
-	    quick_par[j]=-(i+1);
-	    ++j;
-	    current_limit += increment;
-	}
-
-	while (j < 256) {
-	    LintelLogDebug("networksortclique", boost::format("partitions[%s] == %s") % j % (partition_count - 1));
-	    quick_par[j] = partition_count-1;
-	    ++j;
-	}
-    }
-
-    uint32_t getPartition(const FixedWidthField &field) {
-	uint8_t first_byte = static_cast<const uint8_t*>(field.val())[0];
-	if (quick_par[first_byte]>=0) {
-	    return quick_par[first_byte];
-	}
-
-	uint16_t word = htons(reinterpret_cast<const uint16_t*>(field.val())[0]);
-	int16_t l;
-	l = (-quick_par[first_byte]); // decode hint.  We also add one
-				      // to skip first comparison
-				      // below.
-	while (partitions[l] < word) {
-	    ++l;
-	}
-	return l-1;
-    }
-private:
-    int16_t quick_par[256];
-    uint16_t * partitions;
-    uint8_t count;
-}; 
-
 
 class FixedWidthFieldPartitioner {
 public:
@@ -153,13 +87,11 @@ lintel::ProgramOption<string>
 
 int main(int argc, char *argv[]) {
     // Timing info
-    struct timeval *Tps, *Tpf, *Tsyncs, *Tsyncf, *Tjoins, *Tjoinf;
+    struct timeval *Tps, *Tpf, *Tsyncs, *Tsyncf;
     Tps = (struct timeval*) malloc(sizeof(struct timeval));
     Tpf = (struct timeval*) malloc(sizeof(struct timeval));
     Tsyncs = (struct timeval*) malloc(sizeof(struct timeval));
     Tsyncf = (struct timeval*) malloc(sizeof(struct timeval));
-    Tjoins = (struct timeval*) malloc(sizeof(struct timeval));
-    Tjoinf = (struct timeval*) malloc(sizeof(struct timeval));
 
     gettimeofday (Tps, NULL);
 
@@ -197,18 +129,18 @@ int main(int argc, char *argv[]) {
     TypeIndexModule input_module(extent_type_match_option.get());
     input_module.addSource(input_file_name_option.get());
 
-    NetworkClique<FixedWidthField, AccuratePartitioner>
-            network_clique(&input_module, node_names, node_index, field_name_option.get(), AccuratePartitioner(), 1 << 20);
+    NetworkClique<FixedWidthField, FixedWidthFieldPartitioner>
+	network_clique(&input_module, node_names, node_index, field_name_option.get(), FixedWidthFieldPartitioner(), 1 << 20);
     network_clique.start();
 
-    uint64_t memory_limit = 4400; memory_limit *= 1000000;
-    ParallelSortModule
-            sort_module(network_clique, field_name_option.get(), 1000000, -1, memory_limit, false, "/tmp/sort");
+    uint64_t memory_limit = 12000; memory_limit *= 1000000;
+    //ParallelSortModule sort_module(network_clique, field_name_option.get(), 1000000, -1, memory_limit, false, "/tmp/sort");
 
-    ExtentWriter writer(output_file_name_option.get(), false, false);
+    //ExtentWriter writer(output_file_name_option.get(), false, false);
     Extent *extent = NULL;
-    while ((extent = sort_module.getExtent()) != NULL) {
-        writer.writeExtent(extent);
+    //while ((extent = sort_module.getExtent()) != NULL) {
+    while ((extent = network_clique.getExtent()) != NULL) {
+    //writer.writeExtent(extent);
         delete extent;
     }
     /*
@@ -231,16 +163,14 @@ int main(int argc, char *argv[]) {
     system("sudo sync");
     gettimeofday (Tsyncf, NULL);
     
-    gettimeofday (Tjoins, NULL);
     network_clique.join();
-    gettimeofday (Tjoinf, NULL);
 
     // Get total time statistics
     gettimeofday (Tpf, NULL);
 
     long tsynctim = (Tsyncf->tv_sec-Tsyncs->tv_sec)*1000000 + Tsyncf->tv_usec-Tsyncs->tv_usec;
+    long tjointim = (Tpf->tv_sec-Tsyncf->tv_sec)*1000000 + Tpf->tv_usec-Tsyncf->tv_usec;
     LintelLogDebug("NetworkClique", boost::format("Sync call took %ld us") % tsynctim);
-    long tjointim = (Tjoinf->tv_sec-Tjoins->tv_sec)*1000000 + Tjoinf->tv_usec-Tjoins->tv_usec;
     LintelLogDebug("NetworkClique", boost::format("Join call took %ld us") % tjointim);
     long ttim = (Tpf->tv_sec-Tps->tv_sec)*1000000 + Tpf->tv_usec-Tps->tv_usec;
     LintelLogDebug("NetworkClique", boost::format("Total Time: %ld us") % ttim);

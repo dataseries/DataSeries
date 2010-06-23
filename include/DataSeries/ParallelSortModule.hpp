@@ -181,6 +181,10 @@ Extent *ParallelSortModule::getExtent() {
         Extent *first_extent = memory_sort_module->getExtent();
         external = throttle_module.limitReached();
         if (!external) {
+	    phase_stop_clock = Clock::todTfrac();
+	    LintelLogDebug("ParallelRadixSortModule",
+	         boost::format("In-mem sort completed in %s seconds.") %
+	         Clock::TfracToDouble(phase_stop_clock - phase_start_clock));
             return first_extent;
         }
         write_thread.start();

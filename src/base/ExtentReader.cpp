@@ -43,6 +43,7 @@ Extent *ExtentReader::getExtent() {
         if (header.fixedDataSize == 0 && header.variableDataSize == 0) {
             Clock::Tfrac stop_clock = Clock::todTfrac();
             total_time += Clock::TfracToDouble(stop_clock - start_clock);
+	    LintelLogDebug("ExtentReader", boost::format("Extent read over network in time %s") % Clock::TfracToDouble(stop_clock - start_clock));
             return NULL;
         }
         extent = new Extent(extentType);
@@ -51,6 +52,7 @@ Extent *ExtentReader::getExtent() {
 
     Clock::Tfrac stop_clock = Clock::todTfrac();
     total_time += Clock::TfracToDouble(stop_clock - start_clock);
+    LintelLogDebug("ExtentReader", boost::format("Extent read over network in time %s") % Clock::TfracToDouble(stop_clock - start_clock));
 
     return extent;
 }
@@ -116,10 +118,10 @@ bool ExtentReader::readBufferFromSocket(void *buffer, size_t size) {
     size_t bytes_left = size;
     uint8_t *byte_buffer = reinterpret_cast<uint8_t*>(buffer);
     while (bytes_left > 0) {
-        LintelLogDebug("ExtentReader", boost::format("Waiting (or not) to read %s bytes.") % bytes_left);
-        ssize_t bytes_received = ::recv(fd, byte_buffer, bytes_left, 0);
-        LintelLogDebug("ExtentReader", boost::format("Read %s/%s bytes.") % bytes_received % bytes_left);
-        INVARIANT(bytes_received != -1, "Unable to read from socket.");
+        //LintelLogDebug("ExtentReader", boost::format("Waiting (or not) to read %s bytes.") % bytes_left);
+	ssize_t bytes_received = ::recv(fd, byte_buffer, bytes_left, 0);
+        //LintelLogDebug("ExtentReader", boost::format("Read %s/%s bytes.") % bytes_received % bytes_left);
+	INVARIANT(bytes_received != -1, "Unable to read from socket.");
         if (bytes_received == 0) {
             INVARIANT(bytes_left == size, "Partial read.");
             return false;
