@@ -5,16 +5,24 @@ serverclientnetbarnode="pds-11";
 myhostname=`hostname`;
 mynodeindex=`grep -n $myhostname $nodelist | cut -d: -f 1`;
 let mynodeindex=$mynodeindex-1;
-portbase=7200;
+portbase=5000;
 myport=$(( $portbase + $mynodeindex ));
 involved=-1;
 
 if [ -n "$1" ];
 then
-  numNodes=$1
+  numnodes=$1
 else
-  numNodes=`cat $nodelist | wc -l`
+  numnodes=`cat $nodelist | wc -l`
 fi
+
+if [ -n "$2" ];
+then
+  dataamount=$2
+else
+  dataamount=4000
+fi
+dataamountpernode=$[$dataamount/$numnodes]
 
 for host in `cat $nodelist`;
 do
@@ -28,11 +36,12 @@ if [ $involved -lt 0 ]; then
   exit
 fi
 
+echo "Running all-to-all with $dataamount MB over $numnodes nodes ($dataamountpernode MB per node)"
 
 #start servers first
 foundme=-1;
 nodeindex=-1;
-for host in `head -$numNodes $nodelist`;
+for host in `head -$numnodes $nodelist`;
 do
   let nodeindex=$nodeindex+1
   port=$(( portbase + $nodeindex ));
@@ -41,7 +50,7 @@ do
   elif [ $foundme -gt 0 ]; then
     #Create server to everyone with higher nodeindex
     echo "nodeindex $mynodeindex: start server for $nodeindex at $host on port $port"
-    $home/runserver.sh $mynodeindex $nodeindex $host $port &
+    $home/runserver.sh $mynodeindex $nodeindex $host $port $dataamountpernode &
   fi
 done
 
@@ -52,7 +61,7 @@ echo " "
 #start clients second
 foundme=-1;
 nodeindex=-1;
-for host in `head -$numNodes $nodelist`;
+for host in `head -$numnodes $nodelist`;
 do
   let nodeindex=$nodeindex+1;
   if [ $host == `hostname` ]; then
@@ -60,6 +69,6 @@ do
   elif [ $foundme -le 0 ]; then
     #Create client to everyone with lower nodeindex
     echo "nodeindex $mynodeindex: connect to $nodeindex at $host on port $myport"
-    $home/runclient.sh $mynodeindex $nodeindex $host $myport &
+    $home/runclient.sh $mynodeindex $nodeindex $host $myport $dataamountpernode &
   fi
 done
