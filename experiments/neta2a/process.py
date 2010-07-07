@@ -65,7 +65,7 @@ for i in range(numNodes):
 for i in range(0,(numNodes*(numNodes-1))):
     totElements = len(allReadTimes[i])
     print "TotElements: " + str(totElements)
-    winLimit = 10000
+    winLimit = 100000
     stepSize = 1000
     winTime = 0
     #winStartTime is taken from start of TIMER of last index included in window
@@ -74,6 +74,7 @@ for i in range(0,(numNodes*(numNodes-1))):
     winStartTime = 0 
     winEndTime = 0
     winAmount = 0
+    totAmount = 0
     stepTime = 0
     minWinIndex = -1 #the last index just before the window
     maxWinIndex = 0 #the first index just after the window
@@ -83,7 +84,10 @@ for i in range(0,(numNodes*(numNodes-1))):
         while ((maxWinIndex < totElements) and
                stepTime >= winEndTime + allReadTimes[i][maxWinIndex]):
             winAmount += allReadAmounts[i][maxWinIndex]
+            totAmount += allReadAmounts[i][maxWinIndex]
             winEndTime += allReadTimes[i][maxWinIndex]
+            if (allReadTimes[i][maxWinIndex] > 200000):
+                print "TIMEOUT at %d (finally read %d B in last %d us)" % (stepTime,allReadAmounts[i][maxWinIndex],allReadTimes[i][maxWinIndex])
             maxWinIndex += 1
         #print "step1: stepTime %d minWinIndex %d maxWinIndex %d winStartTime %d winEndTime %d" % (stepTime,minWinIndex,maxWinIndex,winStartTime,winEndTime)
         printStats(stepTime, winTime, winAmount)
@@ -93,12 +97,16 @@ for i in range(0,(numNodes*(numNodes-1))):
     #wintime now fixed at limit, so manage the sliding window
     winTime = winLimit
     winStartTime = 0 #allReadTimes[i][0]
-    while (maxWinIndex < totElements or winAmount > 0):
+    while (maxWinIndex < totElements):
+        #or winAmount > 0):
         #fix max elements of window
         while ((maxWinIndex < totElements) and
                stepTime >= winEndTime + allReadTimes[i][maxWinIndex]):
             winAmount += allReadAmounts[i][maxWinIndex]
+            totAmount += allReadAmounts[i][maxWinIndex]
             winEndTime += allReadTimes[i][maxWinIndex]
+            if (allReadTimes[i][maxWinIndex] > 200000):
+                print "TIMEOUT at %d (finally read %d B in last %d us)" % (stepTime,allReadAmounts[i][maxWinIndex],allReadTimes[i][maxWinIndex])
             maxWinIndex += 1
         #fix min elements of window
         while ((minWinIndex+1 < totElements) and 
@@ -108,6 +116,7 @@ for i in range(0,(numNodes*(numNodes-1))):
             winStartTime += allReadTimes[i][minWinIndex]
         #print "step2: stepTime %d minWinIndex %d maxWinIndex %d winStartTime %d winEndTime %d" % (stepTime,minWinIndex,maxWinIndex,winStartTime,winEndTime)
         printStats(stepTime, winLimit, winAmount)
+        #print (totAmount / stepTime)
         stepTime += stepSize
 
 allTputs.append(flowTputs)
@@ -126,7 +135,3 @@ for i in range(0,len(allTputs)):
 
 allTputsArray = array(allTputs)
 savetxt("tput.data",allTputsArray.T,fmt='%d')
-    
-        
-
-    
