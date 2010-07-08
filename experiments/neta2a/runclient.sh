@@ -8,5 +8,5 @@ dataamountpernode=$5
 
 
 echo "runclient: nodeindex $mynodeindex: connect to $nodeindex at $host on port $port to read $dataamountpernode MB"
-echo "dd if=/dev/zero bs=1000000 count=$dataamountpernode | nc $host $port | ./reader $[$dataamountpernode*1000000] &> $home/logs/$nodeindex.$mynodeindex.c"
-dd if=/dev/zero bs=1000000 count=$dataamountpernode | nc $host $port | ./reader $[$dataamountpernode*1000000] &> $home/logs/$nodeindex.$mynodeindex.c
+echo "dd if=/dev/zero bs=1000000 count=$dataamountpernode | nc $host $port | genread --data-amount $[$dataamountpernode*1000000] &> $home/logs/$nodeindex.$mynodeindex.c"
+dd if=/dev/zero bs=1000000 count=$dataamountpernode | nc $host $port | genread --data-amount $[$dataamountpernode*1000000] &> $home/logs/$nodeindex.$mynodeindex.c

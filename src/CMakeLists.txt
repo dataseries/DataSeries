@@ -79,6 +79,7 @@ SET(LIBDATASERIES_SOURCES
 ################################## SUBDIRS
 
 ADD_SUBDIRECTORY(process)
+ADD_SUBDIRECTORY(experiments)
 ADD_SUBDIRECTORY(analysis)
 ADD_SUBDIRECTORY(BatchParallel)
 ADD_SUBDIRECTORY(raw-collection)
