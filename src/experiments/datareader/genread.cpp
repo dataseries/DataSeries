@@ -6,6 +6,9 @@
 #include <fcntl.h>
 #include <sys/uio.h>
 #include <pthread.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <arpa/inet.h>>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
@@ -87,10 +90,10 @@ public:
 	long lastReadTime = 0;
 	long numReads = 0;
 	totReads = 0;
-	
+
 	for (ret = 0, numReads = 0, lastReadTime = tval2long(startTime); tot < dataAmount; ++numReads, tot += ret) {
 	    // Note: always reading buf_size is ok because we control exact amount sent
-	    ret = read(sockid, buf, BUF_SIZE);
+	    ret = recv(sockid, buf, BUF_SIZE, 0);
 	    gettimeofday(readDoneTime, NULL);
 	    readAmounts[numReads] = ret;
 	    thisReadTime = tval2long(readDoneTime);
@@ -128,9 +131,18 @@ public:
 
     virtual void *run() {
 	long *retSizePtr = 0;
-	int sockid = 0;
+	int listenSocket, connectSocket;
 	PThreadPtr readThread;
 	FILE *outlog;
+	socklen_t clientAddressLength;
+	struct sockaddr_in clientAddress, serverAddress;
+	//struct hostent *hostInfo;
+	int ret;
+	int numWrites;
+	int totWrites;
+	int totLeft;
+
+	bzero(buf, BUF_SIZE);
 
 	// Open output file for log
 	string outlogfile = (boost::format("%s%d.%d.%s.test") % LOG_DIR %
@@ -145,17 +157,96 @@ public:
 	}
 
 	// Connect or listen as per the args, getting a sockid
-	sockid = 0;
+	if (isServer == 0) {
+	    // This node is the client, so connect to the right server
+	} else {
+	    // Setup the server and listen for connections
+	    //Create socket for listening for client connection requests
+	    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+	    if (listenSocket < 0) {
+		cerr << "cannot create listen socket";
+		exit(1);
+	    }
+	    
+	    // Bind listen socket to listen port.  
+	    serverAddress.sin_family = AF_INET;
+	    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+	    serverAddress.sin_port = htons(serverPort);
+
+
+	    // set socket buffer sizes
+	    // increasing buffer sizes for high bandwidth low latency link
+	    int sndsize = 512000;
+	    setsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sndsize, (int)sizeof(sndsize));
+	    setsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sndsize, (int)sizeof(sndsize));
+  
+	    int sockbufsize = 0;
+	    socklen_t sizeb = sizeof(int);
+	    int err = getsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsize, &sizeb);
+	    printf("Recv socket buffer size: %d\n", sockbufsize);
+	    
+	    err = getsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsize, &sizeb);
+	    printf("Send socket buffer size: %d\n", sockbufsize);
+  
+	    // TCP NO DELAY
+	    int flag = 1;
+	    int result = setsockopt(listenSocket,
+				    IPPROTO_TCP,
+				    TCP_NODELAY,
+				    (char *) &flag,
+				    sizeof(int));
+
+	    if (result < 0) {
+		perror("Could not set TCP_NODELAY sock opt\n");
+	    }
+	    
+	    if (bind(listenSocket,
+		     (struct sockaddr *) &serverAddress,
+		     sizeof(serverAddress)) < 0) {
+		cerr << "cannot bind socket";
+		exit(1);
+	    }
+	    
+	    // Wait for connections from clients.
+	    listen(listenSocket, 5);
 	
-	// Start up the data reader
-	readThread.reset(new ReadThread(dataAmount, sockid, outlog));
+	    cout << "Waiting for TCP connection on port " << serverPort << " ...\n";
+    
+	    // Accept a connection with a client that is requesting one.
+	    clientAddressLength = sizeof(clientAddress);
+	    connectSocket = accept(listenSocket,
+				   (struct sockaddr *) &clientAddress,
+				   &clientAddressLength);
+	    if (connectSocket < 0) {
+		cerr << "cannot accept connection ";
+		exit(1);
+	    }
+	    
+	    // Show the IP address of the client.
+	    cout << "  connected to " << inet_ntoa(clientAddress.sin_addr);
+
+	    // Show the client's port number.
+	    cout << ":" << ntohs(clientAddress.sin_port) << "\n";
+	}
+	
+	// Start up the data reader over this socket
+	readThread.reset(new ReadThread(dataAmount, connectSocket, outlog));
 	readThread->start();
-
-	// Generate and send data over the connection
-
-	// Join all read threads
-	retSizePtr = (long *)readThread->join();
 	
+	// Generate and send data over the connection
+	for (ret = 0, numWrites = 0, totLeft = dataAmount; totLeft > 0; ++numWrites, totLeft -= ret) {
+	    if (send(connectSocket, buf, (totLeft > BUF_SIZE ? BUF_SIZE : totLeft), 0) < 0) {
+		cerr << "Error: cannot send data";
+	    }
+	}
+	totWrites = ++numWrites;
+	fprintf(outlog, "Total number of writes: %d\n", totWrites);
+	
+	// Join on read thread
+	retSizePtr = (long *)readThread->join();    
+
+	// Cleanup and return
+	close(connectSocket);
 	fclose(outlog);
 	return retSizePtr;
     }
@@ -164,6 +255,7 @@ public:
     unsigned short int serverPort;
     int isServer;
     int otherNodeIndex;
+    char buf[BUF_SIZE];
 };
 
 int main(int argc, char **argv)
@@ -177,9 +269,6 @@ int main(int argc, char **argv)
     long *retSizePtr = 0;
     long totReturned = 0;
     PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
-    //string serverName = "pds-10.u.hpl.hp.com";
-    //struct sockaddr_in serverAddress;
-    //struct hostent *hostInfo;
 
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
     jobEndTime = (struct timeval*) malloc(sizeof(struct timeval));        
