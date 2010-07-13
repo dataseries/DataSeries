@@ -7,6 +7,7 @@
 #include <sys/uio.h>
 #include <pthread.h>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <boost/shared_ptr.hpp>
@@ -21,11 +22,18 @@ using namespace std;
 #define BUF_SIZE 65536
 #define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
+#define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
+#define PORT_BASE 6000
 
 typedef boost::shared_ptr<PThread> PThreadPtr;
 
+ProgramOption<int> po_nodeIndex("node-index", "Node index in the node list", -1);
 ProgramOption<long> po_dataAmount("data-amount", "Total amount of data to read from all hosts", 4000000000);
+ProgramOption<string> po_nodeNames("node-names", "List of nodes");
+static const string LOG_DIR("/home/krevate/projects/DataSeries/experiments/neta2a/logs/");
 struct timeval *startTime, *jobEndTime;
+vector<string> nodeNames;
+int nodeIndex;
 
 long tval2long(struct timeval *tval) {
     return ((tval->tv_sec*1000000) + tval->tv_usec);
@@ -37,10 +45,10 @@ long tval2longdiff(struct timeval *tvalstart, struct timeval *tvalend) {
 
 class ReadThread : public PThread {
 public:
-    ReadThread(long dataAmount, int sockid)
-	: dataAmount(dataAmount), sockid(sockid) {
+    ReadThread(long dataAmount, int sockid, FILE *outlog)
+	: dataAmount(dataAmount), sockid(sockid), outlog(outlog) {
 	readDoneTime = (struct timeval*) malloc(sizeof(struct timeval));
-	localEndTime = (struct timeval*) malloc(sizeof(struct timeval));
+	localEndTime = (struct timeval*) malloc(sizeof(struct timeval));	
     }
 
     virtual ~ReadThread() {
@@ -51,9 +59,9 @@ public:
     virtual void *run() {
 	long *retSizePtr;
 	retSizePtr = (long *)malloc(sizeof(long));
-	*retSizePtr = runReader();
+	*retSizePtr = 42; //runReader();
 	printReadTimes();
-	printf("Local work finished: %ld us\n", tval2longdiff(startTime, localEndTime) );
+	fprintf(outlog, "Local work finished: %ld us\n", tval2longdiff(startTime, localEndTime) );
 	return retSizePtr;
     }
 
@@ -61,15 +69,15 @@ public:
 	int i;
 	long totReadTime = 0;
 	long totReadAmnt = 0;
-	printf("\nReadTime ReadAmnt\n");
+	fprintf(outlog, "\nReadTime ReadAmnt\n");
 	for (i = 0; i < totReads; i++) {
-	    printf("%ld %ld\n", readTimes[i], readAmounts[i]);
+	    fprintf(outlog, "%ld %ld\n", readTimes[i], readAmounts[i]);
 	    totReadAmnt += readAmounts[i];
 	    totReadTime += readTimes[i];
 	}
-	printf("Total number of reads: %ld\n", totReads);
-	printf("Total amount read: %ld\n", totReadAmnt);
-	printf("Total time in reads: %ld us\n", totReadTime);
+	fprintf(outlog, "Total number of reads: %ld\n", totReads);
+	fprintf(outlog, "Total amount read: %ld\n", totReadAmnt);
+	fprintf(outlog, "Total time in reads: %ld us\n", totReadTime);
     }
         
     long runReader() {
@@ -84,8 +92,6 @@ public:
 	    // Note: always reading buf_size is ok because we control exact amount sent
 	    ret = read(sockid, buf, BUF_SIZE);
 	    gettimeofday(readDoneTime, NULL);
-	    //printf("read num: %ld\n",numReads);
-	    //printf("read amnt: %ld\n",ret);
 	    readAmounts[numReads] = ret;
 	    thisReadTime = tval2long(readDoneTime);
 	    readTimes[numReads] = thisReadTime - lastReadTime;
@@ -105,64 +111,127 @@ public:
     char buf[BUF_SIZE];
     long readTimes[MAX_READS]; //time between successful reads
     long readAmounts[MAX_READS]; //amount of data actually read each time
-    long totReads;
-    long dataAmount;
-    int sockid;
+    long totReads; //total reads taken to read all data
+    long dataAmount; //amount of data to read from socket
+    int sockid; //id of socket to read from
+    FILE *outlog; //output file id
 };
 
 class SetupAndTransferThread : public PThread {
+
 public:
-    SetupAndTransferThread(long dataAmount, int isServer, unsigned short int serverPort, char *serverName)
-	: dataAmount(dataAmount), isServer(isServer), serverPort(serverPort), serverName(serverName) {}
+
+    SetupAndTransferThread(long dataAmount, unsigned short int serverPort, int isServer, int otherNodeIndex)
+	: dataAmount(dataAmount), serverPort(serverPort), isServer(isServer), otherNodeIndex(otherNodeIndex) {}
+
     ~SetupAndTransferThread() {}
 
     virtual void *run() {
-	return 0;
+	long *retSizePtr = 0;
+	int sockid = 0;
+	PThreadPtr readThread;
+	FILE *outlog;
+
+	// Open output file for log
+	string outlogfile = (boost::format("%s%d.%d.%s.test") % LOG_DIR %
+			     (isServer == 0 ? otherNodeIndex : nodeIndex) % 
+			     (isServer == 0 ? nodeIndex : otherNodeIndex) % 
+			     (isServer == 0 ? "c" : "s")).str();
+	cout << outlogfile;
+	printf("%d: isServer? %d otherNodeIndex: %d\n", nodeIndex, isServer, otherNodeIndex);
+	outlog = fopen(outlogfile.c_str(), "w+");
+	if (outlog == NULL) {
+	    fprintf(stderr, "ERROR opening outlog");
+	}
+
+	// Connect or listen as per the args, getting a sockid
+	sockid = 0;
+	
+	// Start up the data reader
+	readThread.reset(new ReadThread(dataAmount, sockid, outlog));
+	readThread->start();
+
+	// Generate and send data over the connection
+
+	// Join all read threads
+	retSizePtr = (long *)readThread->join();
+	
+	fclose(outlog);
+	return retSizePtr;
     }
 
     long dataAmount;
-    int isServer;
     unsigned short int serverPort;
-    char *serverName;
-    PThreadPtr readThread;
+    int isServer;
+    int otherNodeIndex;
 };
 
 int main(int argc, char **argv)
 {
     lintel::parseCommandLine(argc,argv);
-    long totSize = 0;
+    long dataAmount = 0;
+    long dataAmountPerNode = 0;
+    string tmp;
+    int numNodes = 0;
+    int isServer = 0;
     long *retSizePtr = 0;
-    int sockid = 0;
-    //PThreadPtr SetupAndTransferThread;
-    PThreadPtr readThread;
+    long totReturned = 0;
+    PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
+    //string serverName = "pds-10.u.hpl.hp.com";
     //struct sockaddr_in serverAddress;
     //struct hostent *hostInfo;
 
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
     jobEndTime = (struct timeval*) malloc(sizeof(struct timeval));        
-    totSize = po_dataAmount.get();
+    dataAmount = po_dataAmount.get();
+    nodeIndex = po_nodeIndex.get();
+    tmp = po_nodeNames.get();
+    boost::split(nodeNames, tmp, boost::is_any_of(","));
+    numNodes = nodeNames.size();
+    dataAmountPerNode = dataAmount / numNodes;
+    SINVARIANT(numNodes >= 0);
+    setupAndTransferThreads = (PThreadPtr *) malloc(numNodes*sizeof(PThreadPtr));
+    printf("\ngenread called with %d nodes and %ld Bytes\n",numNodes,dataAmount);
 
-    system(NETBAR);
-
+    system(NETBARSERVERS);
     gettimeofday(startTime, NULL);
 
-    readThread.reset(new ReadThread(totSize, sockid));
-    readThread->start();
-    retSizePtr = (long *)readThread->join();
-    // Handle server setup
+    // Specify which connections apply to this node, as a server or client
+    for (int i = (numNodes - 1); i >= 0; --i) {
+	if (i == nodeIndex) {
+	    // We finished setting up servers, wait for all other servers to go up
+	    printf("\n%d: finished setting up servers\n", nodeIndex);
+	    system(NETBARSERVERS);
+	} else {
+	    // Determine if this node acts as server or client
+	    if (i > nodeIndex) {
+		isServer = 1;
+	    } else {
+		isServer = 0;
+	    }
+	    setupAndTransferThreads[i].reset(new SetupAndTransferThread(dataAmountPerNode, PORT_BASE+i, isServer, i));
+	    setupAndTransferThreads[i]->start();
+	}
+    }
 
-    printf("\nTotal received: %ld\n",*retSizePtr);
+    // Join all threads
+    for (int i = 0; i < numNodes; i++) {
+	if (i == nodeIndex) {
+	    ; // Do nothing
+	} else {
+	    retSizePtr = (long *)setupAndTransferThreads[i]->join();
+	    printf("\nData received from nodeindex %d: %ld\n", i, *retSizePtr);
+	    totReturned += *retSizePtr;
+	    free(retSizePtr);
+	}
+    }
 
-    system(NETBAR);
-    
-    // Either read from or write to socket id
-
-    system(NETBAR);
+    printf("\nTotal received: %ld\n", totReturned);
+    system(NETBARSERVERS);
     
     gettimeofday(jobEndTime, NULL);    
     printf("Full job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
 
-    free(retSizePtr);
     free(startTime);
     free(jobEndTime);
 }
