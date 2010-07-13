@@ -63,7 +63,7 @@ public:
     virtual void *run() {
 	long *retSizePtr;
 	retSizePtr = (long *)malloc(sizeof(long));
-	*retSizePtr = 42; //runReader();
+	*retSizePtr = runReader();
 	printReadTimes();
 	fprintf(outlog, "Local work finished: %ld us\n", tval2longdiff(startTime, localEndTime) );
 	return retSizePtr;
