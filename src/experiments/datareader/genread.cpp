@@ -93,7 +93,7 @@ public:
 
 	for (ret = 0, totReads = 0, lastReadTime = tval2long(startTime); tot < dataAmount; ++totReads, tot += ret) {
 	    // Note: always reading buf_size is ok because we control exact amount sent
-	    ret = recv(sockid, buf, BUF_SIZE, 0);
+	    ret = read(sockid, buf, BUF_SIZE);
 	    gettimeofday(readDoneTime, NULL);
 	    readAmounts[totReads] = ret;
 	    thisReadTime = tval2long(readDoneTime);
@@ -125,7 +125,9 @@ class SetupAndTransferThread : public PThread {
 public:
 
     SetupAndTransferThread(long dataAmount, unsigned short int serverPort, int isServer, int otherNodeIndex)
-	: dataAmount(dataAmount), serverPort(serverPort), isServer(isServer), otherNodeIndex(otherNodeIndex) {}
+	: dataAmount(dataAmount), serverPort(serverPort), isServer(isServer), otherNodeIndex(otherNodeIndex) {
+	printf("\nSetupAndTransferThread called for %ld B, serverPort %d, isServer %d, otherNodeIndex %d\n", dataAmount, serverPort, isServer, otherNodeIndex);
+    }
 
     ~SetupAndTransferThread() {}
 
@@ -136,7 +138,7 @@ public:
 	FILE *outlog;
 	socklen_t clientAddressLength;
 	struct sockaddr_in clientAddress, serverAddress;
-	struct hostent *hostInfo, *tempHostInfo;
+	struct hostent *hostInfo;
 	int ret;
 	int totWrites;
 	int totLeft;
@@ -144,12 +146,12 @@ public:
 	bzero(buf, BUF_SIZE);
 
 	// Open output file for log
-	string outlogfile = (boost::format("%s%d.%d.%s.test") % LOG_DIR %
+	string outlogfile = (boost::format("%s%d.%d.%s") % LOG_DIR %
 			     (isServer == 0 ? otherNodeIndex : nodeIndex) % 
 			     (isServer == 0 ? nodeIndex : otherNodeIndex) % 
 			     (isServer == 0 ? "c" : "s")).str();
 	cout << outlogfile;
-	printf("%d: isServer? %d otherNodeIndex: %d\n", nodeIndex, isServer, otherNodeIndex);
+	//printf("\n%d: isServer? %d otherNodeIndex: %d\n", nodeIndex, isServer, otherNodeIndex);
 	outlog = fopen(outlogfile.c_str(), "w+");
 	if (outlog == NULL) {
 	    fprintf(stderr, "ERROR opening outlog");
@@ -159,14 +161,17 @@ public:
 	if (isServer == 0) {
 	    // This node is the client, so connect to the right server
 	    hostInfo = new struct hostent();
-	    tempHostInfo = gethostbyname(nodeNames[otherNodeIndex].c_str());
-	    if (tempHostInfo == NULL) {
+	    hostInfo = gethostbyname(nodeNames[otherNodeIndex].c_str());
+	    printf("\ngethostbyname: %s\n", nodeNames[otherNodeIndex].c_str());
+	    if (hostInfo == NULL) {
 		cout << "SERVER[i]: " << nodeNames[otherNodeIndex] << endl;
 		cout << "ERROR: " << h_errno << endl;
 		exit(1);
 	    } else {
-		memcpy(hostInfo, tempHostInfo, sizeof(struct hostent));
-		bcopy(tempHostInfo->h_addr, (struct in_addr *)&(serverAddress.sin_addr), tempHostInfo->h_length);
+		bzero((char *) &serverAddress, sizeof(serverAddress));
+		serverAddress.sin_family = AF_INET;
+		bcopy((char *)hostInfo->h_addr, (char *)&serverAddress.sin_addr.s_addr, hostInfo->h_length);
+		//(struct in_addr *)&(serverAddress.sin_addr), tempHostInfo->h_length);
 		
 		cout << "Host: " << nodeNames[otherNodeIndex] << endl;
 		if (hostInfo == NULL) {
@@ -208,6 +213,8 @@ public:
 		perror("Could not set TCP_NODELAY sock opt\n");
 	    }
 
+	    cout << " ...... " << inet_ntoa(*((struct in_addr*)hostInfo->h_addr)) << endl;
+
 	    serverAddress.sin_family = hostInfo->h_addrtype;
 	    serverAddress.sin_port = htons(serverPort);
 	    
@@ -215,7 +222,9 @@ public:
 			sizeof(serverAddress)) < 0) {
 		cerr << "cannot connect\n";
 		exit(1);
-	    }	   
+	    } else {
+		cout << "connected\n";
+	    }
  
 	} else {
 	    // Setup the server and listen for connections
@@ -277,13 +286,15 @@ public:
 				   (struct sockaddr *) &clientAddress,
 				   &clientAddressLength);
 	    if (connectSocket < 0) {
-		cerr << "cannot accept connection ";
+		cerr << "cannot accept connection\n";
 		exit(1);
+	    } else {
+		cerr << "accepted connection\n";
 	    }
 	    
 	    // Show the IP address of the client.
 	    cout << "  connected to " << inet_ntoa(clientAddress.sin_addr);
-
+  
 	    // Show the client's port number.
 	    cout << ":" << ntohs(clientAddress.sin_port) << "\n";
 	}
@@ -294,8 +305,8 @@ public:
 	
 	// Generate and send data over the connection
 	for (ret = 0, totWrites = 0, totLeft = dataAmount; totLeft > 0; ++totWrites, totLeft -= ret) {
-	    if ((ret = send(connectSocket, buf, (totLeft > BUF_SIZE ? BUF_SIZE : totLeft), 0)) < 0) {
-		cerr << "Error: cannot send data";
+	    if ((ret = write(connectSocket, buf, (totLeft > BUF_SIZE ? BUF_SIZE : totLeft))) < 0) {
+		cerr << "Error: cannot send data  ";
 	    }
 	}
 	++totWrites;
@@ -336,28 +347,25 @@ int main(int argc, char **argv)
     tmp = po_nodeNames.get();
     boost::split(nodeNames, tmp, boost::is_any_of(","));
     numNodes = nodeNames.size();
-    dataAmountPerNode = dataAmount / numNodes;
+    dataAmountPerNode = dataAmount / (long)numNodes;
     SINVARIANT(numNodes >= 0);
     setupAndTransferThreads = (PThreadPtr *) malloc(numNodes*sizeof(PThreadPtr));
-    printf("\ngenread called with %d nodes and %ld Bytes\n",numNodes,dataAmount);
+    printf("\ngenread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
 
     system(NETBARSERVERS);
     gettimeofday(startTime, NULL);
 
     // Specify which connections apply to this node, as a server or client
+    isServer = 1;
     for (int i = (numNodes - 1); i >= 0; --i) {
 	if (i == nodeIndex) {
 	    // We finished setting up servers, wait for all other servers to go up
-	    printf("\n%d: finished setting up servers\n", nodeIndex);
 	    system(NETBARSERVERS);
+	    printf("\n%d: finished setting up servers\n", nodeIndex);
+	    isServer = 0;
 	} else {
-	    // Determine if this node acts as server or client
-	    if (i > nodeIndex) {
-		isServer = 1;
-	    } else {
-		isServer = 0;
-	    }
-	    setupAndTransferThreads[i].reset(new SetupAndTransferThread(dataAmountPerNode, PORT_BASE+i, isServer, i));
+	    printf("Calling setupAndTransfer for i=%d\n",i);
+	    setupAndTransferThreads[i].reset(new SetupAndTransferThread(dataAmountPerNode, PORT_BASE+(isServer == 0 ? nodeIndex : i), isServer, i));
 	    setupAndTransferThreads[i]->start();
 	}
     }
