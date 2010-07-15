@@ -196,10 +196,10 @@ public:
 	    int sockbufsize = 0;
 	    socklen_t sizeb = sizeof(int);
 	    int err = getsockopt(connectSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsize, &sizeb);
-	    printf("Recv socket buffer size: %d\n", sockbufsize);
+	    //printf("Recv socket buffer size: %d\n", sockbufsize);
 	    
 	    err = getsockopt(connectSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsize, &sizeb);
-	    printf("Send socket buffer size: %d\n", sockbufsize);
+	    //printf("Send socket buffer size: %d\n", sockbufsize);
   
 	    // TCP NO DELAY
 	    int flag = 1;
@@ -310,10 +310,11 @@ public:
 	    }
 	}
 	++totWrites;
-	fprintf(outlog, "Total number of writes: %d\n", totWrites);
 	
 	// Join on read thread
 	retSizePtr = (long *)readThread->join();    
+
+	fprintf(outlog, "Total number of writes: %d\n", totWrites);
 
 	// Cleanup and return
 	close(connectSocket);
@@ -338,6 +339,7 @@ int main(int argc, char **argv)
     int isServer = 0;
     long *retSizePtr = 0;
     long totReturned = 0;
+    FILE *globaljoblog;
     PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
 
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
@@ -349,7 +351,7 @@ int main(int argc, char **argv)
     numNodes = nodeNames.size();
     dataAmountPerNode = dataAmount / (long)numNodes;
     SINVARIANT(numNodes >= 0);
-    setupAndTransferThreads = (PThreadPtr *) malloc(numNodes*sizeof(PThreadPtr));
+    setupAndTransferThreads = new PThreadPtr[numNodes];
     printf("\ngenread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
 
     system(NETBARSERVERS);
@@ -361,10 +363,10 @@ int main(int argc, char **argv)
 	if (i == nodeIndex) {
 	    // We finished setting up servers, wait for all other servers to go up
 	    system(NETBARSERVERS);
-	    printf("\n%d: finished setting up servers\n", nodeIndex);
+	    //printf("\n%d: finished setting up servers\n", nodeIndex);
 	    isServer = 0;
 	} else {
-	    printf("Calling setupAndTransfer for i=%d\n",i);
+	    //printf("Calling setupAndTransfer for i=%d\n",i);
 	    setupAndTransferThreads[i].reset(new SetupAndTransferThread(dataAmountPerNode, PORT_BASE+(isServer == 0 ? nodeIndex : i), isServer, i));
 	    setupAndTransferThreads[i]->start();
 	}
@@ -386,8 +388,24 @@ int main(int argc, char **argv)
     system(NETBARSERVERS);
     
     gettimeofday(jobEndTime, NULL);    
-    printf("Full job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
+    printf("\nFull job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
 
+    // Write out global job stats if we are the first nodeindex
+    if (nodeIndex == 0) {
+	// Open output file for global stats
+	string globaljobfile = (boost::format("%s%d.out") % LOG_DIR % numNodes).str();
+	cout << globaljobfile;
+	globaljoblog = fopen(globaljobfile.c_str(), "w+");
+	if (globaljoblog == NULL) {
+	    fprintf(stderr, "ERROR opening globaljoblog");
+	}
+	
+	fprintf(globaljoblog, "genread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
+	fprintf(globaljoblog, "Total received at nodeIndex 0: %ld\n", totReturned);
+	fprintf(globaljoblog, "Full job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
+    }
+
+    delete [] setupAndTransferThreads;
     free(startTime);
     free(jobEndTime);
 }

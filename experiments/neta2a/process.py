@@ -10,8 +10,6 @@ from scipy import *
 from subprocess import Popen, PIPE, STDOUT
 #from asyncproc import Process
 
-os.system("rm tput.data")
-
 myDir = sys.argv[1]
 numNodes = int(sys.argv[2]) 
 isDataLine = 0
@@ -20,6 +18,9 @@ allReadTimes = []
 allReadAmounts = []
 flowTputs = []
 allTputs = []
+totTime = 0
+
+os.system("rm %s/tput%d.data" % (myDir,numNodes))
 
 def printStats(timeElapsed, winSize, winAmount):
     global flowTputs
@@ -38,7 +39,6 @@ def printStats(timeElapsed, winSize, winAmount):
     #os.system(outcommand)
     #print "timeElapsed: %d  winSize: %d  winAmount: %d  tput: %d" % (timeElapsed, winSize, winAmount, tput)
 
-
 for i in range(numNodes):
     for j in range(i+1,numNodes):
         for k in ["c","s"]:
@@ -55,10 +55,13 @@ for i in range(numNodes):
                     isDataLine = 0;
                 elif (isDataLine == 1):
                     dataLine = line.strip().split();
-                    time = dataLine[0]
-                    amnt = dataLine[1]
-                    readTimes.append(int(time))
-                    readAmounts.append(int(amnt))
+                    try:
+                        time = dataLine[0]
+                        amnt = dataLine[1]
+                        readTimes.append(int(time))
+                        readAmounts.append(int(amnt))
+                    except:
+                        print dataLine
             allReadTimes.append(readTimes)
             allReadAmounts.append(readAmounts)
 
@@ -134,4 +137,19 @@ for i in range(0,len(allTputs)):
         allTputs[i].append(0)
 
 allTputsArray = array(allTputs)
-savetxt("tput.data",allTputsArray.T,fmt='%d')
+tputfile = "%s/tput%d.data" % (myDir,numNodes)
+print tputfile
+savetxt(tputfile,allTputsArray.T,fmt='%d')
+
+command = "cat %s/%d.out" % (myDir,numNodes)
+cmd = os.popen(command)
+cmdout = cmd.readlines()
+for line in cmdout:
+    if (line.find("Total received at nodeIndex 0:") != -1):
+        totDataReceivedPerNode = int(line.strip().split()[5])
+        print "Total received per node: %d B" % (totDataReceivedPerNode)
+    elif (line.find("Full job finished:") != -1):
+        totTime = int(line.strip().split()[3])
+        print "Total job time: %d us" % (totTime)
+
+print "Average Throughput: %f" % (float(totDataReceivedPerNode)/float(totTime))
