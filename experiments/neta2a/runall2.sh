@@ -17,7 +17,7 @@ if [ -n "$2" ];
 then
   dataamount=$2
 else
-  dataamount=4000
+  dataamount=8000
 fi
 dataamountpernode=$[$dataamount/$numnodes]
 

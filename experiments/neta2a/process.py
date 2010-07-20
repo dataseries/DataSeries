@@ -17,23 +17,38 @@ dataLine = []
 allReadTimes = []
 allReadAmounts = []
 flowTputs = []
+fullFlowTputs = []
+totalAmountSent = []
 allTputs = []
+allFullTputs = []
+allTotalAmountSent = []
 totTime = 0
 
 os.system("rm %s/tput%d.data" % (myDir,numNodes))
 
-def printStats(timeElapsed, winSize, winAmount):
+def printStats(timeElapsed, winSize, winAmount, totAmount):
     global flowTputs
+    global fullFlowTputs
+    global totalAmountSent
     tput = 0
+    fulltput = 0
     if (timeElapsed == 0):
         tput=0
+        fulltput=0
         if (len(flowTputs) > 0):
             allTputs.append(flowTputs)
+            allFullTputs.append(fullFlowTputs)
+            allTotalAmountSent.append(totalAmountSent)
             #print flowTputs
             flowTputs = []
+            fullFlowTputs = []
+            totalAmountSent = []
     else:
         tput=winAmount/winSize
+        fulltput = (totAmount / timeElapsed)
     flowTputs.append(tput)
+    fullFlowTputs.append(fulltput)
+    totalAmountSent.append(totAmount)
     #print "%d %d" % (timeElapsed, tput)
     #outcommand = "echo \"%d %d\" >> tput.data" % (timeElapsed, tput)
     #os.system(outcommand)
@@ -93,7 +108,7 @@ for i in range(0,(numNodes*(numNodes-1))):
                 print "TIMEOUT at %d (finally read %d B in last %d us)" % (stepTime,allReadAmounts[i][maxWinIndex],allReadTimes[i][maxWinIndex])
             maxWinIndex += 1
         #print "step1: stepTime %d minWinIndex %d maxWinIndex %d winStartTime %d winEndTime %d" % (stepTime,minWinIndex,maxWinIndex,winStartTime,winEndTime)
-        printStats(stepTime, winTime, winAmount)
+        printStats(stepTime, winTime, winAmount, totAmount)
         winTime += stepSize
         stepTime += stepSize
 
@@ -118,11 +133,12 @@ for i in range(0,(numNodes*(numNodes-1))):
             winAmount -= allReadAmounts[i][minWinIndex]
             winStartTime += allReadTimes[i][minWinIndex]
         #print "step2: stepTime %d minWinIndex %d maxWinIndex %d winStartTime %d winEndTime %d" % (stepTime,minWinIndex,maxWinIndex,winStartTime,winEndTime)
-        printStats(stepTime, winLimit, winAmount)
-        #print (totAmount / stepTime)
+        printStats(stepTime, winLimit, winAmount, totAmount)
         stepTime += stepSize
 
 allTputs.append(flowTputs)
+allFullTputs.append(fullFlowTputs)
+allTotalAmountSent.append(totalAmountSent)
 
 maxFlowSize = 0
 #find max length of a flow
@@ -136,10 +152,19 @@ for i in range(0,len(allTputs)):
     for j in range(0,neededZeros):
         allTputs[i].append(0)
 
-allTputsArray = array(allTputs)
-tputfile = "%s/tput%d.data" % (myDir,numNodes)
-print tputfile
-savetxt(tputfile,allTputsArray.T,fmt='%d')
+#append zeros to allfulltputs to make a full array
+for i in range(0,len(allFullTputs)):
+    neededZeros = maxFlowSize - len(allFullTputs[i])
+    for j in range(0,neededZeros):
+        allFullTputs[i].append(0)
+
+#append last amount to allTotalAmountSent to make a full array
+for i in range(0,len(allTotalAmountSent)):
+    origLength = len(allTotalAmountSent[i])
+    appendValue = allTotalAmountSent[i][(origLength-1)]
+    neededTotals = maxFlowSize - origLength
+    for j in range(0,neededTotals):
+        allTotalAmountSent[i].append(appendValue)
 
 command = "cat %s/%d.out" % (myDir,numNodes)
 cmd = os.popen(command)
@@ -153,3 +178,22 @@ for line in cmdout:
         print "Total job time: %d us" % (totTime)
 
 print "Average Throughput: %f" % (float(totDataReceivedPerNode)/float(totTime))
+
+stdevLine = ""
+for i in range(0,len(allTputs)):
+    stdev = round(std(allTputs[i]),1)
+    stdevLine = stdevLine + str(stdev) + ' '
+print "stdev for every flow: \n%s" % (stdevLine)
+
+allTputsArray = array(allTputs)
+allFullTputsArray = array(allFullTputs)
+allTotalAmountSentArray = array(allTotalAmountSent)
+tputfile = "%s/tput%d.data" % (myDir,numNodes)
+fulltputfile = "%s/fulltput%d.data" % (myDir,numNodes)
+amountsentfile = "%s/totalsent%d.data" % (myDir,numNodes)
+print tputfile
+print fulltputfile
+print amountsentfile
+savetxt(tputfile,allTputsArray.T,fmt='%d')
+savetxt(fulltputfile,allFullTputsArray.T,fmt='%d')
+savetxt(amountsentfile,allTotalAmountSentArray.T,fmt='%d')

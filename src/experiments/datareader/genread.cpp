@@ -24,7 +24,7 @@ using lintel::ProgramOption;
 using namespace std;
 
 #define BUF_SIZE 65536
-#define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
+#define MAX_READS 2500000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
 #define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
 #define PORT_BASE 6000
@@ -267,6 +267,11 @@ public:
 		perror("Could not set TCP_NODELAY sock opt\n");
 	    }
 	    
+	    flag = 1;
+	    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) {
+		perror("setsockopt(SO_REUSEADDR) failed");
+	    }
+
 	    // Bind socket and listen for connections
 	    if (bind(listenSocket,
 		     (struct sockaddr *) &serverAddress,
