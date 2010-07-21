@@ -1,0 +1,31 @@
+{
+\renewcommand{\baselinestretch}{1.0}
+\begin{table*}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|l|l|}
+\hline
+& $d_m < memory$ (in-memory sort) \\ \hline
+Without backup write &
+$\frac{i}{n} \left( max\left\{\frac{1}{D_r}, \frac{\frac{n-1}{n} e_M}{N}\right\} +
+max\left\{\frac{r e_M e_R}{D_w}, \frac{e_M e_R \left(r - 1\right)}{N}\right\} \right)$ \\ \hline
+With backup write & $\frac{i}{n} \left( max\left\{\frac{1}{D_r} + \frac{e_M}{D_w},
+\frac{\frac{n-1}{n} e_M}{N}\right\} + max\left\{\frac{r e_M e_R}{D_w}, \frac{e_M
+e_R \left(r - 1\right)}{N}\right\} \right)$ \\ \hline
+
+& $d_m \gg memory$ (external sort) \\ \hline
+Without backup write & $\frac{i}{n} \left( max\left\{\frac{1}{D_r} + \frac{e_M}{D_w},
+\frac{\frac{n-1}{n} e_M}{N}\right\} + max\left\{\frac{e_M}{D_r} + \frac{r e_M e_R}{D_w},
+\frac{e_M e_R \left(r - 1\right)}{N}\right\} \right)$ \\ \hline
+With backup write & $\frac{i}{n} \left(
+max\left\{\frac{1}{D_r} + \frac{2 e_M}{D_w}, \frac{\frac{n-1}{n} e_M}{N}\right\} +
+max\left\{\frac{e_M}{D_r} + \frac{r e_M e_R}{D_w}, \frac{e_M e_R \left(r -
+1\right)}{N}\right\} \right)$ \\ \hline
+
+\end{tabular}
+\caption{Model equations for the execution time of a map-reduce computation on a parallel dataflow system.
+%, as a function of the total amount of input data ($i$) and the map-reduce data expansion ratios ($e_M$ and $e_R$), where output data is replicated across $r$ nodes
+}
+\label{table:model:replication}
+\end{table*}
+}

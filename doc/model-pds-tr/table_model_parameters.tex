@@ -1,0 +1,36 @@
+{
+\renewcommand{\baselinestretch}{1.0}
+\begin{table}[t]
+\centering
+\begin{minipage}{1\textwidth}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|p{13cm}|}
+\hline
+Symbol & Definition \\ \hline
+$n$    & The number of nodes in the cluster. \\ \hline
+$D_w$    & The aggregate disk \emph{write} throughput of a single node. A node with four disks, where each disk provides 65 MB/s writes, would have $D$ = 260
+MB/s.
+%\footnote{Disk speeds depend on the actual filesystem, the placement of blocks on the disks' tracks, and whether it is a write or a read.  
+%Therefore, as discussed in Section~\ref{sec:optimality}, 
+%we prefer to obtain these values empirically when possible. In our experiments, even when correcting for block placement to be in the fastest zone and using the faster \texttt{xfs} filesystem, write speeds lagged the raw device read throughput by 6-14\%.}
+\\ \hline 
+$D_r$    & The aggregate disk \emph{read} throughput of a single node. \\ \hline
+$N$ & The network throughput of a single node.
+% After accounting for unavoidable overhead, Gigabit Ethernet provides roughly $N$ = 110 MB/s.
+\\ \hline 
+$r$    & The replication factor used for the job's output data.  If no replication is used, $r=1$.  \\ \hline
+$i$    & The total amount of input data for a given computation. \\ \hline
+$d_i \left(= \frac{i}{n}\right)$  & The amount of input data per node, for a given computation. \\ \hline 
+$d_m \left(= \frac{i \cdot e_M}{n}\right)$  & The amount of data per node after
+the map operator, for a given computation. \\ \hline
+$d_o \left(= \frac{i \cdot e_M \cdot e_R}{n}\right)$  & The amount of output
+data per node, for a given computation. \\ \hline
+$e_M \left(= \frac{d_m}{d_i}\right)$  & The ratio between the map operator's output and its input. \\ \hline
+$e_R \left(= \frac{d_o}{d_m}\right)$  & The ratio between the reduce operator's output and its input.\\ \hline
+\end{tabular}
+\caption{Modeling parameters that include I/O speeds and workload properties.}
+\label{table:symbols}
+\end{minipage}
+\end{table}
+}

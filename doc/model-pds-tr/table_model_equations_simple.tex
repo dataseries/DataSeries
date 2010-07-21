@@ -1,0 +1,18 @@
+{
+\renewcommand{\baselinestretch}{1.0}
+\begin{table*}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|l|l|}
+\hline
+& $d_m < memory$ & $d_m \gg memory$ \\ \hline
+Without backup write & $max\left\{\frac{d_i}{D_r},
+\frac{\frac{n-1}{n} d_m}{N}\right\} + \frac{d_o}{D_w}$ & 
+$max\left\{\frac{d_i}{D_r} + \frac{d_m}{D_w}, \frac{\frac{n-1}{n} d_m}{N}\right\} + \frac{d_m}{D_r} + \frac{d_o}{D_w}$ \\ \hline
+With backup write & $max\left\{\frac{d_i}{D_r} + \frac{d_m}{D_w}, \frac{\frac{n-1}{n} d_m}{N}\right\} + \frac{d_o}{D_w}$ & $max\left\{\frac{d_i}{D_r} + \frac{2 d_m}{D_w},
+\frac{\frac{n-1}{n} d_m}{N}\right\} + \frac{d_m}{D_r} + \frac{d_o}{D_w}$ \\ \hline
+\end{tabular}
+\caption{The execution time of a map-reduce computation on a parallel dataflow system.}
+\label{table:model:simple}
+\end{table*}
+}

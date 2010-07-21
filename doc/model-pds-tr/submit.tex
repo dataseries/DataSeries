@@ -1,0 +1,114 @@
+%\documentclass[review,3p,10pt,times]{elsarticle}
+\documentclass[10pt]{article}
+\usepackage{a4wide} 
+\usepackage{shadow}        % allows shadow boxes for figures
+\usepackage{hhline}        % fancy table lines
+\usepackage{tabularx}      % tables that auto-size
+\usepackage{latexsym}      % make some extra symbols available
+\usepackage{pslatex}       % Ensure we use non-bitmap fonts
+\usepackage{fancyhdr} % Allows control of header/footer
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{url}           % Properly line wraps URLs: \url{...}
+\usepackage{subfigure}
+\usepackage[%
+  ps2pdf,              % using ps2pdf vs pdftex
+  colorlinks=true,     % color the words instead of use a colored box
+  urlcolor=blue,       % \href{...}{...} external (URL)
+  filecolor=blue,      % \href{...} local file
+  linkcolor=black,     % \ref{...} and \pageref{...}
+  citecolor=black,     % \cite{}
+%  pdftitle={},
+%  pdfauthor={},
+%  pdfsubject={},
+%  pdfkeywords={},
+%  pdfproducer={pdfLaTeX},
+%  pagebackref,        % backward references in the bibliography
+  pdfpagemode=UseOutlines,  % None, UseThumbs, UseOutlines, FullScreen
+  bookmarksopen=true   % Does outline start expanded?
+  ]{hyperref}
+\usepackage[%
+  font=small,
+%  font=footnotesize,
+  labelfont=bf
+  ]{caption}
+
+
+%-- margins
+%replace setlength with renewcommand
+\setlength{\headheight}{0.0in}
+\setlength{\textheight}{9.0in}
+\setlength{\footskip}{0.3in}
+\setlength{\headsep}{0.3in}
+\setlength{\topmargin}{-0.3in}
+\setlength{\textwidth}{6.5in}
+\setlength{\columnsep}{0.25in}
+\setlength{\oddsidemargin}{0in}
+\renewcommand{\baselinestretch}{2}
+\evensidemargin \oddsidemargin
+
+\setlength{\parindent}{0pc}
+\setlength{\parskip}{4.5pt}
+
+
+\begin{document}
+
+%-- include the standard formatting macros... you should use these
+\input{std_commands.tex}
+
+%\begin{frontmatter}
+
+%-- don't print date
+\date{}
+
+{
+\renewcommand{\baselinestretch}{1.0}
+
+%-- Document title and authors
+\input{titleinfo.tex}
+
+%-- To remove page numbers, uncomment
+%\pagestyle{empty}
+
+%-- All other files included from this one
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+}
+
+%\begin{keyword}
+%Cloud Computing
+%\sep 
+%DISC
+%% PACS codes here, in the form: \PACS code \sep code
+
+%% MSC codes here, in the form: \MSC code \sep code
+%% or \MSC[2008] code \sep code (2000 is the default)
+
+%\end{keyword}
+
+%\end{frontmatter}
+
+\input{input.tex}
+
+{
+\renewcommand{\baselinestretch}{1.0}
+\small
+\normalsize
+\bibliography{local,submit}
+
+%-- Bib style for citations of the form: [Zippy97]
+%\bibliographystyle{$REFDIR/tex/macros/refalpha}
+
+%-- Citations by number: [23]
+%\bibliographystyle{$REFDIR/tex/macros/refplain}
+
+%-- Citations by number w/ only the authors' 1st and middle initials
+% We're including the local refabbrv so that the bibliography is generated
+% even when REFDIR is not mounted.
+% \bibliographystyle{$REFDIR/tex/macros/refabbrv}
+\bibliographystyle{amsplain}
+}
+
+\end{document}
+

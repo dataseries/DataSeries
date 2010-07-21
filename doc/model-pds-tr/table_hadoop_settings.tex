@@ -1,0 +1,32 @@
+{
+\renewcommand{\baselinestretch}{1.0}
+\begin{table}
+\centering
+\begin{minipage}{1\textwidth}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{3.0cm}|c|c|p{9.4cm}|}
+\hline
+Hadoop Setting & Default & Tuned & Effect \\ \hline
+Replication level & 3 & 1 & The replication level was set to 1 to
+avoid extra disk writes. \\ \hline
+HDFS block size & 64 MB & 128 MB & Larger block sizes in HDFS make large file reads and writes faster, amortizing the overhead for starting each map task. \\ \hline
+Speculative exec. & $true$ & $false$ & Failures are uncommon on small clusters, avoid extra work. \\ \hline
+Maximum map tasks per node  & 2 & 4 & Our nodes can handle more map
+tasks in parallel. \\ \hline
+Maximum reduce tasks per node & 1 & 4 & Our nodes can handle more
+reduce tasks in parallel. \\ \hline
+Map tasks & 2 & $4n$ & For a cluster of $n$ nodes, maximize the map tasks per node. \\ \hline
+Reduce tasks & 1 & $4n$ & For a cluster of $n$ nodes, maximize the reduce tasks per node. \\ \hline
+Java VM heap size & 200 MB & 1 GB & Increase the Java VM heap size for each child task. \\ \hline
+Daemon heap size & 1 GB & 2 GB & Increase the heap size for Hadoop daemons. \\ \hline
+Sort buffer memory & 100 MB & 600 MB & Use more buffer memory when sorting files.  \\ \hline
+Sort streams factor & 10 & 30 & Merge more streams at once when sorting files. \\ \hline
+\end{tabular}
+\caption{Hadoop configuration settings used in our experiments.
+%By tuning these Hadoop settings on our smaller cluster and running the specified maximum number of map and reduce tasks per node, our Hadoop sort benchmark completed about twice as fast as with the default Hadoop settings. While the actual default settings use 2 map tasks and 1 reduce task, that wouldn't actually make use of the full cluster of available machines.  Therefore, our modified default settings used a replication level of 1, $2n$ map tasks and $n$ reduce tasks.}
+}
+\label{table:hadoop:settings}
+\end{minipage}
+\end{table}
+}

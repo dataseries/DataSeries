@@ -1,0 +1,27 @@
+{
+\renewcommand{\baselinestretch}{1.0}
+\begin{table}[t]
+\centering
+\begin{minipage}{1\textwidth}
+\centering
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|l|l|l|}
+\hline
+        & $d_m < $ memory (in-memory sort) & $d_m \gg $ memory (external sort) \\ \hline
+Phase 1
+        & Disk read (input): $d_i$        & Disk read (input): $d_i$ \\
+        & Disk write (backup): $d_m$      & Disk write (backup): $d_m$ \\
+        & Network: $\frac{n-1}{n} d_m$    & Network: $\frac{n-1}{n} d_m$ \\
+        &                                 & Disk write (sort): $d_m$ \\ \hline
+Phase 2 & Network: $\left(r-1\right) d_o$ & Disk read (sort): $d_m$ \\
+        &                                 & Network: $\left(r-1\right) d_o$ \\
+        & Disk write (output): $r d_o$    & Disk write (output): $r d_o$ \\
+\hline
+\end{tabular}
+\caption{I/O operations in a map-reduce job.
+The first disk write in Phase 1 is an optional backup to protect
+against failures.}
+\label{table:operations2}
+\end{minipage}
+\end{table}
+}

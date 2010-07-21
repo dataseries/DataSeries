@@ -1,0 +1,53 @@
+%%THIS FILE IS NO LONGER USED
+%%the content has been copied into background.tex
+
+\section{Related work}
+\label{sec:related_work}
+
+Concerns about the performance of map-reduce style systems emerged
+from the parallel databases community, where similar data processing
+tasks have been tackled by commercially available systems. In
+particular, Stonebraker et. al. compare Hadoop to a variety of DBMSs,
+and find that Hadoop can be up to 36x slower than a commericaly
+parallel DBMS~\cite{stonebraker-mr}.
+In~\cite{efficiencymatters}, two of the authors of this paper
+pointed out that many parallel systems (especially map-reduce systems
+but also other parallel systems) have focused almost exclusively on
+the headline performance number and high-end scalability.  This focus,
+as the authors quantify by back of the envelope comparisons, has been
+at the detriment of other worthwhile metrics.  Another author of this
+paper describes the analytical model in~\cite{tshiranthesis}.
+
+In perhaps the most relevant prior work, Wang et. al. use simulation
+to evaluate how certain design decisions (e.g. network layout and data
+locality) will effect the performance of Hadoop
+jobs~\cite{mr-simulation}.  Specificly, thier MRPerf simulator
+instantiates fake jobs, which impose fixed times (e.g. job startup)
+and input-size dependent times (cycles/byte of compute) for the Hadoop
+parameters under study. The fake jobs gernerate network traffice
+(simulated with ns-2) and disk IO (also simulated).  Using execuation
+characteristics accurately measured from small instances of Hadoop
+jobs, MRPerf accurately predicts (to within 5-12\%) the performance
+of larger clusters.  Although simulation techniques like MRPerf are
+useful for exploring different designs, by relying on measurements of
+application behavior such simulations will also emulate any
+inefficiencies particular to the specific implementation simulated.
+
+%DISC~\cite{disc}
+
+%Efficiency matters~\cite{efficiencymatters} and Tomer's thesis~\cite{tshiranthesis}.
+
+%MapReduce~\cite{mapreduce}, GFS~\cite{gfs}, Hadoop~\cite{hadoop}, HDFS~\cite{hdfs}, Dryad~\cite{dryad}.
+
+%The language integration and translation to an execution plan has an
+%effect on performance~\cite{distagg}.  Dryad LINQ~\cite{dryadlinq} and
+%Pig latin~\cite{piglatin} provide higher-level SQL-like languages for
+%expressing and automatically optimizing programs on a given system.
+
+%DataSeries~\cite{dataseries} and Sawzall~\cite{sawzall}.
+
+%Gordon~\cite{gordon} and FAWN~\cite{fawn}.
+
+%Parallel database systems~\cite{paralleldatabases}, and Phoenix~\cite{phoenix}.
+
+%Raid~\cite{raid}

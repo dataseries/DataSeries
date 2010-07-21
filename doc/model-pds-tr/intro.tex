@@ -1,0 +1,107 @@
+\section{Introduction}
+\label{sec:intro}
+
+%This is the introduction to the paper.  It includes a motivating graph in Figure~\ref{fig:slowdown}.
+
+``Data-intensive scalable computing'' (DISC) refers to a rapidly growing style
+of computing characterized by its reliance on huge and growing
+datasets~\cite{disc}.  Driven by the desire and capability to extract
+insight from such datasets, data-intensive computing is quickly
+emerging as a major activity of many organizations.  With massive
+amounts of data arising from such diverse sources as telescope
+imagery, medical records, online transaction records, and web pages,
+many researchers are discovering that statistical models extracted
+from data collections promise major advances in science, health care,
+business efficiencies, and information access.  Indeed, statistical
+approaches are quickly bypassing expertise-based approaches in terms
+of efficacy and robustness.
+
+To assist programmers with data-intensive computing, new programming
+frameworks (e.g., MapReduce~\cite{mapreduce}, Hadoop~\cite{hadoop} and
+Dryad~\cite{dryad}) have been developed.  They provide abstractions
+for specifying data-parallel computations, and they also provide
+environments for automating the execution of data-parallel programs on
+large clusters of commodity machines.  The map-reduce programming
+model, in particular, has received a great deal of attention, and
+several implementations are publicly available~\cite{hadoop, phoenix}.
+
+These frameworks can scale jobs to thousands of computers, which is
+great.  However, they currently focus on scalability without concern
+for efficiency.  Worse, anecdotal experiences indicate that they fall
+far short of fully utilizing hardware resources, effectively wasting
+large fractions of the computers over which jobs are scaled.  If these
+inefficiencies are real, the same work could (theoretically) be
+completed at much lower costs.  An ideal approach would provide
+maximum scalability for a given computation without wasting resources
+such as the CPU or disk.  Given the widespread use and scale of
+data-intensive computing, it is important that we move toward such an
+ideal.
+
+An important first step is understanding the degree, characteristics,
+and causes of inefficiency.
+Unfortunately, little help is currently available.
+This paper begins to fill the void with a simple model of ``ideal'' map-reduce
+job runtimes and the evaluation of systems relative to it.
+The model's input parameters describe basic characteristics of the job
+(e.g., amount of input data, degree of filtering in the map and reduce
+phases), of the hardware (e.g., per-node disk and network throughputs),
+and of the framework configuration (e.g., replication factor).
+The output is the ideal job runtime.
+
+An ideal run is ``hardware-efficient,'' meaning that the realized
+throughput matches the maximum throughput for the bottleneck hardware
+resource, given its usage (i.e., amount of data moved over it).  Our
+model can expose how close (or far, currently) a given system is from
+this ideal.  Such throughput will not occur, for example, if the
+framework does not provide sufficient parallelism to keep the
+bottleneck resource fully utilized, or it makes poor use of a
+particular resource (e.g., inflating network traffic).  In addition,
+our model can be used to quantify resources wasted due to
+imbalance---in an unbalanced system, one resource (e.g., network,
+disk, or CPU) is under-provisioned relative to others and acts as a
+bottleneck.  The other resources are wasted to the extent that they
+are over-provisioned and active.
+
+To illustrate these issues, we applied the model to a number of
+benchmark results (e.g., for the TeraSort and PetaSort benchmarks)
+touted in the industry.  These presumably well-tuned systems achieve
+runtimes that are 3--13$\times$ longer than the ideal model suggests
+should be possible.  We also report on our own experiments with
+Hadoop, confirming and partially explaining sources of inefficiency.
+
+To confirm that the model's ideal is achievable, we present results from
+an efficient parallel dataflow system called Parallel DataSeries (PDS).
+PDS lacks many features of the other frameworks, but its careful
+engineering and stripped-down feature-set demonstrate that
+near-ideal hardware-efficiency (within $\sim$20\%) is possible.
+In addition to validating the model, PDS provides an interesting
+foundation for subsequent analyses of the incremental costs associated
+with features, such as distributed file system functionality,
+dynamic task distribution, fault tolerance, and task replication.
+
+%Yeah, this is lame, but we need to have something....
+%You're good at that :P
+
+Data-parallel computation is here to stay, as is scale-out
+performance.  However, we hope that the low efficiency indicated by
+our model is not.  By gaining a better understanding of computational
+bottlenecks, and understanding the limits of what is achievable, we
+hope that our work will lead to improvements in commonly used DISC
+frameworks.
+
+%Paragraph/list of contributions?
+
+%The remainder of this paper is organized as follows.
+%Section~\ref{sec:background} provides background on dataflow parallelism
+%and map-reduce computing.
+%Section~\ref{sec:model} describes our model, including assumptions and
+%usage.
+%Section~\ref{sec:benchmarks} applies the model to a number of reported
+%benchmark results and measured systems.
+%Section~\ref{sec:measure} discusses how we compute optimal
+%performance and presents disk and network measurements from our
+%cluster.
+%Section~\ref{sec:hadoop} evaluates Hadoop's efficiency in more detail.
+%Section~\ref{sec:pds} introduces PDS and uses it to validate the model.
+%\fix{add discussion, related work, conclusion, or fix if this changes}
+

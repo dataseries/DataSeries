@@ -1,0 +1,70 @@
+\documentclass[letterpaper,onecolumn,11pt]{article}
+
+\usepackage{shadow}        % allows shadow boxes for figures
+\usepackage{hhline}        % fancy table lines
+\usepackage{tabularx}      % tables that auto-size
+\usepackage{pslatex}       % Ensure we use non-bitmap fonts
+\usepackage{latexsym}      % make some extra symbols available
+\usepackage{fancyhdr} % Allows control of header/footer
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{scrtime}
+\usepackage{url}           % Properly line wraps URLs: \url{...}
+\usepackage[%
+  ps2pdf,              % using ps2pdf vs pdftex
+  colorlinks=true,     % color the words instead of use a colored box
+  urlcolor=blue,       % \href{...}{...} external (URL)
+  filecolor=blue,      % \href{...} local file
+  linkcolor=black,     % \ref{...} and \pageref{...}
+  citecolor=black,     % \cite{}
+%  pdftitle={},
+%  pdfauthor={},
+%  pdfsubject={},
+%  pdfkeywords={},
+%  pdfproducer={pdfLaTeX},
+%  pagebackref,        % backward references in the bibliography
+  pdfpagemode=UseOutlines,  % None, UseThumbs, UseOutlines, FullScreen
+  bookmarksopen=true   % Does outline start expanded?
+  ]{hyperref}
+\usepackage[%
+  font=small,
+%  font=footnotesize,
+  labelfont=bf
+  ]{caption}
+
+%-- Nice, ugly, easy-to-edit, format
+\topmargin 0pt
+\textheight 9.0in
+\oddsidemargin 0pt
+\evensidemargin \oddsidemargin
+\marginparwidth 0.5in
+\textwidth 6.5in
+\renewcommand{\baselinestretch}{1.5}
+
+\begin{document}
+
+%-- include the standard formatting macros... you should use these
+\input{std_commands.tex}
+
+%-- print date and time
+\date{\today~\thistime}
+
+%-- Document title and authors
+\input{titleinfo.tex}
+
+%-- All other files included from this one
+\begin{abstract}
+\input{abstract.tex}
+\end{abstract}
+\input{input.tex}
+
+{
+\renewcommand{\baselinestretch}{1.0}
+%\small
+\bibliography{local,draft}
+%\bibliographystyle{$REFDIR/tex/macros/refalpha}
+\bibliographystyle{$REFDIR/tex/macros/refplain}
+}
+
+\end{document}
+

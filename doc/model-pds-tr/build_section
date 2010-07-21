@@ -1,0 +1,49 @@
+#! /bin/sh
+
+if [ x$1 = x ]; then
+    echo 'Usage: '$0' <file.tex>'
+    exit
+fi
+
+
+FILE=`mktemp fileXXXXXX`
+TFILE=${FILE}.tex
+mv $FILE $TFILE
+
+echo $TFILE
+
+cat - > $TFILE  << EOF
+\documentclass[onecolumn,11pt]{article}
+
+\usepackage{shadow}        % allows shadow boxes for figures
+\usepackage{hhline}        % fancy table lines
+\usepackage{tabularx}      % tables that auto-size
+\usepackage{latexsym}      % make some extra symbols available
+\usepackage{fancyheadings} % Allows control of header/footer
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{scrtime}
+\topmargin 0pt
+\textheight 9.0in
+\oddsidemargin 0pt
+\evensidemargin \oddsidemargin
+\marginparwidth 0.5in
+\textwidth 6.5in
+\begin{document}
+\input{std_commands}
+\title{}
+\author{}
+\date{\today~\thistime}
+\maketitle
+\input{$1}
+\end{document}
+EOF
+
+latex $TFILE
+dvips ${FILE}.dvi -o
+rm $TFILE
+rm $FILE.dvi
+rm $FILE.log
+rm $FILE.aux
+gv $FILE.ps
+rm $FILE.ps

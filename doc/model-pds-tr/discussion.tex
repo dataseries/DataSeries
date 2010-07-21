@@ -1,0 +1,89 @@
+\section{Discussion}
+\label{sec:discussion}
+
+The experiments with PDS demonstrate that our model is not wildly
+optimistic---it is possible to get close to the optimal runtime.
+Thus, the inefficiencies indicated for our Hadoop cluster and the
+published benchmark results are real.  We do not have complete
+explanations for the 3--13$\times$ longer runtimes for current
+data-intensive computing frameworks, but we have identified a number
+of contributors.
+
+One class of inefficiencies comes from duplication of work or
+unnecessary use of a bottleneck resource.  For example, Hadoop and
+Google's MapReduce always write phase~1 map output to the file system,
+whether or not a backup write is warranted, and then read it from the
+file system when sending it to the reducer node.  This file system
+activity, which may translate into disk I/O, is unnecessary for
+completing the job and inappropriate for shorter jobs.
+%The disk read, at least, is unnecessary for completing the job,
+%as is the write when backup is not needed.
+%In addition, the I/O speed parameters ($N$, $D_r$, and $D_w$) used are
+%the hardware specification values, so some portion of the efficiency
+%is lost to OS abstractions---for example, the \fix{XXX}--YYY\% reported in
+%Section~\ref{sec:measure} for our measured cluster.
+
+One significant effect faced by map-reduce systems is that a job only
+completes when the last node finishes its work.  For our cluster, we
+analyzed the penalty induced by such stragglers, finding that it grows
+to 4\% of the runtime for Hadoop over 25 nodes.  Thus, it is not the
+source of most of the inefficiency at that scale.  For much larger
+scale systems, such as the 1000+ node systems used for the benchmark
+results, this straggler effect is expected to be much more
+significant---it is possible that this effect explains much of the
+difference between our measured 3$\times$ higher-than-optimal runtimes
+and the published 6$\times$ higher-than-optimal runtime of the Hadoop
+record-setting TeraSort benchmark.
+
+The straggler effect is also why Google's MapReduce and Hadoop
+dynamically distribute map and reduce tasks among nodes.  Support for
+speculative execution also can help mitigate this effect, although
+fault tolerance is its primary value.  If the straggler effect really
+is the cause of poor end-to-end performance at scale, then it
+motivates changes to these new data-parallel systems to examine and
+adapt the load balancing techniques used in works like
+River~\cite{river} or Flux~\cite{flux}.
+
+It is tempting to blame lack of sufficient bisection bandwidth in the
+network topology for much of the inefficiency at scale.  This would
+exhibit itself as over-estimation of each node's true network
+bandwidth, assuming uniform communication patterns, since the model
+does not account for such a bottleneck.  However, this is not an issue
+for the measured Hadoop results on our small-scale cluster because all
+nodes are attached across two switches with sufficient backplane
+bandwidth.  The network topology was not disclosed for most of the
+published benchmarks, but for many we don't believe bisection
+bandwidth was an issue.  For example, MapReduce grep involves minimal
+data exchange because $e_M \approx 0$.  Also, for Hadoop PetaSort,
+Yahoo! used 91~racks, each with 40~nodes, one switch, and an 8~Gbps
+connection to a core switch (via 8~trunked 1~Gbps Ethernet links).
+For this experiment, the average bandwidth per node was 4.7~MB/s.
+% $\frac{1000000000/3658 \textstyle{MB}}{58500 s} = 4.7~MB/s.  Given
+%that the vast majority of the network traffic ($90/91$) was between racks,
+%racks,
+Thus, the average bandwidth per uplink was only
+%$90/91 \cdot 40 \cdot 4.67 = 184.87 \textstyle{MB/s} =
+1.48~Gb/s in each direction, well below 8~Gbps.  Other
+benchmarks may have involved a bisection bandwidth limitation, but
+such an imbalance would have meant that far more machines were used
+per rack (and overall) than were appropriate for the job, resulting in
+significant wasted resources.
+
+%For Hadoop, we have access to source code and can do our own experiments.
+%Preliminary examination indicates substantial inefficiency induced 
+%by its Java-based implementation and its componentized software architecture.
+%The result is lack of streamlining and coordination across operators
+%(e.g., inefficient dataflow) and across system layers (e.g.,
+%between HDFS and Hadoop).
+%XXX - this is generic... do we have anything that we can actually say?
+
+Naturally, deep instrumentation and analysis of Hadoop will provide
+more insight into its inefficiency.  Also, PDS in particular provides
+a promising starting point for understanding the sources of
+inefficiency.  For example, replacing the current manual data
+distribution with a distributed file system is necessary for any
+useful system.  Adding that feature to PDS, which is known to be
+efficient, would allow one to quantify its incremental cost.  The same
+approach can be taken with other features, such as dynamic task
+distribution and fault tolerance.
+

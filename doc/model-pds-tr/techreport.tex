@@ -1,0 +1,102 @@
+\documentclass[onecolumn,11pt]{article}
+
+\usepackage{shadow}        % allows shadow boxes for figures
+\usepackage{hhline}        % fancy table lines
+\usepackage{tabularx}      % tables that auto-size
+\usepackage{latexsym}      % make some extra symbols available
+\usepackage{pslatex}       % Ensure we use non-bitmap fonts
+\renewcommand{\ttdefault}{cmtt}  % use CM \tt over times roman \tt
+\usepackage{mathptm}       % use times roman in math mode (to match Times)
+\usepackage{fancyhdr} % Allows control of header/footer
+\usepackage{graphics}
+\usepackage{epsfig}
+\usepackage{subfigure}
+\usepackage{cmu-techreport}
+\usepackage{url}
+\usepackage[%
+  ps2pdf,              % using ps2pdf vs pdftex
+  colorlinks=true,     % color the words instead of use a colored box
+  urlcolor=blue,       % \href{...}{...} external (URL)
+  filecolor=blue,      % \href{...} local file
+  linkcolor=black,     % \ref{...} and \pageref{...}
+  citecolor=black,     % \cite{}
+%  pdftitle={},
+%  pdfauthor={},
+%  pdfsubject={},
+%  pdfkeywords={},
+%  pdfproducer={pdfLaTeX},
+%  pagebackref,        % backward references in the bibliography
+  pdfpagemode=UseOutlines,  % None, UseThumbs, UseOutlines, FullScreen
+  bookmarksopen=true   % Does outline start expanded?
+  ]{hyperref}
+
+
+\topmargin      -0.3in
+\headheight     0in
+\headsep        0.3in
+\textheight     9.0in
+\oddsidemargin  0pt
+\evensidemargin \oddsidemargin
+\marginparwidth 0.5in
+\textwidth      6.5in
+\renewcommand{\baselinestretch}{1.0}
+%-- Single vs one-and-a-half vs double space...  
+%-- Only change the following baselinestretch, not all of them!  
+%-- single=1.0
+%-- one-and-a-half=1.21   (based on 11pt font!)
+%-- double=1.62           (based on 11pt font!)
+\renewcommand{\baselinestretch}{1.0}
+\parindent 0.3in
+
+\begin{document}
+\input{std_commands.tex}
+
+
+{
+\renewcommand{\baselinestretch}{1.0}
+\title{\bf{
+Applying performance models to understand data-intensive computing efficiency
+}}
+\author{Elie Krevat$^\ast$, Tomer Shiran$^\ast$, Eric Anderson$^\dagger$, \\
+Joseph Tucek$^\dagger$, Jay J. Wylie$^\dagger$, Gregory R. Ganger$^\ast$ \\
+\emph{$^\ast$Carnegie Mellon University $^\dagger$HP Labs}}
+
+\date{May 2010}
+\trnumber{CMU-PDL-10-108}
+
+\abstract{
+  \renewcommand{\baselinestretch}{1.0}
+  \footnotesize
+  \it{
+    \input{abstract.tex}
+  }
+}
+
+\keywords{data-intensive computing, cloud computing, analytical
+  modeling, Hadoop, MapReduce, performance and efficiency}
+
+\support{\scriptsize{ {\bf Acknowledgements:} We thank the members and
+    companies of the PDL Consortium (including APC, Data Domain, EMC,
+    Facebook, Google, Hewlett-Packard Labs, Hitachi, IBM, Intel, LSI,
+    Microsoft Research, NEC Laboratories, NetApp, Oracle,
+    Seagate, Sun, Symantec, VMWare, and Yahoo! Labs) for their
+    interest, insights, feedback, and support.  This research was
+    sponsored in part by an HP Innovation Research Award and by CyLab
+    at Carnegie Mellon University under grant DAAD19--02--1--0389 from
+    the Army Research Office.  Elie Krevat is supported in
+    part by an NDSEG Fellowship, which is sponsored by the Department
+    of Defense.}} \maketitle }
+
+\pagestyle{plain}
+\input{input.tex}
+
+{
+\renewcommand{\baselinestretch}{1.0}
+\bibliography{local,techreport}
+\bibliographystyle{amsplain}
+%\bibliographystyle{$REFDIR/tex/macros/refplain}
+}
+
+\end{document}
+
+

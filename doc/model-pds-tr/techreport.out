@@ -1,0 +1,10 @@
+\BOOKMARK [1][]{section.1}{Introduction}{}
+\BOOKMARK [1][]{section.2}{Dataflow parallelism and map-reduce computing}{}
+\BOOKMARK [2][]{subsection.2.1}{Related work}{section.2}
+\BOOKMARK [1][]{section.3}{Performance model}{}
+\BOOKMARK [1][]{section.4}{Existing data-intensive computing systems are far from optimal}{}
+\BOOKMARK [1][]{section.5}{Exploring the efficiency of data-intensive computing}{}
+\BOOKMARK [1][]{section.6}{Experiences with Hadoop}{}
+\BOOKMARK [1][]{section.7}{Verifying the model with Parallel DataSeries}{}
+\BOOKMARK [1][]{section.8}{Discussion}{}
+\BOOKMARK [1][]{section.9}{Conclusion}{}

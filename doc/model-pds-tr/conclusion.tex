@@ -1,0 +1,26 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+
+Data-intensive computing is an increasingly popular style of computing
+that is being served by scalable, but inefficient, systems.  A simple
+model of optimal map-reduce job runtimes shows that popular map-reduce
+systems take 3--13$\times$ longer to execute jobs than their hardware
+resources should allow.  With Parallel DataSeries, our simplified
+dataflow processing tool, we demonstrated that the model's runtimes
+can be approached, validating the model and confirming the
+inefficiency of Hadoop and Google's MapReduce.  Our model and results
+highlight and begin to explain the inefficiency of existing systems,
+providing insight into areas for continued improvements.
+
+%Appropriately constructed, analytical models can be useful for more   
+%than offline understanding of inefficiencies---they can be a critical 
+%part of dynamic decision making in both operator selection within jobs
+%and resource scheduling within the job management system.
+%They can be used to avoid wasting over-provisioned resources by, for
+%example, scaling down CPU speeds, turning off some disks, or adjusting
+%the number of machines used for a job.
+%They can also be used to decide whether to perform optional actions
+%like backup writes of intermediate data that can
+%be used to restart an interrupted job, rather than starting over.
+

@@ -1,0 +1,57 @@
+\section{Determining input parameters for the model}
+\label{sec:parameters}
+
+Appropriate parameter values are a crucial aspect of model accuracy.
+This section discusses how parameter values can be determined for use
+of our model, for both evaluating how well a production system is
+performing and what should be expected from a hypothetical system.
+
+\minorsection{Configuration parameters}
+The $n$ and $r$ parameters are system configuration choices that can
+be applied directly in the model for both production and hypothetical
+systems.
+
+\minorsection{Workload property parameters}
+The amount of data flowing through various operators (i.e., $d_i$,
+$d_m$, and $d_o$) depend upon the characteristics of the map and
+reduce operators and of the data itself.
+For a production system, they can be measured and then plugged into
+a model for evaluating the performance of a given workload run on that system.
+For a hypothetical system, some estimates must be used, such as
+"$d_i = d_m = d_o$ for sort" or "$d_m = d_o = 0$ for grep".
+
+The determination of which equation to use, based on the backup write
+option and sort type choices, is also largely dependent on the workload
+characteristics, but in combination with system characteristics.
+Specifically, the sort type choice depends on the relationship between
+$d_m$ and the amount of main memory available for the sort operator.
+The backup write option is a softer choice, worthy of further study,
+involving the time to do a backup write ($\frac{d_m}{D_w}$), the
+total execution time of the job, and the likelihood of a node failure
+during the job's execution.
+Both Hadoop and Google's MapReduce always do the backup write, at least
+to the local file system cache.
+
+\minorsection{I/O speed parameters}
+The appropriate values for I/O speed depends on what is being evaluated.
+For both production and hypothetical systems, specification values
+for the hardware can be used---for example, 1~Gbps for the network
+and the maximum streaming bandwidth specified for the given disk(s).
+This approach is appropriate for evaluating the efficiency of the
+entire software stack, from the operating system up.
+
+However, if the focus is on the programming framework, using raw
+hardware specification can indicate greater inefficiency than is
+actually present.
+In particular, some efficiency is generally lost in the underlying
+operating system's conversion of raw disk and network resources into
+higher level abstractions, such as file systems and network sockets.
+To focus attention on programming framework inefficiencies,
+one should use measurements of the disk and network bandwidths available
+to applications using the abstractions.
+As shown in our experiments, such measured values are lower than
+specified values and often have non-trivial characteristics, such as
+dependence on file system age or network communication patterns.
+
+In our evaluations of existing systems, we discuss both approaches.
+

@@ -1,0 +1,17 @@
+New programming frameworks for scale-out parallel analysis, such
+as MapReduce and Hadoop, have become a cornerstone for exploiting
+large datasets.  However, there has been little analysis of how these
+systems perform relative to the capabilities of the hardware on which they run.
+This paper describes a simple analytical model that predicts the
+optimal performance of a parallel dataflow system.
+The model exposes the inefficiency of popular scale-out systems,
+which take 3--13$\times$ longer to complete jobs than the hardware
+should allow, even in well-tuned systems used to achieve record-breaking
+benchmark results.
+To validate the sanity of our model, we present small-scale
+experiments with Hadoop and a simplified dataflow processing tool
+called Parallel DataSeries.
+Parallel DataSeries achieves performance close to the analytic
+optimal, showing that the model is realistic and that large improvements
+in the efficiency of parallel analytics are possible.
+

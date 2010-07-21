@@ -1,0 +1,205 @@
+\section{Performance model}
+\label{sec:model}
+
+This section presents a model for the runtime of a map-reduce job on a
+hardware-efficient system.  It includes the model's assumptions,
+parameters, and equations, along with a description of common
+workloads.
+
+\minorsection{Assumptions}
+For a large class of data-intensive workloads, which we assume for our
+model, computation time is negligible in comparison to I/O speeds.
+Among others, this assumption holds for grep- and sort-like jobs, such
+as those described by Dean and Ghemawat~\cite{mapreduce} as being
+representative of most MapReduce jobs at Google, but may not hold in
+other settings.
+For workloads fitting the assumption, pipelined parallelism can allow
+non-I/O operations to execute entirely in parallel with I/O operations,
+such that overall throughput for each phase will be determined by the
+I/O resource (network or storage) with the lowest effective throughput.
+%In the absence of computationally expensive map or reduce
+%tasks, we have observed that the I/O operators process data much
+%slower than the CPU, so that the CPU is not the bottleneck.
+
+For modeling purposes, we also do not consider specific network
+topologies or technologies, and we assume that the network core is
+over-provisioned enough that the internal network topology does not
+impact the speeds of inter-node data transfers.  From our experience,
+unlimited backplane bandwidth without any performance degradation is
+probably impractical, although it was not an issue for our experiments
+and we currently have no evidence for it causing issues on the other
+large clusters which we analyze in Section~\ref{sec:discussion}.
+
+The model assumes that input data is evenly distributed across all
+participating nodes in the cluster, that nodes are homogeneous, and
+that each node retrieves its initial input from local storage.  Most
+map-reduce systems are designed to fit these assumptions.
+\nocite{tashilocationaware} The model also accounts for output data
+replication, assuming the common strategy of storing the first replica
+on the local disks and sending the others over the network to other
+nodes.  Finally, another important assumption is that a single job has
+full access to the cluster at a time, with no competing jobs or other
+activities.  Production map-reduce clusters may be shared by more than
+one simultaneous job, but understanding a single job's performance is
+a useful starting point.
+
+%A common strategy that balances performance and reliability for 3-way
+%replication is to store the first replica locally, the second replica
+%on a different node of the same rack, and the third replica on a
+%random node of a different rack.
+
+
+\minorsection{Deriving the model from I/O operations}
+Table~\ref{table:operations2} identifies the I/O operations in each
+map-reduce phase for two variants of the sort operator.  When the data
+fits in memory, a fast {\it in-memory sort} can be used. When it does
+not fit, an {\it external sort} is used, which involves sorting each
+batch of data in memory, writing it out to disk, and then reading and
+merging the sorted batches into one sorted stream. The $\frac{n-1}{n}
+d_m$ term appears in the equation, where $n$ is the number of nodes,
+because in a well-balanced system each node partitions and transfers
+that fraction of its mapped data over the network, keeping
+$\frac{1}{n}$ of the data for itself.
+
+\input{table_dataflow_operations.tex}
+
+%NOTE: 4~GB sorts take up to 2.5 seconds on our cluster, so I had to
+%take this out
+%---on our four-core nodes, sorting 10 million 100-byte
+%records takes only 0.3~seconds, which is a throughput of over 3~GB/s.
+
+Table~\ref{table:symbols} lists the I/O speed and workload property
+parameters of the model.
+They include
+%any replication factor used for the data output, and
+%alternatives for describing the
+amounts of data flowing through the system, which
+%time, as altered by the map and reduce operations.  Those amounts can
+%either be described
+can be expressed either in absolute terms ($d_i$, $d_m$, and $d_o$) or in
+terms of the ratios of the map and reduce operators' output and
+input ($e_M$ and $e_R$, respectively).
+
+\input{table_model_parameters.tex}
+
+%Then, using the I/O operation patterns and modeling parameters, we derive our
+Table~\ref{table:model:replication} gives the
+model equations for the execution time of a map-reduce job
+in each of four scenarios, representing the cross-product of the
+Phase~1 backup write option ({\it yes} or {\it no}) and the sort type
+({\it in-memory} or {\it external}).
+In each case, the per-byte time to complete each phase (map and reduce)
+is determined, summed, and multiplied by the number of input bytes per
+node $\left(\frac{i}{n}\right)$.
+The per-byte value for each phase is the larger (max) of that phase's
+per-byte disk time and per-byte network time.
+Using the last row (external sort, with backup write) as an example,
+the map phase includes three disk transfers and one network transfer:
+reading each input byte $\left(\frac{1}{D_r}\right)$, writing the $e_M$ map output
+bytes to disk (the backup write; $\frac{e_M}{D_w}$),
+writing $e_M$ bytes as part of the external sort $\left(\frac{e_M}{D_w}\right)$,
+and sending $\frac{n-1}{n}$ of the $e_M$ map output bytes over the
+network $\left(\frac{\frac{n-1}{n} e_M}{N}\right)$ to other reduce nodes.
+The corresponding reduce phase includes two disk transfers and one
+network transfer: reading sorted batches $\left(\frac{e_M}{D_r}\right)$,
+writing $e_M e_R$ reduce output bytes produced locally $\left(\frac{e_M e_R}{D_w}\right)$
+and $(r-1) e_M e_R$ bytes replicated from other nodes $\left(\frac{(r-1) e_M e_R}{D_w}\right)$,
+and sending $e_M e_R$ bytes produced locally to $(r-1)$ other nodes
+$\left(\frac{e_M e_R \left(r - 1\right)}{N}\right)$.
+Putting all of this together produces the equation shown.
+
+
+%\input{table_model_equations_simple.tex}
+\input{table_model_equations_replication.tex}
+
+\minorsection{Applying the model to common workloads}
+Many workloads benefit from a parallel dataflow system because they run
+on massive datasets, either extracting and processing a small amount of
+interesting data or shuffling data from one representation to another.
+%Data transfers
+%can be on the order of Petabytes or Terabytes, as many blocks of data
+%(each of 64 MB by default in Hadoop, but sometimes larger) are read
+%from disk, processed, and transferred over the network.
+We focus on parallel sort and grep in analyzing systems and validating
+our model, which Dean and Ghemawat~\cite{mapreduce} indicate
+are representative of most programs written by users of Google's
+MapReduce.
+
+For a grep-like job that selects a very small
+fraction of the input data, $e_M \approx 0$ and $e_R = 1$, meaning
+that only a negligible amount of data is (optionally) written to the
+backup files, sent over the network, and written to the output files.
+Thus, the best-case runtime is determined by the initial input disk
+reads:
+
+\begin{equation}
+t_{\textstyle grep} = \frac{i}{n D_r}
+\label{eqn:grepmodel}
+\end{equation}
+
+A sort workload maintains the same amount of data in both the map and
+reduce phases, so $e_M = e_R = 1$.  If the amount of data
+per node is small enough to accommodate an in-memory sort and not
+warrant a Phase~1 backup, the top equation of
+Table~\ref{table:model:replication} is used, simplifying to:
+
+\begin{equation}
+t_{\textstyle sort} = \frac{i}{n}
+\left( max\left\{\frac{1}{D_r}, \frac{n-1}{n N}\right\}
++ max\left\{\frac{r}{D_w}, \frac{r-1}{N}\right\} \right)
+\label{eqn:sortmodel2}
+\end{equation}
+
+
+\minorsection{Determining input parameters for the model}
+Appropriate parameter values are a crucial aspect of model accuracy,
+whether using the model to evaluate how well a production system is
+performing or to determine what should be expected from a hypothetical system.
+%\minorsection{Configuration parameters}
+The $n$ and $r$ parameters are system configuration choices that can
+be applied directly in the model for both production and hypothetical
+systems.
+
+%\minorsection{Workload property parameters}
+The amount of data flowing through various operators ($d_i$,
+$d_m$, or $d_o$) depend upon the characteristics of the map and
+reduce operators and of the data itself.  For a production system,
+they can be measured and then plugged into a model that evaluates the
+performance of a given workload run on that system.  For a
+hypothetical system, or if actual system measurements are not
+available, some estimates must be used, such as $d_i = d_m = d_o$ for
+sort or $d_m = d_o = 0$ for grep.
+
+The determination of which equation to use, based on the backup write
+option and sort type choices, is also largely dependent on the
+workload characteristics, but in combination with system
+characteristics.  Specifically, the sort type choice depends on the
+relationship between $d_m$ and the amount of main memory available for
+the sort operator.  The backup write option is a softer choice, worthy
+of further study, involving the time to do a backup write
+$\left(\frac{d_m}{D_w}\right)$, the total execution time of the job,
+and the likelihood of a node failure during the job's execution.  Both
+Hadoop and Google's MapReduce always do the backup write, at least to
+the local file system cache.
+
+%\minorsection{I/O speed parameters}
+The appropriate values for I/O speed depend on what is being evaluated.
+For both production and hypothetical systems, specification values
+for the hardware can be used---for example, 1~Gbps for the network
+and the maximum streaming bandwidth specified for the given disk(s).
+This approach is appropriate for evaluating the efficiency of the
+entire software stack, from the operating system up.
+However, if the focus is on the programming framework, using raw
+hardware specifications can indicate greater inefficiency than is
+actually present.
+In particular, some efficiency is generally lost in the underlying
+operating system's conversion of raw disk and network resources into
+higher level abstractions, such as file systems and network sockets.
+To focus attention on programming framework inefficiencies,
+one should use measurements of the disk and network bandwidths available
+to applications using the abstractions.
+As shown in our experiments, such measured values are lower than
+specified values and often have non-trivial characteristics, such as
+dependence on file system age or network communication patterns.
+%In our evaluations of existing systems, we discuss both approaches.
+

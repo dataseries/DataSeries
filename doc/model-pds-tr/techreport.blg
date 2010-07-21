@@ -1,0 +1,52 @@
+This is BibTeX, Version 0.99c (Web2C 7.5.6)
+The top-level auxiliary file: techreport.aux
+The style file: amsplain.bst
+Database file #1: local.bib
+Database file #2: techreport.bib
+Warning--to sort, need author or key in hadoop
+Warning--to sort, need author or key in hdfs
+Warning--to sort, need author or key in hadoopsetup
+Warning--missing pages in efficiencymatters
+Warning--missing pages in stonebraker-mr
+You've used 27 entries,
+            2213 wiz_defined-function locations,
+            642 strings with 8540 characters,
+and the built_in function-call counts, 8994 in all, are:
+= -- 782
+> -- 476
+< -- 0
++ -- 190
+- -- 162
+* -- 714
+:= -- 1410
+add.period$ -- 27
+call.type$ -- 27
+change.case$ -- 163
+chr.to.int$ -- 0
+cite$ -- 32
+duplicate$ -- 372
+empty$ -- 755
+format.name$ -- 162
+if$ -- 1898
+int.to.chr$ -- 0
+int.to.str$ -- 27
+missing$ -- 45
+newline$ -- 91
+num.names$ -- 48
+pop$ -- 261
+preamble$ -- 1
+purify$ -- 135
+quote$ -- 0
+skip$ -- 251
+stack$ -- 0
+substring$ -- 437
+swap$ -- 73
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 108
+warning$ -- 5
+while$ -- 81
+width$ -- 29
+write$ -- 232
+(There were 5 warnings)
