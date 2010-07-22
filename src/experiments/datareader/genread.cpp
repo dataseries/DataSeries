@@ -24,7 +24,7 @@ using lintel::ProgramOption;
 using namespace std;
 
 #define BUF_SIZE 65536
-#define MAX_READS 2500000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
+#define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
 #define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
 #define PORT_BASE 6000
@@ -140,8 +140,8 @@ public:
 	struct sockaddr_in clientAddress, serverAddress;
 	struct hostent *hostInfo;
 	int ret;
-	int totWrites;
-	int totLeft;
+	long totWrites;
+	long totLeft;
 
 	bzero(buf, BUF_SIZE);
 
@@ -250,10 +250,10 @@ public:
 	    int sockbufsize = 0;
 	    socklen_t sizeb = sizeof(int);
 	    int err = getsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsize, &sizeb);
-	    printf("Recv socket buffer size: %d\n", sockbufsize);
+	    //printf("Recv socket buffer size: %d\n", sockbufsize);
 	    
 	    err = getsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsize, &sizeb);
-	    printf("Send socket buffer size: %d\n", sockbufsize);
+	    //printf("Send socket buffer size: %d\n", sockbufsize);
   
 	    // TCP NO DELAY
 	    int flag = 1;
@@ -317,9 +317,10 @@ public:
 	++totWrites;
 	
 	// Join on read thread
+	printf("\n%d: After %ld writes to %d, waiting on join for read\n", nodeIndex, totWrites, otherNodeIndex);
 	retSizePtr = (long *)readThread->join();    
 
-	fprintf(outlog, "Total number of writes: %d\n", totWrites);
+	fprintf(outlog, "Total number of writes: %ld\n", totWrites);
 
 	// Cleanup and return
 	close(connectSocket);
@@ -382,6 +383,7 @@ int main(int argc, char **argv)
 	if (i == nodeIndex) {
 	    ; // Do nothing
 	} else {
+	    printf("\nWaiting on join for setupAndTransferThread");
 	    retSizePtr = (long *)setupAndTransferThreads[i]->join();
 	    printf("\nData received from nodeindex %d: %ld\n", i, *retSizePtr);
 	    totReturned += *retSizePtr;
