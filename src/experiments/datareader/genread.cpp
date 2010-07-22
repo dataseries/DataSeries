@@ -127,17 +127,73 @@ public:
     SetupAndTransferThread(long dataAmount, unsigned short int serverPort, int isServer, int otherNodeIndex)
 	: dataAmount(dataAmount), serverPort(serverPort), isServer(isServer), otherNodeIndex(otherNodeIndex) {
 	printf("\nSetupAndTransferThread called for %ld B, serverPort %d, isServer %d, otherNodeIndex %d\n", dataAmount, serverPort, isServer, otherNodeIndex);
+	if (isServer == 1) {
+	    // Setup the server and listen for connections
+	    //Create socket for listening for client connection requests
+	    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+	    if (listenSocket < 0) {
+		cerr << "cannot create listen socket";
+		exit(1);
+	    }
+	    
+	    // Bind listen socket to listen port.  
+	    serverAddress.sin_family = AF_INET;
+	    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+	    serverAddress.sin_port = htons(serverPort);
+
+
+	    // set socket buffer sizes
+	    // increasing buffer sizes for high bandwidth low latency link
+	    int sndsize = 512000;
+	    setsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sndsize, (int)sizeof(sndsize));
+	    setsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sndsize, (int)sizeof(sndsize));
+  
+	    int sockbufsize = 0;
+	    socklen_t sizeb = sizeof(int);
+	    int err = getsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsize, &sizeb);
+	    //printf("Recv socket buffer size: %d\n", sockbufsize);
+	    
+	    err = getsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsize, &sizeb);
+	    //printf("Send socket buffer size: %d\n", sockbufsize);
+  
+	    // TCP NO DELAY
+	    int flag = 1;
+	    int result = setsockopt(listenSocket,
+				    IPPROTO_TCP,
+				    TCP_NODELAY,
+				    (char *) &flag,
+				    sizeof(int));
+
+	    if (result < 0) {
+		perror("Could not set TCP_NODELAY sock opt\n");
+	    }
+	    
+	    flag = 1;
+	    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) {
+		perror("setsockopt(SO_REUSEADDR) failed");
+	    }
+
+	    // Bind socket and listen for connections
+	    if (bind(listenSocket,
+		     (struct sockaddr *) &serverAddress,
+		     sizeof(serverAddress)) < 0) {
+		cerr << "cannot bind socket";
+		exit(1);
+	    }
+	    
+	    // Wait for connections from clients.
+	    listen(listenSocket, 5);
+	
+	    cout << "Waiting for TCP connection on port " << serverPort << " ...\n";    
+	}
     }
 
     ~SetupAndTransferThread() {}
 
     virtual void *run() {
 	long *retSizePtr = 0;
-	int listenSocket, connectSocket;
-	PThreadPtr readThread;
 	FILE *outlog;
 	socklen_t clientAddressLength;
-	struct sockaddr_in clientAddress, serverAddress;
 	struct hostent *hostInfo;
 	int ret;
 	long totWrites;
@@ -227,65 +283,8 @@ public:
 	    }
  
 	} else {
-	    // Setup the server and listen for connections
-	    //Create socket for listening for client connection requests
-	    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
-	    if (listenSocket < 0) {
-		cerr << "cannot create listen socket";
-		exit(1);
-	    }
-	    
-	    // Bind listen socket to listen port.  
-	    serverAddress.sin_family = AF_INET;
-	    serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
-	    serverAddress.sin_port = htons(serverPort);
-
-
-	    // set socket buffer sizes
-	    // increasing buffer sizes for high bandwidth low latency link
-	    int sndsize = 512000;
-	    setsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sndsize, (int)sizeof(sndsize));
-	    setsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sndsize, (int)sizeof(sndsize));
-  
-	    int sockbufsize = 0;
-	    socklen_t sizeb = sizeof(int);
-	    int err = getsockopt(listenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&sockbufsize, &sizeb);
-	    //printf("Recv socket buffer size: %d\n", sockbufsize);
-	    
-	    err = getsockopt(listenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sockbufsize, &sizeb);
-	    //printf("Send socket buffer size: %d\n", sockbufsize);
-  
-	    // TCP NO DELAY
-	    int flag = 1;
-	    int result = setsockopt(listenSocket,
-				    IPPROTO_TCP,
-				    TCP_NODELAY,
-				    (char *) &flag,
-				    sizeof(int));
-
-	    if (result < 0) {
-		perror("Could not set TCP_NODELAY sock opt\n");
-	    }
-	    
-	    flag = 1;
-	    if (setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag)) < 0) {
-		perror("setsockopt(SO_REUSEADDR) failed");
-	    }
-
-	    // Bind socket and listen for connections
-	    if (bind(listenSocket,
-		     (struct sockaddr *) &serverAddress,
-		     sizeof(serverAddress)) < 0) {
-		cerr << "cannot bind socket";
-		exit(1);
-	    }
-	    
-	    // Wait for connections from clients.
-	    listen(listenSocket, 5);
-	
-	    cout << "Waiting for TCP connection on port " << serverPort << " ...\n";
-    
 	    // Accept a connection with a client that is requesting one.
+	    // (server already called listen in constructor)
 	    clientAddressLength = sizeof(clientAddress);
 	    connectSocket = accept(listenSocket,
 				   (struct sockaddr *) &clientAddress,
@@ -333,6 +332,9 @@ public:
     int isServer;
     int otherNodeIndex;
     char buf[BUF_SIZE];
+    int listenSocket, connectSocket;
+    PThreadPtr readThread;
+    struct sockaddr_in clientAddress, serverAddress;
 };
 
 int main(int argc, char **argv)
