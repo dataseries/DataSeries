@@ -25,6 +25,8 @@ allTotalAmountSent = []
 totTime = 0
 
 os.system("rm %s/tput%d.data" % (myDir,numNodes))
+os.system("rm %s/fulltput%d.data" % (myDir,numNodes))
+os.system("rm %s/totalsent%d.data" % (myDir,numNodes))
 
 def printStats(timeElapsed, winSize, winAmount, totAmount):
     global flowTputs
@@ -44,8 +46,8 @@ def printStats(timeElapsed, winSize, winAmount, totAmount):
             fullFlowTputs = []
             totalAmountSent = []
     else:
-        tput=winAmount/winSize
-        fulltput = (totAmount / timeElapsed)
+        tput=round((float)(winAmount)/(float)(winSize),1)
+        fulltput = round(((float)(totAmount)/(float)(timeElapsed)),1)
     flowTputs.append(tput)
     fullFlowTputs.append(fulltput)
     totalAmountSent.append(totAmount)
@@ -152,12 +154,6 @@ for i in range(0,len(allTputs)):
     for j in range(0,neededZeros):
         allTputs[i].append(0)
 
-#append zeros to allfulltputs to make a full array
-for i in range(0,len(allFullTputs)):
-    neededZeros = maxFlowSize - len(allFullTputs[i])
-    for j in range(0,neededZeros):
-        allFullTputs[i].append(0)
-
 #append last amount to allTotalAmountSent to make a full array
 for i in range(0,len(allTotalAmountSent)):
     origLength = len(allTotalAmountSent[i])
@@ -165,6 +161,14 @@ for i in range(0,len(allTotalAmountSent)):
     neededTotals = maxFlowSize - origLength
     for j in range(0,neededTotals):
         allTotalAmountSent[i].append(appendValue)
+
+#calculate all full tput amounts for time after flow finished to make a full array
+for i in range(0,len(allFullTputs)):
+    origLength = len(allFullTputs[i])
+    totAmntSent = allTotalAmountSent[i][(origLength-1)]
+    neededZeros = maxFlowSize - origLength
+    for j in range(0,neededZeros):
+        allFullTputs[i].append(round(((float)(totAmntSent)/((float)((origLength+j)*1000))),1))
 
 command = "cat %s/%d.out" % (myDir,numNodes)
 cmd = os.popen(command)
@@ -177,7 +181,7 @@ for line in cmdout:
         totTime = int(line.strip().split()[3])
         print "Total job time: %d us" % (totTime)
 
-print "Average Throughput: %f" % (float(totDataReceivedPerNode)/float(totTime))
+print "Average Throughput: %f" % round(((float)(totDataReceivedPerNode)/(float)(totTime)),1)
 
 stdevLine = ""
 for i in range(0,len(allTputs)):
@@ -194,6 +198,6 @@ amountsentfile = "%s/totalsent%d.data" % (myDir,numNodes)
 print tputfile
 print fulltputfile
 print amountsentfile
-savetxt(tputfile,allTputsArray.T,fmt='%d')
-savetxt(fulltputfile,allFullTputsArray.T,fmt='%d')
+savetxt(tputfile,allTputsArray.T,fmt='%f')
+savetxt(fulltputfile,allFullTputsArray.T,fmt='%f')
 savetxt(amountsentfile,allTotalAmountSentArray.T,fmt='%d')
