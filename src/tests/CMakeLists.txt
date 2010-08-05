@@ -20,6 +20,7 @@ DATASERIES_SIMPLE_TEST(pack-pad-record)
 DATASERIES_SIMPLE_TEST(pack-field-ordering)
 DATASERIES_PROGRAM_NOINST(general general2.cpp)
 ADD_TEST(general ./general)
+DATASERIES_SIMPLE_TEST(pack-bug ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.ds)
 
 ### Script tests of public programs
 # *** WARNING, don't use | in any of the test scripts; if you do, then

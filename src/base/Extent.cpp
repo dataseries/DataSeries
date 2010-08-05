@@ -612,38 +612,37 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 	}
 
 	// pack variable sized fields ...
-	for(unsigned int j=0; 
-	    j<type.rep.variable32_field_columns.size(); 
-	    j++) {
+	for(unsigned int j=0; j < type.rep.variable32_field_columns.size(); ++j) {
 	    int field = type.rep.variable32_field_columns[j];
 	    int offset = type.rep.field_info[field].offset;
-	    int varoffset = Variable32Field::getVarOffset(&(*fixed_record),
-							  offset);
-	    Variable32Field::selfcheck(variabledata,varoffset);
-	    int32 size = Variable32Field::size(variabledata,varoffset);
+	    int varoffset = Variable32Field::getVarOffset(&(*fixed_record), offset);
+	    Variable32Field::selfcheck(variabledata, varoffset);
+	    int32 size = Variable32Field::size(variabledata, varoffset);
 	    int32 roundup = Variable32Field::roundupSize(size);
 	    if (size == 0) {
 		SINVARIANT(varoffset == 0);
 	    } else {
-		memcpy(variable_data_pos, variabledata.begin() + varoffset,
-		       4 + roundup);
-		int32 packed_varoffset = variable_data_pos - variable_coded.begin();
-		if (type.rep.field_info[field].unique) {
-		    variableDuplicateEliminate v(variable_data_pos);
-		    variableDuplicateEliminate *dup = vardupelim.lookup(v);
-		    if (dup == NULL) {
-			// not present; add and use space
-			vardupelim.add(v);
-			variable_data_pos += 4 + roundup;
-		    } else {
-			// already present, eliminate duplicate
-			packed_varoffset = dup->varbits - variable_coded.begin();
-		    }
+		int32 packed_varoffset = -1;
+		bool unique = type.rep.field_info[field].unique;
+		variableDuplicateEliminate v(variabledata.begin() + varoffset);
+		variableDuplicateEliminate *vde = unique ? vardupelim.lookup(v) : NULL;
+		if (vde != NULL) { // present
+		    packed_varoffset = vde->varbits - variable_coded.begin();
+		    DEBUG_SINVARIANT(static_cast<size_t>(packed_varoffset) < variable_coded.size());
 		} else {
+		    DEBUG_SINVARIANT(static_cast<size_t>(variable_data_pos + 4 + roundup 
+							 - variable_coded.begin())
+				     <= variable_coded.size());
+		    memcpy(variable_data_pos, variabledata.begin() + varoffset, 4 + roundup);
+		    packed_varoffset = variable_data_pos - variable_coded.begin();
+		    if (unique) {
+			v.varbits = variable_data_pos;
+			vardupelim.add(v);
+		    }
+		    
 		    variable_data_pos += 4 + roundup;
-		}
-		INVARIANT((packed_varoffset + 4) % 8 == 0,
-			  boost::format("bad packing offset %d")
+		}		    
+		INVARIANT((packed_varoffset + 4) % 8 == 0, boost::format("bad packing offset %d")
 			  % packed_varoffset);
 		*(int32 *)(fixed_record + offset) = packed_varoffset;
 	    } 
@@ -757,8 +756,7 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     // sundry conversions, as the conversions are not perfectly
     // reversable, especially the scaling conversion which is
     // deliberately not precisely reversable
-    INVARIANT(fixed_coded.size() == type.rep.fixed_record_size * nrecords,
-	      "internal error");
+    SINVARIANT(fixed_coded.size() == type.rep.fixed_record_size * nrecords);
     uint32_t bjhash = lintel::bobJenkinsHash(1972, fixed_coded.begin(),
 					     type.rep.fixed_record_size * nrecords);
 
@@ -769,9 +767,8 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 	compactNulls(fixed_coded);
     }
 
-    INVARIANT(static_cast<size_t>(variable_data_pos - variable_coded.begin()) 
-	      <= variable_coded.size(),
-	      "Internal error");
+    SINVARIANT(static_cast<size_t>(variable_data_pos - variable_coded.begin()) 
+	       <= variable_coded.size())
     variable_coded.resize(variable_data_pos - variable_coded.begin());
 
     bjhash = lintel::bobJenkinsHash(bjhash, variable_coded.begin(), variable_coded.size());
