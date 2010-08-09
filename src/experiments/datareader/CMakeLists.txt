@@ -6,3 +6,5 @@
 # cmake rules for the experiments/neta2a/ directory
 
 DATASERIES_PROGRAM(genread)
+DATASERIES_PROGRAM(genread2ds)
+DATASERIES_PROGRAM(genreadanalysis)
