@@ -1,0 +1,47 @@
+# -*- Perl -*-
+
+define
+use strict;
+
+
+sub import_data {
+    my ($num_args) = scalar(@_);
+    die "?? args: num_nodes num_gbytes tcp_variant" unless $num_args == 3;
+    my ($num_nodes) = $_[0];
+    my ($num_gbytes) = $_[1];
+    my ($tcpvar) = $_[2];
+    my ($table_name) = "${num_nodes}way${num_gbytes}g${tcpvar}";
+    my ($string2) = "";
+    my ($dropstring) = "";
+    for (my $i = 0; $i < ($num_nodes * ($num_nodes - 1)); $i += 1) {
+    	$string2 = $string2 . "f$i ";
+    }
+    $string2 = $string2 . "-- logs/${num_gbytes}gbruns/${num_nodes}way${tcpvar}/";
+    my ($tputimport) = "import-data " . $table_name . "tputtmp " . $string2 . "tput${num_nodes}.data \nsql create table ${table_name}tput (id INT AUTO_INCREMENT PRIMARY KEY) SELECT * FROM ${table_name}tputtmp\n";
+    my ($fulltputimport) = "import-data " . $table_name . "fulltputtmp " . $string2 . "fulltput${num_nodes}.data \nsql create table ${table_name}fulltput (id INT AUTO_INCREMENT PRIMARY KEY) SELECT * FROM ${table_name}fulltputtmp\n";
+    my ($totalsentimport) = "import-data " . $table_name . "totalsenttmp " . $string2 . "totalsent${num_nodes}.data \nsql create table ${table_name}totalsent (id INT AUTO_INCREMENT PRIMARY KEY) SELECT * FROM ${table_name}totalsenttmp\n";
+
+    my (@ret);
+    my ($tmpstr) = "sql drop table " . $table_name . "tputtmp";
+    push @ret, $tmpstr;
+    $tmpstr =  "sql drop table " . $table_name . "tput";
+    push @ret, $tmpstr;
+    $tmpstr =  "sql drop table " . $table_name . "fulltputtmp";
+    push @ret, $tmpstr;
+    $tmpstr =  "sql drop table " . $table_name . "fulltput";
+    push @ret, $tmpstr;
+    $tmpstr =  "sql drop table " . $table_name . "totalsenttmp";
+    push @ret, $tmpstr;
+    $tmpstr =  "sql drop table " . $table_name . "totalsent";
+    push @ret, $tmpstr;
+    $dropstring = join("\n",@ret);
+
+    print $dropstring;
+    print $tputimport;
+    print $fulltputimport;
+    print $totalsentimport;
+
+    return $dropstring . "\n" . $totalsentimport . "\n" . $fulltputimport . "\n" . $tputimport;
+}
+
+enddefine

@@ -1,0 +1,84 @@
+# -*- Perl -*-
+
+define
+use strict;
+
+
+sub plot_total {
+    my ($num_args) = scalar(@_);
+    die "?? args: num_nodes num_gbytes tcp_variant" unless $num_args == 3;
+    my ($num_nodes) = $_[0];
+    my ($num_gbytes) = $_[1];
+    my ($tcpvar) = $_[2];
+    my ($table_name) = "${num_nodes}way${num_gbytes}g${tcpvar}totalsent";
+    my (@ret);
+    my ($tmpstr) = "";
+    my ($retstring) = "";
+
+    for (my $i = 0; $i < ($num_nodes * ($num_nodes - 1)); $i += 1) {
+	$tmpstr = "plot id as x, f${i} as y from ${table_name}";
+	push @ret, $tmpstr;
+    }
+
+    $retstring = join("\n",@ret);
+
+    return $retstring;
+}
+
+sub plot_tput {
+    my ($num_args) = scalar(@_);
+    die "?? args: num_nodes num_gbytes tcp_variant" unless $num_args == 3;
+    my ($num_nodes) = $_[0];
+    my ($num_gbytes) = $_[1];
+    my ($tcpvar) = $_[2];
+    my ($table_name) = "${num_nodes}way${num_gbytes}g${tcpvar}tput";
+    my (@ret);
+    my ($tmpstr) = "";
+    my ($retstring) = "";
+
+    for (my $i = 0; $i < ($num_nodes * ($num_nodes - 1)); $i += 1) {
+	$tmpstr = "plot id as x, (f${i}*0.9536743164) as y from ${table_name} where id > 46000 and (id % 5) = 0";
+	push @ret, $tmpstr;
+	$tmpstr = "plottitle ${i} flow ${i}";
+	push @ret, $tmpstr;
+    }
+
+    $tmpstr = "gnuplot set title \"${num_nodes}-node ${num_gbytes}GB network shuffle\" font \"Helvetica,24\"";
+    push @ret, $tmpstr;
+
+    $tmpstr = "gnuplot set xlabel \"Time in shuffle (ms)\" font \"Helvetica,21\"";
+    push @ret, $tmpstr;
+
+    $tmpstr = "gnuplot set ylabel \"Throughput (100ms moving average)\" font \"Helvetica,21\"";
+    push @ret, $tmpstr;
+
+    $tmpstr = "gnuplot set key left top";
+    push @ret, $tmpstr;
+
+    $retstring = join("\n",@ret);
+
+    return $retstring;
+}
+
+sub plot_fulltput {
+    my ($num_args) = scalar(@_);
+    die "?? args: num_nodes num_gbytes tcp_variant" unless $num_args == 3;
+    my ($num_nodes) = $_[0];
+    my ($num_gbytes) = $_[1];
+    my ($tcpvar) = $_[2];
+    my ($table_name) = "${num_nodes}way${num_gbytes}g${tcpvar}fulltput";
+    my (@ret);
+    my ($tmpstr) = "";
+    my ($retstring) = "";
+
+    for (my $i = 0; $i < ($num_nodes * ($num_nodes - 1)); $i += 1) {
+	$tmpstr = "plot id as x, (f${i}*0.9536743164) as y from ${table_name}";
+	push @ret, $tmpstr;
+    }
+
+    $retstring = join("\n",@ret);
+
+    return $retstring;
+}
+
+enddefine

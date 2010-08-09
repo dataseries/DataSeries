@@ -23,11 +23,7 @@
 using lintel::ProgramOption;
 using namespace std;
 
-#define max(A,B) ( (A) > (B) ? (A):(B))
-#define min(A,B) ( (A) > (B) ? (B):(A))
-
 #define BUF_SIZE 65536
-#define MAX_BUFSIZE (65536*60)  //Keep at most 20 full bufs outstanding
 #define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
 #define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
@@ -42,11 +38,6 @@ static const string LOG_DIR("/home/krevate/projects/DataSeries/experiments/neta2
 struct timeval *startTime, *jobEndTime;
 vector<string> nodeNames;
 int nodeIndex;
-int numNodes;
-PThreadCond sendCond;
-PThreadMutex sendMutex;
-long *bytesReadyPerNode;
-long bytesPartitionedPerNode; //Same for every node
 
 long tval2long(struct timeval *tval) {
     return ((tval->tv_sec*1000000) + tval->tv_usec);
@@ -54,43 +45,6 @@ long tval2long(struct timeval *tval) {
 
 long tval2longdiff(struct timeval *tvalstart, struct timeval *tvalend) {
     return (((tvalend->tv_sec-tvalstart->tv_sec)*1000000) + (tvalend->tv_usec-tvalstart->tv_usec));
-}
-
-// Optimize later
-long findMax(long *array, int size) {
-    long curMax = 0;
-    for (int i = 0; i < size; i++) {
-	if (i == nodeIndex) {
-	    continue;
-	}
-	if (array[i] > curMax) {
-	    curMax = array[i];
-	}
-	if (curMax == MAX_BUFSIZE) {
-	    break;
-	}
-    }
-    return curMax;
-}
-
-void printArray(long *array, int size) {
-    for (int i = 0; i < size; i++) {
-	if (i == nodeIndex) {
-	    printf("[me]");
-	    continue;
-	}
-	printf("[%ld]",array[i]);
-    }
-    printf("\n");
-}
-
-void incrementAll(long *array, int size, long amount) {
-    for (int i = 0; i < size; i++) {
-	if (i == nodeIndex) {
-	    continue;
-	}
-	array[i] += amount;
-    }
 }
 
 class ReadThread : public PThread {
@@ -144,12 +98,10 @@ public:
 	    readAmounts[totReads] = ret;
 	    thisReadTime = tval2long(readDoneTime);
 	    readTimes[totReads] = thisReadTime - lastReadTime;
-	    //printf("read %d in time %ld\n", ret, readTimes[totReads]);
-	    //fflush(stdout);
 	    lastReadTime = thisReadTime;
-	    //if (ret == 0) {
-	    //break;
-	    //}
+	    if (ret == 0) {
+		break;
+	    }
 	}
 	
 	++totReads;
@@ -175,11 +127,6 @@ public:
     SetupAndTransferThread(long dataAmount, unsigned short int serverPort, int isServer, int otherNodeIndex)
 	: dataAmount(dataAmount), serverPort(serverPort), isServer(isServer), otherNodeIndex(otherNodeIndex) {
 	printf("\nSetupAndTransferThread called for %ld B, serverPort %d, isServer %d, otherNodeIndex %d\n", dataAmount, serverPort, isServer, otherNodeIndex);
-	
-	// Default as if we are client connecting to server, 
-	// but switch this out later if another node connects to us
-	connectIndex = otherNodeIndex; 
-
 	if (isServer == 1) {
 	    // Setup the server and listen for connections
 	    //Create socket for listening for client connection requests
@@ -251,9 +198,6 @@ public:
 	int ret;
 	long totWrites;
 	long totLeft;
-	long currentMax;
-	long diffMax;
-	long amountAllowed;
 
 	bzero(buf, BUF_SIZE);
 
@@ -341,8 +285,6 @@ public:
 	} else {
 	    // Accept a connection with a client that is requesting one.
 	    // (server already called listen in constructor)
-	    // connectindex warning: % numNodes is safer, but we create contiguous port nums so this will work
-	    connectIndex = serverPort % PORT_BASE; 
 	    clientAddressLength = sizeof(clientAddress);
 	    connectSocket = accept(listenSocket,
 				   (struct sockaddr *) &clientAddress,
@@ -366,58 +308,15 @@ public:
 	readThread->start();
 	
 	// Generate and send data over the connection
-	currentMax = 0;
-	for (totWrites = 0, totLeft = dataAmount; totLeft > 0; totLeft -= ret) {
-	    ret = 0;
-	    //printf("%d: top bytesReady: %ld, totLeft: %ld\n",connectIndex,bytesReadyPerNode[connectIndex],totLeft);
-	    //fflush(stdout);
-	    sendMutex.lock();
-	    //printf("%d: mutex locked\n",connectIndex);
-	    if (bytesReadyPerNode[connectIndex] < BUF_SIZE && bytesReadyPerNode[connectIndex] < totLeft) {
-		currentMax = findMax(bytesReadyPerNode, numNodes);
-		//printArray(bytesReadyPerNode, numNodes);
-		// assumes dataAmount is the same for each node, as it is currently
-		diffMax = min((MAX_BUFSIZE - currentMax),(dataAmount - bytesPartitionedPerNode));
-		//printf("%d: bytesPartitionedPerNode: %ld, currentMax: %ld, diffMax: %ld\n",connectIndex,bytesPartitionedPerNode,currentMax,diffMax);
-		if (diffMax > 0) {
-		    incrementAll(bytesReadyPerNode, numNodes, diffMax);
-		    bytesPartitionedPerNode += diffMax;
-		    sendCond.broadcast();
-		} else if (bytesReadyPerNode[connectIndex] == 0) {
-		    //printf("%d: can't send, waiting on cond\n", connectIndex);
-		    //fflush(stdout);
-		    sendCond.wait(sendMutex);
-		    //printf("%d: wakeup from cond\n", connectIndex);
-		}
-	    }
-	    amountAllowed = bytesReadyPerNode[connectIndex] > BUF_SIZE ? BUF_SIZE : bytesReadyPerNode[connectIndex];
-	    //printf("%d: amountAllowed to send: %ld\n", connectIndex, amountAllowed);
-	    //printf("%d: mutex unlocked\n", connectIndex);
-	    sendMutex.unlock();
-
-	    //printf("%d: write bytesReady: %ld\n",connectIndex,bytesReadyPerNode[connectIndex]);
-	    if (amountAllowed > 0) {
-		if ((ret = write(connectSocket, buf, amountAllowed)) < 0) {
-		    cerr << "Error: cannot send data  ";
-		}
-		if (ret > 0) {
-		    ++totWrites;
-		    //fflush(stdout);
-		    sendMutex.lock();
-		    //printf("%d: sendMutex locked after write\n",connectIndex);
-		    bytesReadyPerNode[connectIndex] -= ret;
-		    //optimize later to avoid unnecessary broadcasts
-		    //but right now this is necessary to avoid corner blocking case
-		    sendCond.broadcast(); 
-		    //printf("%d: sendMutex unlocked after broadcast and write\n",connectIndex);
-		    sendMutex.unlock();
-		}
+	for (ret = 0, totWrites = 0, totLeft = dataAmount; totLeft > 0; ++totWrites, totLeft -= ret) {
+	    if ((ret = write(connectSocket, buf, (totLeft > BUF_SIZE ? BUF_SIZE : totLeft))) < 0) {
+		cerr << "Error: cannot send data  ";
 	    }
 	}
+	++totWrites;
 	
 	// Join on read thread
-	//printf("\nAfter %ld writes to %d, waiting on join for read\n", totWrites, otherNodeIndex);
-	//fflush(stdout);
+	printf("\n%d: After %ld writes to %d, waiting on join for read\n", nodeIndex, totWrites, otherNodeIndex);
 	retSizePtr = (long *)readThread->join();    
 
 	fprintf(outlog, "Total number of writes: %ld\n", totWrites);
@@ -432,7 +331,6 @@ public:
     unsigned short int serverPort;
     int isServer;
     int otherNodeIndex;
-    int connectIndex;
     char buf[BUF_SIZE];
     int listenSocket, connectSocket;
     PThreadPtr readThread;
@@ -445,12 +343,13 @@ int main(int argc, char **argv)
     long dataAmount = 0;
     long dataAmountPerNode = 0;
     string tmp;
+    int numNodes = 0;
     int isServer = 0;
     long *retSizePtr = 0;
     long totReturned = 0;
     FILE *globaljoblog;
     PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
-	
+
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
     jobEndTime = (struct timeval*) malloc(sizeof(struct timeval));        
     dataAmount = po_dataAmount.get();
@@ -462,10 +361,6 @@ int main(int argc, char **argv)
     SINVARIANT(numNodes >= 0);
     setupAndTransferThreads = new PThreadPtr[numNodes];
     printf("\ngenread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
-    // Set up simulated partitioning and buffering
-    bytesPartitionedPerNode = 0;
-    bytesReadyPerNode = (long *)malloc(numNodes * sizeof(long));
-    bzero(bytesReadyPerNode, (numNodes * sizeof(long)));
 
     system(NETBARSERVERS);
     gettimeofday(startTime, NULL);
@@ -519,7 +414,6 @@ int main(int argc, char **argv)
 	fprintf(globaljoblog, "Full job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
     }
 
-    free(bytesReadyPerNode);
     delete [] setupAndTransferThreads;
     free(startTime);
     free(jobEndTime);
