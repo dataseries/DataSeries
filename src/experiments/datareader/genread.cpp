@@ -10,6 +10,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <limits.h>
 
 #include <boost/algorithm/string.hpp>
 #include <boost/foreach.hpp>
@@ -27,7 +28,6 @@ using namespace std;
 #define min(A,B) ( (A) > (B) ? (B):(A))
 
 #define BUF_SIZE 65536
-#define MAX_BUFSIZE (65536*60)  //Keep at most 20 full bufs outstanding
 #define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
 #define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
@@ -36,17 +36,30 @@ using namespace std;
 typedef boost::shared_ptr<PThread> PThreadPtr;
 
 ProgramOption<int> po_nodeIndex("node-index", "Node index in the node list", -1);
-ProgramOption<long> po_dataAmount("data-amount", "Total amount of data to read from all hosts", 4000000000);
+ProgramOption<long> po_dataAmount("data-amount", "Total amount of data to read"
+				  "from all hosts", 4000000000);
 ProgramOption<string> po_nodeNames("node-names", "List of nodes");
+ProgramOption<long> po_maxBufSize("max-buf", "Number of 64k buffers used by each"
+				  "flow, either as an average if using shared "
+				  "buffers or as dedicated separate buffers, "
+				  "(0 for unlimited buffering)", 60);
+ProgramOption<bool> po_isSharedBuf("is-shared-buf", "Is there one shared buffer" 
+				   "or separate buffers for each flow");
+
 static const string LOG_DIR("/home/krevate/projects/DataSeries/experiments/neta2a/logs/");
 struct timeval *startTime, *jobEndTime;
 vector<string> nodeNames;
 int nodeIndex;
 int numNodes;
+bool isSharedBuf;
+long maxBufSize;
 PThreadCond sendCond;
 PThreadMutex sendMutex;
+long dataAmount;
+long dataAmountPerNode;
 long *bytesReadyPerNode;
-long bytesPartitionedPerNode; //Same for every node
+long totalBytesReady;
+long bytesPartitionedPerNode; //Same for every node since we partition in parallel for everyone together
 
 long tval2long(struct timeval *tval) {
     return ((tval->tv_sec*1000000) + tval->tv_usec);
@@ -66,7 +79,7 @@ long findMax(long *array, int size) {
 	if (array[i] > curMax) {
 	    curMax = array[i];
 	}
-	if (curMax == MAX_BUFSIZE) {
+	if (curMax == maxBufSize) {
 	    break;
 	}
     }
@@ -92,6 +105,21 @@ void incrementAll(long *array, int size, long amount) {
 	array[i] += amount;
     }
 }
+
+long incrementAllMax(long *array, int size) {
+    long totLeftPerNode = dataAmountPerNode - bytesPartitionedPerNode;
+    long amount = min(totLeftPerNode,(maxBufSize-(totalBytesReady/numNodes)));
+    for (int i = 0; i < size; i++) {
+	if (i == nodeIndex) {
+	    continue;
+	}
+	array[i] += amount;
+    }
+    bytesPartitionedPerNode += amount;
+    totalBytesReady += amount*numNodes;
+    return amount;
+}
+
 
 class ReadThread : public PThread {
 public:
@@ -119,7 +147,9 @@ public:
 	int i;
 	long totReadTime = 0;
 	long totReadAmnt = 0;
-	fprintf(outlog, "\nReadTime ReadAmnt\n");
+	fprintf(outlog, "Primary node: %s\n", nodeNames[0].c_str());
+	fprintf(outlog, "numNodes: %d, maxBufSize: %ld, isSharedBuf: %s\n", numNodes, maxBufSize, isSharedBuf ? "true" : "false");
+	fprintf(outlog, "ReadTime ReadAmnt\n");
 	for (i = 0; i < totReads; i++) {
 	    fprintf(outlog, "%ld %ld\n", readTimes[i], readAmounts[i]);
 	    totReadAmnt += readAmounts[i];
@@ -253,6 +283,7 @@ public:
 	long totLeft;
 	long currentMax;
 	long diffMax;
+	long dataAvailable;
 	long amountAllowed;
 
 	bzero(buf, BUF_SIZE);
@@ -365,7 +396,7 @@ public:
 	readThread.reset(new ReadThread(dataAmount, connectSocket, outlog));
 	readThread->start();
 	
-	// Generate and send data over the connection
+	// Virtually generate partitioned data into buffers for each connection (or 1 shared global)
 	currentMax = 0;
 	for (totWrites = 0, totLeft = dataAmount; totLeft > 0; totLeft -= ret) {
 	    ret = 0;
@@ -374,20 +405,31 @@ public:
 	    sendMutex.lock();
 	    //printf("%d: mutex locked\n",connectIndex);
 	    if (bytesReadyPerNode[connectIndex] < BUF_SIZE && bytesReadyPerNode[connectIndex] < totLeft) {
-		currentMax = findMax(bytesReadyPerNode, numNodes);
-		//printArray(bytesReadyPerNode, numNodes);
-		// assumes dataAmount is the same for each node, as it is currently
-		diffMax = min((MAX_BUFSIZE - currentMax),(dataAmount - bytesPartitionedPerNode));
-		//printf("%d: bytesPartitionedPerNode: %ld, currentMax: %ld, diffMax: %ld\n",connectIndex,bytesPartitionedPerNode,currentMax,diffMax);
-		if (diffMax > 0) {
-		    incrementAll(bytesReadyPerNode, numNodes, diffMax);
-		    bytesPartitionedPerNode += diffMax;
-		    sendCond.broadcast();
-		} else if (bytesReadyPerNode[connectIndex] == 0) {
-		    //printf("%d: can't send, waiting on cond\n", connectIndex);
-		    //fflush(stdout);
-		    sendCond.wait(sendMutex);
-		    //printf("%d: wakeup from cond\n", connectIndex);
+		if (isSharedBuf) {
+		    // Shared buffers so pool from one global resource
+		    dataAvailable = incrementAllMax(bytesReadyPerNode, numNodes);
+		    if (dataAvailable) {
+			sendCond.broadcast();
+		    } else {
+			sendCond.wait(sendMutex);
+		    }			
+		} else {
+		    // Separate buffers 
+		    currentMax = findMax(bytesReadyPerNode, numNodes);
+		    //printArray(bytesReadyPerNode, numNodes);
+		    // assumes dataAmount is the same for each node, as it is currently
+		    diffMax = min((maxBufSize - currentMax),(dataAmount - bytesPartitionedPerNode));
+		    //printf("%d: bytesPartitionedPerNode: %ld, currentMax: %ld, diffMax: %ld\n",connectIndex,bytesPartitionedPerNode,currentMax,diffMax);
+		    if (diffMax > 0) {
+			incrementAll(bytesReadyPerNode, numNodes, diffMax);
+			bytesPartitionedPerNode += diffMax;
+			sendCond.broadcast();
+		    } else if (bytesReadyPerNode[connectIndex] == 0) {
+			//printf("%d: can't send, waiting on cond\n", connectIndex);
+			//fflush(stdout);
+			sendCond.wait(sendMutex);
+			//printf("%d: wakeup from cond\n", connectIndex);
+		    }
 		}
 	    }
 	    amountAllowed = bytesReadyPerNode[connectIndex] > BUF_SIZE ? BUF_SIZE : bytesReadyPerNode[connectIndex];
@@ -406,6 +448,7 @@ public:
 		    sendMutex.lock();
 		    //printf("%d: sendMutex locked after write\n",connectIndex);
 		    bytesReadyPerNode[connectIndex] -= ret;
+		    totalBytesReady -= ret;
 		    //optimize later to avoid unnecessary broadcasts
 		    //but right now this is necessary to avoid corner blocking case
 		    sendCond.broadcast(); 
@@ -442,8 +485,6 @@ public:
 int main(int argc, char **argv)
 {
     lintel::parseCommandLine(argc,argv);
-    long dataAmount = 0;
-    long dataAmountPerNode = 0;
     string tmp;
     int isServer = 0;
     long *retSizePtr = 0;
@@ -458,12 +499,18 @@ int main(int argc, char **argv)
     tmp = po_nodeNames.get();
     boost::split(nodeNames, tmp, boost::is_any_of(","));
     numNodes = nodeNames.size();
+    isSharedBuf = po_isSharedBuf.get();
+    maxBufSize = po_maxBufSize.get() * BUF_SIZE;
+    if (maxBufSize == 0) {
+	maxBufSize = LONG_MAX;
+    }
     dataAmountPerNode = dataAmount / (long)numNodes;
     SINVARIANT(numNodes >= 0);
     setupAndTransferThreads = new PThreadPtr[numNodes];
     printf("\ngenread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
     // Set up simulated partitioning and buffering
     bytesPartitionedPerNode = 0;
+    totalBytesReady = 0;
     bytesReadyPerNode = (long *)malloc(numNodes * sizeof(long));
     bzero(bytesReadyPerNode, (numNodes * sizeof(long)));
 

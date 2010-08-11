@@ -21,6 +21,22 @@ else
 fi
 dataamountpernode=$[$dataamount/$numnodes]
 
+if [ -n "$3" ];
+then
+  maxbufsize=$3
+else
+  #default max bufsize (avg per flow) is 60 * 64k
+  maxbufsize=60
+fi
+
+if [ -n "$4" ];
+then
+  issharedbuf=$4
+else
+  #default is separate buffers
+  issharedbuf=0
+fi
+
 # get list of nodes
 if [ $numnodes > 1 ];
 then
@@ -47,5 +63,5 @@ if [ $involved -lt 0 ]; then
 fi
 
 echo "Running all-to-all with $dataamount MB over $numnodes nodes ($dataamountpernode MB per node)"
-echo "genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --node-names $nodeliststr"
-genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --node-names $nodeliststr
+echo "genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --is-shared-buf $issharedbuf --max-buf $maxbufsize --node-names $nodeliststr"
+genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --is-shared-buf $issharedbuf --max-buf $maxbufsize --node-names $nodeliststr
