@@ -45,8 +45,9 @@ ProgramOption<long> po_maxBufSize("max-buf", "Number of 64k buffers used by each
 				  "(0 for unlimited buffering)", 60);
 ProgramOption<bool> po_isSharedBuf("is-shared-buf", "Is there one shared buffer" 
 				   "or separate buffers for each flow");
+ProgramOption<string> po_logDir("log-dir", "output log directory", "logs/"); 
 
-static const string LOG_DIR("/home/krevate/projects/DataSeries/experiments/neta2a/logs/");
+string logDir;
 struct timeval *startTime, *jobEndTime;
 vector<string> nodeNames;
 int nodeIndex;
@@ -58,7 +59,7 @@ PThreadMutex sendMutex;
 long dataAmount;
 long dataAmountPerNode;
 long *bytesReadyPerNode;
-long totalBytesReady;
+long totalBytesReady; //total bytes ready (post-partition) across all queues
 long bytesPartitionedPerNode; //Same for every node since we partition in parallel for everyone together
 
 long tval2long(struct timeval *tval) {
@@ -109,6 +110,7 @@ void incrementAll(long *array, int size, long amount) {
 long incrementAllMax(long *array, int size) {
     long totLeftPerNode = dataAmountPerNode - bytesPartitionedPerNode;
     long amount = min(totLeftPerNode,(maxBufSize-(totalBytesReady/numNodes)));
+    //printf("totLeftPerNode: %ld, totalBytesReady: %ld, amountToIncrement: %ld\n", totLeftPerNode, totalBytesReady, amount);
     for (int i = 0; i < size; i++) {
 	if (i == nodeIndex) {
 	    continue;
@@ -116,7 +118,7 @@ long incrementAllMax(long *array, int size) {
 	array[i] += amount;
     }
     bytesPartitionedPerNode += amount;
-    totalBytesReady += amount*numNodes;
+    totalBytesReady += amount*(numNodes-1);
     return amount;
 }
 
@@ -289,11 +291,11 @@ public:
 	bzero(buf, BUF_SIZE);
 
 	// Open output file for log
-	string outlogfile = (boost::format("%s%d.%d.%s") % LOG_DIR %
+	string outlogfile = (boost::format("%s%d.%d.%s") % logDir %
 			     (isServer == 0 ? otherNodeIndex : nodeIndex) % 
 			     (isServer == 0 ? nodeIndex : otherNodeIndex) % 
 			     (isServer == 0 ? "c" : "s")).str();
-	cout << outlogfile;
+	cout << outlogfile << endl;
 	//printf("\n%d: isServer? %d otherNodeIndex: %d\n", nodeIndex, isServer, otherNodeIndex);
 	outlog = fopen(outlogfile.c_str(), "w+");
 	if (outlog == NULL) {
@@ -407,7 +409,9 @@ public:
 	    if (bytesReadyPerNode[connectIndex] < BUF_SIZE && bytesReadyPerNode[connectIndex] < totLeft) {
 		if (isSharedBuf) {
 		    // Shared buffers so pool from one global resource
+		    //printArray(bytesReadyPerNode, numNodes);
 		    dataAvailable = incrementAllMax(bytesReadyPerNode, numNodes);
+		    //printArray(bytesReadyPerNode, numNodes);
 		    if (dataAvailable) {
 			sendCond.broadcast();
 		    } else {
@@ -492,6 +496,7 @@ int main(int argc, char **argv)
     FILE *globaljoblog;
     PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
 	
+
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
     jobEndTime = (struct timeval*) malloc(sizeof(struct timeval));        
     dataAmount = po_dataAmount.get();
@@ -507,12 +512,15 @@ int main(int argc, char **argv)
     dataAmountPerNode = dataAmount / (long)numNodes;
     SINVARIANT(numNodes >= 0);
     setupAndTransferThreads = new PThreadPtr[numNodes];
-    printf("\ngenread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
     // Set up simulated partitioning and buffering
     bytesPartitionedPerNode = 0;
     totalBytesReady = 0;
     bytesReadyPerNode = (long *)malloc(numNodes * sizeof(long));
     bzero(bytesReadyPerNode, (numNodes * sizeof(long)));
+    printf("\ngenread called with %d nodes, %ld Bytes (%ld B per node), %ld %sbuffers\n",numNodes,dataAmount,dataAmountPerNode,maxBufSize,(isSharedBuf ? "shared " : "unshared "));
+    logDir = po_logDir.get();
+    //logDir = (boost::format("/mnt/fileserver-1/b/user/ekrevat/logs/%dgb%dway%dbuf%s/") % (dataAmount/1000000) % numNodes % po_maxBufSize.get() % (isSharedBuf ? "shared" : "unshared")).str();
+    mkdir(logDir.c_str(), S_IRWXU);
 
     system(NETBARSERVERS);
     gettimeofday(startTime, NULL);
@@ -537,7 +545,7 @@ int main(int argc, char **argv)
 	if (i == nodeIndex) {
 	    ; // Do nothing
 	} else {
-	    printf("\nWaiting on join for setupAndTransferThread");
+	    printf("\nWaiting on join for setupAndTransferThread\n");
 	    retSizePtr = (long *)setupAndTransferThreads[i]->join();
 	    printf("\nData received from nodeindex %d: %ld\n", i, *retSizePtr);
 	    totReturned += *retSizePtr;
@@ -554,14 +562,15 @@ int main(int argc, char **argv)
     // Write out global job stats if we are the first nodeindex
     if (nodeIndex == 0) {
 	// Open output file for global stats
-	string globaljobfile = (boost::format("%s%d.out") % LOG_DIR % numNodes).str();
-	cout << globaljobfile;
+	string globaljobfile = (boost::format("%s%d.out") % logDir % numNodes).str();
+	cout << globaljobfile << endl;
 	globaljoblog = fopen(globaljobfile.c_str(), "w+");
 	if (globaljoblog == NULL) {
-	    fprintf(stderr, "ERROR opening globaljoblog");
+	    fprintf(stderr, "ERROR opening globaljoblog\n");
 	}
 	
-	fprintf(globaljoblog, "genread called with %d nodes and %ld Bytes (%ld B per node)\n",numNodes,dataAmount,dataAmountPerNode);
+	fprintf(globaljoblog, "%s\n",logDir.c_str());
+	fprintf(globaljoblog, "genread called with %d nodes, %ld Bytes (%ld B per node), %ld %sbuffers\n",numNodes,dataAmount,dataAmountPerNode,maxBufSize,(isSharedBuf ? "shared " : "unshared "));
 	fprintf(globaljoblog, "Total received at nodeIndex 0: %ld\n", totReturned);
 	fprintf(globaljoblog, "Full job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
     }

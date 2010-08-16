@@ -1,5 +1,6 @@
 #!/bin/bash
 home="/home/krevate/projects/DataSeries/experiments/neta2a";
+outputdir="/mnt/fileserver-1/b/user/ekrevat/";
 nodelist="$home/nodelist.txt";
 myhostname=`hostname`;
 mynodeindex=`grep -n $myhostname $nodelist | cut -d: -f 1`;
@@ -31,10 +32,19 @@ fi
 
 if [ -n "$4" ];
 then
-  issharedbuf=$4
+  trialnum=$4
+else
+  trialnum=0
+fi
+
+issharedstr="unshared"
+if [ -n "$5" ];
+then
+  issharedbuf="--is-shared-buf "
+  issharedstr="shared"
 else
   #default is separate buffers
-  issharedbuf=0
+  issharedbuf=""
 fi
 
 # get list of nodes
@@ -57,11 +67,13 @@ do
   fi
 done
 
+logdir="${outputdir}logs/$[dataamount]gb$[numnodes]way$[maxbufsize]buf$issharedstr$trialnum/"
+
 if [ $involved -lt 0 ]; then
   echo "Not involved";
   exit
 fi
 
 echo "Running all-to-all with $dataamount MB over $numnodes nodes ($dataamountpernode MB per node)"
-echo "genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --is-shared-buf $issharedbuf --max-buf $maxbufsize --node-names $nodeliststr"
-genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --is-shared-buf $issharedbuf --max-buf $maxbufsize --node-names $nodeliststr
+echo "genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] $issharedbuf--max-buf $maxbufsize --log-dir $logdir --node-names $nodeliststr"
+genread --node-index $mynodeindex --data-amount $[$dataamount*1000000] --max-buf $maxbufsize $issharedbuf--log-dir $logdir --node-names $nodeliststr
