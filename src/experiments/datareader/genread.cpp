@@ -28,9 +28,9 @@ using namespace std;
 #define min(A,B) ( (A) > (B) ? (B):(A))
 
 #define BUF_SIZE 65536
-#define MAX_READS 1000000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
+#define MAX_READS 600000  //Must be (sometimes a lot) greater than TOT_SIZE / BUF_SIZE
 #define NETBAR "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-10"
-#define NETBARSERVERS "/home/krevate/projects/DataSeries/experiments/neta2a/net_call_bar pds-11"
+#define NETBAR_PORT_BASE 7000
 #define PORT_BASE 6000
 
 typedef boost::shared_ptr<PThread> PThreadPtr;
@@ -490,12 +490,12 @@ int main(int argc, char **argv)
 {
     lintel::parseCommandLine(argc,argv);
     string tmp;
+    string netbarCall;
     int isServer = 0;
     long *retSizePtr = 0;
     long totReturned = 0;
     FILE *globaljoblog;
     PThreadPtr *setupAndTransferThreads; //will hold array of pthread pointers, one for each nodeindex
-	
 
     startTime = (struct timeval*) malloc(sizeof(struct timeval));
     jobEndTime = (struct timeval*) malloc(sizeof(struct timeval));        
@@ -522,7 +522,9 @@ int main(int argc, char **argv)
     //logDir = (boost::format("/mnt/fileserver-1/b/user/ekrevat/logs/%dgb%dway%dbuf%s/") % (dataAmount/1000000) % numNodes % po_maxBufSize.get() % (isSharedBuf ? "shared" : "unshared")).str();
     mkdir(logDir.c_str(), S_IRWXU);
 
-    system(NETBARSERVERS);
+    //Connect to different sized net barrier according to port number
+    netbarCall = (boost::format("%s %d") % NETBAR % (NETBAR_PORT_BASE + numNodes)).str();
+    system(netbarCall.c_str());
     gettimeofday(startTime, NULL);
 
     // Specify which connections apply to this node, as a server or client
@@ -530,7 +532,9 @@ int main(int argc, char **argv)
     for (int i = (numNodes - 1); i >= 0; --i) {
 	if (i == nodeIndex) {
 	    // We finished setting up servers, wait for all other servers to go up
-	    system(NETBARSERVERS);
+	    printf("\nFinished setting up local servers, waiting for others...\n");
+	    fflush(stdout);
+	    system(netbarCall.c_str());
 	    //printf("\n%d: finished setting up servers\n", nodeIndex);
 	    isServer = 0;
 	} else {
@@ -554,7 +558,7 @@ int main(int argc, char **argv)
     }
 
     printf("\nTotal received: %ld\n", totReturned);
-    system(NETBARSERVERS);
+    system(netbarCall.c_str());
     
     gettimeofday(jobEndTime, NULL);    
     printf("\nFull job finished:   %ld us\n", tval2longdiff(startTime, jobEndTime) );
