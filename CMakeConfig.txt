@@ -121,6 +121,14 @@ LINTEL_DOCS_CONFIG("DataSeries")
 OPTION(BUILD_PAPER "Build the src/paper programs" OFF)
 OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 
+####
+
+# TODO-eric: move these bits into lintel -- remove circular dependency
+INCLUDE(FindThrift)
+IF(THRIFT_FOUND)
+    INCLUDE(SimRealCMakeUtil)
+ENDIF(THRIFT_FOUND)
+
 #### RPath
 
 OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)

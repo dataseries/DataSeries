@@ -280,16 +280,16 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << (gvval.v_bool ? "true" : "false");
 	    break;
 	case ExtentType::ft_byte:
-	    to << boost::format("%d") % static_cast<uint32_t>(gvval.v_byte);
+	    to << format("%d") % static_cast<uint32_t>(gvval.v_byte);
 	    break;
 	case ExtentType::ft_int32:
-	    to << boost::format("%d") % gvval.v_int32;
+	    to << format("%d") % gvval.v_int32;
 	    break;
 	case ExtentType::ft_int64:
-	    to << boost::format("%lld") % gvval.v_int64;
+	    to << format("%lld") % gvval.v_int64;
 	    break;
 	case ExtentType::ft_double:
-	    to << boost::format("%.12g") % gvval.v_double;
+	    to << format("%.12g") % gvval.v_double;
 	    break;
 	case ExtentType::ft_fixedwidth: case ExtentType::ft_variable32: {
 	    to << maybehexstring(*v_variable32);
@@ -492,21 +492,18 @@ const std::string GeneralValue::valString() const {
 	    }
 	    break;
 	case ExtentType::ft_byte:
-	    FATAL_ERROR("haven't decided how to translate byte to strings");
+	    return str(format("%d") % static_cast<uint32_t>(gvval.v_byte));
 	    break;
 	case ExtentType::ft_int32:
-	    FATAL_ERROR("haven't decided how to translate int32 to strings");
+	    return str(format("%d") % gvval.v_int32);
 	    break;
 	case ExtentType::ft_int64:
-	    FATAL_ERROR("haven't decided how to translate int64 to strings, Need to take printspec into account, can't just use boost::lexical_cast");
+            return str(format("%d") % gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
-	    FATAL_ERROR("haven't decided how to translate double to strings");
+            return str(format("%.20g") % gvval.v_double);
 	    break;
-	case ExtentType::ft_fixedwidth:
-            FATAL_ERROR("haven't decided how to translate byte arrays to strings");
-            break;
-	case ExtentType::ft_variable32:
+	case ExtentType::ft_fixedwidth:	case ExtentType::ft_variable32:
 	    return *v_variable32;
 	    break;
 	default:
@@ -631,8 +628,7 @@ void GF_Bool::set(GeneralField *from) {
 	    FATAL_ERROR("variable32 -> bool not implemented yet");
 	    break;
 	default: 
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -672,8 +668,7 @@ void GF_Byte::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val());
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -716,8 +711,7 @@ void GF_Byte::set(GeneralField *from) {
 	    FATAL_ERROR("unimplemented conversion from variable32 -> byte");
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
     }
     myfield.set(val);
 }
@@ -772,8 +766,7 @@ void GF_Int32::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -815,8 +808,7 @@ void GF_Int32::set(GeneralField *from) {
 	    FATAL_ERROR("unimplemented conversion from variable32 -> int32");
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -919,8 +911,7 @@ void GF_Int64::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -962,8 +953,7 @@ void GF_Int64::set(GeneralField *from) {
 	    FATAL_ERROR("unimplemented conversion from variable32 -> int64");
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -1040,8 +1030,8 @@ void GF_Double::write(std::ostream &to) {
 	}
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,multiplier * (myfield.val() - offset));
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
+		  
 	to << buf;
     }
 }
@@ -1085,8 +1075,7 @@ void GF_Double::set(GeneralField *from) {
 	    FATAL_ERROR("unimplemented conversion from variable32 -> double");
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -1162,8 +1151,7 @@ void GF_FixedWidth::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from variable32 -> fixedwidth");
             break;
         default:
-            FATAL_ERROR(boost::format("internal error, unknown field type %d")
-                        % from->getType());
+            FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
         }
 }
 
@@ -1208,8 +1196,7 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"text")==0) { 
 	    printstyle = printtext;
 	} else {
-	    FATAL_ERROR(boost::format("print_style should be hex, maybehex,"
-				      " csv, or text not '%s'")
+	    FATAL_ERROR(format("print_style should be hex, maybehex, csv, or text not '%s'")
 			% reinterpret_cast<char *>(xmlprintstyle));
 	}
     }
@@ -1325,8 +1312,7 @@ void GF_Variable32::set(GeneralField *from) {
 	}
 	break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 

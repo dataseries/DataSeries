@@ -21,24 +21,18 @@ RowAnalysisModule::RowAnalysisModule(DataSeriesModule &_source,
     SINVARIANT(&source != NULL);
 }
 
-RowAnalysisModule::~RowAnalysisModule()
-{
+RowAnalysisModule::~RowAnalysisModule() {
     delete where_expr;
     where_expr = NULL;
 }
 
-void RowAnalysisModule::newExtentHook(const Extent &e)
-{ }
+void RowAnalysisModule::newExtentHook(const Extent &e) { }
 
-void RowAnalysisModule::firstExtent(const Extent &e)
-{ }
+void RowAnalysisModule::firstExtent(const Extent &e) { }
 
-void RowAnalysisModule::prepareForProcessing()
-{ }
+void RowAnalysisModule::prepareForProcessing() { }
 
-Extent *
-RowAnalysisModule::getExtent()
-{
+Extent *RowAnalysisModule::getExtent() {
     Extent *e = source.getExtent();
     if (e == NULL) {
 	completeProcessing();
@@ -68,27 +62,16 @@ RowAnalysisModule::getExtent()
     return e;
 }
 
-void
-RowAnalysisModule::completeProcessing()
-{
-}
+void RowAnalysisModule::completeProcessing() { }
 
-void
-RowAnalysisModule::printResult()
-{
-}
+void RowAnalysisModule::printResult() { }
 
-void
-RowAnalysisModule::setWhereExpr(const std::string &expr)
-{
+void RowAnalysisModule::setWhereExpr(const std::string &expr) {
     where_expr_str = expr;
     INVARIANT(!prepared, "can't set where expr after prepare");
 }
 
-int
-RowAnalysisModule::printAllResults(SequenceModule &sequence,
-				   int expected_nonprintable)
-{
+int RowAnalysisModule::printAllResults(SequenceModule &sequence, int expected_nonprintable) {
     int non_rowmods = 0;
     bool printed_any = false;
     for(SequenceModule::iterator i = sequence.begin();
