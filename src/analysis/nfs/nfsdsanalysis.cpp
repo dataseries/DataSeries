@@ -1441,6 +1441,10 @@ int main(int argc, char *argv[]) {
 	   sourceb->waitFraction(),
 	   sourcec->waitFraction(),
 	   sourced->waitFraction());
+    sourcea->close();
+    sourceb->close();
+    sourcec->close();
+    sourced->close();
     delete sourced; // a-c deleted by their SequenceModules
     return 0;
 }

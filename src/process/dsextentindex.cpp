@@ -641,15 +641,18 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
     // merge with the old index (if it exists)
     string minmax_typename("DSIndex::Extent::MinMax::");
     minmax_typename.append(type_prefix);
-    DataSeriesModule *source = NULL;
-    TypeIndexModule minmax_mod(minmax_typename);
+    TypeIndexModule *source = NULL;
     if(!old_index.empty()) {
-        minmax_mod.addSource(old_index);
-        source = &minmax_mod;
+        source = new TypeIndexModule(minmax_typename);
+        source->addSource(old_index);
     }
 
     OldIndexModule old(source, this, modify, files);
     old.getAndDelete();
+    if (source != NULL) {
+        source->close();
+        delete source;
+    }
 }
 
 
