@@ -247,7 +247,7 @@ public:
         @c ExtentTypeLibrary must contain all of the types of Extents
         that will be used.  It is ok if it contains ExtentTypes that
         are not used. */
-    void writeExtentLibrary(ExtentTypeLibrary &lib);
+    void writeExtentLibrary(const ExtentTypeLibrary &lib);
 
     /** Add an @c Extent to the write queue.
 
