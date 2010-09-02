@@ -68,6 +68,26 @@ You can run the command:
 
 To produce a DataSeries file that contains the contents of the csv file.
 
+=head1 OPTIONS
+
+=over 4
+
+=item --xml-desc-file=I<path>
+
+Specifies the path of the file containing the xml description.  At the current time,
+this option is required since csv2ds does not auto-infer field types.
+
+=item --comment-prefix=I<string>
+
+Specifies the string that may occur at the beginning of a line to introduce a comment.
+Comment lines are skipped.
+
+=item --field-separator=I<string>
+
+Specifies the string that separates fields.
+
+=back
+
 =head1 TODO
 
 =over 4
@@ -75,6 +95,10 @@ To produce a DataSeries file that contains the contents of the csv file.
 =item *
 
 Make csv2ds able to auto-infer field types
+
+=item *
+
+Generate a manpage
 
 =back
 
@@ -86,6 +110,7 @@ using boost::format;
 namespace {
     lintel::ProgramOption<string> po_xml_desc_file("xml-desc-file", "Specify the filename of the XML type specification that should be used for the output dataseries file");
     lintel::ProgramOption<string> po_comment_prefix("comment-prefix", "Specify a string that starts lines and causes them to be ignored; empty string for no comment prefix", "#");
+    lintel::ProgramOption<string> po_field_separator("field-separator", "Specify the string that separates fields in the csv file", ",");
 }
 
 const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
@@ -174,7 +199,7 @@ int main(int argc, char *argv[]) {
 	      format("error opening %s: %s") % csv_input_filename % strerror(errno));
     string comment_prefix(po_comment_prefix.get());
     char string_quote_character('"');
-    char field_separator_character(',');
+    string field_separator(po_field_separator.get());
 
     uint64_t line_num = 0;
     while(!csv_input.eof()) {
@@ -190,7 +215,9 @@ int main(int argc, char *argv[]) {
 	INVARIANT(csv_input.good() || csv_input.eof(),
 		  format("error reading %s: %s") % csv_input_filename % strerror(errno));
 	
+	LintelLogDebug("csv2ds::parse", format("line %d:") % line_num);
 	if (!comment_prefix.empty() && prefixequal(line, comment_prefix)) {
+            LintelLogDebug("csv2ds::parse", "  ... comment ...");
 	    continue;
 	}
 	vector<string> str_fields;
@@ -222,13 +249,14 @@ int main(int argc, char *argv[]) {
 		    INVARIANT(pos < line.size(), format("csv line %d ends in middle of field")
 			      % line_num);
 		    if (line[pos] == '\r' || line[pos] == '\n' 
-			|| line[pos] == field_separator_character) {
+			|| line.compare(pos, field_separator.size(), field_separator) == 0) {
 			break;
 		    }
 		    field.push_back(line[pos]);
 		}
 	    }
 
+	    LintelLogDebug("csv2ds::parse", format("  field %d: %s") % str_fields.size() % field);
 	    str_fields.push_back(field);
 	    
 	    INVARIANT(pos < line.size(), format("csv line %d does not terminate properly")
@@ -246,19 +274,19 @@ int main(int argc, char *argv[]) {
 		break;
 	    }
 
-	    INVARIANT(line[pos] == field_separator_character, 
+	    INVARIANT(pos + field_separator.size() <= line.size() 
+                      && line.compare(pos, field_separator.size(), field_separator) == 0,
 		      format("csv line %d at pos %d is '%c', not a field separator")
 		      % line_num % pos % line[pos]);
-	    ++pos;
+	    pos += field_separator.size();
 	}
 
-	LintelLogDebug("csv2ds::parse", format("line %d:") % line_num);
 	INVARIANT(fields.size() == str_fields.size(),
 		  format("csv line %d has %d fields, not %d as in type definition")
 		  % line_num % str_fields.size() % fields.size());
 	outmodule->newRecord();
-	for(size_t i = 0; i < fields.size(); ++i) {
-	    LintelLogDebug("csv2ds::parse", format("  field %d: %s\n") % i % str_fields[i]);
+	for(size_t i = 0; i < str_fields.size(); ++i) {
+            SINVARIANT(fields[i] != NULL);
 	    fields[i]->set(str_fields[i]);
 	}
     }

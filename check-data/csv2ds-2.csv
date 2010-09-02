@@ -1,0 +1,7 @@
+CCC test that we can separate with ZZZ, and use CCC as a comment
+CCC bool,byte,int32,int64,double,var32
+trueZZZ33ZZZ1000ZZZ56ZZZ1ZZZ"Hello, World"
+falseZZZ88ZZZ-15331ZZZ1000000000000ZZZ3.14159ZZZ"I said ""hello there."""
+trueZZZ10ZZZ11ZZZ5ZZZ2.718281828ZZZunquoted
+
+
