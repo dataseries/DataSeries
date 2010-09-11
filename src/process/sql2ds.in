@@ -1,0 +1,162 @@
+#!@PERL_EXECUTABLE@ -w
+# -*- Perl -*-
+use strict;
+use Date::Parse;
+use DBI;
+use File::Temp;
+use FileHandle;
+use Getopt::Long;
+use Pod::Usage;
+
+my $csv_to_ds = "@CMAKE_INSTALL_PREFIX@/bin/csv2ds";
+my $dsn = "DBI:mysql:database=test;host=localhost";
+my $man;
+
+my $ret = GetOptions("dsn=s" => \$dsn, "man!" => \$man);
+die "Usage: $0 --man for detailed help" unless $ret && @ARGV == 2;
+pod2usage(0) if $man;
+
+my ($src_table, $dest_ds) = @ARGV;
+
+my $basename = $dest_ds;
+die "Expected .ds extention on dataseries file $dest_ds"
+    unless $basename =~ s/\.ds$//o;
+
+=pod
+
+=head1 NAME
+
+sql2ds - convert a sql database into a dataseries file.
+
+=head1 SYNOPSIS
+
+ % sql2ds [--dsn=DBI:mysql:database=test;host=localhost] <src-table-name> <dest-ds-file>
+
+=head1 DESCRIPTION
+
+sql2ds will read a sql database table and will convert it to a dataseries file.
+It will attempt to translate the various types that are used in sql into
+dataseries.  Internally, sql2ds uses csv2ds to convert a text file into dataseries.
+
+=head1 EXAMPLES
+
+ % sql2ds example_table example.ds
+ % sql2ds '--dsn=DBI:mysql:database=data;host=remote.example.com' remote_table remote.ds
+
+=head1 OPTIONS
+
+=over 4
+
+=item --dsn=I<perl data source name>
+
+Specify the data source name for the database storing the table to convert into
+dataseries format.  see perldoc DBI for details on the meaning of this option.
+
+=item --man
+
+Print out this manual page
+
+=back
+
+=head1 SEE ALSO
+
+perl(1), DBI(3)
+
+=cut
+
+my $dbh = DBI->connect($dsn);
+
+my $sth = $dbh->prepare("select * from $src_table");
+$sth->execute();
+
+my $names = $sth->{NAME};
+my $types = $sth->{TYPE};
+
+my $variable32_type = { ds_type => 'variable32', ds_opts => q(pack_unique="yes"), 
+                        conv => \&binaryToHex };
+my %sqltype_to_dstype =
+    (
+     'blob' => $variable32_type,
+     'date' => { ds_type => 'int64', ds_opts => q(units="microseconds" epoch="unix"),
+                 conv => \&timeToMicro },
+     'double' => { ds_type => 'double' },
+     'integer' => { ds_type => 'int32' },
+     'varchar' => $variable32_type,
+    );
+
+my @info;
+for (my $i = 0; $i < @$names; ++$i) {
+    my $info = { 'name' => $names->[$i],
+                 'sql_type' => scalar $dbh->type_info($types->[$i])->{TYPE_NAME},
+                 'nullable' => $sth->{NULLABLE}->[$i],
+                 'var' => 0};
+
+    my $tmp = $sqltype_to_dstype{$info->{sql_type}};
+    die "Unrecognized sql type $info->{sql_type}"
+        unless defined $tmp;
+    map { $info->{$_} = $tmp->{$_} } keys %$tmp;
+
+    print "$info->{name}: $info->{sql_type} -> $info->{ds_type}\n";
+    my @opts;
+    push(@opts, $info->{ds_opts}) if defined $info->{ds_opts};
+    push(@opts, q{opt_nullable="yes"}) if $info->{nullable};
+    my $opts = join(' ', @opts);
+    $opts = " $opts" if length $opts > 1;
+    $info->{xml} = qq(  <field name="$info->{name}" type="$info->{ds_type}"$opts />\n);
+    push (@info, $info);
+}
+
+my @xml = qq(<ExtentType namespace="test.example.com" name="$src_table" version="1.0" >\n);
+map { push(@xml, $_->{xml}) } @info;
+push(@xml, "</ExtentType>\n");
+
+my $xml_fh = new FileHandle ">$basename.xml"
+    or die "Unable to open $basename.xml for write: $!";
+
+print "Using XML description:\n";
+print @xml;
+
+print $xml_fh @xml;
+close($xml_fh);
+
+my $data_fh = new FileHandle ">$basename.data"
+    or die "Unable to open $basename.data for write: $!";
+
+$| = 1;
+my $rows = 0;
+print "Extracting data from table...";
+while (my $array_ref = $sth->fetchrow_arrayref()) {
+    print "." if (++$rows % 1000) == 0;
+    my @row;
+    for (0 .. @info - 1) {
+        my $v = $array_ref->[$_];
+        if (defined $v) {
+            $v = &{$info[$_]->{conv}}($v) if defined $info[$_]->{conv};
+        } else {
+            $v = 'null';
+        }
+        push(@row, $v);
+    }
+    print $data_fh join(",", @row), "\n";
+}
+close($data_fh);
+print "done, $rows rows\n";
+print "Converting to dataseries...";
+unlink("$basename.ds-new") if -f "$basename.ds-new";
+$ret = system("$csv_to_ds --xml-desc-file=$basename.xml --compress-lzf $basename.data $basename.ds-new");
+die "conversion failed" unless $ret == 0;
+rename("$basename.ds-new", "$basename.ds")
+    or die "rename $basename.ds-new $basename.ds failed: $!";
+
+sub binaryToHex {
+    return unpack("H*", $_[0]);
+}
+
+sub timeToMicro {
+    return '-1' if $_[0] eq '1000-01-01';
+    return '' if $_[0] eq '';
+    my $time = str2time($_[0]);
+    die "Unable to parse time $_[0]" unless defined $time;
+
+    return $time * 1000000;
+}

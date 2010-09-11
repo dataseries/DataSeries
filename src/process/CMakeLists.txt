@@ -20,6 +20,9 @@ DATASERIES_PROGRAM(sort-cache-sim)
 DATASERIES_PROGRAM(textindex)
 DATASERIES_PROGRAM(wcweb2ds)
 
+# TODO: figure out DBI dependencies
+LINTEL_INSTALL_CONFIG_PROGRAM(sql2ds)
+
 IF(LINTEL_program-options_ENABLED)
     DATASERIES_PROGRAM(csv2ds)
     DATASERIES_PROGRAM(dsselect)

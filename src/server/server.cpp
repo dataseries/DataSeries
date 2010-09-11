@@ -73,7 +73,7 @@ public:
 
 class TableDataModule : public RowAnalysisModule {
 public:
-    TableDataModule(DataSeriesModule &source_module, TableData &into, int32_t max_rows)
+    TableDataModule(DataSeriesModule &source_module, TableData &into, uint32_t max_rows)
         : RowAnalysisModule(source_module), into(into), max_rows(max_rows)
     { 
         into.rows.reserve(max_rows < 4096 ? max_rows : 4096);
@@ -109,7 +109,7 @@ public:
     }
 
     TableData &into;
-    int32_t max_rows;
+    uint32_t max_rows;
     vector<GeneralField *> fields;
 };
 

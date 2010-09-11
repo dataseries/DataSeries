@@ -30,7 +30,7 @@ csv2ds - convert a comma separated value file into dataseries.
 
 =head1 SYNOPSIS
 
- % csv2ds --xml-desc-file=<path> <input.csv> <output.ds>
+ % csv2ds [options] --xml-desc-file=<path> <input.csv> <output.ds>
 
 =head1 DESCRIPTION
 
@@ -39,7 +39,7 @@ file is skipped if it starts with I<comment-prefix>.  Otherwise, it is divided
 into separate fields using the following rules.  If it starts with
 I<string-quote-character> then following characters are read, treating two
 I<string-quote-characters> in a row as a single I<string-quote-character>.  A
-field stops when we reach a I<field-separator-character> or the end of the
+field stops when we reach a I<field-separator-string> or the end of the
 line, which can either be a newline or a a carriage return and a newline.
 
 =head1 EXAMPLES
@@ -84,7 +84,14 @@ Comment lines are skipped.
 
 =item --field-separator=I<string>
 
-Specifies the string that separates fields.
+Specifies the string that separates fields.  If the string starts with 0x; then it will be
+decoded as a hexadecimal string, so you can, for example, use 0x00 to separate fields with
+nulls.
+
+=item --hex-encoded-variable32
+
+Specifies that any variable32 fields (as indicated by the xml description) are hex encoded, and
+so should be decoded before being added to the dataseries file.
 
 =back
 
@@ -111,6 +118,8 @@ namespace {
     lintel::ProgramOption<string> po_xml_desc_file("xml-desc-file", "Specify the filename of the XML type specification that should be used for the output dataseries file");
     lintel::ProgramOption<string> po_comment_prefix("comment-prefix", "Specify a string that starts lines and causes them to be ignored; empty string for no comment prefix", "#");
     lintel::ProgramOption<string> po_field_separator("field-separator", "Specify the string that separates fields in the csv file", ",");
+    lintel::ProgramOption<bool> po_hex_encoded_variable32("hex-encoded-variable32", "Specify that variable32 fields are hex encoded.");
+    lintel::ProgramOption<string> po_null_string("null-string", "Specify the string that will be interpreted as a null field", "null");
 }
 
 const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
@@ -141,13 +150,14 @@ const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &
     return lib.registerTypeR(xml_desc);
 }
 
-vector<GeneralField *> makeFields(const ExtentType &type, ExtentSeries &series) {
-    vector<GeneralField *> ret;
-
+void makeFields(const ExtentType &type, ExtentSeries &series,
+                vector<GeneralField *> &ret, vector<bool> &is_nullable) {
+    ret.reserve(type.getNFields());
+    is_nullable.reserve(type.getNFields());
     for(uint32_t i = 0; i < type.getNFields(); ++i) {
 	ret.push_back(GeneralField::create(series, type.getFieldName(i)));
+        is_nullable.push_back(type.getNullable(type.getFieldName(i)));
     }
-    return ret;
 }
 
 const ExtentType &getType(ExtentTypeLibrary &lib) {
@@ -192,14 +202,20 @@ int main(int argc, char *argv[]) {
     ExtentSeries series(type);
     OutputModule *outmodule = new OutputModule(outds, series, type, packing_args.extent_size);
 
-    vector<GeneralField *> fields = makeFields(type, series);
-
+    vector<bool> is_nullable;
+    vector<GeneralField *> fields;
+    makeFields(type, series, fields, is_nullable);
     ifstream csv_input(csv_input_filename.c_str());
     INVARIANT(csv_input.good(), 
 	      format("error opening %s: %s") % csv_input_filename % strerror(errno));
     string comment_prefix(po_comment_prefix.get());
     char string_quote_character('"');
     string field_separator(po_field_separator.get());
+    if (prefixequal(field_separator, "0x")) {
+        INVARIANT(field_separator.size() >= 4, 
+                  "--field-separator=0x.. needs to be at least 4 characters long");
+        field_separator = hex2raw(field_separator.c_str() + 2, field_separator.size() - 2);
+    }
 
     uint64_t line_num = 0;
     while(!csv_input.eof()) {
@@ -287,7 +303,15 @@ int main(int argc, char *argv[]) {
 	outmodule->newRecord();
 	for(size_t i = 0; i < str_fields.size(); ++i) {
             SINVARIANT(fields[i] != NULL);
-	    fields[i]->set(str_fields[i]);
+            if (is_nullable[i] && str_fields[i] == po_null_string.get()) {
+                fields[i]->setNull();
+            } else {
+                if (fields[i]->getType() == ExtentType::ft_variable32 
+                    && po_hex_encoded_variable32.get()) {
+                    str_fields[i] = hex2raw(str_fields[i]);
+                }
+                fields[i]->set(str_fields[i]);
+            }
 	}
     }
     
