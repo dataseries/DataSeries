@@ -18,7 +18,12 @@ my $client = new DataSeriesServerClient($protocol);
 
 $transport->open();
 $client->ping();
-my $csv_xml = <<'END';
+
+# tryImportCSV();
+tryImportSql();
+
+sub tryImportCSV {
+    my $csv_xml = <<'END';
 <ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
   <field type="bool" name="bool" />
   <field type="byte" name="byte" />
@@ -29,16 +34,31 @@ my $csv_xml = <<'END';
 </ExtentType>
 END
 
-$client->importCSVFiles(["/home/anderse/projects/DataSeries/check-data/csv2ds-1.csv"],
-                        $csv_xml, 'csv2ds-1', ",", "#");
-print "imported\n";
+    $client->importCSVFiles(["/home/anderse/projects/DataSeries/check-data/csv2ds-1.csv"],
+                            $csv_xml, 'csv2ds-1', ",", "#");
+    print "imported\n";
 
-my $ret = eval { $client->getTableData('csv2ds-1', 1000); };
-if ($@) {
-    print Dumper($@);
-    die "fail";
+    my $ret = getTableData('csv2ds-1');
+    print Dumper($ret);
 }
-print Dumper($ret);
+
+sub tryImportSql {
+    $client->importSQLTable('', 'scrum_task', 'scrum_task');
+
+    my $ret = getTableData('scrum_task');
+    print Dumper($ret);
+}
+
+sub getTableData {
+    my ($table_name) = @_;
+
+    my $ret = eval { $client->getTableData($table_name, 1000); };
+    if ($@) {
+        print Dumper($@);
+        die "fail";
+    }
+    return $ret;
+}
 
 # print "pong\n";
 # $client->importDataSeriesFiles(["/home/anderse/projects/DataSeries/check-data/nfs.set6.20k.ds"],

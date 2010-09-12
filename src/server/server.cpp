@@ -161,56 +161,55 @@ public:
         pid_t pid = fork();
         if (pid < 0) {
             throw RequestError("fork failed");
-        }
-        if (pid == 0) {
-            importCSVFilesChild(source_paths, xml_desc, dest_table, 
-                                field_separator, comment_prefix);
+        } else if (pid == 0) {
+            string xml_desc_path(str(format("xmldesc.%s") % dest_table));
+            ofstream xml_desc_output(xml_desc_path.c_str());
+            xml_desc_output << xml_desc;
+            xml_desc_output.close();
+            SINVARIANT(xml_desc_output.good());
+
+            vector<string> args;
+            args.push_back("csv2ds");
+            args.push_back(str(format("--xml-desc-file=%s") % xml_desc_path));
+            args.push_back(str(format("--field-separator=%s") % field_separator));
+            args.push_back(str(format("--comment-prefix=%s") % comment_prefix));
+            SINVARIANT(source_paths.size() == 1);
+            copy(source_paths.begin(), source_paths.end(), back_inserter(args));
+            args.push_back(tableToPath(dest_table));
+            unlink(tableToPath(dest_table).c_str()); // ignore errors
+
+            exec(args);
         } else {
-            importCSVFilesParent(pid);
+            waitForSuccessfulChild(pid);
+
             ExtentTypeLibrary lib;
             const ExtentType &type(lib.registerTypeR(xml_desc));
             updateTableInfo(dest_table, type.getName());
         }
     }
 
-    void importCSVFilesChild(const vector<string> &source_paths, const string &xml_desc, 
-                             const string &dest_table, const string &field_separator,
-                             const string &comment_prefix) {
-        string xml_desc_path(str(format("xmldesc.%s") % dest_table));
-        ofstream xml_desc_output(xml_desc_path.c_str());
-        xml_desc_output << xml_desc;
-        xml_desc_output.close();
-        SINVARIANT(xml_desc_output.good());
+    void importSQLTable(const string &dsn, const string &src_table, const string &dest_table) {
+        verifyTableName(dest_table);
 
-        vector<string> args;
-        args.push_back("csv2ds");
-        args.push_back(str(format("--xml-desc-file=%s") % xml_desc_path));
-        args.push_back(str(format("--field-separator=%s") % field_separator));
-        args.push_back(str(format("--comment-prefix=%s") % comment_prefix));
-        SINVARIANT(source_paths.size() == 1);
-        copy(source_paths.begin(), source_paths.end(), back_inserter(args));
-        args.push_back(tableToPath(dest_table));
-        unlink(tableToPath(dest_table).c_str()); // ignore errors
+        pid_t pid = fork();
+        if (pid < 0) {
+            throw RequestError("fork failed");
+        } else if (pid == 0) {
+            vector<string> args;
 
-        char **argv = new char *[args.size() + 1];
-        const char *tmp;
-        for (uint32_t i = 0; i < args.size(); ++i) {
-            tmp = args[i].c_str(); // force null termination
-            argv[i] = &args[i][0]; // couldn't figure out how to directly use c_str()
-        }
-        argv[args.size()] = NULL;
-        execvp("csv2ds", argv);
-    }
-
-    void importCSVFilesParent(pid_t pid) {
-        int status = -1;
-        if (waitpid(pid, &status, 0) != pid) {
-            throw RequestError("waitpid() failed");
-        }
-        if (WEXITSTATUS(status) != 0) {
-            throw RequestError("csv2ds failed");
+            args.push_back("sql2ds");
+            if (!dsn.empty()) {
+                args.push_back(str(format("--dsn=%s") % dsn));
+            }
+            args.push_back(src_table);
+            args.push_back(tableToPath(dest_table));
+            exec(args);
+        } else {
+            waitForSuccessfulChild(pid);
+            updateTableInfo(dest_table, src_table); // sql2ds extent type name = src table
         }
     }
+        
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
 	if (source_tables.empty()) {
@@ -277,6 +276,28 @@ private:
     void updateTableInfo(const string &table, const string &extent_type) {
         TableInfo &info(table_info[table]);
         info.extent_type = extent_type;
+    }
+
+    void waitForSuccessfulChild(pid_t pid) {
+        int status = -1;
+        if (waitpid(pid, &status, 0) != pid) {
+            throw RequestError("waitpid() failed");
+        }
+        if (WEXITSTATUS(status) != 0) {
+            throw RequestError("csv2ds failed");
+        }
+    }
+
+    void exec(vector<string> &args) {
+        char **argv = new char *[args.size() + 1];
+        const char *tmp;
+        for (uint32_t i = 0; i < args.size(); ++i) {
+            tmp = args[i].c_str(); // force null termination
+            argv[i] = &args[i][0]; // couldn't figure out how to directly use c_str()
+        }
+        argv[args.size()] = NULL;
+        execvp(args[0].c_str(), argv);
+        FATAL_ERROR(format("exec of %s failed: %s") % args[0] % strerror(errno));
     }
 
     struct TableInfo {

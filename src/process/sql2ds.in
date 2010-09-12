@@ -18,10 +18,6 @@ pod2usage(0) if $man;
 
 my ($src_table, $dest_ds) = @ARGV;
 
-my $basename = $dest_ds;
-die "Expected .ds extention on dataseries file $dest_ds"
-    unless $basename =~ s/\.ds$//o;
-
 =pod
 
 =head1 NAME
@@ -110,17 +106,18 @@ my @xml = qq(<ExtentType namespace="test.example.com" name="$src_table" version=
 map { push(@xml, $_->{xml}) } @info;
 push(@xml, "</ExtentType>\n");
 
-my $xml_fh = new FileHandle ">$basename.xml"
-    or die "Unable to open $basename.xml for write: $!";
-
-print "Using XML description:\n";
-print @xml;
-
+my $xml_fh = new FileHandle ">$dest_ds.xml"
+    or die "Unable to open $dest_ds.xml for write: $!";
 print $xml_fh @xml;
 close($xml_fh);
 
-my $data_fh = new FileHandle ">$basename.data"
-    or die "Unable to open $basename.data for write: $!";
+if (0) {
+    print "Using XML description:\n";
+    print @xml;
+}
+
+my $data_fh = new FileHandle ">$dest_ds.data"
+    or die "Unable to open $dest_ds.data for write: $!";
 
 $| = 1;
 my $rows = 0;
@@ -142,11 +139,14 @@ while (my $array_ref = $sth->fetchrow_arrayref()) {
 close($data_fh);
 print "done, $rows rows\n";
 print "Converting to dataseries...";
-unlink("$basename.ds-new") if -f "$basename.ds-new";
-$ret = system("$csv_to_ds --xml-desc-file=$basename.xml --compress-lzf $basename.data $basename.ds-new");
+unlink("$dest_ds-new") if -f "$dest_ds-new";
+$ret = system("$csv_to_ds --xml-desc-file=$dest_ds.xml --compress-lzf $dest_ds.data $dest_ds-new");
+print "done.\n";
 die "conversion failed" unless $ret == 0;
-rename("$basename.ds-new", "$basename.ds")
-    or die "rename $basename.ds-new $basename.ds failed: $!";
+rename("$dest_ds-new", $dest_ds)
+    or die "rename $dest_ds-new $dest_ds failed: $!";
+unlink("$dest_ds.xml", "$dest_ds.data")
+    or die "rm $dest_ds.xml $dest_ds.data failed: $!";
 
 sub binaryToHex {
     return unpack("H*", $_[0]);
