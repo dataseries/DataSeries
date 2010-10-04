@@ -16,6 +16,7 @@
 #include <boost/foreach.hpp>
 #include <boost/shared_ptr.hpp>
 
+#include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/ProgramOptions.hpp>
 
@@ -47,7 +48,7 @@ public:
     }
 
     virtual void firstExtent(const Extent &e) {
-	// series.setType(e.getType());
+	series.setType(e.getType());
 	output_series.setType(e.getType());
 
 	output_module = new OutputModule(output, output_series, e.getType(), 96*1024);
@@ -113,8 +114,297 @@ public:
     vector<GeneralField *> fields;
 };
 
+struct GVVec {
+    vector<GeneralValue> vec;
+
+    bool operator ==(const GVVec &rhs) const {
+        if (vec.size() != rhs.vec.size()) {
+            return false;
+        }
+        vector<GeneralValue>::const_iterator i = vec.begin(), j = rhs.vec.begin();
+        for (; i != vec.end(); ++i, ++j) {
+            if (*i != *j) { 
+                return false;
+            }
+        }
+            
+        return true;
+    }
+
+    uint32_t hash() const {
+        uint32_t partial_hash = 1942;
+
+        BOOST_FOREACH(const GeneralValue &gv, vec) {
+            partial_hash = gv.hash(partial_hash);
+        }
+        return partial_hash;
+    }
+
+    void print (ostream &to) const {
+        BOOST_FOREACH(const GeneralValue &gv, vec) {
+            to << gv;
+        }
+    }
+
+    void resize(size_t size) {
+        vec.resize(size);
+    }
+
+    size_t size() const {
+        return vec.size();
+    }
+
+    GeneralValue &operator [](size_t offset) {
+        return vec[offset];
+    }
+};
+
+inline ostream & operator << (ostream &to, GVVec &gvvec) {
+    gvvec.print(to);
+    return to;
+}
+
+class HashJoinModule : public DataSeriesModule {
+public:
+    typedef map<string, string> CMap; // column map
+
+    HashJoinModule(DataSeriesModule &a_input, int32_t max_a_rows, DataSeriesModule &b_input,
+                   const map<string, string> &eq_columns, const map<string, string> &keep_columns,
+                   const string &output_table_name) 
+        : a_input(a_input), b_input(b_input), max_a_rows(max_a_rows), 
+          eq_columns(eq_columns), keep_columns(keep_columns), output_extent(NULL),
+          output_table_name(output_table_name)
+    { }
+
+    class Extractor {
+    public:
+        typedef boost::shared_ptr<Extractor> Ptr;
+
+        Extractor(const string &field_name) : field_name(field_name), into() { }
+        virtual void extract(const GVVec &a_val) = 0;
+
+        const string field_name;
+        GeneralField::Ptr into;
+    };
+
+    class ExtractorField : public Extractor {
+    public:
+        static Ptr make(const string &field_name, GeneralField::Ptr from) {
+            return Ptr(new ExtractorField(field_name, from));
+        }
+        virtual void extract(const GVVec &a_val) {
+            into->set(from);
+        }
+
+    private:
+        GeneralField::Ptr from;
+
+        ExtractorField(const string &field_name, GeneralField::Ptr from) 
+            : Extractor(field_name), from(from) 
+        { }
+    };
+
+    class ExtractorValue : public Extractor {
+    public:
+        static Ptr make(const string &field_name, uint32_t pos) {
+            return Ptr(new ExtractorValue(field_name, pos));
+        }
+        
+        virtual void extract(const GVVec &a_val) {
+            SINVARIANT(pos < a_val.size());
+            into->set(a_val.vec[pos]);
+        }
+
+    private:
+        uint32_t pos;
+
+        ExtractorValue(const string &field_name, uint32_t pos) 
+            : Extractor(field_name), pos(pos)
+        { }
+    };
+
+    static const string mapDGet(const map<string, string> &a_map, const string &a_key) {
+        map<string, string>::const_iterator i = a_map.find(a_key);
+        SINVARIANT(i != a_map.end());
+        return i->second;
+    }
+
+    void firstExtent(const Extent &b_e) {
+        ExtentSeries a_series;
+
+        a_series.setExtent(a_input.getExtent());
+        b_series.setType(b_e.getType());
+        if (a_series.getExtent() == NULL) {
+            throw RequestError("a_table is empty?");
+        }
+
+        vector<GeneralField::Ptr> a_eq_fields;
+        HashMap<string, GeneralField::Ptr> a_name_to_b_field, b_name_to_b_field;
+
+        BOOST_FOREACH(const CMap::value_type &vt, eq_columns) {
+            SINVARIANT(a_series.getType()->getFieldType(vt.first)
+                       == b_series.getType()->getFieldType(vt.second));
+            a_eq_fields.push_back(GeneralField::make(a_series, vt.first));
+            b_eq_fields.push_back(GeneralField::make(b_series, vt.second));
+            a_name_to_b_field[vt.first] = b_eq_fields.back();
+            b_name_to_b_field[vt.second] = b_eq_fields.back();
+        }
+
+        vector<GeneralField::Ptr> a_val_fields;
+        HashMap<string, uint32_t> a_name_to_val_pos;
+        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
+            if (prefixequal(vt.first, "a.")) {
+                string field_name(vt.first.substr(2));
+                if (!a_name_to_b_field.exists(field_name)) { // value only
+                    a_name_to_val_pos[field_name] = a_val_fields.size();
+                    a_val_fields.push_back(GeneralField::make(a_series, field_name));
+                }
+            }
+        }
+        string output_xml(str(format("<ExtentType name=\"hash-join -> %s\""
+                                     " namespace=\"server.example.com\" version=\"1.0\">\n")
+                              % output_table_name));
+
+        // Two possible sources for values in the output, either it comes from stored a values
+        // or it comes from a b field, either one of the eq fields or a value field.
+        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
+            string field_name(vt.first.substr(2));
+            string output_field_type;
+            if (prefixequal(vt.first, "a.")) {
+                SINVARIANT(a_series.getType()->hasColumn(field_name));
+                output_field_type = a_series.getType()->getFieldTypeStr(field_name);
+                if (a_name_to_b_field.exists(field_name)) { // extract from the b eq fields.
+                    const GeneralField::Ptr b_field(a_name_to_b_field.dGet(field_name));
+                    SINVARIANT(b_field != NULL);
+                    extractors.push_back(ExtractorField::make(vt.second, b_field));
+                } else { // extract from the a values
+                    SINVARIANT(a_name_to_val_pos.exists(field_name));
+                    extractors.push_back
+                        (ExtractorValue::make(vt.second, a_name_to_val_pos[field_name]));
+                }
+            } else if (prefixequal(vt.first, "b.")) {
+                SINVARIANT(b_series.getType()->hasColumn(field_name));
+                output_field_type = b_series.getType()->getFieldTypeStr(field_name);
+                if (b_name_to_b_field.exists(field_name)) { // extract from the b eq fields.
+                    const GeneralField::Ptr b_field(b_name_to_b_field.dGet(field_name));
+                    SINVARIANT(b_field != NULL);
+                    extractors.push_back(ExtractorField::make(vt.second, b_field));
+                } else { // extract from b series
+                    GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
+                    extractors.push_back(ExtractorField::make(vt.second, b_field));
+                }
+            }
+            if (output_field_type.empty()) continue; // HACK
+            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
+                                  % output_field_type % vt.second));
+        }
+        output_xml.append("</ExtentType>\n");
+                    
+        INVARIANT(!extractors.empty(), "must extract at least one field");
+        int32_t row_count = 0;
+        key.resize(a_eq_fields.size());
+        GVVec val;
+        val.resize(a_val_fields.size());
+        while (1) {
+            if (a_series.getExtent() == NULL) {
+                break;
+            }
+            for(; a_series.more(); a_series.next()) {
+                ++row_count;
+
+                if (row_count >= max_a_rows) {
+                    throw RequestError("a table has too many rows");
+                }
+                extractGVVec(a_eq_fields, key);
+                extractGVVec(a_val_fields, val);
+                a_hashmap[key].push_back(val);
+            }
+            delete a_series.getExtent();
+            a_series.setExtent(a_input.getExtent());
+        }
+
+        ExtentTypeLibrary lib;
+        LintelLog::info(format("output xml: %s") % output_xml);
+        output_series.setType(lib.registerTypeR(output_xml));
+        output_extent = new Extent(*output_series.getType());
+        
+        BOOST_FOREACH(Extractor::Ptr p, extractors) {
+            p->into = GeneralField::make(output_series, p->field_name);
+        }
+    }
+
+    virtual Extent *getExtent() {
+        while (true) {
+            Extent *e = b_input.getExtent();
+            if (e == NULL) {
+                break;
+            }
+            if (output_series.getType() == NULL) {
+                firstExtent(*e);
+            }
+        
+            if (output_series.getExtent() == NULL) {
+                Extent *output_extent = new Extent(*output_series.getType());
+                output_series.setExtent(output_extent); 
+            }
+            for (b_series.setExtent(e); b_series.more(); b_series.next()) {
+                processRow();
+            }
+            if (output_series.getExtent()->size() > 96*1024) {
+                break;
+            }
+        }
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    void processRow() {
+        extractGVVec(b_eq_fields, key);
+        vector<GVVec> *v = a_hashmap.lookup(key);
+        if (v != NULL) {
+            cout << format("%d match on %s\n") % v->size() % key;
+            BOOST_FOREACH(const GVVec &a_vals, *v) {
+                output_series.newRecord();
+                BOOST_FOREACH(Extractor::Ptr p, extractors) {
+                    p->extract(a_vals);
+                }
+            }
+        }
+    }
+
+    static void extractGVVec(vector<GeneralField::Ptr> &fields, GVVec &into) {
+        SINVARIANT(fields.size() == into.size());
+        for (uint32_t i = 0; i < fields.size(); ++i) {
+            into[i].set(fields[i]);
+        }
+    }
+    
+    DataSeriesModule &a_input, &b_input;
+    int32_t max_a_rows;
+    const CMap eq_columns, keep_columns;
+    
+    HashMap< GVVec, vector<GVVec> > a_hashmap;
+    GVVec key;
+    ExtentSeries b_series, output_series;
+    vector<GeneralField::Ptr> b_eq_fields;
+    vector<Extractor::Ptr> extractors;
+    Extent *output_extent;
+    const string output_table_name;
+    
+};
+
 class DataSeriesServerHandler : public DataSeriesServerIf {
 public:
+    struct TableInfo {
+	string extent_type;
+	vector<string> depends_on;
+	Clock::Tfrac last_update;
+	TableInfo() : extent_type(), last_update(0) { }
+    };
+
+    typedef HashMap<string, TableInfo> NameToInfo;
+
     DataSeriesServerHandler() { };
 
     void ping() {
@@ -210,6 +500,40 @@ public:
         }
     }
         
+    void importData(const string &dest_table, const string &xml_desc, const TableData &data) {
+        verifyTableName(dest_table);
+
+        if (data.more_rows) {
+            throw RequestError("can not handle more rows");
+        }
+        ExtentTypeLibrary lib;
+        const ExtentType &type(lib.registerTypeR(xml_desc));
+
+        ExtentSeries output_series(type);
+        DataSeriesSink output_sink(tableToPath(dest_table), Extent::compress_lzf, 1);
+        OutputModule output_module(output_sink, output_series, type, 96*1024);
+
+        output_sink.writeExtentLibrary(lib);
+
+        vector<boost::shared_ptr<GeneralField> > fields;
+        for (uint32_t i = 0; i < type.getNFields(); ++i) {
+            boost::shared_ptr<GeneralField> 
+                tmp(GeneralField::create(output_series, type.getFieldName(i)));
+            fields.push_back(tmp);
+        }
+
+        BOOST_FOREACH(const vector<string> &row, data.rows) {
+            output_module.newRecord();
+            if (row.size() != fields.size()) {
+                throw new RequestError("incorrect number of fields");
+            }
+            for (uint32_t i = 0; i < row.size(); ++i) {
+                fields[i]->set(row[i]);
+            }
+        }
+
+        updateTableInfo(dest_table, type.getName());
+    }
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
 	if (source_tables.empty()) {
@@ -248,10 +572,7 @@ public:
         if (max_rows <= 0) {
             throw RequestError("max_rows must be > 0");
         }
-        NameToInfo::iterator i = table_info.find(source_table);
-        if (i == table_info.end()) {
-            throw TApplicationException("table missing");
-        }
+        NameToInfo::iterator i = getTableInfo(source_table);
 
         TypeIndexModule input(i->second.extent_type);
         input.addSource(tableToPath(source_table));
@@ -260,12 +581,26 @@ public:
         sink.getAndDelete();
     }
 
-    void test() {
-	TypeIndexModule input("NFS trace: attr-ops");
+    void hashJoin(const string &a_table, const string &b_table, const string &out_table,
+                  const map<string, string> &eq_columns, 
+                  const map<string, string> &keep_columns, int32_t max_a_rows) { 
+        NameToInfo::iterator a_info = getTableInfo(a_table);
+        NameToInfo::iterator b_info = getTableInfo(b_table);
 
-	input.addSource("/home/anderse/projects/DataSeries/check-data/nfs.set6.20k.ds");
-	TeeModule tee_op(input, "ds.test");
-	tee_op.getAndDelete();
+        verifyTableName(out_table);
+
+        TypeIndexModule a_input(a_info->second.extent_type);
+        a_input.addSource(tableToPath(a_table));
+        TypeIndexModule b_input(b_info->second.extent_type);
+        b_input.addSource(tableToPath(b_table));
+
+        HashJoinModule hj_module(a_input, max_a_rows, b_input, eq_columns, keep_columns,
+                                 out_table);
+
+        TeeModule output_module(hj_module, tableToPath(out_table));
+        
+        output_module.getAndDelete();
+        updateTableInfo(out_table, hj_module.output_series.getType()->getName());
     }
 
 private:
@@ -300,14 +635,14 @@ private:
         FATAL_ERROR(format("exec of %s failed: %s") % args[0] % strerror(errno));
     }
 
-    struct TableInfo {
-	string extent_type;
-	vector<string> depends_on;
-	Clock::Tfrac last_update;
-	TableInfo() : extent_type(), last_update(0) { }
-    };
+    NameToInfo::iterator getTableInfo(const string &table_name) {
+        NameToInfo::iterator ret = table_info.find(table_name);
+        if (ret == table_info.end()) {
+            throw TApplicationException("table missing");
+        }
+        return ret;
+    }
 
-    typedef HashMap<string, TableInfo> NameToInfo;
     NameToInfo table_info;
 };
 

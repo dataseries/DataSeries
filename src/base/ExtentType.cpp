@@ -640,6 +640,18 @@ ExtentType::fieldType ExtentType::getFieldType(int column) const {
     return rep.field_info[column].type;
 }
 
+namespace {
+    string field_types[] = { 
+        "unknown", "bool", "byte", "int32", "int64", "double", "variable32", "fixedwidth"
+    };
+    uint32_t n_field_types = sizeof(field_types) / sizeof(string);
+}
+
+const string &ExtentType::fieldTypeToStr(fieldType type) {
+    SINVARIANT(type >= 0 && type < n_field_types);
+    return field_types[type];
+}
+
 bool ExtentType::getUnique(int column) const {
     INVARIANT(column >= 0 && column < (int)rep.field_info.size(),
 	      boost::format("internal error, column %d out of range [0..%d]\n")

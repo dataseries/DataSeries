@@ -193,6 +193,15 @@ public:
 	int cnum = getColumnNumber(rep, column, false);
 	return getFieldType(cnum);
     }
+
+    /** Converts a specified field type into the string representation
+        that would be used in the xml specification */
+    static const std::string &fieldTypeToStr(fieldType type);
+
+    const std::string &getFieldTypeStr(const std::string &column) const {
+        return fieldTypeToStr(getFieldType(column));
+    }
+
     /** Returns the size of a field in bytes. For bool and byte fields
         the result is 1, for int32 fields it is 4 and for double and
         int64 fields, 8. It is an error to call this for variable32

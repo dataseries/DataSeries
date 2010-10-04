@@ -1384,7 +1384,9 @@ ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
 { }
 
 void ExtentRecordCopy::prep() {
-    INVARIANT(fixed_copy_size == -1, "internal");
+    SINVARIANT(fixed_copy_size == -1);
+    SINVARIANT(source.type != NULL);
+    SINVARIANT(dest.type != NULL);
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
 	&& &source.type == &dest.type) {
