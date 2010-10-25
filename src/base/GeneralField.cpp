@@ -1383,13 +1383,16 @@ ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
     : fixed_copy_size(-1), source(_source), dest(_dest)
 { }
 
-void ExtentRecordCopy::prep() {
+void ExtentRecordCopy::prep(const ExtentType *copy_type) {
     SINVARIANT(fixed_copy_size == -1);
     SINVARIANT(source.type != NULL);
     SINVARIANT(dest.type != NULL);
+    if (copy_type == NULL) {
+        copy_type = dest.type;
+    }
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
-	&& &source.type == &dest.type) {
+	&& source.getType() == dest.getType() && source.getType() == copy_type) {
 	// Can do a bitwise copy.
 	fixed_copy_size = source.type->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
@@ -1402,12 +1405,12 @@ void ExtentRecordCopy::prep() {
 	}
     } else {
 	fixed_copy_size = 0;
-	for(unsigned i=0;i<source.type->getNFields(); ++i) {
-	    const std::string &fieldname = source.type->getFieldName(i);
-	    sourcefields.push_back(GeneralField::create(NULL,source,fieldname));
+	for(unsigned i=0; i < copy_type->getNFields(); ++i) {
+	    const std::string &fieldname = copy_type->getFieldName(i);
+	    sourcefields.push_back(GeneralField::create(NULL, source, fieldname));
 	    INVARIANT(dest.type->hasColumn(fieldname),
 		      format("Destination for copy is missing field %s") % fieldname);
-	    destfields.push_back(GeneralField::create(NULL,dest,fieldname));
+	    destfields.push_back(GeneralField::create(NULL, dest, fieldname));
 	}
     }
 }

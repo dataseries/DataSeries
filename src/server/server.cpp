@@ -20,8 +20,10 @@
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/ProgramOptions.hpp>
 
-#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.hpp>
+#include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/TFixedField.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
 #include "gen-cpp/DataSeriesServer.h"
@@ -40,7 +42,7 @@ public:
     TeeModule(DataSeriesModule &source_module, const string &output_path)
 	: RowAnalysisModule(source_module), output_path(output_path), 
 	  output_series(), output(output_path, Extent::compress_lzf, 1),
-	  output_module(NULL), copier(series, output_series), row_count(0)
+	  output_module(NULL), copier(series, output_series), row_count(0), first_extent(false)
     { }
 
     virtual ~TeeModule() {
@@ -56,6 +58,7 @@ public:
 	ExtentTypeLibrary library;
 	library.registerType(e.getType());
 	output.writeExtentLibrary(library);
+        first_extent = true;
     }
 
     virtual void processRow() {
@@ -64,12 +67,28 @@ public:
 	copier.copyRecord();
     }
 
+    virtual void completeProcessing() {
+        if (!first_extent) {
+            SINVARIANT(row_count == 0);
+            LintelLog::warn(format("no rows in %s") % output_path);
+            ExtentTypeLibrary library;
+            output.writeExtentLibrary(library);
+        }
+    }
+
+    void close() {
+        delete output_module;
+        output_module = NULL;
+        output.close();
+    }
+
     const string output_path;
     ExtentSeries output_series;
     DataSeriesSink output;
     OutputModule *output_module;
     ExtentRecordCopy copier;
     uint64_t row_count;
+    bool first_extent;
 };
 
 class TableDataModule : public RowAnalysisModule {
@@ -394,6 +413,367 @@ public:
     
 };
 
+class SelectModule : public DataSeriesModule {
+public:
+    SelectModule(DataSeriesModule &source, const string &where_expr_str)
+        : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
+    { }
+
+    virtual ~SelectModule() { }
+
+    Extent *returnOutputSeries() {
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    virtual Extent *getExtent() {
+        while (true) {
+            Extent *in = source.getExtent();
+            if (in == NULL) {
+                return returnOutputSeries();
+            }
+            if (input_series.getType() == NULL) {
+                input_series.setType(in->getType());
+                output_series.setType(in->getType());
+
+                copier.prep();
+                where_expr.reset(DSExpr::make(input_series, where_expr_str));
+            }
+
+            if (output_series.getExtent() == NULL) {
+                output_series.setExtent(new Extent(*output_series.getType()));
+            }
+        
+            for (input_series.setExtent(in); input_series.more(); input_series.next()) {
+                if (where_expr->valBool()) {
+                    output_series.newRecord();
+                    copier.copyRecord();
+                }
+            }
+            if (output_series.getExtent()->size() > 96*1024) {
+                return returnOutputSeries();
+            }
+        }
+    }
+
+    DataSeriesModule &source;
+    string where_expr_str;
+    ExtentSeries input_series, output_series;
+    ExtentRecordCopy copier;
+    boost::shared_ptr<DSExpr> where_expr;
+};
+
+class ProjectModule : public DataSeriesModule {
+public:
+    ProjectModule(DataSeriesModule &source, const vector<string> &keep_columns)
+        : source(source), keep_columns(keep_columns), copier(input_series, output_series)
+    { }
+
+    virtual ~ProjectModule() { }
+
+    Extent *returnOutputSeries() {
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    void firstExtent(Extent &in) {
+        const ExtentType &t(in.getType());
+        input_series.setType(t);
+
+        string output_xml(str(format("<ExtentType name=\"project (%s)\" namespace=\"%s\""
+                                     " version=\"%d.%d\">\n") % t.getName() % t.getNamespace()
+                              % t.majorVersion() % t.minorVersion()));
+        HashUnique<string> kc;
+        BOOST_FOREACH(const string &c, keep_columns) {
+            kc.add(c);
+        }
+        for (uint32_t i = 0; i < t.getNFields(); ++i) {
+            const string &field_name(t.getFieldName(i));
+            if (kc.exists(field_name)) {
+                output_xml.append(t.xmlFieldDesc(field_name));
+            }
+        }
+        output_xml.append("</ExtentType>\n");
+        ExtentTypeLibrary lib;
+        const ExtentType &output_type(lib.registerTypeR(output_xml));
+            
+        output_series.setType(output_type);
+
+        copier.prep();
+    }
+
+    virtual Extent *getExtent() {
+        while (true) {
+            Extent *in = source.getExtent();
+            if (in == NULL) {
+                return returnOutputSeries();
+            }
+            if (input_series.getType() == NULL) {
+                firstExtent(*in);
+            }
+
+            if (output_series.getExtent() == NULL) {
+                output_series.setExtent(new Extent(*output_series.getType()));
+            }
+        
+            for (input_series.setExtent(in); input_series.more(); input_series.next()) {
+                output_series.newRecord();
+                copier.copyRecord();
+            }
+            if (output_series.getExtent()->size() > 96*1024) {
+                return returnOutputSeries();
+            }
+        }
+    }
+
+    DataSeriesModule &source;
+    ExtentSeries input_series, output_series;
+    vector<string> keep_columns;
+    ExtentRecordCopy copier;
+};
+
+
+class PrimaryKey {
+public:
+    PrimaryKey() { }
+
+    void init(ExtentSeries &series, const vector<string> &field_names) {
+        fields.reserve(field_names.size());
+        BOOST_FOREACH(const string &name, field_names) {
+            fields.push_back(GeneralField::make(series, name));
+        }
+    }
+
+    bool operator <(const PrimaryKey &rhs) const {
+        SINVARIANT(fields.size() == rhs.fields.size());
+        for (size_t i=0; i < fields.size(); ++i) {
+            if (*fields[i] < *rhs.fields[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool operator ==(const PrimaryKey &rhs) const {
+        SINVARIANT(fields.size() == rhs.fields.size());
+        for (size_t i=0; i < fields.size(); ++i) {
+            if (*fields[i] != *rhs.fields[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void print(ostream &to) const {
+        to << "(";
+        BOOST_FOREACH(GeneralField::Ptr f, fields) {
+            to << *f;
+        }
+        to << ")";
+    }
+
+    vector<GeneralField::Ptr> fields;
+};
+
+ostream &operator <<(ostream &to, const PrimaryKey &key) {
+    key.print(to);
+    return to;
+}
+
+class SortedUpdateModule : public DataSeriesModule {
+public:
+    SortedUpdateModule(TypeIndexModule &base_input, TypeIndexModule &update_input,
+                       const string &update_column, const vector<string> &primary_key) 
+        : base_input(base_input), update_input(update_input), 
+          base_series(), update_series(), output_series(),  base_copier(base_series, output_series),
+          update_copier(update_series, output_series), update_column(update_series, update_column),
+          primary_key_names(primary_key),  base_primary_key(), update_primary_key()
+    { }
+
+    inline bool outputExtentSmall() {
+        return output_series.getExtent()->size() < 96 * 1024;
+    }
+
+    virtual Extent *getExtent() {
+        processMergeExtents();
+        if (output_series.getExtent() != NULL && outputExtentSmall()) {
+            // something more to do..
+            SINVARIANT(base_series.getExtent() == NULL || update_series.getExtent() == NULL);
+            if (base_series.getExtent() != NULL) {
+                processBaseExtents();
+            } else if (update_series.getExtent() != NULL) {
+                processUpdateExtents();
+            } else {
+                // both are done.
+            }
+        }
+
+        return returnOutputSeries();
+    }
+
+    // TODO: lots of cut and paste, near identical code here; seems like we should be able
+    // to be more efficient somehow.
+    void processMergeExtents() {
+        while (true) {
+            if (base_series.getExtent() == NULL) {
+                base_series.setExtent(base_input.getExtent());
+            }
+            if (update_series.getExtent() == NULL) {
+                update_series.setExtent(update_input.getExtent());
+            }
+
+            if (base_series.getExtent() == NULL || update_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "no more extents of one type");
+                break;
+            }
+
+            if (output_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "make output extent");
+                output_series.setExtent(new Extent(base_series.getExtent()->getType()));
+            }
+
+            if (!outputExtentSmall()) {
+                break;
+            }
+
+            if (base_primary_key.fields.empty()) {
+                base_primary_key.init(base_series, primary_key_names);
+                update_primary_key.init(update_series, primary_key_names);
+                base_copier.prep();
+                update_copier.prep();
+            }
+           
+            if (base_primary_key < update_primary_key) {
+                copyBase();
+                advance(base_series);
+            } else {
+                doUpdate();
+                advance(update_series);
+            }
+        }
+    }
+
+    void processBaseExtents() {
+        SINVARIANT(update_input.getExtent() == NULL);
+        LintelLogDebug("SortedUpdate", "process base only...");
+        while (true) {
+            if (base_series.getExtent() == NULL) {
+                base_series.setExtent(base_input.getExtent());
+            }
+
+            if (base_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "no more base extents");
+                break;
+            }
+
+            if (output_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "make output extent");
+                output_series.setExtent(new Extent(base_series.getExtent()->getType()));
+            }
+
+            if (!outputExtentSmall()) {
+                break;
+            }
+
+            copyBase();
+            advance(base_series);
+        }            
+    }
+
+    void processUpdateExtents() {
+        LintelLogDebug("SortedUpdate", "process update only...");
+        while (true) {
+            if (update_series.getExtent() == NULL) {
+                update_series.setExtent(update_input.getExtent());
+            }
+
+            if (update_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "no more update extents");
+                break;
+            }
+
+            if (output_series.getExtent() == NULL) {
+                LintelLogDebug("SortedUpdate", "make output extent");
+                output_series.setExtent(new Extent(update_series.getExtent()->getType()));
+            }
+
+            if (!outputExtentSmall()) {
+                break;
+            }
+
+            doUpdate();
+            advance(update_series);
+        }            
+    }
+
+    void copyBase() {
+        LintelLogDebug("SortedUpdate", "copy-base");
+        output_series.newRecord();
+        base_copier.copyRecord();
+    }
+
+    void doUpdate() {
+        switch (update_column()) 
+            {
+            case 1: doUpdateInsert(); break;
+            case 2: doUpdateReplace(); break;
+            case 3: doUpdateDelete(); break;
+            default: throw RequestError(str(format("invalid update column value %d")
+                                            % static_cast<uint32_t>(update_column())));
+            }
+    }
+
+    void doUpdateInsert() {
+        copyUpdate();
+    }
+
+    void doUpdateReplace() {
+        if (base_series.getExtent() != NULL && base_primary_key == update_primary_key) {
+            copyUpdate();
+            advance(base_series);
+        } else {
+            copyUpdate(); // equivalent to insert
+        }
+    }
+
+    void doUpdateDelete() {
+        if (base_series.getExtent() != NULL && base_primary_key == update_primary_key) {
+            advance(base_series);
+        } else {
+            // already deleted
+        }
+    }
+
+    void copyUpdate() {
+        LintelLogDebug("SortedUpdate", "copy-base");
+        output_series.newRecord();
+        update_copier.copyRecord();
+    }
+
+    void advance(ExtentSeries &series) {
+        series.next();
+        if (!series.more()) {
+            delete series.getExtent();
+            series.clearExtent();
+        }
+    }
+
+    Extent *returnOutputSeries() {
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    DataSeriesModule &base_input, &update_input;
+    ExtentSeries base_series, update_series, output_series;
+    ExtentRecordCopy base_copier, update_copier;
+    TFixedField<uint8_t> update_column;
+    const vector<string> primary_key_names;
+    PrimaryKey base_primary_key, update_primary_key;
+};
+
 class DataSeriesServerHandler : public DataSeriesServerIf {
 public:
     struct TableInfo {
@@ -411,13 +791,13 @@ public:
 	LintelLog::info("ping()");
     }
 
-    void verifyTableName(const string &name) {
-	if (name.size() >= 200) {
-	    throw InvalidTableName(name, "name too long");
-	}
-	if (name.find('/') != string::npos) {
-	    throw InvalidTableName(name, "contains /");
-	}
+    bool hasTable(const string &table_name) {
+        try {
+            getTableInfo(table_name);
+            return true;
+        } catch (TApplicationException &e) {
+            return false;
+        }
     }
 
     void importDataSeriesFiles(const vector<string> &source_paths, const string &extent_type, 
@@ -567,7 +947,8 @@ public:
 	importDataSeriesFiles(input_paths, source_extent_type, dest_table);
     }
 
-    void getTableData(TableData &ret, const string &source_table, int32_t max_rows) {
+    void getTableData(TableData &ret, const string &source_table, int32_t max_rows, 
+                      const string &where_expr) {
         verifyTableName(source_table);
         if (max_rows <= 0) {
             throw RequestError("max_rows must be > 0");
@@ -576,7 +957,14 @@ public:
 
         TypeIndexModule input(i->second.extent_type);
         input.addSource(tableToPath(source_table));
-        TableDataModule sink(input, ret, max_rows);
+        DataSeriesModule *mod = &input;
+        boost::scoped_ptr<DataSeriesModule> select_module;
+        if (!where_expr.empty()) {
+            select_module.reset(new SelectModule(input, where_expr));
+            mod = select_module.get();
+        }
+
+        TableDataModule sink(*mod, ret, max_rows);
 
         sink.getAndDelete();
     }
@@ -603,9 +991,70 @@ public:
         updateTableInfo(out_table, hj_module.output_series.getType()->getName());
     }
 
+    void selectRows(const string &in_table, const string &out_table, const string &where_expr) {
+        verifyTableName(in_table);
+        verifyTableName(out_table);
+        NameToInfo::iterator info = getTableInfo(in_table);
+        TypeIndexModule input(info->second.extent_type);
+        input.addSource(tableToPath(in_table));
+        SelectModule select(input, where_expr);
+        TeeModule output_module(select, tableToPath(out_table));
+
+        output_module.getAndDelete();
+        updateTableInfo(out_table, info->second.extent_type);
+    }
+
+    void projectTable(const string &in_table, const string &out_table, 
+                      const vector<string> &keep_columns) {
+        verifyTableName(in_table);
+        verifyTableName(out_table);
+
+        NameToInfo::iterator info = getTableInfo(in_table);
+        TypeIndexModule input(info->second.extent_type);
+        input.addSource(tableToPath(in_table));
+        ProjectModule project(input, keep_columns);
+        TeeModule output_module(project, tableToPath(out_table));
+        output_module.getAndDelete();
+        updateTableInfo(out_table, project.output_series.getType()->getName());
+    }
+
+    void sortedUpdateTable(const string &base_table, const string &update_from, 
+                           const string &update_column, const vector<string> &primary_key) {
+        verifyTableName(base_table);
+        verifyTableName(update_from);
+
+        // TODO: handle empty base table...
+        NameToInfo::iterator base_info(getTableInfo(base_table));
+        NameToInfo::iterator update_info(getTableInfo(update_from));
+
+        TypeIndexModule base_input(base_info->second.extent_type);
+        base_input.addSource(tableToPath(base_table));
+
+        TypeIndexModule update_input(update_info->second.extent_type);
+        update_input.addSource(tableToPath(update_from));
+
+        SortedUpdateModule updater(base_input, update_input, update_column, primary_key);
+
+        TeeModule output_module(updater, tableToPath(base_table, "tmp."));
+        output_module.getAndDelete();
+        output_module.close();
+        string from(tableToPath(base_table, "tmp.")), to(tableToPath(base_table));
+        int ret = rename(from.c_str(), to.c_str());
+        INVARIANT(ret == 0, format("rename %s -> %s failed: %s") % from % to % strerror(errno));
+    }
+
 private:
-    string tableToPath(const string &table_name) {
-        return string("ds.") + table_name;
+    void verifyTableName(const string &name) {
+	if (name.size() >= 200) {
+	    throw InvalidTableName(name, "name too long");
+	}
+	if (name.find('/') != string::npos) {
+	    throw InvalidTableName(name, "contains /");
+	}
+    }
+
+    string tableToPath(const string &table_name, const string &prefix = "ds.") {
+        return prefix + table_name;
     }
 
     void updateTableInfo(const string &table, const string &extent_type) {
@@ -638,7 +1087,7 @@ private:
     NameToInfo::iterator getTableInfo(const string &table_name) {
         NameToInfo::iterator ret = table_info.find(table_name);
         if (ret == table_info.end()) {
-            throw TApplicationException("table missing");
+            throw TApplicationException(str(format("table %s missing") % table_name));
         }
         return ret;
     }
@@ -672,6 +1121,7 @@ void setupWorkingDirectory() {
 }
 
 int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
     shared_ptr<TProtocolFactory> protocolFactory(new TBinaryProtocolFactory());
     shared_ptr<DataSeriesServerHandler> handler(new DataSeriesServerHandler());
     shared_ptr<TProcessor> processor(new DataSeriesServerProcessor(handler));

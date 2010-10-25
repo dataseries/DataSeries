@@ -31,7 +31,8 @@ class SequenceModule;
 class RowAnalysisModule : public DataSeriesModule {
 public:
     RowAnalysisModule(DataSeriesModule &source,
-		      ExtentSeries::typeCompatibilityT type_compatibility = ExtentSeries::typeExact);
+		      ExtentSeries::typeCompatibilityT type_compatibility 
+                      = ExtentSeries::typeExact);
     virtual ~RowAnalysisModule();
     
     virtual Extent *getExtent();

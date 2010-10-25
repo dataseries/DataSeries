@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <boost/utility.hpp>
+#include <boost/smart_ptr.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
 
@@ -84,10 +85,16 @@ public:
 
     virtual void dump(std::ostream &) = 0;
 
-    // deprecated
-    static DSExpr *make(ExtentSeries &series, std::string &expr_string);
-    // deprecated
-    static std::string usage();
+    static DSExpr *make(ExtentSeries &series, std::string &expr_string) {
+        boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
+        return parser->parse(series, expr_string);
+    }
+
+    static std::string usage() {
+        boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
+        return parser->getUsage();
+    }
+
 };
 
 #endif

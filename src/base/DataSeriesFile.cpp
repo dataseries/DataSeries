@@ -276,8 +276,7 @@ DataSeriesSink::~DataSeriesSink() {
 }
 
 void DataSeriesSink::close(bool do_fsync) {
-    INVARIANT(wrote_library,
-	      "error: never wrote the extent type library?!");
+    INVARIANT(wrote_library, "error: never wrote the extent type library?!");
     INVARIANT(cur_offset >= 0, "error: close called twice?!");
 
     mutex.lock();
@@ -350,22 +349,18 @@ void DataSeriesSink::close(bool do_fsync) {
 
 void DataSeriesSink::checkedWrite(const void *buf, int bufsize) {
     ssize_t ret = write(fd,buf,bufsize);
-    INVARIANT(ret != -1,
-	      boost::format("Error on write of %d bytes: %s")
+    INVARIANT(ret != -1, boost::format("Error on write of %d bytes: %s")
 	      % bufsize % strerror(errno));
     INVARIANT(ret == bufsize,
-	      boost::format("Partial write %d bytes out of %d bytes (disk full?): %s")
+              boost::format("Partial write %d bytes out of %d bytes (disk full?): %s")
 	      % ret % bufsize % strerror(errno));
 }
 
 void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
-    INVARIANT(wrote_library,
-	      "must write extent type library before writing extents!\n");
-    INVARIANT(valid_types[&e.type],
-	      boost::format("type %s (%p) wasn't in your type library")
+    INVARIANT(wrote_library, "must write extent type library before writing extents!\n");
+    INVARIANT(valid_types[&e.type], boost::format("type %s (%p) wasn't in your type library")
 	      % e.type.getName() % &e.type);
-    INVARIANT(!shutdown_workers,
-	      "must not call writeExtent after calling close()");
+    INVARIANT(!shutdown_workers, "must not call writeExtent after calling close()");
     queueWriteExtent(e, stats);
 }
 

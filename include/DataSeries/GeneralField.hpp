@@ -492,8 +492,9 @@ class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
     /** Prepares the copy structure to do the copy.  Will be automatically
-	called by copyRecord() if necessary. */
-    void prep();
+	called by copyRecord() if necessary. type specifies the type to copy, so
+        we can do a subset; defaults to the type of dest if NULL */
+    void prep(const ExtentType *type = NULL);
     ~ExtentRecordCopy();
     /** Copies the current record of the source @c ExtentSeries to the
         current record of the destination @c ExtentSeries. */

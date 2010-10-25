@@ -2,7 +2,7 @@
 use strict;
 use Data::Dumper;
 
-use lib '/home/anderse/build/opt-debian-5.0-x86_64/DataSeries.dblike/src/server/gen-perl';
+use lib '/home/anderse/build/opt-debian-5.0-x86_64/DataSeries.server/src/server/gen-perl';
 use lib '/home/anderse/projects/thrift/lib/perl/lib';
 
 use Thrift::BinaryProtocol;
@@ -22,7 +22,10 @@ $client->ping();
 # tryImportCSV();
 # tryImportSql();
 # tryImportData();
-tryHashJoin();
+# tryHashJoin();
+# trySelect();
+# tryProject();
+tryUpdate();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -68,8 +71,6 @@ END
                            [[ 'on', 5, 1371, 111111, 11.0, "abcde" ],
                             [ 'on', 5, 1371, 111111, 11.0, "1q2w3e" ],
                             [ 'off', 7, 12345, 999999999999, 123.456, "fghij" ] ]}));
-
-    print Dumper(getTableData("test-import"));
 }
 
 sub tryHashJoin {
@@ -100,10 +101,72 @@ END
     print Dumper(getTableData("test-hash-join"));
 }
 
-sub getTableData {
-    my ($table_name) = @_;
+sub trySelect {
+    tryImportData();
+    $client->selectRows("test-import", "test-select", "int32 == 1371");
+    print Dumper(getTableData('test-select'));
 
-    my $ret = eval { $client->getTableData($table_name, 1000); };
+    print Dumper(getTableData('test-import', undef, 'int32 == 1371'));
+}
+
+sub tryProject {
+    tryImportData();
+
+    $client->projectTable('test-import', 'test-project', [ qw/bool int32 variable32/ ]);
+    print Dumper(getTableData('test-project'));
+}
+
+sub tryUpdate {
+    my $base_fields = <<'END';
+  <field type="variable32" name="type" pack_unique="yes" />
+  <field type="int32" name="count" />
+END
+
+    my $base_xml = <<"END";
+<ExtentType name="base-table" namespace="simpl.hpl.hp.com" version="1.0">
+$base_fields
+</ExtentType>
+END
+
+    my $update_xml = <<"END";
+<ExtentType name="base-table" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="byte" name="update-op" />
+$base_fields
+</ExtentType>
+END
+
+    $client->importData("base-table", $base_xml, new TableData
+                        ({ 'rows' =>
+                           [[ "abc", 5 ],
+                            [ "def", 6 ],
+                            [ "ghi", 0 ],
+                            [ "jkl", 7 ], ]}));
+
+    $client->importData("update-table", $update_xml, new TableData
+                        ({ 'rows' =>
+                           [[ 1, "aaa", 3 ],
+                            [ 2, "abc", 9 ],
+                            [ 3, "def", 0 ],
+                            [ 2, "ghi", 5 ] ]}));
+
+    $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
+    print Dumper(getTableData("base-table"));
+
+    $client->importData("update-table", $update_xml, new TableData
+                        ({ 'rows' =>
+                           [[ 3, "aaa", 0 ],
+                            [ 2, "mno", 1 ],
+                            [ 1, "pqr", 2 ] ]}));
+    $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
+    print Dumper(getTableData("base-table"));
+}
+
+sub getTableData {
+    my ($table_name, $max_rows, $where_expr) = @_;
+
+    $max_rows ||= 1000;
+    $where_expr ||= '';
+    my $ret = eval { $client->getTableData($table_name, $max_rows, $where_expr); };
     if ($@) {
         print Dumper($@);
         die "fail";
