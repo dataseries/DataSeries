@@ -102,6 +102,7 @@ public:
      * as implmenting strictlylessthan and using that to build the
      * comparison. */
     bool strictlylessthan(const GeneralValue &gv) const; 
+
     /** return this == gv */
     bool equal(const GeneralValue &gv) const;
 
