@@ -45,6 +45,9 @@ DATASERIES_SCRIPT_TEST(typefiltermodule)
 DATASERIES_PROGRAM_NOINST(extent-write-callback)
 DATASERIES_SCRIPT_TEST(extent-write-callback)
 
+DATASERIES_PROGRAM_NOINST(generate-incomplete-ds)
+DATASERIES_SCRIPT_TEST(dsrecover)
+
 # TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)
 DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
