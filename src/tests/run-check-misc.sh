@@ -9,8 +9,8 @@
 set -e
 
 ./misc
-../process/ds2txt --skip-index test.ds >test.txt
-cmp $1/check-data/complex.txt test.txt
+../process/ds2txt --skip-index misc.ds >misc.txt
+cmp $1/check-data/complex.txt misc.txt
 
 ../process/ds2txt --skip-index $1/check-data/complex.ds-littleend >complex-little.txt
 cmp $1/check-data/complex.txt complex-little.txt
@@ -26,6 +26,6 @@ else
     exit 1
 fi
 
-rm test.ds test.txt complex-little.txt 
+rm misc.ds misc.txt complex-little.txt 
 
 exit 0

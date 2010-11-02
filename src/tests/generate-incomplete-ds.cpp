@@ -13,7 +13,7 @@ int main(int argc, char *argv[]) {
         ExtentTypeLibrary library;
         const ExtentType &type = library.registerTypeR(type_string);
 
-        DataSeriesSink sink("test.ds", Extent::compress_lzf);
+        DataSeriesSink sink("incomplete-ds-file.ds", Extent::compress_lzf);
         ExtentSeries series(type);
         OutputModule output(sink, series, type, 4 * 1024);
         Int64Field number(series, "number");

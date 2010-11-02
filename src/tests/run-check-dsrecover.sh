@@ -9,18 +9,18 @@
 set -e 
 
 # recover a valid file and compare expected outputs
-../process/dsrecover $1/check-data/h03126.ds-littleend test1.ds
+../process/dsrecover $1/check-data/h03126.ds-littleend test-recover.ds
 
 ../process/ds2txt --skip-all $1/check-data/h03126.ds-littleend > expected.txt
-../process/ds2txt --skip-all test1.ds > recovered.txt
+../process/ds2txt --skip-all test-recover.ds > recovered.txt
 cmp expected.txt recovered.txt
 
 # recover an invalid file and compare expected outputs
 ./generate-incomplete-ds
-../process/dsrecover test.ds test2.ds
-../process/ds2txt --skip-all test2.ds > recovered.txt
+../process/dsrecover incomplete-ds-file.ds recovered-ds-file.ds
+../process/ds2txt --skip-all recovered-ds-file.ds > recovered.txt
 cmp $1/check-data/check.dsrecover.txt recovered.txt
 
 # cleanup and exit
-rm test.ds test1.ds test2.ds recovered.txt expected.txt
+rm test-recover.ds incomplete-ds-file.ds recovered-ds-file.ds recovered.txt expected.txt
 exit 0

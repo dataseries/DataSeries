@@ -701,7 +701,7 @@ test_makecomplexfile()
 "</ExtentType>");
     ExtentTypeLibrary library;
     const ExtentType &outputtype(library.registerTypeR(complextype));
-    DataSeriesSink output("test.ds");
+    DataSeriesSink output("misc.ds");
     output.writeExtentLibrary(library);
     ExtentSeries outputseries(outputtype);
     OutputModule outmodule(output,outputseries,outputtype,30000);
