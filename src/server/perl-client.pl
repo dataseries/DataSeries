@@ -159,6 +159,8 @@ END
                             [ 1, "pqr", 2 ] ]}));
     $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
     print Dumper(getTableData("base-table"));
+
+    # TODO: Add test for empty update..., and in general for empty extents in all the ops
 }
 
 sub getTableData {

@@ -37,6 +37,19 @@ using namespace dataseries;
 using boost::shared_ptr;
 using boost::format;
 
+class ThrowError {
+public:
+    void requestError(const string &msg) {
+        LintelLog::warn(format("request error: %s") % msg);
+        throw RequestError(msg);
+    }
+
+    void invalidTableName(const string &table, const string &msg) {
+        LintelLog::warn(format("invalid table name '%s': %s") % table % msg);
+        throw InvalidTableName(table, msg);
+    }
+};
+
 class TeeModule : public RowAnalysisModule {
 public:
     TeeModule(DataSeriesModule &source_module, const string &output_path)
@@ -183,7 +196,7 @@ inline ostream & operator << (ostream &to, GVVec &gvvec) {
     return to;
 }
 
-class HashJoinModule : public DataSeriesModule {
+class HashJoinModule : public DataSeriesModule, public ThrowError {
 public:
     typedef map<string, string> CMap; // column map
 
@@ -254,7 +267,7 @@ public:
         a_series.setExtent(a_input.getExtent());
         b_series.setType(b_e.getType());
         if (a_series.getExtent() == NULL) {
-            throw RequestError("a_table is empty?");
+            requestError("a_table is empty?");
         }
 
         vector<GeneralField::Ptr> a_eq_fields;
@@ -332,7 +345,7 @@ public:
                 ++row_count;
 
                 if (row_count >= max_a_rows) {
-                    throw RequestError("a table has too many rows");
+                    requestError("a table has too many rows");
                 }
                 extractGVVec(a_eq_fields, key);
                 extractGVVec(a_val_fields, val);
@@ -582,7 +595,7 @@ ostream &operator <<(ostream &to, const PrimaryKey &key) {
     return to;
 }
 
-class SortedUpdateModule : public DataSeriesModule {
+class SortedUpdateModule : public DataSeriesModule, public ThrowError {
 public:
     SortedUpdateModule(TypeIndexModule &base_input, TypeIndexModule &update_input,
                        const string &update_column, const vector<string> &primary_key) 
@@ -634,6 +647,17 @@ public:
                 output_series.setExtent(new Extent(base_series.getExtent()->getType()));
             }
 
+            if (!base_series.more()) { // tolerate empty base_series extents
+                delete base_series.getExtent();
+                base_series.clearExtent();
+                continue;
+            }
+
+            if (!update_series.more()) { // tolerate empty update_series extents
+                delete update_series.getExtent();
+                update_series.clearExtent();
+                continue;
+            }
             if (!outputExtentSmall()) {
                 break;
             }
@@ -720,7 +744,7 @@ public:
             case 1: doUpdateInsert(); break;
             case 2: doUpdateReplace(); break;
             case 3: doUpdateDelete(); break;
-            default: throw RequestError(str(format("invalid update column value %d")
+            default: requestError(str(format("invalid update column value %d")
                                             % static_cast<uint32_t>(update_column())));
             }
     }
@@ -747,7 +771,7 @@ public:
     }
 
     void copyUpdate() {
-        LintelLogDebug("SortedUpdate", "copy-base");
+        LintelLogDebug("SortedUpdate", "copy-update");
         output_series.newRecord();
         update_copier.copyRecord();
     }
@@ -774,10 +798,10 @@ public:
     PrimaryKey base_primary_key, update_primary_key;
 };
 
-class DataSeriesServerHandler : public DataSeriesServerIf {
+class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
     struct TableInfo {
-	string extent_type;
+	const ExtentType *extent_type;
 	vector<string> depends_on;
 	Clock::Tfrac last_update;
 	TableInfo() : extent_type(), last_update(0) { }
@@ -804,7 +828,7 @@ public:
 			       const string &dest_table) {
 	verifyTableName(dest_table);
 	if (extent_type.empty()) {
-	    throw RequestError("extent type empty");
+	    requestError("extent type empty");
 	}
 
 	TypeIndexModule input(extent_type);
@@ -814,7 +838,7 @@ public:
 	}
 	tee_op.getAndDelete();
 	TableInfo &ti(table_info[dest_table]);
-	ti.extent_type = extent_type;
+	ti.extent_type = input.getType();
 	ti.last_update = Clock::todTfrac();
     }
 
@@ -822,15 +846,15 @@ public:
                         const string &dest_table, const string &field_separator,
                         const string &comment_prefix) {
 	if (source_paths.empty()) {
-	    throw RequestError("missing source paths");
+	    requestError("missing source paths");
 	}
         if (source_paths.size() > 1) {
-            throw RequestError("only supporting single insert");
+            requestError("only supporting single insert");
         }
 	verifyTableName(dest_table);
         pid_t pid = fork();
         if (pid < 0) {
-            throw RequestError("fork failed");
+            requestError("fork failed");
         } else if (pid == 0) {
             string xml_desc_path(str(format("xmldesc.%s") % dest_table));
             ofstream xml_desc_output(xml_desc_path.c_str());
@@ -854,7 +878,7 @@ public:
 
             ExtentTypeLibrary lib;
             const ExtentType &type(lib.registerTypeR(xml_desc));
-            updateTableInfo(dest_table, type.getName());
+            updateTableInfo(dest_table, &type);
         }
     }
 
@@ -863,7 +887,7 @@ public:
 
         pid_t pid = fork();
         if (pid < 0) {
-            throw RequestError("fork failed");
+            requestError("fork failed");
         } else if (pid == 0) {
             vector<string> args;
 
@@ -876,7 +900,8 @@ public:
             exec(args);
         } else {
             waitForSuccessfulChild(pid);
-            updateTableInfo(dest_table, src_table); // sql2ds extent type name = src table
+            FATAL_ERROR("broken, need to get src table extent type");
+            updateTableInfo(dest_table, NULL); // sql2ds extent type name = src table
         }
     }
         
@@ -884,7 +909,7 @@ public:
         verifyTableName(dest_table);
 
         if (data.more_rows) {
-            throw RequestError("can not handle more rows");
+            requestError("can not handle more rows");
         }
         ExtentTypeLibrary lib;
         const ExtentType &type(lib.registerTypeR(xml_desc));
@@ -905,19 +930,19 @@ public:
         BOOST_FOREACH(const vector<string> &row, data.rows) {
             output_module.newRecord();
             if (row.size() != fields.size()) {
-                throw new RequestError("incorrect number of fields");
+                requestError("incorrect number of fields");
             }
             for (uint32_t i = 0; i < row.size(); ++i) {
                 fields[i]->set(row[i]);
             }
         }
 
-        updateTableInfo(dest_table, type.getName());
+        updateTableInfo(dest_table, &type);
     }
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
 	if (source_tables.empty()) {
-	    throw RequestError("missing source tables");
+	    requestError("missing source tables");
 	}
 	verifyTableName(dest_table);
 	vector<string> input_paths;
@@ -925,24 +950,25 @@ public:
 	string source_extent_type;
 	BOOST_FOREACH(const string &table, source_tables) {
 	    if (table == dest_table) {
-		throw InvalidTableName(table, "duplicated with destination table");
+		invalidTableName(table, "duplicated with destination table");
 	    }
 	    TableInfo *ti = table_info.lookup(table);
 	    if (ti == NULL) {
-		throw InvalidTableName(table, "table not present");
+		invalidTableName(table, "table not present");
 	    }
 	    if (source_extent_type.empty()) {
-		source_extent_type = ti->extent_type;
+		source_extent_type = ti->extent_type->getName();
 	    }
-	    if (source_extent_type != ti->extent_type) {
-		throw InvalidTableName(table, str(format("extent type '%s' does not match earlier table types of '%s'")
-						  % ti->extent_type % source_extent_type));
+	    if (source_extent_type != ti->extent_type->getName()) {
+		invalidTableName(table, str(format("extent type '%s' does not match earlier table"
+                                                   " types of '%s'")
+                                            % ti->extent_type % source_extent_type));
 	    }
 				       
 	    input_paths.push_back(tableToPath(table));
 	}
 	if (source_extent_type.empty()) {
-	    throw RequestError("internal: extent type is missing?");
+	    requestError("internal: extent type is missing?");
 	}
 	importDataSeriesFiles(input_paths, source_extent_type, dest_table);
     }
@@ -951,11 +977,11 @@ public:
                       const string &where_expr) {
         verifyTableName(source_table);
         if (max_rows <= 0) {
-            throw RequestError("max_rows must be > 0");
+            requestError("max_rows must be > 0");
         }
         NameToInfo::iterator i = getTableInfo(source_table);
 
-        TypeIndexModule input(i->second.extent_type);
+        TypeIndexModule input(i->second.extent_type->getName());
         input.addSource(tableToPath(source_table));
         DataSeriesModule *mod = &input;
         boost::scoped_ptr<DataSeriesModule> select_module;
@@ -977,9 +1003,9 @@ public:
 
         verifyTableName(out_table);
 
-        TypeIndexModule a_input(a_info->second.extent_type);
+        TypeIndexModule a_input(a_info->second.extent_type->getName());
         a_input.addSource(tableToPath(a_table));
-        TypeIndexModule b_input(b_info->second.extent_type);
+        TypeIndexModule b_input(b_info->second.extent_type->getName());
         b_input.addSource(tableToPath(b_table));
 
         HashJoinModule hj_module(a_input, max_a_rows, b_input, eq_columns, keep_columns,
@@ -988,14 +1014,14 @@ public:
         TeeModule output_module(hj_module, tableToPath(out_table));
         
         output_module.getAndDelete();
-        updateTableInfo(out_table, hj_module.output_series.getType()->getName());
+        updateTableInfo(out_table, hj_module.output_series.getType());
     }
 
     void selectRows(const string &in_table, const string &out_table, const string &where_expr) {
         verifyTableName(in_table);
         verifyTableName(out_table);
         NameToInfo::iterator info = getTableInfo(in_table);
-        TypeIndexModule input(info->second.extent_type);
+        TypeIndexModule input(info->second.extent_type->getName());
         input.addSource(tableToPath(in_table));
         SelectModule select(input, where_expr);
         TeeModule output_module(select, tableToPath(out_table));
@@ -1010,12 +1036,12 @@ public:
         verifyTableName(out_table);
 
         NameToInfo::iterator info = getTableInfo(in_table);
-        TypeIndexModule input(info->second.extent_type);
+        TypeIndexModule input(info->second.extent_type->getName());
         input.addSource(tableToPath(in_table));
         ProjectModule project(input, keep_columns);
         TeeModule output_module(project, tableToPath(out_table));
         output_module.getAndDelete();
-        updateTableInfo(out_table, project.output_series.getType()->getName());
+        updateTableInfo(out_table, project.output_series.getType());
     }
 
     void sortedUpdateTable(const string &base_table, const string &update_from, 
@@ -1023,14 +1049,16 @@ public:
         verifyTableName(base_table);
         verifyTableName(update_from);
 
-        // TODO: handle empty base table...
-        NameToInfo::iterator base_info(getTableInfo(base_table));
         NameToInfo::iterator update_info(getTableInfo(update_from));
+        NameToInfo::iterator base_info = table_info.find(base_table);
+        if (base_info == table_info.end()) {
+            base_info = createTable(base_table, update_info, update_column);
+        }
 
-        TypeIndexModule base_input(base_info->second.extent_type);
+        TypeIndexModule base_input(base_info->second.extent_type->getName());
         base_input.addSource(tableToPath(base_table));
 
-        TypeIndexModule update_input(update_info->second.extent_type);
+        TypeIndexModule update_input(update_info->second.extent_type->getName());
         update_input.addSource(tableToPath(update_from));
 
         SortedUpdateModule updater(base_input, update_input, update_column, primary_key);
@@ -1046,10 +1074,10 @@ public:
 private:
     void verifyTableName(const string &name) {
 	if (name.size() >= 200) {
-	    throw InvalidTableName(name, "name too long");
+	    invalidTableName(name, "name too long");
 	}
 	if (name.find('/') != string::npos) {
-	    throw InvalidTableName(name, "contains /");
+	    invalidTableName(name, "contains /");
 	}
     }
 
@@ -1057,7 +1085,7 @@ private:
         return prefix + table_name;
     }
 
-    void updateTableInfo(const string &table, const string &extent_type) {
+    void updateTableInfo(const string &table, const ExtentType *extent_type) {
         TableInfo &info(table_info[table]);
         info.extent_type = extent_type;
     }
@@ -1065,11 +1093,40 @@ private:
     void waitForSuccessfulChild(pid_t pid) {
         int status = -1;
         if (waitpid(pid, &status, 0) != pid) {
-            throw RequestError("waitpid() failed");
+            requestError("waitpid() failed");
         }
         if (WEXITSTATUS(status) != 0) {
-            throw RequestError("csv2ds failed");
+            requestError("csv2ds failed");
         }
+    }
+
+    NameToInfo::iterator 
+    createTable(const string &table_name, NameToInfo::iterator update_table, 
+                const std::string &update_column) {
+        const ExtentType *from_type = update_table->second.extent_type;
+        string extent_type = str(format("<ExtentType name=\"%s\" namespace=\"%s\""
+                                        " version=\"%d.%d\">") % table_name 
+                                 % from_type->getNamespace() % from_type->majorVersion()
+                                 % from_type->minorVersion());
+
+        for (uint32_t i = 0; i < from_type->getNFields(); ++i) {
+            string field_name = from_type->getFieldName(i);
+            if (field_name == update_column) {
+                continue; // ignore
+            }
+            extent_type.append(from_type->xmlFieldDesc(field_name));
+        }
+        extent_type.append("</ExtentType>");
+
+        DataSeriesSink output(tableToPath(table_name), Extent::compress_lzf, 1);
+        ExtentTypeLibrary library;
+        const ExtentType &type(library.registerTypeR(extent_type));
+        output.writeExtentLibrary(library);
+        Extent tmp(type);
+        output.writeExtent(tmp, NULL);
+        output.close();
+        updateTableInfo(table_name, library.getTypeByName(table_name));
+        return getTableInfo(table_name);
     }
 
     void exec(vector<string> &args) {
@@ -1087,7 +1144,7 @@ private:
     NameToInfo::iterator getTableInfo(const string &table_name) {
         NameToInfo::iterator ret = table_info.find(table_name);
         if (ret == table_info.end()) {
-            throw TApplicationException(str(format("table %s missing") % table_name));
+            invalidTableName(table_name, "table missing");
         }
         return ret;
     }

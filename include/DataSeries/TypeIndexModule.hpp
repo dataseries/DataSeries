@@ -39,6 +39,10 @@ public:
     void sameInputFiles(TypeIndexModule &from) {
 	inputFiles = from.inputFiles;
     }
+
+    const ExtentType *getType() {
+        return my_type;
+    }
 protected:
     std::string type_match, second_type_match;
     ExtentSeries indexSeries;
