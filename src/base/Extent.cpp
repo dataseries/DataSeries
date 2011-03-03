@@ -44,8 +44,9 @@ extern "C" {
 
 #include <Lintel/Clock.hpp>
 #include <Lintel/HashTable.hpp>
-#include <Lintel/StringUtil.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/PThread.hpp>
+#include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
@@ -532,6 +533,8 @@ Extent::uncompactNulls(Extent::ByteArray &fixed_coded,
     }
 }
 
+static const uint32_t max_packed_size = 512*1024*1024;
+
 static const unsigned variable_sizes_batch_size = 1024;
 
 // Note: Can't split this into pack fixed and pack variable because 
@@ -806,6 +809,10 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 
     int headersize = 6*4+4*1+type.getName().size();
     headersize += (4 - headersize % 4) % 4;
+    INVARIANT(compressed_fixed->size() < max_packed_size 
+              && compressed_variable->size() < max_packed_size,
+              boost::format("very large packed sizes (>%d bytes) indicates misuse: sizes=%d/%d")
+              % max_packed_size % compressed_fixed->size() % compressed_variable->size());
     int extentsize = headersize;
     extentsize += compressed_fixed->size();
     extentsize += (4 - extentsize % 4) % 4;
@@ -1423,8 +1430,8 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     }
     offset += prefix_size;
     byte *l = into.begin();
-    int32 compressed_fixed = *(int32 *)l; l += 4;
-    int32 compressed_variable = *(int32 *)l; l += 4;
+    int32_t compressed_fixed = *(int32_t *)l; l += 4;
+    int32_t compressed_variable = *(int32_t *)l; l += 4;
     int32 typenamelen = into[6*4+2];
     if (need_bitflip) {
 	compressed_fixed = flip4bytes(compressed_fixed);
@@ -1436,12 +1443,18 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     }
     INVARIANT(compressed_fixed >= 0 && compressed_variable >= 0
 	      && typenamelen >= 0, "Error reading extent");
-    int extentsize = prefix_size+typenamelen;
+    INVARIANT(static_cast<uint32_t>(compressed_fixed) < max_packed_size 
+              && static_cast<uint32_t>(compressed_variable) < max_packed_size,
+              boost::format("Excessively large extent is almost definitely corruption sizes=%d/%d")
+              % compressed_fixed % compressed_variable);
+    uint64_t extentsize = prefix_size+typenamelen;
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_fixed;
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable;
     extentsize += (4 - extentsize % 4) % 4;
+    LintelLogDebug("Extent/size", boost::format("%d %d %d %d ~= %d") % prefix_size % typenamelen
+                   % compressed_fixed % compressed_variable % extentsize);
     into.resize(extentsize, false);
     checkedPread(fd, offset, into.begin() + prefix_size, 
 		 extentsize - prefix_size);

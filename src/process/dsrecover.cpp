@@ -23,6 +23,7 @@ lintel::ProgramOption<int32_t> po_fail_limit
 ("fail-limit", "limit of # of consecutive failures before bailing on the rest of input", 10);
 
 int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
     commonPackingArgs packing_args;
     getPackingArgs(&argc, argv, &packing_args);
     

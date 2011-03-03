@@ -87,7 +87,7 @@ public:
             if (newsize <= oldsize) {
                 // shrink
                 endV = beginV + newsize;
-            } else if (beginV + newsize <= maxV) {
+            } else if (newsize < static_cast<size_t>(maxV - beginV)) {
                 endV = beginV + newsize;
                 if (zero_it) {
                     memset(beginV + oldsize,0,newsize - oldsize);
