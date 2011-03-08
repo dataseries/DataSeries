@@ -1050,6 +1050,7 @@ Extent::uncompressBytes(byte *into, byte *from,
     int32 outsize = -1;
     if (compression_mode == compress_mode_none) {
 	outsize = fromsize;
+        SINVARIANT(intosize >= fromsize);
 	memcpy(into, from, fromsize);
 #if DATASERIES_ENABLE_LZO
     } else if (compression_mode == compress_mode_lzo) {
