@@ -1,0 +1,51 @@
+Source: dataseries
+# Priority option; shouldn't conflict with anything else, could be extra since people are unlikely
+# to install it unless they know what it is.
+Priority: optional
+Maintainer: Eric Anderson <anderse@hpl.hp.com>
+Build-Depends: debhelper (>= 7), cmake, liblintel-dev
+Standards-Version: 3.9.1
+Section: utils
+Homepage: http://tesla.hpl.hp.com/opensource/
+
+Package: libdataseries0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: TODO: fill in
+ TODO: fill in
+
+# TODO: should we split out the utilities into multiple pieces so that we don't have
+# quite as many dependencies on utils?
+Package: dataseries-utils
+Section: utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libdataseries0, libdataseries-perl
+Description: TODO: fill in
+ TODO: fill in
+
+Package: libdataseries-dev-doc
+Section: doc
+Architecture: all
+Depends: ${misc:Depends}
+Recommends: libdataseries-dev
+Description: TODO: fill in
+ TODO: fill in
+
+Package: libdataseries-dev
+Section: libdevel
+Architecture: any
+Depends: libdataseries0 (= ${binary:Version}), ${misc:Depends}
+Recommends: liblintel-dev-doc
+Description: TODO: fill in
+ TODO: fill in
+
+# Looks like the convention is to not have the perl libraries versioned.  We could split out
+# the binary independent portions, but that doesn't seem worthwhile.
+Package: libdataseries-perl
+Section: perl
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}
+Description: TODO: fill in
+ TODO: fill in
+

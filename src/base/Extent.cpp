@@ -22,15 +22,15 @@
 #define pread64 pread
 #endif
 
-#ifndef DATASERIES_ENABLE_BZ2
-#define DATASERIES_ENABLE_BZ2 0
+#ifndef DATASERIES_ENABLE_BZIP2
+#define DATASERIES_ENABLE_BZIP2 0
 #endif
 
 #ifndef DATASERIES_ENABLE_LZO
 #define DATASERIES_ENABLE_LZO 0
 #endif
 
-#if DATASERIES_ENABLE_BZ2
+#if DATASERIES_ENABLE_BZIP2
 #include <bzlib.h>
 #endif
 #if DATASERIES_ENABLE_LZO
@@ -863,7 +863,7 @@ bool
 Extent::packBZ2(byte *input, int32 inputsize,
 		Extent::ByteArray &into, int compression_level)
 {
-#if DATASERIES_ENABLE_BZ2    
+#if DATASERIES_ENABLE_BZIP2    
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -1070,7 +1070,7 @@ Extent::uncompressBytes(byte *into, byte *from,
 			     (const Bytef *)from, fromsize);
 	INVARIANT(ret == Z_OK, "Error decompressing extent!");
 	outsize = destlen;
-#if DATASERIES_ENABLE_BZ2
+#if DATASERIES_ENABLE_BZIP2
     } else if (compression_mode == compress_mode_bz2) {
 	unsigned int destlen = intosize;
 	int ret = BZ2_bzBuffToBuffDecompress((char *)into,

@@ -36,6 +36,13 @@ IF(NOT LINTEL_program-options_ENABLED)
     MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
 ENDIF(NOT LINTEL_program-options_ENABLED)
 
+#### Threads
+
+INCLUDE(FindThreads)
+INCLUDE(FindBoost)
+SET(BOOST_THREAD_FIND_REQUIRED ON)
+LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-mt")
+
 #### LibXML2
 
 INCLUDE(FindLibXml2)

@@ -1,0 +1,113 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# TODO: once we stop supporting lenny, upgrade to using the dh command.
+
+#export DH_VERBOSE=1
+
+debian/build/config-stamp: 
+	dh_testdir
+	mkdir -p debian/build
+	(cd debian/build; cmake -DCMAKE_INSTALL_PREFIX=/usr ../..)
+	touch $@
+
+build: build-stamp
+build-stamp:  debian/build/config-stamp
+	dh_testdir
+
+	# TODO: remove the -j6, also run tests.
+	printenv
+	(cd debian/build && $(MAKE))
+#	(cd debian/build && ctest)
+
+	touch $@
+
+clean: 
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp 
+
+	[ ! -d debian/build ] || rm -rf debian/build
+
+	dh_clean
+
+TMP_USR=$(CURDIR)/debian/tmp/usr
+install: build
+	dh_testdir
+	dh_testroot
+	dh_prep
+	dh_installdirs
+
+	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
+	./debian/fix-install.sh $(CURDIR)/debian/tmp
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+	dh_testdir -i
+	dh_testroot -i
+	dh_installchangelogs -i
+	dh_installdocs -i
+	dh_installexamples -i
+#	dh_installmenu
+#	dh_installdebconf
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installcatalogs
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+#	dh_installwm
+#	dh_installudev
+#	dh_lintian
+#	dh_bugfiles
+#	dh_undocumented
+	dh_installman -i
+	dh_link -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_perl -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir -a
+	dh_testroot -a
+	# TODO: auto-make changelog from version control if needed
+	dh_installchangelogs -a
+	dh_installdocs -a
+	dh_installexamples -a
+	dh_install -a
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman -a
+	dh_link -a
+	dh_strip -a
+	dh_compress -a
+	dh_fixperms -a
+	dh_perl -a
+#	dh_python
+	dh_makeshlibs -a -v
+	dh_installdeb -a
+	# CMake seems to be forcing the linking with libraries that dataseries depends on 
+	# for all the binaries even though they don't directly need it.  
+	dh_shlibdeps -a
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+	# TODO: set up pbuilder for testing build.
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install 
