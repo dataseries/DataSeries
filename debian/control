@@ -12,40 +12,54 @@ Package: libdataseries0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Description: TODO: fill in
- TODO: fill in
+Description: DataSeries shared library
+ DataSeries is a library for efficient access to serial structured data.
+ The C++ shared library is required by all programs that use DataSeries.
+ This package should probably never be directly installed but instead only
+ as a dependency of some other package.
 
 # TODO: should we split out the utilities into multiple pieces so that we don't have
 # quite as many dependencies on utils?
 Package: dataseries-utils
 Section: utils
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libdataseries0, libdataseries-perl
-Description: TODO: fill in
- TODO: fill in
+Depends: ${shlibs:Depends}, ${misc:Depends}, libdataseries0
+Recommends: lintel-utils
+Description: Utilities to manipulate/import to/export from DataSeries files 
+ The DataSeries utilities are the programs that either a) operate on DataSeries
+ files, e.g. calculating various statistics, selecting a subset of a file,
+ converting the compression type in the files; b) convert some input source
+ file into DataSeries, e.g. comma separated values, or lsf accounting files, or
+ pcap network traces into DataSeries files; c) convert some input DataSeries
+ file into some other format, for example, into text, or comma separated
+ values, or back into the original input format for reversable conversions; or
+ d) perform some analysis on the dataseries files, e.g. calculating statistics
+ on packet arrival rates, or calculating mean LSF cluster utilization.  These
+ utilities are likely to be the package that end users want to install, and if
+ they want to then write a custom analysis the libdataseries-dev package.  If
+ lintel-utils is also installed then the batch-parallel modules can be used for
+ bulk processing.
+ 
 
 Package: libdataseries-dev-doc
 Section: doc
 Architecture: all
 Depends: ${misc:Depends}
 Recommends: libdataseries-dev
-Description: TODO: fill in
- TODO: fill in
+Description: DataSeries development documentation
+ This package contains all of the documentation for libdataseries-dev, mostly
+ the auto-generated doxygen documentation.  This package is only useful if you
+ have already installed libdataseries-dev since without that package, the
+ documentation in this one covers nothing that is installed.
 
 Package: libdataseries-dev
 Section: libdevel
 Architecture: any
 Depends: libdataseries0 (= ${binary:Version}), ${misc:Depends}
 Recommends: liblintel-dev-doc
-Description: TODO: fill in
- TODO: fill in
-
-# Looks like the convention is to not have the perl libraries versioned.  We could split out
-# the binary independent portions, but that doesn't seem worthwhile.
-Package: libdataseries-perl
-Section: perl
-Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}
-Description: TODO: fill in
- TODO: fill in
-
+Description: DataSeries development include files and link library
+ DataSeries is a library for efficient access to serial structured data.
+ Serial structured data is roughly tabular, i.e. typed columns that are
+ accessed sequentially.  The development libraries are necessary for writing
+ new DataSeries programs, but not for accessing existing DataSeries programs as
+ those can be found in dataseries-utils.

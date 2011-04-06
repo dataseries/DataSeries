@@ -16,7 +16,6 @@ build-stamp:  debian/build/config-stamp
 	dh_testdir
 
 	# TODO: remove the -j6, also run tests.
-	printenv
 	(cd debian/build && $(MAKE))
 #	(cd debian/build && ctest)
 
@@ -40,7 +39,6 @@ install: build
 
 	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
 	./debian/fix-install.sh $(CURDIR)/debian/tmp
-
 
 # Build architecture-independent files here.
 binary-indep: build install

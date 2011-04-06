@@ -5,8 +5,27 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    Select subset of fields from a collection of traces, generate a new trace
+/*
+=pod
+
+=head1 NAME
+
+dsselect - Select subset of fields from a collection of traces, generate a new trace
+
+=head1 SYNOPSIS
+
+ % dsselect [common-args] [--where='expression'] type-prefix field,field,field input.ds... output.ds
+
+=head1 DESCRIPTION
+
+dsselect allows you to calculate subset (both in rows and columns) of an existing dataseries file.
+So you can, for example, run dsselect --where='size > 10' box_number,size boxes.ds big-boxes.ds to
+extract only the box_number and size columns and only extract rows where the size is at least 10.
+
+=head1 SEE ALSO
+
+dataseries-utils(7)
+
 */
 
 #include <sys/types.h>

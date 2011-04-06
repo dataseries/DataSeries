@@ -15,3 +15,14 @@ for i in debian/tmp/usr/bin/* debian/tmp/usr/lib/libDataSeries.so.*; do
         *) echo "File '$i' has unknown type '$TYPE'"; exit 1 ;;
     esac
 done
+
+OVERRIDES=debian/tmp/usr/share/lintian/overrides
+mkdir -p $OVERRIDES
+for i in `grep \^Package: debian/control | awk '{print $2}'`; do
+    echo "Fixing lintian override for $i"
+    cat <<EOF >$OVERRIDES/$i 
+# The only GPL code is lindump-mmap which does not link with openssl
+# override lintians 'wild guess'
+$i binary: possible-gpl-code-linked-with-openssl
+EOF
+done

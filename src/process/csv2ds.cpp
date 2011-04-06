@@ -24,6 +24,7 @@
 
 /*
 =pod
+
 =head1 NAME
 
 csv2ds - convert a comma separated value file into dataseries.
@@ -101,6 +102,8 @@ Make csv2ds able to auto-infer field types
 Generate a manpage
 
 =back
+
+=cut
 
 */
 

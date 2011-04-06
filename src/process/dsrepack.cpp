@@ -10,10 +10,6 @@
 */
 
 /* 
-TODO: add the Makefile.am bits to turn this into a manpage during installation.
-pod2man dsrepack.C | sed 's/User Contributed Perl/DataSeries/' does the
-right thing.
-
 =pod
 
 =head1 NAME
@@ -28,7 +24,7 @@ dsrepack [common-options] [--target-file-size=MiB] [--no-info]
 =head1 DESCRIPTION
 
 In the simplest case, dsrepack takes the input files, and copies them
-to the output filename changing the extent size and compresion level
+to the output filename changing the extent size and compression level
 as specified in the common options.  If max-file-size is set,
 output-filename is used as a base name, and the actual output names
 will be output-filename.##.ds, starting from 0.
@@ -62,9 +58,11 @@ Do not generate the Info::DSRepack extent.  This means that the output files
 will contain exactly the same information as the source files.  Normally the
 info extent is generated so the compression options for a file are known.
 
+=back
+
 =head1 SEE ALSO
 
-dataseries(7), dsselect(1)
+dataseries-utils(7), dsselect(1)
 
 =cut
 */

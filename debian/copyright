@@ -1,3 +1,7 @@
+# TODO-debian-reviewer: Should I be generating different copyright files
+# for the different packages?  Some of the copyright terms, e.g. the
+# ones for lindump-mmap only apply to lintel-utils.
+
 This package was debianized by Eric Anderson <anderse@hpl.hp.com> on
 Mon, 28 Mar 2011 10:17:01 -0800.
 
@@ -76,5 +80,10 @@ It was downloaded from <http://tesla.hpl.hp.com/opensource>
     ---------
     
     src/raw-collection/lindump-mmap.c was originally copyrighted under the
-    GPL with the extentions copyrighted as above.
+    GPL version 2 with the extentions copyrighted as above.
+
+    ---------
+
+    Debian note (not part of original copyright):
+    The GPLv2 is contained in /usr/share/common-licenses/GPL-2
 

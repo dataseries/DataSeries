@@ -16,3 +16,5 @@ LINTEL_DOCS_BUILD()
 ADD_SUBDIRECTORY(tr)
 ADD_SUBDIRECTORY(os-review-2008)
 ADD_SUBDIRECTORY(fast2009-nfs-analysis)
+
+LINTEL_POD2MAN(dataseries-utils.pod 7 ${DATASERIES_POD2MAN_RELEASE} "Misc." dataseries-utils.7)

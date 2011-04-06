@@ -53,7 +53,7 @@ int sigcount = 0;
 static void 
 signal_handler(int sig) {
     ++sigcount;
-    cerr << format("signal %d recieved %d count, abort after 20") % sig % sigcount << endl;
+    cerr << format("signal %d received %d count, abort after 20") % sig % sigcount << endl;
     everyone_ok = false;
     if (sigcount > 20)
 	abort();

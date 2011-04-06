@@ -101,8 +101,8 @@ LINTEL_WITH_LIBRARY(PCRE pcre.h pcre)
 SET(PCAP_MISSING_EXTRA "  will skip building nettrace2ds, network-driverdump")
 LINTEL_WITH_HEADER(PCAP pcap.h)
 
-SET(LINUX_COMPILER_MISSING_EXTRA "  will skip building lindump-mmap")
-LINTEL_WITH_HEADER(LINUX_COMPILER linux/compiler.h)
+SET(LINUX_IF_PACKET_MISSING_EXTRA "  will skip building lindump-mmap")
+LINTEL_WITH_HEADER(LINUX_IF_PACKET linux/if_packet.h)
 
 INCLUDE(FindBoost)
 
@@ -122,6 +122,11 @@ LINTEL_WITH_PERL_MODULE(PERL_CRYPT_RIJNDAEL Crypt::Rijndael)
 INCLUDE(LintelDocs)
 
 LINTEL_DOCS_CONFIG("DataSeries")
+LINTEL_POD2MAN_SETUP()
+# TODO: consider redoing lintel in the same way as this, it's way more convinient.
+# then this could just be LINTEL_POD2MAN_RELEASE since it's likely constant for
+# any individual cmake package.
+SET(DATASERIES_POD2MAN_RELEASE "DataSeries ${DATASERIES_VERSION}")
 
 #### Misc Options
 

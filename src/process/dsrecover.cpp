@@ -5,8 +5,30 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    Recover any data that was successfully written to the specified DataSeries file.
+/*
+=pod
+
+=head1 NAME
+
+dsrecover - Recover any data that was successfully written to the specified DataSeries file.
+
+=head1 SYNOPSIS
+
+ % dsrecover [--fail-limit=10] [common-args] input output
+
+=head1 DESCRIPTION
+
+DataSeries files include a trailer in order to make reading the files more efficient.  However, it
+the writer of a file crashed, they may not have written the trailer, and they may have partially
+written an extent.  dsrecover attempts to read as much of a dataseries file as possible.  If an
+individual extent is corrupt it will skip that extent and try to tread the next one.  It will keep
+trying until it either reaches the end of the file or it has up to fail-limit consecutive failures.
+
+=head1 SEE ALSO
+
+dataseries-utils(7)
+
+=cut
 */
 
 #include <boost/format.hpp>
@@ -31,8 +53,7 @@ int main(int argc, char *argv[]) {
     
     // confirm that we have valid arguments remaining
     if (argc < 2) {
-        LintelLog::error("Must specify both an input to recover and an output to recover to.");
-        std::cout << "dsrecover <input file> <output file>" << std::endl;
+        cout << format("Usage: %s dsrecover <input file> <output file>\n") % argv[0];
         return -1;
     }
 
@@ -52,16 +73,16 @@ int main(int argc, char *argv[]) {
     DataSeriesSource &source = *source_ptr;
 
     const ExtentTypeLibrary &library = source.getLibrary();    
-    ExtentTypeLibrary newLibrary;
-    for (std::map<const std::string, const ExtentType *>::const_iterator
+    ExtentTypeLibrary new_library;
+    for (map<const string, const ExtentType *>::const_iterator
 	     i = library.name_to_type.begin(); i != library.name_to_type.end(); i++) {
 	if (!prefixequal(i->second->getName(), "DataSeries: ")) {
-	    newLibrary.registerType(*i->second);
+	    new_library.registerType(*i->second);
 	}
     }
 	
     DataSeriesSink sink(unparsed[1], packing_args.compress_modes, packing_args.compress_level);
-    sink.writeExtentLibrary(newLibrary);
+    sink.writeExtentLibrary(new_library);
 
     int32_t fails = 0;
 

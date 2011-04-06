@@ -9,6 +9,33 @@
     Convert dataseries files back into the Ellard text format
 */
 
+/* 
+=pod
+
+=head1 NAME
+
+ds2ellardnfs - convert the Ellard-style NFS files from dataseries back to the original text format
+
+=head1 SYNOPSIS
+
+  % ds2ellardnfs file-1.ds [file-2.ds] >files.txt
+
+=head1 DESCRIPTION
+
+The ds2ellardnfs program converts files in dataseries format back to the original text format.
+This allows for easy verification that the files were converted correctly because you can run
+ellardnfs2ds and then take the resulting ds file and run it through ds2ellardnfs and compare
+that the resulting output is the same as the original input.  The batch-parallel module
+ellardnfs2ds will perform this check by default.
+
+=head1 SEE ALSO
+
+ellardnfs2ds(1)
+
+=cut
+
+*/
+
 #include <Lintel/StringUtil.hpp>
 
 #include <DataSeries/PrefetchBufferModule.hpp>
