@@ -4,11 +4,30 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    indexer for NFS Common DataSeries files
+/*
+=pod
+
+=head1 NAME
+
+indexnfscommon - indexer for NFS Common DataSeries files
+
+=head1 SYNOPSIS
+
+ % indexnfscommon <index.ds> <nfs-common-files.ds...>
+
+=head1 DESCRIPTION
+
+A bad version of dsextentindex that is specific to nfs common files.
+
+=head1 BUGS
+
+TODO: obsolete this program, merge it into dsextentindex
+
+=cut
 */
 
-// TODO: obsolete this program, merge it into dsextentindex
+
+
 
 #include <sys/types.h>
 #include <sys/stat.h>

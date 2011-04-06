@@ -2,6 +2,34 @@
    (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
+
+=pod
+
+=head1 NAME
+
+pssimple2ds - convert the output of ps-trace-simplify to dataseries
+
+=head1 SYNOPSIS
+
+ % pssimple2ds [common-args] I<input.txt> I<output.ds> [I<min-record-time>]
+
+=head1 DESCRIPTION
+
+pssimple2ds converts the output of ps-trace-simplify into dataseries.  It allows process traces to
+then be used in other analysis, e.g. lvpvprocessusage.
+
+=head1 BUGS
+
+This program can probably be replaced entirely with csv2ds and dsselect for min-record-time.
+
+The documentation is minimal.
+
+=head1 SEE ALSO
+
+dataseries-utils(7), lvpvprocessusage(1), ps-trace-simplify(1)
+
+=cut
+
 */
 
 #include <errno.h>

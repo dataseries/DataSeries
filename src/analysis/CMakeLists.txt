@@ -6,9 +6,9 @@
 # cmake rules for the src/analysis directory
 
 DATASERIES_PROGRAM(wcanalysis)
-DATASERIES_PROGRAM(lsfdsanalysis 
-	lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
+DATASERIES_PROGRAM(lsfdsanalysis lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
 DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
+DATASERIES_PROGRAM(lvpvprocessusage)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
     LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)
