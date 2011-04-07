@@ -14,6 +14,49 @@ use Data::Dumper;
 use Getopt::Long;
 use Fcntl ':seek';
 
+=pod
+
+=head1 NAME
+
+dstypes2cxx - Generate template code for writing a C++ analysis
+
+=head1 SYNOPSIS
+
+ % dstypes2cxx [OPTIONS] file.ds...
+ % dstypes2cxx [OPTIONS] < C++ source code with XML description
+ % dstypes2cxx [OPTIONS] < xml description
+
+=head1 DESCRIPTION
+
+dstypes2cxx takes the XML extracted from a DataSeries file, or the XML present in a C++ source code
+or a text file and converts it to the template of a dataseries analysis program.  It is able to
+generate a few different varieties of the template depending on the specified options.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --prefix I<typename>=I<varprefix>
+
+For the specified typename, stick the specified prefix on the beginning of all the variable names.
+This option is useful for modules that will need multiple extent type inputs (a join) where some
+of the columns are named similarly.  You can also use -p instead of --prefix.
+
+=item --ds2txt I<path>
+
+Specify the path to ds2txt.
+
+=item --output-form={rowanalysismodule,basic,dsmodule}
+
+Specify the format of the template to generate.  Defaults to rowanalysismodule, i.e. a class that
+inherits from RowAnalysisModule.  The other options are basic which generates code that could just
+be included into a main(), and dsmodule which is a generic dataseries module.
+
+=back
+
+=cut
+
+
 my %prefixes;
 my $ds2txt = "@CMAKE_INSTALL_PREFIX@/bin/ds2txt";
 my @outputs = qw(basic rowanalysismodule dsmodule);

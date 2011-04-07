@@ -1,4 +1,5 @@
 #!@PERL_EXECUTABLE@ -w
+# -*- Perl -*-
 #
 # (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
 #
@@ -11,8 +12,33 @@ use FileHandle;
 use File::Copy;
 use File::Find;
 
+=pod
+
+=head1 NAME
+
+lsflog-timesplit - split bacct files into separate files based on the underlying timestamps.
+
+=head1 SYNOPSIS
+
+ % lsflog-timesplit I<base-dir> <file{,.gz,.bz2}|directory>...
+
+=head1 DESCRIPTION
+
+Two glitches can occur when collecting bacct logs: 1) you can get long log files that contain
+multiple days in them.  2) If rotation glitches then you can get multiple files with the same log
+entries in them.  The former problem can make conversion take longer than expected, especially if
+you need to update the converter to parse the job names.  The latter problem can result in invalid
+graphs because the same jobs will be counted multiple times.
+
+lsflog-timesplit fixes both these problems by breaking the accounting log files into separate files
+for each day and making sure that each individual file has no duplicate rows.  The normal use is to
+specify the root directory for the rotated logs + the path to the current log file.
+lsflog-timesplit will avoid processing unchanged files multiple times.
+
+=cut
+
 die "Usage: $0 <basedir> <file{,.gz,.bz2}|dir>...
-  Timesplit files will be written into ?"
+  Timesplit files will be written into <basedir>"
     unless @ARGV >= 2 && -d $ARGV[0];
 
 my $basedir = shift @ARGV;

@@ -73,10 +73,10 @@ ENDIF(BUILD_EXAMPLE)
 
 ################################## SCRIPTS
 
-LINTEL_INSTALL_CONFIG_PROGRAM(dataseries-config)
+DATASERIES_INSTALL_CONFIG_PROGRAM(dataseries-config)
 
 IF(PERL_XML_PARSER_ENABLED)
-    LINTEL_INSTALL_CONFIG_PROGRAM(dstypes2cxx)
+    DATASERIES_INSTALL_CONFIG_PROGRAM(dstypes2cxx)
 ENDIF(PERL_XML_PARSER_ENABLED)
 
 ################################## MISC

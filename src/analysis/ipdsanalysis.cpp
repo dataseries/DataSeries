@@ -49,6 +49,7 @@ entries, and then print out the entires.
 
 =back
 
+=cut
 */
 
 // TODO: update this to handle the newer style trace files.
@@ -421,7 +422,7 @@ private:
 	    }
 	    while ((packet_raw - cur_time_raw) > interval_width_raw) {
 		// update statistics for the interval from cur_time to cur_time + interval_width
-		// all packets in p_i_f must have been recieved in that interval
+		// all packets in p_i_f must have been received in that interval
 		double bw = cur_bytes_in_queue * MiB_per_second_convert;
 		MiB_per_second.add(bw);
 		double pps = packets_in_flight.size() * kpackets_per_second_convert;

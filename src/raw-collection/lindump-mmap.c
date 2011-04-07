@@ -15,6 +15,35 @@ static int no_file_rotation = 0;
 #define __always_inline		inline __attribute__((always_inline))
 #endif
 
+/*
+=pod
+
+=head1 NAME
+
+lindump-mmap - faster packet capture than tcpdump on linux
+
+=head1 SYNOPSIS
+
+ % lindump-mmap <device...> <output-basename>
+
+=head1 DESCRIPTION
+
+When capturing partial packets or filtering traces substantially based on a packet filtering
+specification, tcpdump will usually have sufficient performance to capture the data.  However, if
+full packet captures are required, tcpdump will fall behind on busy networks.  lindump-mmap uses a
+linux specific ring-buffer interface to speed up the capture.  It's interface however is much
+simpler, you can just specify the list of devices and the basename of the files to output.
+lindump-mmap will capture full packets in pcap format and will rotate to different output files
+every 200MB.
+
+=head1 SEE ALSO
+
+tcpdump(1), /usr/share/doc/DataSeries/fast2009-nfs-analysis.pdf
+
+=cut
+ */
+
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
