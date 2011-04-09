@@ -11,9 +11,8 @@ Group:          Development/Libraries
 License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-BuildRequires:   Lintel-devel
+BuildRequires:  Lintel-devel
 
-# TODO: do we split shared libraries as in debian?
 %package	libs
 Summary:        DataSeries library files
 Group:          Development/Libraries
@@ -33,6 +32,7 @@ Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}, %{name}-perl
 License:        BSD
 
+# TODO-package-reviewer: how do we make this package architecture independent?
 %package	docs
 Summary:        DataSeries development files documentation
 Group:          Development/Libraries
@@ -99,6 +99,7 @@ strip $RPM_BUILD_ROOT/usr/lib64/libDataSeries*.so.*.*
 
 %clean
 rm -rf $RPM_BUILD_ROOT rpm-build
+./redhat/rules clean
 
 %files libs
 %{_libdir}/libDataSeries.so.*
@@ -113,7 +114,9 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 /usr/share/cmake-modules
 
 %files utils
-%{_bindir}/*
+# skip dataseries-config
+%{_bindir}/[a-ce-z]*
+%{_bindir}/d[b-z]*
 /usr/share/bp_modules/BatchParallel
 /usr/share/man/man1/*
 /usr/share/doc/DataSeries-utils/README
