@@ -155,7 +155,6 @@ ENDIF(WITH_INSTALLED_RPATH)
 
 #### latex Documentation
 
-# TODO: add tests for amssymb.sty; was in tetex-extra on debian
 INCLUDE(LintelCMakeUtil)
 
 LINTEL_LATEX_CONFIG()
@@ -165,6 +164,6 @@ IF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
     MESSAGE("  latex-documentation will remain un-built")
 ENDIF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
 
-LINTEL_LATEX_REQUIRES(BUILD_TECH_REPORT "DataSeries Tech Report" fullpage.sty)
+LINTEL_LATEX_REQUIRES(BUILD_TECH_REPORT "DataSeries Tech Report" fullpage.sty epsf.sty)
 LINTEL_LATEX_REQUIRES(BUILD_OSR_2008 "DataSeries OSR 2008 paper" ptmb8t.tfm ptmb8t.vf) 
 LINTEL_LATEX_REQUIRES(BUILD_FAST_2009 "FAST 2009 NFS Analysis paper" fullpage.sty)

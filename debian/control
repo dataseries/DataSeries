@@ -3,7 +3,10 @@ Source: dataseries
 # to install it unless they know what it is.
 Priority: optional
 Maintainer: Eric Anderson <anderse@hpl.hp.com>
-Build-Depends: debhelper (>= 7), cmake, liblintel-dev
+Build-Depends: debhelper (>= 7), cmake, liblintel-dev, lintel-utils, libxml2-dev, libz-dev, 
+  libbz2-dev, libboost-thread-dev | libboost-thread1.35-dev, doxygen, libssl-dev, libpcre3-dev,
+  libpcap-dev, libxml-parser-perl, libcrypt-rijndael-perl, texlive-latex-extra,
+  texlive-fonts-recommended, texlive-generic-recommended, chrpath, libdigest-sha1-perl, gnuplot
 Standards-Version: 3.9.1
 Section: utils
 Homepage: http://tesla.hpl.hp.com/opensource/
@@ -23,7 +26,7 @@ Description: DataSeries shared library
 Package: dataseries-utils
 Section: utils
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, libdataseries0
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, libdataseries0, gnuplot
 Recommends: lintel-utils
 Description: Utilities to manipulate/import to/export from DataSeries files 
  The DataSeries utilities are the programs that either a) operate on DataSeries

@@ -15,9 +15,8 @@ build: build-stamp
 build-stamp:  debian/build/config-stamp
 	dh_testdir
 
-	# TODO: remove the -j6, also run tests.
 	(cd debian/build && $(MAKE))
-#	(cd debian/build && ctest)
+	(cd debian/build && ctest)
 
 	touch $@
 
@@ -105,7 +104,6 @@ binary-arch: build install
 	dh_gencontrol -a
 	dh_md5sums -a
 	dh_builddeb -a
-	# TODO: set up pbuilder for testing build.
 
 binary: binary-indep binary-arch
 .PHONY: build clean binary-indep binary-arch binary install 

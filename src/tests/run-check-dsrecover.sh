@@ -29,7 +29,8 @@ rm test-recover.ds incomplete-ds-file.ds recovered-ds-file.ds recovered.txt expe
 
 echo Stage three - test corruption failures
 for testcase in 100-zeros-at-50K stomp-end two-extents ; do
-    ../process/dsrecover $1/check-data/recovery/corrupt-$testcase.ds recovered-$testcase.ds
+    ../process/dsrecover --compress-gz --enable-lzf \
+        $1/check-data/recovery/corrupt-$testcase.ds recovered-$testcase.ds
     cmp recovered-$testcase.ds $1/check-data/recovery/recovered-$testcase.ds
     rm recovered-$testcase.ds
 done
