@@ -11,7 +11,10 @@ Group:          Development/Libraries
 License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-BuildRequires:  Lintel-devel
+# special extra packages, from elsewehre and EPEL
+BuildRequires:  Lintel-devel, Lintel-utils, chrpath, cmake
+# standard packages
+BuildRequires:  bzip2-devel, doxygen, pcre-devel, openssl-devel, perl-TimeDate, perl-XML-Parser
 
 %package	libs
 Summary:        DataSeries library files

@@ -13,6 +13,9 @@ copy-tar: redhat/stamp/copy-tar
 
 rpm: redhat/stamp/rpm
 
+srpm: redhat/stamp/copy-tar
+	rpmbuild -bs redhat/DataSeries.spec
+
 repo: redhat/stamp/repo
 
 clean:
