@@ -59,7 +59,8 @@ IndexSourceModule::IndexSourceModule()
 }
 
 IndexSourceModule::~IndexSourceModule() {
-    SINVARIANT(isClosed());
+    INVARIANT(prefetch == NULL || isClosed(),
+              "Must either have never read data or be done reading data");
     delete prefetch;
     prefetch = NULL;
 }
