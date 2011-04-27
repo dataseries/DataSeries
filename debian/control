@@ -4,7 +4,7 @@ Source: dataseries
 Priority: optional
 Maintainer: Eric Anderson <anderse@hpl.hp.com>
 Build-Depends: debhelper (>= 7), cmake, liblintel-dev, lintel-utils, libxml2-dev, libz-dev, 
-  libbz2-dev, libboost-thread-dev | libboost-thread1.35-dev, doxygen, libssl-dev, libpcre3-dev,
+  libbz2-dev, doxygen, libssl-dev, libpcre3-dev,
   libpcap-dev, libxml-parser-perl, libcrypt-rijndael-perl, texlive-latex-extra,
   texlive-fonts-recommended, texlive-generic-recommended, chrpath, libdigest-sha1-perl, gnuplot
 Standards-Version: 3.9.1

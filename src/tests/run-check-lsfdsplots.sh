@@ -22,6 +22,8 @@ elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnup
     echo "plot ok, gnuplot 4.2 equivalent"
 elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.2.6; then
     echo "plot ok, gnuplot 4.2.6 equivalent"
+elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.4; then
+    echo "plot ok, gnuplot 4.4 equivalent"
 else
     echo "Can't find gnuplot reference data consistent with input"
     exit 1
