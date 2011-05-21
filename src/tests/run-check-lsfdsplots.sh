@@ -15,18 +15,13 @@ PERL5LIB=$1/src/perl-modules:$2/share/perl5:$PERL5LIB perl ../analysis/lsfdsplot
 
 # Gnuplot generates different postscript for different versions; this seems the best
 # approach to checking that we're getting something valid out.
-grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps | grep -v ' /CreationDate' | grep -v ' /Author' >check-lsfdsplots/all/all.ps-nodate
-if cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.0; then
-    echo "plot ok, gnuplot 4.0 equivalent"
-elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.2; then
-    echo "plot ok, gnuplot 4.2 equivalent"
-elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.2.6; then
-    echo "plot ok, gnuplot 4.2.6 equivalent"
-elif cmp check-lsfdsplots/all/all.ps-nodate $1/check-data/lsfdsplots.ps.ref.gnuplot4.4; then
-    echo "plot ok, gnuplot 4.4 equivalent"
-else
-    echo "Can't find gnuplot reference data consistent with input"
-    exit 1
-fi
+grep -v '^%%CreationDate:' check-lsfdsplots/all/all.ps | grep -v ' /CreationDate' | grep -v ' /Author' | sed 's/patchlevel [0-9]/patchlevel X/' >check-lsfdsplots/all/all.ps-nodate
+for i in $1/check-data/lsfdsplots.ps.ref.*; do
+    if cmp check-lsfdsplots/all/all.ps-nodate $i; then
+        echo "plot ok, matches $i"
+        exit 0
+    fi
+done
 
-exit 0
+echo "Can't find gnuplot reference data consistent with input"
+exit 1

@@ -70,7 +70,7 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
 				    unsigned prefetch_max_unpacked,
 				    int n_unpack_threads)
 {
-    INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
+    INVARIANT(prefetch == NULL, "invalid to start prefetching twice without closing.");
     SINVARIANT(prefetch_max_compressed > 0);
     SINVARIANT(prefetch_max_unpacked > 0);
 
@@ -171,7 +171,9 @@ void IndexSourceModule::resetPos() {
 }
 
 void IndexSourceModule::close() {
-    SINVARIANT(prefetch != NULL);
+    if (prefetch == NULL) { // never opened, or already closed.
+        return;
+    }
 
     PThreadScopedLock lock(prefetch->mutex);
     if (lockedIsClosed()) {

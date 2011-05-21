@@ -32,9 +32,12 @@ INCLUDE(FindLintel)
 
 LINTEL_HAS_FEATURE(program-options)
 
-IF(NOT LINTEL_program-options_ENABLED)
+IF(LINTEL_program-options_ENABLED)
+    LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
+                       "boost_program_options boost_program_options-mt")
+ELSE(LINTEL_program-options_ENABLED)
     MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
-ENDIF(NOT LINTEL_program-options_ENABLED)
+ENDIF(LINTEL_program-options_ENABLED)
 
 #### Threads
 

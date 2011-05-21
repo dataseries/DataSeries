@@ -5,6 +5,37 @@
 
 #export DH_VERBOSE=1
 
+LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <../Lintel/debian/changelog)
+
+VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <debian/changelog)
+
+help:
+	echo "fakeroot ./debian/rules binary"
+	echo "fakeroot ./debian/rules debian/stamp/pbuilder/debian-lenny-amd64"
+	echo "sudo ./debian/rules tars | pbuilder"
+	echo "Lintel version $(LINTEL_VERSION) // DataSeries version $(VERSION)"
+
+/var/www/localpkgs/%/re-archive.dep: /var/www/localpkgs/%/lintel_$(LINTEL_VERSION).dsc /var/www/localpkgs/force-rebuild
+	touch $@
+
+/var/www/localpkgs/force-rebuild: 
+	touch $@
+
+-include ../Lintel/debian/pkg-targets.mk
+
+PARALLELISM=6
+
+debian/stamp/pbuilder/%: /var/cache/pbuilder/%.tgz
+	[ -f ../dataseries_$(VERSION).dsc ]
+	for i in /var/www/localpkgs/$*/*; do curl http://localhost/localpkgs/$*/./`basename $$i` >/dev/null 2>&1; done
+	touch /var/cache/pbuilder
+	perl debian/fixup-dsc.pl $* < ../dataseries_$(VERSION).dsc >../dataseries_$(VERSION)-$*.dsc
+	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
+	    --buildresult /var/cache/pbuilder/result/$* ../dataseries_$(VERSION)-$*.dsc
+	rm ../dataseries_$(VERSION)-$*.dsc
+	mkdir -p debian/stamp/pbuilder
+	touch $@
+
 debian/build/config-stamp: 
 	dh_testdir
 	mkdir -p debian/build
@@ -16,6 +47,9 @@ build-stamp:  debian/build/config-stamp
 	dh_testdir
 
 	(cd debian/build && $(MAKE))
+#	-(cd debian/build && ctest -V -R lsfdsplots)
+#	-(cd debian/build && ctest -V -R nfsdsanalysis)
+#	-sleep 3600
 	(cd debian/build && ctest)
 
 	touch $@
@@ -26,6 +60,7 @@ clean:
 	rm -f build-stamp 
 
 	[ ! -d debian/build ] || rm -rf debian/build
+	[ ! -e debian/stamp ] || rm -rf debian/stamp
 
 	dh_clean
 
@@ -33,7 +68,7 @@ TMP_USR=$(CURDIR)/debian/tmp/usr
 install: build
 	dh_testdir
 	dh_testroot
-	dh_prep
+	dh_prep || dh_clean -k
 	dh_installdirs
 
 	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
@@ -79,7 +114,7 @@ binary-arch: build install
 	dh_installchangelogs -a
 	dh_installdocs -a
 	dh_installexamples -a
-	dh_install -a
+	dh_install -a --sourcedir=debian/tmp
 #	dh_installmenu
 #	dh_installdebconf	
 #	dh_installlogrotate
@@ -98,8 +133,6 @@ binary-arch: build install
 #	dh_python
 	dh_makeshlibs -a -v
 	dh_installdeb -a
-	# CMake seems to be forcing the linking with libraries that dataseries depends on 
-	# for all the binaries even though they don't directly need it.  
 	dh_shlibdeps -a
 	dh_gencontrol -a
 	dh_md5sums -a
