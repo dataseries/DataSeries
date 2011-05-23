@@ -2,8 +2,8 @@
 use strict;
 use FileHandle;
 
-die "Usage: $0 <version> <release>" unless @ARGV == 2;
-my ($version, $release) = @ARGV;
+die "Usage: $0 <os> <version> <release>" unless @ARGV == 3;
+my ($os, $version, $release) = @ARGV;
 die "? $version" unless $version =~ /^[0-9\.]+$/o;
 die "? $release" unless $release =~ /^\d+$/o;
 
@@ -35,6 +35,7 @@ my $out = new FileHandle ">redhat/DataSeries.spec"
 while (<$in>) {
     s/__VERSION__/$version/o;
     s/__RELEASE__/$release/o;
+    s/^#if-$os\s+//o;
     if (/__DESCRIPTION_(\S+)__/o) {
         my $pkg = $1;
         die "missing description for $pkg" unless defined $descriptions{$pkg};

@@ -10,7 +10,7 @@ INCLUDE(LintelDocs)
 MACRO(DATASERIES_PROGRAM_NOINST program_name)
     ADD_EXECUTABLE(${program_name} ${program_name}.cpp ${ARGN})
     ADD_DEPENDENCIES(${program_name} DataSeries)
-    TARGET_LINK_LIBRARIES(${program_name} DataSeries)
+    TARGET_LINK_LIBRARIES(${program_name} DataSeries ${LINTEL_LIBRARIES})
 ENDMACRO(DATASERIES_PROGRAM_NOINST)
 
 # Generates a dataseries program, pass in the name of the executable; the assumption is that

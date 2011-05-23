@@ -27,7 +27,7 @@ if [ ! -f Release.info -o ! -f Changelog.mtn ]; then
 fi
 
 . redhat/get-version.sh
-perl redhat/patch-spec.pl $VERSION $RELEASE || exit 1
+perl redhat/patch-spec.pl $PATCH_SPEC_OS $VERSION $RELEASE || exit 1
 
 CHECK_VERSION=`grep Version: redhat/DataSeries.spec | awk '{print $2}'`
 if [ "$CHECK_VERSION" = "" -o "$CHECK_VERSION" = "0." ]; then

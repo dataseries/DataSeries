@@ -14,3 +14,20 @@ if [ -z "$RELEASE" ]; then
     echo "$0: missing release for version $VERSION in redhat/DataSeries.spec.in"
     exit 1
 fi
+
+rpm_topdir=`grep '^._topdir ' $HOME/.rpmmacros | awk '{print $2}'`
+
+[ "$rpm_topdir" == "" ] && rpm_topdir=/usr/src/redhat
+
+if [ -f /etc/redhat-release ]; then
+    if [ `grep Fedora /etc/redhat-release | wc -l` = 1 ]; then
+        PATCH_SPEC_OS=fedora
+    elif [ `grep CentOS /etc/redhat-release | wc -l` = 1 ]; then
+        PATCH_SPEC_OS=centos
+    elif [ `grep 'Red Hat Enterprise' /etc/redhat-release | wc -l` = 1 ]; then
+        PATCH_SPEC_OS=rhel
+    fi
+fi
+
+[ ! -z "$PATCH_SPEC_OS" ] || PATCH_SPEC_OS=unknown
+
