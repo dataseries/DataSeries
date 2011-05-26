@@ -3,6 +3,31 @@ change log (without the merge revisions) can be found in the Changelog.mtn file
 in the tar releases, or by using mtn log if you got the sources via version
 control.
 
+2011-05-23:
+   * Fixes to get redhat packaging to work on centos, fedora, scilinux, and opensuse.
+
+2011-05-21:
+   * Fixes to get debian packaging to work on all supported versions of debian 
+     and ubuntu.
+
+2011-04-09: 
+   * Add redhat packaging
+
+2011-04-06:
+   * Add documentation to lots of programs in the process of generating the
+     debian packaging.
+
+2010-11-02:
+   * Add dsrecover program that can take a partially written DataSeries file
+     and recover any valid extents from it.
+
+2010-08-21:
+   * Extend csv2ds to support comment and field separator characters
+
+2010-04-28:
+   * Added callback function write before an extent is written allowing a
+     program to take action based on the written location of the extent.
+
 2010-02-15:
    * Release
 
