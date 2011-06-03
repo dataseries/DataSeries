@@ -5,34 +5,9 @@
 
 #export DH_VERBOSE=1
 
-LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <../Lintel/debian/changelog)
-
-VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <debian/changelog)
-
 help:
 	echo "fakeroot ./debian/rules binary"
 	echo "fakeroot ./debian/rules debian/stamp/pbuilder/debian-lenny-amd64"
-	echo "sudo ./debian/rules tars | pbuilder"
-	echo "Lintel version $(LINTEL_VERSION) // DataSeries version $(VERSION)"
-
-/var/www/localpkgs/%/re-archive.dep: /var/www/localpkgs/%/lintel_$(LINTEL_VERSION).dsc /var/www/localpkgs/force-rebuild
-	touch $@
-
-/var/www/localpkgs/force-rebuild: 
-	touch $@
-
--include ../Lintel/debian/pkg-targets.mk
-
-PARALLELISM=6
-
-pbuilder-%: /var/cache/pbuilder/%.tgz
-	[ -f ../dataseries_$(VERSION).dsc ]
-	for i in /var/www/localpkgs/$*/*; do curl http://localhost/localpkgs/$*/./`basename $$i` >/dev/null 2>&1; done
-	touch /var/cache/pbuilder
-	perl debian/fixup-dsc.pl $* < ../dataseries_$(VERSION).dsc >../dataseries_$(VERSION)-$*.dsc
-	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
-	    --buildresult /var/cache/pbuilder/result/$* ../dataseries_$(VERSION)-$*.dsc
-	rm ../dataseries_$(VERSION)-$*.dsc
 
 debian/build/config-stamp: 
 	dh_testdir
