@@ -18,7 +18,7 @@ if [ -d _MTN ]; then
     echo "BEGIN_EXTRA_STATUS" >>Release.info
     mtn status >>Release.info
     echo "END_EXTRA_STATUS" >>Release.info
-    mtn log >Changelog.mtn
+    `dirname $0`/../../Lintel/dist/mtn-log-sort >Changelog.mtn
 fi
 
 if [ ! -f Release.info -o ! -f Changelog.mtn ]; then
