@@ -9,7 +9,7 @@ help:
 
 tar: redhat/stamp/tar
 
-copy-tar: redhat/stamp/copy-tar
+spec: redhat/stamp/spec
 
 rpm: redhat/stamp/rpm
 
@@ -22,7 +22,7 @@ clean:
 	-if [ -d _MTN ]; then rm Release.info Changelog.mtn; fi
 	-. redhat/get-version.sh && rm ../DataSeries-$$VERSION.tar.gz
 	rm -rf redhat/stamp
-	rm redhat/DataSeries.spec
+	[ ! -f redhat/DataSeries.spec ] || rm redhat/DataSeries.spec
 
 redhat/stamp:
 	mkdir -p $@
@@ -31,8 +31,8 @@ redhat/stamp/tar: redhat/stamp
 	./redhat/make-tar.sh
 	touch $@
 
-redhat/stamp/copy-tar: redhat/stamp/tar
-	./redhat/copy-tar.sh
+redhat/stamp/spec: redhat/stamp/tar
+	./redhat/make-spec.sh
 	touch $@
 
 redhat/stamp/rpm: redhat/stamp/copy-tar

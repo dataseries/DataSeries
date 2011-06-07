@@ -29,9 +29,6 @@ while(<$control>) {
 my $in = new FileHandle "redhat/DataSeries.spec.in"
     or die "can't open redhat/DataSeries.spec.in: $!";
 
-my $out = new FileHandle ">redhat/DataSeries.spec"
-    or die "can't open redhat/DataSeries.spec for write: $!";
-
 while (<$in>) {
     s/__VERSION__/$version/o;
     s/__RELEASE__/$release/o;
@@ -41,6 +38,6 @@ while (<$in>) {
         die "missing description for $pkg" unless defined $descriptions{$pkg};
         s/__DESCRIPTION_\S+__/$descriptions{$pkg}/;
     }
-    print $out $_;
+    print $_;
 }
 
