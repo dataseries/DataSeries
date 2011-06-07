@@ -139,6 +139,9 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 
 %changelog
 
+* Tue Jun 07 2011 anderse@hpl.hp.com 0.2011.06.07-1
+- Release.  See NEWS for major changes.
+
 * Mon Mar 28 2011 anderse@hpl.hp.com 0.2011.03.28-1
 - Initial rpm packaging.
 
