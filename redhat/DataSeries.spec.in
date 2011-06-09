@@ -34,9 +34,9 @@ Requires:       cmake
 License:        BSD
 
 %package	utils
-Summary:        DataSeres utilities
+Summary:        DataSeries utilities
 Group:          Development/Libraries
-Requires:       %{name}-libs = %{version}-%{release}, %{name}-perl
+Requires:       %{name}-libs = %{version}-%{release}
 License:        BSD
 
 # TODO-package-reviewer: how do we make this package architecture independent?
@@ -139,7 +139,7 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 
 %changelog
 
-* Tue Jun 07 2011 anderse@hpl.hp.com 0.2011.06.07-1
+* Tue Jun 09 2011 anderse@hpl.hp.com 0.2011.06.09-1
 - Release.  See NEWS for major changes.
 
 * Mon Mar 28 2011 anderse@hpl.hp.com 0.2011.03.28-1
