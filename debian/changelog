@@ -1,8 +1,8 @@
-dataseries (0.2011.06.09) unstable; urgency=low
+dataseries (0.2011.06.13) unstable; urgency=low
 
   * Release.  See NEWS for major changes.
 
- -- Eric Anderson <anderse@hpl.hp.com>  Tue, 07 Jun 2011 13:16:07 -0700
+ -- Eric Anderson <anderse@hpl.hp.com>  Fri, 10 Jun 2011 14:24:29 -0700
 
 dataseries (0.2011.03.28) unstable; urgency=low
 

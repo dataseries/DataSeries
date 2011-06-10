@@ -143,7 +143,7 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 
 %changelog
 
-* Tue Jun 09 2011 anderse@hpl.hp.com 0.2011.06.09-1
+* Mon Jun 13 2011 anderse@hpl.hp.com 0.2011.06.13-1
 - Release.  See NEWS for major changes.
 
 * Mon Mar 28 2011 anderse@hpl.hp.com 0.2011.03.28-1
