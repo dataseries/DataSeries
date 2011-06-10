@@ -14,12 +14,13 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 # special extra packages, from elsewehre and EPEL
 BuildRequires:  Lintel-devel, Lintel-utils, chrpath, cmake
 # standard packages
-BuildRequires:  perl-TimeDate, perl-XML-Parser, doxygen, pcre-devel
+BuildRequires:  perl-TimeDate, perl-XML-Parser, doxygen, pcre-devel, libpcap-devel
 #if-fedora BuildRequires: bzip2-devel, openssl-devel
+# TODO: add perl-Crypt-Rijndael for fedora, fix lsfdsplots test
 #if-centos BuildRequires: bzip2-devel, openssl-devel
 #if-scilinux BuildRequires: bzip2-devel, openssl-devel
 #if-opensuse BuildRequires: libbz2-devel, libopenssl-devel
-
+# perl-Crypt-Rijndael appears in opensuse 11.4, so we need #if-opensuse-<version>
 %package	libs
 Summary:        DataSeries library files
 Group:          Development/Libraries
@@ -88,7 +89,7 @@ if [ %{_libdir} != /usr/lib ]; then
         mkdir -p $RPM_BUILD_ROOT%{_libdir}
         mv $RPM_BUILD_ROOT/usr/lib/libDataSeries*so* $RPM_BUILD_ROOT%{_libdir}
 fi
-mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries-devel
+mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries-devel 
 cat >$RPM_BUILD_ROOT/usr/share/doc/DataSeries-devel/README <<EOF 
 __DESCRIPTION_libdataseries-dev__
 EOF
@@ -99,6 +100,9 @@ __DESCRIPTION_dataseries-utils__
 EOF
 
 strip $RPM_BUILD_ROOT/usr/lib*/libDataSeries*.so.*.*
+
+# may be empty
+mkdir -p $RPM_BUILD_ROOT/usr/share/perl5/DataSeries
 
 %post libs -p /sbin/ldconfig
 

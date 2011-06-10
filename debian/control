@@ -26,7 +26,8 @@ Description: DataSeries shared library
 Package: dataseries-utils
 Section: utils
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, libdataseries0, gnuplot
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}, libdataseries0, gnuplot,
+    libfilesys-statvfs-perl
 Recommends: lintel-utils
 Description: Utilities to manipulate/import to/export from DataSeries files 
  The DataSeries utilities are the programs that either a) operate on DataSeries
