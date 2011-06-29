@@ -13,8 +13,8 @@ my $dsn = "DBI:mysql:database=test;host=localhost";
 my $man;
 
 my $ret = GetOptions("dsn=s" => \$dsn, "man!" => \$man);
-die "Usage: $0 --man for detailed help" unless $ret && @ARGV == 2;
 pod2usage(0) if $man;
+die "Usage: $0 --man for detailed help" unless $ret && @ARGV == 2;
 
 my ($src_table, $dest_ds) = @ARGV;
 
@@ -140,7 +140,7 @@ close($data_fh);
 print "done, $rows rows\n";
 print "Converting to dataseries...";
 unlink("$dest_ds-new") if -f "$dest_ds-new";
-$ret = system("$csv_to_ds --xml-desc-file=$dest_ds.xml --compress-lzf $dest_ds.data $dest_ds-new");
+$ret = system("$csv_to_ds --hex-encoded-variable32 --xml-desc-file=$dest_ds.xml --compress-lzf $dest_ds.data $dest_ds-new");
 print "done.\n";
 die "conversion failed" unless $ret == 0;
 rename("$dest_ds-new", $dest_ds)

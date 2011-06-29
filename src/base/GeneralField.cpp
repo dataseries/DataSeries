@@ -170,8 +170,7 @@ void GeneralValue::setDouble(double val) {
 // TODO: do we need a setFixedWidth
 
 void GeneralValue::setVariable32(const string &val) {
-    INVARIANT(gvtype == ExtentType::ft_unknown || 
-	      gvtype == ExtentType::ft_variable32,
+    INVARIANT(gvtype == ExtentType::ft_unknown || gvtype == ExtentType::ft_variable32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_variable32;
     if (NULL == v_variable32) v_variable32 = new string;
@@ -180,7 +179,8 @@ void GeneralValue::setVariable32(const string &val) {
 
 bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
     INVARIANT(gvtype == gv.gvtype,
-	      "currently invalid to compare general values of different types");
+	      format("currently invalid to compare general values of different types %s != %s")
+              % ExtentType::fieldTypeToStr(gvtype) % ExtentType::fieldTypeToStr(gv.gvtype));
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: return false;

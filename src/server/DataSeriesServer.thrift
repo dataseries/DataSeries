@@ -3,8 +3,31 @@
 namespace cpp dataseries
 
 struct TableData {
-    list<list<string>> rows;
-    bool more_rows;
+    1: required list<list<string>> rows;
+    2: optional bool more_rows;
+}
+
+struct Dimension {
+    // separate dimension_name and source_table allows for multiple dimensions generated
+    // from a single table.
+    1: required string dimension_name;
+    2: required string source_table;
+    3: required list<string> key_columns;
+    4: required list<string> value_columns;
+    5: required i32 max_rows;
+}
+
+enum DFJ_MissingAction {
+    DFJ_InvalidEnumConst = 0;
+    DFJ_SkipRow = 1;
+    DFJ_Unchanged = 2;
+}
+
+struct DimensionFactJoin {
+    1: required string dimension_name; 
+    2: required list<string> fact_key_columns; // assume same order as in Dimension
+    3: required map<string, string> extract_values; // value number to column name
+    4: required DFJ_MissingAction missing_dimension_action;
 }
 
 service DataSeriesServer {
@@ -26,6 +49,10 @@ service DataSeriesServer {
     void hashJoin(string a_table, string b_table, string out_table,
                   map<string, string> eq_columns, map<string, string> keep_columns,
                   i32 max_a_rows = 1000000);
+
+    void starJoin(string fact_table, list<Dimension> dimensions, string out_table,
+                  map<string, string> fact_columns, list<DimensionFactJoin> dimension_fact_join,
+                  i32 max_dimension_rows = 1000000);
 
     void selectRows(string in_table, string out_table, string where_expr);
 

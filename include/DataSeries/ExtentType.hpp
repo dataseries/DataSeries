@@ -500,6 +500,8 @@ class ExtentTypeLibrary : boost::noncopyable {
 public:
     ExtentTypeLibrary() {};
 
+    // TODO: all the ExtentType *'s in here should turn into smart_ptr's so that we can
+    // use weak pointers inside and the use of bare extent types should be removed.
     const ExtentType *registerType(const std::string &xmldesc) FUNC_DEPRECATED {
 	return &registerTypeR(xmldesc);
     }

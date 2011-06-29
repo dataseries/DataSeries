@@ -12,12 +12,14 @@ use Thrift::BufferedTransport;
 use DataSeriesServer;
 
 my $socket = new Thrift::Socket('localhost', 49476);
+$socket->setRecvTimeout(1000*1000);
 my $transport = new Thrift::BufferedTransport($socket, 4096, 4096);
 my $protocol = new Thrift::BinaryProtocol($transport);
 my $client = new DataSeriesServerClient($protocol);
 
 $transport->open();
 $client->ping();
+print "Post Ping\n";
 
 # tryImportCSV();
 # tryImportSql();
@@ -25,7 +27,8 @@ $client->ping();
 # tryHashJoin();
 # trySelect();
 # tryProject();
-tryUpdate();
+# tryUpdate();
+tryStarJoin();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -161,6 +164,63 @@ END
     print Dumper(getTableData("base-table"));
 
     # TODO: Add test for empty update..., and in general for empty extents in all the ops
+}
+
+sub tryStarJoin {
+    tryImportData(); # columns bool, byte, int32, int64, double, variable32; 3 rows
+
+    my $data_xml = <<'END';
+<ExtentType name="dim-int" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="int32" name="key_1" />
+  <field type="int32" name="key_2" />
+  <field type="variable32" name="val_1" pack_unique="yes" />
+  <field type="variable32" name="val_2" pack_unique="yes" />
+</ExtentType>
+END
+
+    $client->importData("dim-int", $data_xml, new TableData
+                        ({ 'rows' =>
+                           [[ 1371, 12345, "abc", "def" ],
+                            [ 12345, 1371, "ghi", "jkl" ],
+                            [ 999, 999, "mno", "pqr" ]] }));
+    # print Dumper(getTableData("dim-int"));
+
+    my $dim_1 = new Dimension({ dimension_name => 'dim_int_1',
+                                source_table => 'dim-int',
+                                key_columns => ['key_1'],
+                                value_columns => ['val_1', 'val_2'],
+                                max_rows => 1000 });
+    my $dim_2 = new Dimension({ dimension_name => 'dim_int_2',
+                                source_table => 'dim-int',
+                                key_columns => ['key_2'],
+                                value_columns => ['val_1', 'val_2'],
+                                max_rows => 1000 });
+
+    my $dfj_1 = new DimensionFactJoin({ dimension_name => 'dim_int_1',
+                                        fact_key_columns => [ 'int32' ],
+                                        extract_values => { 'val_1' => 'dfj_1.dim1_val1' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    my $dfj_2 = new DimensionFactJoin({ dimension_name => 'dim_int_1',
+                                        fact_key_columns => [ 'int32' ],
+                                        extract_values => { 'val_1' => 'dfj_2.dim1_val1',
+                                                            'val_2' => 'dfj_2.dim1_val2' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    my $dfj_3 = new DimensionFactJoin({ dimension_name => 'dim_int_2',
+                                        fact_key_columns => [ 'int32' ],
+                                        extract_values => { 'val_2' => 'dfj_3.dim1_val2' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    my $dfj_4 = new DimensionFactJoin({ dimension_name => 'dim_int_2',
+                                        fact_key_columns => [ 'int32' ],
+                                        extract_values => { 'val_1' => 'dfj_4.dim1_val1' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    $client->starJoin('test-import', [$dim_1, $dim_2], 'test-star-join',
+                      { 'int32' => 'f.int_32'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
+
+    print Dumper(getTableData("test-star-join"));
 }
 
 sub getTableData {

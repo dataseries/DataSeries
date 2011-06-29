@@ -15,6 +15,7 @@
 
 #include <boost/foreach.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
@@ -23,6 +24,7 @@
 #include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.hpp>
 #include <DataSeries/RowAnalysisModule.hpp>
+#include <DataSeries/SequenceModule.hpp>
 #include <DataSeries/TFixedField.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
@@ -36,6 +38,7 @@ using namespace facebook::thrift::server;
 using namespace dataseries;
 using boost::shared_ptr;
 using boost::format;
+using boost::scoped_ptr;
 
 class ThrowError {
 public:
@@ -44,11 +47,20 @@ public:
         throw RequestError(msg);
     }
 
+    void requestError(const format &fmt) {
+        requestError(str(fmt));
+    }
+
     void invalidTableName(const string &table, const string &msg) {
         LintelLog::warn(format("invalid table name '%s': %s") % table % msg);
         throw InvalidTableName(table, msg);
     }
 };
+
+// TODO: make this throw an error, and eventually figure out the right thing to have
+// in AssertBoost.  Note that we want to be able to specify the class, have it automatically
+// pick up file, line, expression, and any optional parameters (message, values, etc).
+#define TINVARIANT(x) SINVARIANT(x)
 
 class TeeModule : public RowAnalysisModule {
 public:
@@ -124,6 +136,7 @@ public:
         const ExtentType &extent_type(e.getType());
         fields.reserve(extent_type.getNFields());
         for (uint32_t i = 0; i < extent_type.getNFields(); ++i) {
+            // TODO: migrate to ::make
             fields.push_back(GeneralField::create(series, extent_type.getFieldName(i)));
         }
     }
@@ -189,6 +202,13 @@ struct GVVec {
     GeneralValue &operator [](size_t offset) {
         return vec[offset];
     }
+    
+    void extract(vector<GeneralField::Ptr> &fields) {
+        SINVARIANT(fields.size() == vec.size());
+        for (uint32_t i = 0; i < fields.size(); ++i) {
+            vec[i].set(fields[i]);
+        }
+    }
 };
 
 inline ostream & operator << (ostream &to, GVVec &gvvec) {
@@ -196,31 +216,42 @@ inline ostream & operator << (ostream &to, GVVec &gvvec) {
     return to;
 }
 
-class HashJoinModule : public DataSeriesModule, public ThrowError {
+class JoinModule : public DataSeriesModule, public ThrowError {
 public:
-    typedef map<string, string> CMap; // column map
-
-    HashJoinModule(DataSeriesModule &a_input, int32_t max_a_rows, DataSeriesModule &b_input,
-                   const map<string, string> &eq_columns, const map<string, string> &keep_columns,
-                   const string &output_table_name) 
-        : a_input(a_input), b_input(b_input), max_a_rows(max_a_rows), 
-          eq_columns(eq_columns), keep_columns(keep_columns), output_extent(NULL),
-          output_table_name(output_table_name)
-    { }
-
     class Extractor {
     public:
         typedef boost::shared_ptr<Extractor> Ptr;
 
-        Extractor(const string &field_name) : field_name(field_name), into() { }
+        Extractor(const string &into_field_name) : into_field_name(into_field_name), into() { }
         virtual void extract(const GVVec &a_val) = 0;
 
-        const string field_name;
+        const string into_field_name; 
         GeneralField::Ptr into;
+
+        static void makeInto(vector<Ptr> &extractors, ExtentSeries &series) {
+            BOOST_FOREACH(Ptr e, extractors) {
+                SINVARIANT(e->into == NULL);
+                e->into = GeneralField::make(series, e->into_field_name);
+            }
+        }
+        
+        static void extractAll(vector<Ptr> &extractors, const GVVec &lookup_val) {
+            BOOST_FOREACH(Ptr e, extractors) {
+                e->extract(lookup_val);
+            }
+        }
     };
 
+    // Extract from a field and stuff it into a destination field
     class ExtractorField : public Extractor {
     public:
+        static Ptr make(ExtentSeries &from_series, const string &from_field_name,
+                        const string &into_field_name) {
+            GeneralField::Ptr from(GeneralField::make(from_series, from_field_name));
+            return Ptr(new ExtractorField(into_field_name, from));
+        }
+
+        // TODO: deprecate this version?
         static Ptr make(const string &field_name, GeneralField::Ptr from) {
             return Ptr(new ExtractorField(field_name, from));
         }
@@ -231,15 +262,16 @@ public:
     private:
         GeneralField::Ptr from;
 
-        ExtractorField(const string &field_name, GeneralField::Ptr from) 
-            : Extractor(field_name), from(from) 
+        ExtractorField(const string &into_field_name, GeneralField::Ptr from) 
+            : Extractor(into_field_name), from(from) 
         { }
     };
 
+    // Extract from a value vector and stuff it into a destination field
     class ExtractorValue : public Extractor {
     public:
-        static Ptr make(const string &field_name, uint32_t pos) {
-            return Ptr(new ExtractorValue(field_name, pos));
+        static Ptr make(const string &into_field_name, uint32_t pos) {
+            return Ptr(new ExtractorValue(into_field_name, pos));
         }
         
         virtual void extract(const GVVec &a_val) {
@@ -254,6 +286,21 @@ public:
             : Extractor(field_name), pos(pos)
         { }
     };
+};
+        
+// TODO: merge common code with StarJoinModule
+
+class HashJoinModule : public JoinModule { 
+public:
+    typedef map<string, string> CMap; // column map
+
+    HashJoinModule(DataSeriesModule &a_input, int32_t max_a_rows, DataSeriesModule &b_input,
+                   const map<string, string> &eq_columns, const map<string, string> &keep_columns,
+                   const string &output_table_name) 
+        : a_input(a_input), b_input(b_input), max_a_rows(max_a_rows), 
+          eq_columns(eq_columns), keep_columns(keep_columns), output_extent(NULL),
+          output_table_name(output_table_name)
+    { }
 
     static const string mapDGet(const map<string, string> &a_map, const string &a_key) {
         map<string, string>::const_iterator i = a_map.find(a_key);
@@ -327,6 +374,7 @@ public:
                 }
             }
             if (output_field_type.empty()) continue; // HACK
+            // TODO: we're losing any additional field bits, e.g. time properties.
             output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
                                   % output_field_type % vt.second));
         }
@@ -347,8 +395,8 @@ public:
                 if (row_count >= max_a_rows) {
                     requestError("a table has too many rows");
                 }
-                extractGVVec(a_eq_fields, key);
-                extractGVVec(a_val_fields, val);
+                key.extract(a_eq_fields);
+                val.extract(a_val_fields);
                 a_hashmap[key].push_back(val);
             }
             delete a_series.getExtent();
@@ -360,9 +408,7 @@ public:
         output_series.setType(lib.registerTypeR(output_xml));
         output_extent = new Extent(*output_series.getType());
         
-        BOOST_FOREACH(Extractor::Ptr p, extractors) {
-            p->into = GeneralField::make(output_series, p->field_name);
-        }
+        Extractor::makeInto(extractors, output_series);
     }
 
     virtual Extent *getExtent() {
@@ -382,6 +428,7 @@ public:
             for (b_series.setExtent(e); b_series.more(); b_series.next()) {
                 processRow();
             }
+            delete e;
             if (output_series.getExtent()->size() > 96*1024) {
                 break;
             }
@@ -392,7 +439,7 @@ public:
     }
 
     void processRow() {
-        extractGVVec(b_eq_fields, key);
+        key.extract(b_eq_fields);
         vector<GVVec> *v = a_hashmap.lookup(key);
         if (v != NULL) {
             cout << format("%d match on %s\n") % v->size() % key;
@@ -405,13 +452,6 @@ public:
         }
     }
 
-    static void extractGVVec(vector<GeneralField::Ptr> &fields, GVVec &into) {
-        SINVARIANT(fields.size() == into.size());
-        for (uint32_t i = 0; i < fields.size(); ++i) {
-            into[i].set(fields[i]);
-        }
-    }
-    
     DataSeriesModule &a_input, &b_input;
     int32_t max_a_rows;
     const CMap eq_columns, keep_columns;
@@ -744,8 +784,8 @@ public:
             case 1: doUpdateInsert(); break;
             case 2: doUpdateReplace(); break;
             case 3: doUpdateDelete(); break;
-            default: requestError(str(format("invalid update column value %d")
-                                            % static_cast<uint32_t>(update_column())));
+            default: requestError(format("invalid update column value %d")
+                                  % static_cast<uint32_t>(update_column()));
             }
     }
 
@@ -798,6 +838,256 @@ public:
     PrimaryKey base_primary_key, update_primary_key;
 };
 
+// In some ways this is very similar to the HashJoinModule, however one of the common data
+// warehousing operations is to scan through a fact table adding in new columns based on one or
+// more tiny dimension tables.  The efficient implementation is to load all of those tiny tables
+// and make a single pass through the big table combining it with all of the tiny tables.
+//
+// To do that we will define a vector of Dimension(name, table, key = vector<column>, values =
+// vector<column>) entries that define all of the dimension tables along with the key indexing into
+// that dimension table, and a LookupIn(name, key = vector<column>, missing -> { skip_row |
+// unchanged | value }, map<int, string> extract_values) that will lookup in JoinTo(name) using the
+// two keys, and extract out a subset of the values from the JoinTo into the named columns.
+// If the lookup is missing, it can either cause us to skip that row in the fact table, leave the
+// output values unchanged, or set it to a specified value.  The middle option allows for lookups
+// in multiple tables to select the last set value.
+class StarJoinModule : public JoinModule {
+public:
+    StarJoinModule(DataSeriesModule &fact_input, const vector<Dimension> &dimensions,
+                   const string &output_table_name, const map<string, string> &fact_columns,
+                   const vector<DimensionFactJoin> &dimension_fact_join_in,
+                   const HashMap< string, shared_ptr<DataSeriesModule> > &dimension_modules) 
+        : fact_input(fact_input), dim_list(dimensions), output_table_name(output_table_name),
+          fact_column_names(fact_columns), dimension_modules(dimension_modules)
+    { 
+        BOOST_FOREACH(const DimensionFactJoin &dfj, dimension_fact_join_in) {
+            SJM_Join::Ptr p(new SJM_Join(dfj));
+            dimension_fact_join.push_back(p);
+        }
+    }
+
+    struct SJM_Dimension : public Dimension {
+        typedef boost::shared_ptr<SJM_Dimension> Ptr;
+
+        SJM_Dimension(Dimension &d) : Dimension(d), dimension_type() { }
+
+        size_t valuePos(const string &source_field_name) {
+            for(size_t i = 0; i < value_columns.size(); ++i) {
+                if (value_columns[i] == source_field_name) {
+                    return i;
+                }
+            }
+            return numeric_limits<size_t>::max();
+        }
+
+        const ExtentType *dimension_type;
+        HashMap<GVVec, GVVec> dimension_data;
+    };
+
+    struct SJM_Join : public DimensionFactJoin {
+        typedef boost::shared_ptr<SJM_Join> Ptr;
+        
+        SJM_Join(const DimensionFactJoin &d) : DimensionFactJoin(d), dimension(), join_data() { }
+        virtual ~SJM_Join() throw () { }
+        SJM_Dimension::Ptr dimension;
+        vector<GeneralField::Ptr> fact_fields;
+        vector<Extractor::Ptr> extractors;
+        GVVec join_key; // avoid constant resizes, just overwrite
+        GVVec *join_data; // temporary for the two-phase join
+    };
+
+    class DimensionModule : public RowAnalysisModule {
+    public:
+        typedef boost::shared_ptr<DimensionModule> Ptr;
+
+        static Ptr make(DataSeriesModule &source, SJM_Dimension &sjm_dimension) {
+            Ptr ret(new DimensionModule(source, sjm_dimension));
+            return ret;
+        }
+
+        void firstExtent(const Extent &e) {
+            LintelLogDebug("StarJoinModule/DimensionModule", format("first extent for %s via %s")
+                           % dim.dimension_name % dim.source_table);
+            key_gv.resize(dim.key_columns.size());
+            value_gv.resize(dim.value_columns.size());
+            series.setType(e.getType());
+            BOOST_FOREACH(string column, dim.key_columns) {
+                key_gf.push_back(GeneralField::make(series, column));
+            }
+            BOOST_FOREACH(string column, dim.value_columns) {
+                value_gf.push_back(GeneralField::make(series, column));
+            }
+            SINVARIANT(dim.dimension_type == NULL);
+            dim.dimension_type = series.getType();
+        }
+
+        void processRow() {
+            key_gv.extract(key_gf);
+            value_gv.extract(value_gf);
+            dim.dimension_data[key_gv] = value_gv;
+            LintelLogDebug("StarJoinModule/Dimension", format("[%d] -> [%d]") % key_gv % value_gv);
+        }
+
+    protected:
+        DimensionModule(DataSeriesModule &source, SJM_Dimension &sjm_dimension) 
+            : RowAnalysisModule(source), dim(sjm_dimension)
+        { }
+
+        SJM_Dimension &dim;
+
+        vector<GeneralField::Ptr> key_gf, value_gf;
+        GVVec key_gv, value_gv;
+    };
+            
+    void processDimensions() {
+        dimensions.reserve(dim_list.size());
+        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
+            dimensions[dfj->dimension_name].reset(); // mark used dimensions
+        }
+        BOOST_FOREACH(Dimension &dim, dim_list) {
+            if (dimensions.exists(dim.dimension_name)) {
+                dimensions[dim.dimension_name].reset(new SJM_Dimension(dim));
+            } else {
+                requestError(format("unused dimension %s specified") % dim.dimension_name);
+            }
+        }
+
+        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
+            dfj->dimension = dimensions[dfj->dimension_name];
+            if (dfj->dimension == NULL) {
+                requestError(format("unspecified dimension %s used") % dfj->dimension_name);
+            }
+        }
+
+        // TODO: check for identical source table + same keys, never makes sense, better to
+        // just pull multiple values in that case.
+        BOOST_FOREACH(string source_table, dimension_modules.keys()) {
+            SequenceModule seq(dimension_modules[source_table]);
+            BOOST_FOREACH(Dimension &dim, dim_list) {
+                if (dim.source_table == source_table) {
+                    LintelLogDebug("StarJoinModule", format("loading %s from %s") 
+                                   % dim.dimension_name % dim.source_table);
+                    seq.addModule(DimensionModule::make(seq.tail(), 
+                                                        *dimensions[dim.dimension_name]));
+                }
+            }
+
+            if (seq.size() == 1) {
+                requestError(format("Missing dimensions using source table %s") % source_table);
+            }
+            seq.getAndDelete();
+        }
+
+        dimension_modules.clear();
+    }
+
+    void setOutputType() {
+        SINVARIANT(fact_series.getType() != NULL);
+        string output_xml(str(format("<ExtentType name=\"star-join -> %s\""
+                                     " namespace=\"server.example.com\" version=\"1.0\">\n")
+                              % output_table_name));
+        typedef map<string, string>::value_type ss_pair;
+        BOOST_FOREACH(ss_pair &v, fact_column_names) {
+            TINVARIANT(fact_series.getType()->hasColumn(v.first));
+            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
+                                  % fact_series.getType()->getFieldTypeStr(v.first)
+                                  % v.second));
+            fact_fields.push_back(ExtractorField::make(fact_series, v.first, v.second));
+        }
+        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
+            SJM_Dimension::Ptr dim = dimensions[dfj->dimension_name];
+            SINVARIANT(dim->dimension_type != NULL);
+
+            dfj->join_key.resize(dfj->fact_key_columns.size());
+            BOOST_FOREACH(const string &fact_col_name, dfj->fact_key_columns) {
+                dfj->fact_fields.push_back(GeneralField::make(fact_series, fact_col_name));
+            }
+            BOOST_FOREACH(ss_pair &ev, dfj->extract_values) {
+                TINVARIANT(dim->dimension_type->hasColumn(ev.first));
+                size_t value_pos = dim->valuePos(ev.first);
+                TINVARIANT(value_pos != numeric_limits<size_t>::max());
+                output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
+                                      % dim->dimension_type->getFieldTypeStr(ev.first)
+                                      % ev.second));
+                dfj->extractors.push_back(ExtractorValue::make(ev.second, value_pos));
+            }
+        }
+        output_xml.append("</ExtentType>\n");
+        LintelLogDebug("StarJoinModule", format("constructed output type:\n%s") % output_xml);
+
+        ExtentTypeLibrary lib;
+        output_series.setType(lib.registerTypeR(output_xml));
+
+        Extractor::makeInto(fact_fields, output_series);
+        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
+            Extractor::makeInto(dfj->extractors, output_series);
+        }
+    }
+
+    void firstExtent(const Extent &fact_extent) {
+        processDimensions();
+        fact_series.setType(fact_extent.getType());
+        setOutputType();
+    }
+
+    virtual Extent *getExtent() {
+        scoped_ptr<Extent> e(fact_input.getExtent());
+        if (e == NULL) {
+            return NULL;
+        }
+        if (output_series.getType() == NULL) {
+            firstExtent(*e);
+        }
+        
+        output_series.setExtent(new Extent(output_series));
+        // TODO: do the resize to ~64-96k trick here rather than one in one out.
+        for (fact_series.setExtent(e.get()); fact_series.more(); fact_series.next()) {
+            processRow();
+        }
+
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    void processRow() {
+        // Two phases, in the first phase we look up everything and verify that we're going
+        // to generate an output row.   In the second phase we generate the output row.
+
+        BOOST_FOREACH(SJM_Join::Ptr join, dimension_fact_join) {
+            join->join_key.extract(join->fact_fields);
+            HashMap<GVVec, GVVec>::iterator i 
+                = join->dimension->dimension_data.find(join->join_key);
+            if (i == join->dimension->dimension_data.end()) {
+                FATAL_ERROR("unimplemented");
+            } else {
+                SINVARIANT(join->join_data == NULL);
+                join->join_data = &i->second;
+            }
+        }
+
+        // All dimensions exist, make an output row.
+        GVVec empty;
+        output_series.newRecord();
+        Extractor::extractAll(fact_fields, empty);
+        BOOST_FOREACH(SJM_Join::Ptr join, dimension_fact_join) {
+            SINVARIANT(join->join_data != NULL);
+            Extractor::extractAll(join->extractors, *join->join_data);
+            join->join_data = NULL;
+        }
+    }
+
+    DataSeriesModule &fact_input;
+    vector<Dimension> dim_list;
+    string output_table_name;
+    map<string, string> fact_column_names;
+    ExtentSeries fact_series, output_series;
+    vector<SJM_Join::Ptr> dimension_fact_join;
+    HashMap< string, shared_ptr<DataSeriesModule> > dimension_modules;
+    HashMap<string, SJM_Dimension::Ptr> dimensions;
+    vector<Extractor::Ptr> fact_fields;
+};    
+
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
     struct TableInfo {
@@ -819,7 +1109,7 @@ public:
         try {
             getTableInfo(table_name);
             return true;
-        } catch (TApplicationException &e) {
+        } catch (TException &e) {
             return false;
         }
     }
@@ -889,6 +1179,9 @@ public:
         if (pid < 0) {
             requestError("fork failed");
         } else if (pid == 0) {
+            for(int i = 3; i < 100; ++i) {
+                close(i);
+            }
             vector<string> args;
 
             args.push_back("sql2ds");
@@ -900,8 +1193,10 @@ public:
             exec(args);
         } else {
             waitForSuccessfulChild(pid);
-            FATAL_ERROR("broken, need to get src table extent type");
-            updateTableInfo(dest_table, NULL); // sql2ds extent type name = src table
+            DataSeriesSource source(tableToPath(dest_table));
+            const ExtentType *t = source.getLibrary().getTypeByName(src_table);
+
+            updateTableInfo(dest_table, t); 
         }
     }
         
@@ -922,8 +1217,7 @@ public:
 
         vector<boost::shared_ptr<GeneralField> > fields;
         for (uint32_t i = 0; i < type.getNFields(); ++i) {
-            boost::shared_ptr<GeneralField> 
-                tmp(GeneralField::create(output_series, type.getFieldName(i)));
+            GeneralField::Ptr tmp(GeneralField::make(output_series, type.getFieldName(i)));
             fields.push_back(tmp);
         }
 
@@ -1017,6 +1311,37 @@ public:
         updateTableInfo(out_table, hj_module.output_series.getType());
     }
 
+    void starJoin(const string &fact_table, const vector<Dimension> &dimensions, 
+                  const string &out_table, const map<string, string> &fact_columns,
+                  const vector<DimensionFactJoin> &dimension_columns, int32_t max_dimension_rows) {
+        NameToInfo::iterator fact_info = getTableInfo(fact_table);
+        verifyTableName(out_table);
+        
+        HashMap< string, shared_ptr<DataSeriesModule> > dimension_modules;
+        
+        BOOST_FOREACH(const Dimension &dim, dimensions) {
+            if (!dimension_modules.exists(dim.source_table)) {
+                NameToInfo::iterator dim_info = getTableInfo(dim.source_table);
+                shared_ptr<TypeIndexModule> 
+                    ptr(new TypeIndexModule(dim_info->second.extent_type->getName()));
+                ptr->addSource(tableToPath(dim.source_table));
+                dimension_modules[dim.source_table] = ptr;
+            }
+        }
+        
+        TypeIndexModule fact_input(fact_info->second.extent_type->getName());
+        fact_input.addSource(tableToPath(fact_table));
+
+        // TODO: use and check max_dimension_rows
+        StarJoinModule sj_module(fact_input, dimensions, out_table, fact_columns, 
+                                 dimension_columns, dimension_modules);
+
+        TeeModule output_module(sj_module, tableToPath(out_table));
+
+        output_module.getAndDelete();
+        updateTableInfo(out_table, sj_module.output_series.getType());
+    }
+    
     void selectRows(const string &in_table, const string &out_table, const string &where_expr) {
         verifyTableName(in_table);
         verifyTableName(out_table);

@@ -76,7 +76,7 @@ int RowAnalysisModule::printAllResults(SequenceModule &sequence, int expected_no
     bool printed_any = false;
     for(SequenceModule::iterator i = sequence.begin();
 	i != sequence.end();++i) {
-	RowAnalysisModule *ram = dynamic_cast<RowAnalysisModule *>(*i);
+	RowAnalysisModule *ram = dynamic_cast<RowAnalysisModule *>(i->get());
 	if (ram == NULL) {
 	    non_rowmods += 1;
 	} else {
@@ -88,8 +88,7 @@ int RowAnalysisModule::printAllResults(SequenceModule &sequence, int expected_no
 	    ram->printResult();
 	}
     }
-    INVARIANT(expected_nonprintable < 0 || 
-	      non_rowmods == expected_nonprintable,
+    INVARIANT(expected_nonprintable < 0 || non_rowmods == expected_nonprintable,
 	      boost::format("mismatch on number of non-printable"
 			    " modules %d != %d (expected)\n")
 	      % non_rowmods % expected_nonprintable);
