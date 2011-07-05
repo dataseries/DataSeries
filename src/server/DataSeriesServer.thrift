@@ -2,9 +2,15 @@
 
 namespace cpp dataseries
 
+struct TableColumn {
+    1: required string name;
+    2: required string type;
+}
+
 struct TableData {
     1: required list<list<string>> rows;
-    2: optional bool more_rows;
+    2: optional list<TableColumn> columns;
+    3: optional bool more_rows;
 }
 
 struct Dimension {
@@ -28,6 +34,11 @@ struct DimensionFactJoin {
     2: required list<string> fact_key_columns; // assume same order as in Dimension
     3: required map<string, string> extract_values; // value number to column name
     4: required DFJ_MissingAction missing_dimension_action;
+}
+
+struct UnionTable {
+    1: required string table_name;
+    2: required map<string, string> extract_values;
 }
 
 service DataSeriesServer {
@@ -57,6 +68,7 @@ service DataSeriesServer {
     void selectRows(string in_table, string out_table, string where_expr);
 
     void projectTable(string in_table, string out_table, list<string> keep_columns);
+    //    void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
 
     // Replace base table with a merge between base_table and update_from.  The tables are
     // both assumed to be uniquely sorted based on primary_key.  The 

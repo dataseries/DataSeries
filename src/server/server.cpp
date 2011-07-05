@@ -125,38 +125,36 @@ public:
         into.more_rows = false;
     }
 
-    ~TableDataModule() {
-        BOOST_FOREACH(GeneralField *g, fields) {
-            delete g;
-        }
-    }
-
     virtual void firstExtent(const Extent &e) {
         series.setType(e.getType());
         const ExtentType &extent_type(e.getType());
         fields.reserve(extent_type.getNFields());
         for (uint32_t i = 0; i < extent_type.getNFields(); ++i) {
-            // TODO: migrate to ::make
-            fields.push_back(GeneralField::create(series, extent_type.getFieldName(i)));
+            string field_name(extent_type.getFieldName(i));
+            fields.push_back(GeneralField::make(series, field_name));
+            into.columns.push_back(TableColumn(field_name, 
+                                               extent_type.getFieldTypeStr(field_name)));
         }
+        into.__isset.columns = true;
     }
 
     virtual void processRow() {
         if (into.rows.size() == max_rows) {
             into.more_rows = true;
+            into.__isset.more_rows = true;
             return;
         }
         into.rows.resize(into.rows.size() + 1);
         vector<string> &row(into.rows.back());
         row.reserve(fields.size());
-        BOOST_FOREACH(GeneralField *g, fields) {
+        BOOST_FOREACH(GeneralField::Ptr g, fields) {
             row.push_back(g->val().valString());
         }
     }
 
     TableData &into;
     uint32_t max_rows;
-    vector<GeneralField *> fields;
+    vector<GeneralField::Ptr> fields;
 };
 
 struct GVVec {
@@ -286,6 +284,25 @@ public:
             : Extractor(field_name), pos(pos)
         { }
     };
+
+    string renameField(const ExtentType *type, const string &old_name, const string &new_name) {
+        string ret(str(format("  <field name=\"%s\"") % new_name));
+        xmlNodePtr type_node = type->xmlNodeFieldDesc(old_name);
+        
+        for(xmlAttrPtr attr = type_node->properties; NULL != attr; attr = attr->next) {
+            if (xmlStrcmp(attr->name, (const xmlChar *)"name") != 0) {
+                // TODO: This can't be the right approach, but xmlGetProp() has an internal
+                // function ~20 lines long to convert a property into a string. Maybe use
+                // xmlAttrSerializeTxtContent somehow?
+                xmlChar *tmp = xmlGetProp(type_node, attr->name);
+                SINVARIANT(tmp != NULL);
+                ret.append(str(format(" %s=\"%s\"") % attr->name % tmp));
+                xmlFree(tmp);
+            }
+        }
+        ret.append("/>\n");
+        return ret;
+    }
 };
         
 // TODO: merge common code with StarJoinModule
@@ -989,9 +1006,7 @@ public:
         typedef map<string, string>::value_type ss_pair;
         BOOST_FOREACH(ss_pair &v, fact_column_names) {
             TINVARIANT(fact_series.getType()->hasColumn(v.first));
-            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
-                                  % fact_series.getType()->getFieldTypeStr(v.first)
-                                  % v.second));
+            output_xml.append(renameField(fact_series.getType(), v.first, v.second));
             fact_fields.push_back(ExtractorField::make(fact_series, v.first, v.second));
         }
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
@@ -1006,9 +1021,7 @@ public:
                 TINVARIANT(dim->dimension_type->hasColumn(ev.first));
                 size_t value_pos = dim->valuePos(ev.first);
                 TINVARIANT(value_pos != numeric_limits<size_t>::max());
-                output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
-                                      % dim->dimension_type->getFieldTypeStr(ev.first)
-                                      % ev.second));
+                output_xml.append(renameField(dim->dimension_type, ev.first, ev.second));
                 dfj->extractors.push_back(ExtractorValue::make(ev.second, value_pos));
             }
         }
@@ -1059,7 +1072,7 @@ public:
             HashMap<GVVec, GVVec>::iterator i 
                 = join->dimension->dimension_data.find(join->join_key);
             if (i == join->dimension->dimension_data.end()) {
-                FATAL_ERROR("unimplemented");
+                FATAL_ERROR(format("unimplemented; unable to find %s in dimension") % join->join_key);
             } else {
                 SINVARIANT(join->join_data == NULL);
                 join->join_data = &i->second;
@@ -1087,6 +1100,59 @@ public:
     HashMap<string, SJM_Dimension::Ptr> dimensions;
     vector<Extractor::Ptr> fact_fields;
 };    
+
+#if 0
+class UnionModule : public DataSeriesModule {
+public:
+    UnionModule(DataSeriesModule &source, const string &where_expr_str)
+        : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
+    { }
+
+    virtual ~SelectModule() { }
+
+    Extent *returnOutputSeries() {
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    virtual Extent *getExtent() {
+        while (true) {
+            Extent *in = source.getExtent();
+            if (in == NULL) {
+                return returnOutputSeries();
+            }
+            if (input_series.getType() == NULL) {
+                input_series.setType(in->getType());
+                output_series.setType(in->getType());
+
+                copier.prep();
+                where_expr.reset(DSExpr::make(input_series, where_expr_str));
+            }
+
+            if (output_series.getExtent() == NULL) {
+                output_series.setExtent(new Extent(*output_series.getType()));
+            }
+        
+            for (input_series.setExtent(in); input_series.more(); input_series.next()) {
+                if (where_expr->valBool()) {
+                    output_series.newRecord();
+                    copier.copyRecord();
+                }
+            }
+            if (output_series.getExtent()->size() > 96*1024) {
+                return returnOutputSeries();
+            }
+        }
+    }
+
+    DataSeriesModule &source;
+    string where_expr_str;
+    ExtentSeries input_series, output_series;
+    ExtentRecordCopy copier;
+    boost::shared_ptr<DSExpr> where_expr;
+};
+#endif
 
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:

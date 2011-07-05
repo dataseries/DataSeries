@@ -12,6 +12,8 @@ use Thrift::BufferedTransport;
 
 use DataSeriesServer;
 
+my $force_rebuild;
+
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(100000);
 my $transport = new Thrift::BufferedTransport($socket, 4096, 4096);
@@ -23,6 +25,7 @@ $transport->open();
 my $ret = eval {
     updateDateConv(19, '2009-07-06', '2009-07-31');
     scrumTaskRestricted(19);
+    remainingWork();
 };
 
 if ($@) { 
@@ -33,6 +36,7 @@ if ($@) {
 sub updateDateConv {
     my ($sprint, $start, $end) = @_;
 
+    return if !$force_rebuild && $client->hasTable('sprint_dayconv');
     my $istart = str2time($start);
     my $iend = str2time($end);
     my $delta = $iend - $istart;
@@ -42,7 +46,7 @@ sub updateDateConv {
     my $daynum = 0;
     my $prevday = -1;
 
-    my @rows;
+    my @rows = ([2, $sprint, 0, 0]);
     for(my $i = $istart; $i <= $iend; $i += 86400/2) {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)
 	    = localtime($i);
@@ -57,7 +61,10 @@ sub updateDateConv {
             ++$daynum;
         }
 	print "$sprint $daynum $date_str $date\n";
-        push (@rows, [ 2, $sprint, $date, $daynum ]);
+        # TODO: *1m because units for sql2ds of times is microseconds
+        # if we had a expression transform operation on the tables then we'd be fine, and
+        # that's what we should do.
+        push (@rows, [ 2, $sprint, $date*1000*1000, $daynum ]);
     }
 
     my $update_xml = <<'END';
@@ -79,6 +86,14 @@ END
     $client->selectRows('sprint_dayconv_raw', 'sprint_dayconv', "sprint_number == $sprint");
 }
 
+sub selfMap {
+    my @ret;
+    foreach $_ (@_) {
+        push(@ret, $_, $_);
+    }
+    return @ret;
+}
+
 # sql create or replace view scrum_task_restricted as 
 #    select id, title, state, created, estimated_days, finished, actual_days, sprint, assigned_to,
 #        (select day from sprint_dayconv where adate = created) as created_day, 
@@ -88,18 +103,54 @@ END
 sub scrumTaskRestricted {
     my ($sprint) = @_;
 
-    if (!$client->hasTable('scrum_task')) {
+    if ($force_rebuild || !$client->hasTable('scrum_task')) {
         print "import...\n";
         $client->importSQLTable('', 'scrum_task', 'scrum_task');
     }
+    return if !$force_rebuild && $client->hasTable('scrum_task_restricted');
 
     print "sel...\n";
     # TODO: need fn.isNull(finished); default is 0 so that will happen to work
     $client->selectRows('scrum_task', 'scrum_task_restricted.1', 
                         "sprint == $sprint && !(state == \"canceled\" && finished == 0)");
+#    print Dumper(getTableData('scrum_task_restricted.1'));
+#
+#    print Dumper(getTableData('sprint_dayconv')->{columns});
+
+    my $dim = new Dimension({ dimension_name => 'dayconv',
+                              source_table => 'sprint_dayconv',
+                              key_columns => ['date'],
+                              value_columns => ['day'],
+                              max_rows => 1000 });
+    my $dfj_created = new DimensionFactJoin({ dimension_name => 'dayconv',
+                                              fact_key_columns => ['created'],
+                                              extract_values => { 'day' => 'created_day' },
+                                              missing_dimension_action
+                                                => DFJ_MissingAction::DFJ_Unchanged });
+    my $dfj_finished = new DimensionFactJoin({ dimension_name => 'dayconv',
+                                               fact_key_columns => ['finished'],
+                                               extract_values => { 'day' => 'finished_day' },
+                                               missing_dimension_action
+                                                 => DFJ_MissingAction::DFJ_Unchanged });
+    $client->starJoin('scrum_task_restricted.1', [$dim], 'scrum_task_restricted',
+                      { selfMap(qw/id title state created estimated_days finished actual_days
+                                   sprint assigned_to/) }, [$dfj_created, $dfj_finished]);
 
     print "gtd...\n";
-#    print Dumper(getTableData('scrum_task_restricted.1'));
+    print Dumper(getTableData('scrum_task_restricted')); # ->{columns});
+}
+
+# remaining work on each day
+# sql create or replace view sprint_remain as select day, (select sum(estimated_days) as sum_estimated_days from scrum_task_restricted where created <= adate and (finished > adate or finished is null)) as remain from sprint_dayconv
+
+# remaining work on each day with foreknowledge
+# sql create or replace view sprint_remain_fore as select day, (select sum(estimated_days) as sum_estimated_days from scrum_task_restricted where finished > adate or finished is null) as remain from sprint_dayconv 
+sub remainingWork {
+    # For the first one, sort by created, separate sort by finished; union created and finished
+    # after inverting estimated_days for finished, then run accumulation over days in
+    # sprint_dayconv
+    #
+    # For the second one, sort by 0, finished, otherwise same as above
 }
 
 sub getTableData {

@@ -296,7 +296,7 @@ public:
 	int cnum = getColumnNumber(rep, column, false);
 	return xmlFieldDesc(cnum);
     }
-    /** Returns the XML associated with the given field as an @c xmlNodePtr*/
+    /** Returns the XML associated with the given field as an @c xmlNodePtr */
     xmlNodePtr xmlNodeFieldDesc(const std::string &column) const {
 	int cnum = getColumnNumber(rep, column, false);
 	return xmlNodeFieldDesc(cnum);
