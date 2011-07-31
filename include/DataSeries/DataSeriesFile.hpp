@@ -269,7 +269,7 @@ public:
         \pre \link DataSeriesSink::writeExtentLibrary writeExtentLibrary
             \endlink must have been called and the @c ExtentTypeLibrary passed
             to it must contain the type of e. */
-    void writeExtent(Extent &e, Stats *toUpdate);
+    void writeExtent(Extent &e, Stats *to_update);
 
     /** Block until all Extents in the queue have been written.
         If another thread is writing extents at the same time, this could

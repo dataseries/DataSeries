@@ -31,7 +31,8 @@ class SequenceModule;
 class RowAnalysisModule : public DataSeriesModule {
 public:
     RowAnalysisModule(DataSeriesModule &source,
-		      ExtentSeries::typeCompatibilityT type_compatibility = ExtentSeries::typeExact);
+		      ExtentSeries::typeCompatibilityT type_compatibility 
+                      = ExtentSeries::typeExact);
     virtual ~RowAnalysisModule();
     
     virtual Extent *getExtent();
@@ -54,8 +55,10 @@ public:
     virtual void newExtentHook(const Extent &e);
 
 
-    /** this function will be called once, with the first extent 
-	that will be processed by the module */
+    /** This function will be called once, with the first extent that will be
+	processed by the module.  The series will not be set when this function
+	is called so that field names can be set.  This function is called
+	before the newExtentHook is called on the same extent. */
     virtual void firstExtent(const Extent &e);
 
     /** this function will be called once after the first extent has been

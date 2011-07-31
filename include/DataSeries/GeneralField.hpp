@@ -17,9 +17,11 @@
 #include <iostream>
 #include <fstream>
 
+#include <boost/static_assert.hpp>
+#include <boost/shared_ptr.hpp>
+
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h> 
-#include <boost/static_assert.hpp>
 
 #include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/HashMap.hpp>
@@ -86,6 +88,10 @@ public:
     void set(const GeneralField &from);
     void set(const GeneralField *from) { 
 	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+    }
+
+    void set(boost::shared_ptr<GeneralField> from) {
+        set(from.get());
     }
 
     /** \brief return this < gv 
@@ -195,17 +201,30 @@ struct HashMap_hash<const GeneralValue> {
   * \note This class does not inherit from @c Field. */
 class GeneralField {
 public:
+    typedef boost::shared_ptr<GeneralField> Ptr;
+
     virtual ~GeneralField();
 
     /** create a new general field for a particular series; assumes that
 	the field type doesn't change over the course of the series. */
-    static GeneralField *create(ExtentSeries &series, 
-				const std::string &column) {
+    static GeneralField *create(ExtentSeries &series, const std::string &column) {
 	return create(NULL, series, column);
     }
+
     /** fieldxml can be null, in which case it gets it from the series type. */
     static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
 				const std::string &column);
+
+    /** make a new general field smart pointer for a specified series; assumes that
+        the field type doesn't change over the course of the series. */
+    static Ptr make(xmlNodePtr field_xml, ExtentSeries &series, const std::string &column) {
+        return Ptr(create(field_xml, series, column));
+    }
+    /** make a new general field smart point for the specified series and column; assumes
+        that the field type doesn't change over the course of the series. */
+    static Ptr make(ExtentSeries &series, const std::string &column) {
+        return Ptr(create(NULL, series, column));
+    }
 
     // see comment in DStoTextModule.H for why we have both
     // interfaces; summary ostream is very slow
@@ -217,6 +236,10 @@ public:
 
     // set will do conversion/fail as specified for each GF type
     virtual void set(GeneralField *from) = 0;
+
+    void set(GeneralField::Ptr from) {
+        set(from.get());
+    }
 
     void set(GeneralField &from) {
         set(&from);
@@ -470,8 +493,9 @@ class ExtentRecordCopy {
 public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
     /** Prepares the copy structure to do the copy.  Will be automatically
-	called by copyRecord() if necessary. */
-    void prep();
+	called by copyRecord() if necessary. type specifies the type to copy, so
+        we can do a subset; defaults to the type of dest if NULL */
+    void prep(const ExtentType *type = NULL);
     ~ExtentRecordCopy();
     /** Copies the current record of the source @c ExtentSeries to the
         current record of the destination @c ExtentSeries. Prerequisite: 

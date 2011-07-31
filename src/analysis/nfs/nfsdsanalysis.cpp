@@ -1634,21 +1634,19 @@ int parseopts(int argc, char *argv[], SequenceModule &commonSequence,
     return optind;
 }
 
-void
-printResult(DataSeriesModule *mod)
-{
+void printResult(SequenceModule::DsmPtr mod) {
     if (mod == NULL) {
 	return;
     }
-    NFSDSModule *nfsdsmod = dynamic_cast<NFSDSModule *>(mod);
-    RowAnalysisModule *rowmod = dynamic_cast<RowAnalysisModule *>(mod);
+    NFSDSModule *nfsdsmod = dynamic_cast<NFSDSModule *>(mod.get());
+    RowAnalysisModule *rowmod = dynamic_cast<RowAnalysisModule *>(mod.get());
     if (nfsdsmod != NULL) {
 	nfsdsmod->printResult();
     } else if (rowmod != NULL) {
 	rowmod->printResult();
     } else {
-	INVARIANT(dynamic_cast<DStoTextModule *>(mod) != NULL
-		  || dynamic_cast<PrefetchBufferModule *>(mod) != NULL,
+	INVARIANT(dynamic_cast<DStoTextModule *>(mod.get()) != NULL
+		  || dynamic_cast<PrefetchBufferModule *>(mod.get()) != NULL,
 		  "Found unexpected module in chain");
     }
 
@@ -1761,13 +1759,15 @@ int main(int argc, char *argv[]) {
 	delete tmp;
     }
 
+    // TODO: remove the ->get(), use shared pointers throughout; check all the other
+    // changes from this commit as well.
     // merge join with attributes
     NFSDSAnalysisMod::setAttrOpsSources
-	(*merge12Sequence.begin(), commonSequence, attrOpsSequence);
+	(merge12Sequence.begin()->get(), commonSequence, attrOpsSequence);
 
     // merge join with read-write data
     NFSDSAnalysisMod::setCommonAttrRWSources
-	(*merge123Sequence.begin(), merge12Sequence, rwSequence);
+	(merge123Sequence.begin()->get(), merge12Sequence, rwSequence);
 
 
     // 2004-09-02: tried experiment of putting some of the

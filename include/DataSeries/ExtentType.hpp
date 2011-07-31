@@ -193,6 +193,15 @@ public:
 	int cnum = getColumnNumber(rep, column, false);
 	return getFieldType(cnum);
     }
+
+    /** Converts a specified field type into the string representation
+        that would be used in the xml specification */
+    static const std::string &fieldTypeToStr(fieldType type);
+
+    const std::string &getFieldTypeStr(const std::string &column) const {
+        return fieldTypeToStr(getFieldType(column));
+    }
+
     /** Returns the size of a field in bytes. For bool and byte fields
         the result is 1, for int32 fields it is 4 and for double and
         int64 fields, 8. It is an error to call this for variable32
@@ -287,7 +296,7 @@ public:
 	int cnum = getColumnNumber(rep, column, false);
 	return xmlFieldDesc(cnum);
     }
-    /** Returns the XML associated with the given field as an @c xmlNodePtr*/
+    /** Returns the XML associated with the given field as an @c xmlNodePtr */
     xmlNodePtr xmlNodeFieldDesc(const std::string &column) const {
 	int cnum = getColumnNumber(rep, column, false);
 	return xmlNodeFieldDesc(cnum);
@@ -491,6 +500,8 @@ class ExtentTypeLibrary : boost::noncopyable {
 public:
     ExtentTypeLibrary() {};
 
+    // TODO: all the ExtentType *'s in here should turn into smart_ptr's so that we can
+    // use weak pointers inside and the use of bare extent types should be removed.
     const ExtentType *registerType(const std::string &xmldesc) FUNC_DEPRECATED {
 	return &registerTypeR(xmldesc);
     }
