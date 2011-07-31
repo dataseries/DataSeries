@@ -65,7 +65,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    k.filehandle = filehandle.stringval();
 
 	    hteData *v = stats_table.lookup(k);
@@ -234,7 +234,7 @@ public:
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
 		continue;
 	    if (is_request.val()) {
@@ -378,7 +378,7 @@ public:
     if (e->type.getName() != "NFS trace: common")
       return e;
 
-    for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+    for(s.setExtent(e);s.morerecords();++s) {
       if (op_id.isNull())
 	continue;
 
@@ -421,7 +421,7 @@ public:
 	age=0;
 
       while(req_reorder.empty() == false &&
-	    s.pos.morerecords() &&
+	    s.morerecords() &&
 	    (age >= 10)) {
 
 	// check for a matching response
@@ -673,7 +673,7 @@ public:
     if (e->type.getName() != "NFS trace: common")
       return e;
 
-    for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+    for(s.setExtent(e);s.morerecords();++s) {
       if (op_id.isNull())
 	continue;
 
@@ -716,7 +716,7 @@ public:
 	age=0;
 
       while(req_reorder.empty() == false &&
-	    s.pos.morerecords() &&
+	    s.morerecords() &&
 	    (age >= buffer_delay)) {
 
 	// check for a matching response

@@ -152,8 +152,9 @@ public:
         ExtentSeries modifyseries(modifytype);
         Variable32Field modifyfilename(modifyseries,"filename");
         Int64Field modifytime(modifyseries,"modify-time");
-        OutputModule *modifymodule = new OutputModule(*output, modifyseries, *modifyseries.type,
-                                                      packing_args.extent_size);
+        OutputModule *modifymodule 
+            = new OutputModule(*output, modifyseries, *modifyseries.getType(),
+                               packing_args.extent_size);
 
 	// sort so we get consistent output for regression testing.
         typedef ModifyTimesT::HashTableT::hte_vectorT mt_vectorT;
@@ -223,14 +224,14 @@ public:
         ExtentSeries infoseries(e);
         Variable32Field info_type_prefix(infoseries,"type-prefix");
         Variable32Field info_fields(infoseries,"fields");
-        INVARIANT(infoseries.pos.morerecords(),
+        INVARIANT(infoseries.morerecords(),
                   "must have at least one rows in info extent");
         this->type_prefix = info_type_prefix.stringval();
         this->fieldlist = info_fields.stringval();
 	split(this->fieldlist,",",fields);
 
-        ++infoseries.pos;
-        INVARIANT(infoseries.pos.morerecords() == false,
+        ++infoseries;
+        INVARIANT(infoseries.morerecords() == false,
                   "must have at most one row in info extent");
         e = info_mod.getExtent();
         INVARIANT(e == NULL, format("must have only one DSIndex::Extent::Info in"
@@ -532,8 +533,8 @@ public:
 
 protected:
     bool nextRow() {
-        ++series.pos;
-        if(!series.pos.morerecords()) {
+        ++series;
+        if(!series.morerecords()) {
             Extent *e = source->getExtent();
             if(e == NULL) {
                 series.clearExtent();

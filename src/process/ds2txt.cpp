@@ -280,9 +280,8 @@ main(int argc, char *argv[])
 	Int64Field offset(es,"offset");
 	Variable32Field extenttype(es,"extenttype");
 	cout << "extent offset  ExtentType\n";
-	for(;es.pos.morerecords();++es.pos) {
-	    cout << format("%-13d  %s\n") % offset.val() 
-		% extenttype.stringval();
+	for(;es.morerecords();++es) {
+	    cout << format("%-13d  %s\n") % offset.val() % extenttype.stringval();
 	}
     }
     

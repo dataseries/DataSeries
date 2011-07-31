@@ -69,7 +69,7 @@ public:
 		    break;
 		}
 		s.setExtent(e.get());
-		for (; s.pos.morerecords(); ++s.pos) {
+		for (; s.morerecords(); ++s) {
 		    // check to see if this is a new set of per-file entries
 		    if (cur_fname != filename.stringval()) {
 			cur_fname = filename.stringval();

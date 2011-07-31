@@ -362,13 +362,13 @@ public:
 	    ps_byte_count += ps_extent->fixeddata.size() + ps_extent->variabledata.size();
 	}
 	while(true) {
-	    if (io_series.pos.morerecords() == false) {
+	    if (io_series.morerecords() == false) {
 		delete io_series.extent();
 		io_series.clearExtent();
 		output_byte_count += outExtent->fixeddata.size() + outExtent->variabledata.size();
 		return outExtent;
 	    }
-	    if (ps_series.pos.morerecords() == false) {
+	    if (ps_series.morerecords() == false) {
 		// could break here and continue until we run out of I/O 
 		// records, runs the risk of mis-classifying a few of the I/Os
 		// as the *unknown* process
@@ -420,7 +420,7 @@ public:
 	    doOldPid(x);
 	}
 	++ps_record_count;
-	++ps_series.pos;
+	++ps_series;
     }
 
     void doNewPid() {
@@ -494,7 +494,7 @@ public:
 	}
 
 //	    if (lvid.val() != 0x40010009) {
-//		++io_series.pos;
+//		++io_series;
 //		return;
 //	    }
 	++io_record_count;
@@ -518,7 +518,7 @@ public:
 	output_command.set(x->command.data(),x->command.size());
 	output_username.set(x->username.data(),x->username.size());
 
-	++io_series.pos;
+	++io_series;
     }
 
     psinfo *forceIOFound() {
@@ -736,7 +736,7 @@ public:
 	if (e == NULL)
 	    return e;
 	
-	for(input_series.setExtent(e);input_series.pos.morerecords();++input_series.pos) {
+	for(input_series.setExtent(e);input_series.morerecords();++input_series) {
 	    const char *pool_strval = mypool.getPoolPointer(string_field.stringval());
 
 	    rollupptr key(id_field.val(),pool_strval);
@@ -840,7 +840,7 @@ public:
 	if (e == NULL)
 	    return e;
 	
-	for(input_series.setExtent(e);input_series.pos.morerecords();++input_series.pos) {
+	for(input_series.setExtent(e);input_series.morerecords();++input_series) {
 	    rollupptr key(id_field.val(),NULL);
 	    const rollupptr *val = rollup.lookup(key);
 	    if (val == NULL) {
@@ -976,7 +976,7 @@ main(int argc, char *argv[])
     int iocount = 0;
     double first_io_time = Double::Inf, last_io_time = -Double::Inf;
     while(true) {
-	if (iotrace.pos.morerecords() == false) {
+	if (iotrace.morerecords() == false) {
 	    delete ioextent;
 	    ioextent = iotrace_source.getExtent();
 	    if (ioextent == NULL) {
@@ -985,7 +985,7 @@ main(int argc, char *argv[])
 	    ++ioextents;
 	    iotrace.setExtent(ioextent);
 	}
-	if (pstrace.pos.morerecords() == false) {
+	if (pstrace.morerecords() == false) {
 	    delete psextent;
 	    psextent = pstrace_source.getExtent();
 	    if (psextent == NULL) 
@@ -1041,7 +1041,7 @@ main(int argc, char *argv[])
 		    }
 		}
 	    }
-	    ++pstrace.pos;
+	    ++pstrace;
 	} else {
 	    if (iotime.absval() < first_io_time) {
 		first_io_time = iotime.absval();
@@ -1136,7 +1136,7 @@ main(int argc, char *argv[])
 		++access->writes;
 		access->bytes_written += iobytes.val();
 	    }
-	    ++iotrace.pos;
+	    ++iotrace;
 	    if (iocount > 10000000) {
 		break;
 	    }

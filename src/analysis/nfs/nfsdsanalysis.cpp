@@ -529,7 +529,7 @@ public:
 	    return NULL;
 	INVARIANT(e->type.getName() == "common-attr-rw-join","bad");
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (packetat.val() < first_time) {
 		first_time = packetat.val();
 	    } 
@@ -826,7 +826,7 @@ public:
 	} else {
 	    Extent *e = source.getExtent();
 	    if (e == NULL) return NULL;
-	    for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	    for(s.setExtent(e);s.morerecords();++s) {
 		if(operation.equal(str_write)) {
 		    for(int i=0;i<nsws_searchfor;++i) {
 			if (fh2mountData::equalMountParts(filehandle.stringval(),
@@ -1288,7 +1288,7 @@ public:
 	// expect out of bounds case to be rare.
 	bool any_out_of_bounds = false;
 	int record_count = 0;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (packet_at.val() < min_time || packet_at.val() >= max_time) {
 		any_out_of_bounds = true;
 		break;
@@ -1313,7 +1313,7 @@ public:
 	dest_series->setExtent(out_extent);
 	// count in an int as that should be faster.
 	int kept_records = 0, pruned_records = 0;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (packet_at.val() < min_time || packet_at.val() >= max_time) {
 		++pruned_records;
 	    } else {

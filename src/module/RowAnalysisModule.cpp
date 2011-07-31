@@ -56,7 +56,7 @@ RowAnalysisModule::getExtent()
 	    where_expr = DSExpr::make(series, where_expr_str);
 	}
     }
-    for(;series.pos.morerecords();++series.pos) {
+    for(;series.morerecords();++series) {
 	if (!where_expr || where_expr->valBool()) {
 	    ++processed_rows;
 	    processRow();

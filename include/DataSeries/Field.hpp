@@ -67,7 +67,7 @@ public:
 	if (nullable) {
 	    DEBUG_INVARIANT(null_offset >= 0, 
 			    "internal error; field not ready");
-	    dataseries.pos.checkOffset(null_offset);
+	    dataseries.checkOffset(null_offset);
 	    return (*(dataseries.pos.record_start() + null_offset) 
 		    & null_bit_mask) ? true : false;
 	} else {
@@ -85,7 +85,7 @@ public:
 	DEBUG_INVARIANT(dataseries.extent() != NULL && null_offset >= 0,
 			"internal error; extent not set or field not ready");
 	if (nullable) {
-	    dataseries.pos.checkOffset(null_offset);
+	    dataseries.checkOffset(null_offset);
 	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
 	    if (val) {
 		*v = (ExtentType::byte)(*v | null_bit_mask);
@@ -138,6 +138,11 @@ protected:
         this increases the chances we will seg-fault out through a null
         dereference if the user has done something bad. */
     virtual void newExtentType();
+
+    ExtentType::byte *recordStart() const {
+        return dataseries.pos.record_start();
+    }
+
     friend class ExtentSeries;
     /** The associated @c ExtentSeries. Most of the useful stuff comes out of
         this, including the type of the extent and the actual storage for

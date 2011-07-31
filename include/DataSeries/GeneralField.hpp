@@ -474,7 +474,8 @@ public:
     void prep();
     ~ExtentRecordCopy();
     /** Copies the current record of the source @c ExtentSeries to the
-        current record of the destination @c ExtentSeries. */
+        current record of the destination @c ExtentSeries. Prerequisite: 
+        the record for the destination series should already exist */
     void copyRecord(); // you need to create the record first.
 private:
     bool did_prep;

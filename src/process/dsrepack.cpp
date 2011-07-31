@@ -380,7 +380,7 @@ int main(int argc, char *argv[]) {
 	ExtentSeries s(f.indexExtent);
 	Variable32Field extenttype(s,"extenttype");
 
-	for(;s.pos.morerecords();++s.pos) {
+	for(;s.morerecords();++s) {
 	    if (skipType(*library.getTypeByName(extenttype.stringval()))) {
 		continue;
 	    }
@@ -420,10 +420,10 @@ int main(int argc, char *argv[]) {
 	PerTypeWork *ptw = per_type_work[inextent->type.getName()];
 	INVARIANT(ptw != NULL, "internal");
 	for(ptw->inputseries.setExtent(inextent);
-	    ptw->inputseries.pos.morerecords();
-	    ++ptw->inputseries.pos) {
+	    ptw->inputseries.morerecords();
+	    ++ptw->inputseries) {
 	    ptw->output_module->newRecord();
-	    cur_file_bytes += ptw->outputseries.type->fixedrecordsize();
+	    cur_file_bytes += ptw->outputseries.getType()->fixedrecordsize();
 	    for(unsigned int i=0; i < ptw->in_boolfields.size(); ++i) {
 		ptw->out_boolfields[i]->set(ptw->in_boolfields[i]);
 	    }

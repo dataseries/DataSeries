@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
 	Extent *inextent = source.getExtent();
 	if (inextent == NULL) 
 	    break;
-	for(inputseries.setExtent(inextent);inputseries.pos.morerecords(); ++inputseries.pos) {
+	for(inputseries.setExtent(inextent);inputseries.morerecords(); ++inputseries) {
 	    ++input_row_count;
 	    if (where && !where->valBool()) {
 		continue;

@@ -222,7 +222,7 @@ static const ExtentType &toReference(const ExtentType *from)
 }
 
 Extent::Extent(ExtentSeries &myseries)
-    : type(toReference(myseries.type))
+    : type(toReference(myseries.getType()))
 {
     init();
     if (myseries.extent() == NULL) {

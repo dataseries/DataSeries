@@ -327,9 +327,9 @@ public:
 				       % es_attrops.extent()->extent_source);
 
 	string fh;
-	while(es_attrops.pos.morerecords()) {
+	while(es_attrops.morerecords()) {
 	restart:
-	    if (es_common.pos.morerecords() == false) {
+	    if (es_common.morerecords() == false) {
 		delete es_common.curExtent();
 		Extent *tmp = nfs_common->getExtent();
 		if (tmp == NULL) {
@@ -428,7 +428,7 @@ public:
 		// fail if somehow this rule is violated.  This may
 		// not actually be safe as there were some cases of
 		// fairly substantial out of orderness in the data.
-		++es_attrops.pos;
+		++es_attrops;
 		++skipped_attrops_count;
 	    } else if (in_replyid.val() == last_reply_id) {
 		// This happens from the conversion of readdirs into
@@ -483,8 +483,8 @@ public:
 				  % in_packetat.valRaw() % first_keep_time_raw  
 				  % (in_packetat.valRaw() - first_keep_time_raw));
 		    }
-		    ++es_common.pos;
-		    ++es_attrops.pos;
+		    ++es_common;
+		    ++es_attrops;
 		    continue;
 		}
 		es_out.newRecord();
@@ -523,8 +523,8 @@ public:
 		    curreqht->remove(k, false);
 		    prevreqht->remove(k, false);
 		}
-		++es_common.pos;
-		++es_attrops.pos;
+		++es_common;
+		++es_attrops;
 	    }
 	}
 

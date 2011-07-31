@@ -25,7 +25,12 @@
   * which have the same type. */
 class TypeIndexModule : public IndexSourceModule {
 public:
+    typedef boost::shared_ptr<TypeIndexModule> Ptr;
     TypeIndexModule(const std::string &type_match = "");
+
+    static Ptr make(const std::string &type_match = "") {
+        return Ptr(new TypeIndexModule(type_match));
+    }
 
     virtual ~TypeIndexModule();
     void setMatch(const std::string &type_match);

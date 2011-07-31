@@ -27,8 +27,8 @@ protected:
     byte *rawval() const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL && offset >= 0,
 			"internal error; extent not set or field not ready");
-	dataseries.pos.checkOffset(offset);
-	return dataseries.pos.record_start() + offset;
+	dataseries.checkOffset(offset);
+	return recordStart() + offset;
     }
 
     virtual void newExtentType();

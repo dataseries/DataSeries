@@ -127,7 +127,7 @@ public:
 	    Variable32Field extenttype(s,"extenttype");
 	    Int64Field offset(s,"offset");
 	
-	    for(;s.pos.morerecords();++s.pos) {
+	    for(;s.morerecords();++s) {
 		if (extenttype.stringval() == "TextIndex::Entries") {
 		    cout << "!"; cout.flush();
 		    indexExtent(source,args[i],offset.val());

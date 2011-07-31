@@ -102,7 +102,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) return NULL;
 	fh2fnData v;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filename.isNull())
 		continue;
 	    SINVARIANT(filename.size() > 0);
@@ -168,7 +168,7 @@ public:
     Extent *getExtent() {
 	Extent *e = source.getExtent();
 	if (e == NULL) return NULL;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (fh2mount.size() > NFSDSAnalysisMod::max_mount_points_expected) {
 		break;
 	    }

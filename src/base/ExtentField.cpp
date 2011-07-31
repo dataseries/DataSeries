@@ -56,10 +56,10 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
     : Field(_dataseries,field, flags), field_size(-1), offset(-1),
       fieldtype(ft)
 {
-    INVARIANT(dataseries.type == NULL || field.empty() || 
-	      dataseries.type->getFieldType(field) == ft,
+    INVARIANT(dataseries.getType() == NULL || field.empty() || 
+	      dataseries.getType()->getFieldType(field) == ft,
 	      format("mismatch on field types for field %s in type %s")
-	      % field % dataseries.type->getName());
+	      % field % dataseries.getType()->getName());
 }
 
 FixedField::~FixedField() { }
@@ -68,11 +68,11 @@ void FixedField::newExtentType() {
     if (getName().empty())
 	return; // Don't have a name yet.
     Field::newExtentType();
-    field_size = dataseries.type->getSize(getName());
-    offset = dataseries.type->getOffset(getName());
-    INVARIANT(dataseries.type->getFieldType(getName()) == fieldtype,
+    field_size = dataseries.getType()->getSize(getName());
+    offset = dataseries.getType()->getOffset(getName());
+    INVARIANT(dataseries.getType()->getFieldType(getName()) == fieldtype,
 	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.type->getName());
+	      % getName() % dataseries.getType()->getName());
 }
 
 BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field, 
@@ -89,7 +89,7 @@ void BoolField::newExtentType() {
     FixedField::newExtentType();
     if (getName().empty())
 	return; // Not ready yet
-    int bitpos = dataseries.type->getBitPos(getName());
+    int bitpos = dataseries.getType()->getBitPos(getName());
     bit_mask = (byte)(1 << bitpos);
 }
 
@@ -148,7 +148,7 @@ void DoubleField::newExtentType() {
     if (getName().empty())
 	return;
     FixedField::newExtentType();
-    base_val = dataseries.type->getDoubleBase(getName());
+    base_val = dataseries.getType()->getDoubleBase(getName());
     INVARIANT(flags & flag_allownonzerobase || base_val == 0,
 	      format("accessor for field %s doesn't support non-zero base")
 	      % getName());
@@ -170,12 +170,12 @@ Variable32Field::Variable32Field(ExtentSeries &_dataseries,
 
 void Variable32Field::newExtentType() {
     Field::newExtentType();
-    offset_pos = dataseries.type->getOffset(getName());
-    unique = dataseries.type->getUnique(getName());
-    INVARIANT(dataseries.type->getFieldType(getName()) 
+    offset_pos = dataseries.getType()->getOffset(getName());
+    unique = dataseries.getType()->getUnique(getName());
+    INVARIANT(dataseries.getType()->getFieldType(getName()) 
 	      == ExtentType::ft_variable32,
 	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.type->getName());
+	      % getName() % dataseries.getType()->getName());
 }
 
 void Variable32Field::allocateSpace(uint32_t data_size) {
@@ -197,7 +197,7 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
     // need to repack at the end of the variable data
     int32_t varoffset = dataseries.extent()->variabledata.size();
     dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
-    *reinterpret_cast<int32 *>(dataseries.pos.record_start() + offset_pos) = varoffset;
+    *reinterpret_cast<int32 *>(recordStart() + offset_pos) = varoffset;
 
     int32_t *var_data 
 	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
@@ -225,7 +225,7 @@ void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t 
     }
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
     SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
-    int32_t varoffset = *reinterpret_cast<int32 *>(dataseries.pos.record_start() + offset_pos);
+    int32_t varoffset = *reinterpret_cast<int32 *>(recordStart() + offset_pos);
     int32_t *var_data 
 	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
     

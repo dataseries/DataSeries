@@ -62,7 +62,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filesize.val() < min_file_size)
 		continue;
 	    k.filehandle = filehandle.stringval();
@@ -156,7 +156,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filesize.val() < min_file_size)
 		continue;
 	    if (filename.isNull()) {
@@ -263,7 +263,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filesize.val() < min_file_size)
 		continue;
 	    if (operation.size() != 5 || operation.stringval() != "write") {
@@ -379,7 +379,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filesize.val() < min_file_size)
 		continue;
 	    if (operation.size() != 5 || operation.stringval() != "write") {
@@ -506,7 +506,7 @@ public:
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    k.filehandle = filehandle.stringval();
 	    k.server = server.val();
 
