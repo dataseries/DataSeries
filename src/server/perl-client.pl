@@ -28,7 +28,8 @@ print "Post Ping\n";
 # trySelect();
 # tryProject();
 # tryUpdate();
-tryStarJoin();
+# tryStarJoin();
+tryUnion();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -221,6 +222,48 @@ END
                       { 'int32' => 'f.int_32'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
 
     print Dumper(getTableData("test-star-join"));
+}
+
+sub unionTable {
+    return new UnionTable({ 'table_name' => $_[0], 'extract_values' => $_[1] });
+}
+
+sub tryUnion {
+    # extra column tests discard; different names tests rename
+    importData('union-input-1', [ 'col1' => 'int32', 'col2' => 'variable32', 'col3' => 'byte' ],
+               [ [ 100, "abc", 3 ],
+                 [ 3000, "def", 5 ],
+                 [ 12345, "ghi", 17 ] ]);
+    importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32' ],
+               [ [ 150, "abc"  ],
+                 [ 2000, "def" ],
+                 [ 12345, "efg" ],
+                 [ 12345, "ghi" ],
+                 [ 12345, "jkl" ],
+                 [ 20000, "abc" ]]);
+    $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string' }),
+                           unionTable('union-input-2', { 'cola' => 'int', 'colb' => 'string' }) ],
+                         [ qw/int string/ ], 'union-output');
+    print Dumper(getTableData("union-output"));
+}
+
+sub importData {
+    my ($table_name, $table_desc, $rows) = @_;
+
+    my $data_xml;
+    if (ref $table_desc) {
+        $data_xml = qq{<ExtentType name="$table_name" namespace="simpl.hpl.hp.com" version="1.0">\n};
+        for (my $i=0; $i < @$table_desc; $i += 2) {
+            my $name = $table_desc->[$i];
+            my $desc = $table_desc->[$i+1];
+            $data_xml .= qq{  <field type="$desc" name="$name" />\n};
+        }
+        $data_xml .= "</ExtentType>\n";
+        print "Importing with $data_xml\n";
+    } else {
+        $data_xml = $table_desc;
+    }
+    $client->importData($table_name, $data_xml, new TableData({ 'rows' => $rows }));
 }
 
 sub getTableData {

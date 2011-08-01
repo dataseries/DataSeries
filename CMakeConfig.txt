@@ -141,9 +141,6 @@ OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 
 # TODO-eric: move these bits into lintel -- remove circular dependency
 INCLUDE(FindThrift)
-IF(THRIFT_FOUND)
-    INCLUDE(SimRealCMakeUtil)
-ENDIF(THRIFT_FOUND)
 
 #### RPath
 
