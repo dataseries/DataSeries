@@ -22,12 +22,13 @@ using namespace std;
 using boost::format;
 
 namespace {
-    string s_true("true");
-    string s_false("false");
-    string s_on("on");
-    string s_off("off");
-    string s_yes("yes");
-    string s_no("no");
+    static const string s_true("true");
+    static const string s_false("false");
+    static const string s_on("on");
+    static const string s_off("off");
+    static const string s_yes("yes");
+    static const string s_no("no");
+    static const string s_null("null");
 }
 
 // TODO: performance time boost::format, and if possible, unify the
@@ -246,7 +247,7 @@ void GeneralValue::write(FILE *to) {
 	    fputs("*unknown-type*", to);
 	    break;
 	case ExtentType::ft_bool:
-	    fputs((gvval.v_bool ? "true" : "false"), to);
+	    fputs((gvval.v_bool ? s_true.c_str() : s_false.c_str()), to);
 	    break;
 	case ExtentType::ft_byte:
 	    fprintf(to,"%d", static_cast<uint32_t>(gvval.v_byte));
@@ -277,7 +278,7 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << "*unknown-type*";
 	    break;
 	case ExtentType::ft_bool:
-	    to << (gvval.v_bool ? "true" : "false");
+	    to << (gvval.v_bool ? s_true : s_false);
 	    break;
 	case ExtentType::ft_byte:
 	    to << format("%d") % static_cast<uint32_t>(gvval.v_byte);
@@ -1265,10 +1266,6 @@ void GF_Variable32::setNull(bool val) {
     myfield.setNull(val);
 }
 
-static const string str_true("true");
-static const string str_false("false");
-static const string str_null("null");
-
 void GF_Variable32::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -1278,9 +1275,9 @@ void GF_Variable32::set(GeneralField *from) {
 	{
 	case ExtentType::ft_bool: 
 	    if (((GF_Bool *)from)->val()) {
-		myfield.set(str_true);
+		myfield.set(s_true);
 	    } else {
-		myfield.set(str_false);
+		myfield.set(s_false);
 	    }
 	    break;
 	case ExtentType::ft_byte: { 
@@ -1334,7 +1331,7 @@ const std::string GF_Variable32::val() const {
 
 const std::string GF_Variable32::valFormatted() {
     if (myfield.isNull()) {
-	return str_null;
+	return s_null;
     } else if (printstyle == printhex) {      
         return hexstring(myfield.stringval());
     } else if (printstyle == printmaybehex) {
