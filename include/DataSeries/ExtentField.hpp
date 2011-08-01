@@ -280,7 +280,7 @@ protected:
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
 #if LINTEL_DEBUG
-        dataseries.pos.checkOffset(offset_pos);
+        dataseries.checkOffset(offset_pos);
 #endif
         int32 varoffset = getVarOffset(recordStart(), offset_pos);
 #if LINTEL_DEBUG

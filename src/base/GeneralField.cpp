@@ -258,6 +258,9 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to, long_int_format(),gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
+            // TODO: change all of the formats to be the same, unclear what the right choice
+            // should be.  Too much precision leads to differing output; too little loses 
+            // information.
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_fixedwidth: 
@@ -479,6 +482,7 @@ bool GeneralValue::valBool() const {
     return 0;
 }
 
+// TODO: can probably refactor this to use ostrstream
 const std::string GeneralValue::valString() const {
     switch(gvtype) {
 	case ExtentType::ft_unknown: 

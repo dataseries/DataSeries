@@ -230,19 +230,23 @@ sub unionTable {
 
 sub tryUnion {
     # extra column tests discard; different names tests rename
-    importData('union-input-1', [ 'col1' => 'int32', 'col2' => 'variable32', 'col3' => 'byte' ],
-               [ [ 100, "abc", 3 ],
-                 [ 3000, "def", 5 ],
-                 [ 12345, "ghi", 17 ] ]);
-    importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32' ],
-               [ [ 150, "abc"  ],
-                 [ 2000, "def" ],
-                 [ 12345, "efg" ],
-                 [ 12345, "ghi" ],
-                 [ 12345, "jkl" ],
-                 [ 20000, "abc" ]]);
-    $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string' }),
-                           unionTable('union-input-2', { 'cola' => 'int', 'colb' => 'string' }) ],
+    importData('union-input-1', [ 'col1' => 'int32', 'col2' => 'variable32', 'col3' => 'byte',
+                                  'col4' => 'int32' ],
+               [ [ 100, "abc", 3, 1 ],
+                 [ 2000, "ghi", 4, 4 ],
+                 [ 3000, "def", 5, 5 ],
+                 [ 12345, "ghi", 17, 7 ] ]);
+    importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32', 'colc' => 'int32' ],
+               [ [ 100, "def", 2 ],
+                 [ 2000, "def", 3 ],
+                 [ 12345, "efg", 6 ],
+                 [ 12345, "ghi", 8 ],
+                 [ 12345, "jkl", 9 ],
+                 [ 20000, "abc", 10 ]]);
+    $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string',
+                                                         'col4' => 'order' }),
+                           unionTable('union-input-2', { 'cola' => 'int', 'colb' => 'string',
+                                                         'colc' => 'order' }) ],
                          [ qw/int string/ ], 'union-output');
     print Dumper(getTableData("union-output"));
 }
