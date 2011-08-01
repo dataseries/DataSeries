@@ -259,6 +259,9 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to, long_int_format(),gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
+            // TODO: change all of the formats to be the same, unclear what the right choice
+            // should be.  Too much precision leads to differing output; too little loses 
+            // information.
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_fixedwidth: 
@@ -480,6 +483,7 @@ bool GeneralValue::valBool() const {
     return 0;
 }
 
+// TODO: can probably refactor this to use ostrstream
 const std::string GeneralValue::valString() const {
     switch(gvtype) {
 	case ExtentType::ft_unknown: 
@@ -1349,11 +1353,11 @@ GeneralField::~GeneralField() { }
 
 GeneralField *
 GeneralField::create(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column) {
-    INVARIANT(series.type != NULL,"need to set series type!");
+    INVARIANT(series.getType() != NULL,"need to set series type!");
     if (fieldxml == NULL) {
-	fieldxml = series.type->xmlNodeFieldDesc(column);
+	fieldxml = series.getType()->xmlNodeFieldDesc(column);
     }
-    switch (series.type->getFieldType(column)) 
+    switch (series.getType()->getFieldType(column)) 
 	{
 	case ExtentType::ft_bool:
 	    return new GF_Bool(fieldxml,series,column);
@@ -1391,11 +1395,11 @@ void ExtentRecordCopy::prep(const ExtentType *copy_type) {
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
 	&& source.getType() == dest.getType() && source.getType() == copy_type) {
 	// Can do a bitwise copy.
-	fixed_copy_size = source.type->fixedrecordsize();
+	fixed_copy_size = source.getType()->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
-	for(unsigned i=0;i<source.type->getNFields(); ++i) {
-	    const std::string &fieldname = source.type->getFieldName(i);
-	    if (source.type->getFieldType(fieldname) == ExtentType::ft_variable32) {
+	for(unsigned i=0;i<source.getType()->getNFields(); ++i) {
+	    const std::string &fieldname = source.getType()->getFieldName(i);
+	    if (source.getType()->getFieldType(fieldname) == ExtentType::ft_variable32) {
 		sourcevarfields.push_back(new GF_Variable32(NULL,source,fieldname));
 		destvarfields.push_back(new GF_Variable32(NULL,dest,fieldname));
 	    }
@@ -1405,7 +1409,7 @@ void ExtentRecordCopy::prep(const ExtentType *copy_type) {
 	for(unsigned i=0; i < copy_type->getNFields(); ++i) {
 	    const std::string &fieldname = copy_type->getFieldName(i);
 	    sourcefields.push_back(GeneralField::create(NULL, source, fieldname));
-	    INVARIANT(dest.type->hasColumn(fieldname),
+	    INVARIANT(dest.getType()->hasColumn(fieldname),
 		      format("Destination for copy is missing field %s") % fieldname);
 	    destfields.push_back(GeneralField::create(NULL, dest, fieldname));
 	}
@@ -1431,7 +1435,7 @@ void ExtentRecordCopy::copyRecord() {
     INVARIANT(dest.morerecords(), "you forgot to create the destination record");
     INVARIANT(source.morerecords(), "you forgot to set the source record");
     if (fixed_copy_size > 0) {
-	dest.pos.checkOffset(fixed_copy_size-1);
+	dest.checkOffset(fixed_copy_size-1);
 	memcpy(dest.pos.record_start(),source.pos.record_start(),fixed_copy_size);
 	// need to do things this way because in the process of doing
 	// the memcpy we mangled the variable offsets that are stored

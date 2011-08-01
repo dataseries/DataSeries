@@ -30,4 +30,6 @@ int main(int argc, char *argv[]) {
         extent->packData(packeddata, Extent::compress_lzf, 9, NULL, NULL, NULL);
 	std::cout << "packed: " << packeddata.size() << " bytes\n";
     }
+    source.close();
+    return 0;
 }

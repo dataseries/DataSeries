@@ -1,7 +1,7 @@
 Unless explicitly mentioned otherwise, the following licence covers all 
 files in this package:
 
-Copyright (c) 2005-2008, Hewlett-Packard Company
+Copyright (c) 2005-2011, Hewlett-Packard Development Company
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -71,5 +71,5 @@ check-data/wc_day50_4.copyright
 ---------
 
 src/raw-collection/lindump-mmap.c was originally copyrighted under the
-GPL with the extentions copyrighted as above.
+GPL version 2 with the extentions copyrighted as above.
 

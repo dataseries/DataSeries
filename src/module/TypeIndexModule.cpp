@@ -73,18 +73,18 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 
 	    indexSeries.setExtent(cur_source->indexExtent);
 	}
-	for(;indexSeries.pos.morerecords();++indexSeries.pos) {
+	for(;indexSeries.morerecords();++indexSeries) {
 	    if (type_match.empty() ||
 		(my_type != NULL &&
 		 extentType.stringval() == my_type->getName())) {
 		off64_t v = extentOffset.val();
 		PrefetchExtent *ret 
 		    = readCompressed(cur_source, v, extentType.stringval());
-		++indexSeries.pos;
+		++indexSeries;
 		return ret;
 	    }
 	}
-	if (indexSeries.pos.morerecords() == false) {
+	if (indexSeries.morerecords() == false) {
 	    indexSeries.clearExtent();
 	    delete cur_source;
 	    cur_source = NULL;

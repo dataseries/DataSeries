@@ -1,0 +1,40 @@
+=pod
+
+=head1 NAME
+
+dataseries-utils - notes on common arguments to the dataseries utilities.
+
+=head1 DESCRIPTION
+
+Most of the dataseries conversion utilities take a common set of arguments to specify the
+compression arguments.  These arguments include:
+
+=over
+
+=item --disable-{lzf,lzo,gz,bz2}
+
+Disable one or more of the compression algorithms
+
+=item --compress-{lzf,lzo,gz,bz2,none}
+
+Specify exactly one compression algorithm (or to use no compression)
+
+=item --enable-{lzf,lzo,gz,bz2}
+
+Enable one compression algorithm.  Usually used as --compress-none --enable-lzf --enable-gz.
+
+=item --compress-level=I<[0-9]>
+
+Specify the compression level for the compression algorithm
+
+=item --extent-size=I<# bytes>
+
+Specify the size of the extents.  Defaults to 16MiB if bz2 is enabled and 64KiB otherwise.
+
+=back
+
+The options are specified in order, and the default is --enable-*.  Therefore --disable-lzf
+--disable-lzo is equivalent to --compress-none --enable-gz --enable-bz2 and is equivalent to
+--compress-bz2 --enable-gz.
+
+=cut

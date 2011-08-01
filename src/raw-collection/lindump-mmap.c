@@ -11,11 +11,38 @@ static int no_file_rotation = 0;
 #error "Need __builtin_memcpy, which is probably GNUC only"
 #endif
 
-#include <linux/compiler.h>
-
 #if __GNUC__ >= 4
 #define __always_inline		inline __attribute__((always_inline))
 #endif
+
+/*
+=pod
+
+=head1 NAME
+
+lindump-mmap - faster packet capture than tcpdump on linux
+
+=head1 SYNOPSIS
+
+ % lindump-mmap <device...> <output-basename>
+
+=head1 DESCRIPTION
+
+When capturing partial packets or filtering traces substantially based on a packet filtering
+specification, tcpdump will usually have sufficient performance to capture the data.  However, if
+full packet captures are required, tcpdump will fall behind on busy networks.  lindump-mmap uses a
+linux specific ring-buffer interface to speed up the capture.  It's interface however is much
+simpler, you can just specify the list of devices and the basename of the files to output.
+lindump-mmap will capture full packets in pcap format and will rotate to different output files
+every 200MB.
+
+=head1 SEE ALSO
+
+tcpdump(1), /usr/share/doc/DataSeries/fast2009-nfs-analysis.pdf
+
+=cut
+ */
+
 
 #include <stdio.h>
 #include <unistd.h>
@@ -71,7 +98,7 @@ void sigproc(int sig)
 	socklen_t len=sizeof(st);
 
 	if (!getsockopt(fd,SOL_PACKET,PACKET_STATISTICS,(unsigned char *)&st,&len)) {
-		fprintf(stderr, "recieved %u packets, dropped %u\n",
+		fprintf(stderr, "received %u packets, dropped %u\n",
 			st.tp_packets, st.tp_drops);
 	}
 	
@@ -190,8 +217,8 @@ linpcap_dump_open(const char *filename)
   hdr.linktype = 1;// LINKTYPE_ETHERNET, or DLT_EN10
   bytes = fwrite(&hdr, 1, sizeof(struct pcap_file_header), ret);
   if (bytes != sizeof(struct pcap_file_header)) {
-    fprintf(stderr,"Write failed %d != %d\n",bytes,sizeof(struct pcap_file_header));
-    exit(1);
+      fprintf(stderr,"Write failed %d != %d\n",bytes,(int)sizeof(struct pcap_file_header));
+      exit(1);
   }
   fflush(ret);
   return ret;
@@ -373,7 +400,7 @@ void do_tracing(int argc, char *argv[], int device_ids[])
 		if (getsockopt(fd,SOL_PACKET,PACKET_STATISTICS,(char *)&st,&len)!= 0) {
 		    perror("getsockopt");
 		    abort();
-		    fprintf(stderr, "recieved %u packets, dropped %u\n",
+		    fprintf(stderr, "received %u packets, dropped %u\n",
 			    st.tp_packets, st.tp_drops);
 		}
 		total_drops += st.tp_drops;

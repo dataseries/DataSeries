@@ -1,0 +1,5 @@
+usr/bin
+usr/share/bp_modules
+usr/share/perl5
+usr/share/lintian/overrides/dataseries-utils
+usr/share/man/man1

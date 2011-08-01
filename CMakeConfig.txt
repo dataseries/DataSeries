@@ -32,9 +32,19 @@ INCLUDE(FindLintel)
 
 LINTEL_HAS_FEATURE(program-options)
 
-IF(NOT LINTEL_program-options_ENABLED)
+IF(LINTEL_program-options_ENABLED)
+    LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
+                       "boost_program_options boost_program_options-mt")
+ELSE(LINTEL_program-options_ENABLED)
     MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
-ENDIF(NOT LINTEL_program-options_ENABLED)
+ENDIF(LINTEL_program-options_ENABLED)
+
+#### Threads
+
+INCLUDE(FindThreads)
+INCLUDE(FindBoost)
+SET(BOOST_THREAD_FIND_REQUIRED ON)
+LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-mt")
 
 #### LibXML2
 
@@ -94,8 +104,8 @@ LINTEL_WITH_LIBRARY(PCRE pcre.h pcre)
 SET(PCAP_MISSING_EXTRA "  will skip building nettrace2ds, network-driverdump")
 LINTEL_WITH_HEADER(PCAP pcap.h)
 
-SET(LINUX_COMPILER_MISSING_EXTRA "  will skip building lindump-mmap")
-LINTEL_WITH_HEADER(LINUX_COMPILER linux/compiler.h)
+SET(LINUX_IF_PACKET_MISSING_EXTRA "  will skip building lindump-mmap")
+LINTEL_WITH_HEADER(LINUX_IF_PACKET linux/if_packet.h)
 
 INCLUDE(FindBoost)
 
@@ -109,12 +119,18 @@ LINTEL_WITH_LIBRARY(AVRO avro.h avro)
 LINTEL_WITH_PERL_MODULE(PERL_XML_PARSER XML::Parser)
 LINTEL_WITH_PERL_MODULE(PERL_DATE_PARSE Date::Parse)
 LINTEL_WITH_PERL_MODULE(PERL_CRYPT_RIJNDAEL Crypt::Rijndael)
+LINTEL_WITH_PERL_MODULE(PERL_FILESYS_STATVFS Filesys::Statvfs)
 
 #### Doxygen
 
 INCLUDE(LintelDocs)
 
 LINTEL_DOCS_CONFIG("DataSeries")
+LINTEL_POD2MAN_SETUP()
+# TODO: consider redoing lintel in the same way as this, it's way more convinient.
+# then this could just be LINTEL_POD2MAN_RELEASE since it's likely constant for
+# any individual cmake package.
+SET(DATASERIES_POD2MAN_RELEASE "DataSeries ${DATASERIES_VERSION}")
 
 #### Misc Options
 
@@ -125,9 +141,6 @@ OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 
 # TODO-eric: move these bits into lintel -- remove circular dependency
 INCLUDE(FindThrift)
-IF(THRIFT_FOUND)
-    INCLUDE(SimRealCMakeUtil)
-ENDIF(THRIFT_FOUND)
 
 #### RPath
 
@@ -151,7 +164,6 @@ ENDIF(WITH_INSTALLED_RPATH)
 
 #### latex Documentation
 
-# TODO: add tests for amssymb.sty; was in tetex-extra on debian
 INCLUDE(LintelCMakeUtil)
 
 LINTEL_LATEX_CONFIG()
@@ -161,6 +173,6 @@ IF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
     MESSAGE("  latex-documentation will remain un-built")
 ENDIF(WITH_LINTEL_LATEX_REBUILD AND NOT LINTEL_LATEX_REBUILD_ENABLED)
 
-LINTEL_LATEX_REQUIRES(BUILD_TECH_REPORT "DataSeries Tech Report" fullpage.sty)
+LINTEL_LATEX_REQUIRES(BUILD_TECH_REPORT "DataSeries Tech Report" fullpage.sty epsf.sty)
 LINTEL_LATEX_REQUIRES(BUILD_OSR_2008 "DataSeries OSR 2008 paper" ptmb8t.tfm ptmb8t.vf) 
 LINTEL_LATEX_REQUIRES(BUILD_FAST_2009 "FAST 2009 NFS Analysis paper" fullpage.sty)

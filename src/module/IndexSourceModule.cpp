@@ -58,32 +58,11 @@ IndexSourceModule::IndexSourceModule()
 {
 }
 
-IndexSourceModule::~IndexSourceModule()
-{
-    // TODO: All of this should be in the PrefetchInfo destructor
-    if (prefetch != NULL) {
-	prefetch->mutex.lock();
-	prefetch->abort_prefetching = true;
-	prefetch->compressed_cond.broadcast();
-	prefetch->unpack_cond.broadcast();
-	prefetch->ready_cond.broadcast();
-	prefetch->mutex.unlock();
-	prefetch->compressed_prefetch_thread->join();
-	for(vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
-	    i != prefetch->unpack_threads.end(); ++i) {
-	    (**i).join();
-	    delete *i;
-	}
-	while (prefetch->compressed.empty() == false) {
-	    delete prefetch->compressed.getFront();
-	}
-	while (prefetch->unpacked.empty() == false) {
-	    delete prefetch->unpacked.getFront();
-	}
-	delete prefetch->compressed_prefetch_thread;
-	delete prefetch;
-	prefetch = NULL;
-    }
+IndexSourceModule::~IndexSourceModule() {
+    INVARIANT(prefetch == NULL || isClosed(),
+              "Must either have never read data or be done reading data");
+    delete prefetch;
+    prefetch = NULL;
 }
 
 void
@@ -91,33 +70,41 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
 				    unsigned prefetch_max_unpacked,
 				    int n_unpack_threads)
 {
-    INVARIANT(prefetch == NULL,"invalid to start prefetching twice.");
+    INVARIANT(prefetch == NULL, "invalid to start prefetching twice without closing.");
     SINVARIANT(prefetch_max_compressed > 0);
     SINVARIANT(prefetch_max_unpacked > 0);
 
     PrefetchInfo *tmp = new PrefetchInfo(prefetch_max_compressed,
 					 prefetch_max_unpacked);
+    tmp->mutex.lock();
     prefetch = tmp;
+
+    unsigned unpack_count;
+    if (n_unpack_threads == -1) {
+        unpack_count = PThreadMisc::getNCpus();
+    } else {
+        // TODO: Add support (and test) for 0 unpack threads which should
+        // disable all of the prefetching.
+	SINVARIANT(n_unpack_threads > 0);
+	unpack_count = static_cast<unsigned>(n_unpack_threads);
+    } 
+
+    INVARIANT(unpack_count > 0, "?");
+    tmp->unpack_threads.resize(unpack_count);
+    INVARIANT(prefetch == tmp, "two simulataneous calls to startPrefetching??");
+    lockedStartThreads();
+    tmp->mutex.unlock();
+    INVARIANT(prefetch == tmp, "two simulataneous calls to startPrefetching??");
+}
+
+void IndexSourceModule::lockedStartThreads() {
     prefetch->compressed_prefetch_thread = 
 	new IndexSourceModuleCompressedPrefetchThread(*this);
     prefetch->compressed_prefetch_thread->start();
-
-    unsigned unpack_count = PThreadMisc::getNCpus();
-    // TODO: Add support (and test) for 0 unpack threads which should
-    // disable all of the prefetching.
-    if (n_unpack_threads != -1) {
-	SINVARIANT(n_unpack_threads > 0);
-	unpack_count = static_cast<unsigned>(n_unpack_threads);
+    for(unsigned i = 0; i < prefetch->unpack_threads.size(); ++i) {
+	prefetch->unpack_threads[i] = new IndexSourceModuleUnpackThread(*this);
+	prefetch->unpack_threads[i]->start();
     }
-
-    INVARIANT(unpack_count > 0, "?");
-    prefetch->unpack_threads.reserve(unpack_count);
-    for(unsigned i = 0; i < unpack_count; ++i) {
-	PThread *p = new IndexSourceModuleUnpackThread(*this);
-	p->start();
-	prefetch->unpack_threads.push_back(p);
-    }
-    INVARIANT(prefetch == tmp, "two simulataneous calls to startPrefetching??");
 }
 
 static inline double 
@@ -143,6 +130,7 @@ Extent *IndexSourceModule::getExtent() {
     }
     if (prefetch->allDone()) {
 	prefetch->mutex.unlock();
+        close();
 	getting_extent = false;
 	return NULL;
     }
@@ -173,17 +161,82 @@ Extent *IndexSourceModule::getExtent() {
 
 void IndexSourceModule::resetPos() {
     SINVARIANT(prefetch != NULL);
+    close();
     prefetch->mutex.lock();
-    SINVARIANT(prefetch->reset_flag == false);
-    INVARIANT(prefetch->compressed.empty() && prefetch->unpacked.empty(), 
-	      "reset with anything remaining not implemented");
+    SINVARIANT(lockedIsClosed());
+    lockedResetModule();
+    prefetch->source_done = false;
+    SINVARIANT(prefetch->abort_prefetching == 0);
+    lockedStartThreads();
+}
 
-    prefetch->reset_flag = true;
-    prefetch->compressed_cond.signal();
-    while(prefetch->reset_flag) {
-	prefetch->compressed_cond.wait(prefetch->mutex);
+void IndexSourceModule::close() {
+    if (prefetch == NULL) { // never opened, or already closed.
+        return;
     }
-    prefetch->mutex.unlock();
+
+    PThreadScopedLock lock(prefetch->mutex);
+    if (lockedIsClosed()) {
+        return;
+    }
+    if (prefetch->abort_prefetching == 0) {
+        //                          me + compressed_prefetch + unpackers
+        prefetch->abort_prefetching = 2 + prefetch->unpack_threads.size();
+        prefetch->compressed_cond.broadcast();
+        prefetch->unpack_cond.broadcast();
+        prefetch->ready_cond.broadcast();
+
+        while (prefetch->abort_prefetching > 1) {
+            prefetch->compressed_cond.wait(prefetch->mutex);
+        }
+
+	prefetch->compressed_prefetch_thread->join();
+        delete prefetch->compressed_prefetch_thread;
+        prefetch->compressed_prefetch_thread = NULL;
+	for(vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
+	    i != prefetch->unpack_threads.end(); ++i) {
+	    (**i).join();
+            delete *i;
+            *i = NULL;
+	}
+	while (prefetch->compressed.empty() == false) {
+	    delete prefetch->compressed.getFront();
+	}
+	while (prefetch->unpacked.empty() == false) {
+	    delete prefetch->unpacked.getFront();
+	}
+        SINVARIANT(prefetch->abort_prefetching == 1);
+        prefetch->abort_prefetching = 0;
+        prefetch->compressed_cond.broadcast();
+    }
+
+    // multiple threads can call close() at the same time; all of them wait
+    while (prefetch->abort_prefetching > 0) {
+        prefetch->compressed_cond.wait(prefetch->mutex);
+    }
+}
+
+bool IndexSourceModule::isClosed() {
+    if (prefetch == NULL) { 
+        return false; // not yet started; implicitly open
+    }
+
+    PThreadScopedLock lock(prefetch->mutex);
+    return lockedIsClosed();
+}
+
+bool IndexSourceModule::lockedIsClosed() {
+    if (prefetch->compressed_prefetch_thread != NULL) {
+        return false;
+    } 
+
+    for (vector<PThread *>::iterator i = prefetch->unpack_threads.begin(); 
+         i != prefetch->unpack_threads.end(); ++i) {
+        if (*i != NULL) {
+            return false;
+        }
+    }
+    return true;
 }
 
 double 
@@ -217,22 +270,10 @@ IndexSourceModule::getWaitStats(WaitStats &stats)
     return true;
 }
 
-void
-IndexSourceModule::compressedPrefetchThread()
-{
+void IndexSourceModule::compressedPrefetchThread() {
     prefetch->mutex.lock();
-    while(true) {
-	if (prefetch->abort_prefetching) {
-	    break;
-	} else if (prefetch->reset_flag) {
-	    SINVARIANT(prefetch->compressed.empty() &&
-		       prefetch->compressed.cur == 0);
-		      
-	    lockedResetModule();
-	    prefetch->source_done = false;
-	    prefetch->reset_flag = false;
-	    prefetch->compressed_cond.signal();
-	} else if (!prefetch->source_done && prefetch->compressed.can_add(0)) {
+    while (prefetch->abort_prefetching == 0) {
+        if (!prefetch->source_done && prefetch->compressed.can_add(0)) {
 	    PrefetchExtent *p = lockedGetCompressedExtent();
 	    if (p == NULL) {
 		prefetch->source_done = true;
@@ -251,16 +292,17 @@ IndexSourceModule::compressedPrefetchThread()
 	    prefetch->compressed_cond.wait(prefetch->mutex);
 	}
     }
+    SINVARIANT(prefetch->abort_prefetching > 0);
+    --prefetch->abort_prefetching;
+    prefetch->compressed_cond.broadcast();
     prefetch->mutex.unlock();
 }
 
-void
-IndexSourceModule::unpackThread()
-{
+void IndexSourceModule::unpackThread() {
     prefetch->mutex.lock();
     ++prefetch->stats.active_unpackers;
-    while(prefetch->abort_prefetching == false) {
-	if(prefetch->compressed.data.empty() || 
+    while (prefetch->abort_prefetching == 0) {
+	if (prefetch->compressed.data.empty() || 
 	   !prefetch->unpacked.can_add(prefetch->compressed.front())) {
 	    --prefetch->stats.active_unpackers;
 	    if (prefetch->compressed.data.empty()) {
@@ -272,7 +314,7 @@ IndexSourceModule::unpackThread()
 	    ++prefetch->stats.active_unpackers;
 	}
 	
-	if (prefetch->abort_prefetching) {
+	if (prefetch->abort_prefetching > 0) {
 	    break;
 	}
 
@@ -326,6 +368,9 @@ IndexSourceModule::unpackThread()
 	}
     }
     --prefetch->stats.active_unpackers;
+    SINVARIANT(prefetch->abort_prefetching > 0);
+    --prefetch->abort_prefetching;
+    prefetch->compressed_cond.broadcast();
     prefetch->mutex.unlock();
 }
 

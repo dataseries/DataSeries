@@ -60,7 +60,7 @@ public:
 	    return NULL;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
 		continue;
 	    hteData *d = stats_table.lookup(hteData(is_udp.val(),is_request.val(),op_id.val()));
@@ -160,7 +160,7 @@ public:
 	    return NULL;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
 		continue;
 	    ExtentType::int32 client,server;
@@ -247,7 +247,7 @@ public:
 	Extent *e = source.getExtent();
 	if (e == NULL) return NULL;
 	if (e->type.getName() != "NFS trace: common") return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull()) continue;
 	    stat_payload_length.add(payload_length.val());
 	    if (packet_at.val() < min_time) {
@@ -388,7 +388,7 @@ public:
 	    return NULL;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
 		continue;
 	    if ((reqtime.val() - lastrotate) > rotate_interval_ns) {
@@ -581,7 +581,7 @@ public:
 	    return NULL;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    curr = reqtime.val();
 	    if (currstart == 0) {
 		starttime = curr;

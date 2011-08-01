@@ -65,9 +65,7 @@ ExtentSeries::setType(const ExtentType &_type)
     }
 }
 
-void
-ExtentSeries::setExtent(Extent *e)
-{
+void ExtentSeries::setExtent(Extent *e) {
     my_extent = e;
     pos.reset(my_extent);
     if (e != NULL && &e->type != type) {

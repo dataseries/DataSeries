@@ -65,7 +65,7 @@ MinMaxIndexModule::init(const std::string &index_filename,
 		sel.maxf = GeneralField::create(NULL,s,"max:" + sel.max_fieldname);
 	    }
 	}
-	for(;s.pos.morerecords();++s.pos) {
+	for(;s.morerecords();++s) {
 	    bool all_overlap = true;
 	    bool any_overlap = false;
 	    GeneralValue extent_sort(sort_val);

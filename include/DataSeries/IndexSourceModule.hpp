@@ -41,6 +41,24 @@
 // files, see dsextentindex.C for a case where this matters, as well
 // as nfsdsanalysis.
 
+// TODO: this module (and all the sub-classes) probably should be rewritten.
+// Because we inherit for the function to get the next extent, we have to have
+// the close() function and the destructor can't properly cleanup after the
+// function since another thread might be trying to be in the pure virtual
+// function while we are destroying.  If we rewrite this to have a subclass
+// which does the locked extent operations, then we can properly cleanup.
+// Moreover, once we do a rewrite, we can use the modern lintel locking support
+// (locking in here is a bit weird), and we can probably share the
+// decompression threads and prefetching threads across multiple new-style
+// index source modules which would reduce the number of threads and give us
+// better control over the priority of decompression, and the memory used
+// during it (effectively a global pool rather than a per-type pool).  While
+// making those changes, also fixing the code so that we have parallel
+// compressed reading would be a good idea.  With large disk subsystem
+// machines, and the really many cores we have now, it is not difficult to need
+// to have multiple threads reading in extents in order to read them fast
+// enough to keep the pipeline full.
+
 class IndexSourceModule : public SourceModule {
 public:
     IndexSourceModule();
@@ -59,6 +77,17 @@ public:
     /** call this to start the index source module over again from the 
 	beginning */
     virtual void resetPos();
+
+    /** close() will stop all prefetching, and will remove any prefetched
+        extents.  It is automatically called when the last extent is removed
+        from the module (i.e. before getExtent() returns null).  It *must* be
+        called before a call to a destructor in the most derived subclass so
+        that the virtual function calls to prefetch extents are not accessing
+        dangling pointers. */
+    void close();
+
+    /** isClosed() will return whether the module is currently closed */
+    bool isClosed();
 
     /** what fraction of the extents did we wait for, either disk or
 	unpacking? */
@@ -121,6 +150,9 @@ protected:
     virtual PrefetchExtent *lockedGetCompressedExtent() = 0;
 
 private:
+    bool lockedIsClosed();
+    void lockedStartThreads();
+
     friend class IndexSourceModuleCompressedPrefetchThread;
     friend class IndexSourceModuleUnpackThread;
     void compressedPrefetchThread();
@@ -164,6 +196,10 @@ private:
 	}
     };
 
+    // TODO: move this entire class into the parent; I suspect it used to be
+    // available to subclasses, but that turned out not to be useful.  Once
+    // moved into the parent class, the locking can be fixed up.
+
     struct PrefetchInfo {
 	Queue compressed, unpacked;
 	WaitStats stats;
@@ -171,23 +207,23 @@ private:
 	std::vector<PThread *> unpack_threads;
 	PThreadMutex mutex;
 	PThreadCond compressed_cond, unpack_cond, ready_cond;
-	bool reset_flag; // for when user calls resetpos
 	bool source_done;
-	bool abort_prefetching; 
+	uint32_t abort_prefetching; // number of threads remaining to abort 
+
 	PrefetchInfo(unsigned cmm, unsigned tum) 
-	    : compressed(cmm), unpacked(tum), 
-	      reset_flag(false), source_done(false), 
-	      abort_prefetching(false) { }
+	    : compressed(cmm), unpacked(tum), source_done(false), abort_prefetching(0)
+        { }
+
 	bool allDone() {
-	    return source_done &&
-		compressed.empty() && unpacked.empty();
+	    return source_done && compressed.empty() && unpacked.empty();
 	}
+
 	bool unpackedReady() {
-	    return unpacked.empty() == false
-		&& unpacked.front()->unpacked != NULL;
+	    return unpacked.empty() == false && unpacked.front()->unpacked != NULL;
 	}
     };
-    PrefetchInfo *prefetch;
+
+    PrefetchInfo *prefetch; // NULL until startPrefetching() is called
 };
     
 

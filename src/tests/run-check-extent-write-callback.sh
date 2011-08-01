@@ -17,6 +17,6 @@ SRC=$1
 cmp $SRC/check-data/extent-write-callback.txt extent-write-callback.txt
 
 rm -f extent-write-callback.txt
-rm -f test.ds
+rm -f extent-write-callback.ds
 
 exit 0

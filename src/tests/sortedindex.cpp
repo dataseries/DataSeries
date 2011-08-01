@@ -31,7 +31,7 @@ void doSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index, int64_t
 	    break;
 	}
 	series.setExtent(e.get());
-	for (; series.pos.morerecords(); ++series.pos) {
+	for (; series.morerecords(); ++series) {
 	    if (packet_at.val() == val) {
 		std::cout << record_id.val() << " ";
 	    }
@@ -53,7 +53,7 @@ void doSetSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index,
 	    break;
 	}
 	series.setExtent(e.get());
-	for (; series.pos.morerecords(); ++series.pos) {
+	for (; series.morerecords(); ++series) {
             BOOST_FOREACH(const int64_t val, vals) {
                 if (packet_at.val() == val) {
                     std::cout << val << ":\t" << record_id.val() << "\n";
@@ -76,7 +76,7 @@ void doRangeSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index,
 	    break;
 	}
 	series.setExtent(e.get());
-	for (; series.pos.morerecords(); ++series.pos) {
+	for (; series.morerecords(); ++series) {
             if (packet_at.val() >= min && packet_at.val() <= max) {
                 std::cout << packet_at.val() << ":\t" << record_id.val() << "\n";
             }
@@ -85,7 +85,8 @@ void doRangeSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index,
 }
 
 int main(int argc, char *argv[]) {
-    SortedIndexModule<int64_t,Int64Field>::Index index("sortedindex.ds", "NFS trace: common", "packet-at");
+    SortedIndexModule<int64_t,Int64Field>::Index 
+        index("sortedindex.ds", "NFS trace: common", "packet-at");
 
     // These are in the first extent
     doSearch(index, 1063931188266052000LL);

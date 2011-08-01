@@ -130,7 +130,7 @@ public:
 	prepareForProcessing();
 	prepared = true;
       }
-      for(;series.pos.morerecords();++series.pos) {
+      for(;series.morerecords();++series) {
 	processRow();
       }
       return e;

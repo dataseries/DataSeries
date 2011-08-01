@@ -12,6 +12,7 @@
 
 /*
 =pod
+
 =head1 NAME
 
 wcweb2ds - convert the 1998 world cup traces to dataseries
@@ -40,6 +41,7 @@ dataseries version of that record format.
     command='wcweb2ds --compress-gz --extent-size=1000000 $TMP/in $@' \
     command='ds2wcweb $@ >$TMP/out' command='cmp $TMP/in $TMP/out' \
     -- wc_day*gz
+
 =head1 SEE ALSO
 
 ds2wcweb(1), DataSeries(5), DSCommonArgs(1), batch-parallel --man
@@ -47,6 +49,7 @@ ds2wcweb(1), DataSeries(5), DSCommonArgs(1), batch-parallel --man
 =head1 AUTHOR/CONTACT
 
 Eric Anderson <software@cello.hpl.hp.com>
+
 =cut
 */
 

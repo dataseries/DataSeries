@@ -3,6 +3,28 @@ use strict;
 @PERL5_MODULES_INC_UNSHIFT@;
 use DataSeries::Crypt 'forcedecrypt';
 
+=pod
+
+=head1 NAME
+
+dsdecrypt - descrypt dataseries files encrypted using the method in nettrace2ds
+
+=head1 SYNOPSIS
+
+ % dsdecrypt < input > output
+ % dsdecrypt input...
+
+=head1 DESCRIPTION
+
+dsdecrypt looks for entries in the file which are a run of hexadecimal characters.  When it finds
+such strings, it then attempts to decrypt the strings using the separately entered password.  If
+the decryption succeeds and the interior value passes the internal hash check, then the assumption
+is that the string was actually encrypted, in which case it is printed out after decryption.
+Otherwise it is assumed to be a false positive and the original string is printed out.
+
+=cut
+
+
 while(<>) {
     my $line = $_;
     print decode($line);

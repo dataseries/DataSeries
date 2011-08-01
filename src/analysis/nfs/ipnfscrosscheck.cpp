@@ -4,6 +4,31 @@
 
 #include <DataSeries/TypeIndexModule.hpp>
 
+/*
+=pod
+
+=head1 NAME
+
+ipnfscrosscheck - attempt to correlate packets between the IP and NFS groups
+
+=head1 SYNOPSIS
+
+ % ipnfscrosscheck I<input.ds>...
+
+=head1 DESCRIPTION
+
+This program compares the IP and NFS trace records to look for a) NFS records that are missing in
+the IP traces (e.g. dropped due to being fragments), or b) IP records that are missing from the NFS
+traces (e.g. bad NFS parsing).
+
+=head1 BUGS
+
+There are tons of #if 0 in this code, and it had no documentation, so the above is at best an
+approximate guess.
+
+=cut
+ */
+
 using namespace std;
 using boost::format;
 

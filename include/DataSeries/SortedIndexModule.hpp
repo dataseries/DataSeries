@@ -69,7 +69,7 @@ public:
 		    break;
 		}
 		s.setExtent(e.get());
-		for (; s.pos.morerecords(); ++s.pos) {
+		for (; s.morerecords(); ++s) {
 		    // check to see if this is a new set of per-file entries
 		    if (cur_fname != filename.stringval()) {
 			cur_fname = filename.stringval();
@@ -78,9 +78,13 @@ public:
 			cur_index = &index[index.size()-1];
 		    }
 		    if (!cur_index->empty()) {
-			INVARIANT(!less_than(min_field.val(), last_max),
-				  boost::format("file %s is not sorted, %s > %s") 
-				  % cur_fname % last_max % min_field.val());
+                        if (!less_than(min_field.val(), last_max)) {
+                            // ok
+                        } else {
+                            tim.close(); // we're dead, allow for exception to be raised
+                            FATAL_ERROR(boost::format("file %s is not sorted, %s > %s") 
+                                        % cur_fname % last_max % min_field.val());
+                        }
 		    }
 		    last_max = max_field.val();
 
@@ -89,6 +93,7 @@ public:
 						    extent_offset.val()));
 		}
 	    }
+            tim.close();
 	}
 
 	/** Destructor */

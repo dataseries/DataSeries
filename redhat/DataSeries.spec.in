@@ -5,150 +5,147 @@ Name:           DataSeries
 Version:        __VERSION__
 URL:            http://tesla.hpl.hp.com/opensource.html
 Source:         %{name}-%{version}.tar.gz
-Release:        1
+Release:        __RELEASE__
 Summary:        Support tools and library 
-Group:          Libraries
+Group:          Development/Libraries
 License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-
-%description
-Generic trace format work.
-
+# special extra packages, from elsewehre and EPEL
+BuildRequires:  Lintel-devel, Lintel-utils, chrpath, cmake
+# standard packages
+BuildRequires:  perl-TimeDate, perl-XML-Parser, doxygen, pcre-devel, libpcap-devel
+#if-fedora BuildRequires: bzip2-devel, openssl-devel
+# TODO: add perl-Crypt-Rijndael for fedora, fix lsfdsplots test
+#if-centos BuildRequires: bzip2-devel, openssl-devel
+#if-scilinux BuildRequires: bzip2-devel, openssl-devel
+#if-opensuse BuildRequires: libbz2-devel, libopenssl-devel
+# perl-Crypt-Rijndael appears in opensuse 11.4, so we need #if-opensuse-<version>
 %package	libs
 Summary:        DataSeries library files
-Group:          Libraries
+Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}
-Requires:       pkgconfig
-Requires:       Lintel-libs
 License:        BSD
 
 %package	devel
-Summary:        DataSeries devel files
+Summary:        DataSeries development files
 Group:          Development/Libraries
-Requires:       %{name}-devel = %{version}-%{release}
-Requires:       pkgconfig
+Requires:       %{name}-libs = %{version}-%{release}
+Requires:       cmake
 License:        BSD
 
+%package	utils
+Summary:        DataSeries utilities
+Group:          Development/Libraries
+Requires:       %{name}-libs = %{version}-%{release}
+License:        BSD
+
+# TODO-package-reviewer: how do we make this package architecture independent?
+%package	docs
+Summary:        DataSeries development files documentation
+Group:          Development/Libraries
+Requires:       %{name}-libs = %{version}-%{release}
+License:        BSD
+
+%description
+This is the meta-package for DataSeries, the -{libs,devel,utils,docs} sub-packages contain
+the actual contents.
+
+__DESCRIPTION_libdataseries-dev__
+
 %description	libs
-DataSeries libraries
+__DESCRIPTION_libdataseries0__
 
 %description	devel
-DataSeries header files
+__DESCRIPTION_libdataseries-dev__
+
+%description    utils
+__DESCRIPTION_dataseries-utils__
+
+%description    docs
+__DESCRIPTION_libdataseries-dev-doc__
 
 %prep
 %setup -q
 
 %build
-autoreconf --install
-mkdir build
-cd build
-../configure --prefix=/usr --enable-optmode=optimize --libdir=%{_libdir}
-make
+mkdir rpm-build
+cd rpm-build
+cmake -D CMAKE_INSTALL_PREFIX=/usr ..
+make -j 6
+ctest
 
 %install
-cd build
+cd rpm-build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/
-cp ../Release.info $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/Release.info
-cp ../Changelog.mtn $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}/Changelog.mtn
+pwd
+ls ..
+../debian/fix-install.sh $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}
+cp ../Release.info ../Changelog.mtn ../COPYING $RPM_BUILD_ROOT%{_docdir}/DataSeries-%{version}
+# TODO: can we make cmake automatically figure out that centos wants libs in /usr/lib64
+if [ %{_libdir} != /usr/lib ]; then
+        mkdir -p $RPM_BUILD_ROOT%{_libdir}
+        mv $RPM_BUILD_ROOT/usr/lib/libDataSeries*so* $RPM_BUILD_ROOT%{_libdir}
+fi
+mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries-devel 
+cat >$RPM_BUILD_ROOT/usr/share/doc/DataSeries-devel/README <<EOF 
+__DESCRIPTION_libdataseries-dev__
+EOF
+
+mkdir -p $RPM_BUILD_ROOT/usr/share/doc/DataSeries-utils
+cat >$RPM_BUILD_ROOT/usr/share/doc/DataSeries-utils/README <<EOF 
+__DESCRIPTION_dataseries-utils__
+EOF
+
+strip $RPM_BUILD_ROOT/usr/lib*/libDataSeries*.so.*.*
+
+# may be empty
+mkdir -p $RPM_BUILD_ROOT/usr/share/perl5/DataSeries
+
+%post libs -p /sbin/ldconfig
+
+%postun libs -p /sbin/ldconfig
 
 %clean
-rm -rf $RPM_BUILD_ROOT
-
-%files
-%{_bindir}/bacct2ds
-%{_bindir}/dataseries-config
-%{_bindir}/ds2ellardnfs
-%{_bindir}/ds2txt
-%{_bindir}/dsdecrypt
-%{_bindir}/dsextentindex
-%{_bindir}/dsrepack
-%{_bindir}/dsselect
-%{_bindir}/dsstatgroupby
-%{_bindir}/dstypes2cxx
-%{_bindir}/ellardanalysis
-%{_bindir}/ellardnfs2ds
-%{_bindir}/indexnfscommon
-%{_bindir}/ipdsanalysis
-%{_bindir}/iphost2ds
-%{_bindir}/lsfdsanalysis
-%{_bindir}/lsfdsplots
-%{_bindir}/lsflog-timesplit
-%{_bindir}/lvpvprocessusage
-%{_bindir}/nettrace2ds
-%{_bindir}/network-driverdump
-%{_bindir}/nfsdsanalysis
-%{_bindir}/nfssubset
-%{_bindir}/pssimple2ds
-%{_bindir}/textindex
-/usr/share/bp_modules/BatchParallel/bacct2ds.pm
-/usr/share/bp_modules/BatchParallel/ds2txt.pm
-/usr/share/bp_modules/BatchParallel/dsrepack.pm
-/usr/share/bp_modules/BatchParallel/ellardnfs2ds.pm
-/usr/share/bp_modules/BatchParallel/nettrace2ds.pm
-/usr/share/bp_modules/BatchParallel/nonmod/gpgkeys.pm
-%{_docdir}/DataSeries-%{version}/Changelog.mtn
-%{_docdir}/DataSeries-%{version}/Release.info
-/usr/share/perl5/DataSeries/Crypt.pm
-/usr/share/perl5/DataSeries/LSFPlots/AllCpu.pm
-/usr/share/perl5/DataSeries/LSFPlots/Default.pm
-/usr/share/perl5/DataSeries/LSFPlots/Productions.pm
-/usr/share/perl5/DataSeries/LSFcommon.pm
-
-%files devel
-/usr/share/cmake-modules/FindDataSeries.cmake
-%{_includedir}/DataSeries/DStoTextModule.H
-%{_includedir}/DataSeries/DataSeriesFile.H
-%{_includedir}/DataSeries/DataSeriesModule.H
-%{_includedir}/DataSeries/DSExpr.hpp
-%{_includedir}/DataSeries/Extent.H
-%{_includedir}/DataSeries/ExtentField.H
-%{_includedir}/DataSeries/ExtentSeries.H
-%{_includedir}/DataSeries/ExtentType.H
-%{_includedir}/DataSeries/GeneralField.H
-%{_includedir}/DataSeries/GroupByModule.H
-%{_includedir}/DataSeries/IndexSourceModule.H
-%{_includedir}/DataSeries/MinMaxIndexModule.H
-%{_includedir}/DataSeries/PrefetchBufferModule.H
-%{_includedir}/DataSeries/RowAnalysisModule.H
-%{_includedir}/DataSeries/SequenceModule.H
-%{_includedir}/DataSeries/TypeIndexModule.H
-%{_includedir}/DataSeries/commonargs.H
-%{_includedir}/DataSeries/cryptutil.H
-
-%{_includedir}/DataSeries/DStoTextModule.hpp
-%{_includedir}/DataSeries/DataSeriesFile.hpp
-%{_includedir}/DataSeries/DataSeriesModule.hpp
-%{_includedir}/DataSeries/DSExpr.hpp
-%{_includedir}/DataSeries/Extent.hpp
-%{_includedir}/DataSeries/ExtentField.hpp
-%{_includedir}/DataSeries/ExtentSeries.hpp
-%{_includedir}/DataSeries/ExtentType.hpp
-%{_includedir}/DataSeries/GeneralField.hpp
-%{_includedir}/DataSeries/GroupByModule.hpp
-%{_includedir}/DataSeries/IndexSourceModule.hpp
-%{_includedir}/DataSeries/MinMaxIndexModule.hpp
-%{_includedir}/DataSeries/PrefetchBufferModule.hpp
-%{_includedir}/DataSeries/RowAnalysisModule.hpp
-%{_includedir}/DataSeries/SequenceModule.hpp
-%{_includedir}/DataSeries/TypeIndexModule.hpp
-%{_includedir}/DataSeries/commonargs.hpp
-%{_includedir}/DataSeries/cryptutil.hpp
-%{_libdir}/libDataSeries.a
-/usr/share/aclocal/com_hp_hpl_dataseries.m4
+rm -rf $RPM_BUILD_ROOT rpm-build
+./redhat/rules clean
 
 %files libs
-%{_libdir}/libDataSeries.la
-%{_libdir}/libDataSeries.so.0.0.0
-%{_libdir}/libDataSeries.so.0
-%{_libdir}/libDataSeries.so
+%{_libdir}/libDataSeries.so.*
+%{_docdir}/DataSeries-%{version}/COPYING
+%{_docdir}/DataSeries-%{version}/Release.info
+
+%files devel
+%{_includedir}/DataSeries/*
+%{_bindir}/dataseries-config
+%{_libdir}/libDataSeries*.so
+/usr/share/doc/DataSeries-devel/README
+/usr/share/cmake-modules
+
+%files utils
+# skip dataseries-config
+%{_bindir}/[a-ce-z]*
+%{_bindir}/d[b-z]*
+/usr/share/bp_modules/BatchParallel
+/usr/share/man/man1/*
+/usr/share/doc/DataSeries-utils/README
+/usr/share/perl5/DataSeries
+
+# rpmlint complains about the manpages being compressed with gz instead of bz2,
+# but all of the centos5 manpages are compressed with gz
+%files docs
+/usr/share/man/man3/*
+/usr/share/man/man7/*
+/usr/share/doc/DataSeries
+%{_docdir}/DataSeries-%{version}/Changelog.mtn
 
 %changelog
 
-* Thu Nov 15 2007 software@cello.hpl.hp.com
-- fix up relocatable bits
+* Mon Jun 13 2011 anderse@hpl.hp.com 0.2011.06.13-1
+- Release.  See NEWS for major changes.
 
-* Tue Mar 27 2007 software@cello.hpl.hp.com
-- Initial RPM release.
+* Mon Mar 28 2011 anderse@hpl.hp.com 0.2011.03.28-1
+- Initial rpm packaging.
+

@@ -9,6 +9,35 @@
     Select subset of fields from a collection of traces, generate a new trace
 */
 
+/*
+=pod
+
+=head1 NAME
+
+dsextentindex - calculate a min-max extent index over one or more input files
+
+=head1 SYNOPSIS
+
+ % dsextentindex [common-args] [--new type-prefix field[,field...]] index.ds input-filename..."
+
+=head1 DESCRIPTION
+
+dsextentindex calculates a min-max index over a set of fields for a given set of inputs.  For each
+index in a file, it records the minimum and maximum value of each field as well as recording the
+extent offset and filename.  For that reason, it is generally best to use full pathnames for the
+input filenames.  If index.ds already exists, then dsextentindex will read in the existing index
+and update it, only scanning files that have not yet been read.  If index.ds does not exist then
+the --new option is required to tell dsextentindex what extent to index as well as which fields
+to index within that extent.
+
+=head1 SEE ALSO
+
+dataseries-utils(7)
+
+=cut
+
+*/
+
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -123,8 +152,9 @@ public:
         ExtentSeries modifyseries(modifytype);
         Variable32Field modifyfilename(modifyseries,"filename");
         Int64Field modifytime(modifyseries,"modify-time");
-        OutputModule *modifymodule = new OutputModule(*output, modifyseries, *modifyseries.type,
-                                                      packing_args.extent_size);
+        OutputModule *modifymodule 
+            = new OutputModule(*output, modifyseries, *modifyseries.getType(),
+                               packing_args.extent_size);
 
 	// sort so we get consistent output for regression testing.
         typedef ModifyTimesT::HashTableT::hte_vectorT mt_vectorT;
@@ -194,14 +224,14 @@ public:
         ExtentSeries infoseries(e);
         Variable32Field info_type_prefix(infoseries,"type-prefix");
         Variable32Field info_fields(infoseries,"fields");
-        INVARIANT(infoseries.pos.morerecords(),
+        INVARIANT(infoseries.morerecords(),
                   "must have at least one rows in info extent");
         this->type_prefix = info_type_prefix.stringval();
         this->fieldlist = info_fields.stringval();
 	split(this->fieldlist,",",fields);
 
-        ++infoseries.pos;
-        INVARIANT(infoseries.pos.morerecords() == false,
+        ++infoseries;
+        INVARIANT(infoseries.morerecords() == false,
                   "must have at most one row in info extent");
         e = info_mod.getExtent();
         INVARIANT(e == NULL, format("must have only one DSIndex::Extent::Info in"
@@ -503,8 +533,8 @@ public:
 
 protected:
     bool nextRow() {
-        ++series.pos;
-        if(!series.pos.morerecords()) {
+        ++series;
+        if(!series.morerecords()) {
             Extent *e = source->getExtent();
             if(e == NULL) {
                 series.clearExtent();
@@ -641,15 +671,18 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
     // merge with the old index (if it exists)
     string minmax_typename("DSIndex::Extent::MinMax::");
     minmax_typename.append(type_prefix);
-    DataSeriesModule *source = NULL;
-    TypeIndexModule minmax_mod(minmax_typename);
+    TypeIndexModule *source = NULL;
     if(!old_index.empty()) {
-        minmax_mod.addSource(old_index);
-        source = &minmax_mod;
+        source = new TypeIndexModule(minmax_typename);
+        source->addSource(old_index);
     }
 
     OldIndexModule old(source, this, modify, files);
     old.getAndDelete();
+    if (source != NULL) {
+        source->close();
+        delete source;
+    }
 }
 
 

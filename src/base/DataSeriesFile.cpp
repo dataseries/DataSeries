@@ -127,7 +127,7 @@ void DataSeriesSource::readTypeExtent() {
 
     ExtentSeries type_extent_series(e);
     Variable32Field typevar(type_extent_series,"xmltype");
-    for(;type_extent_series.pos.morerecords();++type_extent_series.pos) {
+    for(;type_extent_series.morerecords(); ++type_extent_series) {
 	string v = typevar.stringval();
 	mylibrary.registerTypeR(v);
     }
@@ -364,13 +364,13 @@ void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
     queueWriteExtent(e, stats);
 }
 
-void DataSeriesSink::writeExtentLibrary(ExtentTypeLibrary &lib) {
+void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
     INVARIANT(!wrote_library, "Can only write extent library once");
     ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
     Extent type_extent(type_extent_series);
 
     Variable32Field typevar(type_extent_series,"xmltype");
-    for(map<const string, const ExtentType *>::iterator i = lib.name_to_type.begin();
+    for(map<const string, const ExtentType *>::const_iterator i = lib.name_to_type.begin();
 	i != lib.name_to_type.end();++i) {
 	const ExtentType *et = i->second;
 	if (et->getName() == "DataSeries: XmlType") {

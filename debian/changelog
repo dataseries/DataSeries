@@ -1,0 +1,11 @@
+dataseries (0.2011.06.13) unstable; urgency=low
+
+  * Release.  See NEWS for major changes.
+
+ -- Eric Anderson <anderse@hpl.hp.com>  Fri, 10 Jun 2011 14:24:29 -0700
+
+dataseries (0.2011.03.28) unstable; urgency=low
+
+  * Initial dpkg packaging
+
+ -- Eric Anderson <anderse@hpl.hp.com>  Mon, 28 Mar 2011 10:17:01 -0800

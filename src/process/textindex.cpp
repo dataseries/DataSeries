@@ -8,6 +8,31 @@
 * (C) Copyright 2006, Hewlett-Packard Development Company, L.P., all rights reserved.
 *
 *******************************************************************************
+
+=pod
+
+=head1 NAME
+
+textindex - calculate index of text files for searching
+
+=head1 SYNOPSIS
+
+  % textindex [--email-entries <new-ds-file> <source-file>...]
+  % textindex [--email-index <textindex-ds-file> <ds-file...>
+  % textindex [--search-and <substrings...> -- <textindex-ds-file>
+  % textindex [--search-and-case-insensitive <substrings...> -- <textindex-ds-file>
+
+=head1 DESCRIPTION
+
+textindex calculates a simple reverse index of a file so that they can be searched.  It has
+primarily been implemented on email.  It has four modes.  --email-entries takex in a number of
+mbox-style mailbox files and splits out various headers and such and dumps it into dataseries.
+--email-index takes the raw data files and converts it into a word index.  --search-and takes a
+number of substrings, finds them in the reverse index, and then if all of them are present in a
+single document extracts that document from the original converted data.
+--search-and-case-insensitive is the same as --search-and, but is case insensitive.
+
+=cut
 */
 
 #include <sys/types.h>
@@ -102,7 +127,7 @@ public:
 	    Variable32Field extenttype(s,"extenttype");
 	    Int64Field offset(s,"offset");
 	
-	    for(;s.pos.morerecords();++s.pos) {
+	    for(;s.morerecords();++s) {
 		if (extenttype.stringval() == "TextIndex::Entries") {
 		    cout << "!"; cout.flush();
 		    indexExtent(source,args[i],offset.val());

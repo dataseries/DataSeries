@@ -67,15 +67,15 @@ public:
                           "can't handle source with null index extent\n");
                 index_series.setExtent(cur_source->indexExtent);
             }
-            for (; index_series.pos.morerecords(); ++index_series.pos) {
+            for (; index_series.morerecords(); ++index_series) {
                 if (filter(extent_type.stringval())) {
                     off64_t v = extent_offset.val();
                     PrefetchExtent *ret = readCompressed(cur_source, v, extent_type.stringval());
-                    ++index_series.pos;
+                    ++index_series;
                     return ret;
                 }
             }
-            if (index_series.pos.morerecords() == false) {
+            if (index_series.morerecords() == false) {
                 index_series.clearExtent();
                 delete cur_source;
                 cur_source = NULL;

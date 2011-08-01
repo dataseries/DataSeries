@@ -9,7 +9,7 @@
 # then it's probably not useful.
 
 IF(PCRE_ENABLED)
-    LINTEL_INSTALL_CONFIG_PROGRAM(lsflog-timesplit)
+    DATASERIES_INSTALL_CONFIG_PROGRAM(lsflog-timesplit)
 ENDIF(PCRE_ENABLED)
 
 
