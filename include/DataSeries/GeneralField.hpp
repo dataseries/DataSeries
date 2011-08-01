@@ -264,6 +264,10 @@ public:
 
     /// Delete all the fields and clear the vector.
     static void deleteFields(std::vector<GeneralField *> &fields);
+
+    // TODO: add comparison operators; right now it works because there is
+    // a default converter from a field to a value and there are the comparison
+    // operators on general values.
 protected:
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
