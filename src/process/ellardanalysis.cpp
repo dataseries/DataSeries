@@ -5,8 +5,23 @@
    See the file named COPYING for license details
 */
 
-/** @file 
-    Emulate the Ellard nfsscan per-client analysis
+/*
+=pod
+
+=head1 NAME
+
+ellardanalysis - Emulate the Ellard nfsscan per-client analysis
+
+=head1 SYNOPSIS
+
+ % ellardanalysis input.ds...
+
+=head1 DESCRIPTION
+
+The ellardanalysis program emulates the nfsscan program that can be found in the trace distribution.
+It (roughly) calculates counts for the various operation types.  It selects out a set of interesting
+operations.
+
 */
 #include <Lintel/HashMap.hpp>
 

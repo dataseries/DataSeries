@@ -10,10 +10,6 @@
 */
 
 /* 
-TODO: add the Makefile.am bits to turn this into a manpage during installation.
-pod2man dsrepack.C | sed 's/User Contributed Perl/DataSeries/' does the
-right thing.
-
 =pod
 
 =head1 NAME
@@ -28,7 +24,7 @@ dsrepack [common-options] [--target-file-size=MiB] [--no-info]
 =head1 DESCRIPTION
 
 In the simplest case, dsrepack takes the input files, and copies them
-to the output filename changing the extent size and compresion level
+to the output filename changing the extent size and compression level
 as specified in the common options.  If max-file-size is set,
 output-filename is used as a base name, and the actual output names
 will be output-filename.##.ds, starting from 0.
@@ -62,9 +58,11 @@ Do not generate the Info::DSRepack extent.  This means that the output files
 will contain exactly the same information as the source files.  Normally the
 info extent is generated so the compression options for a file are known.
 
+=back
+
 =head1 SEE ALSO
 
-dataseries(7), dsselect(1)
+dataseries-utils(7), dsselect(1)
 
 =cut
 */
@@ -382,7 +380,7 @@ int main(int argc, char *argv[]) {
 	ExtentSeries s(f.indexExtent);
 	Variable32Field extenttype(s,"extenttype");
 
-	for(;s.pos.morerecords();++s.pos) {
+	for(;s.morerecords();++s) {
 	    if (skipType(*library.getTypeByName(extenttype.stringval()))) {
 		continue;
 	    }
@@ -422,10 +420,10 @@ int main(int argc, char *argv[]) {
 	PerTypeWork *ptw = per_type_work[inextent->type.getName()];
 	INVARIANT(ptw != NULL, "internal");
 	for(ptw->inputseries.setExtent(inextent);
-	    ptw->inputseries.pos.morerecords();
-	    ++ptw->inputseries.pos) {
+	    ptw->inputseries.morerecords();
+	    ++ptw->inputseries) {
 	    ptw->output_module->newRecord();
-	    cur_file_bytes += ptw->outputseries.type->fixedrecordsize();
+	    cur_file_bytes += ptw->outputseries.getType()->fixedrecordsize();
 	    for(unsigned int i=0; i < ptw->in_boolfields.size(); ++i) {
 		ptw->out_boolfields[i]->set(ptw->in_boolfields[i]);
 	    }

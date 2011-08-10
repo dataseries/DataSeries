@@ -238,8 +238,8 @@ public:
     }
     void clear() {
         DEBUG_INVARIANT(dataseries.extent() != NULL,  "internal error; extent not set");
-        dataseries.pos.checkOffset(offset_pos);
-        *reinterpret_cast<int32_t *>(dataseries.pos.record_start() + offset_pos) = 0;
+        dataseries.checkOffset(offset_pos);
+        *reinterpret_cast<int32_t *>(recordStart() + offset_pos) = 0;
 	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(dataseries.extent()->variabledata.begin()) 
 			 == 0);
 	setNull(false);
@@ -280,10 +280,9 @@ protected:
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
 #if LINTEL_DEBUG
-        dataseries.pos.checkOffset(offset_pos);
+        dataseries.checkOffset(offset_pos);
 #endif
-        int32 varoffset = getVarOffset(dataseries.pos.record_start(),
-                                       offset_pos);
+        int32 varoffset = getVarOffset(recordStart(), offset_pos);
 #if LINTEL_DEBUG
         selfcheck(varoffset);
 #endif
@@ -292,9 +291,8 @@ protected:
     void selfcheck() const {
         DEBUG_INVARIANT(dataseries.extent() != NULL,
                         "internal error; extent not set\n");
-        dataseries.pos.checkOffset(offset_pos);
-        int32 varoffset = getVarOffset(dataseries.pos.record_start(),
-                                       offset_pos);
+        dataseries.checkOffset(offset_pos);
+        int32 varoffset = getVarOffset(recordStart(), offset_pos);
         selfcheck(varoffset);
     }
     void selfcheck(int32 varoffset) const {

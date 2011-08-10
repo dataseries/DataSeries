@@ -13,6 +13,33 @@
 using namespace std;
 using boost::format;
 
+/*
+=pod
+
+=head1 NAME
+
+extract-cache-sim - convert nfs traces into a simpler form for cache simulation
+
+=head1 SYNOPSIS
+
+ % extract-cache-sim [common-args] (animation|ellard) <input.ds...> <output.ds>
+
+=head1 DESCRIPTION
+
+Both the animation and ellard traces are useful inputs for cache simulation. However, 
+cache simulators generally need a tiny subset of the total information stored in those
+two input formats.  Therefore it can be useful to pre-process the files to convert them
+to a simpler form.  This approach makes it easier to write the cache simulator and also
+gives it a single input format.  This program provides that conversion.
+
+=head1 SEE ALSO
+
+dataseries-utils(7)
+
+=cut
+*/
+
+
 const string output_xml(
   "<ExtentType namespace=\"ticoli.hpl.hp.com\" name=\"CooperativeCacheSimulation\" version=\"1.0\" >\n"
   "  <field type=\"int64\" name=\"request_at\" units=\"2^-32 seconds\" epoch=\"unix\" pack_relative=\"request_at\" print_format=\"sec.nsec\" />\n"

@@ -53,7 +53,7 @@ public:
 	    return NULL;
 	if (e->type.getName() != "NFS trace: attr-ops")
 	    return e;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    string fh = filehandle.stringval();
 	    bool skip = false;
 	    for(vector<string>::iterator i=ignore_filehandles.begin();
@@ -142,7 +142,7 @@ public:
 	    return NULL;
 	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filehandle.size() > max_seen_fh_size) {
 		max_seen_fh_size = filehandle.size();
 	    }
@@ -216,7 +216,7 @@ public:
 	    return NULL;
 	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (dirfilehandle.isNull())
 		continue;
 	    INVARIANT(filehandle.size() == dirfilehandle.size(), "can't handle size mismatch");
@@ -392,7 +392,7 @@ public:
 	SINVARIANT(e->type.getName() == "common-attr-rw-join");
 
 	hteData k;
-	for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+	for(s.setExtent(e);s.morerecords();++s) {
 	    if (starttime == -1)
 		starttime = packet_at.val();
 	    // cout << "Found " << operation.stringval() << "\n";

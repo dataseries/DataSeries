@@ -72,7 +72,8 @@ service DataSeriesServer {
     void selectRows(string in_table, string out_table, string where_expr);
 
     void projectTable(string in_table, string out_table, list<string> keep_columns);
-    //    void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
+    // order_columns are from the output names; All output names must share 
+    void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
 
     // Replace base table with a merge between base_table and update_from.  The tables are
     // both assumed to be uniquely sorted based on primary_key.  The 

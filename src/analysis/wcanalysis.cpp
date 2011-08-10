@@ -7,6 +7,7 @@ using boost::format;
 
 /*
 =pod
+
 =head1 NAME
 
 wcanalysis - analysis the 1998 World Cup web traces

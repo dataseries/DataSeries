@@ -2,9 +2,29 @@
    (c) Copyright 2009, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
-*/
 
-/// @file Re-sort CooperativeCacheSimulation files by request time
+=pod
+
+=head1 NAME
+
+sort-cache-sim - Re-sort CooperativeCacheSimulation files by request time
+
+=head1 SYNOPSIS
+
+ % sort-cache-sim [common-args] <input.ds...> <output.ds>
+
+=head1 DESCRIPTION
+
+Some of the nfs analysis data is stored in order of response time rather than request time.  Most
+cache simulations want the data ordered by request.  This code does a windows (single pass) re-sort
+of the cache-sim data in order to make it faster to process.
+
+=head1 SEE ALSO
+
+extract-cache-sim(1), dataseries-utils(7)
+
+=cut
+*/
 
 /// analysis module/program for CooperativeCacheSimulation (ns = ticoli.hpl.hp.com, version = 1.0)
 

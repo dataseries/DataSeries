@@ -441,10 +441,10 @@ test_extentpackunpack()
 	var2.set(variablestuff.begin(),2*i+1);
 	SINVARIANT(var2.size() == 2*i+1);
 	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
-	++testseries.pos;
+	++testseries;
     }
 
-    testseries.pos.reset(testseries.extent());
+    testseries.setExtent(testseries.extent());
     for(int i=0;i<nrecords;i++) {
 	INVARIANT(int1.val() == i, format("?? %d") % int1.val());
 	SINVARIANT(int2.val() == nrecords-i);;
@@ -455,7 +455,7 @@ test_extentpackunpack()
 	SINVARIANT(memcmp(var1.val(),variablestuff.begin(),i+1)==0);
 	SINVARIANT(var2.size() == 2*i+1);
 	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
-	++testseries.pos;
+	++testseries;
     }
 
     Extent::ByteArray packed;
@@ -474,7 +474,7 @@ test_extentpackunpack()
 	SINVARIANT(memcmp(var1.val(),variablestuff.begin(),i+1)==0);
 	SINVARIANT(var2.size() == 2*i+1);
 	SINVARIANT(memcmp(var2.val(),variablestuff.begin(),2*i+1)==0);
-	++testseries.pos;
+	++testseries;
     }
     cout << format("unpacked bytes %d, packed %d\n")
 	% unpackextent.size() % packed.size();
@@ -701,7 +701,7 @@ test_makecomplexfile()
 "</ExtentType>");
     ExtentTypeLibrary library;
     const ExtentType &outputtype(library.registerTypeR(complextype));
-    DataSeriesSink output("test.ds");
+    DataSeriesSink output("misc.ds");
     output.writeExtentLibrary(library);
     ExtentSeries outputseries(outputtype);
     OutputModule outmodule(output,outputseries,outputtype,30000);
@@ -803,7 +803,7 @@ test_doublebase_nullable()
     f_double.setabs(1000000);
     SINVARIANT(!f_double.isNull());
 
-    dbnseries.pos.reset(cur_extent);
+    dbnseries.setExtent(cur_extent);
     SINVARIANT(dbnseries.morerecords());
 
     SINVARIANT(f_double.isNull());
@@ -880,7 +880,7 @@ test_compactnull()
 	f_double.setNull();
 	f_variable32.set(variablestuff.begin()+i,i+1);
 	f_variable32.setNull();
-	++series1.pos;
+	++series1;
     }    
 
     Extent::ByteArray packed;
@@ -901,7 +901,7 @@ test_compactnull()
 	INVARIANT(f_bool.isNull() && f_byte.isNull() && f_int32.isNull()
 		  && f_int32b.isNull() && f_int64.isNull() 
 		  && f_double.isNull() && f_variable32.isNull(), "??");
-	++series1.pos;
+	++series1;
     }
     
     /// Test 2: random nulls
@@ -925,7 +925,7 @@ test_compactnull()
 	if (rand.randInt(2)) f_double.setNull();
 	f_variable32.set(variablestuff.begin()+i,i+1);
 	if (rand.randInt(2)) f_variable32.setNull();
-	++series1.pos;
+	++series1;
     }
 
     packed.clear();
@@ -969,8 +969,8 @@ test_compactnull()
 	INVARIANT((f_variable32.isNull() && g_variable32.isNull())
 		  || (!f_variable32.isNull() && !g_variable32.isNull() &&
 		      f_variable32.stringval() == g_variable32.stringval()), "bad");
-	++series1.pos;
-	++series2.pos;
+	++series1;
+	++series2;
     }
     cout << "random null passed\n";
     

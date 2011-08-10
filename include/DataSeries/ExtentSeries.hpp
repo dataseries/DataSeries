@@ -15,6 +15,7 @@
 class Field;
 class Extent;
 
+#include <boost/utility.hpp>
 #include <Lintel/DebugFlag.hpp>
 
 #include <DataSeries/ExtentType.hpp>
@@ -93,14 +94,31 @@ public:
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
         type to the type of the @c Extent. */
-    explicit ExtentSeries(Extent *e, 
-		 typeCompatibilityT _tc = typeExact);
+    explicit ExtentSeries(Extent *e, typeCompatibilityT _tc = typeExact);
+                          
     /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype,
 		 typeCompatibilityT _tc = typeExact)
 	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
 	  my_extent(NULL), typeCompatibility(_tc) { 
     }
+
+    /** Copy constructor */
+    ExtentSeries(const ExtentSeries &from)
+        : type(from.type), my_extent(from.my_extent), typeCompatibility(from.typeCompatibility),
+          pos(from.pos), my_fields(from.my_fields)
+    { }
+
+    /** Copy operator */
+    ExtentSeries &operator =(const ExtentSeries &rhs) {
+        type = rhs.type;
+        my_extent = rhs.my_extent;
+        typeCompatibility = rhs.typeCompatibility;
+        pos = rhs.pos;
+        my_fields = rhs.my_fields;
+        return *this;
+    }
+
 
     /** Preconditions:
             - All the attached fields must have been destroyed first. */
@@ -184,15 +202,12 @@ public:
     void clearExtent() { setExtent(NULL); }
 
     /** Returns the current extent. */
-    Extent *extent() { 
+    Extent *extent() const { 
 	return my_extent;
     }
-    Extent *getExtent() {
+    Extent *getExtent() const {
 	return my_extent;
     }
-    /// \cond INTERNAL_ONLY
-    const ExtentType *type;
-    /// \endcond
 
     /** Registers the specified field. This should only be called from
         constructor of classes derived from @c Field.  Users should not need
@@ -241,10 +256,20 @@ public:
     // each of the fields are tied to the ExtentSeries, not to the iterator
     // within it.  Only use seems to be within Extent.C which is using the
     // raw access that the library has anyway.
-    class iterator {
+    class iterator : boost::noncopyable {
     public:
 	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(0) { }
 	iterator(Extent *e) { reset(e); }
+        iterator(const iterator &from) 
+            : cur_extent(from.cur_extent), cur_pos(from.cur_pos), recordsize(from.recordsize)
+        { }
+        iterator &operator =(const iterator &rhs) {
+            cur_extent = rhs.cur_extent;
+            cur_pos = rhs.cur_pos;
+            recordsize = rhs.recordsize;
+            return *this;
+        }
+
 	typedef ExtentType::byte byte;
 	iterator &operator++() { cur_pos += recordsize; return *this; }
 	void reset(Extent *e) { 
@@ -300,8 +325,6 @@ public:
 	unsigned recordsize;
     };
 
-    iterator pos;
-
     /// \endcond
 
     /** Returns true iff the current Extent is not null and we are not at the
@@ -310,17 +333,28 @@ public:
 	return pos.morerecords();
     }
 
-    /// \cond INTERNAL_ONLY
+    /** Increment the current position of the series */
     iterator &operator++() { ++pos; return pos; }
-    /// \endcond
+
+    /** Verify that a specified offset is valid; checks are normally disabled except
+        in debug mode */
+    void checkOffset(long offset) {
+        pos.checkOffset(offset);
+    }
 
     /** Indicates how the ExtentSeries handles different Extent types. */
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     /** Returns the current Extent. */
     const Extent *curExtent() { return my_extent; }
 private:
+    // both friends to get at pos.record_start()
+    friend class Field;
+    friend class ExtentRecordCopy;
+
+    const ExtentType *type;
     Extent *my_extent;
-    const typeCompatibilityT typeCompatibility;
+    typeCompatibilityT typeCompatibility;
+    iterator pos;
     std::vector<Field *> my_fields;
 };
 

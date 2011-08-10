@@ -108,6 +108,7 @@ public:
      * as implmenting strictlylessthan and using that to build the
      * comparison. */
     bool strictlylessthan(const GeneralValue &gv) const; 
+
     /** return this == gv */
     bool equal(const GeneralValue &gv) const;
 
@@ -263,6 +264,10 @@ public:
 
     /// Delete all the fields and clear the vector.
     static void deleteFields(std::vector<GeneralField *> &fields);
+
+    // TODO: add comparison operators; right now it works because there is
+    // a default converter from a field to a value and there are the comparison
+    // operators on general values.
 protected:
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
@@ -497,7 +502,8 @@ public:
     void prep(const ExtentType *type = NULL);
     ~ExtentRecordCopy();
     /** Copies the current record of the source @c ExtentSeries to the
-        current record of the destination @c ExtentSeries. */
+        current record of the destination @c ExtentSeries. Prerequisite: 
+        the record for the destination series should already exist */
     void copyRecord(); // you need to create the record first.
 private:
     bool did_prep;

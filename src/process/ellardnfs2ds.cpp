@@ -5,8 +5,32 @@
    See the file named COPYING for license details
 */
 
-/** @file 
-    Convert the ellard NFS traces to dataseries.  
+/*
+=pod
+
+=head1 NAME
+
+ellardnfs2ds - Convert the ellard NFS traces to dataseries.
+
+=head1 SYNOPSIS
+
+ % ellardnfs2ds [common-args] input.txt output.ds
+
+=head1 DESCRIPTION
+
+ellardnfs2ds converts the Ellard/Harvard NFS traces from their original text format into
+DataSeries.  Since the text files are commonly compressed, a valid input name is "-" which allows
+users to setup a pipeline of decompressing the text and piping it to the converter.  Usually this
+program would not be directly used, but instead be used via the ellardnfs2ds batch-parallel module
+that will convert a batch of files in a single run, and will also check that the conversion was
+correct using ds2ellardnfs
+
+=head1 SEE ALSO
+
+batch-parallel(1), ds2ellardnfs(1), dataseries-utils(7)
+
+=cut
+
 */
 
 #include <boost/algorithm/string.hpp>

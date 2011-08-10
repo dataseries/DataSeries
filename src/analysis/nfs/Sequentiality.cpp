@@ -100,7 +100,19 @@ public:
 	{ }
 	Operation() : request_at(0), reply_at(0), start_offset(0), len(0), is_read(false) { }
 	bool operator <(const Operation &rhs) const {
-	    return request_at < rhs.request_at;
+            if (request_at != rhs.request_at) {
+                return request_at < rhs.request_at;
+            } else if (reply_at != rhs.reply_at) {
+                return reply_at < rhs.reply_at;
+            } else if (start_offset != rhs.start_offset) {
+                return start_offset < rhs.start_offset;
+            } else if (len != rhs.len) {
+                return len < rhs.len;
+            } else if (is_read != rhs.is_read) {
+                return is_read < rhs.is_read;
+            } else {
+                return false;
+            }
 	}
     };
 
@@ -239,6 +251,8 @@ public:
 
     void processOneOp(FHState &state, Operation &op, int64_t file_size) {
 	++process_count;
+        LintelLogDebug("Sequentiality", format("%d %d %d %d %d %d") % process_count % op.request_at
+                       % op.reply_at % op.start_offset % op.len % op.is_read);
 
 	if (op.is_read) {
 	    ++state.read_count;
@@ -437,14 +451,18 @@ public:
 	completeOpAccessGroup(state, ops, file_size);
     }
 
-    struct ByReplyId {
+    struct ByReplyAt {
 	bool operator() (const Operation &a, const Operation &b) const {
-	    return a.reply_at < b.reply_at;
+	    if (a.reply_at != b.reply_at) {
+                return a.reply_at < b.reply_at;
+            } else {
+                return a < b;
+            }
 	}
     };
 
     void processGroupReplyOrder(const Key &key, vector<Operation> &ops, int64_t cur_reply_at) {
-	sort(ops.begin(), ops.end(), ByReplyId());
+	sort(ops.begin(), ops.end(), ByReplyAt());
 	FHState state;
 	int64_t file_size = key_to_size[key].size;
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {

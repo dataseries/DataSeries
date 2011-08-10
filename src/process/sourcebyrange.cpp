@@ -53,7 +53,7 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     Variable32Field filename(s,"filename");
     int nfiles = 0;
     cout << format("start ns %d; end ns %d\n") % start_ns % end_ns;
-    for(;s.pos.morerecords();++s.pos) {
+    for(;s.morerecords();++s) {
 	if (inrange(start_time.val(),start_ns,end_ns) ||
 	    inrange(end_time.val(),start_ns,end_ns) ||
 	    inrange(start_ns,start_time.val(),end_time.val()) ||

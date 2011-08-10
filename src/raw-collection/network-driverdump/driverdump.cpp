@@ -13,6 +13,72 @@
 #include <net/ethernet.h>     /* the L2 protocols */
 #include <boost/format.hpp>
 
+/*
+=pod
+
+=head1 NAME
+
+network-driverdump - faster packet capture than lindump-mmap and tcpdump on linux
+
+=head1 SYNOPSIS
+
+ % network-driverdump [-i I<interface> ] [-o I<output-basename> ] [other options]
+
+=head1 DESCRIPTION
+
+When capturing full packet traces, occasionally lindump-mmap is still not sufficiently fast.  In
+that situation, if the nic driver has been patched to support driverdump, then the
+network-driverdump program can be used to control the drivers dumping of data directly to a file
+entirely bypassing the networking stack.  For small packets, driverdump can capture packets faster
+than the linux network stack can drop them (tcpdump host <no-such-host>) because it can avoid
+packet allocation code.  However, this requires dedicating an interface to packet capture, and
+patching the kernel driver.
+
+=head1 OPTIONS
+
+=over 4 
+
+=item -b I<buffer_mb>
+
+Specify the size of the buffer, and the size of each resulting file.
+
+=item -h 
+
+Get help
+
+=item -i I<interface-name>
+
+Specify the interface for packet capture.
+
+=item -o I<output-basename>
+
+Specify the base output name for the files. Usually this would be /dev/shm
+
+=item -t I<nthreads>
+
+Specify the number of threads that should be used with driverdump.  3 is usually sufficient to keep
+the kernel from ever failing to have a buffer to use for capture because the threads are doing
+relatively little work.
+
+=item -s
+
+Get driverdump statistics from the interface and then exit.
+
+=item -q I<quick-stats-interval-secs>
+
+Print interim statistics every I<quick-stats-interval-secs> seconds.  By default statistics are
+printed when the files are rotated.  This option helps verify that capture is working even when the
+network is lightly loaded and so is not generating enough traffic to rotate files.
+
+=back
+
+=head1 SEE ALSO
+
+tcpdump(1), /usr/share/doc/DataSeries/fast2009-nfs-analysis.pdf
+
+=cut
+ */
+
 // TODO: on shutdown with 3 threads in the kernel, sending a signal to
 // the parent thread isn't enough to get all of them to exit.  Need to
 // think about the right way to handle this problem, trivial fix right
@@ -53,7 +119,7 @@ int sigcount = 0;
 static void 
 signal_handler(int sig) {
     ++sigcount;
-    cerr << format("signal %d recieved %d count, abort after 20") % sig % sigcount << endl;
+    cerr << format("signal %d received %d count, abort after 20") % sig % sigcount << endl;
     everyone_ok = false;
     if (sigcount > 20)
 	abort();

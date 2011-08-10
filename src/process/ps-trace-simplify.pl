@@ -4,6 +4,14 @@
 #
 #  See the file named COPYING for license details
 #
+# Probably a script like:
+# while true; do
+#   echo "PS starts at: `date`"
+#   ps -efl
+#   echo "PS ends at: `date`"
+#   sleep 60
+# done
+# to generate the trace file.
 
 use strict;
 use Date::Parse;

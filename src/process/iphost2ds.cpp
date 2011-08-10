@@ -20,14 +20,40 @@
 using namespace std;
 using namespace boost;
 
-// This program converts the output of running:
-// (date +%s; for i in `sort ip-addr-list-file`; do
-//     echo "host $i"
-//     host $i
-// done) > output-file
-//
-// It is useful for being able to combine the nfs and the lsf traces
-// without having to guess at the hostname <-> ip mapping.
+/*
+=pod
+
+=head1 NAME
+
+iphost2ds - Convert a collection host -> IP address mappings into DataSeries
+
+=head1 SYNOPSIS
+
+ % iphost2ds [common-args] input-file.txt output-file.ds
+
+=head1 DESCRIPTION
+
+This program converts the output of running:
+
+	(date +%s; for i in `sort ip-addr-list-file`; do
+	    echo "host $i"
+	    host $i
+	done) > output-file
+
+into a dataseries file with short, full, domain, ip address and mapping time columns.  It is useful
+for being able to combine the nfs and the lsf traces without having to guess at the hostname <-> ip
+mapping.
+
+=head1 BUGS
+
+This program should be a trivial perl script for format conversion and then a call to csv2ds.
+
+=head1 SEE ALSO
+
+dataseries-utils(7)
+
+=cut
+*/
 
 // TODO: figure out what we want to put in the output file that we can
 // parse that will give us some idea as to the valid dates for the

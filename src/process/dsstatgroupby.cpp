@@ -5,8 +5,31 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    Calculate some derived value from a dataseries and calculate a statistic over it.
+/*
+=pod
+
+=head1 NAME
+
+dsstatgroupby - Calculate some derived value from a dataseries and calculate a statistic over it.
+
+=head1 SYNOPSIS
+
+ % dsstatgroupby I<extent-type-match> I<statistic-description>... from file...
+
+=head1 STATISTIC DESCRIPTION
+
+Each statistic is described by a minimum of two arguments -- the statistic type and the expression.
+Two types of statistic types are currently implemented basic (mean, stddev, min, max), and quantile
+(percentile/100).  The expression implements the standard + - * / () and constants.  Two optional
+arguments can be added.  where I<expr> adds in a conditional expression so you could calculate 
+separate statistics over large and small files.  group by <field> specifies a column that should be
+used for grouping the statistics.
+
+=head1 DESCRIPTION
+
+dsstatgroupby processes one or more input files calculating multiple statistics in a single pass
+over that input file.
+
 */
 
 #include <boost/format.hpp>
@@ -25,7 +48,7 @@ usage(const std::string &program_name, const std::string &error)
     // TODO: should we make the usage ... from <prefix> in <file...>?
     cerr << error << "\n"
 	 << "Usage: " << program_name 
-	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] [group by <group-by>])*\n"
+	 << " <extent-type-match> (<stat-type> <expr> [where <expr>] [group by <group-by>])+\n"
 	 << "  from file...\n"
 	 << "\n"
 	 << "  stat-types include:\n\n"

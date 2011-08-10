@@ -9,6 +9,25 @@ prefix=@CMAKE_INSTALL_PREFIX@
 includedir=$prefix/include
 libdir=$prefix/lib
 
+cat <<EOF >/dev/null
+=pod
+
+=head1 NAME
+
+dataseries-config - get dataseries configuration status
+
+=head1 SYNOPSIS
+
+ % dataseries-config [--cflags] [--libs] [--help] [--version]
+
+=head1 DESCRIPTION
+
+dataseries-config is a program that can print out the flags, linking options or version of the
+installed copy of dataseries.  It also has a help option to print out a usage summary.
+
+=cut
+EOF
+
 usage()
 {
     cat <<EOF
@@ -16,7 +35,6 @@ Usage: dataseries-config <OPTION>
 
 Valid options:
   --cflags	       show needed compiler flags
-  --libtool-libs       show link options for libtool
   --libs	       show library link options
   --help               show these options
   --version            show lintel version
@@ -36,10 +54,6 @@ case "$1" in
 	echo $cflags
 	exit 0
     	;;
-    --libtool-libs)
-	echo /no/such/file/not/supported/dataseries-config/--libtool-libs
-	exit 0
-	;;
     --libs)
         if test $libdir = '/usr/lib'; then
 	    echo "-lDataSeries"

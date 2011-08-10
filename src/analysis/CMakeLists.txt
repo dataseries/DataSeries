@@ -6,17 +6,16 @@
 # cmake rules for the src/analysis directory
 
 DATASERIES_PROGRAM(wcanalysis)
-DATASERIES_PROGRAM(lsfdsanalysis 
-	lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
+DATASERIES_PROGRAM(lsfdsanalysis lsfdsanalysis-common.cpp lsfdsanalysis-mod1.cpp)
 DATASERIES_PROGRAM(ipdsanalysis ../process/sourcebyrange.cpp)
+DATASERIES_PROGRAM(lvpvprocessusage)
 
 IF(PERL_CRYPT_RIJNDAEL_ENABLED)
-    LINTEL_INSTALL_CONFIG_PROGRAM(dsdecrypt)
+    DATASERIES_INSTALL_CONFIG_PROGRAM(dsdecrypt)
+    IF(PERL_DATE_PARSE_ENABLED)
+        DATASERIES_INSTALL_CONFIG_PROGRAM(lsfdsplots)
+    ENDIF(PERL_DATE_PARSE_ENABLED)
 ENDIF(PERL_CRYPT_RIJNDAEL_ENABLED)
-
-IF(PERL_DATE_PARSE_ENABLED)
-    LINTEL_INSTALL_CONFIG_PROGRAM(lsfdsplots)
-ENDIF(PERL_DATE_PARSE_ENABLED)
 
 ADD_SUBDIRECTORY(nfs)
 

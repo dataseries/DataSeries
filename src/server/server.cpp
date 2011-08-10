@@ -19,6 +19,7 @@
 
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
+#include <Lintel/PriorityQueue.hpp>
 #include <Lintel/ProgramOptions.hpp>
 #include <Lintel/STLUtility.hpp>
 
@@ -62,6 +63,33 @@ public:
 // in AssertBoost.  Note that we want to be able to specify the class, have it automatically
 // pick up file, line, expression, and any optional parameters (message, values, etc).
 #define TINVARIANT(x) SINVARIANT(x)
+
+class RenameCopier {
+public:
+    typedef shared_ptr<RenameCopier> Ptr;
+
+    RenameCopier(ExtentSeries &source, ExtentSeries &dest)
+        : source(source), dest(dest) { }
+
+    void prep(const map<string, string> &copy_columns) {
+        typedef map<string, string>::value_type vt;
+        BOOST_FOREACH(const vt &copy_column, copy_columns) {
+            source_fields.push_back(GeneralField::make(source, copy_column.first));
+            dest_fields.push_back(GeneralField::make(dest, copy_column.second));
+        }
+    }
+
+    void copyRecord() {
+        SINVARIANT(!source_fields.empty() && source_fields.size() == dest_fields.size());
+        for (size_t i = 0; i < source_fields.size(); ++i) {
+            dest_fields[i]->set(source_fields[i]);
+        }
+    }
+
+    ExtentSeries &source, &dest;
+    vector<GeneralField::Ptr> source_fields;
+    vector<GeneralField::Ptr> dest_fields;
+};
 
 class TeeModule : public RowAnalysisModule {
 public:
@@ -116,6 +144,25 @@ public:
     uint64_t row_count;
     bool first_extent;
 };
+
+string renameField(const ExtentType *type, const string &old_name, const string &new_name) {
+    string ret(str(format("  <field name=\"%s\"") % new_name));
+    xmlNodePtr type_node = type->xmlNodeFieldDesc(old_name);
+        
+    for(xmlAttrPtr attr = type_node->properties; NULL != attr; attr = attr->next) {
+        if (xmlStrcmp(attr->name, (const xmlChar *)"name") != 0) {
+            // TODO: This can't be the right approach, but xmlGetProp() has an internal
+            // function ~20 lines long to convert a property into a string. Maybe use
+            // xmlAttrSerializeTxtContent somehow?
+            xmlChar *tmp = xmlGetProp(type_node, attr->name);
+            SINVARIANT(tmp != NULL);
+            ret.append(str(format(" %s=\"%s\"") % attr->name % tmp));
+            xmlFree(tmp);
+        }
+    }
+    ret.append("/>\n");
+    return ret;
+}
 
 class TableDataModule : public RowAnalysisModule {
 public:
@@ -279,25 +326,6 @@ public:
             : Extractor(field_name), pos(pos)
         { }
     };
-
-    string renameField(const ExtentType *type, const string &old_name, const string &new_name) {
-        string ret(str(format("  <field name=\"%s\"") % new_name));
-        xmlNodePtr type_node = type->xmlNodeFieldDesc(old_name);
-        
-        for(xmlAttrPtr attr = type_node->properties; NULL != attr; attr = attr->next) {
-            if (xmlStrcmp(attr->name, (const xmlChar *)"name") != 0) {
-                // TODO: This can't be the right approach, but xmlGetProp() has an internal
-                // function ~20 lines long to convert a property into a string. Maybe use
-                // xmlAttrSerializeTxtContent somehow?
-                xmlChar *tmp = xmlGetProp(type_node, attr->name);
-                SINVARIANT(tmp != NULL);
-                ret.append(str(format(" %s=\"%s\"") % attr->name % tmp));
-                xmlFree(tmp);
-            }
-        }
-        ret.append("/>\n");
-        return ret;
-    }
 };
         
 // TODO: merge common code with StarJoinModule
@@ -1154,14 +1182,52 @@ public:
     vector<Extractor::Ptr> fact_fields;
 };    
 
-#if 0
 class UnionModule : public DataSeriesModule {
 public:
-    UnionModule(DataSeriesModule &source, const string &where_expr_str)
-        : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
-    { }
+    struct UM_UnionTable : UnionTable {
+        UM_UnionTable() : UnionTable(), source(), series(), copier(), order_fields() { }
+        UM_UnionTable(const UnionTable &ut, DataSeriesModule::Ptr source) 
+            : UnionTable(ut), source(source), series(), copier(), order_fields() { }
 
-    virtual ~SelectModule() { }
+        ~UM_UnionTable() throw () {}
+
+        DataSeriesModule::Ptr source;
+        ExtentSeries series;
+        RenameCopier::Ptr copier;
+        vector<GeneralField::Ptr> order_fields;
+    };
+
+    struct Compare {
+        Compare(const vector<UM_UnionTable> &sources) : sources(sources) { }
+        bool operator()(uint32_t ia, uint32_t ib) {
+            const UM_UnionTable &a(sources[ia]);
+            const UM_UnionTable &b(sources[ib]);
+            SINVARIANT(a.series.getExtent() != NULL);
+            SINVARIANT(b.series.getExtent() != NULL);
+            SINVARIANT(a.order_fields.size() == b.order_fields.size());
+            for (size_t i = 0; i < a.order_fields.size(); ++i)  {
+                if (*a.order_fields[i] < *b.order_fields[i]) {
+                    return false;
+                } else if (*b.order_fields[i] < *a.order_fields[i]) {
+                    return true;
+                }
+            }
+            // They are equal, order by union position
+            return ia >= ib;
+        }
+    private:
+        const vector<UM_UnionTable> &sources;
+    };
+
+    UnionModule(const vector<UM_UnionTable> &in_sources, const vector<string> &order_columns,
+                const string &output_table_name) 
+        : output_series(), sources(in_sources), compare(sources), queue(compare, sources.size()),
+          order_columns(order_columns), output_table_name(output_table_name)
+    {
+        SINVARIANT(!sources.empty());
+    }
+
+    virtual ~UnionModule() { }
 
     Extent *returnOutputSeries() {
         Extent *ret = output_series.getExtent();
@@ -1169,43 +1235,103 @@ public:
         return ret;
     }
 
-    virtual Extent *getExtent() {
-        while (true) {
-            Extent *in = source.getExtent();
-            if (in == NULL) {
-                return returnOutputSeries();
-            }
-            if (input_series.getType() == NULL) {
-                input_series.setType(in->getType());
-                output_series.setType(in->getType());
+    void firstExtent() {
+        map<string, string> output_name_to_type;
+        typedef map<string, string>::value_type ss_vt;
 
-                copier.prep();
-                where_expr.reset(DSExpr::make(input_series, where_expr_str));
-            }
+        BOOST_FOREACH(UM_UnionTable &ut, sources) {
+            SINVARIANT(ut.copier == NULL);
+            ut.copier.reset(new RenameCopier(ut.series, output_series));
 
-            if (output_series.getExtent() == NULL) {
-                output_series.setExtent(new Extent(*output_series.getType()));
+            SINVARIANT(ut.source != NULL);
+            ut.series.setExtent(ut.source->getExtent());
+            if (ut.series.getExtent() == NULL) {
+                continue; // no point in making the other bits
             }
-        
-            for (input_series.setExtent(in); input_series.more(); input_series.next()) {
-                if (where_expr->valBool()) {
-                    output_series.newRecord();
-                    copier.copyRecord();
+            
+            map<string, string> out_to_in;
+            BOOST_FOREACH(const ss_vt &v, ut.extract_values) {
+                out_to_in[v.second] = v.first;
+                string &output_type(output_name_to_type[v.second]);
+                string renamed_output_type(renameField(ut.series.getType(), v.first, v.second));
+                if (output_type.empty()) {
+                    output_type = renamed_output_type;
+                } else {
+                    TINVARIANT(output_type == renamed_output_type);
                 }
             }
-            if (output_series.getExtent()->size() > 96*1024) {
-                return returnOutputSeries();
+            BOOST_FOREACH(const string &col, order_columns) {
+                map<string, string>::iterator i = out_to_in.find(col);
+                SINVARIANT(i != out_to_in.end());
+                ut.order_fields.push_back(GeneralField::make(ut.series, i->second));
+            }
+            LintelLogDebug("UnionModule", format("made union stuff on %s") % ut.table_name);
+        }
+
+        string output_xml(str(format("<ExtentType name=\"union -> %s\""
+                                     " namespace=\"server.example.com\" version=\"1.0\">\n")
+                              % output_table_name));
+
+        BOOST_FOREACH(const ss_vt &v, output_name_to_type) {
+            output_xml.append(v.second);
+        }
+        output_xml.append("</ExtentType>\n");
+        LintelLogDebug("UnionModule", format("constructed output type:\n%s") % output_xml);
+        ExtentTypeLibrary lib;
+        output_series.setType(lib.registerTypeR(output_xml));
+        for (uint32_t i = 0; i < sources.size(); ++i) {
+            UM_UnionTable &ut(sources[i]);
+            if (ut.series.getExtent() != NULL) {
+                ut.copier->prep(ut.extract_values);
+                queue.push(i);
             }
         }
     }
 
-    DataSeriesModule &source;
-    string where_expr_str;
-    ExtentSeries input_series, output_series;
-    ExtentRecordCopy copier;
-    boost::shared_ptr<DSExpr> where_expr;
+    virtual Extent *getExtent() {
+        if (sources[0].copier == NULL) {
+            firstExtent();
+        }
+
+        while (true) {
+            if (queue.empty()) {
+                break;
+            }
+            uint32_t best = queue.top();
+
+            LintelLogDebug("UnionModule/process", format("best was %d") % best);
+
+            if (output_series.getExtent() == NULL) {
+                output_series.setExtent(new Extent(*output_series.getType()));
+            }
+
+            output_series.newRecord();
+            sources[best].copier->copyRecord();
+            ++sources[best].series;
+            if (!sources[best].series.more()) {
+                delete sources[best].series.getExtent();
+                sources[best].series.setExtent(sources[best].source->getExtent());
+            }
+            if (sources[best].series.getExtent() == NULL) {
+                queue.pop();
+            } else {
+                queue.replaceTop(best); // it's position may have changed, re-add
+            }
+            if (output_series.getExtent()->size() > 96*1024) {
+                break;
+            }
+        }
+
+        return returnOutputSeries();
+    }
+
+    ExtentSeries output_series;
+    vector<UM_UnionTable> sources; 
+    Compare compare;
+    PriorityQueue<uint32_t, Compare> queue;
+    vector<string> order_columns;
+    const string output_table_name;
 };
-#endif
 
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
@@ -1513,6 +1639,28 @@ public:
         string from(tableToPath(base_table, "tmp.")), to(tableToPath(base_table));
         int ret = rename(from.c_str(), to.c_str());
         INVARIANT(ret == 0, format("rename %s -> %s failed: %s") % from % to % strerror(errno));
+    }
+
+    void unionTables(const vector<UnionTable> &in_tables, const vector<string> &order_columns,
+                     const string &out_table) {
+        typedef UnionModule::UM_UnionTable UM_UnionTable;
+        
+        vector<UM_UnionTable> tables;
+        BOOST_FOREACH(const UnionTable &table, in_tables) {
+            verifyTableName(table.table_name);
+            NameToInfo::iterator table_info(getTableInfo(table.table_name));
+
+            TypeIndexModule::Ptr p =
+                TypeIndexModule::make(table_info->second.extent_type->getName());
+            p->addSource(tableToPath(table_info->first));
+            tables.push_back(UM_UnionTable(table, p));
+        }
+        
+        UnionModule union_mod(tables, order_columns, out_table);
+        TeeModule output_module(union_mod, tableToPath(out_table));
+
+        output_module.getAndDelete();
+        updateTableInfo(out_table, union_mod.output_series.getType());
     }
 
 private:

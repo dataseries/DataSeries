@@ -4,11 +4,30 @@
    See the file named COPYING for license details
 */
 
-/** @file
-    indexer for NFS Common DataSeries files
+/*
+=pod
+
+=head1 NAME
+
+indexnfscommon - indexer for NFS Common DataSeries files
+
+=head1 SYNOPSIS
+
+ % indexnfscommon <index.ds> <nfs-common-files.ds...>
+
+=head1 DESCRIPTION
+
+A bad version of dsextentindex that is specific to nfs common files.
+
+=head1 BUGS
+
+TODO: obsolete this program, merge it into dsextentindex
+
+=cut
 */
 
-// TODO: obsolete this program, merge it into dsextentindex
+
+
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -57,7 +76,7 @@ readExistingIndex(char *out_filename)
 	start_time(s,"start-time"), end_time(s,"end-time"),
 	mtime(s,"modify-time");
     Variable32Field filename(s,"filename");
-    for(;s.pos.morerecords();++s.pos) {
+    for(;s.morerecords();++s) {
 	fileinfo f;
 	f.start_id = start_id.val();
 	f.end_id = end_id.val();
@@ -115,7 +134,7 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 
     Extent *e = source.preadExtent(offset);
 
-    for(s.setExtent(e);s.pos.morerecords();++s.pos) {
+    for(s.setExtent(e);s.morerecords();++s) {
 	if (f.start_id < 0) {
 	    f.start_id = f.end_id = recordid.val();
 	    f.start_time = f.end_time = packettime.val();
@@ -181,7 +200,7 @@ updateIndexMap(char *filename)
     Int64Field offset(s,"offset");
 
     ExtentType::int64 first_offset = -1, last_offset = -1;
-    for(;s.pos.morerecords();++s.pos) {
+    for(;s.morerecords();++s) {
 	if (extenttype.equal("NFS trace: common")) {
 	    if (first_offset < 0) {
 		first_offset = last_offset = offset.val();
