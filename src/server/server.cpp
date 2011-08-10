@@ -20,6 +20,7 @@
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/ProgramOptions.hpp>
+#include <Lintel/STLUtility.hpp>
 
 #include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.hpp>
@@ -161,17 +162,7 @@ struct GVVec {
     vector<GeneralValue> vec;
 
     bool operator ==(const GVVec &rhs) const {
-        if (vec.size() != rhs.vec.size()) {
-            return false;
-        }
-        vector<GeneralValue>::const_iterator i = vec.begin(), j = rhs.vec.begin();
-        for (; i != vec.end(); ++i, ++j) {
-            if (*i != *j) { 
-                return false;
-            }
-        }
-            
-        return true;
+        return lintel::iteratorRangeEqual(vec.begin(), vec.end(), rhs.vec.begin(), rhs.vec.end());
     }
 
     uint32_t hash() const {
@@ -221,6 +212,8 @@ public:
         typedef boost::shared_ptr<Extractor> Ptr;
 
         Extractor(const string &into_field_name) : into_field_name(into_field_name), into() { }
+        virtual ~Extractor() { }
+
         virtual void extract(const GVVec &a_val) = 0;
 
         const string into_field_name; 
@@ -243,6 +236,7 @@ public:
     // Extract from a field and stuff it into a destination field
     class ExtractorField : public Extractor {
     public:
+        virtual ~ExtractorField() { }
         static Ptr make(ExtentSeries &from_series, const string &from_field_name,
                         const string &into_field_name) {
             GeneralField::Ptr from(GeneralField::make(from_series, from_field_name));
@@ -268,6 +262,7 @@ public:
     // Extract from a value vector and stuff it into a destination field
     class ExtractorValue : public Extractor {
     public:
+        virtual ~ExtractorValue() { }
         static Ptr make(const string &into_field_name, uint32_t pos) {
             return Ptr(new ExtractorValue(into_field_name, pos));
         }
@@ -334,6 +329,60 @@ public:
             requestError("a_table is empty?");
         }
 
+        // TODO-eric: Removed a_name_to_b_field and b_name_to_b_field variabled which confused me a
+        // lot. Instead of modifying orignial code have used # if, so that one of them can be easily
+        // removed which ever feels ok to you.
+#if 1
+        vector<GeneralField::Ptr> a_eq_fields;
+        HashUnique<string> unique_a_eq_fields;
+
+        BOOST_FOREACH(const CMap::value_type &vt, eq_columns) {
+            SINVARIANT(a_series.getType()->getFieldType(vt.first)
+                       == b_series.getType()->getFieldType(vt.second));
+            a_eq_fields.push_back(GeneralField::make(a_series, vt.first));
+            b_eq_fields.push_back(GeneralField::make(b_series, vt.second));
+            unique_a_eq_fields.add(vt.first);
+        }
+
+        vector<GeneralField::Ptr> a_val_fields;
+        HashMap<string, uint32_t> a_name_to_val_pos;
+
+        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
+            if (prefixequal(vt.first, "a.")) {
+                string field_name(vt.first.substr(2));
+                if (!unique_a_eq_fields.exists(field_name)) { // value only
+                    a_name_to_val_pos[field_name] = a_val_fields.size();
+                    a_val_fields.push_back(GeneralField::make(a_series, field_name));
+                }
+            }
+        }
+        string output_xml(str(format("<ExtentType name=\"hash-join -> %s\""
+                                     " namespace=\"server.example.com\" version=\"1.0\">\n")
+                              % output_table_name));
+
+        // Get value from value field (if exists) or from b field.
+        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
+            string field_name(vt.first.substr(2));
+            string output_field_type;
+            if (!(prefixequal(vt.first, "a.") || prefixequal(vt.first, "b."))) {
+                requestError("invalid table name");
+            }
+
+            if (prefixequal(vt.first, "a.") && a_name_to_val_pos.exists(field_name)) {
+                SINVARIANT(a_series.getType()->hasColumn(field_name));
+                output_field_type = a_series.getType()->getFieldTypeStr(field_name);
+                extractors.push_back
+                    (ExtractorValue::make(vt.second, a_name_to_val_pos[field_name]));
+            } else {
+                output_field_type = b_series.getType()->getFieldTypeStr(field_name);
+                GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
+                extractors.push_back(ExtractorField::make(vt.second, b_field));
+            }
+            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
+                                  % output_field_type % vt.second));
+        }
+#else
+
         vector<GeneralField::Ptr> a_eq_fields;
         HashMap<string, GeneralField::Ptr> a_name_to_b_field, b_name_to_b_field;
 
@@ -389,12 +438,15 @@ public:
                     GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
                     extractors.push_back(ExtractorField::make(vt.second, b_field));
                 }
+            } else {
+                // TODO-eric: Shouldn't we throw an error here?
             }
             if (output_field_type.empty()) continue; // HACK
             // TODO: we're losing any additional field bits, e.g. time properties.
             output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
                                   % output_field_type % vt.second));
         }
+#endif
         output_xml.append("</ExtentType>\n");
                     
         INVARIANT(!extractors.empty(), "must extract at least one field");
@@ -439,6 +491,7 @@ public:
             }
         
             if (output_series.getExtent() == NULL) {
+                SINVARIANT(output_series.getType() != NULL);
                 Extent *output_extent = new Extent(*output_series.getType());
                 output_series.setExtent(output_extent); 
             }

@@ -8,6 +8,7 @@
 /** @file
     ExtentType class implementation
 */
+#include <boost/assign/list_of.hpp>
 
 #include <vector>
 
@@ -641,14 +642,12 @@ ExtentType::fieldType ExtentType::getFieldType(int column) const {
 }
 
 namespace {
-    string field_types[] = { 
-        "unknown", "bool", "byte", "int32", "int64", "double", "variable32", "fixedwidth"
-    };
-    uint32_t n_field_types = sizeof(field_types) / sizeof(string);
+    const static vector<string> field_types = boost::assign::list_of("unknown")("bool")("byte")("int32")
+        ("int64")("double")("variable32")("fixedwidth");
 }
 
 const string &ExtentType::fieldTypeToStr(fieldType type) {
-    SINVARIANT(type >= 0 && static_cast<uint32_t>(type) < n_field_types);
+    SINVARIANT(type >= 0 && static_cast<uint32_t>(type) < field_types.size());
     return field_types[type];
 }
 

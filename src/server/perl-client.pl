@@ -2,8 +2,8 @@
 use strict;
 use Data::Dumper;
 
-use lib '/home/anderse/build/opt-debian-5.0-x86_64/DataSeries.server/src/server/gen-perl';
-use lib '/home/anderse/projects/thrift/lib/perl/lib';
+use lib "$ENV{BUILD_OPT}/DataSeries.server/src/server/gen-perl";
+use lib "$ENV{HOME}/projects/thrift/lib/perl/lib";
 
 use Thrift::BinaryProtocol;
 use Thrift::Socket;
@@ -24,12 +24,12 @@ print "Post Ping\n";
 # tryImportCSV();
 # tryImportSql();
 # tryImportData();
-# tryHashJoin();
+tryHashJoin();
 # trySelect();
 # tryProject();
 # tryUpdate();
-tryStarJoin();
-
+# tryStarJoin();
+print "Test completed\n";
 sub tryImportCSV {
     my $csv_xml = <<'END';
 <ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
@@ -73,6 +73,7 @@ END
                         ({ 'rows' =>
                            [[ 'on', 5, 1371, 111111, 11.0, "abcde" ],
                             [ 'on', 5, 1371, 111111, 11.0, "1q2w3e" ],
+                            [ 'on', 6, 1385, 112034, 12.0, "mnop" ],
                             [ 'off', 7, 12345, 999999999999, 123.456, "fghij" ] ]}));
 }
 
@@ -91,7 +92,11 @@ END
                            [[ 1371, "123" ],
                             [ 1371, "456" ],
                             [ 1371, "789" ],
+                            [ 9321, "xyz" ],
                             [ 12345, "fghij" ] ]}));
+    print "\n----- Table A ----\n";
+    print Dumper(getTableData("test-import"));
+    print "\n---- Table B ----\n";
     print Dumper(getTableData("join-data"));
 
 
@@ -100,7 +105,7 @@ END
                                                 'a.variable32' => 'table-a:extra-variable32',
                                                 'b.int32' => 'table-b:join-int32',
                                                 'b.variable32' => 'table-b:extra-variable32'});
-
+    print "\n---- HashJoin Output ----\n";
     print Dumper(getTableData("test-hash-join"));
 }
 

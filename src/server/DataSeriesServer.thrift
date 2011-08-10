@@ -57,6 +57,10 @@ service DataSeriesServer {
 
     // Table a will be loaded into memory; join will be on all column pairs in eq_columns
     // keep columns sources a.<name> or b.<name> will be mapped to the dest name.
+
+    // eq_columns contains the name of columns to be compared and keep_columns keys specfies the
+    // columns which will be copied with value as destination column name. e.g.
+    // SELECT a.store_name AS Store, b.sales AS Sales FROM a, b where a.id = b.id
     void hashJoin(string a_table, string b_table, string out_table,
                   map<string, string> eq_columns, map<string, string> keep_columns,
                   i32 max_a_rows = 1000000);
