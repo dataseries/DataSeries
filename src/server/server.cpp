@@ -397,10 +397,6 @@ public:
             string field_name(vt.first.substr(2));
             string output_field_xml;
 
-            if (!(prefixequal(vt.first, "a.") || prefixequal(vt.first, "b."))) {
-                requestError("invalid table name");
-            }
-
             if (prefixequal(vt.first, "a.") && a_name_to_val_pos.exists(field_name)) { // case 1
                 TINVARIANT(a_series.getType()->hasColumn(field_name));
                 output_field_xml = renameField(a_series.getType(), field_name, vt.second);
@@ -651,6 +647,8 @@ public:
         for (size_t i=0; i < fields.size(); ++i) {
             if (*fields[i] < *rhs.fields[i]) {
                 return true;
+            } else if (*fields[i] > *rhs.fields[i]) {
+                return false;
             }
         }
         return false;
@@ -750,6 +748,7 @@ public:
             }
 
             if (base_primary_key.fields.empty()) {
+                TINVARIANT(update_primary_key.fields.empty());
                 base_primary_key.init(base_series, primary_key_names);
                 update_primary_key.init(update_series, primary_key_names);
                 base_copier.prep();
