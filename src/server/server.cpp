@@ -357,19 +357,23 @@ public:
             requestError("a_table is empty?");
         }
 
-        // TODO-eric: Removed a_name_to_b_field and b_name_to_b_field variabled which confused me a
-        // lot. Instead of modifying orignial code have used # if, so that one of them can be easily
-        // removed which ever feels ok to you.
-#if 1
+        // Three possible sources for values in the output:
+        // 
+        // 1) the a value fields, so from the hash-map
+        // 2a) the b fields, as one of the a eq fields.
+        // 2b) the b fields, as one of the b values or eq fields
+        // 
+        // We do not try to optimize the extraction and just create a new general field for each
+        // extraction so if the hash-map has duplicate columns, there will be duplicate fields.
         vector<GeneralField::Ptr> a_eq_fields;
-        HashUnique<string> unique_a_eq_fields;
+        HashUnique<string> known_a_eq_fields;
 
         BOOST_FOREACH(const CMap::value_type &vt, eq_columns) {
             SINVARIANT(a_series.getType()->getFieldType(vt.first)
                        == b_series.getType()->getFieldType(vt.second));
             a_eq_fields.push_back(GeneralField::make(a_series, vt.first));
             b_eq_fields.push_back(GeneralField::make(b_series, vt.second));
-            unique_a_eq_fields.add(vt.first);
+            known_a_eq_fields.add(vt.first);
         }
 
         vector<GeneralField::Ptr> a_val_fields;
@@ -378,7 +382,8 @@ public:
         BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
             if (prefixequal(vt.first, "a.")) {
                 string field_name(vt.first.substr(2));
-                if (!unique_a_eq_fields.exists(field_name)) { // value only
+                if (!known_a_eq_fields.exists(field_name)) { // don't store eq fields we will
+                                                             // access from the b eq fields
                     a_name_to_val_pos[field_name] = a_val_fields.size();
                     a_val_fields.push_back(GeneralField::make(a_series, field_name));
                 }
@@ -388,93 +393,37 @@ public:
                                      " namespace=\"server.example.com\" version=\"1.0\">\n")
                               % output_table_name));
 
-        // Get value from value field (if exists) or from b field.
         BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
             string field_name(vt.first.substr(2));
-            string output_field_type;
+            string output_field_xml;
+
             if (!(prefixequal(vt.first, "a.") || prefixequal(vt.first, "b."))) {
                 requestError("invalid table name");
             }
 
-            if (prefixequal(vt.first, "a.") && a_name_to_val_pos.exists(field_name)) {
-                SINVARIANT(a_series.getType()->hasColumn(field_name));
-                output_field_type = a_series.getType()->getFieldTypeStr(field_name);
+            if (prefixequal(vt.first, "a.") && a_name_to_val_pos.exists(field_name)) { // case 1
+                TINVARIANT(a_series.getType()->hasColumn(field_name));
+                output_field_xml = renameField(a_series.getType(), field_name, vt.second);
                 extractors.push_back
                     (ExtractorValue::make(vt.second, a_name_to_val_pos[field_name]));
-            } else {
-                output_field_type = b_series.getType()->getFieldTypeStr(field_name);
+            } else if (prefixequal(vt.first, "a.") 
+                       && eq_columns.find(field_name) != eq_columns.end()) { // case 2a
+                const string b_field_name(eq_columns.find(field_name)->second);
+                TINVARIANT(b_series.getType()->hasColumn(b_field_name));
+                output_field_xml = renameField(a_series.getType(), field_name, vt.second);
+                GeneralField::Ptr b_field(GeneralField::make(b_series, b_field_name));
+                extractors.push_back(ExtractorField::make(vt.second, b_field));
+            } else if (prefixequal(vt.first, "b.")
+                       && b_series.getType()->hasColumn(field_name)) { // case 2b
+                output_field_xml = renameField(b_series.getType(), field_name, vt.second);
                 GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
                 extractors.push_back(ExtractorField::make(vt.second, b_field));
-            }
-            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
-                                  % output_field_type % vt.second));
-        }
-#else
-
-        vector<GeneralField::Ptr> a_eq_fields;
-        HashMap<string, GeneralField::Ptr> a_name_to_b_field, b_name_to_b_field;
-
-        BOOST_FOREACH(const CMap::value_type &vt, eq_columns) {
-            SINVARIANT(a_series.getType()->getFieldType(vt.first)
-                       == b_series.getType()->getFieldType(vt.second));
-            a_eq_fields.push_back(GeneralField::make(a_series, vt.first));
-            b_eq_fields.push_back(GeneralField::make(b_series, vt.second));
-            a_name_to_b_field[vt.first] = b_eq_fields.back();
-            b_name_to_b_field[vt.second] = b_eq_fields.back();
-        }
-
-        vector<GeneralField::Ptr> a_val_fields;
-        HashMap<string, uint32_t> a_name_to_val_pos;
-        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
-            if (prefixequal(vt.first, "a.")) {
-                string field_name(vt.first.substr(2));
-                if (!a_name_to_b_field.exists(field_name)) { // value only
-                    a_name_to_val_pos[field_name] = a_val_fields.size();
-                    a_val_fields.push_back(GeneralField::make(a_series, field_name));
-                }
-            }
-        }
-        string output_xml(str(format("<ExtentType name=\"hash-join -> %s\""
-                                     " namespace=\"server.example.com\" version=\"1.0\">\n")
-                              % output_table_name));
-
-        // Two possible sources for values in the output, either it comes from stored a values
-        // or it comes from a b field, either one of the eq fields or a value field.
-        BOOST_FOREACH(const CMap::value_type &vt, keep_columns) {
-            string field_name(vt.first.substr(2));
-            string output_field_type;
-            if (prefixequal(vt.first, "a.")) {
-                SINVARIANT(a_series.getType()->hasColumn(field_name));
-                output_field_type = a_series.getType()->getFieldTypeStr(field_name);
-                if (a_name_to_b_field.exists(field_name)) { // extract from the b eq fields.
-                    const GeneralField::Ptr b_field(a_name_to_b_field.dGet(field_name));
-                    SINVARIANT(b_field != NULL);
-                    extractors.push_back(ExtractorField::make(vt.second, b_field));
-                } else { // extract from the a values
-                    SINVARIANT(a_name_to_val_pos.exists(field_name));
-                    extractors.push_back
-                        (ExtractorValue::make(vt.second, a_name_to_val_pos[field_name]));
-                }
-            } else if (prefixequal(vt.first, "b.")) {
-                SINVARIANT(b_series.getType()->hasColumn(field_name));
-                output_field_type = b_series.getType()->getFieldTypeStr(field_name);
-                if (b_name_to_b_field.exists(field_name)) { // extract from the b eq fields.
-                    const GeneralField::Ptr b_field(b_name_to_b_field.dGet(field_name));
-                    SINVARIANT(b_field != NULL);
-                    extractors.push_back(ExtractorField::make(vt.second, b_field));
-                } else { // extract from b series
-                    GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
-                    extractors.push_back(ExtractorField::make(vt.second, b_field));
-                }
             } else {
-                // TODO-eric: Shouldn't we throw an error here?
+                requestError("invalid extraction");
             }
-            if (output_field_type.empty()) continue; // HACK
-            // TODO: we're losing any additional field bits, e.g. time properties.
-            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" />\n")
-                                  % output_field_type % vt.second));
+            output_xml.append(output_field_xml);
         }
-#endif
+
         output_xml.append("</ExtentType>\n");
                     
         INVARIANT(!extractors.empty(), "must extract at least one field");

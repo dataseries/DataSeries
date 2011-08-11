@@ -647,7 +647,7 @@ namespace {
 }
 
 const string &ExtentType::fieldTypeToStr(fieldType type) {
-    SINVARIANT(type >= 0 && static_cast<uint32_t>(type) < field_types.size());
+    SINVARIANT(type >= 0 && static_cast<size_t>(type) < field_types.size());
     return field_types[type];
 }
 

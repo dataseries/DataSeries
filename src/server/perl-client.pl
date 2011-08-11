@@ -29,7 +29,8 @@ tryHashJoin();
 # tryProject();
 # tryUpdate();
 # tryStarJoin();
-tryUnion();
+# tryUnion();
+
 sub tryImportCSV {
     my $csv_xml = <<'END';
 <ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
@@ -80,20 +81,13 @@ END
 sub tryHashJoin {
     tryImportData();
 
-    my $data_xml = <<'END';
-<ExtentType name="xxtest-import" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="int32" name="int32" />
-  <field type="variable32" name="variable32" pack_unique="yes" />
-</ExtentType>
-END
+    importData('join-data', [ 'join_int32' => 'int32', 'join_str' => 'variable32' ],
+               [[ 1371, "123" ],
+                [ 1371, "456" ],
+                [ 1371, "789" ],
+                [ 9321, "xyz" ],
+                [ 12345, "fghij" ] ]);
 
-    $client->importData("join-data", $data_xml, new TableData
-                        ({ 'rows' =>
-                           [[ 1371, "123" ],
-                            [ 1371, "456" ],
-                            [ 1371, "789" ],
-                            [ 9321, "xyz" ],
-                            [ 12345, "fghij" ] ]}));
     print "\n----- Table A ----\n";
     print Dumper(getTableData("test-import"));
     print "\n---- Table B ----\n";
@@ -101,10 +95,10 @@ END
 
 
     $client->hashJoin('test-import', 'join-data', 'test-hash-join',
-                      { 'int32' => 'int32' }, { 'a.int32' => 'table-a:join-int32',
-                                                'a.variable32' => 'table-a:extra-variable32',
-                                                'b.int32' => 'table-b:join-int32',
-                                                'b.variable32' => 'table-b:extra-variable32'});
+                      { 'int32' => 'join_int32' }, { 'a.int32' => 'table-a:join-int32',
+                                                     'a.variable32' => 'table-a:extra-variable32',
+                                                     'b.join_int32' => 'table-b:join-int32',
+                                                     'b.join_str' => 'table-b:extra-variable32'});
     print "\n---- HashJoin Output ----\n";
     print Dumper(getTableData("test-hash-join"));
 }
@@ -264,7 +258,8 @@ sub importData {
         for (my $i=0; $i < @$table_desc; $i += 2) {
             my $name = $table_desc->[$i];
             my $desc = $table_desc->[$i+1];
-            $data_xml .= qq{  <field type="$desc" name="$name" />\n};
+            my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : '';
+            $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
         }
         $data_xml .= "</ExtentType>\n";
         print "Importing with $data_xml\n";

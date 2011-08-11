@@ -60,7 +60,9 @@ service DataSeriesServer {
 
     // eq_columns contains the name of columns to be compared and keep_columns keys specfies the
     // columns which will be copied with value as destination column name. e.g.
-    // SELECT a.store_name AS Store, b.sales AS Sales FROM a, b where a.id = b.id
+    // SELECT a.store_name AS Store, b.sales AS Sales FROM a, b where a.id_for_store = b.store_id
+    // would have eq_columns = { id_for_store => store_id }, and
+    // keep_columns = { a.store_name => Store, b.sales => Sales}
     void hashJoin(string a_table, string b_table, string out_table,
                   map<string, string> eq_columns, map<string, string> keep_columns,
                   i32 max_a_rows = 1000000);
