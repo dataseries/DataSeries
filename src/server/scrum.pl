@@ -3,8 +3,8 @@ use strict;
 use Data::Dumper;
 use Date::Parse;
 
-use lib '/home/anderse/build/opt-debian-5.0-x86_64/DataSeries.server/src/server/gen-perl';
-use lib '/home/anderse/projects/thrift/lib/perl/lib';
+use lib "$ENV{BUILD_OPT}/DataSeries.server/src/server/gen-perl";
+use lib "$ENV{HOME}/projects/thrift/lib/perl/lib";
 
 use Thrift::BinaryProtocol;
 use Thrift::Socket;
@@ -47,6 +47,8 @@ sub updateDateConv {
     my $prevday = -1;
 
     my @rows = ([2, $sprint, 0, 0]);
+    # Could make it work with addition of 24hrs but incrementing 12 hrs and skipping duplicated
+    # days is safer to avoid DST issues.
     for(my $i = $istart; $i <= $iend; $i += 86400/2) {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)
 	    = localtime($i);
