@@ -687,6 +687,7 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
 
 
 int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
     Extent::setReadChecksFromEnv(true); // want to make sure everything is ok
     commonPackingArgs packing_args;
     getPackingArgs(&argc,argv,&packing_args);

@@ -162,7 +162,9 @@ public:
     /** Block until all Extents in the queue have been written.
         If another thread is writing extents at the same time, this could
         wait forever. */
-    void flushPending();
+    void flushPending() {
+        worker_info.flushPending(mutex);
+    }
 
     /** Returns combined stats for all the Extents that have been written
         so far.  (Meaning actually written, not just queued).
@@ -189,7 +191,9 @@ public:
 	return filename;
     }
 
-    void setMaxBytesInProgress(size_t nbytes);
+    void setMaxBytesInProgress(size_t nbytes) {
+        worker_info.setMaxBytesInProgress(mutex, nbytes);
+    }
 private:
     struct toCompress {
 	Extent extent;
@@ -214,9 +218,7 @@ private:
 
     struct WriterInfo {
         PThreadMutex &mutex;
-        PThreadCond available_write_cond;
 
-        bool keep_going;
         int fd;
         bool wrote_library;
         off64_t cur_offset; // set to -1 when sink is closed
@@ -228,8 +230,7 @@ private:
         boost::function<void (off64_t, Extent &)> extent_write_callback;
 
         WriterInfo(PThreadMutex &mutex) 
-            : mutex(mutex), available_write_cond(), keep_going(true), fd(-1),
-              wrote_library(false), cur_offset(-1), chained_checksum(0),
+            : mutex(mutex), fd(-1), wrote_library(false), cur_offset(-1), chained_checksum(0),
               index_series(ExtentType::getDataSeriesIndexTypeV0()), index_extent(index_series),
               field_extentOffset(index_series,"offset"),
               field_extentType(index_series,"extenttype"), 
@@ -237,15 +238,37 @@ private:
         { }
     };
 
+    // Structure for shared information among all workers.
+    struct WorkerInfo {
+        // protected by the standard mutex, users should have separate access to it.
+        bool keep_going;
+        size_t bytes_in_progress, max_bytes_in_progress;
+        Deque<toCompress *> pending_work;
+
+        std::vector<PThread *> compressors;
+        PThread *writer;
+        PThreadCond available_queue_cond, available_work_cond, available_write_cond;
+        WorkerInfo(size_t max_bytes_in_progress)
+            : keep_going(true), bytes_in_progress(0), max_bytes_in_progress(max_bytes_in_progress),
+              pending_work(), compressors(), writer(), available_queue_cond(),
+              available_work_cond(), available_write_cond()
+        { }
+
+        bool canQueueWork() {
+            return bytes_in_progress < max_bytes_in_progress &&
+                pending_work.size() < 2 * compressors.size();
+        }
+        void startThreads(PThreadMutex &mutex, DataSeriesSink *sink);
+        void stopThreads(PThreadScopedLock &lock);
+        void setMaxBytesInProgress(PThreadMutex &mutex, size_t nbytes);
+        void flushPending(PThreadMutex &mutex);
+    };
+
     // returns the size of the compressed extent, needed for writing the
     // tail of the dataseries file.
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
 
-    bool canQueueWork() {
-	return bytes_in_progress < max_bytes_in_progress &&
-	    pending_work.size() < 2 * compressors.size();
-    }
     void queueWriteExtent(Extent &e, Stats *to_update);
     void lockedProcessToCompress(toCompress *work);
     void writeOutPending(PThreadScopedLock &lock); 
@@ -259,13 +282,8 @@ private:
     const int compression_modes;
     const int compression_level;
 
-    std::vector<PThread *> compressors;
-    PThread *writer;
     WriterInfo writer_info;
-    size_t bytes_in_progress, max_bytes_in_progress;
-    bool shutdown_workers;
-    Deque<toCompress *> pending_work;
-    PThreadCond available_queue_cond, available_work_cond;
+    WorkerInfo worker_info;
 				   
     const std::string filename;
     friend class DataSeriesSinkPThreadCompressor;
