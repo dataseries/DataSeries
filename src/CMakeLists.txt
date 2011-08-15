@@ -34,7 +34,8 @@ IF("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 ENDIF("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 
 SET(LIBDATASERIES_SOURCES
-	base/DataSeriesFile.cpp
+	base/DataSeriesSink.cpp
+	base/DataSeriesSource.cpp
 	base/Extent.cpp
 	base/ExtentField.cpp
 	base/ExtentSeries.cpp
