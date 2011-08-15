@@ -41,23 +41,18 @@ int DataSeriesSink::compressor_count = -1;
 DataSeriesSink::DataSeriesSink(const string &_filename,
 			       int _compression_modes,
 			       int _compression_level)
-    : index_series(ExtentType::getDataSeriesIndexTypeV0()),
-      index_extent(index_series),
-      field_extentOffset(index_series,"offset"),
-      field_extentType(index_series,"extenttype"),
-      wrote_library(false),
-      compression_modes(_compression_modes),
-      compression_level(_compression_level),
-      chained_checksum(0), 
+    : stats(), mutex(), valid_types(), compression_modes(_compression_modes),
+      compression_level(_compression_level), compressors(), writer(), writer_info(mutex), 
       bytes_in_progress(0), max_bytes_in_progress(256*1024*1024),
-      shutdown_workers(false), filename(_filename)
+      shutdown_workers(false), pending_work(), available_queue_cond(), 
+      available_work_cond(), filename(_filename)
 {
     stats.packed_size += 2*4 + 4*8;
 
     INVARIANT(filename != "-", "opening stdout as a file isn't expected to work, and '-' as a filename makes little sense");
-    fd = open(filename.c_str(), 
-	      O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
-    INVARIANT(fd >= 0, format("Error opening %s for write: %s") % filename % strerror(errno));
+    writer_info.fd = open(filename.c_str(), O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
+    INVARIANT(writer_info.fd >= 0,
+              format("Error opening %s for write: %s") % filename % strerror(errno));
     const string filetype = "DSv1";
     checkedWrite(filetype.data(),4);
     ExtentType::int32 int32check = 0x12345678;
@@ -70,7 +65,7 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
     checkedWrite(&doublecheck,8);
     doublecheck = Double::NaN;
     checkedWrite(&doublecheck,8);
-    cur_offset = 2*4 + 4*8;
+    writer_info.cur_offset = 2*4 + 4*8;
     int pthread_count = compressor_count;
     if (pthread_count == -1) {
 	pthread_count = PThreadMisc::getNCpus();
@@ -91,20 +86,27 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
 }
 
 DataSeriesSink::~DataSeriesSink() {
-    if (cur_offset > 0) {
+    if (writer_info.cur_offset > 0) {
 	close();
     }
 }
 
-void DataSeriesSink::close(bool do_fsync) {
-    INVARIANT(wrote_library,
-	      "error: never wrote the extent type library?!");
-    INVARIANT(cur_offset >= 0, "error: close called twice?!");
+void DataSeriesSink::setExtentWriteCallback(const ExtentWriteCallback &callback) {
+    PThreadScopedLock lock(mutex);
+    writer_info.extent_write_callback = callback;
+}
 
+void DataSeriesSink::close(bool do_fsync) {
     mutex.lock();
+    INVARIANT(writer_info.wrote_library,
+	      "error: never wrote the extent type library?!");
+    INVARIANT(writer_info.cur_offset >= 0, "error: close called twice?!");
+
     shutdown_workers = true;
+    writer_info.keep_going = false;
+
     available_work_cond.broadcast();
-    available_write_cond.broadcast();
+    writer_info.available_write_cond.broadcast();
     mutex.unlock();
 
     for(vector<PThread *>::iterator i = compressors.begin();
@@ -115,19 +117,19 @@ void DataSeriesSink::close(bool do_fsync) {
 
     writeOutPending();
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");
-    ExtentType::int64 index_offset = cur_offset;
+    ExtentType::int64 index_offset = writer_info.cur_offset;
     
     // Special case handling of record for index series; this will
     // present "difficulties" in the future when we want to put the
     // compression type into the index series since we don't know that
     // until after we've already compressed the data.
-    index_series.newRecord(); 
-    field_extentOffset.set(cur_offset);
-    field_extentType.set(index_extent.type.getName());
+    writer_info.index_series.newRecord(); 
+    writer_info.field_extentOffset.set(writer_info.cur_offset);
+    writer_info.field_extentType.set(writer_info.index_extent.type.getName());
 
     mutex.lock();
-    bytes_in_progress += index_extent.size();
-    pending_work.push_back(new toCompress(index_extent, NULL));
+    bytes_in_progress += writer_info.index_extent.size();
+    pending_work.push_back(new toCompress(writer_info.index_extent, NULL));
     pending_work.front()->in_progress = true;
     lockedProcessToCompress(pending_work.front());
 
@@ -151,41 +153,41 @@ void DataSeriesSink::close(bool do_fsync) {
     typedef ExtentType::int32 int32;
     *(int32 *)(tail + 4) = packed_size;
     *(int32 *)(tail + 8) = ~packed_size;
-    *(int32 *)(tail + 12) = chained_checksum;
+    *(int32 *)(tail + 12) = writer_info.chained_checksum;
     *(ExtentType::int64 *)(tail + 16) = (ExtentType::int64)index_offset;
     *(int32 *)(tail + 24) = lintel::bobJenkinsHash(1776,tail,6*4);
     checkedWrite(tail,7*4);
     delete [] tail;
-    if(do_fsync) {
-        fsync(fd);
+    if (do_fsync) {
+        fsync(writer_info.fd);
     }
-    int ret = ::close(fd);
+    int ret = ::close(writer_info.fd);
     INVARIANT(ret == 0, format("close failed: %s") % strerror(errno));
-    fd = -1;
-    cur_offset = -1;
-    index_series.clearExtent();
-    index_extent.clear();
+    writer_info.fd = -1;
+    writer_info.cur_offset = -1;
+    writer_info.index_series.clearExtent();
+    writer_info.index_extent.clear();
     mutex.unlock();
 }
 
 void DataSeriesSink::checkedWrite(const void *buf, int bufsize) {
-    ssize_t ret = write(fd,buf,bufsize);
+    ssize_t ret = write(writer_info.fd, buf, bufsize);
     INVARIANT(ret != -1, format("Error on write of %d bytes: %s") % bufsize % strerror(errno));
     INVARIANT(ret == bufsize, format("Partial write %d bytes out of %d bytes (disk full?): %s")
 	      % ret % bufsize % strerror(errno));
 }
 
 void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
-    INVARIANT(wrote_library,
+    INVARIANT(writer_info.wrote_library,
 	      "must write extent type library before writing extents!\n");
-    INVARIANT(valid_types[&e.type], format("type %s (%p) wasn't in your type library")
+    INVARIANT(valid_types.exists(&e.type), format("type %s (%p) wasn't in your type library")
 	      % e.type.getName() % &e.type);
     INVARIANT(!shutdown_workers, "must not call writeExtent after calling close()");
     queueWriteExtent(e, stats);
 }
 
 void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
-    INVARIANT(!wrote_library, "Can only write extent library once");
+    INVARIANT(!writer_info.wrote_library, "Can only write extent library once");
     ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
     Extent type_extent(type_extent_series);
 
@@ -201,7 +203,7 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
 	const string &type_desc(et->getXmlDescriptionString());
 	INVARIANT(!type_desc.empty(), "whoa extenttype has no xml data?!");
 	typevar.set(type_desc);
-	valid_types[et] = true;
+	valid_types.add(et);
 	if ((et->majorVersion() == 0 && et->minorVersion() == 0) ||
 	    et->getNamespace().empty()) {
 	    // Once we have a version of dsrepack/dsselect that can
@@ -212,8 +214,8 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
     }
     queueWriteExtent(type_extent, NULL);
     mutex.lock();
-    INVARIANT(!wrote_library, "bad, two calls to writeExtentLibrary()");
-    wrote_library = true; 
+    INVARIANT(!writer_info.wrote_library, "bad, two calls to writeExtentLibrary()");
+    writer_info.wrote_library = true; 
     mutex.unlock();
 }
 
@@ -278,7 +280,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     }
     mutex.lock();
     INVARIANT(!shutdown_workers, "got to qWE after call to close()??");
-    INVARIANT(cur_offset > 0, "queueWriteExtent on closed file");
+    INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
     LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e.size());
     bytes_in_progress += e.size(); // putting this into toCompress erases e
     pending_work.push_back(new toCompress(e, to_update));
@@ -338,21 +340,21 @@ void DataSeriesSink::writeOutPending(bool have_lock) {
     while(!to_write.empty()) {
 	toCompress *tc = to_write.front();
 	to_write.pop_front();
-	INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
+	INVARIANT(writer_info.cur_offset > 0,"Error: writeoutPending on closed file\n");
 
-        if(extent_write_callback) {
-            extent_write_callback(cur_offset, tc->extent);
+        if (writer_info.extent_write_callback) {
+            writer_info.extent_write_callback(writer_info.cur_offset, tc->extent);
         }
         tc->wipeExtent();
 
-	index_series.newRecord();
-	field_extentOffset.set(cur_offset);
-	field_extentType.set(tc->extent.type.getName());
+	writer_info.index_series.newRecord();
+	writer_info.field_extentOffset.set(writer_info.cur_offset);
+	writer_info.field_extentType.set(tc->extent.type.getName());
 	
 	checkedWrite(tc->compressed.begin(), tc->compressed.size());
-	cur_offset += tc->compressed.size();
-	chained_checksum 
-	    = lintel::BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
+	writer_info.cur_offset += tc->compressed.size();
+	writer_info.chained_checksum 
+	    = lintel::BobJenkinsHashMix3(tc->checksum, writer_info.chained_checksum, 1972);
 	bytes_written += tc->compressed.size();
 	delete tc;
     }
@@ -397,7 +399,7 @@ void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
 		   % work->extent.size() % bytes_in_progress);
 
     INVARIANT(work->in_progress, "??");
-    INVARIANT(cur_offset > 0,"Error: processToCompress on closed file\n");
+    INVARIANT(writer_info.cur_offset > 0,"Error: processToCompress on closed file\n");
 
     mutex.unlock();
 
@@ -494,7 +496,7 @@ void  DataSeriesSink::compressorThread()  {
 		available_queue_cond.broadcast();
 	    }
 	    if (pending_work.front()->readyToWrite()) {
-		available_write_cond.signal();
+		writer_info.available_write_cond.signal();
 	    }
 	}
     }
@@ -509,7 +511,7 @@ void DataSeriesSink::writerThread() {
 	    writeOutPending(true);
 	    mutex.lock();
 	} else {
-	    available_write_cond.wait(mutex);
+	    writer_info.available_write_cond.wait(mutex);
 	}
     }
     mutex.unlock();

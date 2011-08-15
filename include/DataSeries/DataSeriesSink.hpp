@@ -13,6 +13,7 @@
 #define DATASERIES_SINK_HPP
 
 #include <Lintel/Deque.hpp>
+#include <Lintel/HashUnique.hpp>
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/Extent.hpp>
@@ -120,9 +121,9 @@ public:
     /** automatically calls close() if close has not already been called. */
     ~DataSeriesSink();
 
+    typedef boost::function<void (off64_t, Extent &)> ExtentWriteCallback;
     /** Sets a callback function for when extents are written out. */
-    void setExtentWriteCallback(boost::function<void (off64_t, Extent &)> callback)
-    { extent_write_callback = callback; }
+    void setExtentWriteCallback(const ExtentWriteCallback &callback);
 
     /** Blocks until all queued extents have been written and closes the file.  An
         @c ExtentTypeLibrary must have been written using
@@ -210,23 +211,36 @@ private:
 	    return compressed.size() > 0 && !in_progress;
 	}
     };
-    Stats stats;
 
-    off64_t cur_offset; // set to -1 when sink is closed
-    ExtentSeries index_series;
-    Extent index_extent;
-    Int64Field field_extentOffset;
-    Variable32Field field_extentType;
-    bool wrote_library;
+    struct WriterInfo {
+        PThreadMutex &mutex;
+        PThreadCond available_write_cond;
+
+        bool keep_going;
+        int fd;
+        bool wrote_library;
+        off64_t cur_offset; // set to -1 when sink is closed
+        uint32_t chained_checksum; 
+        ExtentSeries index_series;
+        Extent index_extent;
+        Int64Field field_extentOffset;
+        Variable32Field field_extentType;
+        boost::function<void (off64_t, Extent &)> extent_write_callback;
+
+        WriterInfo(PThreadMutex &mutex) 
+            : mutex(mutex), available_write_cond(), keep_going(true), fd(-1),
+              wrote_library(false), cur_offset(-1), chained_checksum(0),
+              index_series(ExtentType::getDataSeriesIndexTypeV0()), index_extent(index_series),
+              field_extentOffset(index_series,"offset"),
+              field_extentType(index_series,"extenttype"), 
+              extent_write_callback()
+        { }
+    };
+
     // returns the size of the compressed extent, needed for writing the
     // tail of the dataseries file.
     void checkedWrite(const void *buf, int bufsize);
     void writeExtentType(ExtentType &et);
-    std::map<const ExtentType *,bool> valid_types;
-    int fd;
-    const int compression_modes;
-    const int compression_level;
-    uint32_t chained_checksum; 
 
     bool canQueueWork() {
 	return bytes_in_progress < max_bytes_in_progress &&
@@ -235,17 +249,24 @@ private:
     void queueWriteExtent(Extent &e, Stats *to_update);
     void lockedProcessToCompress(toCompress *work);
     void writeOutPending(bool have_lock = false); // always exits without lock held.
+
     static int compressor_count;
+
+    Stats stats;
+    PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
+    HashUnique<const ExtentType *, lintel::PointerHash<ExtentType>,
+               lintel::PointerEqual<ExtentType> > valid_types;
+    const int compression_modes;
+    const int compression_level;
+
     std::vector<PThread *> compressors;
     PThread *writer;
+    WriterInfo writer_info;
     size_t bytes_in_progress, max_bytes_in_progress;
     bool shutdown_workers;
     Deque<toCompress *> pending_work;
-    PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
-    PThreadCond available_queue_cond, available_work_cond, 
-				   available_write_cond;
-    boost::function<void (off64_t, Extent &)> extent_write_callback;
-
+    PThreadCond available_queue_cond, available_work_cond;
+				   
     const std::string filename;
     friend class DataSeriesSinkPThreadCompressor;
     void compressorThread();
