@@ -8,6 +8,8 @@
 SET(INCLUDE_FILES
 	ByteField.hpp
 	DataSeriesFile.hpp
+        DataSeriesSink.hpp
+        DataSeriesSource.hpp
 	DSExpr.hpp
 	DStoTextModule.hpp
 	Extent.hpp
