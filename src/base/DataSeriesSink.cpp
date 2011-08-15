@@ -97,25 +97,30 @@ void DataSeriesSink::setExtentWriteCallback(const ExtentWriteCallback &callback)
 }
 
 void DataSeriesSink::close(bool do_fsync) {
-    mutex.lock();
+    PThreadScopedLock lock(mutex);
+
     INVARIANT(writer_info.wrote_library,
-	      "error: never wrote the extent type library?!");
+              "error: never wrote the extent type library?!");
     INVARIANT(writer_info.cur_offset >= 0, "error: close called twice?!");
 
     shutdown_workers = true;
     writer_info.keep_going = false;
-
+    
     available_work_cond.broadcast();
     writer_info.available_write_cond.broadcast();
-    mutex.unlock();
 
-    for(vector<PThread *>::iterator i = compressors.begin();
-	i != compressors.end(); ++i) {
-	(**i).join();
+    {
+        PThreadScopedUnlock unlock(lock);
+
+        for(vector<PThread *>::iterator i = compressors.begin();
+            i != compressors.end(); ++i) {
+            (**i).join();
+        }
+        writer->join();
     }
-    writer->join();
 
-    writeOutPending();
+    writeOutPending(lock);
+
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, "bad");
     ExtentType::int64 index_offset = writer_info.cur_offset;
     
@@ -127,7 +132,6 @@ void DataSeriesSink::close(bool do_fsync) {
     writer_info.field_extentOffset.set(writer_info.cur_offset);
     writer_info.field_extentType.set(writer_info.index_extent.type.getName());
 
-    mutex.lock();
     bytes_in_progress += writer_info.index_extent.size();
     pending_work.push_back(new toCompress(writer_info.index_extent, NULL));
     pending_work.front()->in_progress = true;
@@ -137,10 +141,9 @@ void DataSeriesSink::close(bool do_fsync) {
     INVARIANT(pending_work.size() == 1, "bad");
     INVARIANT(pending_work.front()->readyToWrite(), "bad");
     uint32_t packed_size = pending_work.front()->compressed.size();
-    mutex.unlock();
-    writeOutPending();
 
-    mutex.lock();
+    writeOutPending(lock);
+
     INVARIANT(pending_work.empty() && bytes_in_progress == 0, 
 	      format("bad %d %d") % pending_work.empty() % bytes_in_progress);
 
@@ -167,7 +170,6 @@ void DataSeriesSink::close(bool do_fsync) {
     writer_info.cur_offset = -1;
     writer_info.index_series.clearExtent();
     writer_info.index_extent.clear();
-    mutex.unlock();
 }
 
 void DataSeriesSink::checkedWrite(const void *buf, int bufsize) {
@@ -278,7 +280,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 	PThreadAutoLocker lock(Stats::getMutex());
 	++to_update->use_count;
     }
-    mutex.lock();
+    PThreadScopedLock lock(mutex);
     INVARIANT(!shutdown_workers, "got to qWE after call to close()??");
     INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
     LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e.size());
@@ -291,8 +293,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 	bytes_in_progress += e.size();
 	lockedProcessToCompress(pending_work.front());
 	pending_work.front()->in_progress = false;
-	mutex.unlock();
-	writeOutPending();
+	writeOutPending(lock);
 	SINVARIANT(bytes_in_progress == 0);
 	return;
     } 
@@ -305,8 +306,6 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 		       % pending_work.size() % (2 * compressors.size()));
 	available_queue_cond.wait(mutex);
     }
-    mutex.unlock();
-	
 }
 
 void DataSeriesSink::flushPending() {
@@ -324,42 +323,41 @@ DataSeriesSink::Stats DataSeriesSink::getStats() {
     return ret;
 }
 
-void DataSeriesSink::writeOutPending(bool have_lock) {
-    if (!have_lock) {
-	mutex.lock();
-    }
+void DataSeriesSink::writeOutPending(PThreadScopedLock &lock) {
     Deque<toCompress *> to_write;
     while(!pending_work.empty() 
 	  && pending_work.front()->readyToWrite()) {
 	to_write.push_back(pending_work.front());
 	pending_work.pop_front();
     }
-    mutex.unlock();
-
+    
     size_t bytes_written = 0;
-    while(!to_write.empty()) {
-	toCompress *tc = to_write.front();
-	to_write.pop_front();
-	INVARIANT(writer_info.cur_offset > 0,"Error: writeoutPending on closed file\n");
+    {
+        PThreadScopedUnlock unlock(lock);
 
-        if (writer_info.extent_write_callback) {
-            writer_info.extent_write_callback(writer_info.cur_offset, tc->extent);
+        while(!to_write.empty()) {
+            toCompress *tc = to_write.front();
+            to_write.pop_front();
+            INVARIANT(writer_info.cur_offset > 0,"Error: writeoutPending on closed file\n");
+            
+            if (writer_info.extent_write_callback) {
+                writer_info.extent_write_callback(writer_info.cur_offset, tc->extent);
+            }
+            tc->wipeExtent();
+            
+            writer_info.index_series.newRecord();
+            writer_info.field_extentOffset.set(writer_info.cur_offset);
+            writer_info.field_extentType.set(tc->extent.type.getName());
+            
+            checkedWrite(tc->compressed.begin(), tc->compressed.size());
+            writer_info.cur_offset += tc->compressed.size();
+            writer_info.chained_checksum 
+                = lintel::BobJenkinsHashMix3(tc->checksum, writer_info.chained_checksum, 1972);
+            bytes_written += tc->compressed.size();
+            delete tc;
         }
-        tc->wipeExtent();
-
-	writer_info.index_series.newRecord();
-	writer_info.field_extentOffset.set(writer_info.cur_offset);
-	writer_info.field_extentType.set(tc->extent.type.getName());
-	
-	checkedWrite(tc->compressed.begin(), tc->compressed.size());
-	writer_info.cur_offset += tc->compressed.size();
-	writer_info.chained_checksum 
-	    = lintel::BobJenkinsHashMix3(tc->checksum, writer_info.chained_checksum, 1972);
-	bytes_written += tc->compressed.size();
-	delete tc;
     }
 
-    mutex.lock();
     INVARIANT(bytes_in_progress >= bytes_written, format("internal %d %d") 
 	      % bytes_in_progress % bytes_written);
     bytes_in_progress -= bytes_written;
@@ -368,7 +366,6 @@ void DataSeriesSink::writeOutPending(bool have_lock) {
 	// Don't say there is free space until we actually finished writing.
 	available_queue_cond.broadcast();
     }
-    mutex.unlock();
 }
 
 static void get_thread_cputime(struct timespec &ts) {
@@ -504,17 +501,15 @@ void  DataSeriesSink::compressorThread()  {
 }
 
 void DataSeriesSink::writerThread() {
-    mutex.lock();
+    PThreadScopedLock lock(mutex);
     while(!shutdown_workers) {
 	if (!pending_work.empty() &&
 	    pending_work.front()->readyToWrite()) {
-	    writeOutPending(true);
-	    mutex.lock();
+	    writeOutPending(lock);
 	} else {
 	    writer_info.available_write_cond.wait(mutex);
 	}
     }
-    mutex.unlock();
 }
 
 void DataSeriesSink::Stats::reset() {

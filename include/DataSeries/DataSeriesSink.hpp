@@ -248,7 +248,7 @@ private:
     }
     void queueWriteExtent(Extent &e, Stats *to_update);
     void lockedProcessToCompress(toCompress *work);
-    void writeOutPending(bool have_lock = false); // always exits without lock held.
+    void writeOutPending(PThreadScopedLock &lock); 
 
     static int compressor_count;
 
