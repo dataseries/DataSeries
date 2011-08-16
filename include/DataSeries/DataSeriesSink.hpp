@@ -216,28 +216,6 @@ private:
 	}
     };
 
-    struct WriterInfo {
-        PThreadMutex &mutex;
-
-        int fd;
-        bool wrote_library;
-        off64_t cur_offset; // set to -1 when sink is closed
-        uint32_t chained_checksum; 
-        ExtentSeries index_series;
-        Extent index_extent;
-        Int64Field field_extentOffset;
-        Variable32Field field_extentType;
-        boost::function<void (off64_t, Extent &)> extent_write_callback;
-
-        WriterInfo(PThreadMutex &mutex) 
-            : mutex(mutex), fd(-1), wrote_library(false), cur_offset(-1), chained_checksum(0),
-              index_series(ExtentType::getDataSeriesIndexTypeV0()), index_extent(index_series),
-              field_extentOffset(index_series,"offset"),
-              field_extentType(index_series,"extenttype"), 
-              extent_write_callback()
-        { }
-    };
-
     // Structure for shared information among all workers.
     struct WorkerInfo {
         // protected by the standard mutex, users should have separate access to it.
@@ -262,16 +240,45 @@ private:
         void stopThreads(PThreadScopedLock &lock);
         void setMaxBytesInProgress(PThreadMutex &mutex, size_t nbytes);
         void flushPending(PThreadMutex &mutex);
+        bool frontReadyToWrite() { // Assume lock is held
+            if (pending_work.empty()) {
+                return false;
+            } else {
+                return pending_work.front()->readyToWrite();
+            }
+        }
     };
 
-    // returns the size of the compressed extent, needed for writing the
-    // tail of the dataseries file.
-    void checkedWrite(const void *buf, int bufsize);
+    // Structure for the writer.
+    struct WriterInfo {
+        int fd;
+        bool wrote_library;
+        off64_t cur_offset; // set to -1 when sink is closed
+        uint32_t chained_checksum; 
+        ExtentSeries index_series;
+        Extent index_extent;
+        Int64Field field_extentOffset;
+        Variable32Field field_extentType;
+        boost::function<void (off64_t, Extent &)> extent_write_callback;
+
+        WriterInfo(PThreadMutex &mutex) 
+            : fd(-1), wrote_library(false), cur_offset(-1), chained_checksum(0),
+              index_series(ExtentType::getDataSeriesIndexTypeV0()), index_extent(index_series),
+              field_extentOffset(index_series,"offset"),
+              field_extentType(index_series,"extenttype"), 
+              extent_write_callback()
+        { }
+        void writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info);
+        void checkedWrite(const void *buf, int bufsize);
+    };
+
+    void checkedWrite(const void *buf, int bufsize) {
+        writer_info.checkedWrite(buf, bufsize);
+    }
     void writeExtentType(ExtentType &et);
 
     void queueWriteExtent(Extent &e, Stats *to_update);
     void lockedProcessToCompress(toCompress *work);
-    void writeOutPending(PThreadScopedLock &lock); 
 
     static int compressor_count;
 

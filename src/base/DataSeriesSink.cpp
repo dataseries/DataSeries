@@ -136,7 +136,7 @@ void DataSeriesSink::close(bool do_fsync) {
     INVARIANT(writer_info.cur_offset >= 0, "error: close called twice?!");
 
     worker_info.stopThreads(lock);
-    writeOutPending(lock);
+    writer_info.writeOutPending(lock, worker_info);
 
     SINVARIANT(worker_info.pending_work.empty() && worker_info.bytes_in_progress == 0);
     ExtentType::int64 index_offset = writer_info.cur_offset;
@@ -160,7 +160,7 @@ void DataSeriesSink::close(bool do_fsync) {
     SINVARIANT(worker_info.pending_work.front()->readyToWrite());
     uint32_t packed_size = worker_info.pending_work.front()->compressed.size();
 
-    writeOutPending(lock);
+    writer_info.writeOutPending(lock, worker_info);
 
     INVARIANT(worker_info.pending_work.empty() && worker_info.bytes_in_progress == 0, 
 	      format("bad %d %d") % worker_info.pending_work.empty()
@@ -191,8 +191,8 @@ void DataSeriesSink::close(bool do_fsync) {
     writer_info.index_extent.clear();
 }
 
-void DataSeriesSink::checkedWrite(const void *buf, int bufsize) {
-    ssize_t ret = write(writer_info.fd, buf, bufsize);
+void DataSeriesSink::WriterInfo::checkedWrite(const void *buf, int bufsize) {
+    ssize_t ret = write(fd, buf, bufsize);
     INVARIANT(ret != -1, format("Error on write of %d bytes: %s") % bufsize % strerror(errno));
     INVARIANT(ret == bufsize, format("Partial write %d bytes out of %d bytes (disk full?): %s")
 	      % ret % bufsize % strerror(errno));
@@ -302,7 +302,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 	worker_info.bytes_in_progress += e.size();
 	lockedProcessToCompress(worker_info.pending_work.front());
 	worker_info.pending_work.front()->in_progress = false;
-	writeOutPending(lock);
+	writer_info.writeOutPending(lock, worker_info);
 	SINVARIANT(worker_info.bytes_in_progress == 0);
 	return;
     } 
@@ -324,9 +324,9 @@ DataSeriesSink::Stats DataSeriesSink::getStats() {
     return ret;
 }
 
-void DataSeriesSink::writeOutPending(PThreadScopedLock &lock) {
+void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info) {
     Deque<toCompress *> to_write;
-    while(!worker_info.pending_work.empty() && worker_info.pending_work.front()->readyToWrite()) {
+    while (worker_info.frontReadyToWrite()) {
 	to_write.push_back(worker_info.pending_work.front());
 	worker_info.pending_work.pop_front();
     }
@@ -338,21 +338,20 @@ void DataSeriesSink::writeOutPending(PThreadScopedLock &lock) {
         while(!to_write.empty()) {
             toCompress *tc = to_write.front();
             to_write.pop_front();
-            INVARIANT(writer_info.cur_offset > 0,"Error: writeoutPending on closed file\n");
+            INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
             
-            if (writer_info.extent_write_callback) {
-                writer_info.extent_write_callback(writer_info.cur_offset, tc->extent);
+            if (extent_write_callback) {
+                extent_write_callback(cur_offset, tc->extent);
             }
             tc->wipeExtent();
             
-            writer_info.index_series.newRecord();
-            writer_info.field_extentOffset.set(writer_info.cur_offset);
-            writer_info.field_extentType.set(tc->extent.type.getName());
+            index_series.newRecord();
+            field_extentOffset.set(cur_offset);
+            field_extentType.set(tc->extent.type.getName());
             
             checkedWrite(tc->compressed.begin(), tc->compressed.size());
-            writer_info.cur_offset += tc->compressed.size();
-            writer_info.chained_checksum 
-                = lintel::BobJenkinsHashMix3(tc->checksum, writer_info.chained_checksum, 1972);
+            cur_offset += tc->compressed.size();
+            chained_checksum = lintel::BobJenkinsHashMix3(tc->checksum, chained_checksum, 1972);
             bytes_written += tc->compressed.size();
             delete tc;
         }
@@ -471,8 +470,7 @@ void  DataSeriesSink::compressorThread()  {
 	toCompress *work = NULL;
 	for(Deque<toCompress *>::iterator i = worker_info.pending_work.begin();
 	    i != worker_info.pending_work.end(); ++i) {
-	    if ((**i).compressed.size() == 0 &&
-		(**i).in_progress == false) {
+	    if ((**i).in_progress == false && (**i).compressed.size() == 0) {
 		work = *i;
 		work->in_progress = true;
 		break;
@@ -492,7 +490,7 @@ void  DataSeriesSink::compressorThread()  {
 		worker_info.available_queue_cond.broadcast();
 	    }
             SINVARIANT(!worker_info.pending_work.empty());
-	    if (worker_info.pending_work.front()->readyToWrite()) {
+	    if (worker_info.frontReadyToWrite()) {
 		worker_info.available_write_cond.signal();
 	    }
 	}
@@ -503,8 +501,8 @@ void  DataSeriesSink::compressorThread()  {
 void DataSeriesSink::writerThread() {
     PThreadScopedLock lock(mutex);
     while(worker_info.keep_going) {
-	if (!worker_info.pending_work.empty() && worker_info.pending_work.front()->readyToWrite()) {
-	    writeOutPending(lock);
+	if (worker_info.frontReadyToWrite()) {
+	    writer_info.writeOutPending(lock, worker_info);
 	} else {
 	    worker_info.available_write_cond.wait(mutex);
 	}
