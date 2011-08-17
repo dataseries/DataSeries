@@ -114,11 +114,8 @@ void OutputModule::newRecord() {
 void OutputModule::flushExtent() {
     INVARIANT(cur_extent != NULL, "??");
     if (cur_extent->fixeddata.size() > 0) {
-	{
-	    PThreadScopedLock lock(DataSeriesSink::Stats::getMutex());
-	    stats.unpacked_variable_raw += cur_extent->variabledata.size();
-	}
-
+        // TODO: figure out why this isn't being updates inside writeExtent!
+	sink.updateUnpackedVariableRaw(stats, cur_extent->variabledata.size());
 	sink.writeExtent(*cur_extent, &stats);
 	cur_extent->clear();
     }
@@ -138,9 +135,7 @@ void OutputModule::close() {
 }
 
 DataSeriesSink::Stats OutputModule::getStats() {
-    PThreadScopedLock lock(DataSeriesSink::Stats::getMutex());
-    DataSeriesSink::Stats ret = stats;
-    return ret;
+    return sink.getStats(&stats);
 }
 
 void OutputModule::printStats(std::ostream &to) {

@@ -18,9 +18,10 @@ ENDMACRO(DATASERIES_SCRIPT_TEST)
 DATASERIES_SIMPLE_TEST(time-field)
 DATASERIES_SIMPLE_TEST(pack-pad-record)
 DATASERIES_SIMPLE_TEST(pack-field-ordering)
+DATASERIES_SIMPLE_TEST(pack-bug ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.ds)
+DATASERIES_SIMPLE_TEST(file-rotation simple)
 DATASERIES_PROGRAM_NOINST(general general2.cpp)
 ADD_TEST(general ./general)
-DATASERIES_SIMPLE_TEST(pack-bug ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.ds)
 
 ### Script tests of public programs
 # *** WARNING, don't use | in any of the test scripts; if you do, then

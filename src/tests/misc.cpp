@@ -1055,7 +1055,7 @@ test_extentseriescleanup()
 	AssertBoostClearFns();
 
 	SINVARIANT(e.expression == "my_fields.size() == 0");
-	SINVARIANT(e.msg == "You still have fields such as buz live on a series over type unset type.  You have to delete dynamically allocated fields before deleting the ExtentSeries.  Class member variables and static ones are automatically deleted in the proper order.");
+	SINVARIANT(e.msg == "You still have fields such as buz live on a series over type unset type. You have to delete dynamically allocated fields before deleting the ExtentSeries. Class member variables and static ones are automatically deleted in the proper order.");
 	caught = true;
     }
     SINVARIANT(caught);

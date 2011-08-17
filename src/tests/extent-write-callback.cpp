@@ -1,12 +1,17 @@
-#include <DataSeries/DataSeriesFile.hpp>
-#include <DataSeries/DataSeriesModule.hpp>
 #include <string>
 
-const std::string type_string = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Test::Garbage\" version=\"1.0\" >\n    <field type=\"int64\" name=\"number\" />\n</ExtentType>";
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+
+using namespace std;
+
+const string type_string = 
+"<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Test::Garbage\" version=\"1.0\" >\n"
+"  <field type=\"int64\" name=\"number\" />\n"
+"</ExtentType>\n";
 
 void printIndex(off64_t offset, Extent &extent) {
-    std::cout << offset << "\t" << extent.type.getName()
-              << "\t" << extent.size() << "\n";
+    cout << offset << "\t" << extent.type.getName() << "\t" << extent.size() << "\n";
 }
 
 int main(int argc, char *argv[]) {

@@ -1,5 +1,5 @@
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -12,8 +12,8 @@
 
 using namespace std;
 
-ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
-    : typeCompatibility(_tc)
+ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT tc)
+    : typeCompatibility(tc)
 {
     if (e == NULL) {
 	type = NULL;
@@ -26,38 +26,39 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT _tc)
     }
 }
 
-ExtentSeries::~ExtentSeries()
-{
+ExtentSeries::~ExtentSeries() {
     INVARIANT(my_fields.size() == 0, 
-	      boost::format("You still have fields such as %s live on a series over type %s.  You have to delete dynamically allocated fields before deleting the ExtentSeries.  Class member variables and static ones are automatically deleted in the proper order.")
-	      % my_fields[0]->getName() 
-	      % (type == NULL ? "unset type" : type->getName()));
+	      boost::format("You still have fields such as %s live on a series over type %s."
+                            " You have to delete dynamically allocated fields before deleting"
+                            " the ExtentSeries. Class member variables and static ones are"
+                            " automatically deleted in the proper order.")
+	      % my_fields[0]->getName() % (type == NULL ? "unset type" : type->getName()));
 }
 
-void
-ExtentSeries::setType(const ExtentType &_type)
-{
-    INVARIANT(&_type != NULL,"you made a NULL reference grr");
-    if (type == &_type) {
+void ExtentSeries::setType(const ExtentType &in_type) {
+    INVARIANT(&in_type != NULL,"you made a NULL reference grr");
+    if (type == &in_type) {
 	return; // nothing to do, a valid but useless call
     }
     switch(typeCompatibility)
 	{
 	case typeExact: 
 	    INVARIANT(type == NULL || type->getXmlDescriptionString() 
-		      != _type.getXmlDescriptionString(), 
+		      != in_type.getXmlDescriptionString(), 
 		      "internal -- same xmldesc should get same type");
 	    INVARIANT(type == NULL,
-		      boost::format("Unable to change type with typeExact compatibility\nType 1:\n%s\nType 2:\n%s\n")
-		      % type->getXmlDescriptionString() % _type.getXmlDescriptionString());
+		      boost::format("Unable to change type with typeExact compatibility\n"
+                                    "Type 1:\n%s\nType 2:\n%s\n")
+		      % type->getXmlDescriptionString() % in_type.getXmlDescriptionString());
 	    break;
 	case typeLoose:
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("unrecognized type compatibility option %d") % typeCompatibility);
+	    FATAL_ERROR(boost::format("unrecognized type compatibility option %d") 
+                        % typeCompatibility);
 	}
 
-    type = &_type;
+    type = &in_type;
     for(vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end();++i) {
 	SINVARIANT(&(**i).dataseries == this)
@@ -73,17 +74,14 @@ void ExtentSeries::setExtent(Extent *e) {
     }
 }
 
-void
-ExtentSeries::addField(Field &field)
-{
+void ExtentSeries::addField(Field &field) {
     if (type != NULL) {
 	field.newExtentType();
     }
     my_fields.push_back(&field);
 }
 
-void ExtentSeries::removeField(Field &field, bool must_exist)
-{
+void ExtentSeries::removeField(Field &field, bool must_exist) {
     bool found = false;
     for(vector<Field *>::iterator i = my_fields.begin(); 
 	i != my_fields.end(); ++i) {
@@ -96,10 +94,8 @@ void ExtentSeries::removeField(Field &field, bool must_exist)
     SINVARIANT(!must_exist || found);
 }
 
-void
-ExtentSeries::iterator::setPos(const void *_new_pos)
-{
-    const byte *new_pos = static_cast<const byte *>(_new_pos);
+void ExtentSeries::iterator::setPos(const void *in_new_pos) {
+    const byte *new_pos = static_cast<const byte *>(in_new_pos);
     byte *cur_begin = cur_extent->fixeddata.begin();
     unsigned recnum = (new_pos - cur_begin) / recordsize;
     INVARIANT(cur_extent != NULL, "no current extent?");
@@ -113,9 +109,7 @@ ExtentSeries::iterator::setPos(const void *_new_pos)
     cur_pos = cur_begin + offset;
 }
 
-void
-ExtentSeries::iterator::update(Extent *e)
-{
+void ExtentSeries::iterator::update(Extent *e) {
     if (e->type.fixedrecordsize() == recordsize) {
 	int offset = cur_pos - cur_extent->fixeddata.begin();
 	byte *begin_pos = cur_extent->fixeddata.begin();
@@ -132,9 +126,7 @@ ExtentSeries::iterator::update(Extent *e)
 }
 
 
-void
-ExtentSeries::iterator::forceCheckOffset(long offset)
-{
+void ExtentSeries::iterator::forceCheckOffset(long offset) {
     INVARIANT(cur_extent != NULL, 
 	      "internal error, current extent is NULL");
     INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&

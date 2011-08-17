@@ -65,8 +65,12 @@ void DataSeriesSink::WorkerInfo::stopThreads(PThreadScopedLock &lock) {
     for(vector<PThread *>::iterator i = compressors.begin();
         i != compressors.end(); ++i) {
         (**i).join();
+        delete *i;
     }
+    compressors.clear();
     writer->join();
+    delete writer;
+    writer = NULL;
 }
 
 void DataSeriesSink::WorkerInfo::setMaxBytesInProgress(PThreadMutex &mutex, size_t nbytes) {
@@ -87,10 +91,16 @@ void DataSeriesSink::WorkerInfo::flushPending(PThreadMutex &mutex) {
 }
 
 
+DataSeriesSink::DataSeriesSink(int compression_modes, int compression_level)
+    : stats(), mutex(), valid_types(), compression_modes(compression_modes),
+      compression_level(compression_level), writer_info(), 
+      worker_info(256*1024*1024), filename()
+{ }
+
 DataSeriesSink::DataSeriesSink(const string &filename, int compression_modes,
 			       int compression_level)
     : stats(), mutex(), valid_types(), compression_modes(compression_modes),
-      compression_level(compression_level), writer_info(mutex), 
+      compression_level(compression_level), writer_info(),
       worker_info(256*1024*1024), filename()
 {
     open(filename);
@@ -108,7 +118,6 @@ void DataSeriesSink::setExtentWriteCallback(const ExtentWriteCallback &callback)
 }
 
 void DataSeriesSink::open(const string &in_filename) {
-    PThreadScopedLock stats_lock(stats.getMutex());
     PThreadScopedLock lock(mutex);
 
     SINVARIANT(worker_info.isQuiesced() && writer_info.isQuiesced() 
@@ -121,6 +130,7 @@ void DataSeriesSink::open(const string &in_filename) {
     writer_info.fd = ::open(filename.c_str(), O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
     INVARIANT(writer_info.fd >= 0,
               format("Error opening %s for write: %s") % filename % strerror(errno));
+    writer_info.index_series.setExtent(writer_info.index_extent);
     const string filetype = "DSv1";
     checkedWrite(filetype.data(),4);
     ExtentType::int32 int32check = 0x12345678;
@@ -138,7 +148,7 @@ void DataSeriesSink::open(const string &in_filename) {
     worker_info.startThreads(lock, this);
 }
 
-void DataSeriesSink::close(bool do_fsync) {
+void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     PThreadScopedLock lock(mutex);
 
     INVARIANT(writer_info.wrote_library,
@@ -162,7 +172,7 @@ void DataSeriesSink::close(bool do_fsync) {
     worker_info.bytes_in_progress += writer_info.index_extent.size();
     worker_info.pending_work.push_back(new toCompress(writer_info.index_extent, NULL));
     worker_info.pending_work.front()->in_progress = true;
-    lockedProcessToCompress(worker_info.pending_work.front());
+    lockedProcessToCompress(lock, worker_info.pending_work.front());
 
     SINVARIANT(worker_info.bytes_in_progress 
                == worker_info.pending_work.front()->compressed.size());
@@ -196,9 +206,20 @@ void DataSeriesSink::close(bool do_fsync) {
     int ret = ::close(writer_info.fd);
     INVARIANT(ret == 0, format("close failed: %s") % strerror(errno));
     writer_info.fd = -1;
+    writer_info.wrote_library = false;
     writer_info.cur_offset = -1;
+    writer_info.chained_checksum = 0;
     writer_info.index_series.clearExtent();
     writer_info.index_extent.clear();
+    if (to_update != NULL) {
+        *to_update += stats;
+    }
+    stats.reset();
+}
+
+void DataSeriesSink::rotate(const string &new_filename, const ExtentTypeLibrary &library,
+                            bool do_fsync, Stats *to_update) {
+    FATAL_ERROR("unimplemented");
 }
 
 void DataSeriesSink::WriterInfo::checkedWrite(const void *buf, int bufsize) {
@@ -251,10 +272,7 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
 }
 
 void DataSeriesSink::removeStatsUpdate(Stats *would_update) {
-    // need this to keep stats updates in processToCompress from getting a half-written pointer
-    PThreadAutoLocker lock1(Stats::getMutex()); 
-    // need this to keep anyone else from changing pending_work while we fiddle with it.
-    PThreadAutoLocker lock2(mutex);
+    PThreadScopedLock lock(mutex);
 
     for(Deque<toCompress *>::iterator i = worker_info.pending_work.begin();
 	i != worker_info.pending_work.end(); ++i) {
@@ -295,11 +313,10 @@ void DataSeriesSink::setCompressorCount(int count) {
 }
 
 void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
+    PThreadScopedLock lock(mutex);
     if (to_update) {
-	PThreadAutoLocker lock(Stats::getMutex());
 	++to_update->use_count;
     }
-    PThreadScopedLock lock(mutex);
     INVARIANT(worker_info.keep_going, "got to qWE after call to close()??");
     INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
     LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e.size());
@@ -310,7 +327,7 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
 	SINVARIANT(worker_info.pending_work.size() == 1 && worker_info.bytes_in_progress == 0);
 	worker_info.pending_work.front()->in_progress = true;
 	worker_info.bytes_in_progress += e.size();
-	lockedProcessToCompress(worker_info.pending_work.front());
+	lockedProcessToCompress(lock, worker_info.pending_work.front());
 	worker_info.pending_work.front()->in_progress = false;
 	writer_info.writeOutPending(lock, worker_info);
 	SINVARIANT(worker_info.bytes_in_progress == 0);
@@ -327,11 +344,17 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     }
 }
 
-DataSeriesSink::Stats DataSeriesSink::getStats() {
+DataSeriesSink::Stats DataSeriesSink::getStats(Stats *from) {
     // Make a copy so it's thread safe.
-    PThreadScopedLock lock(Stats::getMutex());
-    Stats ret = stats; 
+    PThreadScopedLock lock(mutex);
+    Stats ret = from == NULL ? stats : *from; 
     return ret;
+}
+
+void DataSeriesSink::updateUnpackedVariableRaw(Stats &stats, size_t unpacked_vdata_size) {
+    PThreadScopedLock lock(mutex);
+
+    stats.unpacked_variable_raw += unpacked_vdata_size;
 }
 
 void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info) {
@@ -398,7 +421,7 @@ static void get_thread_cputime(struct timespec &ts) {
 
 // This function assumes that bytes_in_progress was updated to the
 // uncompressed size prior to calling the function.
-void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
+void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, toCompress *work) {
     SINVARIANT(worker_info.bytes_in_progress >= work->extent.size());
     size_t uncompressed_size = work->extent.size();
     worker_info.bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
@@ -438,19 +461,18 @@ void DataSeriesSink::lockedProcessToCompress(toCompress *work) {
 
     INVARIANT(work->compressed.size() > 0, "??");
 
-    {   // update stats, have to do this before we complete the extent
-	// as otherwise the work pointer could vanish under us
-	PThreadAutoLocker lock(Stats::getMutex());
-	stats += tmp;
-	if (work->to_update != NULL) {
-	    *work->to_update += tmp;
-	    SINVARIANT(work->to_update->use_count > 0);
-	    --work->to_update->use_count;
-	    work->to_update = NULL;
-	}
-    }
     SINVARIANT(work->extent.size() == uncompressed_size);
     mutex.lock();
+    // update stats, have to do this before we complete the extent
+    // as otherwise the work pointer could vanish under us
+
+    stats += tmp;
+    if (work->to_update != NULL) {
+        *work->to_update += tmp;
+        SINVARIANT(work->to_update->use_count > 0);
+        --work->to_update->use_count;
+        work->to_update = NULL;
+    }
     work->in_progress = false; 
     SINVARIANT(!worker_info.pending_work.empty());
     
@@ -475,7 +497,7 @@ void  DataSeriesSink::compressorThread()  {
 	SINVARIANT(pthread_setschedparam(pthread_self(), policy, &param) == 0);
     }
 #endif
-    mutex.lock();
+    PThreadScopedLock lock(mutex);
     while(true) {
 	toCompress *work = NULL;
 	for(Deque<toCompress *>::iterator i = worker_info.pending_work.begin();
@@ -492,7 +514,7 @@ void  DataSeriesSink::compressorThread()  {
             }
 	    worker_info.available_work_cond.wait(mutex);
 	} else {
-	    lockedProcessToCompress(work);
+	    lockedProcessToCompress(lock, work);
 
 	    if (false) cout << format("qwe broadcast compr? %d %d\n") % worker_info.bytes_in_progress % worker_info.pending_work.size();
     
@@ -505,7 +527,6 @@ void  DataSeriesSink::compressorThread()  {
 	    }
 	}
     }
-    mutex.unlock();
 }
 
 void DataSeriesSink::writerThread() {
@@ -630,8 +651,3 @@ void DataSeriesSink::Stats::printText(ostream &to, const string &extent_type) {
     to << format("  packed size: %d; pack time: %.3f\n") % packed_size % pack_time;
 }
 
-PThreadMutex &DataSeriesSink::Stats::getMutex() {
-    static PThreadMutex mutex;
-    
-    return mutex;
-}

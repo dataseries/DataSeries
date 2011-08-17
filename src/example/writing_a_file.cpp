@@ -5,14 +5,14 @@
    See the file named COPYING for license details
 */
 
-#include <DataSeries/ExtentType.hpp>
-#include <DataSeries/DataSeriesFile.hpp>
-#include <DataSeries/DataSeriesModule.hpp>
-
 #include <boost/regex.hpp>
 #include <boost/cstdint.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
+
+#include <DataSeries/ExtentType.hpp>
+#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
 
 const char* original_records[] = {
     "read 1 100 100",
@@ -44,37 +44,33 @@ boost::int64_t get_field(const boost::cmatch& match, int id) {
 }
 
 int main() {
-
-    /*  First we need to create XML descriptions of
-        the Extents that we mean to use.  For this
-        example we will use two ExtentTypes--one for
-        reads and one for writes.  DataSeries doesn't
-        like to mix different types of records, so we
-        need separate types for reads and writes. */
+    /*  First we need to create XML descriptions of the Extents that we mean to use.  For this
+        example we will use two ExtentTypes--one for reads and one for writes.  DataSeries doesn't
+        like to mix different types of records, so we need separate types for reads and writes if
+        we want each field to be non-null. */
 
     const char* read_xml =
         "<ExtentType name=\"ExtentType1\">"
-        "  <field name=\"timestamp\" type=\"int64\"/>"
-        "  <field name=\"requested_bytes\" type=\"int64\"/>"
-        "  <field name=\"actual_bytes\" type=\"int64\"/>"
+        "  <field name=\"timestamp\" type=\"int64\" />"
+        "  <field name=\"requested_bytes\" type=\"int64\" />"
+        "  <field name=\"actual_bytes\" type=\"int64\" />"
         "</ExtentType>\n";
 
     const char* write_xml =
         "<ExtentType name=\"ExtentType2\">"
-        "  <field name=\"timestamp\" type=\"int64\"/>"
-        "  <field name=\"bytes\" type=\"int64\"/>"
+        "  <field name=\"timestamp\" type=\"int64\" />"
+        "  <field name=\"bytes\" type=\"int64\" />"
         "</ExtentType>\n";
 
     /*  Next we need to put both of these in an ExtentType library which
         will be the first thing written to the file. */
 
     ExtentTypeLibrary types_for_file;
-    const ExtentType& read_type = *types_for_file.registerType(read_xml);
-    const ExtentType& write_type = *types_for_file.registerType(write_xml);
+    const ExtentType &read_type = types_for_file.registerTypeR(read_xml);
+    const ExtentType &write_type = types_for_file.registerTypeR(write_xml);
 
-    /*  Then we open a file to write the records to. (This will
-        overwrite an existing file.  There is no interface for
-        modifying an existing file, AFAIK) */
+    /*  Then we open a file to write the records to. This will overwrite an existing file.
+        DataSeries files can not be updated once closed. */
 
     DataSeriesSink output_file("writing_a_file.ds");
     output_file.writeExtentLibrary(types_for_file);
@@ -86,9 +82,9 @@ int main() {
         approximately 1024 byte chunks uncompressed. */
 
     ExtentSeries read_series;
-    OutputModule read_output(output_file, read_series, &read_type, 1024);
+    OutputModule read_output(output_file, read_series, read_type, 1024);
     ExtentSeries write_series;
-    OutputModule write_output(output_file, write_series, &write_type, 1024);
+    OutputModule write_output(output_file, write_series, write_type, 1024);
 
     /*  These are handles to the fields in the "current record" of
         each ExtentSeries. */

@@ -208,7 +208,7 @@ public:
 	    // Search for the source with the least input, more efficient if
 	    // it used a priority queue.
 	    for(Source::iter i = sources.begin(); i != sources.end(); ++i) {
-		if ((**i).series.pos.morerecords() == false) {
+		if ((**i).series.morerecords() == false) {
 		    if ((**i).done) {
 			continue; // definitely nothing in this source
 		    }
@@ -259,7 +259,7 @@ public:
 		}
 	    }
 	    // Advance to the next row in the least.
-	    ++((**least).series.pos);
+	    ++((**least).series);
 	}
 	// Give full extent to caller.
 	return out_extent;
@@ -284,7 +284,7 @@ struct HashMap_hash<const double> {
 	    double d;
 	} v;
 	v.d = _a;
-	return BobJenkinsHashMixULL(v.i);
+	return lintel::BobJenkinsHashMixULL(v.i);
     }
 };
 
@@ -435,7 +435,7 @@ main()
     seq.addModule(new DStoTextModule(seq.tail()));
     seq.addModule(new OpenCloseAnalysis(seq.tail()));
 
-    DataSeriesModule::getAndDelete(seq);
+    seq.getAndDelete();
     
     RowAnalysisModule::printAllResults(seq);
 
