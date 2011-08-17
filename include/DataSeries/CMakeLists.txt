@@ -21,6 +21,7 @@ SET(INCLUDE_FILES
 	FixedWidthField.hpp
 	GeneralField.hpp
 	GroupByModule.hpp
+        IExtentSink.hpp
 	IndexSourceModule.hpp
 	Int32Field.hpp
 	Int64Field.hpp

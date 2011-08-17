@@ -1,22 +1,17 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
 
 /** @file
-    Classes for reading and writing DataSeries files.
+    Classes for reading DataSeries files.
 */
 
 #ifndef DATASERIES_SOURCE_H
 #define DATASERIES_SOURCE_H
 
-// #include <boost/function.hpp>
-// 
-// #include <Lintel/Deque.hpp>
-// #include <Lintel/PThread.hpp>
-// 
 #include <DataSeries/Extent.hpp>
 
 /** \brief Reads Extents from a DataSeries file.
@@ -127,8 +122,5 @@ private:
     off64_t cur_offset;
     bool need_bitflip, read_index, check_tail;
 };
-
-// TODO: eventually move DataSeriesSource into it's own header and deprecate this header.
-#include <DataSeries/DataSeriesSink.hpp>
 
 #endif

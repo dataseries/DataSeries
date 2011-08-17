@@ -21,8 +21,16 @@
 #include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/PThread.hpp>
 
+#include <DataSeries/DataSeriesSource.hpp>
 #include <DataSeries/Extent.hpp>
-#include <DataSeries/DataSeriesFile.hpp>
+#include <DataSeries/ExtentSeries.hpp>
+#include <DataSeries/IExtentSink.hpp>
+
+// TODO: remove the below (or decide it's the right thing to do after moving the specific modules
+// into their own header/cpp files); lots of programs seem to rely on the implicit include of field
+// and sink from including this header.
+#include <DataSeries/ExtentField.hpp>
+#include <DataSeries/DataSeriesSink.hpp>
 
 /** \brief Abstract base class for analysis.
 
@@ -133,10 +141,11 @@ public:
     // right size.  If you use pack_unique for your variable data and
     // have lots of duplicates than you may want to increase the
     // target extent size.
-    OutputModule(DataSeriesSink &sink, ExtentSeries &series,
+    // TODO: remove after 2012-02-01
+    OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
 		 const ExtentType *outputtype, int target_extent_size) FUNC_DEPRECATED;
 
-    OutputModule(DataSeriesSink &sink, ExtentSeries &series,
+    OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
 		 const ExtentType &outputtype, int target_extent_size);
     /** Calls close unless you have already called close manually. */
     ~OutputModule();
@@ -154,7 +163,7 @@ public:
     /** Returns cumulative statistics on the Extents written.  As
         with @c DataSeriesSink::getStats, this is likely to be unreliable
         before you close the sink or call @c DataSeriesSink::flushPending. */
-    DataSeriesSink::Stats getStats();
+    dataseries::IExtentSink::Stats getStats();
 
     uint32_t getTargetExtentSize() {
 	return target_extent_size;
@@ -177,15 +186,15 @@ public:
 	return series;
     }
 
-    const DataSeriesSink &getSink() { 
+    const dataseries::IExtentSink &getSink() { 
 	return sink; 
     }
 private:
     uint32_t target_extent_size; 
 
-    DataSeriesSink::Stats stats;
+    dataseries::IExtentSink::Stats stats;
     
-    DataSeriesSink &sink;
+    dataseries::IExtentSink &sink;
     ExtentSeries &series;
     Extent *cur_extent;
 };

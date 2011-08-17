@@ -15,6 +15,8 @@
 
 #include <DataSeries/DataSeriesModule.hpp>
 
+using namespace dataseries;
+
 DataSeriesModule::~DataSeriesModule() { }
 
 void DataSeriesModule::getAndDelete() {
@@ -54,12 +56,12 @@ Extent *FilterModule::getExtent() {
     }
 }
 
-OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
-			   const ExtentType *_outputtype, 
-			   int _target_extent_size)
-    : outputtype(*_outputtype),
-      target_extent_size(_target_extent_size),
-      sink(_sink), series(_series)
+OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
+			   const ExtentType *in_outputtype, 
+			   int target_extent_size)
+    : outputtype(*in_outputtype),
+      target_extent_size(target_extent_size),
+      sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
@@ -69,12 +71,12 @@ OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
     series.setExtent(cur_extent);
 }
 
-OutputModule::OutputModule(DataSeriesSink &_sink, ExtentSeries &_series,
-			   const ExtentType &_outputtype, 
-			   int _target_extent_size)
-    : outputtype(_outputtype),
-      target_extent_size(_target_extent_size),
-      sink(_sink), series(_series)
+OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
+			   const ExtentType &in_outputtype, 
+			   int target_extent_size)
+    : outputtype(in_outputtype),
+      target_extent_size(target_extent_size),
+      sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
@@ -114,8 +116,6 @@ void OutputModule::newRecord() {
 void OutputModule::flushExtent() {
     INVARIANT(cur_extent != NULL, "??");
     if (cur_extent->fixeddata.size() > 0) {
-        // TODO: figure out why this isn't being updates inside writeExtent!
-	sink.updateUnpackedVariableRaw(stats, cur_extent->variabledata.size());
 	sink.writeExtent(*cur_extent, &stats);
 	cur_extent->clear();
     }
@@ -127,14 +127,12 @@ void OutputModule::close() {
     series.clearExtent();
 
     if (old_extent->fixeddata.size() > 0) {
-	stats.unpacked_variable_raw += old_extent->variabledata.size();
-
 	sink.writeExtent(*old_extent, &stats);
     }
     delete old_extent;
 }
 
-DataSeriesSink::Stats OutputModule::getStats() {
+IExtentSink::Stats OutputModule::getStats() {
     return sink.getStats(&stats);
 }
 

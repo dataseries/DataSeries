@@ -5,6 +5,8 @@
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/HashFns.hpp>
 
+dataseries::IExtentSink::~IExtentSink() { }
+
 using namespace std;
 using boost::format;
 
@@ -349,12 +351,6 @@ DataSeriesSink::Stats DataSeriesSink::getStats(Stats *from) {
     PThreadScopedLock lock(mutex);
     Stats ret = from == NULL ? stats : *from; 
     return ret;
-}
-
-void DataSeriesSink::updateUnpackedVariableRaw(Stats &stats, size_t unpacked_vdata_size) {
-    PThreadScopedLock lock(mutex);
-
-    stats.unpacked_variable_raw += unpacked_vdata_size;
 }
 
 void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info) {
