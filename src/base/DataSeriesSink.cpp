@@ -38,13 +38,12 @@ public:
 
 int DataSeriesSink::compressor_count = -1;
 
-void DataSeriesSink::WorkerInfo::startThreads(PThreadMutex &mutex, DataSeriesSink *sink) {
+void DataSeriesSink::WorkerInfo::startThreads(PThreadScopedLock &mutex, DataSeriesSink *sink) {
     int pthread_count = compressor_count;
     if (pthread_count == -1) {
 	pthread_count = PThreadMisc::getNCpus();
     }
     
-    PThreadScopedLock lock(mutex);
     for(int i=0; i < pthread_count; ++i) {
 	compressors.push_back(new DataSeriesSinkPThreadCompressor(sink));
 	compressors.back()->start();
@@ -88,17 +87,38 @@ void DataSeriesSink::WorkerInfo::flushPending(PThreadMutex &mutex) {
 }
 
 
-DataSeriesSink::DataSeriesSink(const string &_filename,
-			       int _compression_modes,
-			       int _compression_level)
-    : stats(), mutex(), valid_types(), compression_modes(_compression_modes),
-      compression_level(_compression_level), writer_info(mutex), 
-      worker_info(256*1024*1024), filename(_filename)
+DataSeriesSink::DataSeriesSink(const string &filename, int compression_modes,
+			       int compression_level)
+    : stats(), mutex(), valid_types(), compression_modes(compression_modes),
+      compression_level(compression_level), writer_info(mutex), 
+      worker_info(256*1024*1024), filename()
 {
+    open(filename);
+}
+
+DataSeriesSink::~DataSeriesSink() {
+    if (writer_info.cur_offset > 0) {
+	close();
+    }
+}
+
+void DataSeriesSink::setExtentWriteCallback(const ExtentWriteCallback &callback) {
+    PThreadScopedLock lock(mutex);
+    writer_info.extent_write_callback = callback;
+}
+
+void DataSeriesSink::open(const string &in_filename) {
+    PThreadScopedLock stats_lock(stats.getMutex());
+    PThreadScopedLock lock(mutex);
+
+    SINVARIANT(worker_info.isQuiesced() && writer_info.isQuiesced() 
+               && stats.extents == 0 && stats.pack_time == 0);
+    filename = in_filename;
+
     stats.packed_size += 2*4 + 4*8;
 
     INVARIANT(filename != "-", "opening stdout as a file isn't expected to work, and '-' as a filename makes little sense");
-    writer_info.fd = open(filename.c_str(), O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
+    writer_info.fd = ::open(filename.c_str(), O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
     INVARIANT(writer_info.fd >= 0,
               format("Error opening %s for write: %s") % filename % strerror(errno));
     const string filetype = "DSv1";
@@ -114,18 +134,8 @@ DataSeriesSink::DataSeriesSink(const string &_filename,
     doublecheck = Double::NaN;
     checkedWrite(&doublecheck,8);
     writer_info.cur_offset = 2*4 + 4*8;
-    worker_info.startThreads(mutex, this);
-}
-
-DataSeriesSink::~DataSeriesSink() {
-    if (writer_info.cur_offset > 0) {
-	close();
-    }
-}
-
-void DataSeriesSink::setExtentWriteCallback(const ExtentWriteCallback &callback) {
-    PThreadScopedLock lock(mutex);
-    writer_info.extent_write_callback = callback;
+    worker_info.keep_going = true;
+    worker_info.startThreads(lock, this);
 }
 
 void DataSeriesSink::close(bool do_fsync) {

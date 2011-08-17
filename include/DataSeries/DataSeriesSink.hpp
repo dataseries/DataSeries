@@ -125,6 +125,9 @@ public:
     /** Sets a callback function for when extents are written out. */
     void setExtentWriteCallback(const ExtentWriteCallback &callback);
 
+    /** Opens a closed data series file with the specified filename */
+    void open(const std::string &filename);
+
     /** Blocks until all queued extents have been written and closes the file.  An
         @c ExtentTypeLibrary must have been written using
         \link DataSeriesSink::writeExtentLibrary writeExtentLibrary \endlink. */
@@ -227,7 +230,7 @@ private:
         PThread *writer;
         PThreadCond available_queue_cond, available_work_cond, available_write_cond;
         WorkerInfo(size_t max_bytes_in_progress)
-            : keep_going(true), bytes_in_progress(0), max_bytes_in_progress(max_bytes_in_progress),
+            : keep_going(false), bytes_in_progress(0), max_bytes_in_progress(max_bytes_in_progress),
               pending_work(), compressors(), writer(), available_queue_cond(),
               available_work_cond(), available_write_cond()
         { }
@@ -236,7 +239,7 @@ private:
             return bytes_in_progress < max_bytes_in_progress &&
                 pending_work.size() < 2 * compressors.size();
         }
-        void startThreads(PThreadMutex &mutex, DataSeriesSink *sink);
+        void startThreads(PThreadScopedLock &lock, DataSeriesSink *sink);
         void stopThreads(PThreadScopedLock &lock);
         void setMaxBytesInProgress(PThreadMutex &mutex, size_t nbytes);
         void flushPending(PThreadMutex &mutex);
@@ -246,6 +249,10 @@ private:
             } else {
                 return pending_work.front()->readyToWrite();
             }
+        }
+        bool isQuiesced() {
+            return keep_going == false && bytes_in_progress == 0 && pending_work.empty()
+                && compressors.empty() && writer == NULL;
         }
     };
 
@@ -270,6 +277,10 @@ private:
         { }
         void writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info);
         void checkedWrite(const void *buf, int bufsize);
+        bool isQuiesced() {
+            return fd == -1 && wrote_library == false && cur_offset == -1
+                && chained_checksum == 0 && index_extent.size() == 4;
+        }
     };
 
     void checkedWrite(const void *buf, int bufsize) {
@@ -292,7 +303,7 @@ private:
     WriterInfo writer_info;
     WorkerInfo worker_info;
 				   
-    const std::string filename;
+    std::string filename;
     friend class DataSeriesSinkPThreadCompressor;
     void compressorThread();
     friend class DataSeriesSinkPThreadWriter;
