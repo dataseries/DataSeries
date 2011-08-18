@@ -903,7 +903,7 @@ public:
                    const string &output_table_name, const map<string, string> &fact_columns,
                    const vector<DimensionFactJoin> &dimension_fact_join_in,
                    const HashMap< string, shared_ptr<DataSeriesModule> > &dimension_modules) 
-        : fact_input(fact_input), dim_list(dimensions), output_table_name(output_table_name),
+        : fact_input(fact_input), dimensions(dimensions), output_table_name(output_table_name),
           fact_column_names(fact_columns), dimension_modules(dimension_modules)
     { 
         BOOST_FOREACH(const DimensionFactJoin &dfj, dimension_fact_join_in) {
@@ -927,7 +927,7 @@ public:
         }
 
         const ExtentType *dimension_type;
-        HashMap<GVVec, GVVec> dimension_data;
+        HashMap<GVVec, GVVec> dimension_data; // keys to values
     };
 
     struct SJM_Join : public DimensionFactJoin {
@@ -957,11 +957,11 @@ public:
             key_gv.resize(dim.key_columns.size());
             value_gv.resize(dim.value_columns.size());
             series.setType(e.getType());
-            BOOST_FOREACH(string column, dim.key_columns) {
-                key_gf.push_back(GeneralField::make(series, column));
+            BOOST_FOREACH(string key, dim.key_columns) {
+                key_gf.push_back(GeneralField::make(series, key));
             }
-            BOOST_FOREACH(string column, dim.value_columns) {
-                value_gf.push_back(GeneralField::make(series, column));
+            BOOST_FOREACH(string value, dim.value_columns) {
+                value_gf.push_back(GeneralField::make(series, value));
             }
             SINVARIANT(dim.dimension_type == NULL);
             dim.dimension_type = series.getType();
@@ -986,35 +986,40 @@ public:
     };
             
     void processDimensions() {
-        dimensions.reserve(dim_list.size());
-        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
-            dimensions[dfj->dimension_name].reset(); // mark used dimensions
-        }
-        BOOST_FOREACH(Dimension &dim, dim_list) {
-            if (dimensions.exists(dim.dimension_name)) {
-                dimensions[dim.dimension_name].reset(new SJM_Dimension(dim));
-            } else {
-                requestError(format("unused dimension %s specified") % dim.dimension_name);
+        name_to_sjm_dim.reserve(dimensions.size());
+
+        BOOST_FOREACH(Dimension &dim, dimensions) {
+            if (name_to_sjm_dim.exists(dim.dimension_name)) {
+                requestError(format("specified the same dimension %s twice")
+                             % dim.dimension_name);
             }
+            name_to_sjm_dim[dim.dimension_name].reset(new SJM_Dimension(dim));
         }
 
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
-            dfj->dimension = dimensions[dfj->dimension_name];
-            if (dfj->dimension == NULL) {
+            if (!name_to_sjm_dim.exists(dfj->dimension_name)) {
                 requestError(format("unspecified dimension %s used") % dfj->dimension_name);
             }
+        }
+
+        if (dimension_fact_join.size() != name_to_sjm_dim.size()) {
+            TINVARIANT(name_to_sjm_dim.size() > dimension_fact_join.size());
+            requestError(format("%d unused dimension(s) specified")
+                         % (name_to_sjm_dim.size() - dimension_fact_join.size()));
         }
 
         // TODO: check for identical source table + same keys, never makes sense, better to
         // just pull multiple values in that case.
         BOOST_FOREACH(string source_table, dimension_modules.keys()) {
+            // Will be reading same extent multiple times for different dimensions. Little bit
+            // inefficient but easy to implement.
             SequenceModule seq(dimension_modules[source_table]);
-            BOOST_FOREACH(Dimension &dim, dim_list) {
+            BOOST_FOREACH(Dimension &dim, dimensions) {
                 if (dim.source_table == source_table) {
                     LintelLogDebug("StarJoinModule", format("loading %s from %s") 
                                    % dim.dimension_name % dim.source_table);
                     seq.addModule(DimensionModule::make(seq.tail(), 
-                                                        *dimensions[dim.dimension_name]));
+                                                        *name_to_sjm_dim[dim.dimension_name]));
                 }
             }
 
@@ -1023,7 +1028,7 @@ public:
             }
             seq.getAndDelete();
         }
-
+        
         dimension_modules.clear();
     }
 
@@ -1039,7 +1044,7 @@ public:
             fact_fields.push_back(ExtractorField::make(fact_series, v.first, v.second));
         }
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
-            SJM_Dimension::Ptr dim = dimensions[dfj->dimension_name];
+            SJM_Dimension::Ptr dim = name_to_sjm_dim[dfj->dimension_name];
             SINVARIANT(dim->dimension_type != NULL);
 
             dfj->join_key.resize(dfj->fact_key_columns.size());
@@ -1120,13 +1125,13 @@ public:
     }
 
     DataSeriesModule &fact_input;
-    vector<Dimension> dim_list;
+    vector<Dimension> dimensions;
     string output_table_name;
     map<string, string> fact_column_names;
     ExtentSeries fact_series, output_series;
     vector<SJM_Join::Ptr> dimension_fact_join;
-    HashMap< string, shared_ptr<DataSeriesModule> > dimension_modules;
-    HashMap<string, SJM_Dimension::Ptr> dimensions;
+    HashMap< string, shared_ptr<DataSeriesModule> > dimension_modules; // source table to typeindexmodule
+    HashMap<string, SJM_Dimension::Ptr> name_to_sjm_dim; // dimension name to SJM dimension
     vector<Extractor::Ptr> fact_fields;
 };    
 

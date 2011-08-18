@@ -10,6 +10,7 @@ use Thrift::Socket;
 use Thrift::BufferedTransport;
 
 use DataSeriesServer;
+use Text::Table;
 
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(1000*1000);
@@ -24,10 +25,11 @@ print "Post Ping\n";
 # tryImportCSV();
 # tryImportSql();
 # tryImportData();
-tryHashJoin();
+# tryHashJoin();
 # trySelect();
 # tryProject();
 # tryUpdate();
+trySimpleStarJoin();
 # tryStarJoin();
 # tryUnion();
 
@@ -74,7 +76,7 @@ END
                         ({ 'rows' =>
                            [[ 'on', 5, 1371, 111111, 11.0, "abcde" ],
                             [ 'on', 5, 1371, 111111, 11.0, "1q2w3e" ],
-                            [ 'on', 6, 1385, 112034, 12.0, "mnop" ],
+#                            [ 'on', 6, 1385, 112034, 12.0, "mnop" ],
                             [ 'off', 7, 12345, 999999999999, 123.456, "fghij" ] ]}));
 }
 
@@ -177,13 +179,16 @@ sub tryStarJoin {
 </ExtentType>
 END
 
+    printTable("test-import");
     $client->importData("dim-int", $data_xml, new TableData
                         ({ 'rows' =>
                            [[ 1371, 12345, "abc", "def" ],
                             [ 12345, 1371, "ghi", "jkl" ],
                             [ 999, 999, "mno", "pqr" ]] }));
-    # print Dumper(getTableData("dim-int"));
+    printTable("dim-int");
 
+    # Same table dim-int, is used to create 2 different dimensions. In practice we could have
+    # different table and selectively use columns from each table.
     my $dim_1 = new Dimension({ dimension_name => 'dim_int_1',
                                 source_table => 'dim-int',
                                 key_columns => ['key_1'],
@@ -217,9 +222,92 @@ END
                                         missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
 
     $client->starJoin('test-import', [$dim_1, $dim_2], 'test-star-join',
-                      { 'int32' => 'f.int_32'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
+                      { 'int32' => 'f.int_32', 'int64' => 'f.int_64'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
 
-    print Dumper(getTableData("test-star-join"));
+    printTable("test-star-join");
+    # print Dumper(getTableData("test-star-join"));
+}
+
+
+
+sub trySimpleStarJoin {
+    # tryImportData(); # columns bool, byte, int32, int64, double, variable32; 3 rows
+
+    my $person_xml = <<'END';
+<ExtentType name="person-details" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="variable32" name="Name" pack_unique="yes" />
+  <field type="variable32" name="Country" pack_unique="yes" />
+  <field type="variable32" name="State" pack_unique="yes" />
+</ExtentType>
+END
+
+    my $country_xml = <<'END';
+<ExtentType name="country-details" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="variable32" name="Name" pack_unique="yes" />
+  <field type="variable32" name="Capital" pack_unique="yes" />
+  <field type="variable32" name="Currency" pack_unique="yes" />
+</ExtentType>
+END
+
+    my $state_xml = <<'END';
+<ExtentType name="country-details" namespace="simpl.hpl.hp.com" version="1.0">
+  <field type="variable32" name="Name" pack_unique="yes" />
+  <field type="variable32" name="Capital" pack_unique="yes" />
+  <field type="variable32" name="TimeZone" pack_unique="yes" />
+</ExtentType>
+END
+
+    $client->importData("person-details", $person_xml, new TableData
+                        ({ 'rows' =>
+                           [[ "John", "United States", "California" ],
+                            [ "Adam", "United States", "Colarado" ],
+                            [ "Ram", "India", "Karnataka"],
+                            [ "Shiva", "India", "Maharastra"]] }));
+
+    $client->importData("country-details", $country_xml, new TableData
+                        ({ 'rows' =>
+                           [[ "India", "New Delhi", "INR" ],
+                            [ "United States", "Wahsington, D.C.", "Dollar"]] }));
+
+    $client->importData("state-details", $state_xml, new TableData
+                        ({ 'rows' =>
+                           [[ "California", "Sacramento", "PST (UTC.8), PDT (UTC.7)" ],
+                            [ "Colarado", "Denver", "MST=UTC-07, MDT=UTC-06" ],
+                            [ "Karnataka", "Bangalore", "IST" ],
+                            [ "Maharastra", "Mumbai", "IST" ]] }));
+
+    printTable("person-details");
+    printTable("country-details");
+    printTable("state-details");
+
+    # Same table dim-int, is used to create 2 different dimensions. In practice we could have
+    # different table and selectively use columns from each table.
+    my $dim_country = new Dimension({ dimension_name => 'dim_country',
+                                      source_table => 'country-details',
+                                      key_columns => ['Name'],
+                                      value_columns => ['Capital'],
+                                      max_rows => 1000 });
+
+    my $dim_state = new Dimension({ dimension_name => 'dim_state',
+                                    source_table => 'state-details',
+                                    key_columns => ['Name'],
+                                    value_columns => ['Capital'],
+                                    max_rows => 1000 });
+
+    my $dfj_1 = new DimensionFactJoin({ dimension_name => 'dim_country',
+                                        fact_key_columns => ['Country'],
+                                        extract_values => { 'Capital' => 'CountryCapital' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    my $dfj_2 = new DimensionFactJoin({ dimension_name => 'dim_state',
+                                        fact_key_columns => [ 'State' ],
+                                        extract_values => { 'Capital' => 'StateCapital' },
+                                        missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
+
+    $client->starJoin('person-details', [$dim_country, $dim_state], 'test-star-join',
+                      { 'Name' => 'Name', 'Country' => 'Country', 'State' => 'State'}, [$dfj_1, $dfj_2]);
+
+    printTable("test-star-join");
 }
 
 sub unionTable {
@@ -280,6 +368,23 @@ sub getTableData {
         die "fail";
     }
     return $ret;
+}
+
+sub printTable($) {
+    my ($table) = @_;
+    my $table_refr = getTableData($table);
+
+    my @columns;
+    foreach my $col (@{$table_refr->{'columns'}}) {
+        push(@columns, $col->{'name'} . "\n" . $col->{'type'});
+    }
+
+    my $tb = Text::Table->new(@columns);
+    foreach my $row (@{$table_refr->{'rows'}}) {
+        $tb->add(@{$row});
+    }
+    print "Table: $table \n\n";
+    print $tb, "\n\n";
 }
 
 # print "pong\n";
