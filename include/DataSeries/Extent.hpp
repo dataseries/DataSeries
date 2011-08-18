@@ -41,6 +41,8 @@ extern "C" {
 #  include <byteswap.h>
 #endif
 
+#include <boost/utility.hpp>
+
 #include <Lintel/CompilerMarkup.hpp>
 
 #include <DataSeries/ExtentType.hpp>
@@ -63,7 +65,7 @@ class ExtentSeries;
   *     allowing random access.  Variable32 fields are represented
   *     by a 4 byte index into the string pool.
   *   - A string pool for variable32 fields. */
-class Extent {
+class Extent : boost::noncopyable {
 public:
     typedef ExtentType::byte byte;
     typedef ExtentType::int32 int32;

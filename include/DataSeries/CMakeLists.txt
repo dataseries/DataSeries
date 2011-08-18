@@ -29,6 +29,7 @@ SET(INCLUDE_FILES
 	MinMaxIndexModule.hpp
 	DataSeriesModule.hpp
 	PrefetchBufferModule.hpp
+        RotatingFileSink.hpp
 	RowAnalysisModule.hpp
 	SequenceModule.hpp
 	TFixedField.hpp

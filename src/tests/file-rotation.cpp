@@ -3,8 +3,10 @@
 #include <Lintel/LintelLog.hpp>
 
 #include <DataSeries/DataSeriesSink.hpp>
+#include <DataSeries/RotatingFileSink.hpp>
 
 using namespace std;
+using namespace dataseries;
 using boost::format;
 
 const string extent_type_xml = 
@@ -13,7 +15,7 @@ const string extent_type_xml =
 "  <field type=\"int32\" name=\"count\" />\n"
 "</ExtentType>\n";
 
-void writeExtent(DataSeriesSink &output, const ExtentType &type, uint32_t thread,
+void writeExtent(IExtentSink &output, const ExtentType &type, uint32_t thread,
                  uint32_t &count, uint32_t rows) {
     ExtentSeries s(new Extent(type));
     Int32Field f_thread(s, "thread");
@@ -35,7 +37,7 @@ void simpleFileRotation() {
 
     DataSeriesSink output(Extent::compress_lzf);
 
-    uint32_t count;
+    uint32_t count = 0;
     for (uint32_t i=0; i < 10; ++i) {
         LintelLog::info(format("simple round %d") % i);
         output.open(str(format("simple-fr-%d.ds") % i));
@@ -45,12 +47,28 @@ void simpleFileRotation() {
     }
 }
 
+void simpleRotatingFileSink() {
+    RotatingFileSink rfs(Extent::compress_lzf);
+
+    const ExtentType &type = rfs.registerType(extent_type_xml);
+    
+    uint32_t count = 0;
+    for (uint32_t i=0; i < 10; ++i) {
+        LintelLog::info(format("simple rfs %d") % i);
+        rfs.changeFile(str(format("simple-rfs-%d.ds") % i));
+        writeExtent(rfs, type, 0, count, i+5);
+        rfs.waitForCanChange();
+    }
+}
+
 int main(int argc, char *argv[]) {
     INVARIANT(argc == 2, format("Usage: %s (simple)") % argv[0]);
 
     string mode(argv[1]);
     if (mode == "simple") {
         simpleFileRotation();
+    } else if (mode == "simple-rotating") {
+        simpleRotatingFileSink();
     } else {
         FATAL_ERROR("unknown mode, expected simple");
     }

@@ -39,6 +39,7 @@ public:
             underlying compression libraries for detail. 
             
     */
+    // TODO: change the int to uint32_t; they're flags or ranged.
     explicit DataSeriesSink(int compression_modes = Extent::compress_all,
                             int compression_level = 9);
 
