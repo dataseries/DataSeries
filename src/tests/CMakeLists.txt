@@ -19,7 +19,6 @@ DATASERIES_SIMPLE_TEST(time-field)
 DATASERIES_SIMPLE_TEST(pack-pad-record)
 DATASERIES_SIMPLE_TEST(pack-field-ordering)
 DATASERIES_SIMPLE_TEST(pack-bug ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.ds)
-DATASERIES_SIMPLE_TEST(file-rotation simple)
 DATASERIES_PROGRAM_NOINST(general general2.cpp)
 ADD_TEST(general ./general)
 
@@ -48,6 +47,10 @@ DATASERIES_SCRIPT_TEST(extent-write-callback)
 
 DATASERIES_PROGRAM_NOINST(generate-incomplete-ds)
 DATASERIES_SCRIPT_TEST(dsrecover)
+
+DATASERIES_PROGRAM_NOINST(file-rotation)
+DATASERIES_SCRIPT_TEST(file-rotation)
+
 
 # TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)

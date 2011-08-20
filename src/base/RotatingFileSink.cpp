@@ -148,28 +148,41 @@ void *RotatingFileSink::worker() {
             cond.broadcast();
         } else {
             string to_filename(new_filename); // probably unnecessary
-            workerNullifyCurrent(worker_lock);
 
-            DataSeriesSink *new_sink;
-            { // don't block anyone while creating the new one.
+            {
                 PThreadScopedUnlock unlock(worker_lock);
 
-                new_sink = new DataSeriesSink(to_filename, compression_modes, compression_level);
+                // Stage 1, create new sink.
+                DataSeriesSink *new_sink 
+                    = new DataSeriesSink(to_filename, compression_modes, compression_level);
                 // safe, all changes to library must have been made while there is no current sink,
                 // and new_filename is empty.
                 new_sink->writeExtentLibrary(library);
 
-                PThreadScopedLock lock(mutex); // swap in the new one.
+                DataSeriesSink *old_sink;
+                {
+                    // Stage 2, lock mutex and swap in new sink, 
+                    PThreadScopedLock lock(mutex);
+                    old_sink = current_sink;
+                    current_sink = new_sink;
+                    current_sink->setExtentWriteCallback(callback);
+                    // Put any pending things into the new sink.
 
-                new_sink->setExtentWriteCallback(callback);
-                current_sink = new_sink;
-                // Put all the pending things into the new sink.
-                while (!pending.empty()) {
-                    current_sink->writeExtent(*pending.front().e, pending.front().to_update);
-                    delete pending.front().e; // pointer copy implies destructor delete fails.
-                    pending.pop_front();
+                    // TODO: decide if we still want to allow for pending, i.e. is it ok for a
+                    // rotating sink to be disconnected from a file when extents are put in.  With
+                    // this way of putting the new one in, if you rotate to a file before any other
+                    // extents, and then rotate from file to file, pending should always be empty.
+                    while (!pending.empty()) {
+                        current_sink->writeExtent(*pending.front().e, pending.front().to_update);
+                        delete pending.front().e; // pointer copy implies destructor delete fails.
+                        pending.pop_front();
+                    }
                 }
+                // Stage 3, back to nothing locked, get rid of old sink.
+                delete old_sink;
             }
+
+            // Stage 4, back to locked worker, finish up the rotation.
             new_filename.clear();
             cond.broadcast(); // wake up anyone waiting on change
         }

@@ -40,7 +40,11 @@ namespace dataseries {
             changeFile(something); waitForCanChange(); Note, it is safe to call the canChangeFile,
             getNewFilename, and changeFile methods while in the callback, but it is not safe to
             call the other operations because that could block up the writer thread which would
-            result in blocking up the queue in the data series file. */
+            result in blocking up the queue in the data series file. Also note that the callback
+            may be called on extents written to a file that is no longer current since rotation has
+            already occurred.  Therefore, if you are going to rotate based on extent position, then
+            you should also limit rotation to some frequency, and/or check that the current file is
+            large before re-rotating. */
         void setExtentWriteCallback(const DataSeriesSink::ExtentWriteCallback &callback);
 
         /** Close a RotatingFileSink, after this call, no callback will be called, although the

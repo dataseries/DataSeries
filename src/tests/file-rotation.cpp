@@ -70,14 +70,19 @@ void simpleRotatingFileSink() {
 }
 
 void *ptrExtentWriter(RotatingFileSink *rfs, const ExtentType *type, uint32_t thread_num) {
-    Clock::Tfrac stop = Clock::todTfrac() + Clock::secondsToTfrac(po_execution_time.get());
+    Clock::Tfrac start = Clock::todTfrac();
+    int64_t stop = start + Clock::secondsToTfrac(po_execution_time.get());
 
-    uint32_t usleep_amt = static_cast<uint32_t>(round(1000.0 * 1000.0 * po_extent_interval.get()));
-    SINVARIANT(usleep_amt > 0 && usleep_amt < 1000000);
+    Clock::Tfrac interval = Clock::secondsToTfrac(po_extent_interval.get());
     uint32_t count = 0;
-    while (Clock::todTfrac() < stop) {
+    for(int64_t i = start; i < stop; i += interval) {
+        int64_t now = Clock::todTfrac();
+        int64_t delta = i - now;
+        if (delta > 0) {
+            uint32_t microseconds = Clock::TfracToMicroSec(delta);
+            usleep(microseconds);
+        }
         writeExtent(*rfs, *type, thread_num, count, 1);
-        usleep(usleep_amt); 
     }
     LintelLog::info(format("thread %d wrote %d extents") % thread_num % count);
     return NULL;
