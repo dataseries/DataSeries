@@ -339,6 +339,8 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     worker_info.available_work_cond.signal();
     if (false) cout << format("qwe wait? %d %d\n") % worker_info.bytes_in_progress % worker_info.pending_work.size();
     while(!worker_info.canQueueWork()) {
+        INVARIANT(worker_info.keep_going, "got to qWE after call to close()??");
+        INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
 	LintelLogDebug("DataSeriesSink", format("after queueWriteExtent %d >= %d || %d >= %d")
 		       % worker_info.bytes_in_progress % worker_info.max_bytes_in_progress 
 		       % worker_info.pending_work.size() % (2 * worker_info.compressors.size()));
@@ -362,6 +364,7 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
     
     size_t bytes_written = 0;
     {
+        ExtentWriteCallback ewc(extent_write_callback);
         PThreadScopedUnlock unlock(lock);
 
         while(!to_write.empty()) {
@@ -369,8 +372,8 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
             to_write.pop_front();
             INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
             
-            if (extent_write_callback) {
-                extent_write_callback(cur_offset, tc->extent);
+            if (ewc) {
+                ewc(cur_offset, tc->extent);
             }
             tc->wipeExtent();
             

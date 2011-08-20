@@ -31,20 +31,21 @@ namespace dataseries {
 
         typedef boost::shared_ptr<DataSeriesSink> SinkPtr;
         
-        /** Register a type on the rotating sink */
+        /** Register a type on the rotating sink; only valid to call up to the first call to
+            changeFile. */
         const ExtentType &registerType(const std::string &xmldesc);
 
-        /** Return true if we have completed starting to use a new file, so are free to change
-            again. */
-        bool canChangeFile();
+        /** Set the extent write callback; will set the current callback, but the old callback may
+            continue to be used until a rotation is completed, i.e. a call to
+            changeFile(something); waitForCanChange(); Note, it is safe to call the canChangeFile,
+            getNewFilename, and changeFile methods while in the callback, but it is not safe to
+            call the other operations because that could block up the writer thread which would
+            result in blocking up the queue in the data series file. */
+        void setExtentWriteCallback(const DataSeriesSink::ExtentWriteCallback &callback);
 
-        /** Blocking call to wait until canChangeFile is true */
-        void waitForCanChange();
-
-        /** Open a new file and start using it as the primary output.  sink hasn't finished
-            closing.  If you change the filename to closed_filename, then the current output will
-            be closed, but the sink will still accept extents.  Precondition: canChangeFile() */
-        void changeFile(const std::string &new_filename);
+        /** Close a RotatingFileSink, after this call, no callback will be called, although the
+            RotatingFileSink will still continue to buffer extents */
+        void close();
 
         virtual void writeExtent(Extent &e, Stats *to_update);
 
@@ -53,6 +54,22 @@ namespace dataseries {
         virtual void removeStatsUpdate(Stats *would_update);
 
         static const std::string closed_filename;
+
+        /** Return true if we have completed starting to use a new file, so are free to change
+            again. */
+        bool canChangeFile();
+
+        /** Return the name of the file we are changing to (if any) */
+        std::string getNewFilename();
+
+        /** Blocking call to wait until canChangeFile is true */
+        void waitForCanChange();
+
+        /** Open a new file and start using it as the primary output.  sink hasn't finished
+            closing.  If you change the filename to closed_filename, then the current output will
+            be closed, but the sink will still accept extents.  Precondition: canChangeFile() or
+            failure_ok set to true.  Returns true on successful change or false otherwise */
+        bool changeFile(const std::string &new_filename, bool failure_ok = false);
     private:
         struct Pending {
             Extent *e;
@@ -64,20 +81,25 @@ namespace dataseries {
             }
         };
 
-        uint32_t compression_modes, compression_level;
-        PThreadMutex mutex;
+        PThreadMutex mutex; 
         PThreadCond cond;
 
-        std::string new_filename;
-        Deque<Pending> pending;
-
-        DataSeriesSink *current_sink;
-
+        // Mostly fixed values
+        uint32_t compression_modes, compression_level;
         PThreadFunction *pthread_worker;
-        bool worker_continue;
-
         ExtentTypeLibrary library;
+        
+        // Variable values
+        Deque<Pending> pending;
+        DataSeriesSink *current_sink;
+        DataSeriesSink::ExtentWriteCallback callback;
+
+        PThreadMutex worker_mutex; // order is worker_mutex before mutex
+        bool worker_continue;
+        std::string new_filename;
+
         void *worker();
+        void workerNullifyCurrent(PThreadScopedLock &worker_lock);
     };
 };
 
