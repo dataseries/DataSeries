@@ -642,16 +642,17 @@ public:
         }
     }
 
+    /// Standard vector ordering by element
     bool operator <(const PrimaryKey &rhs) const {
         SINVARIANT(fields.size() == rhs.fields.size());
         for (size_t i=0; i < fields.size(); ++i) {
             if (*fields[i] < *rhs.fields[i]) {
                 return true;
             } else if (*fields[i] > *rhs.fields[i]) {
-                return false;
-            }
+                return false; // TODO: make sure we have a test for this case; it was missing without a "TEST" failing.
+            } // else ==, keep looking
         }
-        return false;
+        return false; // equal, so not less than
     }
 
     bool operator ==(const PrimaryKey &rhs) const {
@@ -927,7 +928,7 @@ public:
         }
 
         const ExtentType *dimension_type;
-        HashMap<GVVec, GVVec> dimension_data; // keys to values
+        HashMap<GVVec, GVVec> dimension_data; // map dimension key to dimension values
     };
 
     struct SJM_Join : public DimensionFactJoin {
@@ -986,26 +987,25 @@ public:
     };
             
     void processDimensions() {
+        // TODO: probably could do this in only two loops rather than three, but this
+        // is simpler for now, so leave it alone.
         name_to_sjm_dim.reserve(dimensions.size());
-
+        BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
+            name_to_sjm_dim[dfj->dimension_name].reset(); // mark used dimensions
+        }
         BOOST_FOREACH(Dimension &dim, dimensions) {
             if (name_to_sjm_dim.exists(dim.dimension_name)) {
-                requestError(format("specified the same dimension %s twice")
-                             % dim.dimension_name);
+                name_to_sjm_dim[dim.dimension_name].reset(new SJM_Dimension(dim));
+            } else {
+                requestError(format("unused dimension %s specified") % dim.dimension_name);
             }
-            name_to_sjm_dim[dim.dimension_name].reset(new SJM_Dimension(dim));
         }
 
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
-            if (!name_to_sjm_dim.exists(dfj->dimension_name)) {
+            dfj->dimension = name_to_sjm_dim[dfj->dimension_name];
+            if (dfj->dimension == NULL) {
                 requestError(format("unspecified dimension %s used") % dfj->dimension_name);
             }
-        }
-
-        if (dimension_fact_join.size() != name_to_sjm_dim.size()) {
-            TINVARIANT(name_to_sjm_dim.size() > dimension_fact_join.size());
-            requestError(format("%d unused dimension(s) specified")
-                         % (name_to_sjm_dim.size() - dimension_fact_join.size()));
         }
 
         // TODO: check for identical source table + same keys, never makes sense, better to

@@ -29,8 +29,8 @@ print "Post Ping\n";
 # trySelect();
 # tryProject();
 # tryUpdate();
-trySimpleStarJoin();
-# tryStarJoin();
+# trySimpleStarJoin();
+tryStarJoin();
 # tryUnion();
 
 sub tryImportCSV {
@@ -76,6 +76,9 @@ END
                         ({ 'rows' =>
                            [[ 'on', 5, 1371, 111111, 11.0, "abcde" ],
                             [ 'on', 5, 1371, 111111, 11.0, "1q2w3e" ],
+# TODO: the next row tests the hash-map with a missing match, but fails if used in the star join.
+# each of the tests should just manufacture the tables they want (easy now with importData()) so that
+# changes to one test won't randomly break other tests.
 #                            [ 'on', 6, 1385, 112034, 12.0, "mnop" ],
                             [ 'off', 7, 12345, 999999999999, 123.456, "fghij" ] ]}));
 }
