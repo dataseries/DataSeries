@@ -71,7 +71,7 @@ for i in `seq 0 7`; do
         echo "Error: missing ptr-$i.ds"
         exit 1
     fi
-    ds2txt --skip-all ptr-$i.ds >>rcfr-unsorted.txt
+    ../process/ds2txt --skip-all ptr-$i.ds >>rcfr-unsorted.txt
 done
 
 # assert that we get all the expected entries in the expected order.
@@ -92,7 +92,7 @@ for i in `seq 0 7`; do
         echo "Error: missing cbr-$i.ds"
         exit 1
     fi
-    ds2txt --skip-all cbr-$i.ds >>rcfr-unsorted.txt
+    ../process/ds2txt --skip-all cbr-$i.ds >>rcfr-unsorted.txt
 done
 
 # assert that we get all the expected entries in the expected order.
