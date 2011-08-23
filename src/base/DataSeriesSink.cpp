@@ -50,9 +50,11 @@ void DataSeriesSink::WorkerInfo::startThreads(PThreadScopedLock &mutex, DataSeri
 	compressors.push_back(new DataSeriesSinkPThreadCompressor(sink));
 	compressors.back()->start();
     }
-    if (!compressors.empty()) {
-	writer = new DataSeriesSinkPThreadWriter(sink);
-	writer->start();
+    if (compressors.empty()) {
+        writer = NULL;
+    } else {
+        writer = new DataSeriesSinkPThreadWriter(sink);
+        writer->start();
     }
 }
 
@@ -172,7 +174,7 @@ void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     writer_info.field_extentType.set(writer_info.index_extent.type.getName());
 
     worker_info.bytes_in_progress += writer_info.index_extent.size();
-    worker_info.pending_work.push_back(new toCompress(writer_info.index_extent, NULL));
+    worker_info.pending_work.push_back(new ToCompress(writer_info.index_extent, NULL));
     worker_info.pending_work.front()->in_progress = true;
     lockedProcessToCompress(lock, worker_info.pending_work.front());
 
@@ -276,7 +278,7 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
 void DataSeriesSink::removeStatsUpdate(Stats *would_update) {
     PThreadScopedLock lock(mutex);
 
-    for(Deque<toCompress *>::iterator i = worker_info.pending_work.begin();
+    for(Deque<ToCompress *>::iterator i = worker_info.pending_work.begin();
 	i != worker_info.pending_work.end(); ++i) {
 	if ((**i).to_update == would_update) {
 	    SINVARIANT(would_update->use_count > 0);
@@ -322,8 +324,8 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     INVARIANT(worker_info.keep_going, "got to qWE after call to close()??");
     INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
     LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e.size());
-    worker_info.bytes_in_progress += e.size(); // putting this into toCompress erases e
-    worker_info.pending_work.push_back(new toCompress(e, to_update));
+    worker_info.bytes_in_progress += e.size(); // putting this into ToCompress erases e
+    worker_info.pending_work.push_back(new ToCompress(e, to_update));
 
     if (worker_info.compressors.empty()) {
 	SINVARIANT(worker_info.pending_work.size() == 1 && worker_info.bytes_in_progress == 0);
@@ -337,7 +339,8 @@ void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
     } 
 	
     worker_info.available_work_cond.signal();
-    if (false) cout << format("qwe wait? %d %d\n") % worker_info.bytes_in_progress % worker_info.pending_work.size();
+    LintelLogDebug("DataSeriesSink", format("qwe wait? %d %d\n") % worker_info.bytes_in_progress
+                   % worker_info.pending_work.size());
     while(!worker_info.canQueueWork()) {
         INVARIANT(worker_info.keep_going, "got to qWE after call to close()??");
         INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
@@ -356,7 +359,7 @@ DataSeriesSink::Stats DataSeriesSink::getStats(Stats *from) {
 }
 
 void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info) {
-    Deque<toCompress *> to_write;
+    Deque<ToCompress *> to_write;
     while (worker_info.frontReadyToWrite()) {
 	to_write.push_back(worker_info.pending_work.front());
 	worker_info.pending_work.pop_front();
@@ -368,7 +371,7 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
         PThreadScopedUnlock unlock(lock);
 
         while(!to_write.empty()) {
-            toCompress *tc = to_write.front();
+            ToCompress *tc = to_write.front();
             to_write.pop_front();
             INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
             
@@ -420,7 +423,7 @@ static void get_thread_cputime(struct timespec &ts) {
 
 // This function assumes that bytes_in_progress was updated to the
 // uncompressed size prior to calling the function.
-void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, toCompress *work) {
+void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress *work) {
     SINVARIANT(worker_info.bytes_in_progress >= work->extent.size());
     size_t uncompressed_size = work->extent.size();
     worker_info.bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
@@ -498,8 +501,8 @@ void  DataSeriesSink::compressorThread()  {
 #endif
     PThreadScopedLock lock(mutex);
     while(true) {
-	toCompress *work = NULL;
-	for(Deque<toCompress *>::iterator i = worker_info.pending_work.begin();
+	ToCompress *work = NULL;
+	for(Deque<ToCompress *>::iterator i = worker_info.pending_work.begin();
 	    i != worker_info.pending_work.end(); ++i) {
 	    if ((**i).in_progress == false && (**i).compressed.size() == 0) {
 		work = *i;
@@ -515,7 +518,8 @@ void  DataSeriesSink::compressorThread()  {
 	} else {
 	    lockedProcessToCompress(lock, work);
 
-	    if (false) cout << format("qwe broadcast compr? %d %d\n") % worker_info.bytes_in_progress % worker_info.pending_work.size();
+	    LintelLogDebug("DataSeriesSink", format("qwe broadcast compr? %d %d\n")
+                           % worker_info.bytes_in_progress % worker_info.pending_work.size());
     
 	    if (worker_info.canQueueWork()) { // just freed up space.
 		worker_info.available_queue_cond.broadcast();

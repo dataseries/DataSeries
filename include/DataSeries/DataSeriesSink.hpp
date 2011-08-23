@@ -129,13 +129,13 @@ public:
     }
 
 private:
-    struct toCompress {
+    struct ToCompress {
 	Extent extent;
 	Stats *to_update;
 	bool in_progress;
 	uint32_t checksum;
 	Extent::ByteArray compressed;
-	toCompress(Extent &e, Stats *_to_update)
+	ToCompress(Extent &e, Stats *_to_update)
 	    : extent(e.type), to_update(_to_update), 
 	      in_progress(false), checksum(0) 
 	{
@@ -155,7 +155,7 @@ private:
         // protected by the standard mutex, users should have separate access to it.
         bool keep_going;
         size_t bytes_in_progress, max_bytes_in_progress;
-        Deque<toCompress *> pending_work;
+        Deque<ToCompress *> pending_work;
 
         std::vector<PThread *> compressors;
         PThread *writer;
@@ -175,14 +175,11 @@ private:
         void setMaxBytesInProgress(PThreadMutex &mutex, size_t nbytes);
         void flushPending(PThreadMutex &mutex);
         bool frontReadyToWrite() { // Assume lock is held
-            if (pending_work.empty()) {
-                return false;
-            } else {
-                return pending_work.front()->readyToWrite();
-            }
+            return pending_work.empty() ? false : pending_work.front()->readyToWrite();
         }
+
         bool isQuiesced() {
-            return keep_going == false && bytes_in_progress == 0 && pending_work.empty()
+            return !keep_going && bytes_in_progress == 0 && pending_work.empty()
                 && compressors.empty() && writer == NULL;
         }
     };
@@ -197,7 +194,7 @@ private:
         Extent index_extent;
         Int64Field field_extentOffset;
         Variable32Field field_extentType;
-        boost::function<void (off64_t, Extent &)> extent_write_callback;
+        ExtentWriteCallback extent_write_callback;
 
         WriterInfo()
             : fd(-1), wrote_library(false), in_callback(false), cur_offset(-1), chained_checksum(0),
@@ -222,7 +219,7 @@ private:
     void writeExtentType(ExtentType &et);
 
     void queueWriteExtent(Extent &e, Stats *to_update);
-    void lockedProcessToCompress(PThreadScopedLock &lock, toCompress *work);
+    void lockedProcessToCompress(PThreadScopedLock &lock, ToCompress *work);
 
     static int compressor_count;
 
