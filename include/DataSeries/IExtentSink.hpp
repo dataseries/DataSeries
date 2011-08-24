@@ -19,6 +19,9 @@ namespace dataseries {
         /** \brief Statistics on extents written via this sink.  Note that each implementation
             of the interface needs to maintain thread safety, and to provide implementations
             of getStats/removeStatsUpdate that are properly thread safe for callers */
+
+        // TODO-sprint: We need mutex in Stats to avoid it being updated by multiple sinks, since
+        // now it would be passed to multiple since through RotateFileSink.
         class Stats {
         public:
             Stats(const Stats &from) {

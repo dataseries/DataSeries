@@ -40,7 +40,7 @@ public:
 
 int DataSeriesSink::compressor_count = -1;
 
-void DataSeriesSink::WorkerInfo::startThreads(PThreadScopedLock &mutex, DataSeriesSink *sink) {
+void DataSeriesSink::WorkerInfo::startThreads(PThreadScopedLock &lock, DataSeriesSink *sink) {
     int pthread_count = compressor_count;
     if (pthread_count == -1) {
 	pthread_count = PThreadMisc::getNCpus();
@@ -269,10 +269,10 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
 	}
     }
     queueWriteExtent(type_extent, NULL);
-    mutex.lock();
+
+    PThreadScopedLock lock(mutex);
     INVARIANT(!writer_info.wrote_library, "bad, two calls to writeExtentLibrary()");
     writer_info.wrote_library = true; 
-    mutex.unlock();
 }
 
 void DataSeriesSink::removeStatsUpdate(Stats *would_update) {
@@ -433,38 +433,39 @@ void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress
     INVARIANT(work->in_progress, "??");
     INVARIANT(writer_info.cur_offset > 0,"Error: processToCompress on closed file\n");
 
-    mutex.unlock();
-
-    size_t nrecords = work->extent.nRecords();
-    struct timespec pack_start, pack_end;
-    get_thread_cputime(pack_start);
-    
-    uint32_t headersize, fixedsize, variablesize;
-    work->checksum = work->extent.packData(work->compressed, compression_modes,
-					   compression_level, &headersize,
-					   &fixedsize, &variablesize);
-    get_thread_cputime(pack_end);
-
-    double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
-	+ (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
-    
-    INVARIANT(pack_extent_time >= 0, format("get_thread_cputime broken? %d.%d - %d.%d = %.9g")
-	      % pack_end.tv_sec % pack_end.tv_nsec 
-	      % pack_start.tv_sec % pack_start.tv_nsec % pack_extent_time);
-    // Slightly less efficient than calling update on the two separate stats,
-    // but easier to code.
     Stats tmp;
-    tmp.update(headersize + fixedsize + variablesize, fixedsize,
-	       work->extent.variabledata.size(), variablesize, 
-	       work->compressed.size(), 
-	       *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
-	       nrecords, pack_extent_time, work->compressed[6*4], 
-	       work->compressed[6*4+1]);
+    {
+        PThreadScopedUnlock unlock(lock);
 
-    INVARIANT(work->compressed.size() > 0, "??");
+        size_t nrecords = work->extent.nRecords();
+        struct timespec pack_start, pack_end;
+        get_thread_cputime(pack_start);
 
-    SINVARIANT(work->extent.size() == uncompressed_size);
-    mutex.lock();
+        uint32_t headersize, fixedsize, variablesize;
+        work->checksum = work->extent.packData(work->compressed, compression_modes,
+                                               compression_level, &headersize,
+                                               &fixedsize, &variablesize);
+        get_thread_cputime(pack_end);
+
+        double pack_extent_time = (pack_end.tv_sec - pack_start.tv_sec) 
+            + (pack_end.tv_nsec - pack_start.tv_nsec)*1e-9;
+    
+        INVARIANT(pack_extent_time >= 0, format("get_thread_cputime broken? %d.%d - %d.%d = %.9g")
+                  % pack_end.tv_sec % pack_end.tv_nsec 
+                  % pack_start.tv_sec % pack_start.tv_nsec % pack_extent_time);
+        // Slightly less efficient than calling update on the two separate stats,
+        // but easier to code.
+        tmp.update(headersize + fixedsize + variablesize, fixedsize,
+                   work->extent.variabledata.size(), variablesize, 
+                   work->compressed.size(), 
+                   *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
+                   nrecords, pack_extent_time, work->compressed[6*4], 
+                   work->compressed[6*4+1]);
+
+        INVARIANT(work->compressed.size() > 0, "??");
+
+        SINVARIANT(work->extent.size() == uncompressed_size);
+    }
     // update stats, have to do this before we complete the extent
     // as otherwise the work pointer could vanish under us
 
