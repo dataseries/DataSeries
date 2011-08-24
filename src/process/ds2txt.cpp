@@ -198,7 +198,7 @@ main(int argc, char *argv[])
 	eat_args(1, argc, argv);
     }
 	    
-    INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0,
+    INVARIANT(argc >= 2 && strcmp(argv[1],"-h") != 0 && strcmp(argv[1], "--help") != 0,
 	      format("Usage: %s [--csv] [--separator=...]\n"
 		     "  [--header=...] [--header-only-once]\n"
 		     "  [--select '*'|'extent-type-match' '*'|'field,field,field']\n"
