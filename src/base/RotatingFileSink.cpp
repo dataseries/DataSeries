@@ -94,7 +94,8 @@ bool RotatingFileSink::canChangeFile() {
 
 string RotatingFileSink::getNewFilename() {
     PThreadScopedLock lock(worker_mutex);
-
+    // Two operations need to be performed: (i) Release lock and (ii) Copy the string.
+    // Order of two operations are not guaranteed, thus make a copy and return the string.
     string ret(new_filename);
     return ret;
 }

@@ -20,9 +20,9 @@
 
 namespace dataseries {
     /** \brief Class for changing between DataSeriesSink's on demand.  Most of the work is done by
-      a separate thread so that the actual calls into RotatingFileSink should all be relatively
-      fast. This implementation is probably slightly less efficient than one directly in
-      DataSeriesSink, but it is much less invasive. */
+        a separate thread so that the actual calls into RotatingFileSink should all be relatively
+        fast. This implementation is probably slightly less efficient than one directly in
+        DataSeriesSink, but it is much less invasive. */
     class RotatingFileSink : public IExtentSink {
     public:
         RotatingFileSink(uint32_t compression_modes = Extent::compress_all, 
