@@ -47,6 +47,13 @@ namespace dataseries {
             large before re-rotating. */
         void setExtentWriteCallback(const DataSeriesSink::ExtentWriteCallback &callback);
 
+        /** Complete the transition to a new sink (if any), and flush out the current data series
+            sink.  If you change the file during a flush, this function may exit with a change in
+            progress.  However, setExtentWriteCallback() followed by a flush will guarantee that
+            after the flush completes the new callback will be called and any old one will not. */
+
+        void flush();
+
         /** Close a RotatingFileSink, after this call, no callback will be called, although the
             RotatingFileSink will still continue to buffer extents */
         void close();

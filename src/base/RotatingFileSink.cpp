@@ -62,6 +62,16 @@ void RotatingFileSink::close() {
     waitForCanChange();
 }
 
+void RotatingFileSink::flush() {
+    waitForCanChange();
+
+    PThreadScopedLock lock(mutex);
+
+    if (current_sink != NULL) {
+        current_sink->flushPending();
+    }
+}
+
 void RotatingFileSink::writeExtent(Extent &e, Stats *to_update) {
     PThreadScopedLock lock(mutex);
     SINVARIANT(worker_continue); // opportunistic check (protected by worker_lock)
