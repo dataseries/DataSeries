@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
     vector<string> unparsed = lintel::parseCommandLine(argc, argv, true);
     
     // confirm that we have valid arguments remaining
-    if (argc < 2) {
-        cout << format("Usage: %s dsrecover <input file> <output file>\n") % argv[0];
+    if (unparsed.size() != 2) {
+        cerr << format("Usage: %s dsrecover <input file> <output file>\n") % argv[0];
         return -1;
     }
 
