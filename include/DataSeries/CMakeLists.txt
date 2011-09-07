@@ -32,6 +32,8 @@ SET(INCLUDE_FILES
         RotatingFileSink.hpp
 	RowAnalysisModule.hpp
 	SequenceModule.hpp
+        SubExtentPointer.hpp
+        SEP_RowOffset.hpp
 	TFixedField.hpp
 	TypeIndexModule.hpp
 	TypeFilterModule.hpp
