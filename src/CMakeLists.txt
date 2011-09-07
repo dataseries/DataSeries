@@ -43,6 +43,7 @@ SET(LIBDATASERIES_SOURCES
 	base/GeneralField.cpp
 	base/Int64TimeField.cpp
         base/RotatingFileSink.cpp
+        base/SubExtentPointer.cpp
 	process/commonargs.cpp
 	module/DSExpr.cpp
 	module/DSExprImpl.cpp

@@ -1,3 +1,8 @@
+/*
+   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
 #include <boost/format.hpp>
 
 #include <Lintel/LintelLog.hpp>

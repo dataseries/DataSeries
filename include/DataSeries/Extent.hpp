@@ -274,6 +274,11 @@ public:
         input data */
     void unpackData(Extent::ByteArray &from, bool need_bitflip);
 
+    /** Returns true if position is inside the fixed data for this extent, otherwise false */
+    bool insideExtentFixed(byte *position) {
+        return position >= fixeddata.begin() && position < fixeddata.end();
+    }
+
     /** Returns the total size in bytes that an Extent created
         using @param from will need.  (This will be the result of size() after
         unpacking.)
@@ -368,7 +373,6 @@ public:
     // didn't work.
     Extent::ByteArray fixeddata;
     Extent::ByteArray variabledata;
-
 
     /// For read-in extents, this will be the filename, for just created
     /// extents this will be in_memory_str.

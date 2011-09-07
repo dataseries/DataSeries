@@ -127,10 +127,8 @@ void ExtentSeries::iterator::update(Extent *e) {
 
 
 void ExtentSeries::iterator::forceCheckOffset(long offset) {
-    INVARIANT(cur_extent != NULL, 
-	      "internal error, current extent is NULL");
-    INVARIANT(cur_pos + offset >= cur_extent->fixeddata.begin() &&
-	      cur_pos + offset < cur_extent->fixeddata.end(),
+    INVARIANT(cur_extent != NULL, "internal error, current extent is NULL");
+    INVARIANT(cur_extent->insideExtentFixed(cur_pos + offset),
 	      boost::format("internal error, %p + %d = %p not in [%p..%p]\n") 
 	      % reinterpret_cast<void *>(cur_pos) % offset
 	      % reinterpret_cast<void *>(cur_pos+offset)

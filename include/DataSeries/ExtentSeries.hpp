@@ -20,6 +20,7 @@ class Extent;
 
 #include <DataSeries/ExtentType.hpp>
 #include <DataSeries/Extent.hpp>
+#include <DataSeries/SubExtentPointer.hpp>
 
 /** \brief Encapsulates iteration over a group of similar Extents.
   *
@@ -318,6 +319,7 @@ public:
 #endif
 	}
 	void forceCheckOffset(long offset);
+
     private:
 	friend class ExtentSeries;
 	Extent *cur_extent;
@@ -346,6 +348,15 @@ public:
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     /** Returns the current Extent. */
     const Extent *curExtent() { return my_extent; }
+
+
+    dataseries::SEP_RowOffset getRowOffset() {
+        DEBUG_SINVARIANT(pos.cur_extent != NULL
+                         && pos.cur_pos >= pos.cur_extent->fixeddata.begin());
+        return dataseries::SEP_RowOffset(pos.cur_pos - pos.cur_extent->fixeddata.begin(), 
+                                         pos.cur_extent);
+    }
+
 private:
     // both friends to get at pos.record_start()
     friend class Field;
@@ -354,6 +365,9 @@ private:
     const ExtentType *type;
     Extent *my_extent;
     typeCompatibilityT typeCompatibility;
+    // TODO: we can probably remove the iterator; it doesn't really make sense, it was intended
+    // to allow for random access, but worked sufficiently poorly that it wasn't ever used, and
+    // the new approach makes the series == the current position, i.e. it is not separate.
     iterator pos;
     std::vector<Field *> my_fields;
 };

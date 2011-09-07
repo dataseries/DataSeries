@@ -83,6 +83,18 @@ namespace dataseries {
 	    *reinterpret_cast<FIELD_TYPE *>(rawval()) = val;
 	    // Don't need normal setNull(false); field can't be nullable
 	}
+
+        FIELD_TYPE val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+            return *reinterpret_cast<FIELD_TYPE *>(rawval(e, row_offset));
+        }
+
+        FIELD_TYPE operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+            return val(e, row_offset);
+        }
+
+        void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, FIELD_TYPE val) {
+            *reinterpret_cast<FIELD_TYPE *>(rawval(e, row_offset)) = val;
+        }
     };
 
     // specializations that are nullable
