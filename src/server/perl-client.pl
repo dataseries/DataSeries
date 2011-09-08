@@ -30,8 +30,8 @@ print "Post Ping\n";
 # tryProject();
 # tryUpdate();
 # trySimpleStarJoin();
-tryStarJoin();
-# tryUnion();
+# tryStarJoin();
+tryUnion();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -331,13 +331,24 @@ sub tryUnion {
                  [ 12345, "efg", 6 ],
                  [ 12345, "ghi", 8 ],
                  [ 12345, "jkl", 9 ],
-                 [ 20000, "abc", 10 ]]);
+                 [ 20000, "abc", 11 ]]);
+
+    importData('union-input-3', [ 'colm' => 'int32', 'coln' => 'variable32', 'colo' => 'int32' ],
+               [ [ 10, "zyw", 0 ],
+                 [ 20000, "aaa", 10 ]]);
+
     $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string',
                                                          'col4' => 'order' }),
                            unionTable('union-input-2', { 'cola' => 'int', 'colb' => 'string',
-                                                         'colc' => 'order' }) ],
+                                                         'colc' => 'order' }),
+                         unionTable('union-input-3', { 'colm' => 'int', 'coln' => 'string',
+                                                       'colo' => 'order' })],
                          [ qw/int string/ ], 'union-output');
-    print Dumper(getTableData("union-output"));
+
+    printTable("union-input-1");
+    printTable("union-input-2");
+    printTable("union-input-3");
+    printTable("union-output");
 }
 
 sub importData {
