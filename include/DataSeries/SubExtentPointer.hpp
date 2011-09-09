@@ -51,6 +51,37 @@
     in order to extract values from a field.  The upside is that the performance should be faster.
     The downside will be that they are inherently less safe.
 */
+/*
+  TODO-eric-review:
+
+  I prefer #2, as an offset in bytes.
+
+  I don't think that you can do binary search given the two types of pointers proposed, without
+  incurring an integer division.  There is another pointer type, row_number; row_number ==
+  row_offset/row_size.  This makes binary search easy, but requires a multiply; multiply is much
+  much better than divide, though.  With either pointer style #1 or #2, you can "fake" binary
+  search by ensuring that the difference between your L and R pointers are always a power of 2;
+  this requires special casing soem of it.
+  
+  As for type #1 vs. type #2, x86 natively supports base + offset + (compiled in constant).  As a
+  Field or Series is implemented now, the base+offset is already being used.  However, if you
+  knew the layout of a row at compile time, then offset would become free again, making #2
+  cheaper.
+  
+  As we discussed Thursday evening, it seems unlikely that you can make a random-access iterator
+  which matches the STL spec without having at least one full pointer (either to the extent base,
+  or to the row); I think that a true STL random access iterator is less useful than the more
+  direct ones.
+
+  Besides thinkin of pointers, just some form of random access which only requires a single integer
+  could be useful.  Maybe instantiate the [] operator on Fields, e.g.
+  
+  int32_t & operator[] (int);
+  
+  for Int32Field.  For bounds check (if wanted), extracting the nrecords field from the extent is
+  nearly free.
+    
+*/
 
 #ifndef DATASERIES_SUBEXTENTPOINTER_HPP
 #define DATASERIES_SUBEXTENTPOINTER_HPP

@@ -149,6 +149,8 @@ public:
 	++pos;
     }
 
+    // TODO-eric: can/should this be depricated, or made to return either an int offset, and int
+    // row number, or a SEP_RowPointerDoohickey?
     /** Together with @c setCurPos, this function allows saving and restoring
         the current position of an extent in a series.
         Returns an opaque handle to the current position in an Extent. The only
@@ -161,6 +163,8 @@ public:
     const void *getCurPos() {
 	return pos.getPos();
     }
+
+    // TODO-eric: same concern as w/getCurPos
     /** Restores the current position to a saved state.  position must be the
         the result of a previous call to @c getCurPos() with the current
         @c Extent and must not have been invalidated.
