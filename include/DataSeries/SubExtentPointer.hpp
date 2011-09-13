@@ -7,80 +7,81 @@
 
 /** @file
 
-    Pointers to sub-parts of an extent.  There are two natural types of pointers, 1) those that
-    point directly to an individual field 2) those that point to the beginning of a row. There are
-    two natural implementations of the pointers A) as a void *, and B) as an offset relative to the
-    start of the extent.  Note that for variable32 fields, you could have the direct pointer to be
-    either to the fixed part, requiring the extent to translate, and allowing the variable32 value
-    to be updated, or directly to the location in the variable part disallowing updates (the value
-    would move) but removing an indirection. You can't have a variable32 pointing to the beginning
-    of the row in the variable part since that makes no sense.
+    Pointers to sub-parts of an extent.  There are several choices of how to create these pointer:
 
-    For both types of pointers we could also include the extent they were relative to for
-    cross-checking in debug mode to make sure that something weird hasn't happened.  There are
-    performance and space tradeoffs among the types of pointers.  The direct pointers should be
-    faster, but have the downside that for multiple pointers in a single row that multiple pointers
-    would need to be stored.  
+      1a) A void * pointer directly to the fixed extent location of a field
+      1b) An offset from the extent start in bytes directly to the fixed extent location of a field
+      1c) A void * pointer directly to the variable32 data for a field
+      1d) An offset from the variable32 part of an extent to the variable32 data
 
-    The two implementations are again a space-time tradeoff; the void * pointer will be larger on
-    64 bit machines than a 32 bit offset, but the offset requires an addition to use and the
-    pointer does not.  The offset can be 32 bit because extents are effectively limited to 2^32
-    bytes. the variable part explicitly by the 4 bytes in the extent header, and the the fixed part
-    because the number of records is stored in 4 bytes.  Both must compress sufficiently into 4
-    bytes or otherwise the data can't be stored.  In addition, based on the performance testing
-    we've done you want to keep extents either < L2 cache size, for fast access or moderate sized
-    (1-10MB) for parallelism and better compression.  Finally as of 2011, there are probably bugs
-    with extents larger than 2^31 simply because the system is not tested or used that way.
+      2a) A void * pointer to the beginning of a row
+      2b) An offset in bytes to the beginning of the fixed part of a row
 
-    Since there are 5 separate options on what type of sub-extent pointer to support, we have to
-    make some choices to simplify the implementation.  The pointers to the beginning of the row
-    have a significant space advantage if we need pointers to multiple fields, and the cost is an
-    additional highly cacheable add.  Using offset pointers halves the space on 64 bit machines,
-    which are becoming the common case today reducing cache pressure at the cost of an additional
-    add per operation.  Not quite as clearly a substantial win, but probably again the right choice
-    for the first implementation.
+      3) A row number
+
+      4) An STL iterator as an extent pointer + 1*,2* + field offset, or 3 + field offset.
+
+    There are several goals that we have for using these sub-extent pointers:
+      A) fast direct access to a single field
+      B) space-efficient storage of pointers (including for multiple fields in a row)
+      C) efficient binary search in a sorted extent
+      D) ability to update existing fields.
+
+    1a, 1c are best for goal A, but are poor for goal B, and do not support goal C without a divide
+    to compute the number of rows to start. 1b, 1d are better for goal B on 64 bit machines because
+    the offsets can be half the size of pointers.  1c and 1d fail to support goal C at all, and
+    they fail to achieve goal D (except for the weird case where the update is the same size or
+    smaller than the existing things and pack_unique is off).
+
+    2a and 2b are much better than 1* for goal B with multiple fields in a row, and 2b is twice as
+    good as 2a for goal B on 64 bit machines.  2a and 2b as slightly worse than 1* for goal A
+    unless the field offset is known at compile time on x86 (which happens to support base + offset
+    + compiled-in-constant as "free").
+
+    3 is worse than 1*,2* for goal A because it requires a multiply to access the fields.  There is
+    a potential for a slightly better binary search since you can create a type-3 pointer just by
+    specifying a row number, and you can calculate the difference between pointers with just a
+    subtract rather than a subtract + divide.  By adding a extent type and performing a multiply,
+    the type 2* pointers can be created, and differences can be mostly avoided so option (3) is
+    unlikely to be of benefit in comparison with the other choices.
+
+    4 allows all of the standard STL algorithms to be used with dataseries iterators, so is
+    probably worth creating to enable the use of those algorithms although it is significantly
+    worse on goal B because it has to store multiple things.
+
+    For all the types of pointers, we can include the extent they were for in debug mode to 
+    enable cross-checking to make sure that something weird hasn't happened.  
+
+    The assumption that 32 bits is a sufficient offset isn't completely guaranteed, but in practice
+    is guaranteed.  Extents are effectively limited to 2^32 bytes. the variable part explicitly by
+    the 4 bytes in the extent header, and the the fixed part because the number of records is
+    stored in 4 bytes.  Both must compress sufficiently into < 2^32 bytes or otherwise the data
+    can't be stored.  In addition, based on the performance testing we've done you want to keep
+    extents either < L2 cache size, for fast access or moderate sized (1-10MB) for parallelism and
+    better compression.  Finally as of 2011, there are probably bugs with extents larger than 2^31
+    simply because the system is not tested or used that way.
+
+    For the first implementation, 2b is probably the best choice it's about as fast as the other
+    options, much more space efficient for multiple fields, and halves cache pressure on 64 bit
+    machines.  With one divide it can support binary search (provided we add an increment by
+    constant function).  We're unlikely to support compiled in field offsets in the first version.
 
     In the future additional options can be implemented in order to compare the speed; the most
-    likely for the next option is to implement the direct pointer with the offset and the special
-    case of that for the variable32 entry since that eliminates an indirection in the latter
-    case and an add in the former for the likely common case where there is only a single field
-    for the random access.
+    likely for the next option is to implement the iterator even though it is slower and less space
+    efficient because it enables the use of the STL algorithms.  After that the direct pointer with
+    the offset and the special case of that for the variable32 entry since that eliminates an
+    indirection in the latter case and an add in the former for the likely common case where there
+    is only a single field for the random access.
 
     Note that part of the point of the random access iterators as opposed to the getPos/setPos
     operations on a series is that the random access iterators don't require a series to be updated
     in order to extract values from a field.  The upside is that the performance should be faster.
     The downside will be that they are inherently less safe.
-*/
-/*
-  TODO-eric-review:
 
-  I prefer #2, as an offset in bytes.
-
-  I don't think that you can do binary search given the two types of pointers proposed, without
-  incurring an integer division.  There is another pointer type, row_number; row_number ==
-  row_offset/row_size.  This makes binary search easy, but requires a multiply; multiply is much
-  much better than divide, though.  With either pointer style #1 or #2, you can "fake" binary
-  search by ensuring that the difference between your L and R pointers are always a power of 2;
-  this requires special casing soem of it.
-  
-  As for type #1 vs. type #2, x86 natively supports base + offset + (compiled in constant).  As a
-  Field or Series is implemented now, the base+offset is already being used.  However, if you
-  knew the layout of a row at compile time, then offset would become free again, making #2
-  cheaper.
-  
-  As we discussed Thursday evening, it seems unlikely that you can make a random-access iterator
-  which matches the STL spec without having at least one full pointer (either to the extent base,
-  or to the row); I think that a true STL random access iterator is less useful than the more
-  direct ones.
-
-  Besides thinkin of pointers, just some form of random access which only requires a single integer
-  could be useful.  Maybe instantiate the [] operator on Fields, e.g.
-  
-  int32_t & operator[] (int);
-  
-  for Int32Field.  For bounds check (if wanted), extracting the nrecords field from the extent is
-  nearly free.
-    
+    It may also be useful to support a ExtentSeries.getSEP_type(int32_t offset) that will calculate
+    a sub extent pointer using an offset relative to the current location, and possibly an
+    operator[] on fields that will use that same type of functionality to go to a random row in
+    the extent.
 */
 
 #ifndef DATASERIES_SUBEXTENTPOINTER_HPP
