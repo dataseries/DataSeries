@@ -191,7 +191,7 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
     // TODO: we can eventually decide to support overwrites at some
     // point, but it doesn't seem worth it now since I (Eric) don't
     // think that feature is used at all -- pack_unique is effectively
-    // the default.  Se revs before 2009-05-19 for the version that
+    // the default.  See revs before 2009-05-19 for the version that
     // supports overwrite.
 
     // need to repack at the end of the variable data
@@ -210,13 +210,50 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
     for(++var_data; roundup > 0; roundup -= 4) {
 	SINVARIANT(*var_data == 0);
     }
-#endif
 
-#if LINTEL_DEBUG
     selfcheck(dataseries.extent()->variabledata,varoffset);
 #endif
 
     setNull(false);
+}    
+
+void Variable32Field::allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size) {
+    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+
+    if (data_size == 0) {
+        FATAL_ERROR("unimplemented");
+	clear(); 
+	return;
+    }
+    int32_t roundup = roundupSize(data_size);
+    DEBUG_SINVARIANT((roundup+4) % 8 == 0);
+		    
+    // TODO: we can eventually decide to support overwrites at some
+    // point, but it doesn't seem worth it now since I (Eric) don't
+    // think that feature is used at all -- pack_unique is effectively
+    // the default.  See revs before 2009-05-19 for the version that
+    // supports overwrite.
+
+    // need to repack at the end of the variable data
+    int32_t varoffset = e.variabledata.size();
+    e.variabledata.resize(varoffset + 4 + roundup);
+    *reinterpret_cast<int32 *>(fixed_data_ptr) = varoffset;
+
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
+					      
+    *var_data = data_size;
+
+#if LINTEL_DEBUG
+    // we get to avoid zeroing since it happens automatically for us
+    // when we resize the bytearray
+    for(++var_data; roundup > 0; roundup -= 4) {
+	SINVARIANT(*var_data == 0);
+    }
+
+    selfcheck(e.variabledata,varoffset);
+#endif
+
+    INVARIANT(!nullable, "unimplemented");
 }    
 
 void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t offset) {
@@ -236,22 +273,40 @@ void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t 
     memcpy(var_bits + offset, data, data_size);
 }
 
-void Variable32Field::selfcheck(Extent::ByteArray &varbytes, int32 varoffset) {
-    INVARIANT(varoffset >= 0 
-	      && (uint32_t)varoffset <= (varbytes.size() - 4),
+void Variable32Field::partialSet(Extent &e, const dataseries::SEP_RowOffset &row_offset,
+                                 const void *data, uint32_t data_size, uint32_t offset) {
+    if (data_size == 0) {
+	return; // occurs on set("");
+    }
+    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+    SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
+
+    // TODO: this is almost like rawval() in fixedfield; think about unifying?
+    int32_t varoffset = *reinterpret_cast<int32 *>(e.fixeddata.begin() + row_offset.row_offset
+                                                   + offset_pos);
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
+    
+    uint32_t cur_size = *var_data;
+    INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,
+	      boost::format("%d + %d > %d") % offset % data_size % cur_size);
+    uint8_t *var_bits = reinterpret_cast<byte *>(var_data + 1); // + 1 as it's int32_t
+    memcpy(var_bits + offset, data, data_size);
+}
+
+
+void Variable32Field::selfcheck(const Extent::ByteArray &varbytes, int32 varoffset) {
+    INVARIANT(varoffset >= 0 && (uint32_t)varoffset <= (varbytes.size() - 4),
 	      format("Internal error, bad variable offset %d") % varoffset);
     if (varoffset == 0) {
 	// special case this check, as it is slightly different
-	INVARIANT(*(int32 *)varbytes.begin() == 0,
-		  "Whoa, zero string got a size");
+	INVARIANT(*(int32 *)varbytes.begin() == 0, "Whoa, zero string got a size");
 	return;
     }
-    INVARIANT((varoffset % 4) == 0,
-	      "Internal error, bad variable offset");
+    INVARIANT((varoffset % 4) == 0, "Internal error, bad variable offset");
     INVARIANT(varoffset == 0 || ((varoffset + 4) % 8) == 0,
 	      "Internal error, bad variable offset");
-    int32 size = *(int32 *)(vardata(varbytes,varoffset));
-    INVARIANT(size >= 0,"Internal error, bad variable size");
+    int32 size = *(int32 *)(vardata(varbytes, varoffset));
+    INVARIANT(size >= 0, "Internal error, bad variable size");
     int32 roundup = roundupSize(size);
     INVARIANT((unsigned int)(varoffset + 4 + roundup) <= varbytes.size(),
 	      "Internal error, bad variable offset");

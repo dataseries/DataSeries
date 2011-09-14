@@ -49,6 +49,21 @@ public:
         *rawval() = val;
         setNull(false);
     }
+
+    byte val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        INVARIANT(!nullable, "unimplemented");
+        return *reinterpret_cast<byte *>(rawval(e, row_offset));
+    }
+
+    byte operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return val(e, row_offset);
+    }
+
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, byte val) {
+        INVARIANT(!nullable, "unimplemented");
+        *reinterpret_cast<byte *>(rawval(e, row_offset)) = val;
+    }
+
     byte default_value;
 };
 

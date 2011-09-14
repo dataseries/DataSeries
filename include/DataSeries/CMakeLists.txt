@@ -6,10 +6,12 @@
 # cmake description for the include/DataSeries directory
 
 SET(INCLUDE_FILES
+        BoolField.hpp
 	ByteField.hpp
 	DataSeriesFile.hpp
         DataSeriesSink.hpp
         DataSeriesSource.hpp
+        DoubleField.hpp
 	DSExpr.hpp
 	DStoTextModule.hpp
 	Extent.hpp
@@ -37,6 +39,7 @@ SET(INCLUDE_FILES
 	TFixedField.hpp
 	TypeIndexModule.hpp
 	TypeFilterModule.hpp
+        Variable32Field.hpp
 	commonargs.hpp
 	cryptutil.hpp
 )

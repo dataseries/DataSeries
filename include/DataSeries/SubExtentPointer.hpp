@@ -19,24 +19,27 @@
 
       3) A row number
 
-      4) An STL iterator as an extent pointer + 1*,2* + field offset, or 3 + field offset.
+      4) An STL iterator as an extent pointer + 1[ab],2* + field offset, or 3 + field offset.
 
     There are several goals that we have for using these sub-extent pointers:
       A) fast direct access to a single field
       B) space-efficient storage of pointers (including for multiple fields in a row)
       C) efficient binary search in a sorted extent
       D) ability to update existing fields.
+      E) work with nullable fields.
 
     1a, 1c are best for goal A, but are poor for goal B, and do not support goal C without a divide
     to compute the number of rows to start. 1b, 1d are better for goal B on 64 bit machines because
     the offsets can be half the size of pointers.  1c and 1d fail to support goal C at all, and
     they fail to achieve goal D (except for the weird case where the update is the same size or
-    smaller than the existing things and pack_unique is off).
+    smaller than the existing things and pack_unique is off).  None of the option 1 variants
+    support goal E with any sane efficiency, and 1c/1d can't support it.
 
     2a and 2b are much better than 1* for goal B with multiple fields in a row, and 2b is twice as
     good as 2a for goal B on 64 bit machines.  2a and 2b as slightly worse than 1* for goal A
     unless the field offset is known at compile time on x86 (which happens to support base + offset
-    + compiled-in-constant as "free").
+    + compiled-in-constant as "free").  2* can support goal C with a divide needed to calculate the
+    number of rows.  These options work fine for D, E.
 
     3 is worse than 1*,2* for goal A because it requires a multiply to access the fields.  There is
     a potential for a slightly better binary search since you can create a type-3 pointer just by
@@ -47,7 +50,7 @@
 
     4 allows all of the standard STL algorithms to be used with dataseries iterators, so is
     probably worth creating to enable the use of those algorithms although it is significantly
-    worse on goal B because it has to store multiple things.
+    worse on goal B because it has to store multiple things.  
 
     For all the types of pointers, we can include the extent they were for in debug mode to 
     enable cross-checking to make sure that something weird hasn't happened.  

@@ -45,6 +45,20 @@ public:
 	}
     }
 
+    int64_t val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        INVARIANT(!nullable, "unimplemented");
+        return *reinterpret_cast<int64_t *>(rawval(e, row_offset));
+    }
+
+    int64_t operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return val(e, row_offset);
+    }
+
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, int64_t val) {
+        INVARIANT(!nullable, "unimplemented");
+        *reinterpret_cast<int64_t *>(rawval(e, row_offset)) = val;
+    }
+
     int64_t default_value;
 };
 

@@ -47,6 +47,8 @@ namespace dataseries {
       <field type="double" name="double1" pack_scale="1e-6" pack_relative="double1" />
       <field type="variable32" name="var1" pack_unique="yes"/>\n"
       <field type="variable32" name="var2"/>\n"
+      <field type="fixedwidth" name="fw1" size="7" note="experimental" />
+      <field type="fixedwidth" name="fw2" size="20" note="experimental" />
   </ExtentType>
 \endverbatim
   */

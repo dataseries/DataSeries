@@ -275,7 +275,7 @@ public:
     void unpackData(Extent::ByteArray &from, bool need_bitflip);
 
     /** Returns true if position is inside the fixed data for this extent, otherwise false */
-    bool insideExtentFixed(byte *position) {
+    bool insideExtentFixed(byte *position) const {
         return position >= fixeddata.begin() && position < fixeddata.end();
     }
 

@@ -382,7 +382,11 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 	    info.type = ft_variable32;
 	    ++variable_fields;
 	} else if (type_str == "fixedwidth") {
-	    LintelLog::warn("Fixed width fields are experimental.\n");
+            static bool printed_warning;
+	    if (!printed_warning) {
+                LintelLog::warn("Fixed width fields are experimental.");
+                printed_warning = true;
+            }
 	    info.type = ft_fixedwidth;
 	    ++byte_fields;
 	} else {
