@@ -25,6 +25,13 @@ protected:
     virtual ~FixedField();
 
     // TODO-eric: figure out how to collapse out all the duplicate code we are ending up with.
+    //
+    // Suggestion: make a template class that defines operations such as
+    //
+    // T val() const;
+    //
+    // and then inherit on the specialization of the class.  See ~tucek/tmp/templinheir.cpp (sic -
+    // can't spell inherit consistently) for an example.
     byte *rawval() const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL && offset >= 0,
 			"internal error; extent not set or field not ready");

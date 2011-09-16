@@ -35,6 +35,11 @@
     smaller than the existing things and pack_unique is off).  None of the option 1 variants
     support goal E with any sane efficiency, and 1c/1d can't support it.
 
+    (joe - not sure I agree w.r.t. 1b not being able to do nullable sensible; whenever the pointer
+    is used, won't there be both a field and an extent pointer available?  if so we can subtract
+    out the field offset to get the row beginning--it is an extra subtract, but one that is
+    conditional on being a nullable field)
+
     2a and 2b are much better than 1* for goal B with multiple fields in a row, and 2b is twice as
     good as 2a for goal B on 64 bit machines.  2a and 2b as slightly worse than 1* for goal A
     unless the field offset is known at compile time on x86 (which happens to support base + offset

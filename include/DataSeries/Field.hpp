@@ -62,13 +62,28 @@ public:
         boolField as the field may come and go as the extent changes,
         but this should be supported as a legal change to the type. */
     bool isNull() const {
+        if (!nullable) {
+            return false;
+        } else {
+            return isNull(dataseries.pos.record_start());
+        }
+    }
+    bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        if (!nullable) {
+            return false;
+        } else {
+            return isNull(row_offset.row_offset + e.fixeddata.begin());
+        }
+    }
+    // TODO-eric-review: Should be private?
+    bool isNull(ExtentType::byte * rawpos) const {
 	DEBUG_INVARIANT(dataseries.extent() != NULL,
 			"internal error; extent not set");
-	if (nullable) {
+	if (__builtin_expect(nullable,1)) {
 	    DEBUG_INVARIANT(null_offset >= 0, 
 			    "internal error; field not ready");
 	    dataseries.checkOffset(null_offset);
-	    return (*(dataseries.pos.record_start() + null_offset) 
+	    return (*(rawpos + null_offset) 
 		    & null_bit_mask) ? true : false;
 	} else {
 	    return false;

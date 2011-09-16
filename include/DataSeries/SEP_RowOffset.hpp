@@ -14,6 +14,7 @@
 
 #include <DataSeries/Extent.hpp>
 
+class Field;
 class FixedField;
 class Variable32Field;
 namespace dataseries {
@@ -108,6 +109,7 @@ namespace dataseries {
         }
         
     private:
+        friend class ::Field;
         friend class ::FixedField;
         friend class ::Variable32Field;
 

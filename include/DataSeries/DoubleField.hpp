@@ -71,8 +71,13 @@ public:
     }
   
     double val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return *reinterpret_cast<double *>(rawval(e, row_offset));
+        //TODO-eric-review: if the modified isNull is acceptable, then this should be applied to
+        //the other types.
+        if(isNull(e, row_offset)) {
+            return default_value;
+        } else {
+            return *reinterpret_cast<double *>(rawval(e, row_offset));
+        }
     }
 
     double operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
@@ -83,6 +88,7 @@ public:
         INVARIANT(!nullable, "unimplemented");
         *reinterpret_cast<double *>(rawval(e, row_offset)) = val;
     }
+    //TODO-eric-review: setabs(Extent, SEP_RowOffset, double) ?
 
     double default_value;
     double base_val;

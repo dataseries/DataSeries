@@ -220,6 +220,9 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
 void Variable32Field::allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size) {
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
+    //TODO-eric-review: the diff doesn't make clear why this is the case (code motion + changes ==
+    //don't know what changed).  I don't see why data_size==0 would be hard to support.  Related to
+    //nullable perhaps?
     if (data_size == 0) {
         FATAL_ERROR("unimplemented");
 	clear(); 
