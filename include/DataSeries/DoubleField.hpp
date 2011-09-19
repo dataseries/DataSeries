@@ -86,7 +86,6 @@ public:
         *reinterpret_cast<double *>(rawval(e, row_offset)) = val;
         setNull(e, row_offset, false);
     }
-    //TODO-eric-review: setabs(Extent, SEP_RowOffset, double) ?
 
     double default_value;
     double base_val;

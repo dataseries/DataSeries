@@ -65,50 +65,23 @@ public:
         if (!nullable) {
             return false;
         } else {
-            return isNull(dataseries.pos.record_start());
+            DEBUG_SINVARIANT(dataseries.extent() != NULL);
+            return isNull(*dataseries.extent(), dataseries.pos.record_start());
         }
     }
+
+    /** Returns true iff the field is null in the specified record of the extent
+
+        Preconditions:
+            - The name and type of the Field must have been set.
+    */
     bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
         if (!nullable) {
             return false;
         } else {
-            return isNull(row_offset.row_offset + e.fixeddata.begin());
+            return isNull(e, e.fixeddata.begin() + row_offset.row_offset);
         }
-    }
-    // TODO-eric-review: Should be private?
-    bool isNull(ExtentType::byte * rawpos) const {
-	DEBUG_SINVARIANT(dataseries.extent() != NULL);
-	if (__builtin_expect(nullable,1)) {
-	    DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
-	    dataseries.checkOffset(null_offset);
-	    return (*(rawpos + null_offset) 
-		    & null_bit_mask) ? true : false;
-	} else {
-	    return false;
-	}
-    }
-
-    /** Returns true iff the field is null in the current record of the
-        @c ExtentSeries.
-
-        Preconditions:
-            - The name of the Field must have been set and the
-              @c ExtentSeries must have a current record.
-
-        \internal
-        need to have these defined in here because we can't use a
-        boolField as the field may come and go as the extent changes,
-        but this should be supported as a legal change to the type. */
-    bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
-	if (nullable) {
-	    DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
-            uint8_t *null_pos = e.fixeddata.begin() + row_offset.row_offset + null_offset;
-	    DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
-	    return (*null_pos & null_bit_mask) ? true : false;
-	} else {
-	    return false;
-	}
     }
 
     /** Sets the field to null in the @c ExtentSeries' current record.
@@ -210,7 +183,18 @@ protected:
     /** The flags used to initialize the Field. At present, this can be flag nullable
         or 0. */
     const uint32_t flags;
+
 private:
+    bool isNull(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(nullable);
+
+        DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
+        uint8_t *null_pos = row_pos + null_offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
+        (void)e; // remove warning about unused e
+        return (*null_pos & null_bit_mask) ? true : false;
+    }
+
     std::string fieldname;
 };
 
