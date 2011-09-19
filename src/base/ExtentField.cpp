@@ -218,11 +218,11 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
 }    
 
 void Variable32Field::allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size) {
+    DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
     if (data_size == 0) {
-        FATAL_ERROR("unimplemented");
-	clear(); 
+	clear(e, fixed_data_ptr); 
 	return;
     }
     int32_t roundup = roundupSize(data_size);
@@ -253,7 +253,8 @@ void Variable32Field::allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t da
     selfcheck(e.variabledata,varoffset);
 #endif
 
-    INVARIANT(!nullable, "unimplemented");
+    // TODO-eric: on refactor this needs to setNull(..., false); currently only caller
+    // does that for us
 }    
 
 void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t offset) {

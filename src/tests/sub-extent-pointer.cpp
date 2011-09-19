@@ -27,13 +27,38 @@ const string fixed_width_types_xml =
 "  <field type=\"variable32\" name=\"variable32\" />\n"
 "  <field type=\"fixedwidth\" name=\"fw7\" size=\"7\" />\n"
 "  <field type=\"fixedwidth\" name=\"fw20\" size=\"20\" />\n"
+
+"  <field type=\"bool\" name=\"n-bool\" opt_nullable=\"yes\" />\n"
+"  <field type=\"byte\" name=\"n-byte\" opt_nullable=\"yes\" />\n"
+"  <field type=\"int32\" name=\"n-int32\" opt_nullable=\"yes\" />\n"
+"  <field type=\"int64\" name=\"n-int64\" opt_nullable=\"yes\" />\n"
+"  <field type=\"double\" name=\"n-double\" opt_nullable=\"yes\" />\n"
+"  <field type=\"variable32\" name=\"n-variable32\" opt_nullable=\"yes\" />\n"
+"  <field type=\"fixedwidth\" name=\"n-fw13\" size=\"13\" opt_nullable=\"yes\" />\n"
 "</ExtentType>\n";
+
+template<class T>
+class NullableField : public T {
+public:
+    NullableField(ExtentSeries &series, const std::string &field)
+        : T(series, field, Field::flag_nullable)
+    { }
+};
 
 template<typename T, typename FT> T randomVal(FT &field, MersenneTwisterRandom &rng) {
     return static_cast<T>(rng.randInt());
 }
 
 template<> string randomVal(Variable32Field &field, MersenneTwisterRandom &rng) {
+    string ret;
+    ret.resize(rng.randInt(256));
+    for (size_t i=0; i < ret.size(); ++i) {
+        ret[i] = rng.randInt(256);
+    }
+    return ret;
+}
+
+template<> string randomVal(NullableField<Variable32Field> &field, MersenneTwisterRandom &rng) {
     string ret;
     ret.resize(rng.randInt(256));
     for (size_t i=0; i < ret.size(); ++i) {
@@ -51,15 +76,30 @@ template<> vector<uint8_t> randomVal(FixedWidthField &field, MersenneTwisterRand
     return ret;
 }
 
+template<> vector<uint8_t> 
+randomVal(NullableField<FixedWidthField> &field, MersenneTwisterRandom &rng) {
+    vector<uint8_t> ret;
+    ret.resize(field.size());
+    for (size_t i=0; i < ret.size(); ++i) {
+        ret[i] = rng.randInt(256);
+    }
+    return ret;
+}
+
 template<typename T, typename FT> void 
 fillSEP_RowOffset(ExtentSeries &s, FT &field, vector<SEP_RowOffset> &o,
-                  vector<T> &r) {
+                  vector<T> &r, bool nullable) {
     MersenneTwisterRandom rng;
 
     for (uint32_t i = 0; i < 1000; ++i) {
         s.newRecord();
         T val = randomVal<T>(field, rng);
-        field.set(val);
+        if (nullable && rng.randInt(4) == 0) {
+            val = T();
+            field.setNull();
+        } else {
+            field.set(val);
+        }
         o.push_back(s.getRowOffset());
         r.push_back(val);
     }
@@ -75,16 +115,15 @@ template<> bool transform(const bool &update, const bool &offset) {
 
 template<> vector<uint8_t> transform(const vector<uint8_t> &update, const vector<uint8_t> &offset) {
     vector<uint8_t> ret(update);
-    SINVARIANT(update.size() == offset.size());
-    for (size_t i=0;i < update.size(); ++i) {
-        ret[i] += offset[i];
+    if (update.empty()) {
+        ret = offset;
+    } else {
+        SINVARIANT(update.size() == offset.size());
+        for (size_t i=0;i < update.size(); ++i) {
+            ret[i] += offset[i];
+        }
     }
     return ret;
-}
-
-template<typename T> void updateVal(vector<T> &update, size_t i, T offset) {
-    T update_val = update[i]; // hack round vector<bool>[i] != bool type
-    update[i] = transform(update_val, offset);
 }
 
 // TODO: add field::value_type so that we can write FT::value_type getVal(...)
@@ -105,6 +144,16 @@ template<> string getOp(const Variable32Field &field, Extent &e, const SEP_RowOf
     return string(reinterpret_cast<const char *>(field(e, offset)), field.size(e, offset));
 }
 
+template<> string 
+getVal(const NullableField<Variable32Field> &field, Extent &e, const SEP_RowOffset offset) {
+    return field.stringval(e, offset);
+}
+
+template<> string 
+getOp(const NullableField<Variable32Field> &field, Extent &e, const SEP_RowOffset offset) {
+    return string(reinterpret_cast<const char *>(field(e, offset)), field.size(e, offset));
+}
+
 template<> vector<uint8_t>
 getVal(const FixedWidthField &field, Extent &e, const SEP_RowOffset offset) {
     return field.arrayVal(e, offset);
@@ -113,6 +162,40 @@ getVal(const FixedWidthField &field, Extent &e, const SEP_RowOffset offset) {
 template<> vector<uint8_t>
 getOp(const FixedWidthField &field, Extent &e, const SEP_RowOffset offset) {
     return vector<uint8_t>(field.val(e, offset), field.val(e, offset) + field.size());
+}
+
+template<> vector<uint8_t>
+getVal(const NullableField<FixedWidthField> &field, Extent &e, const SEP_RowOffset offset) {
+    return field.arrayVal(e, offset);
+}
+
+template<> vector<uint8_t>
+getOp(const NullableField<FixedWidthField> &field, Extent &e, const SEP_RowOffset offset) {
+    if (field.isNull(e, offset)) {
+        return vector<uint8_t>();
+    } else {
+        return vector<uint8_t>(field.val(e, offset), field.val(e, offset) + field.size());
+    }
+}
+
+template<typename FT, typename T> void 
+updateVal(MersenneTwisterRandom &rng, FT &field, Extent &e, const SEP_RowOffset offset, 
+          vector<T> &update, size_t i, bool nullable) {
+    if (nullable && rng.randInt(2) == 0 && !field.isNull(e, offset)) { 
+        // 50% chance to swap from not-null to null
+        field.setNull(e, offset);
+        update[i] = T();
+    } else {
+        T update_by = randomVal<T>(field, rng);
+    
+        T update_val = update[i]; // hack round vector<bool>[i] != bool type
+        update[i] = transform(update_val, update_by);
+        if (rng.randInt(2) == 0) {
+            field.set(e, offset, transform(getOp<T>(field, e, offset), update_by));
+        } else {
+            field.set(e, offset, transform(getVal<T>(field, e, offset), update_by));
+        }
+    }
 }
 
 namespace std {
@@ -135,11 +218,13 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
 
     FT field(s, field_name);
 
+    bool nullable = t.getNullable(field_name);
+
     s.setExtent(e1);
     SEP_RowOffset first_e1(s.getRowOffset());
-    fillSEP_RowOffset(s, field, o1, r1);
+    fillSEP_RowOffset(s, field, o1, r1, nullable);
     s.setExtent(e2);
-    fillSEP_RowOffset(s, field, o2, r2);
+    fillSEP_RowOffset(s, field, o2, r2, nullable);
     s.clearExtent(); // leaves the type alone
 
     SINVARIANT(r1.size() == r2.size() && !r1.empty());
@@ -152,13 +237,12 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     // uses both the field.get() and field() variants to test both, normally this would be
     // weird style.
     for (size_t i = 0; i < r1.size(); ++i) {
-        SINVARIANT(getVal<T>(field, e1, o1[i]) == r1[i]);
+        INVARIANT(getVal<T>(field, e1, o1[i]) == r1[i],
+                  format("%s != %s") % getVal<T>(field, e1, o1[i]) % r1[i]);
         SINVARIANT(getOp<T>(field, e2, o2[i]) == r2[i]);
-        T offset = randomVal<T>(field, rng);
-        field.set(e1, o1[i], transform(getOp<T>(field, e1, o1[i]), offset));
-        field.set(e2, o2[i], transform(getVal<T>(field, e2, o2[i]), offset));
-        updateVal(r1, i, offset);
-        updateVal(r2, i, offset);
+
+        updateVal(rng, field, e1, o1[i], r1, i, nullable);
+        updateVal(rng, field, e2, o2[i], r2, i, nullable);
 
         SINVARIANT(first_e1 <= o1[i] && o1[i] < last_e1);
 
@@ -182,7 +266,8 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     for (size_t i = 0; i < r1.size(); ++i) {
         INVARIANT(getOp<T>(field, e1, o1[i]) == r1[i], 
                   format("%d: %s != %s") % i % getOp<T>(field, e1, o1[i]) % r1[i]);
-        SINVARIANT(getVal<T>(field, e2, o2[i]) == r2[i]);
+        INVARIANT(getVal<T>(field, e2, o2[i]) == r2[i],
+                  format("%d: %s != %s") % i % getOp<T>(field, e2, o2[i]) % r2[i]);
     }
 }
        
@@ -190,11 +275,15 @@ template<typename T> void testOneSEP_RowOffset(const string &field_name) {
     testOneSEP_RowOffset<T, TFixedField<T> >(field_name);
 }
 
+
 void testSEP_RowOffset() {
+    // Template fields
     testOneSEP_RowOffset<uint8_t>("byte");
     testOneSEP_RowOffset<int32_t>("int32");
     testOneSEP_RowOffset<int64_t>("int64");
     testOneSEP_RowOffset<double>("double");
+
+    // Normal fields
     testOneSEP_RowOffset<bool, BoolField>("bool");
     testOneSEP_RowOffset<ExtentType::byte, ByteField>("byte");
     testOneSEP_RowOffset<ExtentType::int32, Int32Field>("int32");
@@ -203,6 +292,15 @@ void testSEP_RowOffset() {
     testOneSEP_RowOffset<string, Variable32Field>("variable32");
     testOneSEP_RowOffset<vector<uint8_t>, FixedWidthField>("fw7");
     testOneSEP_RowOffset<vector<uint8_t>, FixedWidthField>("fw20");
+
+    // Nullable fields
+    testOneSEP_RowOffset<bool, NullableField<BoolField> >("n-bool");
+    testOneSEP_RowOffset<ExtentType::byte, NullableField<ByteField> >("n-byte");
+    testOneSEP_RowOffset<ExtentType::int32, NullableField<Int32Field> >("n-int32");
+    testOneSEP_RowOffset<ExtentType::int64, NullableField<Int64Field> >("n-int64");
+    testOneSEP_RowOffset<ExtentType::int32, NullableField<DoubleField> >("n-double");
+    testOneSEP_RowOffset<string, NullableField<Variable32Field> >("n-variable32");
+    testOneSEP_RowOffset<vector<uint8_t>, NullableField<FixedWidthField> >("n-fw13");
 }
 
 int main() {

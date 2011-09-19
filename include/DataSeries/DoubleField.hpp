@@ -71,8 +71,11 @@ public:
     }
   
     double val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return *reinterpret_cast<double *>(rawval(e, row_offset));
+        if (isNull(e, row_offset)) {
+            return default_value;
+        } else {
+            return *reinterpret_cast<double *>(rawval(e, row_offset));
+        }
     }
 
     double operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
@@ -80,8 +83,8 @@ public:
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, double val) {
-        INVARIANT(!nullable, "unimplemented");
         *reinterpret_cast<double *>(rawval(e, row_offset)) = val;
+        setNull(e, row_offset, false);
     }
 
     double default_value;

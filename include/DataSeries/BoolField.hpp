@@ -69,8 +69,11 @@ public:
     }
 
     bool val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return *rawval(e, row_offset) & bit_mask ? true : false;
+        if (isNull(e, row_offset)) {
+            return default_value;
+        } else {
+            return *rawval(e, row_offset) & bit_mask ? true : false;
+        }
     }
 
     bool operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
@@ -78,12 +81,12 @@ public:
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, bool val) {
-        INVARIANT(!nullable, "unimplemented");
         if (val) {
             *rawval(e, row_offset) = (byte)(*rawval(e, row_offset) | bit_mask);
         } else {
             *rawval(e, row_offset) = (byte)(*rawval(e, row_offset) & ~bit_mask);
         }
+        setNull(e, row_offset, false);
     }
     virtual void newExtentType();
 

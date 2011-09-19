@@ -30,7 +30,7 @@ public:
         DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
                         "internal error; extent not set or field not ready");
         if (isNull()) {
-            return (const byte *)default_value.c_str();
+            return reinterpret_cast<const byte *>(default_value.data());
         } else {
             return val(dataseries.extent()->variabledata, getVarOffset());
         }
@@ -54,13 +54,19 @@ public:
     }
 
     const byte *val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return val(e.variabledata, getVarOffset(e, row_offset));
+        if (isNull(e, row_offset)) {
+            return reinterpret_cast<const byte *>(default_value.data());
+        } else {
+            return val(e.variabledata, getVarOffset(e, row_offset));
+        }
     }
 
     int32 size(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return size(e.variabledata, getVarOffset(e, row_offset));
+        if (isNull(e, row_offset)) {
+            return default_value.size();
+        } else {
+            return size(e.variabledata, getVarOffset(e, row_offset));
+        }
     }
 
     const byte *operator ()(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
@@ -68,15 +74,19 @@ public:
     }
 
     std::string stringval(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return std::string(reinterpret_cast<const char *>(val(e, row_offset)), size(e, row_offset));
+        if (isNull(e, row_offset)) {
+            return default_value;
+        } else {
+            return std::string(reinterpret_cast<const char *>(val(e, row_offset)), 
+                               size(e, row_offset));
+        }
     }
 
     // TODO-eric: refactor properly
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, const std::string &val) {
-        INVARIANT(!nullable, "unimplemented");
         allocateSpace(e, e.fixeddata.begin() + row_offset.row_offset + offset_pos, val.size());
         partialSet(e, row_offset, val.data(), val.size(), 0);
+        setNull(e, row_offset, false);
     }
 
     /// Allocate, data_size bytes of space.  The space may not be
@@ -117,11 +127,13 @@ public:
     }
     void clear() {
         DEBUG_INVARIANT(dataseries.extent() != NULL,  "internal error; extent not set");
-        dataseries.checkOffset(offset_pos);
-        *reinterpret_cast<int32_t *>(recordStart() + offset_pos) = 0;
-	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(dataseries.extent()->variabledata.begin()) 
-			 == 0);
+        clear(*dataseries.extent(), recordStart() + offset_pos);
 	setNull(false);
+    }
+
+    void clear(Extent &e, const dataseries::SEP_RowOffset &row_offset) {
+        clear(e, e.fixeddata.begin() + row_offset.row_offset + offset_pos);
+        setNull(e, row_offset, false);
     }
 
     bool equal(const std::string &to) {
@@ -142,6 +154,12 @@ public:
     std::string default_value;
 protected:
     void allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size);
+    void clear(Extent &e, byte *fixed_data_ptr) {
+        DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
+        *reinterpret_cast<int32_t *>(fixed_data_ptr) = 0;
+	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(e.variabledata.begin()) == 0);
+    }        
+    
 
     virtual void newExtentType();
     friend class Extent;

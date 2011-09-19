@@ -63,8 +63,11 @@ public:
     }
 
     int32_t val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return *reinterpret_cast<int32_t *>(rawval(e, row_offset));
+        if (isNull(e, row_offset)) {
+            return default_value;
+        } else {
+            return *reinterpret_cast<int32_t *>(rawval(e, row_offset));
+        }
     }
 
     int32_t operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
@@ -72,8 +75,8 @@ public:
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, int32_t val) {
-        INVARIANT(!nullable, "unimplemented");
         *reinterpret_cast<int32_t *>(rawval(e, row_offset)) = val;
+        setNull(e, row_offset, false);
     }
 
     int32_t default_value;

@@ -35,13 +35,13 @@ public:
         setFieldName().  Note that you should not call any of the
         field operations (e.g. isNull, val) until you have set the
         field name.  In debugging mode this is checked, in optimized mode
-        it may just return wrong values. flags should be either flag
-        nullable or 0.  If set to flag nullable, indicates that the field
+        it may just return wrong values. flags should be either flag_nullable
+        or 0.  Setting flags to flag_nullable indicates that the field
         may be nullable.  Note that If flag nullable is specified, it is
         still ok if the field is not in fact nullable.  flag_nullable
-        only means that you are prepared to deal with null fields. */
-    Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
-	  uint32_t _flags);
+        only means that the caller is prepared to deal with null fields. */
+    Field(ExtentSeries &dataseries, const std::string &fieldname, 
+	  uint32_t flags);
 
     /** Unregisters the @c Field object from the @c ExtentSeries. */
     virtual ~Field();
@@ -62,14 +62,35 @@ public:
         boolField as the field may come and go as the extent changes,
         but this should be supported as a legal change to the type. */
     bool isNull() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL,
-			"internal error; extent not set");
+	DEBUG_SINVARIANT(dataseries.extent() != NULL);
 	if (nullable) {
-	    DEBUG_INVARIANT(null_offset >= 0, 
-			    "internal error; field not ready");
+	    DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
 	    dataseries.checkOffset(null_offset);
 	    return (*(dataseries.pos.record_start() + null_offset) 
 		    & null_bit_mask) ? true : false;
+	} else {
+	    return false;
+	}
+    }
+
+    /** Returns true iff the field is null in the current record of the
+        @c ExtentSeries.
+
+        Preconditions:
+            - The name of the Field must have been set and the
+              @c ExtentSeries must have a current record.
+
+        \internal
+        need to have these defined in here because we can't use a
+        boolField as the field may come and go as the extent changes,
+        but this should be supported as a legal change to the type. */
+    bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
+	if (nullable) {
+	    DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
+            uint8_t *null_pos = e.fixeddata.begin() + row_offset.row_offset + null_offset;
+	    DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
+	    return (*null_pos & null_bit_mask) ? true : false;
 	} else {
 	    return false;
 	}
@@ -88,9 +109,32 @@ public:
 	    dataseries.checkOffset(null_offset);
 	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
 	    if (val) {
-		*v = (ExtentType::byte)(*v | null_bit_mask);
+                *v = (ExtentType::byte)(*v | null_bit_mask);
 	    } else {
 		*v = (ExtentType::byte)(*v & ~null_bit_mask);
+	    }
+	} else {
+	    INVARIANT(val == false,
+		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
+	}
+    }
+
+    /** Sets the field to null in the @c ExtentSeries' current record.
+
+        Preconditions:
+            - The name of the Field must have been set and the
+              @c ExtentSeries must have a current record. Also,
+              the flag_nullable must have been passed to the constructor. */
+    void setNull(Extent &e, const dataseries::SEP_RowOffset &row_offset, bool val = true) {
+	DEBUG_INVARIANT(&e.getType() == dataseries.getType() && null_offset >= 0,
+			"internal error; extent not set or field not ready");
+	if (nullable) {
+            uint8_t *null_pos = e.fixeddata.begin() + row_offset.row_offset + null_offset;
+	    DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
+	    if (val) {
+		*null_pos = static_cast<uint8_t>(*null_pos | null_bit_mask);
+	    } else {
+		*null_pos = static_cast<uint8_t>(*null_pos & ~null_bit_mask);
 	    }
 	} else {
 	    INVARIANT(val == false,

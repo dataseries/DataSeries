@@ -41,8 +41,11 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     const byte *val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        return rawval(e, row_offset);
+        if (isNull(e, row_offset)) {
+            return NULL;
+        } else {
+            return rawval(e, row_offset);
+        }
     }
 
     /** Returns the size of the field (in bytes). */
@@ -69,9 +72,12 @@ public:
               @c ExtentSeries must have a current record. */
     std::vector<uint8_t>
     arrayVal(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        INVARIANT(!nullable, "unimplemented");
-        const uint8_t *v = val(e, row_offset);
-        return std::vector<uint8_t>(v, v + size());
+        if (isNull(e, row_offset)) {
+            return std::vector<uint8_t>();
+        } else {
+            const uint8_t *v = val(e, row_offset);
+            return std::vector<uint8_t>(v, v + size());
+        }
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.
@@ -109,13 +115,12 @@ public:
              const void *val, uint32_t val_size = 0) {
 	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
 	(void)val_size;
-        INVARIANT(!nullable, "unimplemented");
         if (val == NULL) {
-            FATAL_ERROR("unimplemented");
             setNull(true);
             return;
         }
         memmove(rawval(e, row_offset), val, field_size);
+        setNull(e, row_offset, false);
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.
