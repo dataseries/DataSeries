@@ -13,6 +13,7 @@
 #define DATASERIES_BOOLFIELD_HPP
 
 #include <DataSeries/FixedField.hpp>
+
 /** \brief Accessor for boolean fields.
   *
   */
@@ -41,13 +42,15 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     bool val() const { 
-        if (isNull()) {
-            return default_value;
-        } else {
-            return *rawval() & bit_mask ? true : false; 
-        }
+        return val(*dataseries.extent(), rowPos());
     }
 
+    /** Returns the value of the field in the @c ExtentSeries' current record.
+        If the field is null returns the default value.
+
+        Preconditions:
+            - The name of the Field must have been set and the
+              @c ExtentSeries must have a current record. */
     bool operator() () const {
 	return val();
     }
@@ -60,39 +63,64 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. */
     void set(bool val) {
-        if (val) {
-            *rawval() = (byte)(*rawval() | bit_mask);
-        } else {
-            *rawval() = (byte)(*rawval() & ~bit_mask);
-        }
-        setNull(false);
+        set(*dataseries.extent(), rowPos(), val);
     }
 
+    /** Returns the value of the field in the specified extent and row_offset.
+        If the field is null returns the default value.
+
+        Preconditions:
+        - The name of the Field must have been set. */
     bool val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return default_value;
-        } else {
-            return *rawval(e, row_offset) & bit_mask ? true : false;
-        }
+        return val(e, rowPos(e, row_offset));
     }
 
+    /** Returns the value of the field in the specified extent and row_offset.
+        If the field is null returns the default value.
+
+        Preconditions:
+        - The name of the Field must have been set. */
     bool operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
         return val(e, row_offset);
     }
 
+    /** Sets the value of the field in the specified extent and row_offset.
+        Sets the field to not null.
+
+        Preconditions:
+        - The name of the Field must have been set. */
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, bool val) {
-        if (val) {
-            *rawval(e, row_offset) = (byte)(*rawval(e, row_offset) | bit_mask);
-        } else {
-            *rawval(e, row_offset) = (byte)(*rawval(e, row_offset) & ~bit_mask);
-        }
-        setNull(e, row_offset, false);
+        set(e, rowPos(e, row_offset), val);
     }
-    virtual void newExtentType();
 
     /** The value returned by val for null fields. */
     bool default_value;
+
+    virtual void newExtentType();
 private:
+    bool val(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        uint8_t *byte_pos = row_pos + offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+        if (isNull(e, row_pos)) {
+            return default_value;
+        } else {
+            return *byte_pos & bit_mask ? true : false; 
+        }
+    }
+
+    void set(const Extent &e, uint8_t *row_pos, bool val) {
+        DEBUG_SINVARIANT(&e != NULL);
+        uint8_t *byte_pos = row_pos + offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+        if (val) {
+            *byte_pos = *byte_pos | bit_mask;
+        } else {
+            *byte_pos = *byte_pos & ~bit_mask;
+        }
+        setNull(e, row_pos, false);
+    }
+
     byte bit_mask;
 };
 

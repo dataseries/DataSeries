@@ -62,10 +62,10 @@ public:
         boolField as the field may come and go as the extent changes,
         but this should be supported as a legal change to the type. */
     bool isNull() const {
+        DEBUG_SINVARIANT(dataseries.extent() != NULL);
         if (!nullable) {
             return false;
         } else {
-            DEBUG_SINVARIANT(dataseries.extent() != NULL);
             return isNull(*dataseries.extent(), dataseries.pos.record_start());
         }
     }
@@ -93,18 +93,7 @@ public:
     void setNull(bool val = true) {
 	DEBUG_INVARIANT(dataseries.extent() != NULL && null_offset >= 0,
 			"internal error; extent not set or field not ready");
-	if (nullable) {
-	    dataseries.checkOffset(null_offset);
-	    ExtentType::byte *v = dataseries.pos.record_start() + null_offset;
-	    if (val) {
-                *v = (ExtentType::byte)(*v | null_bit_mask);
-	    } else {
-		*v = (ExtentType::byte)(*v & ~null_bit_mask);
-	    }
-	} else {
-	    INVARIANT(val == false,
-		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
-	}
+        setNull(*dataseries.extent(), dataseries.pos.record_start(), val);
     }
 
     /** Sets the field to null in the @c ExtentSeries' current record.
@@ -116,18 +105,7 @@ public:
     void setNull(Extent &e, const dataseries::SEP_RowOffset &row_offset, bool val = true) {
 	DEBUG_INVARIANT(&e.getType() == dataseries.getType() && null_offset >= 0,
 			"internal error; extent not set or field not ready");
-	if (nullable) {
-            uint8_t *null_pos = e.fixeddata.begin() + row_offset.row_offset + null_offset;
-	    DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
-	    if (val) {
-		*null_pos = static_cast<uint8_t>(*null_pos | null_bit_mask);
-	    } else {
-		*null_pos = static_cast<uint8_t>(*null_pos & ~null_bit_mask);
-	    }
-	} else {
-	    INVARIANT(val == false,
-		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
-	}
+        setNull(e, e.fixeddata.begin() + row_offset.row_offset, val);
     }
 
     /** Returns the name of the field. */
@@ -184,16 +162,35 @@ protected:
         or 0. */
     const uint32_t flags;
 
-private:
-    bool isNull(const Extent &e, uint8_t *row_pos) const {
+protected:
+    uint8_t *getNullPos(const Extent &e, uint8_t *row_pos) const {
         DEBUG_SINVARIANT(nullable);
-
         DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");
         uint8_t *null_pos = row_pos + null_offset;
         DEBUG_SINVARIANT(e.insideExtentFixed(null_pos));
         (void)e; // remove warning about unused e
+        return null_pos;
+    }
+
+    bool isNull(const Extent &e, uint8_t *row_pos) const {
+        uint8_t *null_pos = getNullPos(e, row_pos);
         return (*null_pos & null_bit_mask) ? true : false;
     }
+
+    void setNull(const Extent &e, uint8_t *row_pos, bool val) {
+	if (nullable) {
+            uint8_t *null_pos = getNullPos(e, row_pos);
+            if (val) {
+                *null_pos = (uint8_t)(*null_pos | null_bit_mask);
+            } else {
+                *null_pos = (ExtentType::byte)(*null_pos & ~null_bit_mask);
+            }
+	} else {
+	    INVARIANT(val == false,
+		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
+	}
+    }
+        
 
     std::string fieldname;
 };
