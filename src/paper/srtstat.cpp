@@ -346,7 +346,7 @@ public:
     virtual ~NNInt64Field() { };
 
     int64_t val() const { 
-	return *reinterpret_cast<int64_t *>(rawval());
+	return *reinterpret_cast<int64_t *>(rowPos() + offset);
     }
 };
 
@@ -361,7 +361,7 @@ public:
     virtual ~NNInt32Field() { };
 
     int32_t val() const { 
-	return *reinterpret_cast<int32_t *>(rawval());
+	return *reinterpret_cast<int32_t *>(rowPos() + offset);
     }
 };
 

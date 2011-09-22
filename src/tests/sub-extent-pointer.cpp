@@ -86,6 +86,13 @@ randomVal(NullableField<FixedWidthField> &field, MersenneTwisterRandom &rng) {
     return ret;
 }
 
+// TODO: add field::value_type so that we can write FT::value_type getVal(...)
+// will also remove the need to write getVal<type>
+template<typename T, typename FT> T 
+getVal(const FT &field, const Extent &e, const SEP_RowOffset offset) {
+    return field.val(e, offset);
+}
+
 template<typename T, typename FT> void 
 fillSEP_RowOffset(ExtentSeries &s, FT &field, vector<SEP_RowOffset> &o,
                   vector<T> &r, bool nullable) {
@@ -97,8 +104,16 @@ fillSEP_RowOffset(ExtentSeries &s, FT &field, vector<SEP_RowOffset> &o,
         if (nullable && rng.randInt(4) == 0) {
             val = T();
             field.setNull();
+            SINVARIANT(field.isNull());
+            INVARIANT(getVal<T>(field, *s.getExtent(), s.getRowOffset()) == T(),
+                      format("%d: %s != %s") % i 
+                      % getVal<T>(field, *s.getExtent(), s.getRowOffset()) % T());
         } else {
             field.set(val);
+            if (nullable) {
+                SINVARIANT(!field.isNull());
+            }
+            SINVARIANT(getVal<T>(field, *s.getExtent(), s.getRowOffset()) == val);
         }
         o.push_back(s.getRowOffset());
         r.push_back(val);
@@ -126,51 +141,48 @@ template<> vector<uint8_t> transform(const vector<uint8_t> &update, const vector
     return ret;
 }
 
-// TODO: add field::value_type so that we can write FT::value_type getVal(...)
-// will also remove the need to write getVal<type>
-template<typename T, typename FT> T getVal(const FT &field, Extent &e, const SEP_RowOffset offset) {
-    return field.val(e, offset);
-}
-
-template<typename T, typename FT> T getOp(const FT &field, Extent &e, const SEP_RowOffset offset) {
+template<typename T, typename FT> T 
+getOp(const FT &field, const Extent &e, const SEP_RowOffset offset) {
     return field(e, offset);
 }
 
-template<> string getVal(const Variable32Field &field, Extent &e, const SEP_RowOffset offset) {
-    return field.stringval(e, offset);
-}
-
-template<> string getOp(const Variable32Field &field, Extent &e, const SEP_RowOffset offset) {
-    return string(reinterpret_cast<const char *>(field(e, offset)), field.size(e, offset));
-}
-
 template<> string 
-getVal(const NullableField<Variable32Field> &field, Extent &e, const SEP_RowOffset offset) {
+getVal(const Variable32Field &field, const Extent &e, const SEP_RowOffset offset) {
     return field.stringval(e, offset);
 }
 
 template<> string 
-getOp(const NullableField<Variable32Field> &field, Extent &e, const SEP_RowOffset offset) {
-    return string(reinterpret_cast<const char *>(field(e, offset)), field.size(e, offset));
+getOp(const Variable32Field &field, const Extent &e, const SEP_RowOffset offset) {
+    return string(reinterpret_cast<const char *>(field.val(e, offset)), field.size(e, offset));
+}
+
+template<> string 
+getVal(const NullableField<Variable32Field> &field, const Extent &e, const SEP_RowOffset offset) {
+    return field.stringval(e, offset);
+}
+
+template<> string 
+getOp(const NullableField<Variable32Field> &field, const Extent &e, const SEP_RowOffset offset) {
+    return string(reinterpret_cast<const char *>(field.val(e, offset)), field.size(e, offset));
 }
 
 template<> vector<uint8_t>
-getVal(const FixedWidthField &field, Extent &e, const SEP_RowOffset offset) {
+getVal(const FixedWidthField &field, const Extent &e, const SEP_RowOffset offset) {
     return field.arrayVal(e, offset);
 }
 
 template<> vector<uint8_t>
-getOp(const FixedWidthField &field, Extent &e, const SEP_RowOffset offset) {
+getOp(const FixedWidthField &field, const Extent &e, const SEP_RowOffset offset) {
     return vector<uint8_t>(field.val(e, offset), field.val(e, offset) + field.size());
 }
 
 template<> vector<uint8_t>
-getVal(const NullableField<FixedWidthField> &field, Extent &e, const SEP_RowOffset offset) {
+getVal(const NullableField<FixedWidthField> &field, const Extent &e, const SEP_RowOffset offset) {
     return field.arrayVal(e, offset);
 }
 
 template<> vector<uint8_t>
-getOp(const NullableField<FixedWidthField> &field, Extent &e, const SEP_RowOffset offset) {
+getOp(const NullableField<FixedWidthField> &field, const Extent &e, const SEP_RowOffset offset) {
     if (field.isNull(e, offset)) {
         return vector<uint8_t>();
     } else {
@@ -203,6 +215,18 @@ ostream &operator <<(ostream &to, const vector<uint8_t> &v) {
     to << "(unimplemented)";
     return to;
 }
+}
+
+template<typename T, typename FT> 
+void checkUpdates(FT field, const Extent &e1, const vector<SEP_RowOffset> &o1, const vector<T> &r1,
+                  const Extent &e2, const vector<SEP_RowOffset> &o2, const vector<T> &r2) {
+    // Verify all the updates happened.
+    for (size_t i = 0; i < r1.size(); ++i) {
+        INVARIANT(getOp<T>(field, e1, o1[i]) == r1[i], 
+                  format("%d: %s != %s") % i % getOp<T>(field, e1, o1[i]) % r1[i]);
+        INVARIANT(getVal<T>(field, e2, o2[i]) == r2[i],
+                  format("%d: %s != %s") % i % getOp<T>(field, e2, o2[i]) % r2[i]);
+    }
 }
 
 template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_name) {
@@ -262,13 +286,7 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
         }
     }
 
-    // Verify all the updates happened.
-    for (size_t i = 0; i < r1.size(); ++i) {
-        INVARIANT(getOp<T>(field, e1, o1[i]) == r1[i], 
-                  format("%d: %s != %s") % i % getOp<T>(field, e1, o1[i]) % r1[i]);
-        INVARIANT(getVal<T>(field, e2, o2[i]) == r2[i],
-                  format("%d: %s != %s") % i % getOp<T>(field, e2, o2[i]) % r2[i]);
-    }
+    checkUpdates(field, e1, o1, r1, e2, o2, r2);
 }
        
 template<typename T> void testOneSEP_RowOffset(const string &field_name) {

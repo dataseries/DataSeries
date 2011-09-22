@@ -15,54 +15,16 @@
 #include <DataSeries/FixedField.hpp>
 
 /** \brief Accessor for int64 fields. */
-class Int64Field : public FixedField {
+class Int64Field : public dataseries::detail::SimpleFixedField<int64_t> {
 public:
-    Int64Field(ExtentSeries &_dataseries, const std::string &field, 
-	       int flags = 0, int64_t default_value = 0, bool auto_add = true);
-    virtual ~Int64Field();
-
-    int64_t val() const { 
-	if (isNull()) {
-	    return default_value;
-	} else {
-	    return *(int64_t *)rawval();
-	}
-    }
-    
-    int64_t operator() () const {
-	return val();
-    }
-
-    void set(int64_t val) {
-	*(int64_t *)rawval() = val;
-	setNull(false);
-    }
-    void nset(int64_t val, int64_t null_val = -1) {
-	if (val == null_val) {
-	    setNull(true);
-	} else {
-	    set(val);
-	}
-    }
-
-    int64_t val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return default_value;
-        } else {
-            return *reinterpret_cast<int64_t *>(rawval(e, row_offset));
+    Int64Field(ExtentSeries &dataseries, const std::string &field, 
+	       int flags = 0, int64_t default_value = 0, bool auto_add = true)
+        : dataseries::detail::SimpleFixedField<int64_t>(dataseries, field, flags, default_value)
+    { 
+        if (auto_add) {
+            dataseries.addField(*this);
         }
     }
-
-    int64_t operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return val(e, row_offset);
-    }
-
-    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, int64_t val) {
-        *reinterpret_cast<int64_t *>(rawval(e, row_offset)) = val;
-        setNull(e, row_offset, false);
-    }
-
-    int64_t default_value;
 };
 
 #endif

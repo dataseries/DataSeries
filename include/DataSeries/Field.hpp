@@ -190,6 +190,21 @@ protected:
 		      boost::format("tried to set a non-nullable field %s to null?!") % fieldname);
 	}
     }
+
+    uint8_t *rowPos() const {
+	DEBUG_SINVARIANT(dataseries.extent() != NULL);
+	uint8_t *ret = dataseries.pos.record_start();
+        DEBUG_SINVARIANT(dataseries.extent()->insideExtentFixed(ret));
+        return ret;
+    }
+
+    uint8_t *rowPos(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
+        uint8_t *ret = e.fixeddata.begin() + row_offset.row_offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(ret));
+        return ret;
+    }
+
         
 
     std::string fieldname;

@@ -14,60 +14,16 @@
 
 /** \brief Accessor for byte fields
   */
-class ByteField : public FixedField {
+class ByteField : public dataseries::detail::SimpleFixedField<uint8_t> {
 public:
-    ByteField(ExtentSeries &_dataseries, const std::string &field, 
-	      int flags = 0, byte default_value = 0, bool auto_add = true);
-
-    /** Returns the value of the field in the @c ExtentSeries' current record.
-        If the field is null returns the default value.
-
-        Preconditions:
-            - The name of the Field must have been set and the
-              @c ExtentSeries must have a current record. */
-    byte val() const { 
-        if (isNull()) {
-            return default_value;
-        } else {
-            return *rawval();
+    ByteField(ExtentSeries &dataseries, const std::string &field, 
+	      int flags = 0, byte default_value = 0, bool auto_add = true)
+        : dataseries::detail::SimpleFixedField<uint8_t>(dataseries, field, flags, default_value)
+    { 
+        if (auto_add) {
+            dataseries.addField(*this);
         }
     }
-
-    /** Same as val(), but fewer characters */
-    byte operator() () const {
-	return val();
-    }
-
-    /** Sets the value of the field in the @c ExtentSeries' current record.
-        The field will never be null immediately after a call to set(),
-        regardless of whether the argument is the same as the default value.
-
-        Preconditions:
-            - The name of the Field must have been set and the associated
-              @c ExtentSeries must have a current record. */
-    void set(byte val) {
-        *rawval() = val;
-        setNull(false);
-    }
-
-    byte val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return default_value;
-        } else {
-            return *reinterpret_cast<byte *>(rawval(e, row_offset));
-        }
-    }
-
-    byte operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return val(e, row_offset);
-    }
-
-    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, byte val) {
-        *reinterpret_cast<byte *>(rawval(e, row_offset)) = val;
-        setNull(e, row_offset, false);
-    }
-
-    byte default_value;
 };
 
 #endif

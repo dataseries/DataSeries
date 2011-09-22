@@ -60,10 +60,10 @@ public:
     }
 
     uint8_t val() const { 
-	return *(uint8_t *)rawval();
+	return *(uint8_t *)(rowPos() + offset);
     }
     void set(int32_t val) {
-	*(uint8_t *)rawval() = val;
+	*(uint8_t *)(rowPos() + offset) = val;
 	setNull(false);
     }
 };
@@ -76,10 +76,10 @@ public:
     }
 
     int32_t val() const { 
-	return *(int32_t *)rawval();
+	return *(int32_t *)(rowPos() + offset);
     }
     void set(int32_t val) {
-	*(int32_t *)rawval() = val;
+	*(int32_t *)(rowPos() + offset) = val;
 	setNull(false);
     }
 };

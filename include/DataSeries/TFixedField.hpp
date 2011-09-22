@@ -30,31 +30,6 @@ namespace dataseries {
     template<typename T, bool opt_nullable = false>
     class TFixedField : public FixedField { };
 
-    namespace detail {
-	template<typename T>
-	struct CppTypeToFieldType { 
-	    //	    static const ExtentType::fieldType ft() 
-	};
-
-	template<>
-	struct CppTypeToFieldType<uint8_t> {
-	    static const ExtentType::fieldType ft = ExtentType::ft_byte;
-	};
-	template<>
-	struct CppTypeToFieldType<int32_t> {
-	    static const ExtentType::fieldType ft = ExtentType::ft_int32;
-	};
-	template<>
-	struct CppTypeToFieldType<int64_t> {
-	    static const ExtentType::fieldType ft = ExtentType::ft_int64;
-	};
-	template<>
-	struct CppTypeToFieldType<double> {
-	    static const ExtentType::fieldType ft = ExtentType::ft_double;
-	};
-	
-    };
-
     template<typename FIELD_TYPE>
     class TFixedField<FIELD_TYPE, false> : public FixedField {
 	typedef detail::CppTypeToFieldType<FIELD_TYPE> field_type;
@@ -72,7 +47,7 @@ namespace dataseries {
 	virtual ~TFixedField() { };
 
 	FIELD_TYPE val() const {
-	    return *reinterpret_cast<FIELD_TYPE *>(rawval());
+	    return *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset);
 	}
 
 	FIELD_TYPE operator() () const {
@@ -80,20 +55,20 @@ namespace dataseries {
 	}
 
 	void set(FIELD_TYPE val) {
-	    *reinterpret_cast<FIELD_TYPE *>(rawval()) = val;
+	    *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset) = val;
 	    // Don't need normal setNull(false); field can't be nullable
 	}
 
-        FIELD_TYPE val(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-            return *reinterpret_cast<FIELD_TYPE *>(rawval(e, row_offset));
+        FIELD_TYPE val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+            return *reinterpret_cast<FIELD_TYPE *>(rowPos(e, row_offset) + offset);
         }
 
-        FIELD_TYPE operator ()(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        FIELD_TYPE operator ()(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
             return val(e, row_offset);
         }
 
         void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, FIELD_TYPE val) {
-            *reinterpret_cast<FIELD_TYPE *>(rawval(e, row_offset)) = val;
+            *reinterpret_cast<FIELD_TYPE *>(rowPos(e, row_offset) + offset) = val;
         }
     };
 

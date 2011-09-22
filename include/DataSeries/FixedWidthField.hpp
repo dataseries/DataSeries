@@ -29,10 +29,8 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     const byte *val() const {
-        if (isNull()) {
-            return NULL;
-        }
-        return rawval();
+        DEBUG_SINVARIANT(dataseries.extent() != NULL);
+        return val(*dataseries.extent(), rowPos());
     }
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -41,11 +39,7 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     const byte *val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return NULL;
-        } else {
-            return rawval(e, row_offset);
-        }
+        return val(e, rowPos(e, row_offset));
     }
 
     /** Returns the size of the field (in bytes). */
@@ -61,8 +55,10 @@ public:
     std::vector<uint8_t> arrayVal() const {
         if (isNull()) {
             return std::vector<uint8_t>();
+        } else {
+            const uint8_t *v = val();
+            return std::vector<uint8_t>(v, v + size());
         }
-        return std::vector<uint8_t>(val(), val() + size());
     }
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -91,14 +87,8 @@ public:
 	@param val_size size of the value
     */
     void set(const void *val, uint32_t val_size = 0) {
-	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
-	(void)val_size;
-        if (val == NULL) {
-            setNull(true);
-            return;
-        }
-        memmove(rawval(), val, field_size);
-        setNull(false);
+        DEBUG_SINVARIANT(dataseries.extent() != NULL);
+        set(*dataseries.extent(), rowPos(), val, val_size);
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.
@@ -108,19 +98,14 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. 
 
+        @param e Extent in which set the value
+        @param row_offset Offset of the row to be set
 	@param val source value for the copy
 	@param val_size size of the value
     */
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset,
              const void *val, uint32_t val_size = 0) {
-	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
-	(void)val_size;
-        if (val == NULL) {
-            setNull(true);
-            return;
-        }
-        memmove(rawval(e, row_offset), val, field_size);
-        setNull(e, row_offset, false);
+        set(e, rowPos(e, row_offset), val, val_size);
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.
@@ -143,11 +128,40 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. 
 
+        @param e The extent to update
+        @param row_offset The row to update
 	@param val source value for the copy
     */
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset,
              const std::vector<uint8_t> &val) {
         set(e, row_offset, &val[0], val.size());
+    }
+private:
+    void set(const Extent &e, uint8_t *row_pos, const void *val, uint32_t val_size) {
+        DEBUG_SINVARIANT(&e != NULL);
+        if (val == NULL) {
+            setNull(e, row_pos, true);
+            return;
+        }
+	DEBUG_SINVARIANT(val_size == static_cast<uint32_t>(field_size));
+	(void)val_size;
+
+        uint8_t *byte_pos = row_pos + offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+        
+        memmove(byte_pos, val, field_size);
+        setNull(e, row_pos, false);
+    }
+
+    const byte *val(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        if (nullable && isNull(e, row_pos)) {
+            return NULL;
+        } else {
+            uint8_t *byte_pos = row_pos + offset;
+            DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+            return byte_pos;
+        }
     }
 };
 

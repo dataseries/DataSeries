@@ -62,8 +62,6 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
 	      % field % dataseries.getType()->getName());
 }
 
-FixedField::~FixedField() { }
-
 void FixedField::newExtentType() {
     if (getName().empty())
 	return; // Don't have a name yet.
@@ -75,17 +73,9 @@ void FixedField::newExtentType() {
 	      % getName() % dataseries.getType()->getName());
 }
 
-BoolField::BoolField(ExtentSeries &_dataseries, const std::string &field, 
-		     int flags, bool _default_value, bool auto_add)
-    : FixedField(_dataseries,field, ExtentType::ft_bool,flags),
-      default_value(_default_value), bit_mask(0)
-{ 
-    if (auto_add) {
-	dataseries.addField(*this);
-    }
-}
+namespace dataseries { namespace detail {
 
-void BoolField::newExtentType() {
+void BoolFieldImpl::newExtentType() {
     FixedField::newExtentType();
     if (getName().empty())
 	return; // Not ready yet
@@ -93,37 +83,7 @@ void BoolField::newExtentType() {
     bit_mask = (byte)(1 << bitpos);
 }
 
-ByteField::ByteField(ExtentSeries &_dataseries, const std::string &field, 
-		     int flags, byte _default_value, bool auto_add)
-    : FixedField(_dataseries,field,ExtentType::ft_byte,flags),
-      default_value(_default_value)
-{ 
-    if (auto_add) {
-	dataseries.addField(*this);
-    }
-}
-
-Int32Field::Int32Field(ExtentSeries &_dataseries, const std::string &field, 
-		       int flags, int32_t _default_value, bool auto_add)
-    : FixedField(_dataseries,field, ExtentType::ft_int32, flags),
-      default_value(_default_value)
-{ 
-    if (auto_add) {
-	dataseries.addField(*this);
-    }
-}
-
-Int64Field::Int64Field(ExtentSeries &_dataseries, const std::string &field, 
-		       int flags, int64_t _default_value, bool auto_add)
-    : FixedField(_dataseries,field, ExtentType::ft_int64, flags),
-      default_value(_default_value)
-{ 
-    if (auto_add) {
-	dataseries.addField(*this);
-    }
-}
-
-Int64Field::~Int64Field() { }
+}}
 
 FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &field,
                                  int flags, bool auto_add)
@@ -134,19 +94,10 @@ FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &f
     }
 }
 
-DoubleField::DoubleField(ExtentSeries &_dataseries, const std::string &field,
-			 int flags, double _default_value, bool auto_add)
-    : FixedField(_dataseries,field, ExtentType::ft_double, flags),
-      default_value(_default_value), base_val(Double::NaN)
-{ 
-    if (auto_add) {
-	dataseries.addField(*this);
-    }
-}
-
 void DoubleField::newExtentType() {
-    if (getName().empty())
+    if (getName().empty()) {
 	return;
+    }
     FixedField::newExtentType();
     base_val = dataseries.getType()->getDoubleBase(getName());
     INVARIANT(flags & flag_allownonzerobase || base_val == 0,
@@ -178,11 +129,15 @@ void Variable32Field::newExtentType() {
 	      % getName() % dataseries.getType()->getName());
 }
 
-void Variable32Field::allocateSpace(uint32_t data_size) {
+void Variable32Field::allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_size) {
+    DEBUG_SINVARIANT(e != NULL);
+    DEBUG_SINVARIANT(offset_pos >= 0);
+    uint8_t *fixed_data_ptr = row_pos + offset_pos;
+    DEBUG_SINVARIANT(e->insideExtentFixed(fixed_data_ptr));
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
     if (data_size == 0) {
-	clear(); 
+	clear(*e, row_pos);
 	return;
     }
     int32_t roundup = roundupSize(data_size);
@@ -195,12 +150,11 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
     // supports overwrite.
 
     // need to repack at the end of the variable data
-    int32_t varoffset = dataseries.extent()->variabledata.size();
-    dataseries.extent()->variabledata.resize(varoffset + 4 + roundup);
-    *reinterpret_cast<int32 *>(recordStart() + offset_pos) = varoffset;
+    int32_t varoffset = e->variabledata.size();
+    e->variabledata.resize(varoffset + 4 + roundup);
+    *reinterpret_cast<int32_t *>(fixed_data_ptr) = varoffset;
 
-    int32_t *var_data 
-	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e->variabledata, varoffset));
 					      
     *var_data = data_size;
 
@@ -211,71 +165,15 @@ void Variable32Field::allocateSpace(uint32_t data_size) {
 	SINVARIANT(*var_data == 0);
     }
 
-    selfcheck(dataseries.extent()->variabledata,varoffset);
+    selfcheck(e->variabledata,varoffset);
 #endif
 
-    setNull(false);
+    setNull(*e, row_pos, false);
 }    
 
-void Variable32Field::allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size) {
-    DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
-    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
-
-    if (data_size == 0) {
-	clear(e, fixed_data_ptr); 
-	return;
-    }
-    int32_t roundup = roundupSize(data_size);
-    DEBUG_SINVARIANT((roundup+4) % 8 == 0);
-		    
-    // TODO: we can eventually decide to support overwrites at some
-    // point, but it doesn't seem worth it now since I (Eric) don't
-    // think that feature is used at all -- pack_unique is effectively
-    // the default.  See revs before 2009-05-19 for the version that
-    // supports overwrite.
-
-    // need to repack at the end of the variable data
-    int32_t varoffset = e.variabledata.size();
-    e.variabledata.resize(varoffset + 4 + roundup);
-    *reinterpret_cast<int32 *>(fixed_data_ptr) = varoffset;
-
-    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
-					      
-    *var_data = data_size;
-
-#if LINTEL_DEBUG
-    // we get to avoid zeroing since it happens automatically for us
-    // when we resize the bytearray
-    for(++var_data; roundup > 0; roundup -= 4) {
-	SINVARIANT(*var_data == 0);
-    }
-
-    selfcheck(e.variabledata,varoffset);
-#endif
-
-    // TODO-eric: on refactor this needs to setNull(..., false); currently only caller
-    // does that for us
-}    
-
-void Variable32Field::partialSet(const void *data, uint32_t data_size, uint32_t offset) {
-    if (data_size == 0) {
-	return; // occurs on set("");
-    }
-    SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
-    SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
-    int32_t varoffset = *reinterpret_cast<int32 *>(recordStart() + offset_pos);
-    int32_t *var_data 
-	= reinterpret_cast<int32_t *>(vardata(dataseries.extent()->variabledata, varoffset));
-    
-    uint32_t cur_size = *var_data;
-    INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,
-	      boost::format("%d + %d > %d") % offset % data_size % cur_size);
-    uint8_t *var_bits = reinterpret_cast<byte *>(var_data + 1); // + 1 as it's int32_t
-    memcpy(var_bits + offset, data, data_size);
-}
-
-void Variable32Field::partialSet(Extent &e, const dataseries::SEP_RowOffset &row_offset,
+void Variable32Field::partialSet(Extent *e, uint8_t *row_pos, 
                                  const void *data, uint32_t data_size, uint32_t offset) {
+    DEBUG_SINVARIANT(e != NULL);
     if (data_size == 0) {
 	return; // occurs on set("");
     }
@@ -283,14 +181,13 @@ void Variable32Field::partialSet(Extent &e, const dataseries::SEP_RowOffset &row
     SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
     // TODO: this is almost like rawval() in fixedfield; think about unifying?
-    int32_t varoffset = *reinterpret_cast<int32 *>(e.fixeddata.begin() + row_offset.row_offset
-                                                   + offset_pos);
-    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
+    int32_t varoffset = *reinterpret_cast<int32_t *>(row_pos + offset_pos);
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e->variabledata, varoffset));
     
     uint32_t cur_size = *var_data;
     INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,
 	      boost::format("%d + %d > %d") % offset % data_size % cur_size);
-    uint8_t *var_bits = reinterpret_cast<byte *>(var_data + 1); // + 1 as it's int32_t
+    uint8_t *var_bits = reinterpret_cast<uint8_t *>(var_data + 1); // + 1 as it's int32_t
     memcpy(var_bits + offset, data, data_size);
 }
 

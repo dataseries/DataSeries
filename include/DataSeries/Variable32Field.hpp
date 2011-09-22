@@ -27,73 +27,43 @@ public:
 		    bool auto_add = true);
 
     const byte *val() const {
-        DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
-                        "internal error; extent not set or field not ready");
-        if (isNull()) {
-            return reinterpret_cast<const byte *>(default_value.data());
-        } else {
-            return val(dataseries.extent()->variabledata, getVarOffset());
-        }
+        return val(dataseries.extent(), rowPos());
     }
+
     int32 size() const {
-        DEBUG_INVARIANT(dataseries.extent() != NULL && offset_pos >= 0,
-                        "internal error; extent not set or field not ready");
-        if (isNull()) {
-            return default_value.size();
-        } else {
-            // getVarOffset() has checked that the size is valid.
-            return size(dataseries.extent()->variabledata,getVarOffset());
-        }
+        return size(dataseries.extent(), rowPos());
     }
+
     std::string stringval() const {
-        if (isNull()) {
-            return default_value;
-        } else {
-            return std::string((char *)val(),size());
-        }
+        return stringval(dataseries.extent(), rowPos());
     }
 
     const byte *val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return reinterpret_cast<const byte *>(default_value.data());
-        } else {
-            return val(e.variabledata, getVarOffset(e, row_offset));
-        }
+        return val(&e, rowPos(e, row_offset));
     }
 
     int32 size(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return default_value.size();
-        } else {
-            return size(e.variabledata, getVarOffset(e, row_offset));
-        }
+        return size(&e, rowPos(e, row_offset));
     }
 
-    const byte *operator ()(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return val(e, row_offset);
-    }
-
-    std::string stringval(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        if (isNull(e, row_offset)) {
-            return default_value;
-        } else {
-            return std::string(reinterpret_cast<const char *>(val(e, row_offset)), 
-                               size(e, row_offset));
-        }
-    }
-
-    // TODO-eric: refactor properly
-    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, const std::string &val) {
-        allocateSpace(e, e.fixeddata.begin() + row_offset.row_offset + offset_pos, val.size());
-        partialSet(e, row_offset, val.data(), val.size(), 0);
-        setNull(e, row_offset, false);
+    std::string stringval(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return stringval(&e, rowPos(e, row_offset));
     }
 
     /// Allocate, data_size bytes of space.  The space may not be
     /// initialized.  This function is intended to be used with
     /// partialSet in order to efficiently put together multiple parts
     /// into a single variable32 value.
-    void allocateSpace(uint32_t data_size);
+    void allocateSpace(uint32_t data_size) {
+        allocateSpace(dataseries.extent(), rowPos(), data_size);
+    }
+
+    /// Allocate, data_size bytes of space in Extent e for row row_offset.  The space may not be
+    /// initialized.  This function is intended to be used with partialSet in order to efficiently
+    /// put together multiple parts into a single variable32 value.
+    void allocateSpace(Extent &e, const dataseries::SEP_RowOffset &row_offset, uint32_t data_size) {
+        allocateSpace(&e, rowPos(e, row_offset), data_size);
+    }
 
     /// Overwrite @param data_size bytes at offset @param offset with
     /// the bytes @param data  Invalid to call with data_size +
@@ -102,19 +72,51 @@ public:
     /// @param data The data to set into the field.
     /// @param data_size Number of bytes to copy from data into the field.
     /// @param offset Offset in bytes from the start of the field for the first copied byte.
-    void partialSet(const void *data, uint32_t data_size, uint32_t offset);
+    void partialSet(const void *data, uint32_t data_size, uint32_t offset) {
+        partialSet(dataseries.extent(), rowPos(), data, data_size, offset);
+    }
 
+    /// Overwrite @param data_size bytes at offset @param offset with
+    /// the bytes @param data  Invalid to call with data_size +
+    /// offset > currently allocated space.
+    /// 
+    /// @param e The extent to update.
+    /// @param row_offset The row to update.
+    /// @param data The data to set into the field.
+    /// @param data_size Number of bytes to copy from data into the field.
+    /// @param offset Offset in bytes from the start of the field for the first copied byte.
     void partialSet(Extent &e, const dataseries::SEP_RowOffset &row_offset,
-                    const void *data, uint32_t data_size, uint32_t offset);
+                    const void *data, uint32_t data_size, uint32_t offset) {
+        partialSet(&e, rowPos(e, row_offset), data, data_size, offset);
+    }
 
     void set(const void *data, int32 datasize) {
 	allocateSpace(datasize);
 	partialSet(data, datasize, 0);
     }
 
-    void set(const std::string &data) { // note this doesn't propagate the C '\0' at the end (neither does a C++ string)
-        set(data.data(),data.size());
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset,
+             const void *data, uint32_t data_size) {
+        allocateSpace(e, row_offset, data_size);
+        partialSet(e, row_offset, data, data_size, 0);
     }
+
+    void set(const std::string &data) { // note this doesn't propagate the C '\0' at the end (neither does a C++ string)
+        set(data.data(), data.size());
+    }
+
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, const std::string &val) {
+        set(e, row_offset, val.data(), val.size());
+    }
+
+    void set(Variable32Field &from) {
+        set(from.val(),from.size());
+    }
+
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, Variable32Field &from) {
+        set(e, row_offset, from.val(), from.size());
+    }
+
     void nset(const std::string &val, const std::string &null_val) {
         if (val == null_val) {
             setNull(true);
@@ -122,18 +124,23 @@ public:
             set(val);
         }
     }
-    void set(Variable32Field &from) {
-        set(from.val(),from.size());
+
+    void nset(Extent &e, const dataseries::SEP_RowOffset &row_offset,
+              const std::string &val, const std::string &null_val) {
+        if (val == null_val) {
+            setNull(e, row_offset, true);
+        } else {
+            set(e, row_offset, val);
+        }
     }
+
     void clear() {
-        DEBUG_INVARIANT(dataseries.extent() != NULL,  "internal error; extent not set");
-        clear(*dataseries.extent(), recordStart() + offset_pos);
-	setNull(false);
+        DEBUG_SINVARIANT(dataseries.extent() != NULL);
+        clear(*dataseries.extent(), rowPos());
     }
 
     void clear(Extent &e, const dataseries::SEP_RowOffset &row_offset) {
-        clear(e, e.fixeddata.begin() + row_offset.row_offset + offset_pos);
-        setNull(e, row_offset, false);
+        clear(e, rowPos(e, row_offset));
     }
 
     bool equal(const std::string &to) {
@@ -153,16 +160,21 @@ public:
     }
     std::string default_value;
 protected:
-    void allocateSpace(Extent &e, byte *fixed_data_ptr, uint32_t data_size);
-    void clear(Extent &e, byte *fixed_data_ptr) {
+    friend class Extent;
+
+    void clear(Extent &e, uint8_t *row_offset) {
+        byte *fixed_data_ptr = row_offset + offset_pos;
         DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
         *reinterpret_cast<int32_t *>(fixed_data_ptr) = 0;
 	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(e.variabledata.begin()) == 0);
+        setNull(e, row_offset, false);
     }        
-    
+
+    void allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_size);
+    void partialSet(Extent *e, uint8_t *row_pos, 
+                    const void *data, uint32_t data_size, uint32_t offset);
 
     virtual void newExtentType();
-    friend class Extent;
     static void *vardata(const Extent::ByteArray &varbytes, int32 offset) {
         return (void *)(varbytes.begin() + offset);
     }
@@ -176,25 +188,22 @@ protected:
         return *(const int32 *)(record + offset);
     }
 
-    int32 getVarOffset() const {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
-#if LINTEL_DEBUG
-        dataseries.checkOffset(offset_pos);
-#endif
-        int32 varoffset = getVarOffset(recordStart(), offset_pos);
-#if LINTEL_DEBUG
-        selfcheck(varoffset);
-#endif
-        return varoffset;
-    }
-
-    int32 getVarOffset(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
-        byte *record_start = e.fixeddata.begin() + row_offset.row_offset;
-        IF_LINTEL_DEBUG(e.insideExtentFixed(record_start + offset_pos));
-        int32 var_offset = getVarOffset(record_start, offset_pos);
-        IF_LINTEL_DEBUG(selfcheck(e.variabledata, var_offset));
+    int32_t getVarOffset(const Extent *e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(e != NULL);
+        DEBUG_SINVARIANT(offset_pos >= 0);
+        DEBUG_SINVARIANT(e->insideExtentFixed(row_pos + offset_pos));
+        int32 var_offset = getVarOffset(row_pos, offset_pos);
+        IF_LINTEL_DEBUG(selfcheck(e->variabledata, var_offset));
         return var_offset;
+    }
+        
+    std::string stringval(const Extent *e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(e != NULL);
+        if (nullable && isNull(*e, row_pos)) {
+            return default_value;
+        } else {
+            return std::string(reinterpret_cast<const char *>(val(e, row_pos)), size(e, row_pos));
+        }
     }
 
     void selfcheck() const {
@@ -213,6 +222,25 @@ protected:
     }
     int offset_pos;
     bool unique;
+
+private:
+    const byte *val(const Extent *e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(e != NULL);
+        if (nullable && isNull(*e, row_pos)) {
+            return reinterpret_cast<const byte *>(default_value.data());
+        } else {
+            return val(e->variabledata, getVarOffset(e, row_pos));
+        }
+    }
+
+    int32_t size(const Extent *e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(e != NULL);
+        if (nullable && isNull(*e, row_pos)) {
+            return default_value.size();
+        } else {
+            return size(e->variabledata, getVarOffset(e, row_pos));
+        }
+    }        
 };
 
 #endif

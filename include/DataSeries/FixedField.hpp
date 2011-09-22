@@ -22,43 +22,6 @@ public:
 protected:
     FixedField(ExtentSeries &dataseries, const std::string &field, 
 	       ExtentType::fieldType ft, int flags);
-    virtual ~FixedField();
-
-    // TODO-eric: figure out how to collapse out all the duplicate code we are ending up with.
-    //
-    // Suggestion: make a template class that defines operations such as
-    //
-    // T val() const;
-    //
-    // and then inherit on the specialization of the class.  See ~tucek/tmp/templinheir.cpp (sic -
-    // can't spell inherit consistently) for an example.
-    byte *rawval() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL && offset >= 0,
-			"internal error; extent not set or field not ready");
-	dataseries.checkOffset(offset);
-	return recordStart() + offset;
-    }
-
-    byte *rawval(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        DEBUG_SINVARIANT(offset >= 0 && &e.getType() == dataseries.getType());
-        byte *ret = e.fixeddata.begin() + row_offset.row_offset + offset;
-        DEBUG_SINVARIANT(e.insideExtentFixed(ret));
-        return ret;
-    }
-
-    byte *rowPos() const {
-	DEBUG_INVARIANT(dataseries.extent() != NULL && offset >= 0,
-			"internal error; extent not set or field not ready");
-	dataseries.checkOffset(offset);
-	return recordStart();
-    }
-
-    byte *rowPos(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        DEBUG_SINVARIANT(offset >= 0 && &e.getType() == dataseries.getType());
-        byte *ret = e.fixeddata.begin() + row_offset.row_offset;
-        DEBUG_SINVARIANT(e.insideExtentFixed(ret));
-        return ret;
-    }
 
     virtual void newExtentType();
 
@@ -66,5 +29,143 @@ protected:
     int32_t field_size, offset;
     ExtentType::fieldType fieldtype;
 };
+
+namespace dataseries { namespace detail {
+
+template<typename T, class PT> class CommonFixedField : public PT {
+public:
+    CommonFixedField(ExtentSeries &series, const std::string &field,
+                     int flags, T default_value)
+        : PT(series, field, flags, default_value) { }
+
+    /** Returns the value of the field in the @c ExtentSeries' current record.
+        If the field is null returns the default value.
+
+        Preconditions:
+            - The name of the Field must have been set and the
+              @c ExtentSeries must have a current record. */
+    T val() const { 
+        return this->PT::val(*this->dataseries.extent(), this->rowPos());
+    }
+
+    /** Returns the value of the field in the @c ExtentSeries' current record.
+        If the field is null returns the default value.
+
+        Preconditions:
+            - The name of the Field must have been set and the
+              @c ExtentSeries must have a current record. */
+    T operator() () const {
+	return val();
+    }
+
+    /** Sets the value of the field in the @c ExtentSeries' current record.
+        The field will never be null immediately after a call to set(),
+        regardless of whether the argument is the same as the default value.
+
+        Preconditions:
+            - The name of the Field must have been set and the associated
+              @c ExtentSeries must have a current record. */
+    void set(T val) {
+        this->PT::set(*this->dataseries.extent(), this->rowPos(), val);
+    }
+
+    /** Returns the value of the field in the specified extent and row_offset.
+        If the field is null returns the default value.
+
+        Preconditions:
+        - The name of the Field must have been set. */
+    T val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return this->PT::val(e, this->rowPos(e, row_offset));
+    }
+
+    /** Returns the value of the field in the specified extent and row_offset.
+        If the field is null returns the default value.
+
+        Preconditions:
+        - The name of the Field must have been set. */
+    T operator ()(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return val(e, row_offset);
+    }
+
+    /** Sets the value of the field in the specified extent and row_offset.
+        Sets the field to not null.
+
+        Preconditions:
+        - The name of the Field must have been set. */
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, T val) {
+        this->PT::set(e, this->rowPos(e, row_offset), val);
+    }
+};
+
+template<typename T>
+struct CppTypeToFieldType { 
+    //	    static const ExtentType::fieldType ft() 
+};
+
+template<>
+struct CppTypeToFieldType<uint8_t> {
+    static const ExtentType::fieldType ft = ExtentType::ft_byte;
+};
+template<>
+struct CppTypeToFieldType<int32_t> {
+    static const ExtentType::fieldType ft = ExtentType::ft_int32;
+};
+template<>
+struct CppTypeToFieldType<int64_t> {
+    static const ExtentType::fieldType ft = ExtentType::ft_int64;
+};
+template<>
+struct CppTypeToFieldType<double> {
+    static const ExtentType::fieldType ft = ExtentType::ft_double;
+};
+
+template<typename T> class SimpleFixedFieldImpl : public FixedField {
+public:
+    SimpleFixedFieldImpl(ExtentSeries &series, const std::string &field,
+                         int flags, T default_value) 
+        : FixedField(series, field, CppTypeToFieldType<T>::ft, flags), default_value(default_value)
+    { }
+
+    T default_value;
+    
+protected:
+    T val(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        uint8_t *byte_pos = row_pos + offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+        if (nullable && isNull(e, row_pos)) {
+            return default_value;
+        } else {
+            return *reinterpret_cast<T *>(byte_pos);
+        }
+    }
+
+    void set(const Extent &e, uint8_t *row_pos, T val) {
+        DEBUG_SINVARIANT(&e != NULL);
+        uint8_t *byte_pos = row_pos + offset;
+        DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));
+        *reinterpret_cast<T *>(byte_pos) = val;
+        setNull(e, row_pos, false);
+    }
+};
+
+template<typename T> class SimpleFixedField 
+    : public CommonFixedField<T, SimpleFixedFieldImpl<T> > {
+public:
+    SimpleFixedField(ExtentSeries &series, const std::string &field,
+                     int flags, T default_value) 
+        : CommonFixedField<T, SimpleFixedFieldImpl<T> >(series, field, flags, default_value)
+    { }
+
+    void nset(T val, T null_val = static_cast<T>(-1)) {
+	if (val == null_val) {
+	    this->setNull(true);
+	} else {
+	    this->set(val);
+	}
+    }
+};
+
+}} // namespace
 
 #endif
