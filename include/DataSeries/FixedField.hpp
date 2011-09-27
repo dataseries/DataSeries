@@ -157,6 +157,10 @@ public:
         : CommonFixedField<T, SimpleFixedFieldImpl<T> >(series, field, flags, default_value)
     { }
 
+    // nset is used for data formats where a sentintal value was used as "null" or "default". Note
+    // that in the typical use case, the sentinal value is not typically the same as the value you
+    // would want to use when blindly reading the value.  That is, the default_value is not going
+    // to be the same as the null sentinal.
     void nset(T val, T null_val = static_cast<T>(-1)) {
 	if (val == null_val) {
 	    this->setNull(true);

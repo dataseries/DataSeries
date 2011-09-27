@@ -235,6 +235,7 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     const ExtentType &t(lib.registerTypeR(fixed_width_types_xml));
 
     ExtentSeries s;
+    // TODO-eric: Pretty sure you missed this.
     // TODO-eric: make test with these being const.
     Extent e1(t), e2(t);
     vector<SEP_RowOffset> o1, o2;
@@ -316,6 +317,7 @@ void testSEP_RowOffset() {
     testOneSEP_RowOffset<ExtentType::byte, NullableField<ByteField> >("n-byte");
     testOneSEP_RowOffset<ExtentType::int32, NullableField<Int32Field> >("n-int32");
     testOneSEP_RowOffset<ExtentType::int64, NullableField<Int64Field> >("n-int64");
+    // TODO-eric: did you mean ExtentType::double here instead? compiler gets whiney about it.
     testOneSEP_RowOffset<ExtentType::int32, NullableField<DoubleField> >("n-double");
     testOneSEP_RowOffset<string, NullableField<Variable32Field> >("n-variable32");
     testOneSEP_RowOffset<vector<uint8_t>, NullableField<FixedWidthField> >("n-fw13");
