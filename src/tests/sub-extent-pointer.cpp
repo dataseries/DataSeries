@@ -220,7 +220,7 @@ ostream &operator <<(ostream &to, const vector<uint8_t> &v) {
 template<typename T, typename FT> 
 void checkUpdates(FT field, const Extent &e1, const vector<SEP_RowOffset> &o1, const vector<T> &r1,
                   const Extent &e2, const vector<SEP_RowOffset> &o2, const vector<T> &r2) {
-    // Verify all the updates happened.
+    // Verify all the updates happened; deliberately tested with everything const in the parameters.
     for (size_t i = 0; i < r1.size(); ++i) {
         INVARIANT(getOp<T>(field, e1, o1[i]) == r1[i], 
                   format("%d: %s != %s") % i % getOp<T>(field, e1, o1[i]) % r1[i]);
@@ -235,8 +235,6 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     const ExtentType &t(lib.registerTypeR(fixed_width_types_xml));
 
     ExtentSeries s;
-    // TODO-eric: Pretty sure you missed this.
-    // TODO-eric: make test with these being const.
     Extent e1(t), e2(t);
     vector<SEP_RowOffset> o1, o2;
     vector<T> r1, r2;
@@ -318,7 +316,7 @@ void testSEP_RowOffset() {
     testOneSEP_RowOffset<ExtentType::int32, NullableField<Int32Field> >("n-int32");
     testOneSEP_RowOffset<ExtentType::int64, NullableField<Int64Field> >("n-int64");
     // TODO-eric: did you mean ExtentType::double here instead? compiler gets whiney about it.
-    testOneSEP_RowOffset<ExtentType::int32, NullableField<DoubleField> >("n-double");
+    testOneSEP_RowOffset<double, NullableField<DoubleField> >("n-double");
     testOneSEP_RowOffset<string, NullableField<Variable32Field> >("n-variable32");
     testOneSEP_RowOffset<vector<uint8_t>, NullableField<FixedWidthField> >("n-fw13");
 }
