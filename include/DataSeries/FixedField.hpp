@@ -140,7 +140,7 @@ protected:
         }
     }
 
-    void set(const Extent &e, uint8_t *row_pos, T val) {
+    void set(Extent &e, uint8_t *row_pos, T val) {
         DEBUG_SINVARIANT(&e != NULL);
         uint8_t *byte_pos = row_pos + offset;
         DEBUG_SINVARIANT(e.insideExtentFixed(byte_pos));

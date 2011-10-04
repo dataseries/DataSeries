@@ -12,6 +12,7 @@
 
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
+#include <DataSeries/GeneralField.hpp>
 
 using namespace std;
 using namespace dataseries;
@@ -43,6 +44,63 @@ public:
     NullableField(ExtentSeries &series, const std::string &field)
         : T(series, field, Field::flag_nullable)
     { }
+};
+
+class GFWrapper : boost::noncopyable {
+public:
+    GFWrapper(ExtentSeries &series, const std::string &column) 
+        : gf(GeneralField::create(series, column)) 
+    { }
+
+    ~GFWrapper() {
+        delete gf;
+    }
+
+    void setNull() {
+        gf->setNull();
+    }
+
+    void setNull(Extent &e, const SEP_RowOffset &offset) {
+        gf->setNull(e, offset);
+    }
+
+    bool isNull() {
+        return gf->isNull();
+    }
+
+    bool isNull(Extent &e, const SEP_RowOffset &offset) {
+        return gf->isNull(e, offset);
+    }
+
+    void set(const GeneralValue &v) {
+        gf->set(v);
+    }
+
+    void set(Extent &e, const SEP_RowOffset &offset, const GeneralValue &v) {
+        gf->set(e, offset, v);
+    }
+
+    GeneralValue val() const {
+        return gf->val();
+    }
+
+    GeneralValue operator()() const {
+        return val();
+    }
+
+    GeneralValue val(const Extent &e, const SEP_RowOffset &offset) const {
+        return gf->val(e, offset);
+    }
+
+    GeneralValue operator()(const Extent &e, const SEP_RowOffset &offset) const {
+        return val(e, offset);
+    }
+
+    ExtentType::fieldType getType() {
+        return gf->getType();
+    }
+private:
+    GeneralField *gf;
 };
 
 template<typename T, typename FT> T randomVal(FT &field, MersenneTwisterRandom &rng) {
@@ -83,6 +141,23 @@ randomVal(NullableField<FixedWidthField> &field, MersenneTwisterRandom &rng) {
     for (size_t i=0; i < ret.size(); ++i) {
         ret[i] = rng.randInt(256);
     }
+    return ret;
+}
+
+template<> GeneralValue randomVal(GFWrapper &field, MersenneTwisterRandom &rng) {
+    GeneralValue ret;
+    switch(field.getType())
+        {
+        case ExtentType::ft_unknown: FATAL_ERROR("?"); break;
+        case ExtentType::ft_bool: FATAL_ERROR("?");
+        case ExtentType::ft_byte: ret.setByte(rng.randInt(256)); break;
+        case ExtentType::ft_int32: 
+        case ExtentType::ft_int64:
+        case ExtentType::ft_double:
+        case ExtentType::ft_variable32:
+        case ExtentType::ft_fixedwidth:
+            FATAL_ERROR("?");
+        }
     return ret;
 }
 
@@ -138,6 +213,18 @@ template<> vector<uint8_t> transform(const vector<uint8_t> &update, const vector
             ret[i] += offset[i];
         }
     }
+    return ret;
+}
+
+template<> GeneralValue transform(const GeneralValue &update, const GeneralValue &offset) {
+    GeneralValue ret;
+
+    switch (offset.getType())
+        {
+        case ExtentType::ft_unknown: FATAL_ERROR("?");
+        case ExtentType::ft_byte: ret.setByte(update.valByte() + offset.valByte()); break;
+        default: FATAL_ERROR("?");
+        }
     return ret;
 }
 
@@ -218,7 +305,7 @@ ostream &operator <<(ostream &to, const vector<uint8_t> &v) {
 }
 
 template<typename T, typename FT> 
-void checkUpdates(FT field, const Extent &e1, const vector<SEP_RowOffset> &o1, const vector<T> &r1,
+void checkUpdates(FT &field, const Extent &e1, const vector<SEP_RowOffset> &o1, const vector<T> &r1,
                   const Extent &e2, const vector<SEP_RowOffset> &o2, const vector<T> &r2) {
     // Verify all the updates happened; deliberately tested with everything const in the parameters.
     for (size_t i = 0; i < r1.size(); ++i) {
@@ -239,11 +326,11 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     vector<SEP_RowOffset> o1, o2;
     vector<T> r1, r2;
 
-    FT field(s, field_name);
+    s.setExtent(e1);
 
+    FT field(s, field_name); // need to make after series so that type is defined for general fields
     bool nullable = t.getNullable(field_name);
 
-    s.setExtent(e1);
     SEP_RowOffset first_e1(s.getRowOffset());
     fillSEP_RowOffset(s, field, o1, r1, nullable);
     s.setExtent(e2);
@@ -292,7 +379,6 @@ template<typename T> void testOneSEP_RowOffset(const string &field_name) {
     testOneSEP_RowOffset<T, TFixedField<T> >(field_name);
 }
 
-
 void testSEP_RowOffset() {
     // Template fields
     testOneSEP_RowOffset<uint8_t>("byte");
@@ -315,10 +401,13 @@ void testSEP_RowOffset() {
     testOneSEP_RowOffset<ExtentType::byte, NullableField<ByteField> >("n-byte");
     testOneSEP_RowOffset<ExtentType::int32, NullableField<Int32Field> >("n-int32");
     testOneSEP_RowOffset<ExtentType::int64, NullableField<Int64Field> >("n-int64");
-    // TODO-eric: did you mean ExtentType::double here instead? compiler gets whiney about it.
     testOneSEP_RowOffset<double, NullableField<DoubleField> >("n-double");
     testOneSEP_RowOffset<string, NullableField<Variable32Field> >("n-variable32");
     testOneSEP_RowOffset<vector<uint8_t>, NullableField<FixedWidthField> >("n-fw13");
+
+    // General fields
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("byte");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-byte");
 }
 
 int main() {

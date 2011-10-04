@@ -75,7 +75,7 @@ public:
     enum fieldType {
         /** This is used as a default value in several places where
             the type needs to be set later or to indicate a nonexistent
-            value */
+            value, i.e. a null value. */
         ft_unknown = 0,
         /** Indicates a field which can hold true and false values. 
             Corresponds to the C++ type @c bool. */

@@ -24,6 +24,8 @@ public:
             dataseries.addField(*this);
         }
     }
+
+    friend class GF_Byte;
 };
 
 #endif

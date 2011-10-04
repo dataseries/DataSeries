@@ -163,6 +163,8 @@ protected:
     const uint32_t flags;
 
 protected:
+    friend class GeneralField; // access to rowPos(...)
+
     uint8_t *getNullPos(const Extent &e, uint8_t *row_pos) const {
         DEBUG_SINVARIANT(nullable);
         DEBUG_INVARIANT(null_offset >= 0, "internal error; field not ready");

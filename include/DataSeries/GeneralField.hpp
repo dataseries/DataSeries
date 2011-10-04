@@ -31,18 +31,14 @@ class GeneralField;
 
 /** \brief Discriminated union capable of holding any value
   * that could be stored in dataseries.
-
- * Sometimes it is necessary to store the values associated with
- * GeneralFields so that they can be used for comparisons in the
- * future.  Rather than having programs convert to a specific type,
- * such as a double for the numeric fields, it seems better to have a
- * general value type with a collection of operations on that type
- * that would allow additional values to be added to dataseries in the
- * future. It is currently invalid to change the type of a general
- * value once it has acquired a type. 
- *
- * TODO: doesn't correctly track nulls right now, not clear
- * exactly the right way to implement that. */
+  *
+  * Sometimes it is necessary to store the values associated with GeneralFields so that they can be
+  * used for comparisons in the future.  Rather than having programs convert to a specific type,
+  * such as a double for the numeric fields, it seems better to have a general value type with a
+  * collection of operations on that type that would allow additional values to be added to
+  * dataseries in the future.  A null value is represented as a field type of unknown, because that
+  * means that GeneralValue() == null.
+  */
 
 class GeneralValue {
 public:
@@ -66,6 +62,11 @@ public:
 	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
+    GeneralValue(const GeneralField &from, const Extent &e,
+                 const dataseries::SEP_RowOffset &row_offset)
+        : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    { set(from, e, row_offset); }
+
     ~GeneralValue() { 
 	delete v_variable32; 
     }
@@ -88,6 +89,9 @@ public:
 	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
     }
 
+    void set(const GeneralField &from, const Extent &e,
+             const dataseries::SEP_RowOffset &row_offset);
+
     /** \brief return this < gv 
 
      * for ft_unknown, always false
@@ -103,7 +107,7 @@ public:
      * comparison. */
     bool strictlylessthan(const GeneralValue &gv) const; 
 
-    /** return this == gv */
+    /** return this == gv; null == null */
     bool equal(const GeneralValue &gv) const;
 
     /** allowing FILE * rather than std::ostream as std::ostream is
@@ -123,6 +127,7 @@ public:
     void setInt64(int64_t val);
     void setDouble(double val);
     void setVariable32(const std::string &from);
+    // TODO: missing fixed-width field sub-variant
 
     bool valBool() const;
     uint8_t valByte() const;
@@ -212,8 +217,21 @@ public:
     virtual void write(FILE *to) = 0;
     virtual void write(std::ostream &to) = 0;
 
-    virtual bool isNull() = 0;
-    virtual void setNull(bool val = true) = 0;
+    bool isNull() const {
+        return typed_field.isNull();
+    }
+
+    void setNull(bool val = true) {
+        typed_field.setNull(val);
+    }
+
+    bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return typed_field.isNull(e, row_offset);
+    }
+
+    void setNull(Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        typed_field.setNull(e, row_offset);
+    }
 
     // set will do conversion/fail as specified for each GF type
     virtual void set(GeneralField *from) = 0;
@@ -228,11 +246,19 @@ public:
 	set(&from);
     }
 
+    void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, 
+             const GeneralValue &from) {
+        set(&e, typed_field.rowPos(e, row_offset), from);
+    }
+
     /// Set a general field from a string, equivalent to creating a general
     /// value and setting from that value.
     virtual void set(const std::string &from);
 
     GeneralValue val() const { return GeneralValue(this); }
+    GeneralValue val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        return GeneralValue(*this, e, row_offset);
+    }
     virtual double valDouble() = 0;
 
     ExtentType::fieldType getType() const { return gftype; }
@@ -242,6 +268,8 @@ public:
     /// Delete all the fields and clear the vector.
     static void deleteFields(std::vector<GeneralField *> &fields);
 protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
 				     const std::string &option_name) {
@@ -249,9 +277,10 @@ protected:
     }
     ExtentType::fieldType gftype;
     friend class GeneralValue;
-    GeneralField(ExtentType::fieldType _gftype)
-	: gftype(_gftype),csvEnabled(false) {  }
-    bool csvEnabled;
+    GeneralField(ExtentType::fieldType gftype, Field &typed_field)
+	: gftype(gftype), csv_enabled(false), typed_field(typed_field) { }
+    bool csv_enabled;
+    Field &typed_field;
 };
 
 class GF_Bool : public GeneralField {
@@ -261,9 +290,6 @@ public:
 
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
-
-    virtual bool isNull();
-    virtual void setNull(bool val);
 
     // set(bool) -> copy
     // set(byte,int32,int64,double) -> val = from->val == 0
@@ -283,6 +309,8 @@ public:
 
     virtual double valDouble();
 
+    // TODO-reviewer: we override the type of val() in the subclass, this seems a little squirrly.
+    // Possibly making val() virtual and having it always return GeneralValue is the right solution.
     bool val() const { return myfield.val(); }
 
     BoolField myfield;
@@ -297,9 +325,6 @@ public:
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
 
-    virtual bool isNull();
-    virtual void setNull(bool val);
-
     // set(bool) -> 1 if true, 0 if false
     // set(byte, int32, int64) -> val = from->val & 0xFF;
     // set(double) -> val = (byte)round(from->val);
@@ -313,6 +338,8 @@ public:
 
     char *printspec;
     ByteField myfield;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int32 : public GeneralField {
@@ -322,9 +349,6 @@ public:
 
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
-
-    virtual bool isNull();
-    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
@@ -354,9 +378,6 @@ public:
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
 
-    virtual bool isNull();
-    virtual void setNull(bool val);
-
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(int64_t v) { myfield.set(v);}
@@ -380,9 +401,6 @@ public:
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
 
-    virtual bool isNull();
-    virtual void setNull(bool val);
-
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
 
@@ -404,9 +422,6 @@ public:
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
 
-    virtual bool isNull();
-    virtual void setNull(bool val);
-
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
 
@@ -426,9 +441,6 @@ public:
 
     virtual void write(FILE *to);
     virtual void write(std::ostream &to);
-
-    virtual bool isNull();
-    virtual void setNull(bool val);
 
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
