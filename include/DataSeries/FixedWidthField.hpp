@@ -138,6 +138,8 @@ public:
     }
 
     // TODO: should implment nset as well
+
+    friend class GF_FixedWidth;
 private:
     void set(const Extent &e, uint8_t *row_pos, const void *val, uint32_t val_size) {
         DEBUG_SINVARIANT(&e != NULL);

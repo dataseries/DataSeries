@@ -23,6 +23,7 @@ public:
             dataseries.addField(*this);
         }
     }
+    friend class GF_Int32;
 };
 
 #endif

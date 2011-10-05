@@ -90,15 +90,13 @@ public:
         partialSet(&e, rowPos(e, row_offset), data, data_size, offset);
     }
 
-    void set(const void *data, int32 datasize) {
-	allocateSpace(datasize);
-	partialSet(data, datasize, 0);
+    void set(const void *data, int32 data_size) {
+        set(dataseries.extent(), rowPos(), data, data_size);
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset,
              const void *data, uint32_t data_size) {
-        allocateSpace(e, row_offset, data_size);
-        partialSet(e, row_offset, data, data_size, 0);
+        set(&e, rowPos(e, row_offset), data, data_size);
     }
 
     void set(const std::string &data) { // note this doesn't propagate the C '\0' at the end (neither does a C++ string)
@@ -161,6 +159,7 @@ public:
     std::string default_value;
 protected:
     friend class Extent;
+    friend class GF_Variable32;
 
     void clear(Extent &e, uint8_t *row_offset) {
         byte *fixed_data_ptr = row_offset + offset_pos;
@@ -169,6 +168,11 @@ protected:
 	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(e.variabledata.begin()) == 0);
         setNull(e, row_offset, false);
     }        
+
+    void set(Extent *e, uint8_t *row_pos, const void *data, uint32_t data_size) {
+        allocateSpace(e, row_pos, data_size);
+        partialSet(e, row_pos, data, data_size, 0);
+    }
 
     void allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_size);
     void partialSet(Extent *e, uint8_t *row_pos, 

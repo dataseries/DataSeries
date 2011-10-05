@@ -97,6 +97,8 @@ public:
             dataseries.addField(*this);
         }
     }
+
+    friend class GF_Bool;
 };
 
 #endif

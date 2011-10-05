@@ -56,6 +56,8 @@ public:
   
     double base_val;
     virtual void newExtentType();
+
+    friend class GF_Double;
 };
 
 #endif

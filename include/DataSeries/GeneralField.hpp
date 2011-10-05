@@ -127,15 +127,14 @@ public:
     void setInt64(int64_t val);
     void setDouble(double val);
     void setVariable32(const std::string &from);
-    // TODO: missing fixed-width field sub-variant
+    void setFixedWidth(const std::string &from);
 
     bool valBool() const;
     uint8_t valByte() const;
     int32_t valInt32() const;
     int64_t valInt64() const;
     double valDouble() const;
-    const std::string valString() const;
-
+    const std::string valString() const; // Either variable32 or fixedwidth
 protected:
     // let all of the general field classes get at our value/type
     friend class GF_Bool;
@@ -143,8 +142,8 @@ protected:
     friend class GF_Int32;
     friend class GF_Int64;
     friend class GF_Double;
-    friend class GF_FixedWidth;
     friend class GF_Variable32;
+    friend class GF_FixedWidth;
     ExtentType::fieldType gvtype;
     /// \cond INTERNAL_ONLY
     union gvvalT {
@@ -315,6 +314,8 @@ public:
 
     BoolField myfield;
     std::string s_true, s_false;  
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Byte : public GeneralField {
@@ -367,6 +368,8 @@ public:
     char *printspec;
     ExtentType::int32 divisor;
     Int32Field myfield;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int64 : public GeneralField {
@@ -391,6 +394,8 @@ public:
     char *printspec;
     int64_t divisor, offset;
     bool offset_first;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Double : public GeneralField {
@@ -412,25 +417,8 @@ public:
     DoubleField *relative_field;
     char *printspec;
     double offset, multiplier;
-};
-
-class GF_FixedWidth : public GeneralField {
-public:
-    GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
-    virtual ~GF_FixedWidth();
-
-    virtual void write(FILE *to);
-    virtual void write(std::ostream &to);
-
-    virtual void set(GeneralField *from);
-    virtual void set(const GeneralValue *from);
-
-    virtual double valDouble();
-
-    const uint8_t* val() const { return myfield.val(); }
-    const int32_t size() const { return myfield.size(); }
-
-    FixedWidthField myfield;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Variable32 : public GeneralField {
@@ -472,6 +460,29 @@ public:
     char *printspec;
     printstyle_t printstyle;
     Variable32Field myfield;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+};
+
+class GF_FixedWidth : public GeneralField {
+public:
+    GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
+    virtual ~GF_FixedWidth();
+
+    virtual void write(FILE *to);
+    virtual void write(std::ostream &to);
+
+    virtual void set(GeneralField *from);
+    virtual void set(const GeneralValue *from);
+
+    virtual double valDouble();
+
+    const uint8_t* val() const { return myfield.val(); }
+    const int32_t size() const { return myfield.size(); }
+
+    FixedWidthField myfield;
+protected:
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 /** \brief Copies records from one @c Extent to another.

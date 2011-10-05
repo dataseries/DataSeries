@@ -99,6 +99,12 @@ public:
     ExtentType::fieldType getType() {
         return gf->getType();
     }
+
+    int32_t fixedWidthSize() {
+        GF_FixedWidth *fw = reinterpret_cast<GF_FixedWidth *>(gf);
+        SINVARIANT(fw != NULL);
+        return fw->size();
+    }
 private:
     GeneralField *gf;
 };
@@ -107,18 +113,26 @@ template<typename T, typename FT> T randomVal(FT &field, MersenneTwisterRandom &
     return static_cast<T>(rng.randInt());
 }
 
-template<> string randomVal(Variable32Field &field, MersenneTwisterRandom &rng) {
+string randomString(MersenneTwisterRandom &rng, size_t size) {
     string ret;
-    ret.resize(rng.randInt(256));
+    ret.resize(size);
     for (size_t i=0; i < ret.size(); ++i) {
         ret[i] = rng.randInt(256);
     }
     return ret;
 }
 
+template<> string randomVal(Variable32Field &field, MersenneTwisterRandom &rng) {
+    return randomString(rng, rng.randInt(256));
+}
+
 template<> string randomVal(NullableField<Variable32Field> &field, MersenneTwisterRandom &rng) {
-    string ret;
-    ret.resize(rng.randInt(256));
+    return randomString(rng, rng.randInt(256));
+}
+
+vector<uint8_t> randomArray(MersenneTwisterRandom &rng, size_t size) {
+    vector<uint8_t> ret;
+    ret.resize(size);
     for (size_t i=0; i < ret.size(); ++i) {
         ret[i] = rng.randInt(256);
     }
@@ -126,22 +140,12 @@ template<> string randomVal(NullableField<Variable32Field> &field, MersenneTwist
 }
 
 template<> vector<uint8_t> randomVal(FixedWidthField &field, MersenneTwisterRandom &rng) {
-    vector<uint8_t> ret;
-    ret.resize(field.size());
-    for (size_t i=0; i < ret.size(); ++i) {
-        ret[i] = rng.randInt(256);
-    }
-    return ret;
+    return randomArray(rng, field.size());
 }
 
 template<> vector<uint8_t> 
 randomVal(NullableField<FixedWidthField> &field, MersenneTwisterRandom &rng) {
-    vector<uint8_t> ret;
-    ret.resize(field.size());
-    for (size_t i=0; i < ret.size(); ++i) {
-        ret[i] = rng.randInt(256);
-    }
-    return ret;
+    return randomArray(rng, field.size());
 }
 
 template<> GeneralValue randomVal(GFWrapper &field, MersenneTwisterRandom &rng) {
@@ -149,14 +153,15 @@ template<> GeneralValue randomVal(GFWrapper &field, MersenneTwisterRandom &rng) 
     switch(field.getType())
         {
         case ExtentType::ft_unknown: FATAL_ERROR("?"); break;
-        case ExtentType::ft_bool: FATAL_ERROR("?");
+        case ExtentType::ft_bool: ret.setBool(rng.randInt(2) ? true : false); break;
         case ExtentType::ft_byte: ret.setByte(rng.randInt(256)); break;
-        case ExtentType::ft_int32: 
-        case ExtentType::ft_int64:
-        case ExtentType::ft_double:
-        case ExtentType::ft_variable32:
-        case ExtentType::ft_fixedwidth:
-            FATAL_ERROR("?");
+        case ExtentType::ft_int32: ret.setInt32(rng.randInt()); break;
+        case ExtentType::ft_int64: ret.setInt64(rng.randInt()); break;
+        case ExtentType::ft_double: ret.setDouble(rng.randInt() / 10.0); break;
+        case ExtentType::ft_variable32: 
+            ret.setVariable32(randomString(rng, rng.randInt(256))); break;
+        case ExtentType::ft_fixedwidth: 
+            ret.setFixedWidth(randomString(rng, field.fixedWidthSize())); break;
         }
     return ret;
 }
@@ -222,7 +227,27 @@ template<> GeneralValue transform(const GeneralValue &update, const GeneralValue
     switch (offset.getType())
         {
         case ExtentType::ft_unknown: FATAL_ERROR("?");
+        case ExtentType::ft_bool: ret.setBool(update.valBool() ^ offset.valBool()); break;
         case ExtentType::ft_byte: ret.setByte(update.valByte() + offset.valByte()); break;
+        case ExtentType::ft_int32: ret.setInt32(update.valInt32() + offset.valInt32()); break;
+        case ExtentType::ft_int64: ret.setInt64(update.valInt64() + offset.valInt64()); break;
+        case ExtentType::ft_double: ret.setDouble(update.valDouble() + offset.valDouble()); break;
+        case ExtentType::ft_variable32: 
+            ret.setVariable32(update.valString() + offset.valString()); break;
+        case ExtentType::ft_fixedwidth: {
+            string u = update.valString();
+            string o = offset.valString();
+            if (u.empty()) {
+                ret.setFixedWidth(o);
+            } else {
+                SINVARIANT(u.size() == o.size());
+                for (size_t i=0; i < u.size(); ++i) {
+                    u[i] += o[i];
+                }
+                ret.setFixedWidth(u);
+            }
+        }
+            break;
         default: FATAL_ERROR("?");
         }
     return ret;
@@ -406,8 +431,21 @@ void testSEP_RowOffset() {
     testOneSEP_RowOffset<vector<uint8_t>, NullableField<FixedWidthField> >("n-fw13");
 
     // General fields
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("bool");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-bool");
     testOneSEP_RowOffset<GeneralValue, GFWrapper>("byte");
     testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-byte");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("int32");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-int32");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("int64");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-int64");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("double");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-double");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("variable32");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-variable32");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("fw7");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("fw20");
+    testOneSEP_RowOffset<GeneralValue, GFWrapper>("n-fw13");
 }
 
 int main() {

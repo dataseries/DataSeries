@@ -25,6 +25,7 @@ public:
             dataseries.addField(*this);
         }
     }
+    friend class GF_Int64;
 };
 
 #endif
