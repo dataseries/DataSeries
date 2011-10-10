@@ -137,6 +137,11 @@ SET(DATASERIES_POD2MAN_RELEASE "DataSeries ${DATASERIES_VERSION}")
 OPTION(BUILD_PAPER "Build the src/paper programs" OFF)
 OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 
+####
+
+# TODO-eric: move these bits into lintel -- remove circular dependency
+INCLUDE(FindThrift)
+
 #### RPath
 
 OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)

@@ -804,16 +804,14 @@ int parseopts(int argc, char *argv[], SequenceModule &ipSequence) {
     return optind;
 }
 
-void
-printResult(DataSeriesModule *mod)
-{
+void printResult(SequenceModule::DsmPtr mod) {
     if (mod == NULL) {
 	return;
     }
-    RowAnalysisModule *rowmod = dynamic_cast<RowAnalysisModule *>(mod);
+    RowAnalysisModule *rowmod = dynamic_cast<RowAnalysisModule *>(mod.get());
     if (rowmod == NULL && 
-	(dynamic_cast<PrefetchBufferModule *>(mod) != NULL ||
-	 dynamic_cast<DStoTextModule *>(mod) != NULL)) {
+	(dynamic_cast<PrefetchBufferModule *>(mod.get()) != NULL ||
+	 dynamic_cast<DStoTextModule *>(mod.get()) != NULL)) {
 	return; // this is ok
     }
 	

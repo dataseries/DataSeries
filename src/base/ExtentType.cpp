@@ -8,6 +8,7 @@
 /** @file
     ExtentType class implementation
 */
+#include <boost/assign/list_of.hpp>
 
 #include <vector>
 
@@ -642,6 +643,16 @@ ExtentType::fieldType ExtentType::getFieldType(int column) const {
 	      boost::format("internal error, column %d out of range [0..%d]\n")
 	      % column % (rep.field_info.size()-1));
     return rep.field_info[column].type;
+}
+
+namespace {
+    const static vector<string> field_types = boost::assign::list_of("unknown")("bool")("byte")("int32")
+        ("int64")("double")("variable32")("fixedwidth");
+}
+
+const string &ExtentType::fieldTypeToStr(fieldType type) {
+    SINVARIANT(type >= 0 && static_cast<size_t>(type) < field_types.size());
+    return field_types[type];
 }
 
 bool ExtentType::getUnique(int column) const {

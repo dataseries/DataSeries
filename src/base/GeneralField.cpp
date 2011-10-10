@@ -22,12 +22,13 @@ using namespace std;
 using boost::format;
 
 namespace {
-    string s_true("true");
-    string s_false("false");
-    string s_on("on");
-    string s_off("off");
-    string s_yes("yes");
-    string s_no("no");
+    static const string s_true("true");
+    static const string s_false("false");
+    static const string s_on("on");
+    static const string s_off("off");
+    static const string s_yes("yes");
+    static const string s_no("no");
+    static const string s_null("null");
 }
 
 // TODO: performance time boost::format, and if possible, unify the
@@ -227,8 +228,7 @@ void GeneralValue::setDouble(double val) {
 }
 
 void GeneralValue::setVariable32(const string &val) {
-    INVARIANT(gvtype == ExtentType::ft_unknown || 
-	      gvtype == ExtentType::ft_variable32,
+    INVARIANT(gvtype == ExtentType::ft_unknown || gvtype == ExtentType::ft_variable32,
 	      "invalid to change type of generalvalue");
     gvtype = ExtentType::ft_variable32;
     if (NULL == v_variable32) v_variable32 = new string;
@@ -246,7 +246,8 @@ void GeneralValue::setFixedWidth(const string &val) {
 
 bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
     INVARIANT(gvtype == gv.gvtype,
-	      "currently invalid to compare general values of different types");
+	      format("currently invalid to compare general values of different types %s != %s")
+              % ExtentType::fieldTypeToStr(gvtype) % ExtentType::fieldTypeToStr(gv.gvtype));
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: return false;
@@ -312,7 +313,7 @@ void GeneralValue::write(FILE *to) {
 	    fputs("*unknown-type*", to);
 	    break;
 	case ExtentType::ft_bool:
-	    fputs((gvval.v_bool ? "true" : "false"), to);
+	    fputs((gvval.v_bool ? s_true.c_str() : s_false.c_str()), to);
 	    break;
 	case ExtentType::ft_byte:
 	    fprintf(to,"%d", static_cast<uint32_t>(gvval.v_byte));
@@ -324,6 +325,9 @@ void GeneralValue::write(FILE *to) {
 	    fprintf(to, long_int_format(),gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
+            // TODO: change all of the formats to be the same, unclear what the right choice
+            // should be.  Too much precision leads to differing output; too little loses 
+            // information.
 	    fprintf(to,"%.12g",gvval.v_double);
 	    break;
 	case ExtentType::ft_variable32:	case ExtentType::ft_fixedwidth: 
@@ -342,19 +346,19 @@ ostream &GeneralValue::write(ostream &to) const {
 	    to << "*unknown-type*";
 	    break;
 	case ExtentType::ft_bool:
-	    to << (gvval.v_bool ? "true" : "false");
+	    to << (gvval.v_bool ? s_true : s_false);
 	    break;
 	case ExtentType::ft_byte:
-	    to << boost::format("%d") % static_cast<uint32_t>(gvval.v_byte);
+	    to << format("%d") % static_cast<uint32_t>(gvval.v_byte);
 	    break;
 	case ExtentType::ft_int32:
-	    to << boost::format("%d") % gvval.v_int32;
+	    to << format("%d") % gvval.v_int32;
 	    break;
 	case ExtentType::ft_int64:
-	    to << boost::format("%lld") % gvval.v_int64;
+	    to << format("%lld") % gvval.v_int64;
 	    break;
 	case ExtentType::ft_double:
-	    to << boost::format("%.12g") % gvval.v_double;
+	    to << format("%.12g") % gvval.v_double;
 	    break;
 	case ExtentType::ft_variable32: case ExtentType::ft_fixedwidth: {
 	    to << maybehexstring(*v_variable32);
@@ -473,26 +477,27 @@ double GeneralValue::valDouble() const {
     return 0;
 }
 
+// TODO: can probably refactor this to use ostrstream
 const std::string GeneralValue::valString() const {
     switch(gvtype) 
         {
         case ExtentType::ft_unknown: return std::string();
 	case ExtentType::ft_bool: return gvval.v_bool ? s_true : s_false;
 	case ExtentType::ft_byte:
-	    FATAL_ERROR("haven't decided how to translate byte to strings");
+	    return str(format("%d") % static_cast<uint32_t>(gvval.v_byte));
 	    break;
 	case ExtentType::ft_int32:
-	    FATAL_ERROR("haven't decided how to translate int32 to strings");
+	    return str(format("%d") % gvval.v_int32);
 	    break;
 	case ExtentType::ft_int64:
-	    FATAL_ERROR("haven't decided how to translate int64 to strings, Need to take printspec into account, can't just use boost::lexical_cast");
+            return str(format("%d") % gvval.v_int64);
 	    break;
 	case ExtentType::ft_double:
-	    FATAL_ERROR("haven't decided how to translate double to strings");
+            return str(format("%.20g") % gvval.v_double);
 	    break;
-            FATAL_ERROR("haven't decided how to translate byte arrays to strings");
-            break;
-	case ExtentType::ft_variable32: case ExtentType::ft_fixedwidth: return *v_variable32;
+	case ExtentType::ft_fixedwidth:	case ExtentType::ft_variable32:
+	    return *v_variable32;
+	    break;
 	default:
 	    FATAL_ERROR("internal error, unexpected type"); 
     }
@@ -609,8 +614,7 @@ void GF_Bool::set(GeneralField *from) {
 	    FATAL_ERROR("fixedwidth -> bool not implemented yet");
             break;
 	default: 
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -661,8 +665,7 @@ void GF_Byte::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val());
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -697,8 +700,7 @@ void GF_Byte::set(GeneralField *from) {
 	    FATAL_ERROR("unimplemented conversion from fixed width -> byte");
 	    break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
     }
     myfield.set(val);
 }
@@ -763,8 +765,7 @@ void GF_Int32::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -798,8 +799,7 @@ void GF_Int32::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from fixedwidth -> int32");
             break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -911,8 +911,7 @@ void GF_Int64::write(std::ostream &to) {
     } else {
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,myfield.val()/divisor);
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
 	to << buf;
     }
 }
@@ -946,8 +945,7 @@ void GF_Int64::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from fixedwidth -> int64");
             break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -1036,8 +1034,8 @@ void GF_Double::write(std::ostream &to) {
 	}
 	char buf[1024];
 	int ok = snprintf(buf,1024,printspec,multiplier * (myfield.val() - offset));
-	INVARIANT(ok > 0 && ok < 1000,
-		  boost::format("bad printspec '%s'") % printspec);
+	INVARIANT(ok > 0 && ok < 1000, format("bad printspec '%s'") % printspec);
+		  
 	to << buf;
     }
 }
@@ -1073,8 +1071,7 @@ void GF_Double::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from fixedwidth -> double");
             break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -1126,8 +1123,7 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 	} else if (xmlStrcmp(xmlprintstyle, (xmlChar *)"text")==0) { 
 	    printstyle = printtext;
 	} else {
-	    FATAL_ERROR(boost::format("print_style should be hex, maybehex,"
-				      " csv, or text not '%s'")
+	    FATAL_ERROR(format("print_style should be hex, maybehex, csv, or text not '%s'")
 			% reinterpret_cast<char *>(xmlprintstyle));
 	}
     }
@@ -1188,10 +1184,6 @@ void GF_Variable32::write(std::ostream &to) {
     }
 }
 
-static const string str_true("true");
-static const string str_false("false");
-static const string str_null("null");
-
 void GF_Variable32::set(GeneralField *from) {
     if (from->isNull()) {
 	myfield.setNull();
@@ -1201,9 +1193,9 @@ void GF_Variable32::set(GeneralField *from) {
 	{
 	case ExtentType::ft_bool: 
 	    if (((GF_Bool *)from)->val()) {
-		myfield.set(str_true);
+		myfield.set(s_true);
 	    } else {
-		myfield.set(str_false);
+		myfield.set(s_false);
 	    }
 	    break;
 	case ExtentType::ft_byte: { 
@@ -1235,8 +1227,7 @@ void GF_Variable32::set(GeneralField *from) {
             FATAL_ERROR("unimplemented conversion from fixedwidth -> variable32");
             break;
 	default:
-	    FATAL_ERROR(boost::format("internal error, unknown field type %d")
-			% from->getType());
+	    FATAL_ERROR(format("internal error, unknown field type %d") % from->getType());
 	}
 }
 
@@ -1258,7 +1249,7 @@ const std::string GF_Variable32::val() const {
 
 const std::string GF_Variable32::valFormatted() {
     if (myfield.isNull()) {
-	return str_null;
+	return s_null;
     } else if (printstyle == printhex) {      
         return hexstring(myfield.stringval());
     } else if (printstyle == printmaybehex) {
@@ -1399,11 +1390,16 @@ ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
     : fixed_copy_size(-1), source(_source), dest(_dest)
 { }
 
-void ExtentRecordCopy::prep() {
-    INVARIANT(fixed_copy_size == -1, "internal");
+void ExtentRecordCopy::prep(const ExtentType *copy_type) {
+    SINVARIANT(fixed_copy_size == -1);
+    SINVARIANT(source.type != NULL);
+    SINVARIANT(dest.type != NULL);
+    if (copy_type == NULL) {
+        copy_type = dest.type;
+    }
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
-	&& source.getType() == dest.getType()) {
+	&& source.getType() == dest.getType() && source.getType() == copy_type) {
 	// Can do a bitwise copy.
 	fixed_copy_size = source.getType()->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
@@ -1416,12 +1412,12 @@ void ExtentRecordCopy::prep() {
 	}
     } else {
 	fixed_copy_size = 0;
-	for(unsigned i=0;i<source.getType()->getNFields(); ++i) {
-	    const std::string &fieldname = source.getType()->getFieldName(i);
-	    sourcefields.push_back(GeneralField::create(NULL,source,fieldname));
+	for(unsigned i=0; i < copy_type->getNFields(); ++i) {
+	    const std::string &fieldname = copy_type->getFieldName(i);
+	    sourcefields.push_back(GeneralField::create(NULL, source, fieldname));
 	    INVARIANT(dest.getType()->hasColumn(fieldname),
 		      format("Destination for copy is missing field %s") % fieldname);
-	    destfields.push_back(GeneralField::create(NULL,dest,fieldname));
+	    destfields.push_back(GeneralField::create(NULL, dest, fieldname));
 	}
     }
 }

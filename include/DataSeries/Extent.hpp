@@ -193,11 +193,6 @@ public:
 	return fixeddata.size() / type.fixedrecordsize();
     }
 
-    // TODO-2010-04-01: remove; use size
-    FUNC_DEPRECATED_PREFIX unsigned int extentsize() FUNC_DEPRECATED { 
-        return size();
-    }
-
     /// \cond INTERNAL_ONLY
     // The following are defined by the file format and can't be changed.
     static const Extent::byte compress_mode_none = 0;

@@ -14,23 +14,38 @@
 
 #include <vector>
 
+#include <boost/shared_ptr.hpp>
+
 #include <DataSeries/DataSeriesModule.hpp>
 
 /** \brief Holds a linear sequence of modules.
   *
-  * Used as in: \dotfile "doxygen-figures/sequence-module.dot" "A sequence module with sub-modules"
+  * The sequence module holds a linear sequence of modules, which is primarily
+  * used for running a set of extents through a collection of modules.
+  *
+  * As shown in: \dotfile "doxygen-figures/sequence-module.dot" "A sequence module with sub-modules"
   **/
 class SequenceModule : public DataSeriesModule {
 public:
-    /** head should be dynaically allocated with new.  The @c SequenceModule
+    typedef boost::shared_ptr<DataSeriesModule> DsmPtr;
+
+    /** head should be dynamically allocated with new.  The @c SequenceModule
         takes ownership of it.  @param head is the source from which the other
         modules added by \link SequenceModule::addModule addModule \endlink
         will ultimately get the \link Extent Extents \endlink to process. */
     SequenceModule(DataSeriesModule *head);
-    /** Destroys all owned modules in reverse order of addition. */
+
+    /** Construct a sequence module starting with a shared pointer. */
+    SequenceModule(DsmPtr head);
+
+    /** Destroys all owned modules in reverse order of addition if they have no other
+        pointers to them. */
     virtual ~SequenceModule();
 
+    /** get the last data series module in the sequence for connecting in to the next module
+        in the sequence.  Usually used like seq_mod.addModule(new Module(seq_mod.tail())) */
     DataSeriesModule &tail();
+
     /** mod should be connected to the previous tail, and will become the new
         tail of the series; mod should have been allocated with new.  The
         @c ExtentSeries takes ownership of it.
@@ -45,22 +60,29 @@ public:
 
         */
     void addModule(DataSeriesModule *mod);
+
+    /** Like addModule with a pointer, but with a shared pointer */
+    void addModule(DsmPtr mod);
+
     /** calls \link DataSeriesModule::getExtent getExtent \endlink on
         the tail.  Assuming the modules were set up properly, this will call
         \link DataSeriesModule::getExtent getExtent \endlink on
         all the \link DataSeriesModule modules \endlink added.*/
     virtual Extent *getExtent();
+
     /** Returns the number of Modules added, including the one passed to the
         constructor. */
     unsigned size() { return modules.size(); }
 
-    typedef std::vector<DataSeriesModule *>::iterator iterator;
+    typedef std::vector<DsmPtr>::iterator iterator;
+
     /** Modules appear in the order in which they were added */
     iterator begin() { return modules.begin(); }
+
     /** Modules appear in the order in which they were added */
     iterator end() { return modules.end(); }
 private:
-    std::vector<DataSeriesModule *> modules;
+    std::vector<DsmPtr> modules;
 };
 
 #endif

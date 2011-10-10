@@ -9,36 +9,39 @@
 
 SequenceModule::SequenceModule(DataSeriesModule *head)
 {
+    addModule(head);
+}
+
+SequenceModule::SequenceModule(DsmPtr head)
+{
     INVARIANT(head != NULL, "invalid argument");
     modules.push_back(head);
 }
 
-SequenceModule::~SequenceModule()
-{
-    // later modules could depend on earlier ones
-    for(std::vector<DataSeriesModule *>::iterator i = modules.end() - 1;
-	i >= modules.begin();--i) {
-	delete *i;
+SequenceModule::~SequenceModule() {
+    // later modules could depend on earlier ones, so reset in reverse order.
+    for(std::vector<DsmPtr>::reverse_iterator i = modules.rbegin(); i != modules.rend(); ++i) {
+	i->reset();
     }
 }
 
-DataSeriesModule &
-SequenceModule::tail()
-{
-    DataSeriesModule *tail = modules.back();
+DataSeriesModule &SequenceModule::tail() {
+    DsmPtr tail = modules.back();
     SINVARIANT(tail != NULL);
     return *tail;
 }
 
-void
-SequenceModule::addModule(DataSeriesModule *mod)
-{
+void SequenceModule::addModule(DataSeriesModule *mod) {
+    SINVARIANT(mod != NULL);
+    DsmPtr p_mod(mod);
+    modules.push_back(p_mod);
+}
+
+void SequenceModule::addModule(DsmPtr mod) {
     SINVARIANT(mod != NULL);
     modules.push_back(mod);
 }
 
-Extent *
-SequenceModule::getExtent()
-{
+Extent *SequenceModule::getExtent() {
     return tail().getExtent();
 }

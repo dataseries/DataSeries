@@ -207,10 +207,10 @@ public:
     void clearExtent() { setExtent(NULL); }
 
     /** Returns the current extent. */
-    Extent *extent() { 
+    Extent *extent() const { 
 	return my_extent;
     }
-    Extent *getExtent() {
+    Extent *getExtent() const {
 	return my_extent;
     }
 
