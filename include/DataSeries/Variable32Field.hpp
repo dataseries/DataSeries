@@ -111,6 +111,10 @@ public:
         set(from.val(),from.size());
     }
 
+    // TODO-reviewer: should we also have a set(source_e, source_row_offset, from, from_e,
+    // from_row_offset)?  This one is ambiguious as to whether e & row_offset apply to from.
+    // We then also get set(from, from_e, from_row_offset);  Same question applies to
+    // GeneralField::set(GeneralField &from)
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, Variable32Field &from) {
         set(e, row_offset, from.val(), from.size());
     }

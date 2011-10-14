@@ -1,6 +1,9 @@
 #!/usr/bin/perl -w
 use strict;
+use sort 'stable';
+use Carp;
 use Data::Dumper;
+use Text::Table;
 
 use lib "$ENV{BUILD_OPT}/DataSeries.server/src/server/gen-perl";
 use lib "$ENV{HOME}/projects/thrift/lib/perl/lib";
@@ -10,8 +13,8 @@ use Thrift::Socket;
 use Thrift::BufferedTransport;
 
 use DataSeriesServer;
-use Text::Table;
 
+$|=1;
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(1000*1000);
 my $transport = new Thrift::BufferedTransport($socket, 4096, 4096);
@@ -31,7 +34,8 @@ print "Post Ping\n";
 # tryUpdate();
 # trySimpleStarJoin();
 # tryStarJoin();
-tryUnion();
+# tryUnion();
+trySort();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -351,9 +355,62 @@ sub tryUnion {
     printTable("union-output");
 }
 
-sub importData {
-    my ($table_name, $table_desc, $rows) = @_;
+sub trySort {
+    my $sc_0 = new SortColumn({ 'column' => 'col0', 'sort_mode' => SortMode::SM_Decending });
+    my $sc_1 = new SortColumn({ 'column' => 'col1', 'sort_mode' => SortMode::SM_Ascending });
+    my $sc_2 = new SortColumn({ 'column' => 'col2', 'sort_mode' => SortMode::SM_Decending });
 
+    print "sort test 1...\n";
+    importData('sort-1', [ 'col1' => 'int32', 'col2' => 'variable32' ],
+               [ [ 5000, "ghi" ],
+                 [ 5000, "abc" ],
+                 [ 12345, "abc" ],
+                 [ 12345, "ghi" ],
+                 [ 3000, "defg" ],
+                 [ 3000, "de" ],
+                 [ 3000, "def" ] ]);
+
+
+    $client->sortTable('sort-1', 'sort-out-1', [ $sc_1, $sc_2 ]);
+    printTable('sort-out-1');
+
+    print "big sort test...gen...";
+    ## Now with a big test; annoyingly slow on the perl client side, but there you go.
+    my $nrows = 100000;
+    my @sort2 = map { [ rand() > 0.5 ? "true" : "false", int(rand(100)),
+                        int(rand(100)), int(rand(100000)) ] } (1..$nrows);
+
+    print "import...";
+    importData('sort-2', [ 'col0' => 'bool', 'col1' => 'byte', 'col2' => 'int32', 
+                           'col3' => 'int64' ], \@sort2, 1);
+    print "sort-server...";
+    $client->sortTable('sort-2', 'sort-out-2',  [ $sc_1, $sc_0, $sc_2 ]);
+    # printTable('sort-out-2');
+    # We get lucky on booleans 0 < 1 and 'false' < 'true'
+    print "sort-client...";
+    my @sorted2 = sort { $a->[1] != $b->[1] ? $a->[1] <=> $b->[1]
+                             : ($a->[0] ne $b->[0] ? $b->[0] cmp $a->[0] : $b->[2] <=> $a->[2]) }
+        @sort2;
+    print "get...";
+    my $table = getTableData('sort-out-2', $nrows);
+    print "compare...";
+    my $rows = $table->{rows};
+    die "?" unless @$rows == @sorted2 && @sorted2 == $nrows;
+    for (my $i = 0; $i < @sorted2; ++$i) {
+        my $ra = $sorted2[$i];
+        my $rb = $rows->[$i];
+        die "?" unless @$ra == @$rb && @$ra == 4;
+        for (my $j = 0; $j < @$ra; ++$j) {
+            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
+        }
+    }
+    print "done.\n";
+}
+
+sub importData {
+    my ($table_name, $table_desc, $rows, $quiet) = @_;
+
+    confess "?" unless defined $rows;
     my $data_xml;
     if (ref $table_desc) {
         $data_xml = qq{<ExtentType name="$table_name" namespace="simpl.hpl.hp.com" version="1.0">\n};
@@ -364,7 +421,7 @@ sub importData {
             $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
         }
         $data_xml .= "</ExtentType>\n";
-        print "Importing with $data_xml\n";
+        print "Importing with $data_xml\n" unless $quiet;
     } else {
         $data_xml = $table_desc;
     }

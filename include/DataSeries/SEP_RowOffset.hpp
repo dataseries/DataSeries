@@ -17,6 +17,8 @@
 class Field;
 class FixedField;
 class Variable32Field;
+class ExtentRecordCopy;
+
 namespace dataseries {
     class SEP_RowOffset {
     public:
@@ -109,9 +111,15 @@ namespace dataseries {
         }
         
     private:
+        uint8_t *rowPos(const Extent &e) const {
+            uint8_t *ret = e.fixeddata.begin() + row_offset;
+            DEBUG_SINVARIANT(e.insideExtentFixed(ret));
+            return ret;
+        }
         friend class ::Field;
         friend class ::FixedField;
         friend class ::Variable32Field;
+        friend class ::ExtentRecordCopy;
 
         // should be a multiple of row_size.
         uint32_t row_offset;

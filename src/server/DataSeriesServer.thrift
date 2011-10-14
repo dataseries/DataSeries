@@ -41,6 +41,17 @@ struct UnionTable {
     2: required map<string, string> extract_values;
 }
 
+enum SortMode {
+    SM_InvalidEnumConst = 0;
+    SM_Ascending = 1;
+    SM_Decending = 2;
+}
+
+struct SortColumn {
+    1: required string column;
+    2: required SortMode sort_mode;
+}
+
 service DataSeriesServer {
     void ping();
     bool hasTable(string table_name);
@@ -76,6 +87,8 @@ service DataSeriesServer {
     void projectTable(string in_table, string out_table, list<string> keep_columns);
     // order_columns are from the output names; All output names must share 
     void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
+
+    void sortTable(string in_table, string out_table, list<SortColumn> by);
 
     // Replace base table with a merge between base_table and update_from.  The tables are
     // both assumed to be uniquely sorted based on primary_key.  The 

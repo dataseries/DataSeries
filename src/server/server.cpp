@@ -6,6 +6,9 @@
 #include <pwd.h>
 #include <unistd.h>
 
+#include <new> // losertree.h needs this and forgot to include it.
+#include <parallel/losertree.h>
+
 #include <concurrency/ThreadManager.h>
 #include <concurrency/PosixThreadFactory.h>
 #include <protocol/TBinaryProtocol.h>
@@ -1286,6 +1289,254 @@ public:
     const string output_table_name;
 };
 
+/* Note: there are several versions of sort modules on the tomer sub-branch.  There is an in-memory
+   sort, a radix in memory sort, a spilling to disk sort and a parallel sort.  The latter versions
+   are somewhat specific to the sorting rules needed for the sort benchmark.  The former is a
+   complicated template, and does not support sorting based on multiple columns.  Since the intent
+   in this code is to first make slow, generalfield implementations and then eventually dynamically
+   generate C++ source code for specific operations, we don't need the complication of the
+   template, and so we create yet another module to be more in the style of the server */
+
+#if 0
+#include <algorithm>
+#include <vector>
+
+// Note the STL algorithm chooses to copy the comparator; the following program will abort on some
+// (most/all?) STL implementations, which means that implementing a comparator with state is
+// inherently less efficient unless the compilers value propagation does a really good job.
+
+using namespace std;
+
+class Comparator {
+public:
+    Comparator() { }
+
+    Comparator(const Comparator &) { abort(); }
+
+    Comparator &operator =(const Comparator &) { abort(); }
+    
+    bool operator ()(const int a, const int b) { return a < b; }
+};
+
+int main() {
+    vector<int> a;
+    a.push_back(1);
+    a.push_back(1);
+    a.push_back(1);
+    a.push_back(1);
+    a.push_back(1);
+
+    sort(a.begin(), a.end(), Comparator());
+}
+#endif
+
+class SortModule : public DataSeriesModule {
+public:
+    SortModule(DataSeriesModule &source, const vector<SortColumn> &sort_by)
+        : source(source), sort_by(sort_by), copier(input_series, output_series), ercs(),
+          sorted_extents(), merge()
+    { }
+
+    virtual ~SortModule() { }
+
+    Extent *returnOutputSeries() {
+        Extent *ret = output_series.getExtent();
+        output_series.clearExtent();
+        return ret;
+    }
+
+    struct SortColumnImpl {
+        SortColumnImpl(GeneralField::Ptr field, bool sort_less)
+            : field(field), sort_less(sort_less) { }
+        GeneralField::Ptr field;
+        bool sort_less; // a < b ==> sort_less
+    };
+
+    struct ExtentRowCompareState {
+        ExtentRowCompareState() : extent(NULL), columns() { }
+        const Extent *extent;
+        vector<SortColumnImpl> columns;
+    };
+
+    static bool strictlyLessThan(const Extent *ea, const SEP_RowOffset &oa,
+                                 const Extent *eb, const SEP_RowOffset &ob,
+                                 const vector<SortColumnImpl> &columns) {
+            BOOST_FOREACH(const SortColumnImpl &c, columns) {
+                GeneralValue va(c.field->val(*ea, oa));
+                GeneralValue vb(c.field->val(*eb, ob));
+                if (va < vb) {
+                    return c.sort_less;
+                } else if (vb < va) {
+                    return !c.sort_less;
+                } else {
+                    // ==; keep going
+                }
+            }
+            return false; // all == so not <
+    }
+
+    class ExtentRowCompare {
+    public:
+        ExtentRowCompare(ExtentRowCompareState *state) : state(state) { }
+        ExtentRowCompare(const ExtentRowCompare &from) : state(from.state) { }
+        ExtentRowCompare &operator =(const ExtentRowCompare &rhs) {
+            state = rhs.state;
+            return *this;
+        }
+
+        bool operator ()(const SEP_RowOffset &a, const SEP_RowOffset &b) const {
+            return strictlyLessThan(state->extent, a, state->extent, b, state->columns);
+        }
+
+        const ExtentRowCompareState *state;
+    };
+        
+    struct SortedExtent {
+        SortedExtent(Extent *e) : e(e), offsets(), pos() { }
+        typedef boost::shared_ptr<SortedExtent> Ptr;
+
+        Extent *e;
+        vector<SEP_RowOffset> offsets;
+        vector<SEP_RowOffset>::iterator pos;
+    };
+    
+    struct LoserTreeCompare {
+        LoserTreeCompare(SortModule *sm) : sm(sm) { }
+        bool operator()(uint32_t ia, uint32_t ib) const {
+            const SortedExtent &sea(*sm->sorted_extents[ia]);
+            const SortedExtent &seb(*sm->sorted_extents[ib]);
+            return strictlyLessThan(sea.e, *sea.pos, seb.e, *seb.pos, sm->ercs.columns);
+        }
+
+        const SortModule *sm;
+    };        
+
+    typedef __gnu_parallel::LoserTree<true, uint32_t, LoserTreeCompare> LoserTree;
+
+    void firstExtent(Extent &in) {
+        const ExtentType &t(in.getType());
+        input_series.setType(t);
+        output_series.setType(t);
+
+        copier.prep();
+
+        BOOST_FOREACH(SortColumn &by, sort_by) {
+            TINVARIANT(by.sort_mode == SM_Ascending || by.sort_mode == SM_Decending);
+            ercs.columns.push_back(SortColumnImpl(GeneralField::make(input_series, by.column),
+                                                  by.sort_mode == SM_Ascending ? true : false));
+        }
+    }
+
+    void sortExtent(Extent &in) {
+        ercs.extent = &in;
+        SortedExtent::Ptr se(new SortedExtent(&in));
+        se->offsets.reserve(in.nRecords());
+        for (input_series.setExtent(in); input_series.more(); input_series.next()) {
+            se->offsets.push_back(input_series.getRowOffset());
+        }
+
+        stable_sort(se->offsets.begin(), se->offsets.end(), ExtentRowCompare(&ercs));
+
+        BOOST_FOREACH(SEP_RowOffset &o, se->offsets) {
+            GeneralValue v(ercs.columns[0].field->val(in, o));
+        }
+        ercs.extent = NULL;
+        sorted_extents.push_back(se);
+    }
+
+    Extent *processSingleMerge() {
+        output_series.setExtent(new Extent(*output_series.getType()));
+        // loser tree gets this case wrong, and goes into an infinite loop (log_2(0) is a bad
+        // idea with a check 0 * 2^n > 0.
+        SortedExtent &se(*sorted_extents[0]);
+        for (se.pos = se.offsets.begin(); se.pos != se.offsets.end(); ++se.pos) {
+            output_series.newRecord();
+            copier.copyRecord(*se.e, *se.pos);
+        }
+        delete se.e;
+        sorted_extents.clear();
+        return returnOutputSeries();
+    }
+
+    Extent *cleanupMultiMerge() {
+        BOOST_FOREACH(SortedExtent::Ptr p, sorted_extents) {
+            SINVARIANT(p->pos == p->offsets.end());
+            delete p->e;
+        }
+        sorted_extents.clear();
+        return returnOutputSeries();
+    }
+
+    Extent *processMerge() {
+        //        cout << "Processing multiple extents...\n";
+
+        output_series.setExtent(new Extent(*output_series.getType()));
+        while (true) {
+            int min = merge->get_min_source();
+            if (min < 0 || static_cast<size_t>(min) >= sorted_extents.size()) {
+                cout << "Loser Exit 1\n";
+                // loser tree exit path 1
+                return cleanupMultiMerge();
+            }
+            SortedExtent &se(*sorted_extents[min]);
+            if (se.pos == se.offsets.end()) {
+                cout << "Loser Exit 2\n";
+                // loser tree exit path 2
+                return cleanupMultiMerge();
+            }
+
+            output_series.newRecord();
+            copier.copyRecord(*se.e, *se.pos);
+            ++se.pos;
+            merge->delete_min_insert(min, se.pos == se.offsets.end());
+            if (output_series.getExtent()->size() > 96*1024) {
+                break;
+            }
+        }
+        return returnOutputSeries();
+    }
+
+    virtual Extent *getExtent() {
+        if (sorted_extents.empty()) {
+            while (true) {
+                Extent *in = source.getExtent();
+                if (in == NULL) {
+                    break;
+                }
+                if (input_series.getType() == NULL) {
+                    firstExtent(*in);
+                }
+                
+                sortExtent(*in);
+            }
+
+            if (sorted_extents.empty()) {
+                return NULL;
+            } else if (sorted_extents.size() == 1) {
+                return processSingleMerge();
+            } else {
+                merge = new LoserTree(sorted_extents.size(), LoserTreeCompare(this));
+
+                for (uint32_t i = 0; i < sorted_extents.size(); ++i) {
+                    merge->insert_start(i, i, false);
+                    sorted_extents[i]->pos = sorted_extents[i]->offsets.begin();
+                }
+                merge->init();
+            }
+        } 
+
+        return processMerge();
+    }
+        
+    DataSeriesModule &source;
+    vector<SortColumn> sort_by;
+    ExtentSeries input_series, output_series;
+    ExtentRecordCopy copier;
+    ExtentRowCompareState ercs;
+    vector<SortedExtent::Ptr> sorted_extents;
+    LoserTree *merge;
+};
+
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
     struct TableInfo {
@@ -1616,6 +1867,19 @@ public:
         updateTableInfo(out_table, union_mod.output_series.getType());
     }
 
+    void sortTable(const string &in_table, const string &out_table, const vector<SortColumn> &by) {
+        NameToInfo::iterator table_info(getTableInfo(in_table));
+        
+        TypeIndexModule::Ptr p(TypeIndexModule::make(table_info->second.extent_type->getName()));
+        p->addSource(tableToPath(table_info->first));
+
+        SortModule sorter(*p, by);
+        
+        TeeModule output_module(sorter, tableToPath(out_table));
+        output_module.getAndDelete();
+        updateTableInfo(out_table, sorter.output_series.getType());
+    }
+
 private:
     void verifyTableName(const string &name) {
 	if (name.size() >= 200) {
@@ -1627,6 +1891,7 @@ private:
     }
 
     string tableToPath(const string &table_name, const string &prefix = "ds.") {
+        verifyTableName(table_name);
         return prefix + table_name;
     }
 

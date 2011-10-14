@@ -76,6 +76,7 @@ public:
             - The name and type of the Field must have been set.
     */
     bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
+        DEBUG_SINVARIANT(&e != NULL);
         DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
         if (!nullable) {
             return false;
@@ -202,12 +203,8 @@ protected:
 
     uint8_t *rowPos(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
         DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
-        uint8_t *ret = e.fixeddata.begin() + row_offset.row_offset;
-        DEBUG_SINVARIANT(e.insideExtentFixed(ret));
-        return ret;
+        return row_offset.rowPos(e);
     }
-
-        
 
     std::string fieldname;
 };

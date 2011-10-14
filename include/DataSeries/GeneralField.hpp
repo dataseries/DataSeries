@@ -309,6 +309,13 @@ protected:
     Field &typed_field;
 };
 
+// TODO: I think we cn move all the special case fields down into GeneralField.cpp; people
+// shouldn't be downcasting anyway, it's of little benefit.  Almost all of the cases where we seem
+// to do that (dsrepack, ExtentRecordCopy prior to this revision), it is a situation where we
+// should be using natively typed fields.  The one other case is in sub-extent-pointer.cpp, and
+// that one merely points out that we ought to have a size() function on generalfields so that we
+// can know the size of the field (including if it is variable)
+
 class GF_Bool : public GeneralField {
 public:
     GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
@@ -524,16 +531,22 @@ public:
         we can do a subset; defaults to the type of dest if NULL */
     void prep(const ExtentType *type = NULL);
     ~ExtentRecordCopy();
+
     /** Copies the current record of the source @c ExtentSeries to the
         current record of the destination @c ExtentSeries. Prerequisite: 
         the record for the destination series should already exist */
-    void copyRecord(); // you need to create the record first.
+    void copyRecord();
+
+    /** Copies the record from extent at offset into the current record of the destination
+        @c ExtentSeries.  Prerequisite: the record for the destination series should already
+        exist. */
+    void copyRecord(const Extent &extent, const dataseries::SEP_RowOffset &offset);
 private:
     bool did_prep;
     int fixed_copy_size;
     ExtentSeries &source, &dest;
     std::vector<GeneralField *> sourcefields, destfields; // all fields here if f_c_s == 0
-    std::vector<GF_Variable32 *> sourcevarfields, destvarfields; // only used if fixed_copy_size >0
+    std::vector<Variable32Field *> sourcevarfields, destvarfields; // only used if fixed_copy_size >0
 };
 
 #endif

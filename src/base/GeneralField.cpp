@@ -483,21 +483,12 @@ const std::string GeneralValue::valString() const {
         {
         case ExtentType::ft_unknown: return std::string();
 	case ExtentType::ft_bool: return gvval.v_bool ? s_true : s_false;
-	case ExtentType::ft_byte:
-	    return str(format("%d") % static_cast<uint32_t>(gvval.v_byte));
-	    break;
-	case ExtentType::ft_int32:
-	    return str(format("%d") % gvval.v_int32);
-	    break;
-	case ExtentType::ft_int64:
-            return str(format("%d") % gvval.v_int64);
-	    break;
-	case ExtentType::ft_double:
-            return str(format("%.20g") % gvval.v_double);
-	    break;
+	case ExtentType::ft_byte: return str(format("%d") % static_cast<uint32_t>(gvval.v_byte));
+	case ExtentType::ft_int32: return str(format("%d") % gvval.v_int32);
+	case ExtentType::ft_int64: return str(format("%d") % gvval.v_int64);
+	case ExtentType::ft_double: return str(format("%.20g") % gvval.v_double);
 	case ExtentType::ft_fixedwidth:	case ExtentType::ft_variable32:
 	    return *v_variable32;
-	    break;
 	default:
 	    FATAL_ERROR("internal error, unexpected type"); 
     }
@@ -1405,9 +1396,11 @@ void ExtentRecordCopy::prep(const ExtentType *copy_type) {
 	INVARIANT(fixed_copy_size > 0,"internal error");
 	for(unsigned i=0;i<source.getType()->getNFields(); ++i) {
 	    const std::string &fieldname = source.getType()->getFieldName(i);
+            // TODO: the below should have broken copying variable32 fields that are null
+            // Fix it so that it works, and also add a regression test.
 	    if (source.getType()->getFieldType(fieldname) == ExtentType::ft_variable32) {
-		sourcevarfields.push_back(new GF_Variable32(NULL,source,fieldname));
-		destvarfields.push_back(new GF_Variable32(NULL,dest,fieldname));
+		sourcevarfields.push_back(new Variable32Field(source, fieldname));
+		destvarfields.push_back(new Variable32Field(dest, fieldname));
 	    }
 	}
     } else {
@@ -1449,12 +1442,42 @@ void ExtentRecordCopy::copyRecord() {
 	// call set it could try to overwrite non-existant bits.
 	for(unsigned int i=0;i<sourcevarfields.size();++i) {
 	    destvarfields[i]->clear();
-	    destvarfields[i]->set(sourcevarfields[i]);
+	    destvarfields[i]->set(*sourcevarfields[i]);
 	}
     } else {
 	SINVARIANT(destfields.size() == sourcefields.size());
 	for(unsigned int i=0;i<sourcefields.size();++i) {
 	    destfields[i]->set(sourcefields[i]);
+	}
+    }	
+}
+
+void ExtentRecordCopy::copyRecord(const Extent &extent, const dataseries::SEP_RowOffset &offset) {
+    if (fixed_copy_size == -1) {
+	prep();
+    }
+    INVARIANT(dest.morerecords(), "you forgot to create the destination record");
+
+    if (fixed_copy_size > 0) {
+        SINVARIANT(&extent.getType() == source.getType());
+        const uint8_t *row_pos = offset.rowPos(extent);
+	dest.checkOffset(fixed_copy_size-1);
+	memcpy(dest.pos.record_start(), row_pos, fixed_copy_size);
+	// need to do things this way because in the process of doing
+	// the memcpy we mangled the variable offsets that are stored
+	// in the fixed fields.  If we don't pre-clear them, when we
+	// call set it could try to overwrite non-existant bits.
+	for(unsigned int i=0;i<sourcevarfields.size();++i) {
+	    destvarfields[i]->clear();
+	    destvarfields[i]->set(sourcevarfields[i]->val(extent, offset),
+                                  sourcevarfields[i]->size(extent, offset));
+	}
+    } else {
+	SINVARIANT(destfields.size() == sourcefields.size());
+	for(unsigned int i=0;i<sourcefields.size();++i) {
+            FATAL_ERROR("unimplemented; will need a variant of set that takes extent, offset");
+//	    destfields[i]->set(sourcefields[i]->val(extent, offset),
+//                               sourcefields[i]-);
 	}
     }	
 }
