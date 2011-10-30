@@ -5,16 +5,15 @@
    See the file named COPYING for license details
 */
 
-
-
-
 // TODO: Test all of the other GeneralField and GeneralValue conversions
+
+#include <boost/format.hpp>
 
 #include <Lintel/Double.hpp>
 
 #include <DataSeries/GeneralField.hpp>
-#include <boost/format.hpp>
-#include <stdio.h>
+
+using namespace std;
 
 uint8_t dblToUint8(double v);
 
@@ -67,8 +66,42 @@ void checkCopy() {
     SINVARIANT(v4 != v3);
 }
 
+void checkExtentRecordCopy() {
+    string type_xml("<ExtentType name=\"test-erc\" namespace=\"example.com\" version=\"1.0\" >\n"
+                    "  <field type=\"variable32\" name=\"var32\" opt_nullable=\"yes\" />\n"
+                    "</ExtentType>\n");
+    ExtentTypeLibrary lib;
+    const ExtentType &type(lib.registerTypeR(type_xml));
+
+    Extent a(type);
+    Extent b(type);
+    ExtentSeries as(&a);
+    ExtentSeries bs(&b);
+    
+    Variable32Field fa(as, "var32", Field::flag_nullable);
+    Variable32Field fb(bs, "var32", Field::flag_nullable);
+
+    ExtentRecordCopy erc(as, bs);
+
+    as.newRecord();
+    fa.set("abcdef");
+    bs.newRecord();
+    erc.copyRecord();
+    SINVARIANT(fa.equal(fb) && fb.equal(fa) && fb.equal("abcdef"));
+
+    fa.set("ghijkl");
+    erc.copyRecord();
+    SINVARIANT(fa.equal(fb) && fb.equal(fa) && fb.equal("ghijkl"));
+
+    fa.setNull();
+    erc.copyRecord();
+    SINVARIANT(fa.equal(fb) && fb.equal(fa) && fb.isNull() && !fb.equal(""));
+}
+ 
 int main(int argc, char **argv) {
     checkSet();
     checkCopy();
-    std::cout << "GeneralValue checks successful" << std::endl;
+    checkExtentRecordCopy();
+    std::cout << "General{Field,Value},ExtentRecordCopy checks successful\n";
+    return 0;
 }

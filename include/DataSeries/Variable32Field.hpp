@@ -146,8 +146,12 @@ public:
     }
 
     bool equal(const std::string &to) {
-        if ((int)to.size() != size())
+        if (isNull()) {
             return false;
+        }
+        if (to.size() != static_cast<size_t>(size())) {
+            return false;
+        }
         return memcmp(to.data(),val(),to.size()) == 0;
     }
 

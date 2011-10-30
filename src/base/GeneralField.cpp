@@ -1395,12 +1395,11 @@ void ExtentRecordCopy::prep(const ExtentType *copy_type) {
 	fixed_copy_size = source.getType()->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");
 	for(unsigned i=0;i<source.getType()->getNFields(); ++i) {
-	    const std::string &fieldname = source.getType()->getFieldName(i);
-            // TODO: the below should have broken copying variable32 fields that are null
-            // Fix it so that it works, and also add a regression test.
-	    if (source.getType()->getFieldType(fieldname) == ExtentType::ft_variable32) {
-		sourcevarfields.push_back(new Variable32Field(source, fieldname));
-		destvarfields.push_back(new Variable32Field(dest, fieldname));
+            const std::string &fieldname = source.getType()->getFieldName(i);
+            if (source.getType()->getFieldType(fieldname) == ExtentType::ft_variable32) {
+		sourcevarfields.push_back(new Variable32Field(source, fieldname, 
+                                                              Field::flag_nullable));
+		destvarfields.push_back(new Variable32Field(dest, fieldname, Field::flag_nullable));
 	    }
 	}
     } else {
@@ -1442,7 +1441,11 @@ void ExtentRecordCopy::copyRecord() {
 	// call set it could try to overwrite non-existant bits.
 	for(unsigned int i=0;i<sourcevarfields.size();++i) {
 	    destvarfields[i]->clear();
-	    destvarfields[i]->set(*sourcevarfields[i]);
+            if (sourcevarfields[i]->isNull()) {
+                destvarfields[i]->setNull();
+            } else {
+                destvarfields[i]->set(*sourcevarfields[i]);
+            }
 	}
     } else {
 	SINVARIANT(destfields.size() == sourcefields.size());

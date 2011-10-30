@@ -35,7 +35,7 @@ print "Post Ping\n";
 # trySimpleStarJoin();
 # tryStarJoin();
 # tryUnion();
-trySort();
+testSort();
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -355,24 +355,26 @@ sub tryUnion {
     printTable("union-output");
 }
 
-sub trySort {
+sub testSort {
     my $sc_0 = new SortColumn({ 'column' => 'col0', 'sort_mode' => SortMode::SM_Decending });
     my $sc_1 = new SortColumn({ 'column' => 'col1', 'sort_mode' => SortMode::SM_Ascending });
     my $sc_2 = new SortColumn({ 'column' => 'col2', 'sort_mode' => SortMode::SM_Decending });
 
     print "sort test 1...\n";
-    importData('sort-1', [ 'col1' => 'int32', 'col2' => 'variable32' ],
-               [ [ 5000, "ghi" ],
+    my @data = ( [ 5000, "ghi" ],
                  [ 5000, "abc" ],
                  [ 12345, "abc" ],
                  [ 12345, "ghi" ],
                  [ 3000, "defg" ],
                  [ 3000, "de" ],
-                 [ 3000, "def" ] ]);
+                 [ 3000, "def" ] );
+
+    importData('sort-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
 
 
     $client->sortTable('sort-1', 'sort-out-1', [ $sc_1, $sc_2 ]);
-    printTable('sort-out-1');
+    @data = sort { $a->[0] != $b->[0] ? $a->[0] <=> $b->[0] : $b->[1] cmp $a->[1] } @data;
+    checkTable('sort-out-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
 
     print "big sort test...gen...";
     ## Now with a big test; annoyingly slow on the perl client side, but there you go.
@@ -381,8 +383,8 @@ sub trySort {
                         int(rand(100)), int(rand(100000)) ] } (1..$nrows);
 
     print "import...";
-    importData('sort-2', [ 'col0' => 'bool', 'col1' => 'byte', 'col2' => 'int32', 
-                           'col3' => 'int64' ], \@sort2, 1);
+    my @cols2 = ( 'col0' => 'bool', 'col1' => 'byte', 'col2' => 'int32', 'col3' => 'int64' );
+    importData('sort-2', \@cols2, \@sort2, 1);
     print "sort-server...";
     $client->sortTable('sort-2', 'sort-out-2',  [ $sc_1, $sc_0, $sc_2 ]);
     # printTable('sort-out-2');
@@ -391,19 +393,9 @@ sub trySort {
     my @sorted2 = sort { $a->[1] != $b->[1] ? $a->[1] <=> $b->[1]
                              : ($a->[0] ne $b->[0] ? $b->[0] cmp $a->[0] : $b->[2] <=> $a->[2]) }
         @sort2;
-    print "get...";
-    my $table = getTableData('sort-out-2', $nrows);
-    print "compare...";
-    my $rows = $table->{rows};
-    die "?" unless @$rows == @sorted2 && @sorted2 == $nrows;
-    for (my $i = 0; $i < @sorted2; ++$i) {
-        my $ra = $sorted2[$i];
-        my $rb = $rows->[$i];
-        die "?" unless @$ra == @$rb && @$ra == 4;
-        for (my $j = 0; $j < @$ra; ++$j) {
-            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
-        }
-    }
+    die "?" unless @sorted2 == $nrows;
+    print "check...";
+    checkTable('sort-out-2', \@cols2, \@sorted2);
     print "done.\n";
 }
 
@@ -456,6 +448,31 @@ sub printTable($) {
     }
     print "Table: $table \n\n";
     print $tb, "\n\n";
+}
+
+sub checkTable($$$) {
+    my ($table_name, $columns, $data) = @_;
+    my $table = getTableData($table_name, 10000000);
+
+    die scalar @$columns . " != " . scalar @{$table->{columns}}
+        unless @$columns/2 == @{$table->{columns}};
+    for (my $i = 0; $i < @$columns/2; ++$i) {
+        my ($name, $type) = ($columns->[2*$i], $columns->[2*$i+1]);
+        my $col = $table->{columns}->[$i];
+        die "$name != $col->{name}" unless $name eq $col->{name};
+        die "$type != $col->{type}" unless $type eq $col->{type};
+    }
+
+    my $rows = $table->{rows};
+    die scalar @$rows . " != " . scalar @$data unless @$rows == @$data;
+    for (my $i = 0; $i < @$data; ++$i) {
+        my $ra = $data->[$i];
+        my $rb = $rows->[$i];
+        die "?" unless @$ra == @$rb;
+        for (my $j = 0; $j < @$ra; ++$j) {
+            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
+        }
+    }
 }
 
 # print "pong\n";

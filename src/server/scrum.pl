@@ -153,6 +153,14 @@ sub remainingWork {
     # sprint_dayconv
     #
     # For the second one, sort by 0, finished, otherwise same as above
+    #
+    # TODO: need null_mode => NM_First/NM_Last[/NM_Drop]
+    my $sc_created = new SortColumn({ column => 'created', 'sort_mode' => SortMode::SM_Ascending });
+    my $sc_finished = new SortColumn({ column => 'finished', 'sort_mode' => SortMode::SM_Ascending });
+
+#    $client->sortTable('remaining-work.sort-created', 
+    # TODO: need $client->deriveTable(table, [expr => col])
+    # 
 }
 
 sub getTableData {
