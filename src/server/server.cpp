@@ -1468,19 +1468,16 @@ public:
     }
 
     Extent *processMerge() {
-        //        cout << "Processing multiple extents...\n";
-
+        LintelLogDebug("SortModule", "doing multi-extent-merge");
         output_series.setExtent(new Extent(*output_series.getType()));
         while (true) {
             int min = merge->get_min_source();
             if (min < 0 || static_cast<size_t>(min) >= sorted_extents.size()) {
-                cout << "Loser Exit 1\n";
                 // loser tree exit path 1
                 return cleanupMultiMerge();
             }
             SortedExtent &se(*sorted_extents[min]);
             if (se.pos == se.offsets.end()) {
-                cout << "Loser Exit 2\n";
                 // loser tree exit path 2
                 return cleanupMultiMerge();
             }

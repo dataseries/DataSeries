@@ -14,6 +14,8 @@ use Thrift::BufferedTransport;
 
 use DataSeriesServer;
 
+my $debug = 0;
+
 $|=1;
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(1000*1000);
@@ -23,7 +25,7 @@ my $client = new DataSeriesServerClient($protocol);
 
 $transport->open();
 $client->ping();
-print "Post Ping\n";
+print "Post Ping\n" if $debug;
 
 # tryImportCSV();
 # tryImportSql();
@@ -31,11 +33,89 @@ print "Post Ping\n";
 # tryHashJoin();
 # trySelect();
 # tryProject();
-# tryUpdate();
-# trySimpleStarJoin();
+tryUpdate();
+testSimpleStarJoin();
 # tryStarJoin();
-# tryUnion();
+testUnion();
 testSort();
+
+sub importData ($$$) {
+    my ($table_name, $table_desc, $rows, $quiet) = @_;
+
+    confess "?" unless defined $rows;
+    my $data_xml;
+    if (ref $table_desc) {
+        $data_xml = qq{<ExtentType name="$table_name" namespace="simpl.hpl.hp.com" version="1.0">\n};
+        for (my $i=0; $i < @$table_desc; $i += 2) {
+            my $name = $table_desc->[$i];
+            my $desc = $table_desc->[$i+1];
+            my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : '';
+            $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
+        }
+        $data_xml .= "</ExtentType>\n";
+        print "Importing with $data_xml\n" if $debug;
+    } else {
+        $data_xml = $table_desc;
+    }
+    $client->importData($table_name, $data_xml, new TableData({ 'rows' => $rows }));
+}
+
+sub getTableData ($;$$) {
+    my ($table_name, $max_rows, $where_expr) = @_;
+
+    $max_rows ||= 1000;
+    $where_expr ||= '';
+    my $ret = eval { $client->getTableData($table_name, $max_rows, $where_expr); };
+    if ($@) {
+        print Dumper($@);
+        die "fail";
+    }
+    return $ret;
+}
+
+sub printTable ($) {
+    my ($table) = @_;
+    my $table_refr = getTableData($table);
+
+    my @columns;
+    foreach my $col (@{$table_refr->{'columns'}}) {
+        push(@columns, $col->{'name'} . "\n" . $col->{'type'});
+    }
+
+    my $tb = Text::Table->new(@columns);
+    foreach my $row (@{$table_refr->{'rows'}}) {
+        $tb->add(@{$row});
+    }
+    print "Table: $table \n\n";
+    print $tb, "\n\n";
+}
+
+sub checkTable ($$$) {
+    my ($table_name, $columns, $data) = @_;
+    printTable($table_name) if $debug;
+    my $table = getTableData($table_name, 10000000);
+
+    die scalar @$columns/2 . " != " . scalar @{$table->{columns}}
+        unless @$columns/2 == @{$table->{columns}};
+    for (my $i = 0; $i < @$columns/2; ++$i) {
+        my ($name, $type) = ($columns->[2*$i], $columns->[2*$i+1]);
+        my $col = $table->{columns}->[$i];
+        die "name mismatch col $i: $name != $col->{name}" unless $name eq $col->{name};
+        die "type mismatch col $i: $type != $col->{type}" unless $type eq $col->{type};
+    }
+
+    my $rows = $table->{rows};
+    die scalar @$rows . " != " . scalar @$data unless @$rows == @$data;
+    for (my $i = 0; $i < @$data; ++$i) {
+        my $ra = $data->[$i];
+        my $rb = $rows->[$i];
+        die "?" unless @$ra == @$rb;
+        for (my $j = 0; $j < @$ra; ++$j) {
+            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
+        }
+    }
+}
+
 
 sub tryImportCSV {
     my $csv_xml = <<'END';
@@ -128,6 +208,7 @@ sub tryProject {
 }
 
 sub tryUpdate {
+    print "testing update...";
     my $base_fields = <<'END';
   <field type="variable32" name="type" pack_unique="yes" />
   <field type="int32" name="count" />
@@ -161,7 +242,8 @@ END
                             [ 2, "ghi", 5 ] ]}));
 
     $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
-    print Dumper(getTableData("base-table"));
+    checkTable('base-table', [qw/type variable32  count int32/],
+               [ [ qw/aaa 3/ ], [ qw/abc 9/ ], [ qw/ghi 5/ ], [ qw/jkl 7/ ] ]);
 
     $client->importData("update-table", $update_xml, new TableData
                         ({ 'rows' =>
@@ -169,8 +251,10 @@ END
                             [ 2, "mno", 1 ],
                             [ 1, "pqr", 2 ] ]}));
     $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
-    print Dumper(getTableData("base-table"));
+    checkTable('base-table', [qw/type variable32  count int32/],
+               [ [ qw/abc 9/ ], [ qw/ghi 5/ ], [ qw/jkl 7/ ], [ qw/mno 1 /], [qw/pqr 2/] ]);
 
+    print "passed.\n";
     # TODO: Add test for empty update..., and in general for empty extents in all the ops
 }
 
@@ -237,9 +321,8 @@ END
 
 
 
-sub trySimpleStarJoin {
-    # tryImportData(); # columns bool, byte, int32, int64, double, variable32; 3 rows
-
+sub testSimpleStarJoin {
+    print "testing simple star join...";
     my $person_xml = <<'END';
 <ExtentType name="person-details" namespace="simpl.hpl.hp.com" version="1.0">
   <field type="variable32" name="Name" pack_unique="yes" />
@@ -274,7 +357,7 @@ END
     $client->importData("country-details", $country_xml, new TableData
                         ({ 'rows' =>
                            [[ "India", "New Delhi", "INR" ],
-                            [ "United States", "Wahsington, D.C.", "Dollar"]] }));
+                            [ "United States", "Washington, D.C.", "Dollar"]] }));
 
     $client->importData("state-details", $state_xml, new TableData
                         ({ 'rows' =>
@@ -283,9 +366,11 @@ END
                             [ "Karnataka", "Bangalore", "IST" ],
                             [ "Maharastra", "Mumbai", "IST" ]] }));
 
-    printTable("person-details");
-    printTable("country-details");
-    printTable("state-details");
+    if ($debug) {
+        printTable("person-details");
+        printTable("country-details");
+        printTable("state-details");
+    }
 
     # Same table dim-int, is used to create 2 different dimensions. In practice we could have
     # different table and selectively use columns from each table.
@@ -314,32 +399,47 @@ END
     $client->starJoin('person-details', [$dim_country, $dim_state], 'test-star-join',
                       { 'Name' => 'Name', 'Country' => 'Country', 'State' => 'State'}, [$dfj_1, $dfj_2]);
 
-    printTable("test-star-join");
+    printTable("test-star-join") if $debug;
+    checkTable('test-star-join', [ qw/Country variable32
+                                      Name variable32
+                                      State variable32
+                                      CountryCapital variable32
+                                      StateCapital variable32/ ],
+               [ [ 'United States', 'John', 'California', 'Washington, D.C.', 'Sacramento' ],
+                 [ 'United States', 'Adam', 'Colarado', 'Washington, D.C.', 'Denver' ],
+                 [ 'India', 'Ram', 'Karnataka', 'New Delhi', 'Bangalore' ],
+                 [ 'India', 'Shiva', 'Maharastra', 'New Delhi', 'Mumbai' ] ]);
+    print "passed.\n";
 }
 
 sub unionTable {
     return new UnionTable({ 'table_name' => $_[0], 'extract_values' => $_[1] });
 }
 
-sub tryUnion {
+sub testUnion {
+    print "testing union...";
     # extra column tests discard; different names tests rename
+    my @data1 = ( [ 100, "abc", 3, 1 ],
+                  [ 2000, "ghi", 4, 4 ],
+                  [ 3000, "def", 5, 5 ],
+                  [ 12345, "ghi", 17, 7 ] );
+
     importData('union-input-1', [ 'col1' => 'int32', 'col2' => 'variable32', 'col3' => 'byte',
-                                  'col4' => 'int32' ],
-               [ [ 100, "abc", 3, 1 ],
-                 [ 2000, "ghi", 4, 4 ],
-                 [ 3000, "def", 5, 5 ],
-                 [ 12345, "ghi", 17, 7 ] ]);
+                                  'col4' => 'int32' ], \@data1);
+    my @data2 = ( [ 100, "def", 2 ],
+                  [ 2000, "def", 3 ],
+                  [ 12345, "efg", 6 ],
+                  [ 12345, "ghi", 8 ],
+                  [ 12345, "jkl", 9 ],
+                  [ 20000, "abc", 11 ] );
     importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32', 'colc' => 'int32' ],
-               [ [ 100, "def", 2 ],
-                 [ 2000, "def", 3 ],
-                 [ 12345, "efg", 6 ],
-                 [ 12345, "ghi", 8 ],
-                 [ 12345, "jkl", 9 ],
-                 [ 20000, "abc", 11 ]]);
+               \@data2);
+
+    my @data3 = ( [ 10, "zyw", 0 ],
+                  [ 20000, "aaa", 10 ]);
 
     importData('union-input-3', [ 'colm' => 'int32', 'coln' => 'variable32', 'colo' => 'int32' ],
-               [ [ 10, "zyw", 0 ],
-                 [ 20000, "aaa", 10 ]]);
+               \@data3);
 
     $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string',
                                                          'col4' => 'order' }),
@@ -349,10 +449,14 @@ sub tryUnion {
                                                        'colo' => 'order' })],
                          [ qw/int string/ ], 'union-output');
 
-    printTable("union-input-1");
-    printTable("union-input-2");
-    printTable("union-input-3");
-    printTable("union-output");
+    my @data = map { [ $_->[0], $_->[3], $_->[1] ] } @data1;
+    push(@data, map { [ $_->[0], $_->[2], $_->[1] ] } @data2, @data3);
+    @data = sort { $a->[1] <=> $b->[1] } @data;
+    #printTable("union-input-1");
+    #printTable("union-input-2");
+    #printTable("union-input-3");
+    checkTable("union-output", [ qw/int int32   order int32   string variable32/ ], \@data);
+    print "passed.\n";
 }
 
 sub testSort {
@@ -360,7 +464,7 @@ sub testSort {
     my $sc_1 = new SortColumn({ 'column' => 'col1', 'sort_mode' => SortMode::SM_Ascending });
     my $sc_2 = new SortColumn({ 'column' => 'col2', 'sort_mode' => SortMode::SM_Decending });
 
-    print "sort test 1...\n";
+    print "sort test 1...";
     my @data = ( [ 5000, "ghi" ],
                  [ 5000, "abc" ],
                  [ 12345, "abc" ],
@@ -375,16 +479,19 @@ sub testSort {
     $client->sortTable('sort-1', 'sort-out-1', [ $sc_1, $sc_2 ]);
     @data = sort { $a->[0] != $b->[0] ? $a->[0] <=> $b->[0] : $b->[1] cmp $a->[1] } @data;
     checkTable('sort-out-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
+    print "passed.\n";
 
     print "big sort test...gen...";
     ## Now with a big test; annoyingly slow on the perl client side, but there you go.
-    my $nrows = 100000;
+    ## Would be slightly better with 100k rows, but then it's really slow; you can verify
+    ## it is doing multi-extent merging by running LINTEL_LOG_DEBUG=SortModule ./server
+    my $nrows = 10000;
     my @sort2 = map { [ rand() > 0.5 ? "true" : "false", int(rand(100)),
                         int(rand(100)), int(rand(100000)) ] } (1..$nrows);
 
     print "import...";
     my @cols2 = ( 'col0' => 'bool', 'col1' => 'byte', 'col2' => 'int32', 'col3' => 'int64' );
-    importData('sort-2', \@cols2, \@sort2, 1);
+    importData('sort-2', \@cols2, \@sort2);
     print "sort-server...";
     $client->sortTable('sort-2', 'sort-out-2',  [ $sc_1, $sc_0, $sc_2 ]);
     # printTable('sort-out-2');
@@ -396,83 +503,7 @@ sub testSort {
     die "?" unless @sorted2 == $nrows;
     print "check...";
     checkTable('sort-out-2', \@cols2, \@sorted2);
-    print "done.\n";
-}
-
-sub importData {
-    my ($table_name, $table_desc, $rows, $quiet) = @_;
-
-    confess "?" unless defined $rows;
-    my $data_xml;
-    if (ref $table_desc) {
-        $data_xml = qq{<ExtentType name="$table_name" namespace="simpl.hpl.hp.com" version="1.0">\n};
-        for (my $i=0; $i < @$table_desc; $i += 2) {
-            my $name = $table_desc->[$i];
-            my $desc = $table_desc->[$i+1];
-            my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : '';
-            $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
-        }
-        $data_xml .= "</ExtentType>\n";
-        print "Importing with $data_xml\n" unless $quiet;
-    } else {
-        $data_xml = $table_desc;
-    }
-    $client->importData($table_name, $data_xml, new TableData({ 'rows' => $rows }));
-}
-
-sub getTableData {
-    my ($table_name, $max_rows, $where_expr) = @_;
-
-    $max_rows ||= 1000;
-    $where_expr ||= '';
-    my $ret = eval { $client->getTableData($table_name, $max_rows, $where_expr); };
-    if ($@) {
-        print Dumper($@);
-        die "fail";
-    }
-    return $ret;
-}
-
-sub printTable($) {
-    my ($table) = @_;
-    my $table_refr = getTableData($table);
-
-    my @columns;
-    foreach my $col (@{$table_refr->{'columns'}}) {
-        push(@columns, $col->{'name'} . "\n" . $col->{'type'});
-    }
-
-    my $tb = Text::Table->new(@columns);
-    foreach my $row (@{$table_refr->{'rows'}}) {
-        $tb->add(@{$row});
-    }
-    print "Table: $table \n\n";
-    print $tb, "\n\n";
-}
-
-sub checkTable($$$) {
-    my ($table_name, $columns, $data) = @_;
-    my $table = getTableData($table_name, 10000000);
-
-    die scalar @$columns . " != " . scalar @{$table->{columns}}
-        unless @$columns/2 == @{$table->{columns}};
-    for (my $i = 0; $i < @$columns/2; ++$i) {
-        my ($name, $type) = ($columns->[2*$i], $columns->[2*$i+1]);
-        my $col = $table->{columns}->[$i];
-        die "$name != $col->{name}" unless $name eq $col->{name};
-        die "$type != $col->{type}" unless $type eq $col->{type};
-    }
-
-    my $rows = $table->{rows};
-    die scalar @$rows . " != " . scalar @$data unless @$rows == @$data;
-    for (my $i = 0; $i < @$data; ++$i) {
-        my $ra = $data->[$i];
-        my $rb = $rows->[$i];
-        die "?" unless @$ra == @$rb;
-        for (my $j = 0; $j < @$ra; ++$j) {
-            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
-        }
-    }
+    print "passed.\n";
 }
 
 # print "pong\n";
