@@ -29,13 +29,13 @@ print "Post Ping\n" if $debug;
 
 # tryImportCSV();
 # tryImportSql();
-# tryImportData();
-# tryHashJoin();
-# trySelect();
-# tryProject();
-tryUpdate();
+testImportData();
+testHashJoin();
+testSelect();
+testProject();
+testUpdate();
 testSimpleStarJoin();
-# tryStarJoin();
+testStarJoin();
 testUnion();
 testSort();
 
@@ -49,6 +49,7 @@ sub importData ($$$) {
         for (my $i=0; $i < @$table_desc; $i += 2) {
             my $name = $table_desc->[$i];
             my $desc = $table_desc->[$i+1];
+            die "?" unless defined $desc;
             my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : '';
             $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
         }
@@ -144,70 +145,102 @@ sub tryImportSql {
     print Dumper($ret);
 }
 
-sub tryImportData {
-    my $data_xml = <<'END';
-<ExtentType name="test-import" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="bool" name="bool" />
-  <field type="byte" name="byte" />
-  <field type="int32" name="int32" />
-  <field type="int64" name="int64" />
-  <field type="double" name="double" />
-  <field type="variable32" name="variable32" pack_unique="yes" />
-</ExtentType>
-END
-
-    $client->importData("test-import", $data_xml, new TableData
-                        ({ 'rows' =>
-                           [[ 'on', 5, 1371, 111111, 11.0, "abcde" ],
-                            [ 'on', 5, 1371, 111111, 11.0, "1q2w3e" ],
+sub testImportData {
+    print "Testing import-data...";
+    my @columns = map { ($_, $_) } qw/bool byte int32 int64 double variable32/;
+    my @data = ( [ 'on', 5, 1371, 111111, 11.0, "abcde" ],
+                 [ 'yes', 5, 1371, 111111, 11.0, "1q2w3e" ],
 # TODO: the next row tests the hash-map with a missing match, but fails if used in the star join.
 # each of the tests should just manufacture the tables they want (easy now with importData()) so that
 # changes to one test won't randomly break other tests.
-#                            [ 'on', 6, 1385, 112034, 12.0, "mnop" ],
-                            [ 'off', 7, 12345, 999999999999, 123.456, "fghij" ] ]}));
+#                            [ 'off', 6, 1385, 112034, 12.0, "mnop" ],
+                 [ 'no', 7, 12345, 999999999999, 123.5, "fghij" ] );
+
+    importData('import-test-1', \@columns, \@data);
+    map { $_->[0] = 'true' if $_->[0] eq 'on' || $_->[0] eq 'yes';
+          $_->[0] = 'false' if $_->[0] eq 'off' || $_->[0] eq 'no'; } @data;
+    checkTable('import-test-1', \@columns, \@data);
+
+    print "passed.\n";
 }
 
-sub tryHashJoin {
-    tryImportData();
+sub testHashJoin {
+    print "testing hash-join...";
+    importData('join-data-1', [qw/int32 int32 variable32 variable32/],
+               [ [  1371, "abcde" ],
+                 [  1371, "1q2w3e" ],
+                 [  1385, "mnop" ],
+                 [ 12345, "fghij" ] ] );
 
-    importData('join-data', [ 'join_int32' => 'int32', 'join_str' => 'variable32' ],
+    importData('join-data-2', [ 'join_int32' => 'int32', 'join_str' => 'variable32' ],
                [[ 1371, "123" ],
                 [ 1371, "456" ],
                 [ 1371, "789" ],
                 [ 9321, "xyz" ],
                 [ 12345, "fghij" ] ]);
 
-    print "\n----- Table A ----\n";
-    print Dumper(getTableData("test-import"));
-    print "\n---- Table B ----\n";
-    print Dumper(getTableData("join-data"));
+    if ($debug) {
+        print "\n----- Table A ----\n";
+        printTable("join-data-1");
+        print "\n---- Table B ----\n";
+        printTable("join-data-2");
+    }
 
+    my @outputs = ( 'a.int32' => 'table-a:join-int32',
+                    'a.variable32' => 'table-a:extra-variable32',
+                    'b.join_int32' => 'table-b:join-int32',
+                    'b.join_str' => 'table-b:extra-variable32' );
 
-    $client->hashJoin('test-import', 'join-data', 'test-hash-join',
-                      { 'int32' => 'join_int32' }, { 'a.int32' => 'table-a:join-int32',
-                                                     'a.variable32' => 'table-a:extra-variable32',
-                                                     'b.join_int32' => 'table-b:join-int32',
-                                                     'b.join_str' => 'table-b:extra-variable32'});
-    print "\n---- HashJoin Output ----\n";
-    print Dumper(getTableData("test-hash-join"));
+    print "a->b...";
+    $client->hashJoin('join-data-1', 'join-data-2', 'test-hash-join-12',
+                      { 'int32' => 'join_int32' }, {@outputs});
+    if ($debug) {
+        print "\n---- HashJoin Output ----\n";
+        printTable("test-hash-join-12");
+    }
+    my @columns = qw/table-a:join-int32 int32 table-a:extra-variable32 variable32
+                     table-b:join-int32 int32 table-b:extra-variable32 variable32/;
+    my @data = ([ qw/1371   abcde   1371  123/ ],
+                [ qw/1371   1q2w3e  1371  123/ ],
+                [ qw/1371   abcde   1371  456/ ],
+                [ qw/1371   1q2w3e  1371  456/ ],
+                [ qw/1371   abcde   1371  789/ ],
+                [ qw/1371   1q2w3e  1371  789/ ],
+                [ qw/12345  fghij  12345  fghij/ ]);
+    checkTable('test-hash-join-12', \@columns, \@data);
+
+    print "b->a...";
+    my %repl = ('a' => 'b', 'b' => 'a');
+    @outputs = map { s/^([ab])\./$repl{$1}./o; $_ } @outputs;
+    $client->hashJoin('join-data-2', 'join-data-1', 'test-hash-join-21',
+                      { 'join_int32' => 'int32' }, {@outputs});
+    checkTable('test-hash-join-12', \@columns, \@data);
+    print "passed.\n";
 }
 
-sub trySelect {
-    tryImportData();
-    $client->selectRows("test-import", "test-select", "int32 == 1371");
-    print Dumper(getTableData('test-select'));
+sub testSelect {
+    print "Testing select...";
+    my @data = map { [ $_, int(rand(3)) ] } 1 .. 20;
+    importData('select-in-1', [ qw/v int32 w int32/ ], \@data);
 
-    print Dumper(getTableData('test-import', undef, 'int32 == 1371'));
+    $client->selectRows('select-in-1', 'select-out-1', "w == 1");
+    my @data_out = grep($_->[1] == 1, @data);
+    checkTable('select-out-1', [qw/v int32 w int32/], \@data_out);
+    print "passed.\n";
 }
 
-sub tryProject {
-    tryImportData();
+sub testProject {
+    print "Testing project...";
+    importData('project-in-1', [ qw/1 int32 2 int32 3 int32/ ], # test numbers as column names
+               [ [ 1, 99, 2 ], [ 3, 99, 4 ], [ 5, 99, 6 ] ]);
 
-    $client->projectTable('test-import', 'test-project', [ qw/bool int32 variable32/ ]);
-    print Dumper(getTableData('test-project'));
+    $client->projectTable('project-in-1', 'project-out-1', [ qw/1 3/ ]);
+    checkTable('project-out-1', [qw/1 int32 3 int32/],
+               [ [ 1, 2 ], [ 3, 4 ], [ 5, 6 ] ]);
+    print "passed.\n";
 }
 
-sub tryUpdate {
+sub testUpdate {
     print "testing update...";
     my $base_fields = <<'END';
   <field type="variable32" name="type" pack_unique="yes" />
@@ -258,65 +291,64 @@ END
     # TODO: Add test for empty update..., and in general for empty extents in all the ops
 }
 
-sub tryStarJoin {
-    tryImportData(); # columns bool, byte, int32, int64, double, variable32; 3 rows
+sub testStarJoin {
+    print "Testing star-join...";
+    importData('star-join-fact', [qw/key int32 extra int64/],
+               [ [ qw/1371 1/ ],
+                 [ qw/1371 3/ ],
+                 [ qw/999 2/ ] ]);
 
-    my $data_xml = <<'END';
-<ExtentType name="dim-int" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="int32" name="key_1" />
-  <field type="int32" name="key_2" />
-  <field type="variable32" name="val_1" pack_unique="yes" />
-  <field type="variable32" name="val_2" pack_unique="yes" />
-</ExtentType>
-END
-
-    printTable("test-import");
-    $client->importData("dim-int", $data_xml, new TableData
-                        ({ 'rows' =>
-                           [[ 1371, 12345, "abc", "def" ],
-                            [ 12345, 1371, "ghi", "jkl" ],
-                            [ 999, 999, "mno", "pqr" ]] }));
-    printTable("dim-int");
+    importData('star-join-dimension', [qw/key_1 int32 key_2 int32
+                                          val_1 variable32 val_2 variable32/],
+               [[ 1371, 12345, "abc", "def" ],
+                [ 12345, 1371, "ghi", "jkl" ],
+                [ 999, 0, "mno", "pqr" ],
+                [ 0, 999, "stu", "vwx" ]]);
 
     # Same table dim-int, is used to create 2 different dimensions. In practice we could have
     # different table and selectively use columns from each table.
     my $dim_1 = new Dimension({ dimension_name => 'dim_int_1',
-                                source_table => 'dim-int',
+                                source_table => 'star-join-dimension',
                                 key_columns => ['key_1'],
                                 value_columns => ['val_1', 'val_2'],
                                 max_rows => 1000 });
     my $dim_2 = new Dimension({ dimension_name => 'dim_int_2',
-                                source_table => 'dim-int',
+                                source_table => 'star-join-dimension',
                                 key_columns => ['key_2'],
                                 value_columns => ['val_1', 'val_2'],
                                 max_rows => 1000 });
 
     my $dfj_1 = new DimensionFactJoin({ dimension_name => 'dim_int_1',
-                                        fact_key_columns => [ 'int32' ],
+                                        fact_key_columns => [ 'key' ],
                                         extract_values => { 'val_1' => 'dfj_1.dim1_val1' },
                                         missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
 
     my $dfj_2 = new DimensionFactJoin({ dimension_name => 'dim_int_1',
-                                        fact_key_columns => [ 'int32' ],
+                                        fact_key_columns => [ 'key' ],
                                         extract_values => { 'val_1' => 'dfj_2.dim1_val1',
                                                             'val_2' => 'dfj_2.dim1_val2' },
                                         missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
 
     my $dfj_3 = new DimensionFactJoin({ dimension_name => 'dim_int_2',
-                                        fact_key_columns => [ 'int32' ],
-                                        extract_values => { 'val_2' => 'dfj_3.dim1_val2' },
+                                        fact_key_columns => [ 'key' ],
+                                        extract_values => { 'val_2' => 'dfj_3.dim2_val2' },
                                         missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
 
     my $dfj_4 = new DimensionFactJoin({ dimension_name => 'dim_int_2',
-                                        fact_key_columns => [ 'int32' ],
-                                        extract_values => { 'val_1' => 'dfj_4.dim1_val1' },
+                                        fact_key_columns => [ 'key' ],
+                                        extract_values => { 'val_1' => 'dfj_4.dim2_val1' },
                                         missing_dimension_action => DFJ_MissingAction::DFJ_Unchanged });
 
-    $client->starJoin('test-import', [$dim_1, $dim_2], 'test-star-join',
-                      { 'int32' => 'f.int_32', 'int64' => 'f.int_64'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
+    $client->starJoin('star-join-fact', [$dim_1, $dim_2], 'test-star-join',
+                      { 'key' => 'f.key', 'extra' => 'f.extra'}, [$dfj_1, $dfj_2, $dfj_3, $dfj_4]);
 
-    printTable("test-star-join");
-    # print Dumper(getTableData("test-star-join"));
+    checkTable('test-star-join', [qw/f.extra int64 f.key int32 dfj_1.dim1_val1 variable32
+                                    dfj_2.dim1_val1 variable32 dfj_2.dim1_val2 variable32
+                                    dfj_3.dim2_val2 variable32 dfj_4.dim2_val1 variable32/],
+               [ [ qw/1 1371 abc abc def jkl ghi/ ],
+                 [ qw/3 1371 abc abc def jkl ghi/ ],
+                 [ qw/2  999 mno mno pqr vwx stu/ ] ]);
+    print "passed.\n";
 }
 
 
