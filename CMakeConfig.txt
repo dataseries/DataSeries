@@ -137,10 +137,14 @@ SET(DATASERIES_POD2MAN_RELEASE "DataSeries ${DATASERIES_VERSION}")
 OPTION(BUILD_PAPER "Build the src/paper programs" OFF)
 OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 
-####
+#### Data Series Server
 
-# TODO-eric: move these bits into lintel -- remove circular dependency
 INCLUDE(FindThrift)
+LINTEL_WITH_HEADER(GXX_LOSERTREE parallel/losertree.h)
+
+IF(THRIFT_ENABLED AND GXX_LOSERTREE_ENABLED)
+    SET(DATA_SERIES_SERVER_ENABLED ON)
+ENDIF(THRIFT_ENABLED AND GXX_LOSERTREE_ENABLED)
 
 #### RPath
 
