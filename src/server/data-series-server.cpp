@@ -1551,6 +1551,11 @@ public:
 	LintelLog::info("ping()");
     }
 
+    void shutdown() {
+	LintelLog::info("shutdown()");
+        exit(0);
+    }
+
     bool hasTable(const string &table_name) {
         try {
             getTableInfo(table_name);

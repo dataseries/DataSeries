@@ -54,6 +54,7 @@ struct SortColumn {
 
 service DataSeriesServer {
     void ping();
+    void shutdown();
     bool hasTable(string table_name);
 
     void importDataSeriesFiles(list<string> source_paths, string extent_type, string dest_table);

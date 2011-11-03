@@ -35,6 +35,7 @@ ADD_SUBDIRECTORY(doc)
 SET(CMAKE_MODULE_FILES
 	DataSeriesCMakeUtil.cmake
 	FindDataSeries.cmake
+        FindThrift.cmake # TODO-reviewer: should this go into lintel?
 )
 
 INSTALL(FILES ${CMAKE_MODULE_FILES}

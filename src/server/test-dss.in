@@ -1,11 +1,18 @@
 #!/usr/bin/perl -w
 use strict;
 use sort 'stable';
-use Carp;
-use Data::Dumper;
-use Text::Table;
 
-use lib "$ENV{BUILD_OPT}/DataSeries.server/src/server/gen-perl";
+use Carp;
+use Cwd;
+use Data::Dumper;
+use IO::Socket;
+use Text::Table;
+use Time::HiRes 'sleep';
+
+@PERL5_MODULES_INC_UNSHIFT@;
+use Lintel::ProcessManager;
+
+use lib "@CMAKE_CURRENT_BINARY_DIR@/gen-perl";
 use lib "$ENV{HOME}/projects/thrift/lib/perl/lib";
 
 use Thrift::BinaryProtocol;
@@ -14,9 +21,27 @@ use Thrift::BufferedTransport;
 
 use DataSeriesServer;
 
+$|=1;
+
 my $debug = 0;
 
-$|=1;
+{
+    my $sock = IO::Socket::INET->new(PeerAddr => 'localhost', PeerPort => 49476, Proto => 'tcp');
+    die "Server already running on port 49476?"
+        if defined $sock;
+}
+my $pm = new Lintel::ProcessManager();
+my $pid = $pm->fork(cmd => "@CMAKE_CURRENT_BINARY_DIR@/data-series-server",
+                    stdout => "server.log", stderr => 'STDOUT');
+print "Waiting for server...";
+for(my $i=0; $i < 100; ++$i) {
+    print "$i...";
+    my $sock = IO::Socket::INET->new(PeerAddr => 'localhost', PeerPort => 49476, Proto => 'tcp');
+    last if defined $sock;
+    die "server not present" if $i > 50;
+    sleep(0.1);
+}
+
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(1000*1000);
 my $transport = new Thrift::BufferedTransport($socket, 4096, 4096);
@@ -27,8 +52,8 @@ $transport->open();
 $client->ping();
 print "Post Ping\n" if $debug;
 
-# tryImportCSV();
-# tryImportSql();
+testImportCSV();
+testImportSql();
 testImportData();
 testHashJoin();
 testSelect();
@@ -38,6 +63,12 @@ testSimpleStarJoin();
 testStarJoin();
 testUnion();
 testSort();
+
+eval { $client->shutdown(); }; # hide from exception of no reply
+
+# print "--- $@\n"; 
+
+$pm->wait(0);
 
 sub importData ($$$) {
     my ($table_name, $table_desc, $rows, $quiet) = @_;
@@ -112,13 +143,25 @@ sub checkTable ($$$) {
         my $rb = $rows->[$i];
         die "?" unless @$ra == @$rb;
         for (my $j = 0; $j < @$ra; ++$j) {
-            die "$i: " . join(",", @$ra) . " != " . join(",", @$rb) unless $ra->[$j] eq $rb->[$j];
+            if ($ra->[$j] =~ /^(\d+\.\d+)$/o && $rb->[$j] =~ /^(\d+\.\d+)$/o) { 
+                # floating point, doing approx check.
+                my ($ta, $tb) = map { sprintf("%.10f", $_) } ($ra->[$j], $rb->[$j]);
+                die "$i: ($ta != $tb) in " . join(",", @$ra) . " != " . join(",", @$rb)
+                    unless $ta eq $tb;
+            } else {
+                die "$i: " . join(",", @$ra) . " != " . join(",", @$rb)
+                    unless $ra->[$j] eq $rb->[$j];
+            }
         }
     }
 }
 
 
-sub tryImportCSV {
+sub testImportCSV {
+    print "Testing import-csv...";
+    my $file = "@DataSeries_SOURCE_DIR@/check-data/csv2ds-1.csv";
+
+    die "missing input file $file?" unless -f $file;
     my $csv_xml = <<'END';
 <ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
   <field type="bool" name="bool" />
@@ -130,26 +173,62 @@ sub tryImportCSV {
 </ExtentType>
 END
 
-    $client->importCSVFiles(["/home/anderse/projects/DataSeries/check-data/csv2ds-1.csv"],
-                            $csv_xml, 'csv2ds-1', ",", "#");
-    print "imported\n";
+    $client->importCSVFiles([$file], $csv_xml, 'csv2ds-1', ",", "#");
+    print "imported...";
 
-    my $ret = getTableData('csv2ds-1');
-    print Dumper($ret);
+    checkTable('csv2ds-1', [qw/bool bool byte byte int32 int32 int64 int64 double double
+                               variable32 variable32/],
+               [ [ 'true', 33,   1000,            56,       1,     'Hello, World' ],
+                 ['false', 88, -15331, 1000000000000, 3.14159,     'I said "hello there."' ],
+                 [ 'true', 10,     11,             5, 2.718281828, 'unquoted' ] ]);
+    print "passed.\n";
 }
 
-sub tryImportSql {
-    $client->importSQLTable('', 'scrum_task', 'scrum_task');
+# SQL test needs a host that hast this table installed
+my $test_import_sql = <<'END';
+create table dataseriesserver_sqlimport ( a int, b varchar(255) );
+insert into dataseriesserver_sqlimport values (1, 'abc');
+insert into dataseriesserver_sqlimport values (2, null);
+insert into dataseriesserver_sqlimport values (null, 'xyz');
+END
 
-    my $ret = getTableData('scrum_task');
-    print Dumper($ret);
+sub testImportSql {
+    print "testing import-sql...";
+
+    my $dsn;
+
+    foreach my $s (qw/keyvalue-debian-x86-2.u.hpl.hp.com:3306/) {
+        my ($server, $port) = ($s =~ /^(.+):(\d+)$/o);
+        print "$server...";
+        my $sock = IO::Socket::INET->new(PeerAddr => $server, PeerPort => $port, Proto => 'tcp');
+        if (defined $sock) {
+            print "found server...";
+            $dsn = "DBI:mysql:database=test;host=$server";
+            last;
+        }
+    }
+    if (!defined $dsn && $ENV{USER} eq 'anderse') {
+        # assume laptop, use localhost; can't do that in general as many people could have
+        # mysql running on localhost.
+        # TODO: use DBI to check if table is present.
+        $dsn = "DBI:mysql:database=test";
+    }
+    unless (defined $dsn) {
+        print "No server found, skipping.\n";
+        return;
+    }
+    $client->importSQLTable($dsn, 'dataseriesserver_sqlimport', 'test-import-sql');
+
+    checkTable('test-import-sql', [qw/a int32 b variable32/],
+               [ [1, 'abc'], [2, ''], ['', 'xyz'] ]);
+    print "passed.\n";
 }
 
 sub testImportData {
     print "Testing import-data...";
     my @columns = map { ($_, $_) } qw/bool byte int32 int64 double variable32/;
-    my @data = ( [ 'on', 5, 1371, 111111, 11.0, "abcde" ],
-                 [ 'yes', 5, 1371, 111111, 11.0, "1q2w3e" ],
+    my @data = ( [ 'on', 5, 1371, 111111, 11.12345, "abcde" ],
+                 [ 'yes', 5, 1371, 111111, 11.6789, "1q2w3e" ],
 # TODO: the next row tests the hash-map with a missing match, but fails if used in the star join.
 # each of the tests should just manufacture the tables they want (easy now with importData()) so that
 # changes to one test won't randomly break other tests.
