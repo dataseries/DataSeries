@@ -5,6 +5,8 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+INCLUDE(LintelCMakeUtil)
+
 #### Default build type
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -140,11 +142,13 @@ OPTION(BUILD_EXAMPLE "Build the example program" OFF)
 #### Data Series Server
 
 INCLUDE(FindThrift)
-LINTEL_WITH_HEADER(GXX_LOSERTREE parallel/losertree.h)
+LINTEL_TRY_RUN(GXX_LOSERTREE cmake-include-losertree.cpp)
 
-IF(THRIFT_ENABLED AND GXX_LOSERTREE_ENABLED)
+IF(THRIFT_ENABLED AND GXX_LOSERTREE)
     SET(DATA_SERIES_SERVER_ENABLED ON)
-ENDIF(THRIFT_ENABLED AND GXX_LOSERTREE_ENABLED)
+ELSE(THRIFT_ENABLED AND GXX_LOSERTREE)
+    MESSAGE("Missing either thrift or parallel/losertree.h, will skip data-series-server")
+ENDIF(THRIFT_ENABLED AND GXX_LOSERTREE)
 
 #### RPath
 
@@ -167,8 +171,6 @@ IF(WITH_INSTALLED_RPATH)
 ENDIF(WITH_INSTALLED_RPATH)
 
 #### latex Documentation
-
-INCLUDE(LintelCMakeUtil)
 
 LINTEL_LATEX_CONFIG()
 
