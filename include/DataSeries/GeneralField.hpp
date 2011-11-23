@@ -343,7 +343,12 @@ public:
     virtual double valDouble();
 
     // TODO-reviewer: we override the type of val() in the subclass, this seems a little squirrly.
-    // Possibly making val() virtual and having it always return GeneralValue is the right solution.
+    // Possibly making val() virtual and having it always return GeneralValue is the right
+    // solution.
+    //
+    // Agreed; or in the alternative, do we need the subclassing of val?  I thought almost all uses
+    // were of valDouble or valBool, etc.  If this is actually needed, then val() should return
+    // generalvalue.  Otherwise, it should be removed.
     bool val() const { return myfield.val(); }
 
     BoolField myfield;
