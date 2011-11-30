@@ -1437,9 +1437,6 @@ public:
 
         stable_sort(se->offsets.begin(), se->offsets.end(), ExtentRowCompare(&ercs));
 
-        BOOST_FOREACH(SEP_RowOffset &o, se->offsets) {
-            GeneralValue v(ercs.columns[0].field->val(in, o));
-        }
         ercs.extent = NULL;
         sorted_extents.push_back(se);
     }

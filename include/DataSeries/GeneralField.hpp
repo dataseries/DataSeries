@@ -294,7 +294,7 @@ public:
     // a default converter from a field to a value and there are the comparison
     // operators on general values.
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from) = 0;
 
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
@@ -342,13 +342,9 @@ public:
 
     virtual double valDouble();
 
-    // TODO-reviewer: we override the type of val() in the subclass, this seems a little squirrly.
-    // Possibly making val() virtual and having it always return GeneralValue is the right
-    // solution.
-    //
-    // Agreed; or in the alternative, do we need the subclassing of val?  I thought almost all uses
-    // were of valDouble or valBool, etc.  If this is actually needed, then val() should return
-    // generalvalue.  Otherwise, it should be removed.
+    // TODO: remove all uses of the overridden val -- overriding the parent classes return type of
+    // GeneralValue is a bad idea.  Rename them to valType if they are needed, but it is likely
+    // that they shouldn't be needed at all.  Simple removal fails to compile.
     bool val() const { return myfield.val(); }
 
     BoolField myfield;

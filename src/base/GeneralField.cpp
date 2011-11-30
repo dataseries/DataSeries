@@ -96,16 +96,11 @@ void GeneralValue::set(const GeneralField &from) {
 	}
 	case ExtentType::ft_fixedwidth: {
 	    const GF_FixedWidth *tmp = reinterpret_cast<const GF_FixedWidth *>(&from);
-	    if (NULL == v_variable32) {
-		v_variable32 = new string(reinterpret_cast<const char *>(tmp->val()), tmp->size());
-            } else {
-                // TODO-eric : we should be allowed to change a generalvalue from a 10byte
-                // fixedwidith to a 20 byte fixedwidth; hence this invariant is bogus.  Getting the
-                // code to do something reasonably efficient for the case where the size is the
-                // same, however, may be more costly than just copying the code from the variable32
-                // case.  See also the code at around line 161.
-		SINVARIANT(v_variable32->size() == static_cast<size_t>(tmp->size()));
+            if (v_variable32 != NULL && v_variable32->size() == static_cast<size_t>(tmp->size())) {
 		memcpy(&((*v_variable32)[0]), tmp->myfield.val(), tmp->myfield.size());
+            } else {
+                delete v_variable32;
+		v_variable32 = new string(reinterpret_cast<const char *>(tmp->val()), tmp->size());
 	    }
 	    break;
 	}
@@ -153,14 +148,12 @@ void GeneralValue::set(const GeneralField &from, const Extent &e,
 	}
 	case ExtentType::ft_fixedwidth: {
 	    const GF_FixedWidth *tmp = reinterpret_cast<const GF_FixedWidth *>(&from);
-	    if (NULL == v_variable32) {
+            if (v_variable32 != NULL && v_variable32->size() == static_cast<size_t>(tmp->size())) {
+		memcpy(&((*v_variable32)[0]), tmp->myfield.val(e, row_offset), tmp->myfield.size());
+            } else {
+                delete v_variable32;
                 const char *v = reinterpret_cast<const char *>(tmp->myfield.val(e, row_offset));
 		v_variable32 = new string(v, tmp->size());
-            } else {
-                // TODO-eric: same as the todo aroudn line 104 about being able to change the
-                // "size" of a fixedwidth field-typed generalvalue.
-		SINVARIANT(v_variable32->size() == static_cast<size_t>(tmp->myfield.size()));
-		memcpy(&((*v_variable32)[0]), tmp->myfield.val(e, row_offset), tmp->myfield.size());
 	    }
 	    break;
 	}
@@ -521,11 +514,6 @@ void GeneralField::deleteFields(vector<GeneralField *> &fields) {
     tmp.swap(fields);
 }
 
-// TODO-eric: make GeneralField::set abstract.  Hopefully there isn't a reason to need it.
-void GeneralField::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    FATAL_ERROR("unimplemented");
-}
-
 static xmlChar *myXmlGetProp(xmlNodePtr xml, const xmlChar *prop) {
     if (xml == NULL) {
 	return NULL;
@@ -612,11 +600,6 @@ void GF_Bool::set(GeneralField *from) {
             // GeneralValue, then passed to bool.  That is slightly wrong.  Further, we should have
             // a testcase that ensures that the different ways of passing back and forth are all
             // consistent.
-            //
-            // TODO-eric: maybe consider stubbing the testcase for some of the cases?  Even if it
-            // is incomplete (filling out the matrix may be a pain) it gives a more sensible place
-            // to put the todo.  Or don't; if you really don't want to just cut out the todo-eric
-            // bit.
 	case ExtentType::ft_fixedwidth:
 	    FATAL_ERROR("fixedwidth -> bool not implemented yet");
             break;
@@ -964,8 +947,8 @@ double GF_Int64::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
-//TODO: we have a lot of duplicated code in the various set and valFOO code.  Some of this may be
-//reducable via template metaprogramming.  Specifically, there are three options:
+// TODO: we have a lot of duplicated code in the various set and valFOO code.  Some of this may be
+// reducable via template metaprogramming.  Specifically, there are three options:
 //
 // 1) Just give in that generalFOO is messy.
 //
@@ -973,7 +956,7 @@ double GF_Int64::valDouble() {
 // and make GeneralField templated with a default type (void, say).  Then the GF_FOO classes could
 // inheirit off of GeneralField<their type>, and use common code in GeneralValue.
 // 
-// 3) Use C preprocessor metaprogrammign to #define the various set functions.
+// 3) Use C preprocessor metaprogramming to #define the various set functions.
 void GF_Int64::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
     DEBUG_SINVARIANT(e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {

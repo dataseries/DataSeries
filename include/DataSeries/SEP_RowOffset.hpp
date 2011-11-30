@@ -5,6 +5,9 @@
    See the file named COPYING for license details
 */
 
+/** @file
+    See SubExtentPointer for documentation
+*/
 #ifndef DATASERIES_SEP_ROWOFFSET_HPP
 #define DATASERIES_SEP_ROWOFFSET_HPP
 
