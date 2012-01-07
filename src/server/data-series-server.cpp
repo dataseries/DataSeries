@@ -3,6 +3,7 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <inttypes.h>
 #include <pwd.h>
 #include <unistd.h>
 
@@ -1817,6 +1818,12 @@ public:
         updateTableInfo(out_table, project.output_series.getType());
     }
 
+    void transformTable(const string &in_table, const string &out_table,
+                        const map<string, string> &copy_columns,
+                        const vector<ExprColumn> &expr_columns) {
+        FATAL_ERROR("unimplemented");
+    }
+    
     void sortedUpdateTable(const string &base_table, const string &update_from, 
                            const string &update_column, const vector<string> &primary_key) {
         verifyTableName(base_table);

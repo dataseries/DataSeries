@@ -1,23 +1,23 @@
-/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Skeleton interface for Bison LALR(1) parsers in C++
-
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+   
+      Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software
+   Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -28,7 +28,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -37,28 +37,30 @@
 #ifndef PARSER_HEADER_H
 # define PARSER_HEADER_H
 
+
+
 #include <string>
 #include <iostream>
-/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Stack handling for Bison parsers in C++
-
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+   
+      Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software
+   Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -69,7 +71,7 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -78,8 +80,14 @@
 
 #include <deque>
 
-namespace DSExprImpl
-{
+
+/* Line 1067 of lalr1.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+namespace DSExprImpl {
+
+/* Line 1067 of lalr1.cc  */
+#line 48 "module/stack.hh"
   template <class T, class S = std::deque<T> >
   class stack
   {
@@ -165,47 +173,52 @@ namespace DSExprImpl
     const S& stack_;
     unsigned int range_;
   };
-}
 
-#endif // not BISON_STACK_HH
+/* Line 1153 of lalr1.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
 
-namespace DSExprImpl
-{
+} // DSExprImpl
+
+/* Line 1153 of lalr1.cc  */
+#line 141 "module/stack.hh"
+
+#endif // not BISON_STACK_HH[]dnl
+
+
+
+/* Line 35 of lalr1.cc  */
+
+namespace DSExprImpl {
+
+/* Line 35 of lalr1.cc  */
   class position;
   class location;
-}
 
-/* First part of user declarations.  */
+/* Line 35 of lalr1.cc  */
 
-#include "DSExprImpl.hpp"
+} // DSExprImpl
 
-#define YY_DECL \
-  DSExprImpl::Parser::token_type \
-  DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
+/* Line 35 of lalr1.cc  */
 
 
-/* Line 35 of lalr1.cc.  */
-
-/* A Bison parser, made by GNU Bison 2.3.  */
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Locations for Bison parsers in C++
-
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+   
+      Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -216,7 +229,7 @@ namespace DSExprImpl
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -230,26 +243,25 @@ namespace DSExprImpl
 
 # include <iostream>
 # include <string>
-/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Positions for Bison parsers in C++
-
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+   
+      Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -260,7 +272,7 @@ namespace DSExprImpl
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
@@ -274,9 +286,16 @@ namespace DSExprImpl
 
 # include <iostream>
 # include <string>
+# include <algorithm>
 
-namespace DSExprImpl
-{
+
+/* Line 38 of location.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+namespace DSExprImpl {
+
+/* Line 38 of location.cc  */
+#line 54 "module/position.hh"
   /// Abstract a position.
   class position
   {
@@ -284,7 +303,7 @@ namespace DSExprImpl
 
     /// Construct a position.
     position ()
-      : filename (0), line (1), column (0)
+      : filename (0), line (1), column (1)
     {
     }
 
@@ -294,7 +313,7 @@ namespace DSExprImpl
     {
       filename = fn;
       line = 1;
-      column = 0;
+      column = 1;
     }
 
     /** \name Line and Column related manipulators
@@ -303,19 +322,14 @@ namespace DSExprImpl
     /// (line related) Advance to the COUNT next lines.
     inline void lines (int count = 1)
     {
-      column = 0;
+      column = 1;
       line += count;
     }
 
     /// (column related) Advance to the COUNT next columns.
     inline void columns (int count = 1)
     {
-      int leftmost = 0;
-      int current  = column;
-      if (leftmost <= current + count)
-	column += count;
-      else
-	column = 0;
+      column = std::max (1u, column + count);
     }
     /** \} */
 
@@ -358,6 +372,23 @@ namespace DSExprImpl
     return begin + -width;
   }
 
+  /// Compare two position objects.
+  inline bool
+  operator== (const position& pos1, const position& pos2)
+  {
+    return
+      (pos1.filename == pos2.filename
+       || (pos1.filename && pos2.filename && *pos1.filename == *pos2.filename))
+      && pos1.line == pos2.line && pos1.column == pos2.column;
+  }
+
+  /// Compare two position objects.
+  inline bool
+  operator!= (const position& pos1, const position& pos2)
+  {
+    return !(pos1 == pos2);
+  }
+
   /** \brief Intercept output stream redirection.
    ** \param ostr the destination output stream
    ** \param pos a reference to the position to redirect
@@ -370,11 +401,24 @@ namespace DSExprImpl
     return ostr << pos.line << '.' << pos.column;
   }
 
-}
+
+/* Line 144 of location.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+} // DSExprImpl
+
+/* Line 144 of location.cc  */
+#line 167 "module/position.hh"
 #endif // not BISON_POSITION_HH
 
-namespace DSExprImpl
-{
+
+/* Line 162 of location.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+namespace DSExprImpl {
+
+/* Line 162 of location.cc  */
+#line 54 "module/location.hh"
 
   /// Abstract a location.
   class location
@@ -448,6 +492,20 @@ namespace DSExprImpl
     return res;
   }
 
+  /// Compare two location objects.
+  inline bool
+  operator== (const location& loc1, const location& loc2)
+  {
+    return loc1.begin == loc2.begin && loc1.end == loc2.end;
+  }
+
+  /// Compare two location objects.
+  inline bool
+  operator!= (const location& loc1, const location& loc2)
+  {
+    return !(loc1 == loc2);
+  }
+
   /** \brief Intercept output stream redirection.
    ** \param ostr the destination output stream
    ** \param loc a reference to the location to redirect
@@ -469,7 +527,14 @@ namespace DSExprImpl
     return ostr;
   }
 
-}
+
+/* Line 271 of location.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+} // DSExprImpl
+
+/* Line 271 of location.cc  */
+#line 170 "module/location.hh"
 
 #endif // not BISON_LOCATION_HH
 
@@ -510,8 +575,12 @@ do {							\
 } while (false)
 #endif
 
-namespace DSExprImpl
-{
+
+/* Line 35 of lalr1.cc  */
+
+namespace DSExprImpl {
+
+/* Line 35 of lalr1.cc  */
 
   /// A Bison parser.
   class Parser
@@ -520,14 +589,19 @@ namespace DSExprImpl
     /// Symbol semantic values.
 #ifndef YYSTYPE
     union semantic_type
-{
+    {
+
+/* Line 35 of lalr1.cc  */
+
     double constant;
     DSExpr *expression;
     std::string *symbol;
     std::string *strliteral;
-}
-/* Line 35 of lalr1.cc.  */
-	;
+
+
+
+/* Line 35 of lalr1.cc  */
+    };
 #else
     typedef YYSTYPE semantic_type;
 #endif
@@ -569,6 +643,7 @@ namespace DSExprImpl
     /// \returns  0 iff parsing succeeded.
     virtual int parse ();
 
+#if YYDEBUG
     /// The current debugging stream.
     std::ostream& debug_stream () const;
     /// Set the current debugging stream.
@@ -580,6 +655,7 @@ namespace DSExprImpl
     debug_level_type debug_level () const;
     /// Set the current debugging level.
     void set_debug_level (debug_level_type l);
+#endif
 
   private:
     /// Report a syntax error.
@@ -589,7 +665,7 @@ namespace DSExprImpl
 
     /// Generate an error message.
     /// \param state   the state where the error occurred.
-    /// \param tok     the look-ahead token.
+    /// \param tok     the lookahead token.
     virtual std::string yysyntax_error_ (int yystate, int tok);
 
 #if YYDEBUG
@@ -607,7 +683,7 @@ namespace DSExprImpl
     virtual void yy_symbol_print_ (int yytype,
 				   const semantic_type* yyvaluep,
 				   const location_type* yylocationp);
-#endif /* ! YYDEBUG */
+#endif
 
 
     /// State numbers.
@@ -684,6 +760,10 @@ namespace DSExprImpl
     virtual void yy_reduce_print_ (int r);
     /// Print the state stack on the debug stream.
     virtual void yystack_print_ ();
+
+    /* Debugging.  */
+    int yydebug_;
+    std::ostream* yycdebug_;
 #endif
 
     /// Convert a scanner token number \a t to a symbol number.
@@ -715,16 +795,17 @@ namespace DSExprImpl
     static const unsigned int yyuser_token_number_max_;
     static const token_number_type yyundef_token_;
 
-    /* Debugging.  */
-    int yydebug_;
-    std::ostream* yycdebug_;
-
-
     /* User arguments.  */
     DSExprImpl::Driver &driver;
     void *scanner_state;
   };
-}
+
+/* Line 35 of lalr1.cc  */
+
+} // DSExprImpl
+
+/* Line 35 of lalr1.cc  */
+
 
 
 #endif /* ! defined PARSER_HEADER_H */

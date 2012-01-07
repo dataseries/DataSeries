@@ -158,7 +158,7 @@ sub remainingWork {
     my $sc_created = new SortColumn({ column => 'created', 'sort_mode' => SortMode::SM_Ascending });
     my $sc_finished = new SortColumn({ column => 'finished', 'sort_mode' => SortMode::SM_Ascending });
 
-#    $client->sortTable('remaining-work.sort-created', 
+    $client->sortTable('remaining-work.sort-created', 
     # TODO: need $client->deriveTable(table, [expr => col])
     # 
 }

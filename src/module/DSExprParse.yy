@@ -17,10 +17,6 @@
 
 %{
 #include "DSExprImpl.hpp"
-
-#define YY_DECL \
-  DSExprImpl::Parser::token_type \
-  DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
 %}
 
 %name-prefix="DSExprImpl"
@@ -115,7 +111,7 @@ expr
 	| expr '/' expr { $$ = new ExprDivide($1, $3); }
 	| '-' expr %prec UMINUS { $$ = new ExprMinus($2); }
 	| '(' expr ')'  { $$ = $2; }
-	| SYMBOL { $$ = new ExprField(driver.series, *$1); }
+        | SYMBOL { $$ = driver.makeExprField(*$1); }
 	| CONSTANT { $$ = new ExprNumericConstant($1); }
 	| STRLITERAL { $$ = new ExprStrLiteral(*$1); }
 	| SYMBOL '(' { driver.current_fnargs.clear(); } fnargs ')' 

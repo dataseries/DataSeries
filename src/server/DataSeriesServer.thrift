@@ -52,6 +52,12 @@ struct SortColumn {
     2: required SortMode sort_mode;
 }
 
+struct ExprColumn {
+    1: required string column_name;
+    2: required string column_type;
+    3: required string expr;
+}
+
 service DataSeriesServer {
     void ping();
     void shutdown();
@@ -86,6 +92,10 @@ service DataSeriesServer {
     void selectRows(string in_table, string out_table, string where_expr);
 
     void projectTable(string in_table, string out_table, list<string> keep_columns);
+
+    void transformTable(string in_table, string out_table, map<string, string> copy_columns,
+                        list<ExprColumn> expr_columns);
+
     // order_columns are from the output names; All output names must share 
     void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
 

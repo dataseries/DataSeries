@@ -8,7 +8,7 @@
   <field type="variable32" name="xmltype" />
 </ExtentType>
 
-<ExtentType name="Test::Simple" namespace="ssd.hpl.hp.com"	    version="1.0">  <field type="double" name="a" />  <field type="double" name="b" />  <field type="double" name="c" />  <field type="variable32" name="d" />  <field type="variable32" name="e" /></ExtentType>
+<ExtentType name="Test::Simple" namespace="ssd.hpl.hp.com" version="1.0">  <field type="double" name="a" />  <field type="double" name="b" />  <field type="double" name="c" />  <field type="variable32" name="d" />  <field type="variable32" name="e" /></ExtentType>
 # Extent, type='Test::Simple'
 a b c d e
 0 0 0 0 0

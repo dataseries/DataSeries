@@ -16,8 +16,9 @@
 #include <string>
 #include <vector>
 
-#include <boost/utility.hpp>
+#include <boost/function.hpp>
 #include <boost/smart_ptr.hpp>
+#include <boost/utility.hpp>
 
 #include <DataSeries/ExtentSeries.hpp>
 
@@ -52,12 +53,26 @@ protected:
 
 class DSExprParser : boost::noncopyable {
 public:
+    /// Function is allowed to return NULL if it is unable to map field_name to an appropriate
+    /// series.
+    typedef boost::function<ExtentSeries *(const std::string &field_name)> FieldNameToSeries;
+
     virtual ~DSExprParser() {}
     
+    /// Get the usage for this parser.
     virtual const std::string getUsage() const = 0;
 
-    virtual DSExpr *parse(ExtentSeries &series, std::string &expr) = 0;
+    /// Parse an expression over a single series.
+    virtual DSExpr *parse(ExtentSeries &series, const std::string &expr) = 0;
 
+    /// Parse an expression where the series to use for each of the different fields is determined
+    /// by the specified function.  This functionality allows for a single expression to combine
+    /// the values in multiple extents.
+    virtual DSExpr *parse(const FieldNameToSeries &field_name_to_series,
+                          const std::string &expr) = 0;
+      
+
+    /// Register a function for use in calculating an expression
     virtual void registerFunction(DSExprFunction &) = 0;
 
     static DSExprParser *MakeDefaultParser() {
@@ -85,11 +100,22 @@ public:
 
     virtual void dump(std::ostream &) = 0;
 
-    static DSExpr *make(ExtentSeries &series, std::string &expr_string) {
+    /// Make an expression over a single series.
+    static DSExpr *make(ExtentSeries &series, const std::string &expr_string) {
         boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
         return parser->parse(series, expr_string);
     }
 
+    /// Make an expression where the series to use for each of the different fields is determined
+    /// by the specified function.  This functionality allows for a single expression to combine
+    /// the values in multiple extents.
+    static DSExpr *make(const DSExprParser::FieldNameToSeries &field_name_to_series, 
+                        const std::string &expr_string) {
+        boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
+        return parser->parse(field_name_to_series, expr_string);
+    }
+
+    /// Get the current usage description for expressions.
     static std::string usage() {
         boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
         return parser->getUsage();

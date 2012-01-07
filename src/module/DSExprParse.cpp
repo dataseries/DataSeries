@@ -1,23 +1,23 @@
-/* A Bison parser, made by GNU Bison 2.3.  */
+
+/* A Bison parser, made by GNU Bison 2.4.1.  */
 
 /* Skeleton implementation for Bison LALR(1) parsers in C++
-
-   Copyright (C) 2002, 2003, 2004, 2005, 2006 Free Software Foundation, Inc.
-
-   This program is free software; you can redistribute it and/or modify
+   
+      Copyright (C) 2002, 2003, 2004, 2005, 2006, 2007, 2008 Free Software
+   Foundation, Inc.
+   
+   This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 2, or (at your option)
-   any later version.
-
+   the Free Software Foundation, either version 3 of the License, or
+   (at your option) any later version.
+   
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
    GNU General Public License for more details.
-
+   
    You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 51 Franklin Street, Fifth Floor,
-   Boston, MA 02110-1301, USA.  */
+   along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 /* As a special exception, you may create a larger work that contains
    part or all of the Bison parser skeleton and distribute that work
@@ -28,17 +28,31 @@
    special exception, which will cause the skeleton and the resulting
    Bison output files to be licensed under the GNU General Public
    License without this special exception.
-
+   
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
 // Take the name prefix into account.
 #define yylex   DSExprImpllex
 
+/* First part of user declarations.  */
+
+/* Line 311 of lalr1.cc  */
+#line 18 "module/DSExprParse.yy"
+
+#include "DSExprImpl.hpp"
+
+
+/* Line 311 of lalr1.cc  */
+#line 48 "module/DSExprParse.cpp"
+
+
 #include "DSExprParse.hpp"
 
 /* User implementation prologue.  */
-#line 39 "module/DSExprParse.yy"
+
+/* Line 317 of lalr1.cc  */
+#line 35 "module/DSExprParse.yy"
 
 YY_DECL;
 
@@ -48,8 +62,8 @@ YY_DECL;
 using namespace DSExprImpl;
 
 
-/* Line 317 of lalr1.cc.  */
-#line 53 "module/DSExprParse.cpp"
+/* Line 317 of lalr1.cc  */
+#line 67 "module/DSExprParse.cpp"
 
 #ifndef YY_
 # if YYENABLE_NLS
@@ -66,13 +80,11 @@ using namespace DSExprImpl;
 /* Suppress unused-variable warnings by "using" E.  */
 #define YYUSE(e) ((void) (e))
 
-/* A pseudo ostream that takes yydebug_ into account.  */
-# define YYCDEBUG							\
-  for (bool yydebugcond_ = yydebug_; yydebugcond_; yydebugcond_ = false)	\
-    (*yycdebug_)
-
 /* Enable debugging if requested.  */
 #if YYDEBUG
+
+/* A pseudo ostream that takes yydebug_ into account.  */
+# define YYCDEBUG if (yydebug_) (*yycdebug_)
 
 # define YY_SYMBOL_PRINT(Title, Type, Value, Location)	\
 do {							\
@@ -98,18 +110,29 @@ do {					\
 
 #else /* !YYDEBUG */
 
+# define YYCDEBUG if (false) std::cerr
 # define YY_SYMBOL_PRINT(Title, Type, Value, Location)
 # define YY_REDUCE_PRINT(Rule)
 # define YY_STACK_PRINT()
 
 #endif /* !YYDEBUG */
 
+#define yyerrok		(yyerrstatus_ = 0)
+#define yyclearin	(yychar = yyempty_)
+
 #define YYACCEPT	goto yyacceptlab
 #define YYABORT		goto yyabortlab
 #define YYERROR		goto yyerrorlab
+#define YYRECOVERING()  (!!yyerrstatus_)
 
-namespace DSExprImpl
-{
+
+/* Line 380 of lalr1.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+namespace DSExprImpl {
+
+/* Line 380 of lalr1.cc  */
+#line 136 "module/DSExprParse.cpp"
 #if YYERROR_VERBOSE
 
   /* Return YYSTR after stripping away unnecessary quotes and
@@ -153,8 +176,11 @@ namespace DSExprImpl
 
   /// Build a parser object.
   Parser::Parser (DSExprImpl::Driver &driver_yyarg, void *scanner_state_yyarg)
-    : yydebug_ (false),
+    :
+#if YYDEBUG
+      yydebug_ (false),
       yycdebug_ (&std::cerr),
+#endif
       driver (driver_yyarg),
       scanner_state (scanner_state_yyarg)
   {
@@ -193,7 +219,7 @@ namespace DSExprImpl
     yy_symbol_value_print_ (yytype, yyvaluep, yylocationp);
     *yycdebug_ << ')';
   }
-#endif /* ! YYDEBUG */
+#endif
 
   void
   Parser::yydestruct_ (const char* yymsg,
@@ -221,6 +247,7 @@ namespace DSExprImpl
     yylocation_stack_.pop (n);
   }
 
+#if YYDEBUG
   std::ostream&
   Parser::debug_stream () const
   {
@@ -245,12 +272,12 @@ namespace DSExprImpl
   {
     yydebug_ = l;
   }
-
+#endif
 
   int
   Parser::parse ()
   {
-    /// Look-ahead and look-ahead in internal form.
+    /// Lookahead and lookahead in internal form.
     int yychar = yyempty_;
     int yytoken = 0;
 
@@ -263,12 +290,12 @@ namespace DSExprImpl
     int yynerrs_ = 0;
     int yyerrstatus_ = 0;
 
-    /// Semantic value of the look-ahead.
+    /// Semantic value of the lookahead.
     semantic_type yylval;
-    /// Location of the look-ahead.
+    /// Location of the lookahead.
     location_type yylloc;
     /// The locations where the error started and ended.
-    location yyerror_range[2];
+    location_type yyerror_range[2];
 
     /// $$.
     semantic_type yyval;
@@ -294,17 +321,22 @@ namespace DSExprImpl
   yynewstate:
     yystate_stack_.push (yystate);
     YYCDEBUG << "Entering state " << yystate << std::endl;
+
+    /* Accept?  */
+    if (yystate == yyfinal_)
+      goto yyacceptlab;
+
     goto yybackup;
 
     /* Backup.  */
   yybackup:
 
-    /* Try to take a decision without look-ahead.  */
+    /* Try to take a decision without lookahead.  */
     yyn = yypact_[yystate];
     if (yyn == yypact_ninf_)
       goto yydefault;
 
-    /* Read a look-ahead token.  */
+    /* Read a lookahead token.  */
     if (yychar == yyempty_)
       {
 	YYCDEBUG << "Reading a token: ";
@@ -340,16 +372,11 @@ namespace DSExprImpl
 	goto yyreduce;
       }
 
-    /* Accept?  */
-    if (yyn == yyfinal_)
-      goto yyacceptlab;
-
-    /* Shift the look-ahead token.  */
+    /* Shift the lookahead token.  */
     YY_SYMBOL_PRINT ("Shifting", yytoken, &yylval, &yylloc);
 
-    /* Discard the token being shifted unless it is eof.  */
-    if (yychar != yyeof_)
-      yychar = yyempty_;
+    /* Discard the token being shifted.  */
+    yychar = yyempty_;
 
     yysemantic_stack_.push (yylval);
     yylocation_stack_.push (yylloc);
@@ -395,141 +422,195 @@ namespace DSExprImpl
     switch (yyn)
       {
 	  case 2:
-#line 85 "module/DSExprParse.yy"
-    { driver.expr = (yysemantic_stack_[(2) - (1)].expression); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 81 "module/DSExprParse.yy"
+    { driver.expr = (yysemantic_stack_[(2) - (1)].expression); }
     break;
 
   case 5:
-#line 94 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprEq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 90 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprEq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 6:
-#line 95 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprNeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 91 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprNeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 7:
-#line 96 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprGt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 92 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprGt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 8:
-#line 97 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprLt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 93 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLt((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 9:
-#line 98 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprGeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 94 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprGeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 10:
-#line 99 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprLeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 95 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLeq((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 11:
-#line 100 "module/DSExprParse.yy"
-    { FATAL_ERROR("not implemented yet"); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 96 "module/DSExprParse.yy"
+    { FATAL_ERROR("not implemented yet"); }
     break;
 
   case 12:
-#line 104 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprLor((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 100 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLor((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 13:
-#line 105 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprLand((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 101 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLand((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 14:
-#line 106 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprLnot((yysemantic_stack_[(2) - (2)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 102 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprLnot((yysemantic_stack_[(2) - (2)].expression)); }
     break;
 
   case 15:
-#line 107 "module/DSExprParse.yy"
-    { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 103 "module/DSExprParse.yy"
+    { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); }
     break;
 
   case 17:
-#line 112 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 108 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprAdd((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 18:
-#line 113 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 109 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprSubtract((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 19:
-#line 114 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 110 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprMultiply((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 20:
-#line 115 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 111 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprDivide((yysemantic_stack_[(3) - (1)].expression), (yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
   case 21:
-#line 116 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprMinus((yysemantic_stack_[(2) - (2)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 112 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprMinus((yysemantic_stack_[(2) - (2)].expression)); }
     break;
 
   case 22:
-#line 117 "module/DSExprParse.yy"
-    { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 113 "module/DSExprParse.yy"
+    { (yyval.expression) = (yysemantic_stack_[(3) - (2)].expression); }
     break;
 
   case 23:
-#line 118 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprField(driver.series, *(yysemantic_stack_[(1) - (1)].symbol)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 114 "module/DSExprParse.yy"
+    { (yyval.expression) = driver.makeExprField(*(yysemantic_stack_[(1) - (1)].symbol)); }
     break;
 
   case 24:
-#line 119 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprNumericConstant((yysemantic_stack_[(1) - (1)].constant)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 115 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprNumericConstant((yysemantic_stack_[(1) - (1)].constant)); }
     break;
 
   case 25:
-#line 120 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprStrLiteral(*(yysemantic_stack_[(1) - (1)].strliteral)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 116 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprStrLiteral(*(yysemantic_stack_[(1) - (1)].strliteral)); }
     break;
 
   case 26:
-#line 121 "module/DSExprParse.yy"
-    { driver.current_fnargs.clear(); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 117 "module/DSExprParse.yy"
+    { driver.current_fnargs.clear(); }
     break;
 
   case 27:
-#line 122 "module/DSExprParse.yy"
+
+/* Line 678 of lalr1.cc  */
+#line 118 "module/DSExprParse.yy"
     { (yyval.expression) = new ExprFunctionApplication(*(yysemantic_stack_[(5) - (1)].symbol), driver.current_fnargs); 
 	    driver.current_fnargs.clear();
-	  ;}
+	  }
     break;
 
   case 28:
-#line 125 "module/DSExprParse.yy"
-    { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 121 "module/DSExprParse.yy"
+    { (yyval.expression) = new ExprFnTfracToSeconds((yysemantic_stack_[(4) - (3)].expression)); }
     break;
 
   case 31:
-#line 134 "module/DSExprParse.yy"
-    { driver.current_fnargs.push_back((yysemantic_stack_[(1) - (1)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 130 "module/DSExprParse.yy"
+    { driver.current_fnargs.push_back((yysemantic_stack_[(1) - (1)].expression)); }
     break;
 
   case 32:
-#line 135 "module/DSExprParse.yy"
-    { driver.current_fnargs.push_back((yysemantic_stack_[(3) - (3)].expression)); ;}
+
+/* Line 678 of lalr1.cc  */
+#line 131 "module/DSExprParse.yy"
+    { driver.current_fnargs.push_back((yysemantic_stack_[(3) - (3)].expression)); }
     break;
 
 
-    /* Line 675 of lalr1.cc.  */
-#line 532 "module/DSExprParse.cpp"
-	default: break;
+
+/* Line 678 of lalr1.cc  */
+#line 612 "module/DSExprParse.cpp"
+	default:
+          break;
       }
     YY_SYMBOL_PRINT ("-> $$ =", yyr1_[yyn], &yyval, &yyloc);
 
@@ -564,7 +645,7 @@ namespace DSExprImpl
     yyerror_range[0] = yylloc;
     if (yyerrstatus_ == 3)
       {
-	/* If just tried and failed to reuse look-ahead token after an
+	/* If just tried and failed to reuse lookahead token after an
 	 error, discard it.  */
 
 	if (yychar <= yyeof_)
@@ -580,7 +661,7 @@ namespace DSExprImpl
 	  }
       }
 
-    /* Else will try to reuse look-ahead token after shifting the error
+    /* Else will try to reuse lookahead token after shifting the error
        token.  */
     goto yyerrlab1;
 
@@ -637,19 +718,16 @@ namespace DSExprImpl
 	YY_STACK_PRINT ();
       }
 
-    if (yyn == yyfinal_)
-      goto yyacceptlab;
-
     yyerror_range[1] = yylloc;
     // Using YYLLOC is tempting, but would change the location of
-    // the look-ahead.  YYLOC is available though.
+    // the lookahead.  YYLOC is available though.
     YYLLOC_DEFAULT (yyloc, (yyerror_range - 1), 2);
     yysemantic_stack_.push (yylval);
     yylocation_stack_.push (yyloc);
 
     /* Shift the error token.  */
     YY_SYMBOL_PRINT ("Shifting", yystos_[yyn],
-		   &yysemantic_stack_[0], &yylocation_stack_[0]);
+		     &yysemantic_stack_[0], &yylocation_stack_[0]);
 
     yystate = yyn;
     goto yynewstate;
@@ -665,7 +743,7 @@ namespace DSExprImpl
     goto yyreturn;
 
   yyreturn:
-    if (yychar != yyeof_ && yychar != yyempty_)
+    if (yychar != yyempty_)
       yydestruct_ ("Cleanup: discarding lookahead", yytoken, &yylval, &yylloc);
 
     /* Do not reclaim the symbols of the rule which action triggered
@@ -870,7 +948,7 @@ namespace DSExprImpl
   "STRLITERAL", "FN_TfracToSeconds", "EQ", "NEQ", "REMATCH", "GT", "LT",
   "GEQ", "LEQ", "LOR", "LAND", "LNOT", "'+'", "'-'", "'*'", "'/'", "ULNOT",
   "UMINUS", "'('", "')'", "','", "$accept", "complete_expr",
-  "top_level_expr", "rel_expr", "bool_expr", "expr", "@1", "fnargs",
+  "top_level_expr", "rel_expr", "bool_expr", "expr", "$@1", "fnargs",
   "fnargs1", 0
   };
 #endif
@@ -908,10 +986,10 @@ namespace DSExprImpl
   const unsigned char
   Parser::yyrline_[] =
   {
-         0,    85,    85,    89,    90,    94,    95,    96,    97,    98,
-      99,   100,   104,   105,   106,   107,   108,   112,   113,   114,
-     115,   116,   117,   118,   119,   120,   121,   121,   125,   128,
-     130,   134,   135
+         0,    81,    81,    85,    86,    90,    91,    92,    93,    94,
+      95,    96,   100,   101,   102,   103,   104,   108,   109,   110,
+     111,   112,   113,   114,   115,   116,   117,   117,   121,   124,
+     126,   130,   131
   };
 
   // Print the state stack on the debug stream.
@@ -933,7 +1011,7 @@ namespace DSExprImpl
     int yynrhs = yyr2_[yyrule];
     /* Print the symbols being reduced, and their result.  */
     *yycdebug_ << "Reducing stack by rule " << yyrule - 1
-	       << " (line " << yylno << "), ";
+	       << " (line " << yylno << "):" << std::endl;
     /* The symbols being reduced.  */
     for (int yyi = 0; yyi < yynrhs; yyi++)
       YY_SYMBOL_PRINT ("   $" << yyi + 1 << " =",
@@ -998,6 +1076,13 @@ namespace DSExprImpl
   const unsigned int Parser::yyuser_token_number_max_ = 273;
   const Parser::token_number_type Parser::yyundef_token_ = 2;
 
-} // namespace DSExprImpl
+
+/* Line 1054 of lalr1.cc  */
+#line 1 "[Bison:b4_percent_define_default]"
+
+} // DSExprImpl
+
+/* Line 1054 of lalr1.cc  */
+#line 1087 "module/DSExprParse.cpp"
 
 

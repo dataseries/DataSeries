@@ -6,6 +6,9 @@ my @stack = readFile("$ARGV[0]/stack.hh");
 my @location = readFile("$ARGV[0]/location.hh");
 my @position = readFile("$ARGV[0]/position.hh");
 
+# remove compilation warning...
+grep(s/(pos1\.filename \&\& pos2\.filename \&\& \*pos1\.filename == \*pos2\.filename)/($1)/o,
+     @position);
 open(OUT, ">$ARGV[0]/$ARGV[1].hpp") or die "bad";
 my ($stack, $location) = (0,0);
 foreach $_ (@data) {

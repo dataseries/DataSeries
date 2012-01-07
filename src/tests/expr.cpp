@@ -1,15 +1,19 @@
 #include <string>
 
+#include <boost/bind.hpp>
+#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
-#include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/commonargs.hpp>
+#include <DataSeries/DataSeriesModule.hpp>
+#include <DataSeries/DSExpr.hpp>
 
 using namespace std;
 
+
+void makeFile() {
 static string extent_type_xml(
-"<ExtentType name=\"Test::Simple\" namespace=\"ssd.hpl.hp.com\""
-"	    version=\"1.0\">"
+"<ExtentType name=\"Test::Simple\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\">"
 "  <field type=\"double\" name=\"a\" />"
 "  <field type=\"double\" name=\"b\" />"
 "  <field type=\"double\" name=\"c\" />"
@@ -18,16 +22,9 @@ static string extent_type_xml(
 "</ExtentType>"
 );
 
-int main(int argc, char **argv)
-{
-    commonPackingArgs packing_args;
-
-    getPackingArgs(&argc, argv, &packing_args);
-
     string dsfn("expr.ds");
 
-    DataSeriesSink dsout(dsfn, packing_args.compress_modes,
-			 packing_args.compress_level);
+    DataSeriesSink dsout(dsfn, Extent::compress_lzf, 1);
 
     ExtentTypeLibrary library;
     const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
@@ -56,6 +53,65 @@ int main(int argc, char **argv)
 	    
     output.close();
     dsout.close();
+}
+
+ExtentSeries *firstMatch(vector<ExtentSeries *> *series, const string &name) {
+    BOOST_FOREACH(ExtentSeries *e, *series) {
+        if (e->getType()->hasColumn(name)) {
+            return e;
+        }
+    }
+    return NULL;
+}
+
+void testSeriesSelect() {
+    static string extent_type_1_xml(
+"<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+"  <field type=\"int32\" name=\"a\" />"
+"  <field type=\"int32\" name=\"b\" />"
+"</ExtentType>");
+    static string extent_type_2_xml(
+"<ExtentType name=\"Test2\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+"  <field type=\"int32\" name=\"c\" />"
+"  <field type=\"int32\" name=\"d\" />"
+"</ExtentType>");
+
+    ExtentTypeLibrary library;
+
+    const ExtentType &extent_type_1(library.registerTypeR(extent_type_1_xml));
+    const ExtentType &extent_type_2(library.registerTypeR(extent_type_2_xml));
+
+    Extent e1(extent_type_1), e2(extent_type_2);
+    ExtentSeries series1(&e1), series2(&e2);
+    Int32Field a(series1, "a"), b(series1, "b"), c(series2, "c"), d(series2, "d");
+
+    vector<ExtentSeries *> all_series;
+    all_series.push_back(&series1);
+    all_series.push_back(&series2);
+    
+    DSExpr *expr = DSExpr::make(boost::bind(firstMatch, &all_series, _1), "(a*c) + (b*d)");
+
+    series1.newRecord();
+    series2.newRecord();
+
+    SINVARIANT(expr->valInt64() == 0);
+    a.set(1);
+    c.set(1);
+    SINVARIANT(expr->valInt64() == 1);
+    b.set(2);
+    d.set(2);
+    SINVARIANT(expr->valInt64() == 5);
+    c.set(0);
+    SINVARIANT(expr->valInt64() == 4);
+    d.set(0);
+    SINVARIANT(expr->valInt64() == 0);
+
+    delete expr;
+}
+
+int main(int argc, char **argv) {
+    testSeriesSelect();
+    makeFile();
 
     return 0;
 }

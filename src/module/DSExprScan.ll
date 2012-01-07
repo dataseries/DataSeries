@@ -18,7 +18,7 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/StringUtil.hpp>
 
-#include <DataSeries/DSExpr.hpp>
+#include <module/DSExprImpl.hpp>
 
 #include <module/DSExprParse.hpp>
 

@@ -4,32 +4,21 @@
 #include <iosfwd>
 #include <string>
 
+#include <boost/function.hpp>
+
 #include <Lintel/Double.hpp>
 
 #include <DataSeries/DSExpr.hpp>
 #include <DataSeries/GeneralField.hpp>
 
+#define YY_DECL \
+  DSExprImpl::Parser::token_type \
+  DSExprScanlex(DSExprImpl::Parser::semantic_type *yylval, void * yyscanner)
+
 namespace DSExprImpl {
 
 using namespace std;
 using namespace boost;
-
-class Driver {
-public:
-    Driver(ExtentSeries &_series) 
-	: expr(NULL), series(_series), scanner_state(NULL) {}
-    ~Driver();
-
-    void doit(const string &str);
-
-    void startScanning(const string &str);
-    void finishScanning();
-	
-    DSExpr *expr;
-    ExtentSeries &series;
-    void *scanner_state;
-    DSExpr::List current_fnargs;
-};
 
 // TODO: make valGV to do general value calculations.
 
@@ -58,7 +47,7 @@ private:
 
 class ExprField : public DSExpr {
 public:
-    ExprField(ExtentSeries &series, const string &fieldname_);
+    ExprField(ExtentSeries &series, const string &fieldname);
 	
     virtual ~ExprField() { 
 	delete field;
@@ -590,6 +579,45 @@ public:
 private:
     const string name;
     DSExpr::List args;
+};
+
+class Driver {
+public:
+    typedef DSExprParser::FieldNameToSeries FieldNameToSeries;
+
+    Driver(ExtentSeries &series) 
+	: expr(NULL), series(&series), field_name_to_series(), scanner_state(NULL), 
+          current_fnargs() 
+    { }
+
+    Driver(const FieldNameToSeries &field_name_to_series)
+	: expr(NULL), series(NULL), field_name_to_series(field_name_to_series), 
+          scanner_state(NULL), current_fnargs() 
+    { 
+        SINVARIANT(!!field_name_to_series);
+    }
+
+    ExprField *makeExprField(const string &field_name) {
+        if (series == NULL) {
+            ExtentSeries *tmp = field_name_to_series(field_name);
+            INVARIANT(tmp != NULL, format("field_name '%s' is not defined") % field_name);
+            return new ExprField(*tmp, field_name);
+        } else {
+            return new ExprField(*series, field_name); 
+        }
+    }
+    ~Driver();
+
+    void doit(const string &str);
+
+    void startScanning(const string &str);
+    void finishScanning();
+	
+    DSExpr *expr;
+    ExtentSeries *series;
+    const FieldNameToSeries field_name_to_series;
+    void *scanner_state;
+    DSExpr::List current_fnargs;
 };
 
 };
