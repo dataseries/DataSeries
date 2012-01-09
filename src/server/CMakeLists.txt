@@ -26,7 +26,10 @@ ADD_CUSTOM_COMMAND(
 
 INCLUDE_DIRECTORIES(${THRIFT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR})
 
-DATASERIES_PROGRAM(data-series-server ${thrift_DataSeriesServer_gen_cpp})
+DATASERIES_PROGRAM(data-series-server ${thrift_DataSeriesServer_gen_cpp} SelectModule.cpp
+                   TeeModule.cpp TableDataModule.cpp HashJoinModule.cpp StarJoinModule.cpp
+                   ProjectModule.cpp SortedUpdateModule.cpp UnionModule.cpp SortModule.cpp
+                   RenameCopier.cpp)
 TARGET_LINK_LIBRARIES(data-series-server ${DATASERIES_LIBRARIES} ${THRIFT_LIBRARIES})
 
 ADD_TEST(data-series-server ${CMAKE_CURRENT_BINARY_DIR}/test-dss)

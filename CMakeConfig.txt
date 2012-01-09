@@ -109,8 +109,6 @@ LINTEL_WITH_HEADER(PCAP pcap.h)
 SET(LINUX_IF_PACKET_MISSING_EXTRA "  will skip building lindump-mmap")
 LINTEL_WITH_HEADER(LINUX_IF_PACKET linux/if_packet.h)
 
-INCLUDE(FindBoost)
-
 SET(BOOST_FOREACH_MISSING_EXTRA "  will skip building SortedIndex and SortedIndexModule")
 LINTEL_BOOST_EXTRA(BOOST_FOREACH boost/foreach.hpp None)
 

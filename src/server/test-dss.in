@@ -27,17 +27,20 @@ my $debug = 0;
 
 {
     my $sock = IO::Socket::INET->new(PeerAddr => 'localhost', PeerPort => 49476, Proto => 'tcp');
-    die "Server already running on port 49476?"
+    warn "Server already running on port 49476, going to try using it."
         if defined $sock;
 }
 my $pm = new Lintel::ProcessManager();
-my $pid = $pm->fork(cmd => "@CMAKE_CURRENT_BINARY_DIR@/data-series-server",
-                    stdout => "server.log", stderr => 'STDOUT');
 print "Waiting for server...";
 for(my $i=0; $i < 100; ++$i) {
     print "$i...";
     my $sock = IO::Socket::INET->new(PeerAddr => 'localhost', PeerPort => 49476, Proto => 'tcp');
     last if defined $sock;
+    if ($i == 0) { # only start server if one isn't present.
+        $pm->fork(cmd => "@CMAKE_CURRENT_BINARY_DIR@/data-series-server",
+                  stdout => "server.log", stderr => 'STDOUT');
+    }
+
     die "server not present" if $i > 50;
     sleep(0.1);
 }
@@ -200,7 +203,8 @@ sub testImportSql {
     foreach my $s (qw/keyvalue-debian-x86-2.u.hpl.hp.com:3306/) {
         my ($server, $port) = ($s =~ /^(.+):(\d+)$/o);
         print "$server...";
-        my $sock = IO::Socket::INET->new(PeerAddr => $server, PeerPort => $port, Proto => 'tcp');
+        my $sock = IO::Socket::INET->new(PeerAddr => $server, PeerPort => $port, Proto => 'tcp',
+                                         Timeout => 1);
         if (defined $sock) {
             print "found server...";
             $dsn = "DBI:mysql:database=test;host=$server";
