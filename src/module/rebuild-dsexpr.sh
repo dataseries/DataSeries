@@ -17,6 +17,9 @@ echo "Cases where it doesn't work correctly."
 [ "`flex --version`" = "flex 2.5.35" ]
 [ "`bison --version | head -1`" = "bison (GNU Bison) 2.4.1" ]
 
+if [ -f DSExprScan.ll ]; then
+    cd ..
+fi
 flex -o module/DSExprScan.cpp module/DSExprScan.ll
 bison -d -o module/DSExprParse.cpp module/DSExprParse.yy
 perl module/expr-parser-fixup.pl module DSExprParse

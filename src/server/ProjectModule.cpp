@@ -8,12 +8,6 @@ public:
 
     virtual ~ProjectModule() { }
 
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
-    }
-
     void firstExtent(Extent &in) {
         const ExtentType &t(in.getType());
         input_series.setType(t);

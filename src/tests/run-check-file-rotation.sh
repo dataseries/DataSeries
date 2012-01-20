@@ -83,11 +83,14 @@ check periodic-threaded-rotater
 
 echo "--------------- testing parallel rotation via callback ---------"
 ./file-rotation extent-callback-rotater --nthreads=40 --execution-time=2 --rotate-interval=0.25 \
-    --extent-interval=0.05
+    --extent-interval=0.05 >rcfr-parallel-out.txt
 
-# expect 8 ds files.
+ROTATE_COUNT=`grep 'INFO: rotated ' rcfr-parallel-out.txt | awk '{print $3}'`
+ROTATE_MAX=`expr $ROTATE_COUNT - 1`
+
+# expect $ROTATE_COUNT ds files (usually 8).
 rm rcfr-unsorted.txt rcfr-expect.txt
-for i in `seq 0 7`; do
+for i in `seq 0 $ROTATE_MAX`; do
     if [ ! -f cbr-$i.ds ]; then
         echo "Error: missing cbr-$i.ds"
         exit 1

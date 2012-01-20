@@ -63,7 +63,8 @@ service DataSeriesServer {
     void shutdown();
     bool hasTable(string table_name);
 
-    void importDataSeriesFiles(list<string> source_paths, string extent_type, string dest_table);
+    void importDataSeriesFiles(list<string> source_paths, string extent_type_name, 
+                               string dest_table);
     void importCSVFiles(list<string> source_paths, string xml_desc, string dest_table, 
                         string field_separator, string comment_prefix);
     void importSQLTable(string dsn, string src_table, string dest_table);
@@ -93,8 +94,16 @@ service DataSeriesServer {
 
     void projectTable(string in_table, string out_table, list<string> keep_columns);
 
-    void transformTable(string in_table, string out_table, map<string, string> copy_columns,
-                        list<ExprColumn> expr_columns);
+    // For looking up expressions in either the input or output tables, the following order is
+    // used, and the first match is found:
+    // 1) If the name starts with in., strip off the in., and lookup the name in the input table
+    // 2) If the name starts with out., strip off the out., and lookup the name in the output table
+    // 3) Lookup the name in the input table
+    // 4) Lookup the name in the output table
+    //
+    // At the current time, int32 output columns will be evaluated as int64 and truncated;
+    // fixed width columns cannot be used.
+    void transformTable(string in_table, string out_table, list<ExprColumn> expr_columns);
 
     // order_columns are from the output names; All output names must share 
     void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);

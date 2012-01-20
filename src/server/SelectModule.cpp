@@ -2,19 +2,13 @@
 
 #include "DSSModule.hpp"
 
-class SelectModule : public DataSeriesModule {
+class SelectModule : public OutputSeriesModule {
 public:
     SelectModule(DataSeriesModule &source, const string &where_expr_str)
         : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
     { }
 
     virtual ~SelectModule() { }
-
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
-    }
 
     virtual Extent *getExtent() {
         while (true) {
@@ -48,7 +42,7 @@ public:
 
     DataSeriesModule &source;
     string where_expr_str;
-    ExtentSeries input_series, output_series;
+    ExtentSeries input_series;
     ExtentRecordCopy copier;
     boost::shared_ptr<DSExpr> where_expr;
 };

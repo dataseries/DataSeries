@@ -16,8 +16,8 @@ class DefaultParser : public DSExprParser {
 	return driver.expr;
     }
 
-    DSExpr *parse(const FieldNameToSeries &field_name_to_series, const string &expr) {
-	DSExprImpl::Driver driver(field_name_to_series);
+    DSExpr *parse(const FieldNameToSelector &field_name_to_selector, const string &expr) {
+	DSExprImpl::Driver driver(field_name_to_selector);
 	driver.doit(expr);
 	return driver.expr;
     }
@@ -31,7 +31,8 @@ class DefaultParser : public DSExprParser {
 "    fn.TfracToSeconds\n"
 "  boolean expressions include:\n"
 "    <, <=, >, >=, ==, !=, ||, &&, !\n"
-"  for fields with non-alpha-numeric or _ in the name, escape with \\\n"
+"  field names are alphanumeric, _, ., and :\n"
+"    any character can be used if escaped with \\\n"
 		      );
     }
 

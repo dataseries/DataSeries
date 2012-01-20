@@ -50,12 +50,12 @@ ostream &operator <<(ostream &to, const PrimaryKey &key) {
     return to;
 }
 
-class SortedUpdateModule : public DataSeriesModule, public ThrowError {
+class SortedUpdateModule : public OutputSeriesModule, public ThrowError {
 public:
     SortedUpdateModule(DataSeriesModule &base_input, DataSeriesModule &update_input,
                        const string &update_column, const vector<string> &primary_key) 
         : base_input(base_input), update_input(update_input), 
-          base_series(), update_series(), output_series(),  base_copier(base_series, output_series),
+          base_series(), update_series(), base_copier(base_series, output_series),
           update_copier(update_series, output_series), update_column(update_series, update_column),
           primary_key_names(primary_key),  base_primary_key(), update_primary_key()
     { }
@@ -240,14 +240,8 @@ public:
         }
     }
 
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
-    }
-
     DataSeriesModule &base_input, &update_input;
-    ExtentSeries base_series, update_series, output_series;
+    ExtentSeries base_series, update_series;
     ExtentRecordCopy base_copier, update_copier;
     TFixedField<uint8_t> update_column;
     const vector<string> primary_key_names;

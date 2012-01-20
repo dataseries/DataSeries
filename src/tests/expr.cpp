@@ -4,6 +4,8 @@
 #include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
+#include <Lintel/StringUtil.hpp>
+
 #include <DataSeries/commonargs.hpp>
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/DSExpr.hpp>
@@ -55,13 +57,17 @@ static string extent_type_xml(
     dsout.close();
 }
 
-ExtentSeries *firstMatch(vector<ExtentSeries *> *series, const string &name) {
+DSExprParser::Selector firstMatch(vector<ExtentSeries *> *series, const string &in_name) {
+    string name = in_name;
+    if (prefixequal(name, "remove.")) {
+        name = name.substr(7);
+    }
     BOOST_FOREACH(ExtentSeries *e, *series) {
         if (e->getType()->hasColumn(name)) {
-            return e;
+            return make_pair(e, name);
         }
     }
-    return NULL;
+    return DSExprParser::Selector(); // make_pair(static_cast<ExtentSeries *>(NULL), string());
 }
 
 void testSeriesSelect() {
@@ -89,7 +95,8 @@ void testSeriesSelect() {
     all_series.push_back(&series1);
     all_series.push_back(&series2);
     
-    DSExpr *expr = DSExpr::make(boost::bind(firstMatch, &all_series, _1), "(a*c) + (b*d)");
+    DSExpr *expr = DSExpr::make(boost::bind(firstMatch, &all_series, _1), 
+                                "(a*remove.c) + (remove.b*d)");
 
     series1.newRecord();
     series2.newRecord();

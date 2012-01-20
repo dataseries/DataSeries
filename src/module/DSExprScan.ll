@@ -35,7 +35,7 @@
 
 constant	[0-9]+(\.[0-9]+)?
 blank		[ \t\n]
-symbol		[a-zA-Z_]([a-zA-Z0-9_]|(\\.))*
+symbol		[a-zA-Z_]([a-zA-Z0-9_\.:]|(\\.))*
 TfracToSeconds	"fn.TfracToSeconds"
 gt		">"
 lt		"<"

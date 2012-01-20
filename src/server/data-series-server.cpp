@@ -334,7 +334,6 @@ public:
     }
 
     void transformTable(const string &in_table, const string &out_table,
-                        const map<string, string> &copy_columns,
                         const vector<ExprColumn> &expr_columns) {
         FATAL_ERROR("unimplemented");
     }

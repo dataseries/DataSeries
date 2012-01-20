@@ -583,25 +583,26 @@ private:
 
 class Driver {
 public:
-    typedef DSExprParser::FieldNameToSeries FieldNameToSeries;
+    typedef DSExprParser::Selector Selector;
+    typedef DSExprParser::FieldNameToSelector FieldNameToSelector;
 
     Driver(ExtentSeries &series) 
-	: expr(NULL), series(&series), field_name_to_series(), scanner_state(NULL), 
+	: expr(NULL), series(&series), field_name_to_selector(), scanner_state(NULL), 
           current_fnargs() 
     { }
 
-    Driver(const FieldNameToSeries &field_name_to_series)
-	: expr(NULL), series(NULL), field_name_to_series(field_name_to_series), 
+    Driver(const FieldNameToSelector &field_name_to_selector)
+	: expr(NULL), series(NULL), field_name_to_selector(field_name_to_selector), 
           scanner_state(NULL), current_fnargs() 
     { 
-        SINVARIANT(!!field_name_to_series);
+        SINVARIANT(!!field_name_to_selector);
     }
 
     ExprField *makeExprField(const string &field_name) {
         if (series == NULL) {
-            ExtentSeries *tmp = field_name_to_series(field_name);
-            INVARIANT(tmp != NULL, format("field_name '%s' is not defined") % field_name);
-            return new ExprField(*tmp, field_name);
+            Selector tmp = field_name_to_selector(field_name);
+            INVARIANT(tmp.first != NULL, format("field_name '%s' is not defined") % field_name);
+            return new ExprField(*tmp.first, tmp.second);
         } else {
             return new ExprField(*series, field_name); 
         }
@@ -615,7 +616,7 @@ public:
 	
     DSExpr *expr;
     ExtentSeries *series;
-    const FieldNameToSeries field_name_to_series;
+    const FieldNameToSelector field_name_to_selector;
     void *scanner_state;
     DSExpr::List current_fnargs;
 };

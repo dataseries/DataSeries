@@ -55,7 +55,9 @@ class DSExprParser : boost::noncopyable {
 public:
     /// Function is allowed to return NULL if it is unable to map field_name to an appropriate
     /// series.
-    typedef boost::function<ExtentSeries *(const std::string &field_name)> FieldNameToSeries;
+    typedef std::pair<ExtentSeries *, std::string> Selector;
+
+    typedef boost::function<Selector (const std::string &field_name)> FieldNameToSelector;
 
     virtual ~DSExprParser() {}
     
@@ -68,7 +70,7 @@ public:
     /// Parse an expression where the series to use for each of the different fields is determined
     /// by the specified function.  This functionality allows for a single expression to combine
     /// the values in multiple extents.
-    virtual DSExpr *parse(const FieldNameToSeries &field_name_to_series,
+    virtual DSExpr *parse(const FieldNameToSelector &field_name_to_selector,
                           const std::string &expr) = 0;
       
 
@@ -109,10 +111,10 @@ public:
     /// Make an expression where the series to use for each of the different fields is determined
     /// by the specified function.  This functionality allows for a single expression to combine
     /// the values in multiple extents.
-    static DSExpr *make(const DSExprParser::FieldNameToSeries &field_name_to_series, 
+    static DSExpr *make(const DSExprParser::FieldNameToSelector &field_name_to_selector, 
                         const std::string &expr_string) {
         boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
-        return parser->parse(field_name_to_series, expr_string);
+        return parser->parse(field_name_to_selector, expr_string);
     }
 
     /// Get the current usage description for expressions.

@@ -36,12 +36,6 @@ public:
 
     virtual ~UnionModule() { }
 
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
-    }
-
     void firstExtent() {
         map<string, string> output_name_to_type;
         typedef map<string, string>::value_type ss_vt;

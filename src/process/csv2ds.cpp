@@ -31,7 +31,7 @@ csv2ds - convert a comma separated value file into dataseries.
 
 =head1 SYNOPSIS
 
- % csv2ds [options] --xml-desc-file=<path> <input.csv> <output.ds>
+ % csv2ds [options] --xml-desc-file=<path> <input.csv|-> <output.ds>
 
 =head1 DESCRIPTION
 
@@ -103,10 +103,6 @@ so should be decoded before being added to the dataseries file.
 =item *
 
 Make csv2ds able to auto-infer field types
-
-=item *
-
-Generate a manpage
 
 =back
 
@@ -208,8 +204,14 @@ int main(int argc, char *argv[]) {
     vector<bool> is_nullable;
     vector<GeneralField *> fields;
     makeFields(type, series, fields, is_nullable);
-    ifstream csv_input(csv_input_filename.c_str());
-    INVARIANT(csv_input.good(), 
+    istream *csv_input;
+
+    if (csv_input_filename == "-") {
+        csv_input = &cin;
+    } else {
+        csv_input = new ifstream(csv_input_filename.c_str());
+    }
+    INVARIANT(csv_input->good(), 
 	      format("error opening %s: %s") % csv_input_filename % strerror(errno));
     string comment_prefix(po_comment_prefix.get());
     char string_quote_character('"');
@@ -221,17 +223,17 @@ int main(int argc, char *argv[]) {
     }
 
     uint64_t line_num = 0;
-    while(!csv_input.eof()) {
+    while(!csv_input->eof()) {
 	++line_num;
 	string line;
 	
-	getline(csv_input, line);
+	getline(*csv_input, line);
 	if (line.empty() || (line.size() == 1 && line[0] == '\r')) {
 	    continue;
 	}
 	line.push_back('\n'); // pretend it was always there, could have been EOF :(
 
-	INVARIANT(csv_input.good() || csv_input.eof(),
+	INVARIANT(csv_input->good() || csv_input->eof(),
 		  format("error reading %s: %s") % csv_input_filename % strerror(errno));
 	
 	LintelLogDebug("csv2ds::parse", format("line %d:") % line_num);

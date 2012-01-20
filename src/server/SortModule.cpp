@@ -53,12 +53,6 @@ public:
 
     virtual ~SortModule() { }
 
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
-    }
-
     struct SortColumnImpl {
         SortColumnImpl(GeneralField::Ptr field, bool sort_less)
             : field(field), sort_less(sort_less) { }
