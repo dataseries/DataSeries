@@ -131,7 +131,7 @@ sub checkTable ($$$) {
     printTable($table_name) if $debug;
     my $table = getTableData($table_name, 10000000);
 
-    die scalar @$columns/2 . " != " . scalar @{$table->{columns}}
+    confess "column count mismatch: " . scalar @$columns/2 . " != " . scalar @{$table->{columns}}
         unless @$columns/2 == @{$table->{columns}};
     for (my $i = 0; $i < @$columns/2; ++$i) {
         my ($name, $type) = ($columns->[2*$i], $columns->[2*$i+1]);
@@ -645,6 +645,15 @@ sub testTransform {
                               exprColumn('e', 'byte', 'in.col1 + 0'),
                               exprColumn('f', 'byte', 'e + c'),
                               exprColumn('g', 'int64', '12345'),
+
+                              # 'rolling sum' calculations
+                              exprColumn('h', 'int32', 'prev.h + 1'),
+                              exprColumn('i', 'variable32', 'prev.i + ", " + out.colv32'),
+                              exprColumn('j', 'int32', 'prev.j + col1'),
+                              exprColumn('k', 'int32', '2 * prev.l + 1'),
+                              exprColumn('l', 'int32', 'prev.k + 1'),
+                              exprColumn('m', 'int32', 'col3'),
+                              exprColumn('n', 'int32', 'm - prev.m'),
                               # Below operations are a really bad idea from a naming standpoint,
                               # but useful for testing correctness.
 
@@ -663,10 +672,17 @@ sub testTransform {
                               exprColumn('col5', 'int32', 'out.col4 + out.out.col4'),
                             ]);
 
-#    printTable('transform-output');
+    printTable('transform-output');
 
     my @out_data;
 
+    my $h = 0;
+    my $i = '';
+    my $j = 0;
+    my $k = 0;
+    my $l = 0;
+    my $m = 0;
+    my $n = 0;
     foreach my $row (@data1) {
         my ($col1, $colv32, $col3) = @$row;
         my $a = $col1;
@@ -676,6 +692,15 @@ sub testTransform {
         my $e = $col1 % 256;
         my $f = $e + ($c eq 'true' ? 1 : 0);
         my $g = 12345;
+        $h += 1;
+        $i = "$i, $colv32";
+        $j += $col1;
+        my $prev_k = $k;
+        $k = 2*$l + 1;
+        $l = $prev_k + 1;
+        my $prev_m = $m;
+        $m = $col3;
+        $n = $m - $prev_m;
         my $o_col0 = $colv32 . $colv32;
         my $o_col1 = $col1 + 0 + 1;
         my $o_col2 = $col1 + $o_col1;
@@ -684,11 +709,12 @@ sub testTransform {
         my $o_col5 = $o_out_col4 + $o_out_col4;
 
 #        print "[ $a, $b, $c, $d, $e, $f, $g, $o_col0, $o_col1, $o_col2, $o_in_col4, $o_out_col4, $o_col5 ],\n";
-        push (@out_data, [ $a, $b, $c, $d, $e, $f, $g, $o_col0, $o_col1, $o_col2, $o_in_col4,
-                           $o_out_col4, $o_col5 ]);
+        push (@out_data, [ $a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o_col0, $o_col1,
+                           $o_col2, $o_in_col4, $o_out_col4, $o_col5 ]);
     }
 
     checkTable("transform-output", [ qw/a int32 b int32 c bool d int32 e byte f byte g int64
+                                        h int32 i variable32 j int32 k int32 l int32 m int32 n int32
                                         col0 variable32 col1 int32 col2 int32 in.col4 int32
                                         out.col4 int32 col5 int32/ ], \@out_data);
     print "passed.\n";

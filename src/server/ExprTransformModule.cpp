@@ -10,7 +10,8 @@ class ExprTransformModule : public OutputSeriesModule {
 public:
     ExprTransformModule(DataSeriesModule &source, const vector<ExprColumn> &expr_columns,
                         const string &output_table_name)
-        : OutputSeriesModule(), source(source), input_series(), expr_columns(expr_columns),
+        : OutputSeriesModule(), source(source), input_series(), previous_row_series(),
+          previous_row(), copier(output_series, previous_row_series), expr_columns(expr_columns),
           output_table_name(output_table_name)
     { }
 
@@ -23,6 +24,8 @@ public:
             return make_pair(&input_series, name.substr(3));
         } else if (prefixequal(name, "out.") && hasColumn(output_series, name.substr(4))) {
             return make_pair(&output_series, name.substr(4));
+        } else if (prefixequal(name, "prev.") && hasColumn(previous_row_series, name.substr(5))) {
+            return make_pair(&previous_row_series, name.substr(5));
         } else if (hasColumn(input_series, name)) {
             return make_pair(&input_series, name);
         } else if (hasColumn(output_series, name)) {
@@ -50,6 +53,11 @@ public:
         
         ExtentTypeLibrary lib;
         output_series.setType(lib.registerTypeR(output_xml));
+        previous_row_series.setType(*output_series.getType());
+        previous_row.reset(new Extent(*output_series.getType()));
+        previous_row_series.setExtent(previous_row.get());
+        previous_row_series.newRecord();
+        copier.prep();
 
         DSExprParser::FieldNameToSelector field_name_to_selector
             = boost::bind(&ExprTransformModule::fieldNameToSeries, this, _1);
@@ -104,6 +112,13 @@ public:
                 }
                 input_series.next();
 
+                if (previous_row->variabledata.size() > 16*1024) {
+                    // limit unbounded memory usage.
+                    previous_row->clear();
+                    previous_row_series.newRecord();
+                }
+                copier.copyRecord();
+
                 if (output_series.getExtent()->size() > 96*1024) {
                     return returnOutputSeries();
                 }
@@ -126,7 +141,9 @@ public:
     };
 
     DataSeriesModule &source;
-    ExtentSeries input_series;
+    ExtentSeries input_series, previous_row_series;
+    boost::scoped_ptr<Extent> previous_row;
+    ExtentRecordCopy copier;
     vector<ExprColumn> expr_columns;
     vector<Output> outputs;
     string output_table_name;

@@ -94,10 +94,22 @@ service DataSeriesServer {
 
     void projectTable(string in_table, string out_table, list<string> keep_columns);
 
+    // Transform table has logically three sources of input:
+    // 1) The input table
+    // 2) The output table
+    // 3) The previous output row table.
+    //
+    // Transform table scans the input table calculating one output row per input row.
+    // For each output row, the expressions are evaluated in the list order and stored
+    // in the output row, then the output row is copied to the previous output row, and
+    // the input row is advanced.  
+    //
     // For looking up expressions in either the input or output tables, the following order is
     // used, and the first match is found:
     // 1) If the name starts with in., strip off the in., and lookup the name in the input table
     // 2) If the name starts with out., strip off the out., and lookup the name in the output table
+    // 3) If the name starts with prev., strip off the prev., and lookup the name in the previous
+    //    row table
     // 3) Lookup the name in the input table
     // 4) Lookup the name in the output table
     //
