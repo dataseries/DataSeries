@@ -66,12 +66,13 @@ testSimpleStarJoin();
 testStarJoin();
 testUnion();
 testSort();
+testTransform();
 
 eval { $client->shutdown(); }; # hide from exception of no reply
 
 # print "--- $@\n"; 
 
-$pm->wait(0);
+$pm->wait(0) if $pm->nChildren() > 0;
 
 sub importData ($$$) {
     my ($table_name, $table_desc, $rows, $quiet) = @_;
@@ -621,12 +622,74 @@ sub testSort {
     print "passed.\n";
 }
 
-# print "pong\n";
-# $client->importDataSeriesFiles(["/home/anderse/projects/DataSeries/check-data/nfs.set6.20k.ds"],
-# 			       "NFS trace: attr-ops", "import");
-# print "import\n";
-# $client->mergeTables(["import", "import"], "2ximport");
-# $client->test();
-# print "test\n";
+sub exprColumn {
+    return new ExprColumn({ name => $_[0], type => $_[1], expr => $_[2] });
+}
 
+sub testTransform {
+    print "testing expression transform...";
+    my @data1 = ( [ 100, "abc", 3 ],
+                  [ 2000, "ghi", 4000 ],
+                  [ 3000, "def", 5 ],
+                  [ 12345, "ghi", 17000 ] );
 
+    importData('transform-input', [ 'col1' => 'int32', 'out.colv32' => 'variable32',
+                                    'col3' => 'int64', ],
+              \@data1);
+
+    $client->transformTable('transform-input', 'transform-output',
+                            [ exprColumn('a', 'int32', 'col1'),
+                              exprColumn('b', 'int32', 'col1 + col3'),
+                              exprColumn('c', 'bool', 'col1 > col3'),
+                              exprColumn('d', 'int32', 'a + b'),
+                              exprColumn('e', 'byte', 'in.col1 + 0'),
+                              exprColumn('f', 'byte', 'e + c'),
+                              exprColumn('g', 'int64', '12345'),
+                              # Below operations are a really bad idea from a naming standpoint,
+                              # but useful for testing correctness.
+
+                              # input columns can be named out.* if they aren't in the output,
+                              # and explicitly named.
+                              exprColumn('col0', 'variable32', 'out.colv32 + in.out.colv32'),
+                              # Referencing a not-yet-defined column get 0's.
+                              exprColumn('col1', 'int32', 'col1 + out.col2 + 1'),
+                              # Input and output columns can be named
+                              exprColumn('col2', 'int32', 'in.col1 + out.col1'),
+                              # Multiple output columns can be named
+                              exprColumn('in.col4', 'int32', 'out.col1 + out.col2'),
+                              # in. is valid as a prefix if there isn't a col4 in the input
+                              exprColumn('out.col4', 'int32', 'in.col4 + 1'),
+                              # and we can get at output columns in multiple ways
+                              exprColumn('col5', 'int32', 'out.col4 + out.out.col4'),
+                            ]);
+
+#    printTable('transform-output');
+
+    my @out_data;
+
+    foreach my $row (@data1) {
+        my ($col1, $colv32, $col3) = @$row;
+        my $a = $col1;
+        my $b = $col1 + $col3;
+        my $c = $col1 > $col3 ? 'true' : 'false';
+        my $d = $a + $b;
+        my $e = $col1 % 256;
+        my $f = $e + ($c eq 'true' ? 1 : 0);
+        my $g = 12345;
+        my $o_col0 = $colv32 . $colv32;
+        my $o_col1 = $col1 + 0 + 1;
+        my $o_col2 = $col1 + $o_col1;
+        my $o_in_col4 = $o_col1 + $o_col2;
+        my $o_out_col4 = $o_in_col4 + 1;
+        my $o_col5 = $o_out_col4 + $o_out_col4;
+
+#        print "[ $a, $b, $c, $d, $e, $f, $g, $o_col0, $o_col1, $o_col2, $o_in_col4, $o_out_col4, $o_col5 ],\n";
+        push (@out_data, [ $a, $b, $c, $d, $e, $f, $g, $o_col0, $o_col1, $o_col2, $o_in_col4,
+                           $o_out_col4, $o_col5 ]);
+    }
+
+    checkTable("transform-output", [ qw/a int32 b int32 c bool d int32 e byte f byte g int64
+                                        col0 variable32 col1 int32 col2 int32 in.col4 int32
+                                        out.col4 int32 col5 int32/ ], \@out_data);
+    print "passed.\n";
+}

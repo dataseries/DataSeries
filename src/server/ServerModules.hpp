@@ -60,6 +60,10 @@ namespace dataseries {
 
     OutputSeriesModule::OSMPtr makeSortModule
       (DataSeriesModule &source, const std::vector<SortColumn> &sort_by);
+
+    OutputSeriesModule::OSMPtr makeExprTransformModule
+    (DataSeriesModule &source, const std::vector<ExprColumn> &expr_columns,
+     const std::string &output_table_name);
 }
 
 #endif

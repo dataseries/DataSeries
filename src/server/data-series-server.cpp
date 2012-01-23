@@ -335,7 +335,17 @@ public:
 
     void transformTable(const string &in_table, const string &out_table,
                         const vector<ExprColumn> &expr_columns) {
-        FATAL_ERROR("unimplemented");
+        verifyTableName(in_table);
+        verifyTableName(out_table);
+
+        NameToInfo::iterator info = getTableInfo(in_table);
+        TypeIndexModule input(info->second.extent_type->getName());
+        input.addSource(tableToPath(in_table));
+        OutputSeriesModule::OSMPtr transform
+            (makeExprTransformModule(input, expr_columns, out_table));
+        DataSeriesModule::Ptr output_module = makeTeeModule(*transform, tableToPath(out_table));
+        output_module->getAndDelete();
+        updateTableInfo(out_table, transform->output_series.getType());
     }
     
     void sortedUpdateTable(const string &base_table, const string &update_from, 

@@ -53,8 +53,8 @@ struct SortColumn {
 }
 
 struct ExprColumn {
-    1: required string column_name;
-    2: required string column_type;
+    1: required string name;
+    2: required string type;
     3: required string expr;
 }
 

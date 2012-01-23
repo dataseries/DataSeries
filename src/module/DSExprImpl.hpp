@@ -169,10 +169,10 @@ public:
 	return - subexpr->valInt64();
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the unary - operation is not well defined on booleans");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the unary - operation is not well defined on strings");
     }
 
     virtual string opname() const { return string("-"); }
@@ -195,10 +195,10 @@ public:
 	return left->valInt64()+ right->valInt64(); 
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the + operation is not well defined on booleans");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	return left->valString() + right->valString();
     }
 
     virtual string opname() const { return string("+"); }
@@ -218,10 +218,10 @@ public:
 	return left->valInt64() - right->valInt64(); 
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the - operation is not well defined on booleans");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the - operation is not well defined on strings");
     }
 
     virtual string opname() const { return string("-"); }
@@ -243,10 +243,12 @@ public:
 	return left->valInt64() * right->valInt64(); 
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+        // TODO-reviewer: this one could be well defined as "and"; we could define + as or.
+        // opinions?
+	FATAL_ERROR("the * operation is not well defined on booleans");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the * operation is not well defined on strings");
     }
 
     virtual string opname() const { return string("*"); }
@@ -268,10 +270,10 @@ public:
 	return left->valInt64() / right->valInt64(); 
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the / operation is not well defined on booleans");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("the / operation is not well defined on strings");
     }
 
     virtual string opname() const { return string("/"); }
@@ -285,10 +287,10 @@ public:
 	return t_Bool;
     }
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating == as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating == as an int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -298,7 +300,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating == as a string is not well defined");
     }
 
     virtual string opname() const { return string("=="); }
@@ -314,10 +316,10 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating != as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating != as an int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -327,7 +329,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating != as a string is not well defined");
     }
 
     virtual string opname() const { return string("!="); }
@@ -343,10 +345,10 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating > as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating > as an int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -356,7 +358,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating > as a string is not well defined");
     }
 
     virtual string opname() const { return string(">"); }
@@ -370,10 +372,10 @@ public:
 	return t_Bool;
     }
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating < as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating < as an int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -383,7 +385,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating < as a string is not well defined");
     }
 
     virtual string opname() const { return string("<"); }
@@ -399,10 +401,10 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating >= as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating >= as an int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -412,7 +414,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating >= as a string is not well defined");
     }
 
     virtual string opname() const { return string(">="); }
@@ -428,10 +430,10 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating <= as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating <= as a int64 is not well defined");
     }
     virtual bool valBool() {
 	if (either_string()) {
@@ -441,7 +443,7 @@ public:
 	}
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating <= as a string is not well defined");
     }
 
     virtual string opname() const { return string("<="); }
@@ -457,16 +459,16 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating || as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating || as an int64 is not well defined");
     }
     virtual bool valBool() {
 	return (left->valBool() || right->valBool());
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating || as a string is not well defined");
     }
 
     virtual string opname() const { return string("||"); }
@@ -480,16 +482,16 @@ public:
 	return t_Bool;
     }
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating && as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating && as an int64 is not well defined");
     }
     virtual bool valBool() {
 	return (left->valBool() && right->valBool());
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating && as a string is not well defined");
     }
 
     virtual string opname() const { return string("&&"); }
@@ -505,16 +507,16 @@ public:
     }
 
     virtual double valDouble() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating ! as a double is not well defined");
     }
     virtual int64_t valInt64() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating ! as an int64 is not well defined");
     }
     virtual bool valBool() {
 	return !(subexpr->valBool());
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("evaluating ! as a string is not well defined");
     }
 
     virtual string opname() const { return string("!"); }
@@ -537,10 +539,10 @@ public:
 	FATAL_ERROR("shouldn't try to get valInt64 using fn.TfracToSeconds, it drops too much precision");
     }
     virtual bool valBool() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("shouldn't try to get valBool using fn.TfracToSeconds, it drops too much precision");
     }
     virtual const string valString() {
-	FATAL_ERROR("no silent type switching");
+	FATAL_ERROR("shouldn't try to get valString using fn.TfracToSeconds, definition unclear");
     }
 
     virtual void dump(ostream &out) {
