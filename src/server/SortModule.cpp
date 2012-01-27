@@ -54,10 +54,14 @@ public:
     virtual ~SortModule() { }
 
     struct SortColumnImpl {
-        SortColumnImpl(GeneralField::Ptr field, bool sort_less)
-            : field(field), sort_less(sort_less) { }
+        SortColumnImpl(GeneralField::Ptr field, bool sort_less, NullMode null_mode)
+            : field(field), sort_less(sort_less), null_mode(null_mode)
+        { 
+            TINVARIANT(null_mode == NM_First || null_mode == NM_Last);
+        }
         GeneralField::Ptr field;
         bool sort_less; // a < b ==> sort_less
+        NullMode null_mode;
     };
 
     struct ExtentRowCompareState {
@@ -70,14 +74,27 @@ public:
                                  const Extent *eb, const SEP_RowOffset &ob,
                                  const vector<SortColumnImpl> &columns) {
             BOOST_FOREACH(const SortColumnImpl &c, columns) {
-                GeneralValue va(c.field->val(*ea, oa));
-                GeneralValue vb(c.field->val(*eb, ob));
-                if (va < vb) {
-                    return c.sort_less;
-                } else if (vb < va) {
-                    return !c.sort_less;
+                bool a_null = c.field->isNull(*ea, oa);
+                bool b_null = c.field->isNull(*eb, ob);
+
+                if (a_null || b_null) {
+                    if (a_null && !b_null) { //         a < b : a > b
+                        return c.null_mode == NM_First ? true : false;
+                    } else if (!a_null && b_null) { //   a > b : a < b
+                        return c.null_mode == NM_First ? false : true;
+                    } else {
+                        // ==; keep going
+                    }
                 } else {
-                    // ==; keep going
+                    GeneralValue va(c.field->val(*ea, oa));
+                    GeneralValue vb(c.field->val(*eb, ob));
+                    if (va < vb) {
+                        return c.sort_less;
+                    } else if (vb < va) {
+                        return !c.sort_less;
+                    } else {
+                        // ==; keep going
+                    }
                 }
             }
             return false; // all == so not <
@@ -131,7 +148,8 @@ public:
         BOOST_FOREACH(SortColumn &by, sort_by) {
             TINVARIANT(by.sort_mode == SM_Ascending || by.sort_mode == SM_Decending);
             ercs.columns.push_back(SortColumnImpl(GeneralField::make(input_series, by.column),
-                                                  by.sort_mode == SM_Ascending ? true : false));
+                                                  by.sort_mode == SM_Ascending ? true : false,
+                                                  by.null_mode));
         }
     }
 

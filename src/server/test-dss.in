@@ -55,18 +55,22 @@ $transport->open();
 $client->ping();
 print "Post Ping\n" if $debug;
 
-testImportCSV();
-testImportSql();
-testImportData();
-testHashJoin();
-testSelect();
-testProject();
-testUpdate();
-testSimpleStarJoin();
-testStarJoin();
-testUnion();
-testSort();
-testTransform();
+if (@ARGV > 0) {
+    map { eval "test$_();"; die $@ if $@; } @ARGV;
+} else {
+    testImportCSV();
+    testImportSql();
+    testImportData();
+    testHashJoin();
+    testSelect();
+    testProject();
+    testUpdate();
+    testSimpleStarJoin();
+    testStarJoin();
+    testUnion();
+    testSort();
+    testTransform();
+}
 
 eval { $client->shutdown(); }; # hide from exception of no reply
 
@@ -74,22 +78,29 @@ eval { $client->shutdown(); }; # hide from exception of no reply
 
 $pm->wait(0) if $pm->nChildren() > 0;
 
-sub importData ($$$) {
-    my ($table_name, $table_desc, $rows, $quiet) = @_;
+sub importData ($$$;$) {
+    my ($table_name, $table_desc, $rows, $verbose) = @_;
 
     confess "?" unless defined $rows;
     my $data_xml;
     if (ref $table_desc) {
+        my @any_null = map { 0 } (1 .. @$table_desc / 2);
+        foreach my $row (@$rows) {
+            for (my $i=0; $i < @$row; ++$i) {
+                $any_null[$i] = 1 unless defined $row->[$i];
+            }
+        }
         $data_xml = qq{<ExtentType name="$table_name" namespace="simpl.hpl.hp.com" version="1.0">\n};
         for (my $i=0; $i < @$table_desc; $i += 2) {
             my $name = $table_desc->[$i];
             my $desc = $table_desc->[$i+1];
             die "?" unless defined $desc;
-            my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : '';
+            my $extra = $desc eq 'variable32' ? 'pack_unique="yes" ' : ' ';
+            $extra .= 'opt_nullable="yes" ' if $any_null[$i/2];
             $data_xml .= qq{  <field type="$desc" name="$name" $extra/>\n};
         }
         $data_xml .= "</ExtentType>\n";
-        print "Importing with $data_xml\n" if $debug;
+        print "Importing with $data_xml\n" if $verbose || $debug;
     } else {
         $data_xml = $table_desc;
     }
@@ -541,13 +552,31 @@ sub testUnion {
     print "passed.\n";
 }
 
+sub testSort2Compare {
+    my ($a, $b) = @_;
+
+    # SM_Decending, NM_First, so set fake value to \infinity
+    my $na0 = defined $a->[0] ? $a->[0] : 1000;
+    my $nb0 = defined $b->[0] ? $b->[0] : 1000;
+    return $nb0 <=> $na0 unless $na0 == $nb0;
+    # SM_Ascending, NM_First, so set fake value to first
+    my $na1 = defined $a->[1] ? $a->[1] : -1000;
+    my $nb1 = defined $b->[1] ? $b->[1] : -1000;
+    return $na1 <=> $nb1 unless $na1 == $nb1;
+    # SM_Decending, NM_Last, so set fake value to -\infinity
+    my $na2 = defined $a->[2] ? $a->[2] : -1000;
+    my $nb2 = defined $b->[2] ? $b->[2] : -1000;
+    return $nb2 <=> $na2 unless $nb2 == $na2;
+    return 0;
+}
+
 sub testSort {
     my $sc_0 = new SortColumn({ column => 'col0', sort_mode => SortMode::SM_Decending,
-                                null_mode => NullMode::NM_Default });
+                                null_mode => NullMode::NM_First });
     my $sc_1 = new SortColumn({ column => 'col1', sort_mode => SortMode::SM_Ascending,
-                                null_mode => NullMode::NM_Default });
+                                null_mode => NullMode::NM_First });
     my $sc_2 = new SortColumn({ column => 'col2', sort_mode => SortMode::SM_Decending,
-                                null_mode => NullMode::NM_Default });
+                                null_mode => NullMode::NM_Last });
 
     print "sort test 1...";
     my @data = ( [ 5000, "ghi" ],
@@ -567,6 +596,21 @@ sub testSort {
     print "check...";
     checkTable('sort-out-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
     print "passed.\n";
+
+    print "sort test 2...";
+    @data = ();
+    my @v = (undef, -1, 0, 1);
+    foreach my $i (@v) {
+        foreach my $j (@v) {
+            foreach my $k (@v) {
+                push (@data, [ $i, $j, $k ]);
+            }
+        }
+    }
+    importData('sort-2', [qw/col0 int32 col1 int32 col2 int32/], \@data);
+    $client->sortTable('sort-2', 'sort-out-2', [ $sc_0, $sc_1, $sc_2 ]);
+    @data = sort { testSort2Compare($a, $b); } @data;
+    checkTable('sort-out-2', [qw/col0 int32 col1 int32 col2 int32/], \@data);
 
     print "big sort test...gen...";
     ## Now with a big test; annoyingly slow on the perl client side, but there you go.
