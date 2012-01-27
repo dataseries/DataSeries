@@ -93,7 +93,10 @@ sub importData ($$$) {
     } else {
         $data_xml = $table_desc;
     }
-    $client->importData($table_name, $data_xml, new TableData({ 'rows' => $rows }));
+    my @rows = map {
+        [ map { new NullableString(defined $_ ? { 'v' => $_ } : {}); } @$_ ]
+    } @$rows;
+    $client->importData($table_name, $data_xml, new TableData({ 'rows' => \@rows }));
 }
 
 sub getTableData ($;$$) {
@@ -106,6 +109,12 @@ sub getTableData ($;$$) {
         print Dumper($@);
         die "fail";
     }
+    my @rows = map {
+        my $r = $_;
+        [ map { defined $_->{v} ? $_->{v} : undef } @$r ]
+    } @{$ret->{rows}};
+
+    $ret->{rows} = \@rows;
     return $ret;
 }
 
@@ -147,6 +156,9 @@ sub checkTable ($$$) {
         my $rb = $rows->[$i];
         die "?" unless @$ra == @$rb;
         for (my $j = 0; $j < @$ra; ++$j) {
+            next if !defined $ra->[$j] && !defined $rb->[$j]; # both null
+            die "? a undefined b '$rb->[$j]'" if ! defined $ra->[$j];
+            die "? a '$ra->[$j]' b undefined" if ! defined $rb->[$j];
             if ($ra->[$j] =~ /^(\d+\.\d+)$/o && $rb->[$j] =~ /^(\d+\.\d+)$/o) { 
                 # floating point, doing approx check.
                 my ($ta, $tb) = map { sprintf("%.10f", $_) } ($ra->[$j], $rb->[$j]);
@@ -225,7 +237,7 @@ sub testImportSql {
     $client->importSQLTable($dsn, 'dataseriesserver_sqlimport', 'test-import-sql');
 
     checkTable('test-import-sql', [qw/a int32 b variable32/],
-               [ [1, 'abc'], [2, ''], ['', 'xyz'] ]);
+               [ [1, 'abc'], [2, undef], [undef, 'xyz'] ]);
     print "passed.\n";
 }
 
@@ -241,6 +253,7 @@ sub testImportData {
                  [ 'no', 7, 12345, 999999999999, 123.5, "fghij" ] );
 
     importData('import-test-1', \@columns, \@data);
+
     map { $_->[0] = 'true' if $_->[0] eq 'on' || $_->[0] eq 'yes';
           $_->[0] = 'false' if $_->[0] eq 'off' || $_->[0] eq 'no'; } @data;
     checkTable('import-test-1', \@columns, \@data);
@@ -326,47 +339,26 @@ sub testProject {
 
 sub testUpdate {
     print "testing update...";
-    my $base_fields = <<'END';
-  <field type="variable32" name="type" pack_unique="yes" />
-  <field type="int32" name="count" />
-END
 
-    my $base_xml = <<"END";
-<ExtentType name="base-table" namespace="simpl.hpl.hp.com" version="1.0">
-$base_fields
-</ExtentType>
-END
+    importData('base-table', [qw/type variable32 count int32/], [ [ "abc", 5 ],
+                                                                  [ "def", 6 ],
+                                                                  [ "ghi", 0 ],
+                                                                  [ "jkl", 7 ], ]);
 
-    my $update_xml = <<"END";
-<ExtentType name="base-table" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="byte" name="update-op" />
-$base_fields
-</ExtentType>
-END
-
-    $client->importData("base-table", $base_xml, new TableData
-                        ({ 'rows' =>
-                           [[ "abc", 5 ],
-                            [ "def", 6 ],
-                            [ "ghi", 0 ],
-                            [ "jkl", 7 ], ]}));
-
-    $client->importData("update-table", $update_xml, new TableData
-                        ({ 'rows' =>
-                           [[ 1, "aaa", 3 ],
-                            [ 2, "abc", 9 ],
-                            [ 3, "def", 0 ],
-                            [ 2, "ghi", 5 ] ]}));
+    importData('update-table', [qw/update-op byte type variable32 count int32/],
+               [[ 1, "aaa", 3 ],
+                [ 2, "abc", 9 ],
+                [ 3, "def", 0 ],
+                [ 2, "ghi", 5 ] ]);
 
     $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
     checkTable('base-table', [qw/type variable32  count int32/],
                [ [ qw/aaa 3/ ], [ qw/abc 9/ ], [ qw/ghi 5/ ], [ qw/jkl 7/ ] ]);
 
-    $client->importData("update-table", $update_xml, new TableData
-                        ({ 'rows' =>
-                           [[ 3, "aaa", 0 ],
-                            [ 2, "mno", 1 ],
-                            [ 1, "pqr", 2 ] ]}));
+    importData('update-table', [qw/update-op byte type variable32 count int32/],
+               [[ 3, "aaa", 0 ],
+                [ 2, "mno", 1 ],
+                [ 1, "pqr", 2 ] ]);
     $client->sortedUpdateTable('base-table', 'update-table', 'update-op', [ 'type' ]);
     checkTable('base-table', [qw/type variable32  count int32/],
                [ [ qw/abc 9/ ], [ qw/ghi 5/ ], [ qw/jkl 7/ ], [ qw/mno 1 /], [qw/pqr 2/] ]);
@@ -439,48 +431,22 @@ sub testStarJoin {
 
 sub testSimpleStarJoin {
     print "testing simple star join...";
-    my $person_xml = <<'END';
-<ExtentType name="person-details" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="variable32" name="Name" pack_unique="yes" />
-  <field type="variable32" name="Country" pack_unique="yes" />
-  <field type="variable32" name="State" pack_unique="yes" />
-</ExtentType>
-END
 
-    my $country_xml = <<'END';
-<ExtentType name="country-details" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="variable32" name="Name" pack_unique="yes" />
-  <field type="variable32" name="Capital" pack_unique="yes" />
-  <field type="variable32" name="Currency" pack_unique="yes" />
-</ExtentType>
-END
+    importData('person-details', [qw/Name variable32 Country variable32 State variable32/],
+               [[ "John", "United States", "California" ],
+                [ "Adam", "United States", "Colarado" ],
+                [ "Ram", "India", "Karnataka"],
+                [ "Shiva", "India", "Maharastra"]]);
 
-    my $state_xml = <<'END';
-<ExtentType name="country-details" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="variable32" name="Name" pack_unique="yes" />
-  <field type="variable32" name="Capital" pack_unique="yes" />
-  <field type="variable32" name="TimeZone" pack_unique="yes" />
-</ExtentType>
-END
+    importData('country-details', [qw/Name variable32 Capital variable32 Currency variable32/],
+               [[ "India", "New Delhi", "INR" ],
+                [ "United States", "Washington, D.C.", "Dollar"]]);
 
-    $client->importData("person-details", $person_xml, new TableData
-                        ({ 'rows' =>
-                           [[ "John", "United States", "California" ],
-                            [ "Adam", "United States", "Colarado" ],
-                            [ "Ram", "India", "Karnataka"],
-                            [ "Shiva", "India", "Maharastra"]] }));
-
-    $client->importData("country-details", $country_xml, new TableData
-                        ({ 'rows' =>
-                           [[ "India", "New Delhi", "INR" ],
-                            [ "United States", "Washington, D.C.", "Dollar"]] }));
-
-    $client->importData("state-details", $state_xml, new TableData
-                        ({ 'rows' =>
-                           [[ "California", "Sacramento", "PST (UTC.8), PDT (UTC.7)" ],
-                            [ "Colarado", "Denver", "MST=UTC-07, MDT=UTC-06" ],
-                            [ "Karnataka", "Bangalore", "IST" ],
-                            [ "Maharastra", "Mumbai", "IST" ]] }));
+    importData('state-details', [qw/Name variable32 Capital variable32 TimeZone variable32/],
+               [[ "California", "Sacramento", "PST (UTC.8), PDT (UTC.7)" ],
+                [ "Colarado", "Denver", "MST=UTC-07, MDT=UTC-06" ],
+                [ "Karnataka", "Bangalore", "IST" ],
+                [ "Maharastra", "Mumbai", "IST" ]]);
 
     if ($debug) {
         printTable("person-details");
@@ -576,9 +542,12 @@ sub testUnion {
 }
 
 sub testSort {
-    my $sc_0 = new SortColumn({ 'column' => 'col0', 'sort_mode' => SortMode::SM_Decending });
-    my $sc_1 = new SortColumn({ 'column' => 'col1', 'sort_mode' => SortMode::SM_Ascending });
-    my $sc_2 = new SortColumn({ 'column' => 'col2', 'sort_mode' => SortMode::SM_Decending });
+    my $sc_0 = new SortColumn({ column => 'col0', sort_mode => SortMode::SM_Decending,
+                                null_mode => NullMode::NM_Default });
+    my $sc_1 = new SortColumn({ column => 'col1', sort_mode => SortMode::SM_Ascending,
+                                null_mode => NullMode::NM_Default });
+    my $sc_2 = new SortColumn({ column => 'col2', sort_mode => SortMode::SM_Decending,
+                                null_mode => NullMode::NM_Default });
 
     print "sort test 1...";
     my @data = ( [ 5000, "ghi" ],
@@ -589,11 +558,13 @@ sub testSort {
                  [ 3000, "de" ],
                  [ 3000, "def" ] );
 
+    print "import...";
     importData('sort-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
 
-
+    print "sort...";
     $client->sortTable('sort-1', 'sort-out-1', [ $sc_1, $sc_2 ]);
     @data = sort { $a->[0] != $b->[0] ? $a->[0] <=> $b->[0] : $b->[1] cmp $a->[1] } @data;
+    print "check...";
     checkTable('sort-out-1', [ 'col1' => 'int32', 'col2' => 'variable32' ], \@data);
     print "passed.\n";
 
@@ -672,7 +643,7 @@ sub testTransform {
                               exprColumn('col5', 'int32', 'out.col4 + out.out.col4'),
                             ]);
 
-    printTable('transform-output');
+    # printTable('transform-output');
 
     my @out_data;
 

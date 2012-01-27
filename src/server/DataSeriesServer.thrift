@@ -7,8 +7,12 @@ struct TableColumn {
     2: required string type;
 }
 
+struct NullableString {
+    1: optional string v;
+}
+
 struct TableData {
-    1: required list<list<string>> rows;
+    1: required list<list<NullableString>> rows;
     2: optional list<TableColumn> columns;
     3: optional bool more_rows;
 }
@@ -47,9 +51,17 @@ enum SortMode {
     SM_Decending = 2;
 }
 
+enum NullMode {
+    NM_InvalidEnumConst = 0;
+    NM_Default = 1; // As if the entry isn't null, take the default "0" value.
+    NM_First = 2; // nulls are < everyting
+    NM_Last = 3; // nulls are > everything
+}
+
 struct SortColumn {
     1: required string column;
     2: required SortMode sort_mode;
+    3: required NullMode null_mode;
 }
 
 struct ExprColumn {

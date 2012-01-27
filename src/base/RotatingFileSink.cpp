@@ -128,10 +128,17 @@ bool RotatingFileSink::changeFile(const string &in_new_filename, bool failure_ok
         new_filename = in_new_filename;
         cond.broadcast();
         return true;
-    } else {
-        INVARIANT(failure_ok, "unable to change file, either the sink is being deleted"
-                  " or a rotation is still in progress");
+    } else if (failure_ok) {
         return false;
+    } else {
+        if (!worker_continue) {
+            FATAL_ERROR("unable to change file: sink is being deleted");
+        } else if (!new_filename.empty()) {
+            FATAL_ERROR(boost::format("unable to change file: still rotating to '%s',"
+                                      " can't rotate to '%s'") % new_filename % in_new_filename);
+        } else {
+            FATAL_ERROR("unable to change file: internal error, locking glitch?");
+        }
     }
 }
 

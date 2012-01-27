@@ -29,10 +29,15 @@ public:
             return;
         }
         into.rows.resize(into.rows.size() + 1);
-        vector<string> &row(into.rows.back());
+        vector<NullableString> &row(into.rows.back());
         row.reserve(fields.size());
         BOOST_FOREACH(GeneralField::Ptr g, fields) {
-            row.push_back(g->val().valString());
+            NullableString ns;
+            if (g->isNull()) {
+                row.push_back(NullableString());
+            } else {
+                row.push_back(NullableString(g->val().valString()));
+            }
         }
     }
 

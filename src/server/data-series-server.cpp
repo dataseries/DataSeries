@@ -183,13 +183,17 @@ public:
             fields.push_back(tmp);
         }
 
-        BOOST_FOREACH(const vector<string> &row, data.rows) {
+        BOOST_FOREACH(const vector<NullableString> &row, data.rows) {
             output_module.newRecord();
             if (row.size() != fields.size()) {
                 requestError("incorrect number of fields");
             }
             for (uint32_t i = 0; i < row.size(); ++i) {
-                fields[i]->set(row[i]);
+                if (row[i].__isset.v) {
+                    fields[i]->set(row[i].v);
+                } else {
+                    fields[i]->setNull();
+                }
             }
         }
 
