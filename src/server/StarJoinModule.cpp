@@ -222,7 +222,8 @@ public:
             HashMap<GVVec, GVVec>::iterator i 
                 = join->dimension->dimension_data.find(join->join_key);
             if (i == join->dimension->dimension_data.end()) {
-                FATAL_ERROR(format("unimplemented; unable to find %s in dimension") % join->join_key);
+                FATAL_ERROR(format("unimplemented; unable to find key '%s' in dimension '%s'")
+                            % join->join_key % join->dimension->dimension_name);
             } else {
                 SINVARIANT(join->join_data == NULL);
                 join->join_data = &i->second;

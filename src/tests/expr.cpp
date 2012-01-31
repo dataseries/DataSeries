@@ -114,10 +114,50 @@ void testSeriesSelect() {
     SINVARIANT(expr->valInt64() == 0);
 
     delete expr;
+    cout << "Series Select passed.\n";
+}
+
+void testNullExpr() {
+    static string extent_type_xml(
+"<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+"  <field type=\"int32\" name=\"a\" opt_nullable=\"yes\" />"
+"  <field type=\"int32\" name=\"b\" opt_nullable=\"yes\" />"
+"</ExtentType>");
+
+    ExtentTypeLibrary library;
+
+    const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
+
+    Extent e(extent_type);
+    ExtentSeries series(&e);
+    Int32Field a(series, "a", Field::flag_nullable), b(series, "b", Field::flag_nullable);
+
+    boost::scoped_ptr<DSExpr> expr1(DSExpr::make(series, "1000"));
+    boost::scoped_ptr<DSExpr> expr2(DSExpr::make(series, "\"abc\""));
+    boost::scoped_ptr<DSExpr> expr3(DSExpr::make(series, "a"));
+    boost::scoped_ptr<DSExpr> expr4(DSExpr::make(series, "-a"));
+    boost::scoped_ptr<DSExpr> expr5(DSExpr::make(series, "a+b"));
+
+    series.newRecord();
+    a.set(1); 
+    b.set(1);
+    SINVARIANT(!expr1->isNull() && !expr2->isNull() && !expr3->isNull() && !expr4->isNull()
+               && !expr5->isNull());
+    a.setNull();
+    SINVARIANT(!expr1->isNull() && !expr2->isNull() && expr3->isNull() && expr4->isNull()
+               && expr5->isNull());
+    b.setNull();
+    SINVARIANT(!expr1->isNull() && !expr2->isNull() && expr3->isNull() && expr4->isNull()
+               && expr5->isNull());
+    a.set(1);
+    SINVARIANT(!expr1->isNull() && !expr2->isNull() && !expr3->isNull() && !expr4->isNull()
+               && expr5->isNull());
+    cout << "Null Expr passed.\n";
 }
 
 int main(int argc, char **argv) {
     testSeriesSelect();
+    testNullExpr();
     makeFile();
 
     return 0;

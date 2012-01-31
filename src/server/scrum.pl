@@ -2,8 +2,9 @@
 use strict;
 use Data::Dumper;
 use Date::Parse;
+use Text::Table;
 
-use lib "$ENV{BUILD_OPT}/DataSeries.server/src/server/gen-perl";
+use lib "$ENV{BUILD_OPT}/DataSeries/src/server/gen-perl";
 use lib "$ENV{HOME}/projects/thrift/lib/perl/lib";
 
 use Thrift::BinaryProtocol;
@@ -12,7 +13,7 @@ use Thrift::BufferedTransport;
 
 use DataSeriesServer;
 
-my $force_rebuild;
+my $force_rebuild = 0;
 
 my $socket = new Thrift::Socket('localhost', 49476);
 $socket->setRecvTimeout(100000);
@@ -46,7 +47,8 @@ sub updateDateConv {
     my $daynum = 0;
     my $prevday = -1;
 
-    my @rows = ([2, $sprint, 0, 0]);
+    my @rows = ([ new NullableString({ v => 2 }), new NullableString({ v => $sprint}),
+                  new NullableString(), new NullableString() ]);
     # Could make it work with addition of 24hrs but incrementing 12 hrs and skipping duplicated
     # days is safer to avoid DST issues.
     for(my $i = $istart; $i <= $iend; $i += 86400/2) {
@@ -66,21 +68,22 @@ sub updateDateConv {
         # TODO: *1m because units for sql2ds of times is microseconds
         # if we had a expression transform operation on the tables then we'd be fine, and
         # that's what we should do.
-        push (@rows, [ 2, $sprint, $date*1000*1000, $daynum ]);
+        push (@rows, [ map { new NullableString({'v' => $_}); }
+                       (2, $sprint, $date*1000*1000, $daynum) ]);
     }
 
     my $update_xml = <<'END';
 <ExtentType name ="sprint_days" namespace="simpl.hpl.hp.com" version="1.0">
   <field type="byte" name="update_op" />
   <field type="int32" name="sprint_number" />
-  <field type="int64" units="microseconds" epoch="unix" name="date" />
-  <field type="double" name="day" />
+  <field type="int64" units="microseconds" epoch="unix" name="date" opt_nullable="yes" />
+  <field type="double" name="day" opt_nullable="yes" />
 </ExtentType>
 END
     print "import...\n";
     $client->importData('sprint_dayconv_raw.update', $update_xml, new TableData({ rows => \@rows}));
     print "gtd...\n";
-    print Dumper(getTableData('sprint_dayconv_raw.update'));
+    printTable('sprint_dayconv_raw.update');
     print "sut...\n";
     $client->sortedUpdateTable('sprint_dayconv_raw', 'sprint_dayconv_raw.update',
                                'update_op', [ 'sprint_number', 'date' ]);
@@ -139,7 +142,11 @@ sub scrumTaskRestricted {
                                    sprint assigned_to/) }, [$dfj_created, $dfj_finished]);
 
     print "gtd...\n";
-    print Dumper(getTableData('scrum_task_restricted')); # ->{columns});
+    printTable('scrum_task_restricted');
+}
+
+sub exprColumn {
+    return new ExprColumn({ name => $_[0], type => $_[1], expr => $_[2] });
 }
 
 # remaining work on each day
@@ -155,15 +162,24 @@ sub remainingWork {
     # For the second one, sort by 0, finished, otherwise same as above
     #
     # TODO: need null_mode => NM_First/NM_Last[/NM_Drop]
-    my $sc_created = new SortColumn({ column => 'created', 'sort_mode' => SortMode::SM_Ascending });
-    my $sc_finished = new SortColumn({ column => 'finished', 'sort_mode' => SortMode::SM_Ascending });
+    my $sc_created = new SortColumn({ column => 'created', sort_mode => SortMode::SM_Ascending,
+                                      null_mode => NullMode::NM_First });
+    my $sc_finished = new SortColumn({ column => 'finished', sort_mode => SortMode::SM_Ascending,
+                                      null_mode => NullMode::NM_Last });
 
-    $client->sortTable('remaining-work.sort-created', 
+    $client->transformTable('scrum_task_restricted', 'remaining-work.extract',
+                            [ exprColumn('created', 'int64', 'created'),
+                              exprColumn('finished', 'int64', 'finished'),
+                              exprColumn('estimated_days', 'double', 'estimated_days'),
+                              exprColumn('minus_estimated_days', 'double', '- estimated_days') ]);
+
+    printTable('remaining-work.extract');
+#    $client->sortTable('scrum_task_restricted', 'remaining-work.sort-created',
     # TODO: need $client->deriveTable(table, [expr => col])
     # 
 }
 
-sub getTableData {
+sub getTableData ($;$$) {
     my ($table_name, $max_rows, $where_expr) = @_;
 
     $max_rows ||= 1000;
@@ -173,5 +189,28 @@ sub getTableData {
         print Dumper($@);
         die "fail";
     }
+    my @rows = map {
+        my $r = $_;
+        [ map { defined $_->{v} ? $_->{v} : undef } @$r ]
+    } @{$ret->{rows}};
+
+    $ret->{rows} = \@rows;
     return $ret;
+}
+
+sub printTable ($) {
+    my ($table) = @_;
+    my $table_refr = getTableData($table);
+
+    my @columns;
+    foreach my $col (@{$table_refr->{'columns'}}) {
+        push(@columns, $col->{'name'} . "\n" . $col->{'type'});
+    }
+
+    my $tb = Text::Table->new(@columns);
+    foreach my $row (@{$table_refr->{'rows'}}) {
+        $tb->add(@{$row});
+    }
+    print "Table: $table \n\n";
+    print $tb, "\n\n";
 }

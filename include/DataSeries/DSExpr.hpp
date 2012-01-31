@@ -99,6 +99,7 @@ public:
     virtual int64_t valInt64() = 0;
     virtual bool valBool() = 0;
     virtual const std::string valString() = 0;
+    virtual bool isNull() = 0;
 
     virtual void dump(std::ostream &) = 0;
 

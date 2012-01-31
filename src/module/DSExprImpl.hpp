@@ -40,7 +40,9 @@ public:
     }
 
     virtual void dump(ostream &out);
-
+    virtual bool isNull() { 
+        return false;
+    }
 private:
     double val;
 };
@@ -73,6 +75,9 @@ public:
     virtual const string valString() {
 	return GeneralValue(*field).valString();
     }
+    virtual bool isNull() {
+        return field->isNull();
+    }
 
     virtual void dump(ostream &out);
 
@@ -103,6 +108,9 @@ public:
     virtual const string valString() {
 	return s;
     }
+    virtual bool isNull() {
+        return false;
+    }
 
     virtual void dump(ostream &out);
 
@@ -124,6 +132,9 @@ public:
 	FATAL_ERROR("either override dump or defined opname");
     }
 
+    virtual bool isNull() {
+        return subexpr->isNull();
+    }
 protected:
     DSExpr *subexpr;
 };
@@ -149,6 +160,9 @@ public:
 	FATAL_ERROR("either override dump or defined opname");
     }
 
+    virtual bool isNull() {
+        return left->isNull() || right->isNull();
+    }
 protected:
     DSExpr *left, *right;
 };
@@ -577,6 +591,10 @@ public:
     }
 
     virtual void dump(ostream &out);
+
+    virtual bool isNull() {
+        FATAL_ERROR("TODO: figure out why we instantiate this class directly");
+    }
 
 private:
     const string name;

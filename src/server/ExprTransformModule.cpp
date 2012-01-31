@@ -46,8 +46,8 @@ public:
             if (column.type == "variable32") {
                 extra = "pack_unique=\"yes\"";
             }
-            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" %s/>\n")
-                                  % column.type % column.name % extra));
+            output_xml.append(str(format("  <field type=\"%s\" name=\"%s\" opt_nullable=\"yes\""
+                                         " %s/>\n") % column.type % column.name % extra));
         }
         output_xml.append("</ExtentType>\n");
         
@@ -94,6 +94,10 @@ public:
                 output_series.newRecord();
                 BOOST_FOREACH(Output &output, outputs) {
                     GeneralValue val;
+                    if (output.expr->isNull()) {
+                        output.field->setNull();
+                        continue;
+                    }
                     switch(output.type) 
                         {
                         case ExtentType::ft_bool: val.setBool(output.expr->valBool()); break;

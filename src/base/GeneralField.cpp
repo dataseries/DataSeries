@@ -271,8 +271,9 @@ bool GeneralValue::strictlylessthan(const GeneralValue &gv) const {
 }
 
 bool GeneralValue::equal(const GeneralValue &gv) const {
-    INVARIANT(gvtype == gv.gvtype,
-	      "currently invalid to compare general values of different types");
+    if (gvtype != gv.gvtype) {
+        return false; // definitionally not equal, different types.
+    }
     switch(gvtype) 
 	{
 	case ExtentType::ft_unknown: return true; // other type is also null, null == null.
