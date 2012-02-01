@@ -848,7 +848,7 @@ int main(int argc, char *argv[]) {
 	usage(argv[0]);
     }
 
-    if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
+    if ((argc - first) == 3 && isNumber(argv[first+1]) && isNumber(argv[first+2])) {
 	sourceByIndex(ipsource,argv[first],atoi(argv[first+1]),atoi(argv[first+2]));
     } else {
 	for(int i=first; i<argc; ++i) {

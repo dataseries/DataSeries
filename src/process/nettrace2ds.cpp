@@ -318,9 +318,8 @@ vector<bandwidth_rolling *> bw_info;
 Clock::Tll max_incremental_processed = 0;
 unsigned incremental_process_at_packet_count = 500000; // 6-8MB of buffering
 
-#if defined(bswap_64)
-inline uint64_t ntohll(uint64_t in)
-{
+#if defined(bswap_64) && (defined(__i386__) || defined(__x86_64__))
+inline uint64_t ntohll(uint64_t in) {
     return bswap_64(in);
 }
 #else

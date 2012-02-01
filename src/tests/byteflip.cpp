@@ -37,8 +37,7 @@ using boost::format;
     ((Int32ValuE >> 24) & 0xff) | ((Int32ValuE >> 8) & 0xff00) \
   | ((Int32ValuE << 8) & 0xff0000) | ((Int32ValuE << 24) & 0xff000000)
 
-void doit_charflip(uint32_t *buf, unsigned buflen)
-{
+void doit_charflip(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	unsigned char *b = (unsigned char *)(buf+i);
 
@@ -51,15 +50,13 @@ void doit_charflip(uint32_t *buf, unsigned buflen)
     }
 }
 
-void doit_intshift1(uint32_t *buf, unsigned buflen)
-{
+void doit_intshift1(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = REVERSE_INT32(buf[i]);
     }
 }
 
-void doit_intshift2(uint32_t *buf, unsigned buflen)
-{
+void doit_intshift2(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
 	buf[i] = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
@@ -67,8 +64,7 @@ void doit_intshift2(uint32_t *buf, unsigned buflen)
     }
 }
 
-void doit_intshift3(uint32_t *buf, unsigned buflen)
-{
+void doit_intshift3(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
 	buf[i] = ((v >> 24) & 0xFF) + ((v>>8) & 0xFF00) +
@@ -76,8 +72,7 @@ void doit_intshift3(uint32_t *buf, unsigned buflen)
     }
 }
 
-void doit_intshift4(uint32_t *buf, unsigned buflen)
-{
+void doit_intshift4(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	uint32_t v = buf[i];
 	buf[i] = ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
@@ -86,8 +81,7 @@ void doit_intshift4(uint32_t *buf, unsigned buflen)
 }
 
 #if __GNUC__ >= 2 && (defined(__i386__) || defined(__x86_64__))
-void doit_bswap_i486(uint32_t *buf, unsigned buflen)
-{
+void doit_bswap_i486(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	register uint32_t tmp = buf[i];
 	asm("bswap %0" : "=r" (tmp) : "0" (tmp));
@@ -97,8 +91,7 @@ void doit_bswap_i486(uint32_t *buf, unsigned buflen)
 #endif
 
 #ifdef bswap_32
-void doit_bswap_32(uint32_t *buf, unsigned buflen)
-{
+void doit_bswap_32(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = bswap_32(buf[i]);
     }
@@ -116,7 +109,7 @@ struct ByteFlipTest {
 
 void onebytefliptest(ByteFlipTest &bft, const string &fnname, Stats &timing,
 		     void (*fn)(uint32_t *, unsigned), bool first_run = false) {
-    if (timing.count() > 2 && timing.mean()-timing.conf95() 
+    if (timing.count() >= 2 && timing.mean()-timing.conf95() 
 	> (bft.flip4_time.mean() + bft.flip4_time.conf95())) {
 	cout << format("   skipping %s, mean time %.6g-%.6g > flip4+conf95 %.6g + %.6g\n")
 	    % fnname % timing.mean() % timing.conf95()
@@ -128,7 +121,7 @@ void onebytefliptest(ByteFlipTest &bft, const string &fnname, Stats &timing,
     getrusage(RUSAGE_SELF,&test_start);
     for(unsigned i=0; i<bft.reps; ++i) {
 	fn(bft.buf, bft.bufsize);
-	for(unsigned j=0; j<bft.bufsize; ++j) {
+        for(unsigned j=i; j<bft.bufsize; j += bft.reps/2) { // add in each entry twice
 	    sum += bft.buf[j];
 	}
     }
@@ -171,7 +164,9 @@ void test_byteflip() {
     return;
 #endif
 
-    static const unsigned rounds = 10;
+    SINVARIANT(Extent::flip4bytes(0x12345678) == 0x78563412);
+    SINVARIANT(Extent::flip4bytes(0xFEDCBA90) == 0x90BADCFE);
+    static const unsigned rounds = 5;
     ByteFlipTest bft;
 
     for(unsigned i=0; i < bft.bufsize; ++i) {
@@ -185,7 +180,7 @@ void test_byteflip() {
 	const unsigned max_runtimes = 10;
 	Stats runtimes[max_runtimes];
 
-	for(unsigned i = 0; i < rounds; ++i) {
+	for(unsigned i = 0; i < (rounds * (tries + 1)); ++i) {
 	    cout << format("\nRound %d:\n") % i;
 	    onebytefliptest(bft, "character flip",  runtimes[0],  doit_charflip);
 	    onebytefliptest(bft, "integer shift 1", runtimes[1], doit_intshift1);

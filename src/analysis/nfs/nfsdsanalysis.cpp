@@ -1653,9 +1653,7 @@ void printResult(SequenceModule::DsmPtr mod) {
     printf("\n");
 }
 
-bool
-isnumber(const char *v)
-{
+bool isNumber(const char *v) {
     for(; *v != '\0'; ++v) {
 	if (!isdigit(*v)) {
 	    return false;
@@ -1671,7 +1669,7 @@ void setupInputs(int first, int argc, char *argv[], TypeIndexModule *sourcea,
 		 TypeIndexModule *sourceb, TypeIndexModule *sourcec,
 		 TypeIndexModule *sourced, SequenceModule &commonSequence) {
     bool timebound_set = false;
-    if ((argc - first) == 3 && isnumber(argv[first+1]) && isnumber(argv[first+2])) {
+    if ((argc - first) == 3 && isNumber(argv[first+1]) && isNumber(argv[first+2])) {
 	timebound_set = true;
 	timebound_start = atoi(argv[first+1]);
 	timebound_end = atoi(argv[first+2]);

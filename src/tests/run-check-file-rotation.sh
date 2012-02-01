@@ -24,6 +24,17 @@ toTxtCheck() {
     check $2
 }
 
+SEQ=`which seq`
+if [ -z "$SEQ" ]; then
+    seq() {
+        seq_i=$1
+        while [ $seq_i -le $2 ]; do
+            echo $seq_i
+            seq_i=`expr $seq_i + 1`
+        done
+    }
+fi
+
 echo "--------------- testing simple file rotation via direct call ----------"
 rm simple-fr-*.ds
 ./file-rotation simple

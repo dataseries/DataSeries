@@ -12,7 +12,9 @@
 #include <math.h>
 #include <errno.h>
 #include <stdio.h>
-#include <malloc.h>
+#if defined(__linux__)
+#   include <malloc.h>
+#endif
 
 #include <iostream>
 
@@ -63,9 +65,7 @@ extern "C" {
 
 static bool did_init_malloc_tuning = false;
 
-void
-Extent::ByteArray::initMallocTuning()
-{
+void Extent::ByteArray::initMallocTuning() {
     if (did_init_malloc_tuning) 
 	return;
     did_init_malloc_tuning = true;
@@ -75,21 +75,16 @@ Extent::ByteArray::initMallocTuning()
 #endif
 }
 
-Extent::ByteArray::~ByteArray()
-{
+Extent::ByteArray::~ByteArray() {
     delete [] beginV;
 }
 
-void
-Extent::ByteArray::clear()
-{
+void Extent::ByteArray::clear() {
     delete [] beginV;
     beginV = endV = maxV = NULL;
 }
 
-void 
-Extent::ByteArray::reserve(size_t reserve_bytes)
-{
+void Extent::ByteArray::reserve(size_t reserve_bytes) {
     if (reserve_bytes <= static_cast<size_t>(maxV - beginV)) {
 	return; // have enough already;
     }
@@ -99,9 +94,13 @@ Extent::ByteArray::reserve(size_t reserve_bytes)
     size_t oldsize = size();
     byte *newV = new byte [reserve_bytes];
 
-    INVARIANT(((unsigned long)newV % 8) == 0,
-	      boost::format("internal error, misaligned malloc return %ld\n")
-	      % ((unsigned long)newV % 8));
+    size_t expect_align = 8;
+    if (reserve_bytes == 4) { expect_align = 4; }
+    size_t actual_align = reinterpret_cast<size_t>(newV) % expect_align;
+
+    INVARIANT(actual_align == 0,
+	      boost::format("internal error, misaligned malloc(%d) return %d mod %d\n")
+	      % reserve_bytes % actual_align % expect_align);
     memcpy(newV,beginV,oldsize);
     delete [] beginV;
     beginV = newV;
@@ -110,9 +109,7 @@ Extent::ByteArray::reserve(size_t reserve_bytes)
 }
 
 
-void
-Extent::ByteArray::copyResize(size_t newsize, bool zero_it)
-{
+void Extent::ByteArray::copyResize(size_t newsize, bool zero_it) {
     size_t oldsize = size();
     int target_max = newsize < 2*oldsize ? 2*oldsize : newsize;
     reserve(target_max);
@@ -129,9 +126,7 @@ static bool preuncompress_check = true;
 static bool postuncompress_check = true;
 static bool unpack_variable32_check = true;
 
-void
-Extent::setReadChecksFromEnv(bool defval)
-{
+void Extent::setReadChecksFromEnv(bool defval) {
     bool pre = defval, post = defval, var32 = defval;
 
     if (getenv("DATASERIES_READ_CHECKS") != NULL) {
@@ -215,8 +210,7 @@ Extent::Extent(const string &xmltype)
     init();
 }
 
-static const ExtentType &toReference(const ExtentType *from)
-{
+static const ExtentType &toReference(const ExtentType *from) {
     INVARIANT(from != NULL, "bad cast to reference");
     return *from;
 }
@@ -230,17 +224,13 @@ Extent::Extent(ExtentSeries &myseries)
     }
 }
 
-void
-Extent::swap(Extent &with)
-{ 
+void Extent::swap(Extent &with) { 
     INVARIANT(&with.type == &type, "can't swap between incompatible types");
     fixeddata.swap(with.fixeddata);
     variabledata.swap(with.variabledata);
 }
 
-void
-Extent::createRecords(unsigned int nrecords)
-{
+void Extent::createRecords(unsigned int nrecords) {
     fixeddata.resize(fixeddata.size() + nrecords * type.rep.fixed_record_size);
 }    
 
@@ -281,9 +271,7 @@ static bool compactIsNull(const ExtentType::byte *fixed_record,
 }
 
 static const bool debug_compact = false;
-void
-Extent::compactNulls(Extent::ByteArray &fixed_coded)
-{
+void Extent::compactNulls(Extent::ByteArray &fixed_coded) {
     if (debug_compact) {
 	cout << format("compacting %s\n")
 	    % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
@@ -388,8 +376,7 @@ Extent::compactNulls(Extent::ByteArray &fixed_coded)
 // from asm/string.h, explicitly marked as public domain.  Should
 // re-test performance improvement; see below for x86_64 discussion.
 
-static inline void * asm_memcpy(void * to, const void * from, size_t n)
-{
+static inline void * asm_memcpy(void * to, const void * from, size_t n) {
 int d0, d1, d2;
 __asm__ __volatile__(
 	"rep ; movsl\n\t"
@@ -424,11 +411,9 @@ return (to);
 #endif
 
 template<class T>
-const ExtentType::byte *
-uncompactCopy(const vector<ExtentType::nullCompactInfo> &nci, 
-	      ExtentType::byte *to, const ExtentType::byte *from, 
-	      const ExtentType::byte *from_end)
-{
+const ExtentType::byte *uncompactCopy(const vector<ExtentType::nullCompactInfo> &nci, 
+                                      ExtentType::byte *to, const ExtentType::byte *from, 
+                                      const ExtentType::byte *from_end) {
     (void)from_end; // force "use" even in non-debug mode
 
     // Split the loop so that we only do the alignment portion of the
@@ -471,10 +456,7 @@ uncompactCopy(const vector<ExtentType::nullCompactInfo> &nci,
     return from;
 }
 
-void
-Extent::uncompactNulls(Extent::ByteArray &fixed_coded, 
-		       int32_t &size)
-{
+void Extent::uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size) {
     INVARIANT(type.getPackNullCompact() == ExtentType::CompactNonBool, "bad");
     Extent::ByteArray into;
     INVARIANT(static_cast<size_t>(size) <= fixed_coded.size(), "internal"); 
@@ -542,8 +524,7 @@ static const unsigned variable_sizes_batch_size = 1024;
 
 uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes, 
 			  uint32_t compression_level, uint32_t *header_packed, 
-			  uint32_t *fixed_packed, uint32_t *variable_packed)
-{
+			  uint32_t *fixed_packed, uint32_t *variable_packed) {
     // Don't need to zero the coded arrays as we will be filling them
     // all in.
     Extent::ByteArray fixed_coded;
@@ -859,10 +840,8 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     return bjhash ^ static_cast<uint32_t>(adler32sum);
 }
 
-bool
-Extent::packBZ2(byte *input, int32 inputsize,
-		Extent::ByteArray &into, int compression_level)
-{
+bool Extent::packBZ2(byte *input, int32 inputsize,
+                     Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_BZIP2    
     if (into.size() == 0) {
 	into.resize(inputsize, false);
@@ -883,10 +862,8 @@ Extent::packBZ2(byte *input, int32 inputsize,
     return false;
 }
 
-bool
-Extent::packZLib(byte *input, int32 inputsize,
-		 Extent::ByteArray &into, int compression_level)
-{
+bool Extent::packZLib(byte *input, int32 inputsize,
+                      Extent::ByteArray &into, int compression_level) {
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -904,10 +881,8 @@ Extent::packZLib(byte *input, int32 inputsize,
     return false;
 }
 
-bool
-Extent::packLZO(byte *input, int32 inputsize,
-		Extent::ByteArray &into, int compression_level)
-{
+bool Extent::packLZO(byte *input, int32 inputsize,
+                     Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_LZO
     into.resize(inputsize + inputsize/64 + 16 + 3, false);
     lzo_uint out_len = 0;
@@ -938,10 +913,8 @@ Extent::packLZO(byte *input, int32 inputsize,
 #endif
 }
 
-bool
-Extent::packLZF(byte *input, int32 inputsize,
-		Extent::ByteArray &into, int compression_level)
-{
+bool Extent::packLZF(byte *input, int32 inputsize,
+                     Extent::ByteArray &into, int compression_level) {
     if (into.size() == 0) {
 	into.resize(inputsize, false);
     }
@@ -961,11 +934,9 @@ Extent::packLZF(byte *input, int32 inputsize,
 // pack functions then the compression algorithms will stop early if
 // they can't compress into the smaller amount of space.
 
-Extent::ByteArray *
-Extent::compressBytes(byte *input, int32 input_size,
-		      int compression_modes,
-		      int compression_level, byte *mode)
-{
+Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
+                                         int compression_modes,
+                                         int compression_level, byte *mode) {
     Extent::ByteArray *best_packed = NULL;
     *mode = 0;
     if (input_size == 0) {
@@ -1042,11 +1013,8 @@ Extent::compressBytes(byte *input, int32 input_size,
     return best_packed;
 }
 
-int32_t
-Extent::uncompressBytes(byte *into, byte *from, 
-		  byte compression_mode, int32 intosize,
-		  int32 fromsize)
-{
+int32_t Extent::uncompressBytes(byte *into, byte *from, byte compression_mode, int32 intosize,
+                                int32 fromsize) {
     int32 outsize = -1;
     if (compression_mode == compress_mode_none) {
 	outsize = fromsize;
@@ -1106,9 +1074,7 @@ Extent::uncompressBytes(byte *into, byte *from,
 
 #define TIME_UNPACKING(x)
 
-const string
-Extent::getPackedExtentType(const Extent::ByteArray &from)
-{
+const string Extent::getPackedExtentType(const Extent::ByteArray &from) {
     INVARIANT(from.size() > (6*4+2), "Invalid extent data, too small.");
 
     byte type_name_len = from[6*4+2];
@@ -1121,10 +1087,7 @@ Extent::getPackedExtentType(const Extent::ByteArray &from)
     return type_name;
 }
 
-void
-Extent::unpackData(Extent::ByteArray &from,
-		   bool fix_endianness)
-{
+void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     if (!did_checks_init) {
 	setReadChecksFromEnv();
     }
@@ -1392,10 +1355,7 @@ Extent::unpackData(Extent::ByteArray &from,
 }
 
 uint32_t
-Extent::unpackedSize(Extent::ByteArray &from,
-		     bool fix_endianness,
-		     const ExtentType &type)
-{
+Extent::unpackedSize(Extent::ByteArray &from, bool fix_endianness, const ExtentType &type) {
     SINVARIANT(from.size() > 16);
     uint32_t nrecords = *reinterpret_cast<uint32_t *>(from.begin() + 8);
     uint32_t variable_size = *reinterpret_cast<uint32_t *>(from.begin() + 12);
@@ -1406,9 +1366,7 @@ Extent::unpackedSize(Extent::ByteArray &from,
     return nrecords * type.fixedrecordsize() + variable_size;
 }
 
-bool
-Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok)
-{
+bool Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok) {
     ssize_t ret = pread64(fd,into,amount,offset);
     INVARIANT(ret != -1, boost::format("error reading %d bytes: %s") 
 	      % amount % strerror(errno));
@@ -1420,9 +1378,7 @@ Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok
     return true;
 }
 
-bool
-Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip)
-{
+bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_bitflip) {
     int prefix_size = 6*4 + 4*1;
     into.resize(prefix_size, false);
     if (checkedPread(fd,offset,into.begin(),prefix_size, true) == false) {
@@ -1463,9 +1419,7 @@ Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool need_
     return true;
 }
 
-void
-Extent::run_flip4bytes(uint32_t *buf, unsigned buflen)
-{
+void Extent::run_flip4bytes(uint32_t *buf, unsigned buflen) {
     for(unsigned i=0;i<buflen;++i) {
 	buf[i] = Extent::flip4bytes(buf[i]);
     }

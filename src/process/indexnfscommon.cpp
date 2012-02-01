@@ -34,12 +34,15 @@ TODO: obsolete this program, merge it into dsextentindex
 
 #include <map>
 
+#include <Lintel/FileUtil.hpp>
+
 #include <DataSeries/DataSeriesFile.hpp>
 #include <DataSeries/DataSeriesModule.hpp>
 #include <DataSeries/TypeIndexModule.hpp>
 
 using namespace std;
 using boost::format;
+using lintel::modifyTimeNanoSec;
 
 const ExtentType::int64 max_backward_ns_in_extent = 20000000LL;
 const ExtentType::int64 max_backward_ns_between_extent = 5000000LL;
@@ -56,11 +59,6 @@ typedef map<ExtentType::int64,fileinfo> indexmapT;
 indexmapT indexmap; // startid -> info
 
 map<const string,ExtentType::int64> filename_to_mtime;
-
-ExtentType::int64 mtimens(struct stat &buf)
-{
-    return (ExtentType::int64)buf.st_mtime * (ExtentType::int64)1000000000 + buf.st_mtim.tv_nsec;
-}
 
 void
 readExistingIndex(char *out_filename)
@@ -182,13 +180,8 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
     delete e;
 }
 
-bool
-updateIndexMap(char *filename)
-{
-    struct stat statbuf;
-    CHECKED(stat(filename,&statbuf)==0,
-	    format("stat(%s) failed: %s") % filename % strerror(errno));
-    ExtentType::int64 mtime = mtimens(statbuf);
+bool updateIndexMap(char *filename) {
+    ExtentType::int64 mtime = modifyTimeNanoSec(filename);
     if (filename_to_mtime[filename] == mtime) {
 	printf("%s: up to date\n",filename);
 	return false;

@@ -11,7 +11,7 @@
 #ifndef __SOURCE_BY_RANGE_H
 #define __SOURCE_BY_RANGE_H
 
-bool isnumber(char *v);
+bool isNumber(char *v);
 
 void sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int end_secs);
 

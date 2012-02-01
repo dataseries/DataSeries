@@ -14,7 +14,7 @@
 using namespace std;
 using boost::format;
 
-bool isnumber(char *v) {
+bool isNumber(char *v) {
     while(true) {
 	if (*v == '\0') {
 	    return true;

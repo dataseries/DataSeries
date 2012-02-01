@@ -41,19 +41,20 @@ extern "C" {
 #  include <byteswap.h>
 #endif
 
+#if defined(__FreeBSD__) && defined(__GNUC__) && __GNUC__ >= 2 && (defined(__i486__) || defined (__x86_64__))
+#  define bswap_32(x) \
+     (__extension__                                                     \
+      ({ register uint32_t bswap32_out, bswap32_in = (x);               \
+           __asm__("bswap %0" : "=r" (bswap32_out) : "0" (bswap32_in)); \
+         bswap32_out; }))
+#endif
+
 #include <boost/utility.hpp>
 
 #include <Lintel/CompilerMarkup.hpp>
+#include <Lintel/TypeCompat.hpp>
 
 #include <DataSeries/ExtentType.hpp>
-
-/// \cond INTERNAL_ONLY
-// This doesn't really belong here, but it's not clear what a better
-// place is.
-#ifdef __CYGWIN__
-    typedef _off64_t off64_t;
-#endif
-/// \endcond
 
 class ExtentSeries;
 
@@ -325,7 +326,7 @@ public:
     }
     // 
     static inline void flip8bytes(byte *data) {
-#ifdef USE_X86_GCC_BYTESWAP
+#if defined(bswap_64)
         *(uint64_t *)data = bswap_64(*(uint64_t *)data);
 #else
         uint32 a = *(uint32 *)data;

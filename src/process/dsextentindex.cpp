@@ -43,6 +43,7 @@ dataseries-utils(7)
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashMap.hpp>
+#include <Lintel/FileUtil.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/StringUtil.hpp>
 
@@ -54,6 +55,7 @@ dataseries-utils(7)
 #include <DataSeries/RowAnalysisModule.hpp>
 
 using namespace std;
+using lintel::modifyTimeNanoSec;
 using boost::format;
 
 static LintelLog::Category debug_min_max_output("MinMaxOutput");
@@ -489,19 +491,6 @@ private:
 };
 
 
-int64_t mtimens(const std::string &filename) {
-    struct stat statbuf;
-    INVARIANT(stat(filename.c_str(),&statbuf)==0, format("stat failed: %s") % strerror(errno));
-
-#ifdef __HP_aCC
-    // don't know how to get ns time on HPUX
-    return ((int64_t)statbuf.st_mtime * (int64_t)1000000000);
-#else    
-    return ((int64_t)statbuf.st_mtime * (int64_t)1000000000 + statbuf.st_mtim.tv_nsec);
-#endif
-}
-
-
 class OldIndexModule : public DataSeriesModule {
 public:
     OldIndexModule(DataSeriesModule *source, MinMaxOutput *minMaxOutput,
@@ -573,7 +562,7 @@ protected:
             }
 
             // process the current file
-            int64_t modify_time = mtimens(curName);
+            int64_t modify_time = modifyTimeNanoSec(curName);
             int64_t *stored = modify.lookup(curName);
             if(stored && (*stored) == modify_time) {
                 cout << curName << " already indexed.\n";
@@ -637,7 +626,7 @@ protected:
     }
 
     void processCurrentFile() {
-        int64_t modify_time = mtimens(files[filePos]);
+        int64_t modify_time = modifyTimeNanoSec(files[filePos]);
         processFile(files[filePos], modify_time);
     }
 
@@ -661,7 +650,7 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
     // update the namespace/version information
     for(vector<string>::const_iterator i = files.begin(); i != files.end(); ++i) {
         ExtentType::int64 *time = modify.lookup(*i);
-        if(!time || mtimens(*i) != *time) {
+        if(!time || modifyTimeNanoSec(*i) != *time) {
             DataSeriesSource source(*i);
             const ExtentType *type = source.getLibrary().getTypeMatch(type_prefix);
             updateNamespaceVersions(type);
