@@ -381,7 +381,7 @@ public:
         INVARIANT(ret == 0, format("rename %s -> %s failed: %s") % from % to % strerror(errno));
     }
 
-    void unionTables(const vector<UnionTable> &in_tables, const vector<string> &order_columns,
+    void unionTables(const vector<UnionTable> &in_tables, const vector<SortColumn> &order_columns,
                      const string &out_table) {
         vector<UM_UnionTable> tables;
         BOOST_FOREACH(const UnionTable &table, in_tables) {

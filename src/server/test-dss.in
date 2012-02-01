@@ -505,42 +505,54 @@ sub testSimpleStarJoin {
     print "passed.\n";
 }
 
-sub unionTable {
+sub unionTable ($$) {
     return new UnionTable({ 'table_name' => $_[0], 'extract_values' => $_[1] });
+}
+
+sub sortColumn ($$$) {
+    return new SortColumn({ column => $_[0], sort_mode => $_[1], null_mode => $_[2] });
 }
 
 sub testUnion {
     print "testing union...";
     # extra column tests discard; different names tests rename
-    my @data1 = ( [ 100, "abc", 3, 1 ],
-                  [ 2000, "ghi", 4, 4 ],
+    my @data1 = ( [ undef, undef, 100, -2 ],
+                  [ 100, "abc", 3, 2 ],
+                  [ 2000, "ghi", 4, 3 ],
                   [ 3000, "def", 5, 5 ],
-                  [ 12345, "ghi", 17, 7 ] );
+                  [ 12345, "ghi", 17, 7 ],
+                  [ 20000, undef, 100, 12 ]);
 
     importData('union-input-1', [ 'col1' => 'int32', 'col2' => 'variable32', 'col3' => 'byte',
-                                  'col4' => 'int32' ], \@data1);
-    my @data2 = ( [ 100, "def", 2 ],
-                  [ 2000, "def", 3 ],
-                  [ 12345, "efg", 6 ],
+                                  'col4' => 'double' ], \@data1);
+    my @data2 = ( [ undef, "zzz", -4 ],
+                  [ 100, "def", 1 ],
+                  [ 2000, "def", 4 ],
+                  [ 12345, "jkl", 6 ],
                   [ 12345, "ghi", 8 ],
-                  [ 12345, "jkl", 9 ],
-                  [ 20000, "abc", 11 ] );
-    importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32', 'colc' => 'int32' ],
+                  [ 12345, "efg", 9 ],
+                  [ 12345, undef, 9.5 ],
+                  [ 20000, "abc", 10 ] );
+    importData('union-input-2', [ 'cola' => 'int32', 'colb' => 'variable32', 'colc' => 'double' ],
                \@data2);
 
-    my @data3 = ( [ 10, "zyw", 0 ],
-                  [ 20000, "aaa", 10 ]);
+    my @data3 = ( [ undef, "aaa", -3 ],
+                  [ 0, undef, -1 ],
+                  [ 10, "zyw", 0 ],
+                  [ 20000, "aaa", 11 ]);
 
-    importData('union-input-3', [ 'colm' => 'int32', 'coln' => 'variable32', 'colo' => 'int32' ],
+    importData('union-input-3', [ 'colm' => 'int32', 'coln' => 'variable32', 'colo' => 'double' ],
                \@data3);
 
     $client->unionTables([ unionTable('union-input-1', { 'col1' => 'int', 'col2' => 'string',
                                                          'col4' => 'order' }),
                            unionTable('union-input-2', { 'cola' => 'int', 'colb' => 'string',
                                                          'colc' => 'order' }),
-                         unionTable('union-input-3', { 'colm' => 'int', 'coln' => 'string',
-                                                       'colo' => 'order' })],
-                         [ qw/int string/ ], 'union-output');
+                           unionTable('union-input-3', { 'colm' => 'int', 'coln' => 'string',
+                                                         'colo' => 'order' })],
+                         [ sortColumn('int', SortMode::SM_Ascending, NullMode::NM_First),
+                           sortColumn('string', SortMode::SM_Decending, NullMode::NM_Last) ],
+                        'union-output');
 
     my @data = map { [ $_->[0], $_->[3], $_->[1] ] } @data1;
     push(@data, map { [ $_->[0], $_->[2], $_->[1] ] } @data2, @data3);
@@ -548,7 +560,9 @@ sub testUnion {
     #printTable("union-input-1");
     #printTable("union-input-2");
     #printTable("union-input-3");
-    checkTable("union-output", [ qw/int int32   order int32   string variable32/ ], \@data);
+    #printTable('union-output');
+    checkTable("union-output", [ qw/int int32   order double   string variable32/ ], \@data);
+
     print "passed.\n";
 }
 
@@ -571,12 +585,9 @@ sub testSort2Compare {
 }
 
 sub testSort {
-    my $sc_0 = new SortColumn({ column => 'col0', sort_mode => SortMode::SM_Decending,
-                                null_mode => NullMode::NM_First });
-    my $sc_1 = new SortColumn({ column => 'col1', sort_mode => SortMode::SM_Ascending,
-                                null_mode => NullMode::NM_First });
-    my $sc_2 = new SortColumn({ column => 'col2', sort_mode => SortMode::SM_Decending,
-                                null_mode => NullMode::NM_Last });
+    my $sc_0 = sortColumn('col0', SortMode::SM_Decending, NullMode::NM_First);
+    my $sc_1 = sortColumn('col1', SortMode::SM_Ascending, NullMode::NM_First);
+    my $sc_2 = sortColumn('col2', SortMode::SM_Decending, NullMode::NM_Last);
 
     print "sort test 1...";
     my @data = ( [ 5000, "ghi" ],

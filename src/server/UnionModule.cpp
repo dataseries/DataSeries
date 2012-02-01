@@ -6,6 +6,12 @@ class UnionModule : public OutputSeriesModule {
 public:
     struct Compare {
         Compare(const vector<UM_UnionTable> &sources) : sources(sources) { }
+        // Below has almost the same logic as sorting, but not quite.
+        // 1) comparison order is reversed (that's the priority queue rules)
+        // 2) sort has identical extent types and uses random offsets
+        //    union has different extent types but uses sequential access
+        // Seems like there should be some way to have this code once, but the
+        // above two differences make that goal difficult.
         bool operator()(uint32_t ia, uint32_t ib) {
             const UM_UnionTable &a(sources[ia]);
             const UM_UnionTable &b(sources[ib]);
@@ -13,10 +19,29 @@ public:
             SINVARIANT(b.series.getExtent() != NULL);
             SINVARIANT(a.order_fields.size() == b.order_fields.size());
             for (size_t i = 0; i < a.order_fields.size(); ++i)  {
-                if (*a.order_fields[i] < *b.order_fields[i]) {
-                    return false;
-                } else if (*b.order_fields[i] < *a.order_fields[i]) {
-                    return true;
+                const SortColumnImpl &sc_a(a.order_fields[i]), &sc_b(b.order_fields[i]);
+                
+                DEBUG_SINVARIANT(sc_a.sort_less == sc_b.sort_less);
+                DEBUG_SINVARIANT(sc_a.null_mode == sc_b.null_mode);
+
+                bool a_null = sc_a.field->isNull();
+                bool b_null = sc_b.field->isNull();
+                if (a_null || b_null) {
+                    if (a_null && !b_null) { 
+                        return sc_a.null_mode == NM_First ? false : true;
+                    } else if (!a_null && b_null) { 
+                        return sc_a.null_mode == NM_First ? true : false;
+                    } else {
+                        // ==; keep going
+                    }
+                } else {                    
+                    if (*a.order_fields[i].field < *b.order_fields[i].field) {
+                        return sc_a.sort_less;
+                    } else if (*b.order_fields[i].field < *a.order_fields[i].field) {
+                        return !sc_a.sort_less;
+                    } else {
+                        // ==; keep going
+                    }
                 }
             }
             // They are equal, order by union position
@@ -26,7 +51,7 @@ public:
         const vector<UM_UnionTable> &sources;
     };
 
-    UnionModule(const vector<UM_UnionTable> &in_sources, const vector<string> &order_columns,
+    UnionModule(const vector<UM_UnionTable> &in_sources, const vector<SortColumn> &order_columns,
                 const string &output_table_name) 
         : sources(in_sources), compare(sources), queue(compare, sources.size()),
           order_columns(order_columns), output_table_name(output_table_name)
@@ -58,13 +83,19 @@ public:
                 if (output_type.empty()) {
                     output_type = renamed_output_type;
                 } else {
-                    TINVARIANT(output_type == renamed_output_type);
+                    INVARIANT(output_type == renamed_output_type,
+                              format("%s != %s") % output_type % renamed_output_type);
                 }
             }
-            BOOST_FOREACH(const string &col, order_columns) {
-                map<string, string>::iterator i = out_to_in.find(col);
+            BOOST_FOREACH(const SortColumn &sc, order_columns) {
+                map<string, string>::iterator i = out_to_in.find(sc.column);
                 SINVARIANT(i != out_to_in.end());
-                ut.order_fields.push_back(GeneralField::make(ut.series, i->second));
+                TINVARIANT(sc.sort_mode == SM_Ascending || sc.sort_mode == SM_Decending);
+                TINVARIANT(sc.null_mode == NM_First || sc.null_mode == NM_Last);
+                ut.order_fields.push_back(SortColumnImpl
+                                          (GeneralField::make(ut.series, i->second),
+                                           sc.sort_mode == SM_Ascending ? false : true,
+                                           sc.null_mode));
             }
             LintelLogDebug("UnionModule", format("made union stuff on %s") % ut.table_name);
         }
@@ -129,12 +160,12 @@ public:
     vector<UM_UnionTable> sources; 
     Compare compare;
     PriorityQueue<uint32_t, Compare> queue;
-    vector<string> order_columns;
+    vector<SortColumn> order_columns;
     const string output_table_name;
 };
 
 OutputSeriesModule::OSMPtr dataseries::makeUnionModule
-    (const vector<UM_UnionTable> &in_sources, const vector<string> &order_columns,
+    (const vector<UM_UnionTable> &in_sources, const vector<SortColumn> &order_columns,
      const string &output_table_name) {
     return OutputSeriesModule::OSMPtr(new UnionModule(in_sources, order_columns,
                                                       output_table_name));

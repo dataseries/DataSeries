@@ -53,17 +53,6 @@ public:
 
     virtual ~SortModule() { }
 
-    struct SortColumnImpl {
-        SortColumnImpl(GeneralField::Ptr field, bool sort_less, NullMode null_mode)
-            : field(field), sort_less(sort_less), null_mode(null_mode)
-        { 
-            TINVARIANT(null_mode == NM_First || null_mode == NM_Last);
-        }
-        GeneralField::Ptr field;
-        bool sort_less; // a < b ==> sort_less
-        NullMode null_mode;
-    };
-
     struct ExtentRowCompareState {
         ExtentRowCompareState() : extent(NULL), columns() { }
         const Extent *extent;
@@ -147,6 +136,7 @@ public:
 
         BOOST_FOREACH(SortColumn &by, sort_by) {
             TINVARIANT(by.sort_mode == SM_Ascending || by.sort_mode == SM_Decending);
+            TINVARIANT(by.null_mode == NM_First || by.null_mode == NM_Last);
             ercs.columns.push_back(SortColumnImpl(GeneralField::make(input_series, by.column),
                                                   by.sort_mode == SM_Ascending ? true : false,
                                                   by.null_mode));

@@ -129,7 +129,7 @@ service DataSeriesServer {
     void transformTable(string in_table, string out_table, list<ExprColumn> expr_columns);
 
     // order_columns are from the output names; All output names must share 
-    void unionTables(list<UnionTable> in_tables, list<string> order_columns, string out_table);
+    void unionTables(list<UnionTable> in_tables, list<SortColumn> order_columns, string out_table);
 
     void sortTable(string in_table, string out_table, list<SortColumn> by);
 

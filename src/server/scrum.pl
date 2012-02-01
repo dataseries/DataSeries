@@ -142,7 +142,7 @@ sub scrumTaskRestricted {
                                    sprint assigned_to/) }, [$dfj_created, $dfj_finished]);
 
     print "gtd...\n";
-    printTable('scrum_task_restricted');
+    # printTable('scrum_task_restricted');
 }
 
 sub exprColumn {
@@ -170,10 +170,17 @@ sub remainingWork {
     $client->transformTable('scrum_task_restricted', 'remaining-work.extract',
                             [ exprColumn('created', 'int64', 'created'),
                               exprColumn('finished', 'int64', 'finished'),
+                              exprColumn('zero', 'int64', 'zero'),
                               exprColumn('estimated_days', 'double', 'estimated_days'),
                               exprColumn('minus_estimated_days', 'double', '- estimated_days') ]);
 
-    printTable('remaining-work.extract');
+    $client->sortTable('remaining-work.extract', 'remaining-work.sort-created',
+                       [ $sc_created ]);
+    $client->sortTable('remaining-work.extract', 'remaining-work.sort-finished',
+                       [ $sc_finished ]);
+
+
+    printTable('remaining-work.sort-finished');
 #    $client->sortTable('scrum_task_restricted', 'remaining-work.sort-created',
     # TODO: need $client->deriveTable(table, [expr => col])
     # 

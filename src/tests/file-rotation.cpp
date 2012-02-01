@@ -100,8 +100,10 @@ void *ptrRotater(RotatingFileSink *rfs) {
     SINVARIANT(usleep_amt > 0 && usleep_amt < 1000000);
     uint32_t count = 0;
     while (Clock::todTfrac() < stop) {
-        rfs->changeFile(str(format("ptr-%d.ds") % count));
-        ++count;
+        if (rfs->canChangeFile()) {
+            rfs->changeFile(str(format("ptr-%d.ds") % count));
+            ++count;
+        }
         usleep(usleep_amt);
     }
     LintelLog::info(format("thread rotated %d times") % count);
