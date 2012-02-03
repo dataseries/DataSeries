@@ -149,6 +149,14 @@ sub exprColumn {
     return new ExprColumn({ name => $_[0], type => $_[1], expr => $_[2] });
 }
 
+sub unionTable ($$) {
+    return new UnionTable({ 'table_name' => $_[0], 'extract_values' => $_[1] });
+}
+
+sub sortColumn ($$$) {
+    return new SortColumn({ column => $_[0], sort_mode => $_[1], null_mode => $_[2] });
+}
+
 # remaining work on each day
 # sql create or replace view sprint_remain as select day, (select sum(estimated_days) as sum_estimated_days from scrum_task_restricted where created <= adate and (finished > adate or finished is null)) as remain from sprint_dayconv
 
@@ -162,10 +170,8 @@ sub remainingWork {
     # For the second one, sort by 0, finished, otherwise same as above
     #
     # TODO: need null_mode => NM_First/NM_Last[/NM_Drop]
-    my $sc_created = new SortColumn({ column => 'created', sort_mode => SortMode::SM_Ascending,
-                                      null_mode => NullMode::NM_First });
-    my $sc_finished = new SortColumn({ column => 'finished', sort_mode => SortMode::SM_Ascending,
-                                      null_mode => NullMode::NM_Last });
+    my $sc_created = sortColumn('created', SortMode::SM_Ascending, NullMode::NM_Last);
+    my $sc_finished = sortColumn('finished', SortMode::SM_Ascending, NullMode::NM_Last);
 
     $client->transformTable('scrum_task_restricted', 'remaining-work.extract',
                             [ exprColumn('created', 'int64', 'created'),
@@ -179,8 +185,19 @@ sub remainingWork {
     $client->sortTable('remaining-work.extract', 'remaining-work.sort-finished',
                        [ $sc_finished ]);
 
+    $client->unionTables([ unionTable('remaining-work.sort-created',
+                                      { created => 'time', estimated_days => 'days' }),
+                           unionTable('remaining-work.sort-finished',
+                                      { finished => 'time', minus_estimated_days => 'days' }) ],
+                         [ sortColumn('time', SortMode::SM_Ascending, NullMode::NM_Last) ],
+                         'remaining-work.union-no-foreknowledge');
 
-    printTable('remaining-work.sort-finished');
+    $client->transformTable('remaining-work.union-no-foreknowledge', 'remaining-work.sprint-remain',
+                            [ exprColumn('time', 'int64', 'time'),
+                              exprColumn('remain', 'double', 'prev.remain + days') ]);
+
+    printTable('remaining-work.sprint-remain');
+
 #    $client->sortTable('scrum_task_restricted', 'remaining-work.sort-created',
     # TODO: need $client->deriveTable(table, [expr => col])
     # 
