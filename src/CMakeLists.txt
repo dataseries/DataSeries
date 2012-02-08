@@ -9,6 +9,7 @@ INCLUDE_DIRECTORIES(
 	${DataSeries_SOURCE_DIR}/include
 	${DataSeries_SOURCE_DIR}/src
 
+        ${Boost_INCLUDE_DIRS}
         ${LIBXML2_INCLUDE_DIR}
 	${LINTEL_INCLUDE_DIR}
 	${CRYPTO_INCLUDE_DIR}

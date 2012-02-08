@@ -43,3 +43,9 @@ CentOS 5 (centos5):
 
    # data series server
    % copy parallel/losertree.h (and other files) from modern libstdc++ distribution  
+
+----------------------------
+
+FreeBSD 8.2 (freebsd-8.2)
+  DataSeries required: Lintel
+    % pkg_add -r libxml2
