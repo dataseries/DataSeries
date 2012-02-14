@@ -3518,7 +3518,7 @@ string sqluint(unsigned val) { // "NULL" value is 0
 	return "NULL";
     }
     char buf[30];
-    sprintf(buf,"%d",val);
+    snprintf(buf,30,"%d",val);
     string ret(buf);
     return ret;
 }
@@ -3528,7 +3528,7 @@ string sqlint(int val, int null_val = -1) {
 	return "NULL";
     }
     char buf[30];
-    sprintf(buf,"%d",val);
+    snprintf(buf,30,"%d",val);
     string ret(buf);
     return ret;
 }
@@ -3540,7 +3540,7 @@ sqldouble(double val) // "NULL" value is -1
 	return "NULL";
     }
     char buf[50];
-    sprintf(buf,"%.15g",val);
+    snprintf(buf, 50, "%.15g", val);
     string ret(buf);
     return ret;
 }

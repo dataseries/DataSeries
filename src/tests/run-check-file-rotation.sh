@@ -24,7 +24,7 @@ toTxtCheck() {
     check $2
 }
 
-SEQ=`which seq`
+SEQ=`which seq 2>/dev/null`
 if [ -z "$SEQ" ]; then
     seq() {
         seq_i=$1
@@ -86,7 +86,7 @@ for i in `seq 0 7`; do
 done
 
 # assert that we get all the expected entries in the expected order.
-sort --stable -n -k 1,1 rcfr-unsorted.txt >rcfr-got.txt
+sort -s -n -k 1,1 rcfr-unsorted.txt >rcfr-got.txt
 for i in `seq 0 39`; do
     expectPairs $i 0 39 >>rcfr-expect.txt
 done
@@ -110,7 +110,7 @@ for i in `seq 0 $ROTATE_MAX`; do
 done
 
 # assert that we get all the expected entries in the expected order.
-sort --stable -n -k 1,1 rcfr-unsorted.txt >rcfr-got.txt
+sort -s -n -k 1,1 rcfr-unsorted.txt >rcfr-got.txt
 for i in `seq 0 39`; do
     expectPairs $i 0 39 >>rcfr-expect.txt
 done

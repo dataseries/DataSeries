@@ -41,7 +41,7 @@ extern "C" {
 #  include <byteswap.h>
 #endif
 
-#if defined(__FreeBSD__) && defined(__GNUC__) && __GNUC__ >= 2 && (defined(__i486__) || defined (__x86_64__))
+#if (defined(__FreeBSD__)||defined(__OpenBSD__)) && defined(__GNUC__) && __GNUC__ >= 2 && (defined(__i486__) || defined (__x86_64__))
 #  define bswap_32(x) \
      (__extension__                                                     \
       ({ register uint32_t bswap32_out, bswap32_in = (x);               \
