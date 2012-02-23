@@ -49,6 +49,8 @@ extern "C" {
          bswap32_out; }))
 #endif
 
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
 #include <Lintel/CompilerMarkup.hpp>
@@ -66,8 +68,10 @@ class ExtentSeries;
   *     allowing random access.  Variable32 fields are represented
   *     by a 4 byte index into the string pool.
   *   - A string pool for variable32 fields. */
-class Extent : boost::noncopyable {
+class Extent : boost::noncopyable, public boost::enable_shared_from_this<Extent> {
 public:
+    typedef boost::shared_ptr<Extent> Ptr;
+
     typedef ExtentType::byte byte;
     typedef ExtentType::int32 int32;
     typedef ExtentType::uint32 uint32;
@@ -151,13 +155,11 @@ public:
         If needs_bitflip is true, it indicates that the endianness
         of the host processor is opposite the endianness of the
         input data. */
-    Extent(const ExtentTypeLibrary &library, 
-           Extent::ByteArray &packeddata, 
+    Extent(const ExtentTypeLibrary &library, Extent::ByteArray &packeddata, 
            const bool need_bitflip);
     /** Similar to the above constructor, except that
         the ExtentType is passed explicitly. */
-    Extent(const ExtentType &type,
-           Extent::ByteArray &packeddata, 
+    Extent(const ExtentType &type, Extent::ByteArray &packeddata, 
            const bool need_bitflip);
     /** Creates an empty @c Extent. */
     Extent(const ExtentType &type);
@@ -167,6 +169,9 @@ public:
     /** Creates a new empty Extent. If series.extent() == NULL, the Extent
         creation will set the series' extent to the new extent. */
     Extent(ExtentSeries &myseries);
+
+    /** Destroy the extent, verifies that there are no shared pointers to the extent */
+    ~Extent();
 
     /** Swap the contents of two &c Extent. 
 

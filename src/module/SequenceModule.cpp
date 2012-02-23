@@ -45,3 +45,7 @@ void SequenceModule::addModule(DsmPtr mod) {
 Extent *SequenceModule::getExtent() {
     return tail().getExtent();
 }
+
+Extent::Ptr SequenceModule::getSharedExtent() {
+    return tail().getSharedExtent();
+}

@@ -71,16 +71,25 @@ class DataSeriesModule : boost::noncopyable {
 public:
     typedef boost::shared_ptr<DataSeriesModule> Ptr;
 
-    /** Returns an Extent which ought to have been allocated with
-        global new. It is the caller's responsibility to delete
-        it. Each call to this function should return a different
-        @c Extent. Derived classes should return a null pointer
-        to indicate the end of the sequence of Extents. */
-    virtual Extent *getExtent() = 0;
-    /** get all the extents from module and delete them. */
+    virtual ~DataSeriesModule();
+
+    /** Returns an Extent which ought to have been allocated with global new. It is the caller's
+        responsibility to delete it. Each call to this function should return a different @c
+        Extent. Derived classes should return a null pointer to indicate the end of the sequence of
+        Extents. NOTE: This function is being deprecated in preference to getSharedExtent. */
+    virtual Extent *getExtent();
+
+    /** Returns a new Extent that has been allocated with global new, and may be read-shared with
+        other modules, therefore callers should not modify the extent without either a) making a
+        copy of it, or b) verifying that it is not shared.  The Ptr may be null, which indicates
+        the end of the sequence of Extents. */
+    virtual Extent::Ptr getSharedExtent();
+
+    /** get all the extents from module and delete them via the getExtent() interface. */
     void getAndDelete();
 
-    virtual ~DataSeriesModule();
+    /** get all the extents from module and delete them via the getExtentShared() interface. */
+    void getAndDeleteShared();
 };
 
 /** \brief Base class for source modules that keeps statistics about

@@ -1,6 +1,6 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2003-2012, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -15,9 +15,45 @@
 
 #include <DataSeries/DataSeriesModule.hpp>
 
+namespace dataseries { namespace hack {
+    Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
+    size_t extentSharedPtrSize();
+}}
+
 using namespace dataseries;
 
 DataSeriesModule::~DataSeriesModule() { }
+
+Extent *DataSeriesModule::getExtent() {
+    Extent::Ptr e(getSharedExtent());
+    if (e == NULL) {
+        return NULL;
+    } else {
+        SINVARIANT(e->extent_source_offset != -2);
+        SINVARIANT(dataseries::hack::extentSharedPtrSize() == sizeof(e));
+        Extent *ret = dataseries::hack::releaseExtentSharedPtr(e, e.get());
+        SINVARIANT(e == NULL && ret->extent_source_offset != -2);
+        return ret;
+    }
+}
+
+Extent::Ptr DataSeriesModule::getSharedExtent() {
+    Extent *e = getExtent();
+    if (e == NULL) {
+        return Extent::Ptr();
+    } else {
+        SINVARIANT(e->extent_source_offset != -2);
+    }
+    try {
+        Extent::Ptr p = e->shared_from_this();
+        FATAL_ERROR(boost::format("Extent %p is not supposed to be a shared pointer but is")
+                    % static_cast<void *>(this));
+    } catch (std::exception &) {
+        // ok
+    }
+    Extent::Ptr ret(e);
+    return ret;
+}
 
 void DataSeriesModule::getAndDelete() {
     while(true) {
@@ -27,6 +63,12 @@ void DataSeriesModule::getAndDelete() {
     }
 }
 
+void DataSeriesModule::getAndDeleteShared() {
+    Extent::Ptr e;
+    do {
+        e = getSharedExtent();
+    } while (e != NULL);
+}
 
 SourceModule::SourceModule()
     : total_uncompressed_bytes(0), total_compressed_bytes(0)

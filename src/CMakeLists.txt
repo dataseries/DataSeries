@@ -57,6 +57,7 @@ SET(LIBDATASERIES_SOURCES
 	module/DSStatGroupByModule.cpp
 	module/DStoTextModule.cpp
 	module/DataSeriesModule.cpp
+        module/ExtentReleaseHack.cpp
 	module/IndexSourceModule.cpp
 	module/MinMaxIndexModule.cpp
 	module/PrefetchBufferModule.cpp

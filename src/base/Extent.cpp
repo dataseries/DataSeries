@@ -165,8 +165,13 @@ const std::string Extent::in_memory_str("in-memory");
 void Extent::init() {
 #if DATASERIES_ENABLE_LZO
     if (lzo_init == 0) {
-	INVARIANT(lzo_init() == LZO_E_OK, "lzo_init() failed ?!");
-	lzo_init = 1;
+        static PThreadMutex mutex;
+
+        PThreadScopedLock lock(mutex);
+        if (lzo_init == 0) {
+            INVARIANT(lzo_init() == LZO_E_OK, "lzo_init() failed ?!");
+            lzo_init = 1;
+        }
     }
 #endif
     // the default offset for variable sized fields is pointed to
@@ -210,9 +215,11 @@ Extent::Extent(const string &xmltype)
     init();
 }
 
-static const ExtentType &toReference(const ExtentType *from) {
-    INVARIANT(from != NULL, "bad cast to reference");
-    return *from;
+namespace {
+    const ExtentType &toReference(const ExtentType *from) {
+        INVARIANT(from != NULL, "bad cast to reference");
+        return *from;
+    }
 }
 
 Extent::Extent(ExtentSeries &myseries)
@@ -222,6 +229,18 @@ Extent::Extent(ExtentSeries &myseries)
     if (myseries.extent() == NULL) {
 	myseries.setExtent(*this);
     }
+}
+
+Extent::~Extent() {
+    INVARIANT(extent_source_offset != -2, "Duplicate delete of extent");
+        
+    try {
+        Ptr e = shared_from_this();
+        FATAL_ERROR("Internal error, destructor called, but there is still a shared pointer to us");
+    } catch (std::exception &) {
+        // ok
+    }
+    extent_source_offset = -2;
 }
 
 void Extent::swap(Extent &with) { 

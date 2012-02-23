@@ -70,6 +70,12 @@ public:
         all the \link DataSeriesModule modules \endlink added.*/
     virtual Extent *getExtent();
 
+    /** calls \link DataSeriesModule::getSharedExtent getSharedExtent \endlink on
+        the tail.  Assuming the modules were set up properly, this will call
+        \link DataSeriesModule::getSharedExtent getSharedExtent \endlink on
+        all the \link DataSeriesModule modules \endlink added.*/
+    virtual Extent::Ptr getSharedExtent();
+
     /** Returns the number of Modules added, including the one passed to the
         constructor. */
     unsigned size() { return modules.size(); }
