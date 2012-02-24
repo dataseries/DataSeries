@@ -14,9 +14,9 @@
 /** Note: we special case the code when we are compiling in profile mode because
     profiling doesn't tend to work very well when we have multiple threads */
 
-static void *
-pthreadfn(void *arg)
-{
+// TODO: fix this code to use Lintel/PThread.hpp, pthread class and scoped mutexes.
+
+static void *pthreadfn(void *arg) {
     PrefetchBufferModule *pbm = (PrefetchBufferModule *)arg;
     pbm->prefetcherThread();
     return NULL;
@@ -35,8 +35,7 @@ PrefetchBufferModule::PrefetchBufferModule(DataSeriesModule &_source, unsigned m
     INVARIANT(max_used_memory > 0, "can't have 0 max used memory");
 }
 
-PrefetchBufferModule::~PrefetchBufferModule()
-{
+PrefetchBufferModule::~PrefetchBufferModule() {
 #ifdef COMPILE_PROFILE
     // nothing to do, no actual prefetching
 #else
@@ -44,22 +43,18 @@ PrefetchBufferModule::~PrefetchBufferModule()
     abort_prefetching = true;
     cond.signal();
     mutex.unlock();
-    INVARIANT(pthread_join(prefetch_thread, NULL) == 0, 
-	      "pthread_join failed.");
+    INVARIANT(pthread_join(prefetch_thread, NULL) == 0, "pthread_join failed.");
     while (buffer.empty() == false) {
-	delete buffer.front();
 	buffer.pop_front();
     }
 #endif
 }
 
-Extent *
-PrefetchBufferModule::getExtent()
-{
+Extent::Ptr PrefetchBufferModule::getSharedExtent() {
 #ifdef COMPILE_PROFILE
-    return source.getExtent();
+    return source.getSharedExtent();
 #else
-    Extent *ret;
+    Extent::Ptr ret;
     mutex.lock();
     while (true) {
 	SINVARIANT(abort_prefetching == false);
@@ -69,7 +64,7 @@ PrefetchBufferModule::getExtent()
 	    cur_used_memory -= ret->size();
 	    break;
 	} else if (source_done) {
-	    ret = NULL;
+	    ret = Extent::Ptr();
 	    break;
 	} else {
 	    start_prefetching = true;
@@ -82,9 +77,7 @@ PrefetchBufferModule::getExtent()
 #endif
 }
 
-void
-PrefetchBufferModule::startPrefetching()
-{
+void PrefetchBufferModule::startPrefetching() {
 #ifdef COMPILE_PROFILE
     fprintf(stderr,"warning, not enabling prefetching, running in profiling mode\n");
 #else
@@ -95,9 +88,7 @@ PrefetchBufferModule::startPrefetching()
 #endif
 }
 
-void
-PrefetchBufferModule::prefetcherThread()
-{
+void PrefetchBufferModule::prefetcherThread() {
 #ifdef COMPILE_PROFILE
     FATAL_ERROR("should not have created a prefetcher thread in profiling mode");
 #endif
@@ -110,7 +101,7 @@ PrefetchBufferModule::prefetcherThread()
     while (abort_prefetching == false) {
 	if (cur_used_memory < max_used_memory) {
 	    mutex.unlock();
-	    Extent *e = source.getExtent();
+            Extent::Ptr e = source.getSharedExtent();
 	    mutex.lock();
 	    if (e == NULL) {
 		source_done = true;

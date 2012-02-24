@@ -168,9 +168,7 @@ private:
     Variable32Field exec_host_group;
 };
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source 
 	= new TypeIndexModule("Batch::LSF::Grizzly");
 
@@ -185,7 +183,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new Batch__LSF__GrizzlyAnalysis(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }
@@ -221,9 +219,7 @@ private:
     Variable32Field extenttype;
 };
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source 
 	= new TypeIndexModule("DataSeries: ExtentIndex");
 
@@ -238,7 +234,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new DataSeries__ExtentIndexAnalysis(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }
@@ -272,9 +268,7 @@ private:
     Variable32Field xmltype;
 };
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source 
 	= new TypeIndexModule("DataSeries: XmlType");
 
@@ -289,7 +283,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new DataSeries__XmlTypeAnalysis(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }
@@ -302,10 +296,10 @@ public:
          dsextent_offset(dsextent_series, "offset"),
          dsextent_extenttype(dsextent_series, "extenttype")
     { }
- 
+
     ~DSModule() { }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getExtentShared() {
         // Code to process extent(s) and return an extent when called
     }
 

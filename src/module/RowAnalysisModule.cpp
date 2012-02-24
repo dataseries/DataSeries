@@ -32,11 +32,11 @@ void RowAnalysisModule::firstExtent(const Extent &e) { }
 
 void RowAnalysisModule::prepareForProcessing() { }
 
-Extent *RowAnalysisModule::getExtent() {
-    Extent *e = source.getExtent();
+Extent::Ptr RowAnalysisModule::getSharedExtent() {
+    Extent::Ptr e = source.getSharedExtent();
     if (e == NULL) {
 	completeProcessing();
-	return NULL;
+	return e;
     }
     if (!prepared) {
 	firstExtent(*e);

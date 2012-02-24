@@ -152,8 +152,8 @@ void doAnimation(const vector<string> &args, const commonPackingArgs &packing_ar
     NFSDSAnalysisMod::setCommonAttrRWSources(attr_common_rw_join, seq_common_attr, seq_rw);
 
     if (false) {
-	DStoTextModule *ds_to_text = new DStoTextModule(*attr_common_rw_join);
-	ds_to_text->getAndDelete();
+	DStoTextModule ds_to_text(*attr_common_rw_join);
+	ds_to_text.getAndDeleteShared();
 
 	return;
     }
@@ -168,7 +168,7 @@ void doAnimation(const vector<string> &args, const commonPackingArgs &packing_ar
     outds.writeExtentLibrary(library);
 
     AnimationConvert convert(*attr_common_rw_join, out_module);
-    convert.getAndDelete();
+    convert.getAndDeleteShared();
 }
 
 // TODO: pull this out into common code, duplicated from ellardanalysis
@@ -453,7 +453,7 @@ void doEllard(const vector<string> &args, const commonPackingArgs &packing_args)
     outds.writeExtentLibrary(library);
 
     EllardConvert convert(*source, out_module);
-    convert.getAndDelete();
+    convert.getAndDeleteShared();
     convert.printResult();
 }
 

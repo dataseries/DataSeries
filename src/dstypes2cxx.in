@@ -311,9 +311,7 @@ private:
     print "};\n";
     print <<"END_OF_MAIN";
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source 
 	= new TypeIndexModule("$typename");
 
@@ -328,7 +326,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new ${safe_typename}Analysis(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }
@@ -353,7 +351,7 @@ sub finish {
     die "No prefixes were declared? Possible types include: "
 	. join(", ", @DSModule::possible_types)
 	unless @DSModule::prefixes;
-	
+
     my $arg_sources = join(",\n             ",
 			   map { "DataSeriesSource &_source_$_" }
 			   @DSModule::prefixes);
@@ -368,17 +366,17 @@ sub finish {
 			      map { "ExtentSeries ${_}_series;" } 
 			          @DSModule::prefixes);
     my $declare_fields = join("\n    ", @DSModule::declare_fields);
-			   
+
     print "class DSModule : public DataSeriesModule {
 public:
     DSModule($arg_sources)
        : $init_sources,
          $init_fields
     { }
- 
+
     ~DSModule() { }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getExtentShared() {
         // Code to process extent(s) and return an extent when called
     }
 

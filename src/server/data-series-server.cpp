@@ -88,7 +88,7 @@ public:
 	BOOST_FOREACH(const string &path, source_paths) {
 	    input.addSource(path);
 	}
-	output_module->getAndDelete();
+	output_module->getAndDeleteShared();
 	TableInfo &ti(table_info[dest_table]);
 	ti.extent_type = input.getType();
 	ti.last_update = Clock::todTfrac();
@@ -252,7 +252,7 @@ public:
 
         DataSeriesModule::Ptr sink(makeTableDataModule(*mod, ret, max_rows));
 
-        sink->getAndDelete();
+        sink->getAndDeleteShared();
     }
 
     void hashJoin(const string &a_table, const string &b_table, const string &out_table,
@@ -274,7 +274,7 @@ public:
 
         DataSeriesModule::Ptr output_module = makeTeeModule(*hj_module, tableToPath(out_table));
         
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, hj_module->output_series.getType());
     }
 
@@ -306,7 +306,7 @@ public:
 
         DataSeriesModule::Ptr output_module = makeTeeModule(*sj_module, tableToPath(out_table));
 
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, sj_module->output_series.getType());
     }
     
@@ -319,7 +319,7 @@ public:
         DataSeriesModule::Ptr select(makeSelectModule(input, where_expr));
         DataSeriesModule::Ptr output_module = makeTeeModule(*select, tableToPath(out_table));
 
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, info->second.extent_type);
     }
 
@@ -333,7 +333,7 @@ public:
         input.addSource(tableToPath(in_table));
         OutputSeriesModule::OSMPtr project(makeProjectModule(input, keep_columns));
         DataSeriesModule::Ptr output_module = makeTeeModule(*project, tableToPath(out_table));
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, project->output_series.getType());
     }
 
@@ -348,7 +348,7 @@ public:
         OutputSeriesModule::OSMPtr transform
             (makeExprTransformModule(input, expr_columns, out_table));
         DataSeriesModule::Ptr output_module = makeTeeModule(*transform, tableToPath(out_table));
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, transform->output_series.getType());
     }
     
@@ -374,7 +374,7 @@ public:
 
         DataSeriesModule::Ptr output_module 
             = makeTeeModule(*updater, tableToPath(base_table, "tmp."));
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         output_module.reset();
         string from(tableToPath(base_table, "tmp.")), to(tableToPath(base_table));
         int ret = rename(from.c_str(), to.c_str());
@@ -397,7 +397,7 @@ public:
         OutputSeriesModule::OSMPtr union_mod(makeUnionModule(tables, order_columns, out_table));
         DataSeriesModule::Ptr output_module = makeTeeModule(*union_mod, tableToPath(out_table));
 
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, union_mod->output_series.getType());
     }
 
@@ -410,7 +410,7 @@ public:
         OutputSeriesModule::OSMPtr sorter(makeSortModule(*p, by));
         
         DataSeriesModule::Ptr output_module = makeTeeModule(*sorter, tableToPath(out_table));
-        output_module->getAndDelete();
+        output_module->getAndDeleteShared();
         updateTableInfo(out_table, sorter->output_series.getType());
     }
 

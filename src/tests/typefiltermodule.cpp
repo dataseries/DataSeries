@@ -41,20 +41,20 @@ int main(int argc, char *argv[]) {
     PrefixFilterModule test1(filter1);
     test1.addSource(argv[1]);
     Counter count1(test1);
-    count1.getAndDelete();
+    count1.getAndDeleteShared();
     std::cout << count1.getCount() << std::endl;
 
     PrefixFilter filter2("Trace::NFS::common");
     PrefixFilterModule test2(filter2);
     test2.addSource(argv[1]);
     Counter count2(test2);
-    count2.getAndDelete();
+    count2.getAndDeleteShared();
     std::cout << count2.getCount() << std::endl;
 
     PostfixFilter filter3("common");
     TypeFilterModule<PostfixFilter> test3(filter3);
     test3.addSource(argv[1]);
     Counter count3(test3);
-    count3.getAndDelete();
+    count3.getAndDeleteShared();
     std::cout << count3.getCount() << std::endl;
 }

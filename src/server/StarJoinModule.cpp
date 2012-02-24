@@ -142,7 +142,7 @@ public:
             if (seq.size() == 1) {
                 requestError(format("Missing dimensions using source table %s") % source_table);
             }
-            seq.getAndDelete();
+            seq.getAndDeleteShared();
         }
         
         dimension_modules.clear();

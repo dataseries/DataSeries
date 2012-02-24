@@ -511,7 +511,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	TypeIndexModule word_source("TextIndex::Word");
 	word_source.addSource(args[args_offset]);
 	SearchWordAndModule search(word_source, substring_types, substrings, case_insensitive);
-	search.getAndDelete();
+	search.getAndDeleteShared();
 	HashMap<string, HashUnique<int> > wanted_ids;
 	HashMap<string, HashUnique<int64_t> > wanted_extents;
 

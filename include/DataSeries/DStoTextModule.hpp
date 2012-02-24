@@ -28,7 +28,7 @@ public:
     DStoTextModule(DataSeriesModule &source, std::ostream &text_dest);
     virtual ~DStoTextModule();
     
-    virtual Extent *getExtent(); // will print extent as a side effect.
+    virtual Extent::Ptr getSharedExtent(); // will print extent as a side effect.
 
     void setPrintSpec(const char *xmlText);
 

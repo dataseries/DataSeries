@@ -9,7 +9,7 @@
 # the index may change as data will compress differently on big/little
 # endian machines, so we can't compare with it in the text output
 
-set -e
+set -e -x
 pwd
 ../process/pssimple2ds --extent-size=10485760 $1/check-data/pssimple.5.bz2 pss5.ds
 ../process/ds2txt --skip-index pss5.ds >pss5.txt

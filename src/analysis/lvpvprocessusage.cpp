@@ -328,22 +328,21 @@ public:
 
     virtual ~PSIOSlopMergeJoin() { }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	if (all_done) {
 	    //printf("read %d/%d I/O records, %d/%d PS records\n",
 	    //   ioextents,io_record_count, psextents, ps_record_count);
-	    return NULL;
+	    return Extent::Ptr();
 	}
-	Extent *io_extent = io_input.getExtent();
+        Extent::Ptr io_extent = io_input.getSharedExtent();
 	if (io_extent == NULL) {
 	    INVARIANT(ioextents > 0 && psextents > 0,
 		      "didn't get both I/O and PS data??");
-	    delete ps_series.extent();
 	    ps_series.clearExtent();
 	    all_done = true;
 	    //	    printf("read %d/%d I/O records, %d/%d PS records\n",
 	    //   ioextents,io_record_count, psextents, ps_record_count);
-	    return NULL;
+	    return Extent::Ptr();
 	}
 	++ioextents;
 	io_byte_count += io_extent->fixeddata.size() + io_extent->variabledata.size();
@@ -351,11 +350,11 @@ public:
 	if (time_base != time_base) {
 	    time_base = iotime.absval();
 	}
-	Extent *outExtent = new Extent(output_type);
+        Extent::Ptr outExtent(new Extent(output_type));
 	++output_extents;
 	output_series.setExtent(outExtent);
 	if (ps_series.extent() == NULL) {
-	    Extent *ps_extent = ps_input.getExtent();
+            Extent::Ptr ps_extent(ps_input.getSharedExtent());
 	    INVARIANT(ps_extent != NULL, "must get at least one ps extent");
 	    ps_series.setExtent(ps_extent);
 	    ++psextents;
@@ -363,7 +362,6 @@ public:
 	}
 	while(true) {
 	    if (io_series.morerecords() == false) {
-		delete io_series.extent();
 		io_series.clearExtent();
 		output_byte_count += outExtent->fixeddata.size() + outExtent->variabledata.size();
 		return outExtent;
@@ -372,13 +370,11 @@ public:
 		// could break here and continue until we run out of I/O 
 		// records, runs the risk of mis-classifying a few of the I/Os
 		// as the *unknown* process
-		delete ps_series.extent();
-		Extent *ps_extent = ps_input.getExtent();
+                Extent::Ptr ps_extent = ps_input.getSharedExtent();
 		//	     		printf("read ps extent of size %d/%d\n",ps_extent->fixeddata.size(),ps_extent->variabledata.size());
 		if (ps_extent == NULL) {
 		    all_done = true;
 		    ps_series.clearExtent();
-		    delete io_series.extent();
 		    io_series.clearExtent();
 		    output_byte_count += outExtent->fixeddata.size() + outExtent->variabledata.size();
 		    return outExtent;
@@ -731,8 +727,8 @@ public:
 	}
 	return ret;
     }
-    virtual Extent *getExtent() {
-	Extent *e = input.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = input.getSharedExtent();
 	if (e == NULL)
 	    return e;
 	
@@ -835,8 +831,8 @@ public:
 	}
 	return ret;
     }
-    virtual Extent *getExtent() {
-	Extent *e = input.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = input.getSharedExtent();
 	if (e == NULL)
 	    return e;
 	
@@ -907,12 +903,8 @@ main(int argc, char *argv[])
     RollupById rollupbypv(rollupbylv_cmd,"device_number");
     RollupById rollupbylv(rollupbypv,"logical_volume_number");
     
-    while(true) {
-	//	Extent *e = dstext.getExtent();
-	Extent *e = rollupbylv.getExtent();
-	if (e == NULL) break;
-	delete e;
-    }
+    rollupbylv.getAndDeleteShared();
+
     fprintf(stderr,"I/O: %d extents, %d records, %lld bytes\n",
 	    psiosmj.ioextents,psiosmj.io_record_count,psiosmj.io_byte_count);
     fprintf(stderr,"ps: %d extents, %d records, %lld bytes\n",
@@ -925,16 +917,16 @@ main(int argc, char *argv[])
     RollupByIdStringInfoExtent rollupbypv_cmd_info(rollupbypv_cmd);
     RollupByIdStringInfoExtent rollupbylv_cmd_info(rollupbylv_cmd);
     DStoTextModule a(rollupbypv_cmd_info);
-    delete a.getExtent();
+    a.getAndDeleteShared();
     DStoTextModule b(rollupbylv_cmd_info);
-    delete b.getExtent();
+    b.getAndDeleteShared();
 
     RollupByIdInfoExtent rollupbypv_info(rollupbypv);
     RollupByIdInfoExtent rollupbylv_info(rollupbylv);
     DStoTextModule c(rollupbypv_info);
-    delete c.getExtent();
+    c.getAndDeleteShared();
     DStoTextModule d(rollupbylv_info);
-    delete d.getExtent();
+    d.getAndDeleteShared();
 
     //    rollupbypv.dumpInfo();
     //    rollupbylv.dumpInfo();

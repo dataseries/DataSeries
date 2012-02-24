@@ -1681,7 +1681,7 @@ main(int argc, char *argv[])
     }
 
     if (&(lsfSequence.tail()) != prefetcha) {
-	lsfSequence.getAndDelete();
+	lsfSequence.getAndDeleteShared();
 
 	RowAnalysisModule::printAllResults(lsfSequence,1);
 	printf("extents: %.2f MB -> %.2f MB\n",

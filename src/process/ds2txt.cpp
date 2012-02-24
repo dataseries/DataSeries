@@ -285,12 +285,7 @@ main(int argc, char *argv[])
 	}
     }
     
-    while(true) {
-        Extent *e = toText.getExtent();
-	if (e == NULL)
-	    break;
-	delete e;
-    }
+    toText.getAndDeleteShared();
     
     return 0;
 }

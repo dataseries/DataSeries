@@ -214,7 +214,7 @@ public:
         modTimes.addSource(old_index);
 
         ModTimesModule modModule(modTimes, modify);
-        modModule.getAndDelete();
+        modModule.getAndDeleteShared();
 
         // read the type info from the old index
         TypeIndexModule info_mod("DSIndex::Extent::Info");
@@ -504,7 +504,7 @@ public:
     Extent *getExtent() {
         if (source) {
             // setting to NULL here just means skipping the index processing loop
-            series.setExtent(source->getExtent());
+            series.setExtent(source->getSharedExtent());
 
             if (series.getExtent() != NULL) {
                 processIndex();
@@ -524,8 +524,8 @@ protected:
     bool nextRow() {
         ++series;
         if(!series.morerecords()) {
-            Extent *e = source->getExtent();
-            if(e == NULL) {
+            Extent::Ptr e = source->getSharedExtent();
+            if (e == NULL) {
                 series.clearExtent();
                 return false;
             }
@@ -622,7 +622,7 @@ protected:
         TypeIndexModule module(minMaxOutput->typePrefix());
         module.addSource(file);
         IndexFileModule index(module, file, minMaxOutput);
-        index.getAndDelete();
+        index.getAndDeleteShared();
     }
 
     void processCurrentFile() {
@@ -667,7 +667,7 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
     }
 
     OldIndexModule old(source, this, modify, files);
-    old.getAndDelete();
+    old.getAndDeleteShared();
     if (source != NULL) {
         source->close();
         delete source;

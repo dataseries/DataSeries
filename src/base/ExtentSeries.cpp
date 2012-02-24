@@ -67,11 +67,30 @@ void ExtentSeries::setType(const ExtentType &in_type) {
 }
 
 void ExtentSeries::setExtent(Extent *e) {
+    if (shared_extent.get() == e) {
+        // ok, via setExtent(Extent::Ptr)
+    } else {
+        shared_extent.reset();
+        if (e != NULL) {
+            try {
+                Extent::Ptr se = e->shared_from_this();
+                FATAL_ERROR("setExtent(raw ptr) called on a shared extent");
+            } catch (std::exception &) {
+                // ok
+            }
+        }
+    }
+        
     my_extent = e;
     pos.reset(my_extent);
     if (e != NULL && &e->type != type) {
 	setType(e->type);
     }
+}
+
+void ExtentSeries::setExtent(Extent::Ptr e) {
+    shared_extent = e;
+    setExtent(e.get());
 }
 
 void ExtentSeries::addField(Field &field) {

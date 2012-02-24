@@ -289,18 +289,16 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
 
 
 
-Extent *
-DStoTextModule::getExtent()
-{
-    Extent *e = source.getExtent();
-    if (e == NULL) 
-	return NULL;
+Extent::Ptr DStoTextModule::getSharedExtent() {
+    Extent::Ptr e = source.getSharedExtent();
+    if (e == NULL) {
+	return e;
+    }
     if (e->type.getName() == "DataSeries: XmlType") {
 	return e; // for now, never print these, that was previous behavior of ds2txt because the default source module skips the type extent at the beginning
     }
 
-    if (print_index == false &&
-	e->type.getName() == "DataSeries: ExtentIndex") {
+    if (print_index == false && e->type.getName() == "DataSeries: ExtentIndex") {
 	return e;
     }
 

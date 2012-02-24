@@ -67,6 +67,13 @@ returns null |    | |               | |               | |
 \endverbatim
     
     */
+
+// Allow a few of the files that define transitional functions to use the deprecated functions
+// without a warning.
+#ifndef DSM_DEPRECATED
+#define DSM_DEPRECATED FUNC_DEPRECATED
+#endif
+
 class DataSeriesModule : boost::noncopyable {
 public:
     typedef boost::shared_ptr<DataSeriesModule> Ptr;
@@ -86,7 +93,7 @@ public:
     virtual Extent::Ptr getSharedExtent();
 
     /** get all the extents from module and delete them via the getExtent() interface. */
-    void getAndDelete();
+    void getAndDelete() DSM_DEPRECATED;
 
     /** get all the extents from module and delete them via the getExtentShared() interface. */
     void getAndDeleteShared();
@@ -115,16 +122,16 @@ public:
     uint64_t total_uncompressed_bytes, total_compressed_bytes;
 };
 
-// TODO: deprecate this module, replace with TypeFilterModule, and then rename
+// TODO: deprecate this module after 2012-09-01, replace with TypeFilterModule, and then rename
 // TypeFilterModule back to filtermodule, or if it's sufficiently compatible,
 // just replace.
 
 /** \brief Module for filtering out any extents not matching type_prefix */
 class FilterModule : public DataSeriesModule {
 public:
-    FilterModule(DataSeriesModule &_from, const std::string &_type_prefix);
+    FilterModule(DataSeriesModule &_from, const std::string &_type_prefix) FUNC_DEPRECATED;
     virtual ~FilterModule();
-    virtual Extent *getExtent();
+    virtual Extent::Ptr getSharedExtent();
     void setPrefix(const std::string &prefix) {
 	type_prefix = prefix;
     }

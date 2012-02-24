@@ -304,7 +304,7 @@ main(int argc, char *argv[])
 	    source.addSource(argv[i]);
 	    source.startPrefetching(32*1024*1024, 256*1024*1024);
 	    EllardAnalysisFindGarbage finder(source, argv[i]);
-	    finder.getAndDelete();
+	    finder.getAndDeleteShared();
 	}
 	exit(0);
     }
@@ -332,7 +332,7 @@ main(int argc, char *argv[])
 						  "source_ip",
 						  interesting));
 
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     IndexSourceModule::WaitStats wait_stats;
     CHECKED(source->getWaitStats(wait_stats), "prefetching didn't happen??");

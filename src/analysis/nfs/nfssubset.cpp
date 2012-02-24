@@ -136,7 +136,7 @@ doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
 
     SubsetCopyModule copy(indata, output_module, sel1, sel2, 
 			  min_keep, max_keep);
-    copy.getAndDelete();
+    copy.getAndDeleteShared();
 }
 
 int

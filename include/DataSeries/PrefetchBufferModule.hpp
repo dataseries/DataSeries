@@ -38,7 +38,7 @@ public:
         the constructor.  If the queue is empty this
         will block until an Extent is available.  If we haven't
         already started  prefetching we will start now. */
-    virtual Extent *getExtent();
+    virtual Extent::Ptr getSharedExtent();
     /** Launch the worker thread that gets Extents from the source. */
     void startPrefetching();
 
@@ -48,7 +48,7 @@ public:
 private:
     DataSeriesModule &source;
     pthread_t prefetch_thread;
-    Deque<Extent *> buffer;
+    Deque<Extent::Ptr> buffer;
     bool source_done, start_prefetching, abort_prefetching;
     unsigned cur_used_memory, max_used_memory;
     PThreadMutex mutex;

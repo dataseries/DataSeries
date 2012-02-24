@@ -265,7 +265,7 @@ int main(int argc, char *argv[]) {
     
     seq.addModule(new CooperativeCacheSimulationSort(seq.tail(), argv[argc-1], packing_args));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }

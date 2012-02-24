@@ -1,3 +1,4 @@
+#define DSM_DEPRECATED /* allow */
 #include <iostream>
 
 #include <boost/foreach.hpp>

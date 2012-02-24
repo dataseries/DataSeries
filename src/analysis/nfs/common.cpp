@@ -97,10 +97,10 @@ public:
     Variable32Field filename, filehandle;
     int uniquecount;
 
-    Extent *getExtent() {
+    Extent::Ptr getSharedExtent() {
 	did_fh2fn_insert = true;
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
+        Extent::Ptr e = source.getSharedExtent();
+	if (e == NULL) return e;
 	fh2fnData v;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filename.isNull())
@@ -165,9 +165,9 @@ public:
     Int32Field server;
     Variable32Field pathname, filehandle;
 
-    Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
+    Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
+	if (e == NULL) return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (fh2mount.size() > NFSDSAnalysisMod::max_mount_points_expected) {
 		break;

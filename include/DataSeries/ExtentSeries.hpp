@@ -197,6 +197,13 @@ public:
             - the current position will be set to the beginning of the
               new @c Extent. */
     void setExtent(Extent *e);
+
+    // TODO: deprecate the non-shared pointer versions of series stuff; probably want to
+    // wait until after the next release since we're already doing a big deprecation transition
+    // for shared extents in modules.
+    /** setExtent with a shared pointer */
+    void setExtent(Extent::Ptr e);
+
     /** Equivalent to @c setExtent(&e) */
     void setExtent(Extent &e) {
 	setExtent(&e);
@@ -204,7 +211,7 @@ public:
     /** Clears the current Extent. Note that this only affects the
         Extent, the type is left unchanged.  Exactly equivalent to
         setExtent(NULL) */
-    void clearExtent() { setExtent(NULL); }
+    void clearExtent() { setExtent(Extent::Ptr()); }
 
     /** Returns the current extent. */
     Extent *extent() const { 
@@ -368,6 +375,7 @@ private:
 
     const ExtentType *type;
     Extent *my_extent;
+    Extent::Ptr shared_extent;
     typeCompatibilityT typeCompatibility;
     // TODO: we can probably remove the iterator; it doesn't really make sense, it was intended
     // to allow for random access, but worked sufficiently poorly that it wasn't ever used, and

@@ -393,7 +393,7 @@ int main(int argc, char *argv[]) {
     
     seq.addModule(new WorldCupSimpleAnalysis(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }

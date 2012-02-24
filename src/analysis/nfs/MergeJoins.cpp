@@ -115,7 +115,7 @@ public:
 	nfs_attrops = &attr_ops;
     }
 
-    void prepFields(Extent *e) {
+    void prepFields(Extent::Ptr e) {
 	rw_side_data_thread = pthread_self();
 	const ExtentType &type = e->getType();
 	if (type.getName() == "NFS trace: common") {
@@ -243,8 +243,7 @@ public:
     void finalCommonSideData() {
 	LintelLogDebug("AttrOpsCommonJoin", "finalCommonSideData");
 	if (!es_common.morerecords()) {
-	    delete es_common.extent();
-	    es_common.setExtent(nfs_common->getExtent());
+	    es_common.setExtent(nfs_common->getSharedExtent());
 	}
 	while(es_common.getExtent() != NULL) {
 	    if (es_common.morerecords()) {
@@ -258,17 +257,16 @@ public:
 		}
 		++es_common;
 	    } else {
-		delete es_common.extent();
-		es_common.setExtent(nfs_common->getExtent());
+		es_common.setExtent(nfs_common->getSharedExtent());
 	    }
 	}
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	if (all_done) {
 	    reportMemoryUsage();
 	    LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-1");
-	    return NULL;
+	    return Extent::Ptr();
 	}
 	if (last_reported_memory_usage > 0) {
 	    size_t memory_usage = curreqht->memoryUsage()
@@ -278,14 +276,13 @@ public:
 	    }
 	}
 	if(es_common.curExtent() == NULL) {
-	    Extent *tmp = nfs_common->getExtent();
+            Extent::Ptr tmp = nfs_common->getSharedExtent();
 	    if (tmp == NULL) {
 		all_done = true;
-		delete es_attrops.curExtent();
 		es_attrops.clearExtent();
 		reportMemoryUsage();
 		LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-2");
-		return NULL;
+		return Extent::Ptr();
 	    }
 
 	    if (in_packetat.getName().empty()) {
@@ -298,18 +295,17 @@ public:
 	    }
 	}
 
-	Extent *attrextent = nfs_attrops->getExtent();
+        Extent::Ptr attrextent = nfs_attrops->getSharedExtent();
 	if (attrextent == NULL) {
 	    if (enable_side_data) {
 		finalCommonSideData();
 		SINVARIANT(es_common.curExtent() == NULL);
 	    }
-	    delete es_common.curExtent();
 	    es_common.clearExtent();
 	    all_done = true;
 	    reportMemoryUsage();
 	    LintelLogDebug("AttrOpsCommonJoin", "getExtent all-done-3");
-	    return NULL;
+	    return Extent::Ptr();
 	}
 	
 	es_attrops.setExtent(attrextent);
@@ -319,7 +315,7 @@ public:
 	    SINVARIANT(es_out.getType() != NULL);
 	}
 
-	Extent *outextent = new Extent(*es_out.getType());
+        Extent::Ptr outextent(new Extent(*es_out.getType()));
 	es_out.setExtent(outextent);
 
 	outextent->extent_source = str(format("(join around %s + %s)") 
@@ -330,11 +326,9 @@ public:
 	while(es_attrops.morerecords()) {
 	restart:
 	    if (es_common.morerecords() == false) {
-		delete es_common.curExtent();
-		Extent *tmp = nfs_common->getExtent();
+                Extent::Ptr tmp = nfs_common->getSharedExtent();
 		if (tmp == NULL) {
 		    es_common.clearExtent();
-		    delete es_attrops.curExtent();
 		    es_attrops.clearExtent();
 		    return outextent;
 		}
@@ -528,7 +522,6 @@ public:
 	    }
 	}
 
-	delete es_attrops.curExtent();
 	es_attrops.clearExtent();
 	output_bytes += outextent->size();
 	return outextent;
@@ -748,8 +741,7 @@ public:
 	if (rw_done) {
 	    return;
 	}
-	delete es_rw.extent();
-	Extent *tmp = rw->getExtent();
+        Extent::Ptr tmp = rw->getSharedExtent();
 	if (tmp == NULL) {
 	    rw_done = true;
 	} else {
@@ -766,8 +758,7 @@ public:
 	if (commonattr_done) {
 	    return;
 	}
-	delete es_commonattr.extent();
-	Extent *tmp = commonattr->getExtent();
+        Extent::Ptr tmp = commonattr->getSharedExtent();
 	if (tmp == NULL) {
 	    commonattr_done = true;
 	} 

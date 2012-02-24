@@ -523,10 +523,10 @@ public:
 
     HashTable<hteData, hteHash, hteEqual> seqaccessexact;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL)
-	    return NULL;
+	    return e;
 	INVARIANT(e->type.getName() == "common-attr-rw-join","bad");
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -820,12 +820,12 @@ public:
     }
     virtual ~StrangeWriteSearch() { }
     
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	if (sws_filehandle) {
-	    return source.getExtent();
+	    return source.getSharedExtent();
 	} else {
-	    Extent *e = source.getExtent();
-	    if (e == NULL) return NULL;
+            Extent::Ptr e = source.getSharedExtent();
+	    if (e == NULL) return e;
 	    for(s.setExtent(e);s.morerecords();++s) {
 		if(operation.equal(str_write)) {
 		    for(int i=0;i<nsws_searchfor;++i) {
@@ -1282,9 +1282,9 @@ public:
 	delete copier;
     }
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
+	if (e == NULL) return e;
 	// expect out of bounds case to be rare.
 	bool any_out_of_bounds = false;
 	int record_count = 0;
@@ -1307,7 +1307,7 @@ public:
 	    copier = new ExtentRecordCopy(s,*dest_series);
 	}
 	
-	Extent *out_extent = new Extent(*dest_series);
+        Extent::Ptr out_extent(new Extent(*dest_series));
 
 	// need to copy all of the rows that we want to pass on
 	dest_series->setExtent(out_extent);
@@ -1323,7 +1323,6 @@ public:
 	    }
 	}
 
-	delete e;
 	total_kept_records += kept_records;
 	partial_kept_records += kept_records;
 	partial_pruned_records += pruned_records;
@@ -1332,8 +1331,7 @@ public:
 	    // sure we return a non-empty extent; simplifies
 	    // downstream code which can now assume extents are
 	    // non-empty
-	    delete out_extent; 
-	    return getExtent();
+	    return getSharedExtent();
 	}
 	return out_extent;
     }
@@ -1743,7 +1741,7 @@ int main(int argc, char *argv[]) {
 	} else {
 	    PrefetchBufferModule *ptmp = new PrefetchBufferModule(*sourceb,32*1024*1024);
 	    NFSDSModule *tmp = NFSDSAnalysisMod::newFillFH2FN_HashTable(*ptmp);
-	    tmp->getAndDelete();
+	    tmp->getAndDeleteShared();
 	    
 	    sourceb->resetPos();
 	    delete tmp;
@@ -1753,7 +1751,7 @@ int main(int argc, char *argv[]) {
 
     if (need_mount_by_filehandle) {
 	NFSDSModule *tmp = NFSDSAnalysisMod::newFillMount_HashTable(*sourced);
-	tmp->getAndDelete();
+	tmp->getAndDeleteShared();
 	delete tmp;
     }
 
@@ -1780,26 +1778,26 @@ int main(int argc, char *argv[]) {
 	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
-	merge123Sequence.getAndDelete();
+	merge123Sequence.getAndDeleteShared();
     } else if (merge12Sequence.size()> 1) {
 	sourcea->startPrefetching(32*1024*1024, 96*1024*1024);
 	sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
-	merge12Sequence.getAndDelete();
+	merge12Sequence.getAndDeleteShared();
 	if (rwSequence.size() > 1) {
-	    rwSequence.getAndDelete();
+	    rwSequence.getAndDeleteShared();
 	}
     } else {
 	if (commonSequence.size() > 1) {
 	    sourcea->startPrefetching(8*32*1024*1024, 8*96*1024*1024);
-	    commonSequence.getAndDelete();
+	    commonSequence.getAndDeleteShared();
 	}
 	if (attrOpsSequence.size() > 1) {
 	    sourceb->startPrefetching(32*1024*1024, 96*1024*1024);
-	    attrOpsSequence.getAndDelete();
+	    attrOpsSequence.getAndDeleteShared();
 	}
 	if (rwSequence.size() > 1) {
 	    sourcec->startPrefetching(32*1024*1024, 96*1024*1024);
-	    rwSequence.getAndDelete();
+	    rwSequence.getAndDeleteShared();
 	}
     }
 

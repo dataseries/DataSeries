@@ -70,12 +70,9 @@ public:
 	  status(series, "http_version_and_status"),
 	  type(series, "type"),
 	  server(series, "server")
-    {
-    }
+    { }
 
-    virtual ~WorldCupDSToCustom() { 
-	
-    }
+    virtual ~WorldCupDSToCustom() { }
 
     virtual void processRow() {
 	record buf;
@@ -107,9 +104,7 @@ private:
     ByteField server;
 };
 
-int
-main(int argc, char *argv[]) 
-{
+int main(int argc, char *argv[]) {
     TypeIndexModule *source
 	= new TypeIndexModule("Log::Web::WorldCup::Custom");
 
@@ -124,7 +119,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new WorldCupDSToCustom(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     RowAnalysisModule::printAllResults(seq);
     return 0;
 }

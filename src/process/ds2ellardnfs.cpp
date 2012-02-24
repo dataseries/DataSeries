@@ -476,7 +476,7 @@ main(int argc, char *argv[])
     
     seq.addModule(new DSToEllardNFS(seq.tail()));
     
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     return 0;
 }
 

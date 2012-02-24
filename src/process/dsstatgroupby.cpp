@@ -118,7 +118,7 @@ main(int argc, char *_argv[])
 	source.addSource(argv[argpos]);
     }
 
-    seq.getAndDelete();
+    seq.getAndDeleteShared();
     
     RowAnalysisModule::printAllResults(seq, 1);
 

@@ -13,6 +13,7 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
+#define DSM_DEPRECATED /* allowed */
 #include <DataSeries/DataSeriesModule.hpp>
 
 namespace dataseries { namespace hack {
@@ -87,14 +88,12 @@ FilterModule::FilterModule(DataSeriesModule &_from,
 
 FilterModule::~FilterModule() { }
 
-Extent *FilterModule::getExtent() {
+Extent::Ptr FilterModule::getSharedExtent() {
     while(true) {
-	Extent *e = from.getExtent();
-	if (e == NULL)
-	    return NULL;
-	if (prefixequal(e->type.getName(), type_prefix))
+        Extent::Ptr e = from.getSharedExtent();
+	if (e == NULL || prefixequal(e->type.getName(), type_prefix)) {
 	    return e;
-	delete e;
+        }
     }
 }
 

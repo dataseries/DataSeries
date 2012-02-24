@@ -405,7 +405,7 @@ int main(int argc, char *argv[]) {
     uint64_t cur_file_bytes = 0;
 
     while(true) {
-	Extent *inextent = from->getExtent();
+        Extent::Ptr inextent = from->getSharedExtent();
 	if (inextent == NULL)
 	    break;
 	
@@ -471,7 +471,6 @@ int main(int argc, char *argv[]) {
 		cur_file_bytes = est_file_size;
 	    }
 	}
-	delete inextent;
     }
 
     for(map<string, PerTypeWork *>::iterator i = per_type_work.begin();

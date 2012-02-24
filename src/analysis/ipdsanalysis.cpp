@@ -868,7 +868,7 @@ int main(int argc, char *argv[]) {
 								       ip_time_series_bandwidth_packets_per_second_arg));
     }
 
-    ipSequence.tail().getAndDelete();
+    ipSequence.tail().getAndDeleteShared();
 
     for(SequenceModule::iterator i = ipSequence.begin() + 1;
 	i != ipSequence.end(); ++i) {
