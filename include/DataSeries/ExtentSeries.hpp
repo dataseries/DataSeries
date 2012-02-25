@@ -213,12 +213,22 @@ public:
         setExtent(NULL) */
     void clearExtent() { setExtent(Extent::Ptr()); }
 
+    /** Creates a new, shared extent of the current type for the series and sets the series to that
+        extent.  It is an error to call this function without a type assigned. */
+    void newExtent();
+
     /** Returns the current extent. */
     Extent *extent() const { 
 	return my_extent;
     }
     Extent *getExtent() const {
 	return my_extent;
+    }
+
+    /** Returns the shared version of the extent, assuming that the extent was set that way */
+    Extent::Ptr getSharedExtent() const {
+        SINVARIANT(my_extent == shared_extent.get());
+        return shared_extent;
     }
 
     /** Registers the specified field. This should only be called from

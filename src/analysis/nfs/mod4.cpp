@@ -57,11 +57,11 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
       unsigned int i;
-	Extent *e = source.getExtent();
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
@@ -227,10 +227,10 @@ public:
 
     HashTable<tidData, tidHash, tidEqual> pending;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 
@@ -371,10 +371,10 @@ public:
 
   HashTable<rspData, rspHash, rspEqual> pending;
 
-  virtual Extent *getExtent() {
-    Extent *e = source.getExtent();
+  virtual Extent::Ptr getSharedExtent() {
+    Extent::Ptr e = source.getSharedExtent();
     if (e == NULL) 
-      return NULL;
+      return e;
     if (e->type.getName() != "NFS trace: common")
       return e;
 
@@ -666,10 +666,10 @@ public:
   HashTable<transData, transHash, transEqual> Clients;
   HashTable<transData, transHash, transEqual> Servers;
 
-  virtual Extent *getExtent() {
-    Extent *e = source.getExtent();
+  virtual Extent::Ptr getSharedExtent() {
+    Extent::Ptr e = source.getSharedExtent();
     if (e == NULL) 
-      return NULL;
+      return e;
     if (e->type.getName() != "NFS trace: common")
       return e;
 

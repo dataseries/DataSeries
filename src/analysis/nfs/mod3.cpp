@@ -47,10 +47,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: attr-ops")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -136,10 +136,10 @@ public:
     }
     virtual ~UniqueBytesInFilehandles() { }
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -210,10 +210,10 @@ public:
     }
     virtual ~CommonBytesInFilehandles() { }
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -384,11 +384,11 @@ public:
     long long starttime;
 
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	long long reltime;
-	Extent *e = source.getExtent();
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "common-attr-rw-join");
 
 	hteData k;

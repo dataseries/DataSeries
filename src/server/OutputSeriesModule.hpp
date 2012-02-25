@@ -9,8 +9,8 @@ public:
 
     ExtentSeries output_series;
 
-    Extent *returnOutputSeries() {
-        Extent *ret = output_series.getExtent();
+    Extent::Ptr returnOutputSeries() {
+        Extent::Ptr ret = output_series.getSharedExtent();
         output_series.clearExtent();
         return ret;
     }

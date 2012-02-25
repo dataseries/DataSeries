@@ -55,10 +55,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
@@ -149,10 +149,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
@@ -256,10 +256,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
@@ -372,10 +372,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;
@@ -499,10 +499,10 @@ public:
 	}
     }
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	SINVARIANT(e->type.getName() == "attr-ops-join");
 
 	hteData k;

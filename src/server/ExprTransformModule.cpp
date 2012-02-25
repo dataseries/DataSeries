@@ -11,7 +11,7 @@ public:
     ExprTransformModule(DataSeriesModule &source, const vector<ExprColumn> &expr_columns,
                         const string &output_table_name)
         : OutputSeriesModule(), source(source), input_series(), previous_row_series(),
-          previous_row(), copier(output_series, previous_row_series), expr_columns(expr_columns),
+          copier(output_series, previous_row_series), expr_columns(expr_columns),
           output_table_name(output_table_name)
     { }
 
@@ -35,7 +35,7 @@ public:
         }
     }
 
-    void firstExtent(Extent &in) {
+    void firstExtent(Extent::Ptr in) {
         input_series.setExtent(in);
         string output_xml(str(format("<ExtentType name=\"expr-transform -> %s\""
                                      " namespace=\"server.example.com\" version=\"1.0\">\n")
@@ -54,8 +54,7 @@ public:
         ExtentTypeLibrary lib;
         output_series.setType(lib.registerTypeR(output_xml));
         previous_row_series.setType(*output_series.getType());
-        previous_row.reset(new Extent(*output_series.getType()));
-        previous_row_series.setExtent(previous_row.get());
+        previous_row_series.newExtent();
         previous_row_series.newRecord();
         copier.prep();
 
@@ -74,21 +73,21 @@ public:
         }
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         while (true) {
             if (input_series.getExtent() == NULL) {
-                Extent *in = source.getExtent();
+                Extent::Ptr in = source.getSharedExtent();
                 if (in == NULL) {
                     return returnOutputSeries();
                 }
                 if (input_series.getType() == NULL) {
-                    firstExtent(*in);
+                    firstExtent(in);
                 }
                 input_series.setExtent(in);
             }
 
             SINVARIANT(output_series.getExtent() == NULL);
-            output_series.setExtent(new Extent(*output_series.getType()));
+            output_series.newExtent();
 
             while (input_series.more()) {
                 output_series.newRecord();
@@ -116,9 +115,9 @@ public:
                 }
                 input_series.next();
 
-                if (previous_row->variabledata.size() > 16*1024) {
+                if (previous_row_series.getSharedExtent()->variabledata.size() > 16*1024) {
                     // limit unbounded memory usage.
-                    previous_row->clear();
+                    previous_row_series.getSharedExtent()->clear();
                     previous_row_series.newRecord();
                 }
                 copier.copyRecord();
@@ -129,7 +128,6 @@ public:
             }
                 
             if (!input_series.more()) {
-                delete input_series.getExtent();
                 input_series.clearExtent();
             }
         }
@@ -146,7 +144,6 @@ public:
 
     DataSeriesModule &source;
     ExtentSeries input_series, previous_row_series;
-    boost::scoped_ptr<Extent> previous_row;
     ExtentRecordCopy copier;
     vector<ExprColumn> expr_columns;
     vector<Output> outputs;

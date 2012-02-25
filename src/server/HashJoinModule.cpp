@@ -12,7 +12,7 @@ public:
                    const map<string, string> &eq_columns, const map<string, string> &keep_columns,
                    const string &output_table_name) 
         : a_input(a_input), b_input(b_input), max_a_rows(max_a_rows), 
-          eq_columns(eq_columns), keep_columns(keep_columns), output_extent(NULL),
+          eq_columns(eq_columns), keep_columns(keep_columns), 
           output_table_name(output_table_name)
     { }
 
@@ -25,9 +25,9 @@ public:
     void firstExtent(const Extent &b_e) {
         ExtentSeries a_series;
 
-        a_series.setExtent(a_input.getExtent());
+        a_series.setExtent(a_input.getSharedExtent());
         b_series.setType(b_e.getType());
-        if (a_series.getExtent() == NULL) {
+        if (a_series.getSharedExtent() == NULL) {
             requestError("a_table is empty?");
         }
 
@@ -102,7 +102,7 @@ public:
         GVVec val;
         val.resize(a_val_fields.size());
         while (1) {
-            if (a_series.getExtent() == NULL) {
+            if (a_series.getSharedExtent() == NULL) {
                 break;
             }
             for(; a_series.more(); a_series.next()) {
@@ -115,21 +115,19 @@ public:
                 val.extract(a_val_fields);
                 a_hashmap[key].push_back(val);
             }
-            delete a_series.getExtent();
-            a_series.setExtent(a_input.getExtent());
+            a_series.setExtent(a_input.getSharedExtent());
         }
 
         ExtentTypeLibrary lib;
         LintelLog::info(format("output xml: %s") % output_xml);
         output_series.setType(lib.registerTypeR(output_xml));
-        output_extent = new Extent(*output_series.getType());
         
         Extractor::makeInto(extractors, output_series);
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         while (true) {
-            Extent *e = b_input.getExtent();
+            Extent::Ptr e = b_input.getSharedExtent();
             if (e == NULL) {
                 break;
             }
@@ -137,22 +135,19 @@ public:
                 firstExtent(*e);
             }
         
-            if (output_series.getExtent() == NULL) {
+            if (output_series.getSharedExtent() == NULL) {
                 SINVARIANT(output_series.getType() != NULL);
-                Extent *output_extent = new Extent(*output_series.getType());
-                output_series.setExtent(output_extent); 
+                output_series.newExtent();
             }
             for (b_series.setExtent(e); b_series.more(); b_series.next()) {
                 processRow();
             }
-            delete e;
-            if (output_series.getExtent()->size() > 96*1024) {
+
+            if (output_series.getSharedExtent()->size() > 96*1024) {
                 break;
             }
         }
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
+        return returnOutputSeries();
     }
 
     void processRow() {
@@ -178,7 +173,6 @@ public:
     ExtentSeries b_series;
     vector<GeneralField::Ptr> b_eq_fields;
     vector<Extractor::Ptr> extractors;
-    Extent *output_extent;
     const string output_table_name;
     
 };

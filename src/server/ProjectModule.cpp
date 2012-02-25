@@ -34,9 +34,9 @@ public:
         copier.prep();
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         while (true) {
-            Extent *in = source.getExtent();
+            Extent::Ptr in = source.getSharedExtent();
             if (in == NULL) {
                 return returnOutputSeries();
             }
@@ -45,7 +45,7 @@ public:
             }
 
             if (output_series.getExtent() == NULL) {
-                output_series.setExtent(new Extent(*output_series.getType()));
+                output_series.newExtent();
             }
         
             for (input_series.setExtent(in); input_series.more(); input_series.next()) {

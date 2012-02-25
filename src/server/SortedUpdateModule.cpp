@@ -64,7 +64,7 @@ public:
         return output_series.getExtent()->size() < 96 * 1024;
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         processMergeExtents();
         if (output_series.getExtent() != NULL && outputExtentSmall()) {
             // something more to do..
@@ -99,7 +99,8 @@ public:
 
             if (output_series.getExtent() == NULL) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setExtent(new Extent(base_series.getExtent()->getType()));
+                output_series.setType(base_series.getExtent()->getType());
+                output_series.newExtent();
             }
 
             if (!base_series.more()) { // tolerate empty base_series extents
@@ -150,7 +151,8 @@ public:
 
             if (output_series.getExtent() == NULL) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setExtent(new Extent(base_series.getExtent()->getType()));
+                output_series.setType(base_series.getExtent()->getType());
+                output_series.newExtent();
             }
 
             if (!outputExtentSmall()) {
@@ -176,7 +178,8 @@ public:
 
             if (output_series.getExtent() == NULL) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setExtent(new Extent(update_series.getExtent()->getType()));
+                output_series.setType(update_series.getSharedExtent()->getType());
+                output_series.newExtent();
             }
 
             if (!outputExtentSmall()) {

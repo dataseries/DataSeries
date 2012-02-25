@@ -193,24 +193,22 @@ public:
         setOutputType();
     }
 
-    virtual Extent *getExtent() {
-        scoped_ptr<Extent> e(fact_input.getExtent());
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e(fact_input.getSharedExtent());
         if (e == NULL) {
-            return NULL;
+            return e;
         }
         if (output_series.getType() == NULL) {
             firstExtent(*e);
         }
         
-        output_series.setExtent(new Extent(output_series));
+        output_series.newExtent();
         // TODO: do the resize to ~64-96k trick here rather than one in one out.
-        for (fact_series.setExtent(e.get()); fact_series.more(); fact_series.next()) {
+        for (fact_series.setExtent(e); fact_series.more(); fact_series.next()) {
             processRow();
         }
 
-        Extent *ret = output_series.getExtent();
-        output_series.clearExtent();
-        return ret;
+        return returnOutputSeries();
     }
 
     void processRow() {

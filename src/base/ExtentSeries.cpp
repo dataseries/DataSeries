@@ -93,6 +93,12 @@ void ExtentSeries::setExtent(Extent::Ptr e) {
     setExtent(e.get());
 }
 
+void ExtentSeries::newExtent() {
+    SINVARIANT(getType() != NULL);
+    Extent::Ptr e(new Extent(*getType()));
+    setExtent(e);
+}
+
 void ExtentSeries::addField(Field &field) {
     if (type != NULL) {
 	field.newExtentType();

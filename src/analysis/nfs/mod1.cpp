@@ -54,10 +54,10 @@ public:
     };
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -154,10 +154,10 @@ public:
 
     HashTable<hteData, hteHash, hteEqual> stats_table;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -243,9 +243,9 @@ public:
     }
     virtual ~PayloadInfo() {}
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
-	if (e == NULL) return NULL;
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
+	if (e == NULL) return e;
 	if (e->type.getName() != "NFS trace: common") return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull()) continue;
@@ -382,10 +382,10 @@ public:
     vector<tidData *> retransmit;
     vector<tidData *> duplicateresponse;
 
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -574,11 +574,11 @@ public:
     long long currstart, last, curr;
     long long starttime;
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	
-	Extent *e = source.getExtent();
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
-	    return NULL;
+	    return e;
 	if (e->type.getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {

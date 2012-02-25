@@ -70,7 +70,7 @@ public:
             ut.copier.reset(new RenameCopier(ut.series, output_series));
 
             SINVARIANT(ut.source != NULL);
-            ut.series.setExtent(ut.source->getExtent());
+            ut.series.setExtent(ut.source->getSharedExtent());
             if (ut.series.getExtent() == NULL) {
                 continue; // no point in making the other bits
             }
@@ -120,7 +120,7 @@ public:
         }
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         if (sources[0].copier == NULL) {
             firstExtent();
         }
@@ -133,23 +133,22 @@ public:
 
             LintelLogDebug("UnionModule/process", format("best was %d") % best);
 
-            if (output_series.getExtent() == NULL) {
-                output_series.setExtent(new Extent(*output_series.getType()));
+            if (output_series.getSharedExtent() == NULL) {
+                output_series.newExtent();
             }
 
             output_series.newRecord();
             sources[best].copier->copyRecord();
             ++sources[best].series;
             if (!sources[best].series.more()) {
-                delete sources[best].series.getExtent();
-                sources[best].series.setExtent(sources[best].source->getExtent());
+                sources[best].series.setExtent(sources[best].source->getSharedExtent());
             }
             if (sources[best].series.getExtent() == NULL) {
                 queue.pop();
             } else {
                 queue.replaceTop(best); // it's position may have changed, re-add
             }
-            if (output_series.getExtent()->size() > 96*1024) {
+            if (output_series.getSharedExtent()->size() > 96*1024) {
                 break;
             }
         }

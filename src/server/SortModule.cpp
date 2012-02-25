@@ -54,13 +54,13 @@ public:
     virtual ~SortModule() { }
 
     struct ExtentRowCompareState {
-        ExtentRowCompareState() : extent(NULL), columns() { }
-        const Extent *extent;
+        ExtentRowCompareState() : extent(), columns() { }
+        Extent::Ptr extent;
         vector<SortColumnImpl> columns;
     };
 
-    static bool strictlyLessThan(const Extent *ea, const SEP_RowOffset &oa,
-                                 const Extent *eb, const SEP_RowOffset &ob,
+    static bool strictlyLessThan(const Extent::Ptr &ea, const SEP_RowOffset &oa,
+                                 const Extent::Ptr &eb, const SEP_RowOffset &ob,
                                  const vector<SortColumnImpl> &columns) {
             BOOST_FOREACH(const SortColumnImpl &c, columns) {
                 bool a_null = c.field->isNull(*ea, oa);
@@ -106,10 +106,10 @@ public:
     };
         
     struct SortedExtent {
-        SortedExtent(Extent *e) : e(e), offsets(), pos() { }
+        SortedExtent(Extent::Ptr e) : e(e), offsets(), pos() { }
         typedef boost::shared_ptr<SortedExtent> Ptr;
 
-        Extent *e;
+        Extent::Ptr e;
         vector<SEP_RowOffset> offsets;
         vector<SEP_RowOffset>::iterator pos;
     };
@@ -143,22 +143,22 @@ public:
         }
     }
 
-    void sortExtent(Extent &in) {
-        ercs.extent = &in;
-        SortedExtent::Ptr se(new SortedExtent(&in));
-        se->offsets.reserve(in.nRecords());
+    void sortExtent(Extent::Ptr in) {
+        ercs.extent = in;
+        SortedExtent::Ptr se(new SortedExtent(in));
+        se->offsets.reserve(in->nRecords());
         for (input_series.setExtent(in); input_series.more(); input_series.next()) {
             se->offsets.push_back(input_series.getRowOffset());
         }
 
         stable_sort(se->offsets.begin(), se->offsets.end(), ExtentRowCompare(&ercs));
 
-        ercs.extent = NULL;
+        ercs.extent.reset();
         sorted_extents.push_back(se);
     }
 
-    Extent *processSingleMerge() {
-        output_series.setExtent(new Extent(*output_series.getType()));
+    Extent::Ptr processSingleMerge() {
+        output_series.newExtent();
         // loser tree gets this case wrong, and goes into an infinite loop (log_2(0) is a bad
         // idea with a check 0 * 2^n > 0.
         SortedExtent &se(*sorted_extents[0]);
@@ -166,23 +166,21 @@ public:
             output_series.newRecord();
             copier.copyRecord(*se.e, *se.pos);
         }
-        delete se.e;
         sorted_extents.clear();
         return returnOutputSeries();
     }
 
-    Extent *cleanupMultiMerge() {
+    Extent::Ptr cleanupMultiMerge() {
         BOOST_FOREACH(SortedExtent::Ptr p, sorted_extents) {
             SINVARIANT(p->pos == p->offsets.end());
-            delete p->e;
         }
         sorted_extents.clear();
         return returnOutputSeries();
     }
 
-    Extent *processMerge() {
+    Extent::Ptr processMerge() {
         LintelLogDebug("SortModule", "doing multi-extent-merge");
-        output_series.setExtent(new Extent(*output_series.getType()));
+        output_series.newExtent();
         while (true) {
             int min = merge->get_min_source();
             if (min < 0 || static_cast<size_t>(min) >= sorted_extents.size()) {
@@ -206,10 +204,10 @@ public:
         return returnOutputSeries();
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
         if (sorted_extents.empty()) {
             while (true) {
-                Extent *in = source.getExtent();
+                Extent::Ptr in = source.getSharedExtent();
                 if (in == NULL) {
                     break;
                 }
@@ -217,11 +215,11 @@ public:
                     firstExtent(*in);
                 }
                 
-                sortExtent(*in);
+                sortExtent(in);
             }
 
             if (sorted_extents.empty()) {
-                return NULL;
+                return Extent::Ptr();
             } else if (sorted_extents.size() == 1) {
                 return processSingleMerge();
             } else {
