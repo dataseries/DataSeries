@@ -130,20 +130,17 @@ public:
 
 private:
     struct ToCompress {
-	Extent extent;
+        Extent::Ptr extent;
 	Stats *to_update;
 	bool in_progress;
 	uint32_t checksum;
 	Extent::ByteArray compressed;
-	ToCompress(Extent &e, Stats *_to_update)
-	    : extent(e.type), to_update(_to_update), 
-	      in_progress(false), checksum(0) 
-	{
-	    extent.swap(e);
-	}
+	ToCompress(Extent::Ptr e, Stats *_to_update)
+	    : extent(e), to_update(_to_update), in_progress(false), checksum(0) 
+	{ }
 	void wipeExtent() {
-	    Extent tmp(extent.type);
-	    extent.swap(tmp);
+	    Extent tmp(extent->type);
+	    tmp.swap(*extent);
 	}
 	bool readyToWrite() {
 	    return compressed.size() > 0 && !in_progress;
@@ -191,7 +188,6 @@ private:
         off64_t cur_offset; // set to -1 when sink is closed
         uint32_t chained_checksum; 
         ExtentSeries index_series;
-        Extent index_extent;
         Int64Field field_extentOffset;
         Variable32Field field_extentType;
         ExtentWriteCallback extent_write_callback;
@@ -199,7 +195,6 @@ private:
         WriterInfo()
             : fd(-1), wrote_library(false), in_callback(false), cur_offset(-1), chained_checksum(0),
               index_series(ExtentType::getDataSeriesIndexTypeV0()), 
-              index_extent(*index_series.getType()),
               field_extentOffset(index_series,"offset"),
               field_extentType(index_series,"extenttype"), 
               extent_write_callback()
@@ -208,8 +203,7 @@ private:
         void checkedWrite(const void *buf, int bufsize);
         bool isQuiesced() {
             return fd == -1 && wrote_library == false && cur_offset == -1
-                && index_series.getExtent() == NULL && chained_checksum == 0
-                && index_extent.size() == 4;
+                && index_series.getExtent() == NULL && chained_checksum == 0;
         }
     };
 
@@ -218,7 +212,7 @@ private:
     }
     void writeExtentType(ExtentType &et);
 
-    void queueWriteExtent(Extent &e, Stats *to_update);
+    void queueWriteExtent(Extent::Ptr e, Stats *to_update);
     void lockedProcessToCompress(PThreadScopedLock &lock, ToCompress *work);
 
     static int compressor_count;

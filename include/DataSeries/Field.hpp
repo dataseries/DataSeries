@@ -62,11 +62,10 @@ public:
         boolField as the field may come and go as the extent changes,
         but this should be supported as a legal change to the type. */
     bool isNull() const {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
         if (!nullable) {
             return false;
         } else {
-            return isNull(*dataseries.extent(), dataseries.pos.record_start());
+            return isNull(dataseries.getExtentRef(), dataseries.pos.record_start());
         }
     }
 
@@ -92,9 +91,9 @@ public:
               @c ExtentSeries must have a current record. Also,
               the flag_nullable must have been passed to the constructor. */
     void setNull(bool val = true) {
-	DEBUG_INVARIANT(dataseries.extent() != NULL && null_offset >= 0,
+	DEBUG_INVARIANT(dataseries.hasExtent() && null_offset >= 0,
 			"internal error; extent not set or field not ready");
-        setNull(*dataseries.extent(), dataseries.pos.record_start(), val);
+        setNull(dataseries.getExtentRef(), dataseries.pos.record_start(), val);
     }
 
     /** Sets the field to null in the @c ExtentSeries' current record.

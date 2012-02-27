@@ -1307,10 +1307,8 @@ public:
 	    copier = new ExtentRecordCopy(s,*dest_series);
 	}
 	
-        Extent::Ptr out_extent(new Extent(*dest_series));
+        dest_series->newExtent();
 
-	// need to copy all of the rows that we want to pass on
-	dest_series->setExtent(out_extent);
 	// count in an int as that should be faster.
 	int kept_records = 0, pruned_records = 0;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -1333,7 +1331,7 @@ public:
 	    // non-empty
 	    return getSharedExtent();
 	}
-	return out_extent;
+	return dest_series->getSharedExtent();
     }
     
     virtual void printResult() {

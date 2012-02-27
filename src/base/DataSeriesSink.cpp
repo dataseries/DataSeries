@@ -134,7 +134,6 @@ void DataSeriesSink::open(const string &in_filename) {
     writer_info.fd = ::open(filename.c_str(), O_WRONLY | O_LARGEFILE | O_CREAT | O_TRUNC, 0666);
     INVARIANT(writer_info.fd >= 0,
               format("Error opening %s for write: %s") % filename % strerror(errno));
-    writer_info.index_series.setExtent(writer_info.index_extent);
     const string filetype = "DSv1";
     checkedWrite(filetype.data(),4);
     ExtentType::int32 int32check = 0x12345678;
@@ -147,6 +146,7 @@ void DataSeriesSink::open(const string &in_filename) {
     checkedWrite(&doublecheck,8);
     doublecheck = Double::NaN;
     checkedWrite(&doublecheck,8);
+    writer_info.index_series.newExtent();
     writer_info.cur_offset = 2*4 + 4*8;
     worker_info.keep_going = true;
     worker_info.startThreads(lock, this);
@@ -171,10 +171,11 @@ void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     // until after we've already compressed the data.
     writer_info.index_series.newRecord(); 
     writer_info.field_extentOffset.set(writer_info.cur_offset);
-    writer_info.field_extentType.set(writer_info.index_extent.type.getName());
+    writer_info.field_extentType.set(writer_info.index_series.getExtentRef().type.getName());
 
-    worker_info.bytes_in_progress += writer_info.index_extent.size();
-    worker_info.pending_work.push_back(new ToCompress(writer_info.index_extent, NULL));
+    worker_info.bytes_in_progress += writer_info.index_series.getExtentRef().size();
+    worker_info.pending_work.push_back
+        (new ToCompress(writer_info.index_series.getSharedExtent(), NULL));
     worker_info.pending_work.front()->in_progress = true;
     lockedProcessToCompress(lock, worker_info.pending_work.front());
 
@@ -214,7 +215,6 @@ void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     writer_info.cur_offset = -1;
     writer_info.chained_checksum = 0;
     writer_info.index_series.clearExtent();
-    writer_info.index_extent.clear();
     if (to_update != NULL) {
         *to_update += stats;
     }
@@ -239,13 +239,17 @@ void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
     INVARIANT(valid_types.exists(&e.type), format("type %s (%p) wasn't in your type library")
 	      % e.type.getName() % &e.type);
     INVARIANT(worker_info.keep_going, "must not call writeExtent after calling close()");
-    queueWriteExtent(e, stats);
+    
+    Extent::Ptr we(new Extent(e.getType()));
+    we->swap(e);
+    
+    queueWriteExtent(we, stats);
 }
 
 void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
     INVARIANT(!writer_info.wrote_library, "Can only write extent library once");
     ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
-    Extent type_extent(type_extent_series);
+    type_extent_series.newExtent();
 
     Variable32Field typevar(type_extent_series,"xmltype");
     for(map<const string, const ExtentType *>::const_iterator i = lib.name_to_type.begin();
@@ -268,7 +272,7 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
 		% et->getName() << endl;
 	}
     }
-    queueWriteExtent(type_extent, NULL);
+    queueWriteExtent(type_extent_series.getSharedExtent(), NULL);
 
     PThreadScopedLock lock(mutex);
     INVARIANT(!writer_info.wrote_library, "bad, two calls to writeExtentLibrary()");
@@ -316,21 +320,21 @@ void DataSeriesSink::setCompressorCount(int count) {
     compressor_count = count;
 }
 
-void DataSeriesSink::queueWriteExtent(Extent &e, Stats *to_update) {
+void DataSeriesSink::queueWriteExtent(Extent::Ptr e, Stats *to_update) {
     PThreadScopedLock lock(mutex);
     if (to_update) {
 	++to_update->use_count;
     }
     INVARIANT(worker_info.keep_going, "got to qWE after call to close()??");
     INVARIANT(writer_info.cur_offset > 0, "queueWriteExtent on closed file");
-    LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e.size());
-    worker_info.bytes_in_progress += e.size(); // putting this into ToCompress erases e
+    LintelLogDebug("DataSeriesSink", format("queueWriteExtent(%d bytes)") % e->size());
+    worker_info.bytes_in_progress += e->size(); // putting this into ToCompress erases e
     worker_info.pending_work.push_back(new ToCompress(e, to_update));
 
     if (worker_info.compressors.empty()) {
 	SINVARIANT(worker_info.pending_work.size() == 1 && worker_info.bytes_in_progress == 0);
 	worker_info.pending_work.front()->in_progress = true;
-	worker_info.bytes_in_progress += e.size();
+	worker_info.bytes_in_progress += e->size();
 	lockedProcessToCompress(lock, worker_info.pending_work.front());
 	worker_info.pending_work.front()->in_progress = false;
 	writer_info.writeOutPending(lock, worker_info);
@@ -376,13 +380,13 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
             INVARIANT(cur_offset > 0,"Error: writeoutPending on closed file\n");
             
             if (ewc) {
-                ewc(cur_offset, tc->extent);
+                ewc(cur_offset, *tc->extent);
             }
             tc->wipeExtent();
             
             index_series.newRecord();
             field_extentOffset.set(cur_offset);
-            field_extentType.set(tc->extent.type.getName());
+            field_extentType.set(tc->extent->type.getName());
             
             checkedWrite(tc->compressed.begin(), tc->compressed.size());
             cur_offset += tc->compressed.size();
@@ -424,11 +428,11 @@ static void get_thread_cputime(struct timespec &ts) {
 // This function assumes that bytes_in_progress was updated to the
 // uncompressed size prior to calling the function.
 void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress *work) {
-    SINVARIANT(worker_info.bytes_in_progress >= work->extent.size());
-    size_t uncompressed_size = work->extent.size();
+    SINVARIANT(worker_info.bytes_in_progress >= work->extent->size());
+    size_t uncompressed_size = work->extent->size();
     worker_info.bytes_in_progress += uncompressed_size; // could temporarily be 2*e.size in worst case if we are trying multiple algorithms
     LintelLogDebug("DataSeriesSink", format("compress(%d bytes), in progress %d bytes")
-		   % work->extent.size() % worker_info.bytes_in_progress);
+		   % work->extent->size() % worker_info.bytes_in_progress);
 
     INVARIANT(work->in_progress, "??");
     INVARIANT(writer_info.cur_offset > 0,"Error: processToCompress on closed file\n");
@@ -437,12 +441,12 @@ void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress
     {
         PThreadScopedUnlock unlock(lock);
 
-        size_t nrecords = work->extent.nRecords();
+        size_t nrecords = work->extent->nRecords();
         struct timespec pack_start, pack_end;
         get_thread_cputime(pack_start);
 
         uint32_t headersize, fixedsize, variablesize;
-        work->checksum = work->extent.packData(work->compressed, compression_modes,
+        work->checksum = work->extent->packData(work->compressed, compression_modes,
                                                compression_level, &headersize,
                                                &fixedsize, &variablesize);
         get_thread_cputime(pack_end);
@@ -456,7 +460,7 @@ void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress
         // Slightly less efficient than calling update on the two separate stats,
         // but easier to code.
         tmp.update(headersize + fixedsize + variablesize, fixedsize,
-                   work->extent.variabledata.size(), variablesize, 
+                   work->extent->variabledata.size(), variablesize, 
                    work->compressed.size(), 
                    *reinterpret_cast<uint32_t *>(work->compressed.begin()+4), 
                    nrecords, pack_extent_time, work->compressed[6*4], 
@@ -464,7 +468,7 @@ void DataSeriesSink::lockedProcessToCompress(PThreadScopedLock &lock, ToCompress
 
         INVARIANT(work->compressed.size() > 0, "??");
 
-        SINVARIANT(work->extent.size() == uncompressed_size);
+        SINVARIANT(work->extent->size() == uncompressed_size);
     }
     // update stats, have to do this before we complete the extent
     // as otherwise the work pointer could vanish under us

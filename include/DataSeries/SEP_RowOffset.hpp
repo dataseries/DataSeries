@@ -27,10 +27,18 @@ namespace dataseries {
     public:
         typedef int32_t difference_type;
 
+        // TODO: deprecate the below.
         SEP_RowOffset(uint32_t row_offset, const Extent *extent)
             : row_offset(row_offset)
 #if LINTEL_DEBUG
               , extent(extent)
+#endif
+        { }
+
+        SEP_RowOffset(uint32_t row_offset, const Extent::Ptr &extent)
+            : row_offset(row_offset)
+#if LINTEL_DEBUG
+              , extent(extent.get())
 #endif
         { }
 
@@ -55,6 +63,14 @@ namespace dataseries {
             : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
         { 
             advance(distance, &within_extent);
+        }
+
+        /// Copy a row offset and then advance it by distance
+        SEP_RowOffset(const SEP_RowOffset &from, 
+                      difference_type distance, const Extent::Ptr &within_extent)
+            : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
+        { 
+            advance(distance, within_extent.get());
         }
 
 

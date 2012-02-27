@@ -69,9 +69,9 @@ public:
         if (output_series.getExtent() != NULL && outputExtentSmall()) {
             // something more to do..
             SINVARIANT(base_series.getExtent() == NULL || update_series.getExtent() == NULL);
-            if (base_series.getExtent() != NULL) {
+            if (base_series.hasExtent()) {
                 processBaseExtents();
-            } else if (update_series.getExtent() != NULL) {
+            } else if (update_series.hasExtent()) {
                 processUpdateExtents();
             } else {
                 // both are done.
@@ -85,32 +85,30 @@ public:
     // to be more efficient somehow.
     void processMergeExtents() {
         while (true) {
-            if (base_series.getExtent() == NULL) {
-                base_series.setExtent(base_input.getExtent());
+            if (!base_series.hasExtent()) {
+                base_series.setExtent(base_input.getSharedExtent());
             }
-            if (update_series.getExtent() == NULL) {
-                update_series.setExtent(update_input.getExtent());
+            if (!update_series.hasExtent()) {
+                update_series.setExtent(update_input.getSharedExtent());
             }
 
-            if (base_series.getExtent() == NULL || update_series.getExtent() == NULL) {
+            if (!base_series.hasExtent() || !update_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "no more extents of one type");
                 break;
             }
 
-            if (output_series.getExtent() == NULL) {
+            if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setType(base_series.getExtent()->getType());
+                output_series.setType(base_series.getExtentRef().getType());
                 output_series.newExtent();
             }
 
             if (!base_series.more()) { // tolerate empty base_series extents
-                delete base_series.getExtent();
                 base_series.clearExtent();
                 continue;
             }
 
             if (!update_series.more()) { // tolerate empty update_series extents
-                delete update_series.getExtent();
                 update_series.clearExtent();
                 continue;
             }
@@ -137,19 +135,19 @@ public:
     }
 
     void processBaseExtents() {
-        SINVARIANT(update_input.getExtent() == NULL);
+        SINVARIANT(update_input.getSharedExtent() == NULL);
         LintelLogDebug("SortedUpdate", "process base only...");
         while (true) {
-            if (base_series.getExtent() == NULL) {
-                base_series.setExtent(base_input.getExtent());
+            if (!base_series.hasExtent()) {
+                base_series.setExtent(base_input.getSharedExtent());
             }
 
-            if (base_series.getExtent() == NULL) {
+            if (!base_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "no more base extents");
                 break;
             }
 
-            if (output_series.getExtent() == NULL) {
+            if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
                 output_series.setType(base_series.getExtent()->getType());
                 output_series.newExtent();
@@ -165,18 +163,19 @@ public:
     }
 
     void processUpdateExtents() {
+        SINVARIANT(base_input.getSharedExtent() == NULL);
         LintelLogDebug("SortedUpdate", "process update only...");
         while (true) {
-            if (update_series.getExtent() == NULL) {
-                update_series.setExtent(update_input.getExtent());
+            if (!update_series.hasExtent()) {
+                update_series.setExtent(update_input.getSharedExtent());
             }
 
-            if (update_series.getExtent() == NULL) {
+            if (!update_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "no more update extents");
                 break;
             }
 
-            if (output_series.getExtent() == NULL) {
+            if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
                 output_series.setType(update_series.getSharedExtent()->getType());
                 output_series.newExtent();
@@ -238,7 +237,6 @@ public:
     void advance(ExtentSeries &series) {
         series.next();
         if (!series.more()) {
-            delete series.getExtent();
             series.clearExtent();
         }
     }

@@ -128,8 +128,8 @@ void testNullExpr() {
 
     const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
 
-    Extent e(extent_type);
-    ExtentSeries series(&e);
+    ExtentSeries series(extent_type);
+    series.newExtent();
     Int32Field a(series, "a", Field::flag_nullable), b(series, "b", Field::flag_nullable);
 
     boost::scoped_ptr<DSExpr> expr1(DSExpr::make(series, "1000"));

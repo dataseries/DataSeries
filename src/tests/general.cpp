@@ -73,11 +73,10 @@ void checkExtentRecordCopy() {
     ExtentTypeLibrary lib;
     const ExtentType &type(lib.registerTypeR(type_xml));
 
-    Extent a(type);
-    Extent b(type);
-    ExtentSeries as(&a);
-    ExtentSeries bs(&b);
-    
+    ExtentSeries as(type), bs(type);
+    as.newExtent();
+    bs.newExtent();
+
     Variable32Field fa(as, "var32", Field::flag_nullable);
     Variable32Field fb(bs, "var32", Field::flag_nullable);
 

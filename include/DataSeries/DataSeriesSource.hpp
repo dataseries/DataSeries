@@ -101,7 +101,7 @@ public:
           - This pointer is never null.
           - All of the extenttype fields are present in the @c ExtentTypeLibrary
             for the file. */
-    Extent *indexExtent; 
+    Extent::Ptr index_extent; 
 
     /** Returns true if the endianness of the file is different from the
         endianness of the host processor. */

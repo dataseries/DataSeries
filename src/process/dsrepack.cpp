@@ -377,7 +377,7 @@ int main(int argc, char *argv[]) {
 	    DEBUG_INVARIANT(per_type_work[j->first] != NULL, "internal");
 	}
 
-	ExtentSeries s(f.indexExtent);
+	ExtentSeries s(f.index_extent);
 	Variable32Field extenttype(s,"extenttype");
 
 	for(;s.morerecords();++s) {

@@ -166,9 +166,10 @@ public:
     /** Creates an empty @c Extent. */
     Extent(const std::string &xmltype); 
     
-    /** Creates a new empty Extent. If series.extent() == NULL, the Extent
-        creation will set the series' extent to the new extent. */
-    Extent(ExtentSeries &myseries);
+    /** Use ExtentSeries::newExtent() instead of this function.  Creates a new empty Extent. If
+        series.extent() == NULL, the Extent creation will set the series' extent to the new
+        extent.  */
+    Extent(ExtentSeries &myseries) FUNC_DEPRECATED;
 
     /** Destroy the extent, verifies that there are no shared pointers to the extent */
     ~Extent();

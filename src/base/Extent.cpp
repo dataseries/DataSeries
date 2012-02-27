@@ -50,6 +50,8 @@ extern "C" {
 #include <Lintel/PThread.hpp>
 #include <Lintel/StringUtil.hpp>
 
+#define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
+
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
 #include <DataSeries/DataSeriesFile.hpp>

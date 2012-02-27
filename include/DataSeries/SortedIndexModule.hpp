@@ -64,11 +64,11 @@ public:
 	    // these variables are used to check if input file is sorted
 	    ValueType last_max; 
 	    while(true) {
-		boost::scoped_ptr<Extent> e(tim.getExtent());
+		boost::shared_ptr<Extent> e(tim.getSharedExtent());
 		if (!e) {
 		    break;
 		}
-		s.setExtent(e.get());
+		s.setExtent(e);
 		for (; s.morerecords(); ++s) {
 		    // check to see if this is a new set of per-file entries
 		    if (cur_fname != filename.stringval()) {

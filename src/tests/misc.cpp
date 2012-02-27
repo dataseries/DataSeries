@@ -409,8 +409,7 @@ test_extentpackunpack()
 			  "</ExtentType>\n");
 
     ExtentSeries testseries(typelib,"test type");
-    Extent testextent(testseries);
-    testseries.setExtent(testextent);
+    testseries.newExtent();
     const int nrecords = 937;
     testseries.createRecords(nrecords);
 
@@ -444,7 +443,7 @@ test_extentpackunpack()
 	++testseries;
     }
 
-    testseries.setExtent(testseries.extent());
+    testseries.setExtent(testseries.getSharedExtent());
     for(int i=0;i<nrecords;i++) {
 	INVARIANT(int1.val() == i, format("?? %d") % int1.val());
 	SINVARIANT(int2.val() == nrecords-i);;
@@ -459,9 +458,9 @@ test_extentpackunpack()
     }
 
     Extent::ByteArray packed;
-    testextent.packData(packed,Extent::compress_zlib);
-    Extent unpackextent(testseries);
-    unpackextent.unpackData(packed, false);
+    testseries.getExtentRef().packData(packed,Extent::compress_zlib);
+    Extent::Ptr unpackextent(new Extent(*testseries.getType()));
+    unpackextent->unpackData(packed, false);
 
     testseries.setExtent(unpackextent);
     for(int i=0;i<nrecords;i++) {
@@ -477,7 +476,7 @@ test_extentpackunpack()
 	++testseries;
     }
     cout << format("unpacked bytes %d, packed %d\n")
-	% unpackextent.size() % packed.size();
+	% unpackextent->size() % packed.size();
     printf("test_extentpackunpack - end\n");
 }
 
@@ -790,7 +789,7 @@ test_doublebase_nullable()
     DoubleField f_double(dbnseries,"double",
 			 Field::flag_nullable | DoubleField::flag_allownonzerobase);
     
-    Extent *cur_extent = new Extent(dbntype);
+    Extent::Ptr cur_extent(new Extent(dbntype));
     dbnseries.setExtent(cur_extent);
     
     dbnseries.newRecord();
@@ -821,7 +820,6 @@ test_doublebase_nullable()
     SINVARIANT(false == f_double.isNull());
     SINVARIANT(0 == f_double.val());
     SINVARIANT(1000000 == f_double.absval());
-    delete cur_extent;
 }    
 
 void
@@ -843,8 +841,7 @@ test_compactnull()
 			  "</ExtentType>\n");
     
     ExtentSeries series1(typelib,"Test::CompactNulls");
-    Extent extent1(series1);
-    series1.setExtent(extent1);
+    series1.newExtent();
 
     int nrecords = 1000 + rand.randInt(10000);
     series1.createRecords(nrecords);
@@ -884,19 +881,19 @@ test_compactnull()
     }    
 
     Extent::ByteArray packed;
-    extent1.packData(packed, Extent::compress_none);
+    series1.getExtentRef().packData(packed, Extent::compress_none);
 
     cout << format("all null: %d rows, original bytes %d, packed %d\n")
-	% nrecords % extent1.size() % packed.size();
+	% nrecords % series1.getExtentRef().size() % packed.size();
     uint32_t overhead = 48 + (4 - (nrecords % 4)) % 4;
     INVARIANT(packed.size() == static_cast<size_t>(overhead + nrecords), 
 	      "size check failed");
 
     ExtentSeries series2(typelib, "Test::CompactNulls");
-    Extent unpack1(series2);
-    unpack1.unpackData(packed, false);
+    series2.newExtent();
+    series2.getExtentRef().unpackData(packed, false);
 
-    series1.setExtent(unpack1);
+    series1.setExtent(series1.getSharedExtent());
     for(int i=0;i<nrecords;i++) {
 	INVARIANT(f_bool.isNull() && f_byte.isNull() && f_int32.isNull()
 		  && f_int32b.isNull() && f_int64.isNull() 
@@ -908,7 +905,7 @@ test_compactnull()
 
     cout << "all null uncompact passed\n";
 
-    series1.setExtent(extent1);
+    series1.setExtent(series1.getSharedExtent());
     // Fill at random...
     for(int i=1;i<=nrecords;i++) {
 	f_bool.set(true);
@@ -929,9 +926,9 @@ test_compactnull()
     }
 
     packed.clear();
-    extent1.packData(packed, Extent::compress_lzf);
+    series1.getExtentRef().packData(packed, Extent::compress_lzf);
     cout << format("random null: %d rows, original bytes %d, packed %d\n")
-	% nrecords % extent1.size() % packed.size();
+	% nrecords % series1.getExtentRef().size() % packed.size();
 
     BoolField g_bool(series2, "", Field::flag_nullable);
     ByteField g_byte(series2, "byte", Field::flag_nullable);
@@ -940,9 +937,9 @@ test_compactnull()
     Int64Field g_int64(series2, "int64", Field::flag_nullable);
     DoubleField g_double(series2, "double", Field::flag_nullable);
     Variable32Field g_variable32(series2, "variable32", Field::flag_nullable);
-    unpack1.unpackData(packed, false);
-    series1.setExtent(extent1);
-    series2.setExtent(unpack1);
+    series2.getExtentRef().unpackData(packed, false);
+    series1.setExtent(series1.getSharedExtent());
+    series2.setExtent(series2.getSharedExtent());
     for(int i=0;i<nrecords;i++) {
 	g_bool.setFieldName("bool"); // slow and inefficient, but for testing
 	INVARIANT((f_bool.isNull() && g_bool.isNull())
@@ -951,24 +948,24 @@ test_compactnull()
 		  format("bad@%d %d %d/%d %d") 
 		  % i % f_bool.isNull() % g_bool.isNull()
 		  % f_bool.val() % g_bool.val());
-	INVARIANT((f_byte.isNull() && g_byte.isNull())
-		  || (!f_byte.isNull() && !g_byte.isNull() &&
-		      f_byte.val() == g_byte.val()), "bad");
-	INVARIANT((f_int32.isNull() && g_int32.isNull())
-		  || (!f_int32.isNull() && !g_int32.isNull() &&
-		      f_int32.val() == g_int32.val()), "bad");
-	INVARIANT((f_int32b.isNull() && g_int32b.isNull())
-		  || (!f_int32b.isNull() && !g_int32b.isNull() &&
-		      f_int32b.val() == g_int32b.val()), "bad");
-	INVARIANT((f_int64.isNull() && g_int64.isNull())
-		  || (!f_int64.isNull() && !g_int64.isNull() &&
-		      f_int64.val() == g_int64.val()), "bad");
-	INVARIANT((f_double.isNull() && g_double.isNull())
-		  || (!f_double.isNull() && !g_double.isNull() &&
-		      f_double.val() == g_double.val()), "bad");
-	INVARIANT((f_variable32.isNull() && g_variable32.isNull())
-		  || (!f_variable32.isNull() && !g_variable32.isNull() &&
-		      f_variable32.stringval() == g_variable32.stringval()), "bad");
+	SINVARIANT((f_byte.isNull() && g_byte.isNull())
+                   || (!f_byte.isNull() && !g_byte.isNull() &&
+                       f_byte.val() == g_byte.val()));
+	SINVARIANT((f_int32.isNull() && g_int32.isNull())
+                   || (!f_int32.isNull() && !g_int32.isNull() &&
+                       f_int32.val() == g_int32.val()));
+	SINVARIANT((f_int32b.isNull() && g_int32b.isNull())
+                   || (!f_int32b.isNull() && !g_int32b.isNull() &&
+                       f_int32b.val() == g_int32b.val()));
+	SINVARIANT((f_int64.isNull() && g_int64.isNull())
+                   || (!f_int64.isNull() && !g_int64.isNull() &&
+                       f_int64.val() == g_int64.val()));
+	SINVARIANT((f_double.isNull() && g_double.isNull())
+                   || (!f_double.isNull() && !g_double.isNull() &&
+                       f_double.val() == g_double.val()));
+	SINVARIANT((f_variable32.isNull() && g_variable32.isNull())
+                   || (!f_variable32.isNull() && !g_variable32.isNull() &&
+                       f_variable32.stringval() == g_variable32.stringval()));
 	++series1;
 	++series2;
     }
@@ -991,8 +988,7 @@ test_empty_field_name()
 			  "</ExtentType>\n");
 
     ExtentSeries series1(typelib,"Test::EmptyFieldName");
-    Extent extent1(series1);
-    series1.setExtent(extent1);
+    series1.newExtent();
 
     int nrecords = 1000 + rand.randInt(10000);
     series1.createRecords(nrecords);
@@ -1006,7 +1002,7 @@ test_empty_field_name()
 	SINVARIANT(series1.more());
     }
 
-    series1.setExtent(extent1);
+    series1.setExtent(series1.getSharedExtent());
     Int32Field f_switch(series1, "");
     int counta = 0, countb = 0;
     for(int i=0; i < nrecords; ++i) {

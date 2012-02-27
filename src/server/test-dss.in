@@ -37,6 +37,8 @@ for(my $i=0; $i < 100; ++$i) {
     my $sock = IO::Socket::INET->new(PeerAddr => 'localhost', PeerPort => 49476, Proto => 'tcp');
     last if defined $sock;
     if ($i == 0) { # only start server if one isn't present.
+        # Pick up 
+        $ENV{PATH} = "@CMAKE_CURRENT_BINARY_DIR@/../process:$ENV{PATH}";
         $pm->fork(cmd => "@CMAKE_CURRENT_BINARY_DIR@/data-series-server",
                   stdout => "server.log", stderr => 'STDOUT');
     }
@@ -240,6 +242,7 @@ sub testImportSql {
         # mysql running on localhost.
         # TODO: use DBI to check if table is present.
         $dsn = "DBI:mysql:database=test";
+        print "eric-hack-server...";
     }
     unless (defined $dsn) {
         print "No server found, skipping.\n";

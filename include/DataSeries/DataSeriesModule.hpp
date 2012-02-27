@@ -18,7 +18,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
-#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/DataSeriesSource.hpp>
@@ -68,12 +67,6 @@ returns null |    | |               | |               | |
     
     */
 
-// Allow a few of the files that define transitional functions to use the deprecated functions
-// without a warning.
-#ifndef DSM_DEPRECATED
-#define DSM_DEPRECATED FUNC_DEPRECATED
-#endif
-
 class DataSeriesModule : boost::noncopyable {
 public:
     typedef boost::shared_ptr<DataSeriesModule> Ptr;
@@ -84,7 +77,7 @@ public:
         responsibility to delete it. Each call to this function should return a different @c
         Extent. Derived classes should return a null pointer to indicate the end of the sequence of
         Extents. NOTE: This function is being deprecated in preference to getSharedExtent. */
-    virtual Extent *getExtent() DSM_DEPRECATED;
+    virtual Extent *getExtent() DS_RAW_EXTENT_PTR_DEPRECATED;
 
     /** Returns a new Extent that has been allocated with global new, and may be read-shared with
         other modules, therefore callers should not modify the extent without either a) making a
@@ -93,7 +86,7 @@ public:
     virtual Extent::Ptr getSharedExtent();
 
     /** get all the extents from module and delete them via the getExtent() interface. */
-    void getAndDelete() DSM_DEPRECATED;
+    void getAndDelete() DS_RAW_EXTENT_PTR_DEPRECATED;
 
     /** get all the extents from module and delete them via the getExtentShared() interface. */
     void getAndDeleteShared();
@@ -212,7 +205,7 @@ private:
     
     dataseries::IExtentSink &sink;
     ExtentSeries &series;
-    Extent *cur_extent;
+    Extent::Ptr cur_extent;
 };
 
 #endif

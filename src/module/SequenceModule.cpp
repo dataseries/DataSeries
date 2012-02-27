@@ -5,7 +5,7 @@
    See the file named COPYING for license details
 */
 
-#define DSM_DEPRECATED /* allowed */
+#define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
 #include <DataSeries/SequenceModule.hpp>
 
 SequenceModule::SequenceModule(DataSeriesModule *head)

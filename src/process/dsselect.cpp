@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 			   packing_args.extent_size);
     uint64_t input_row_count = 0, output_row_count = 0;
     while(true) {
-	Extent *inextent = source.getExtent();
+        Extent::Ptr inextent = source.getSharedExtent();
 	if (inextent == NULL) 
 	    break;
 	for(inputseries.setExtent(inextent);inputseries.morerecords(); ++inputseries) {
@@ -149,7 +149,6 @@ int main(int argc, char *argv[]) {
 		outfields[i]->set(infields[i]);
 	    }
 	}
-	delete inextent;
     }
     outmodule.flushExtent();
     outmodule.close();

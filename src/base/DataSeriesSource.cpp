@@ -45,7 +45,7 @@ using boost::format;
 #endif
 
 DataSeriesSource::DataSeriesSource(const string &filename, bool read_index, bool check_tail)
-    : indexExtent(NULL), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
+    : index_extent(), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
       check_tail(check_tail)
 {
     mylibrary.registerType(ExtentType::getDataSeriesXMLType());
@@ -59,7 +59,6 @@ DataSeriesSource::~DataSeriesSource() {
     if (isactive()) {
 	closefile();
     }
-    delete indexExtent;
 }
 
 void DataSeriesSource::closefile() {
@@ -162,11 +161,10 @@ void DataSeriesSource::readTailIndex() {
 		boost::format("mismatch on index offset %d - %d != %d!")
 		% tailoffset % packedsize % indexoffset);
     }
-    delete indexExtent;
-    indexExtent = NULL;
+    index_extent.reset();
     if (read_index) {
-	indexExtent = preadExtent(indexoffset);
-	INVARIANT(indexExtent != NULL, "index extent read failed");
+	index_extent.reset(preadExtent(indexoffset));
+	INVARIANT(index_extent != NULL, "index extent read failed");
     }
 }    
 

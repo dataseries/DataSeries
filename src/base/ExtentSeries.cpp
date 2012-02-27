@@ -6,6 +6,8 @@
 
 #include <Lintel/AssertBoost.hpp>
 
+#define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
+
 #include <DataSeries/ExtentSeries.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
@@ -23,6 +25,21 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT tc)
 	INVARIANT(type != NULL,"bad initialization");
 	my_extent = e;
 	pos.reset(e);
+    }
+}
+
+ExtentSeries::ExtentSeries(Extent::Ptr e, typeCompatibilityT tc)
+    : typeCompatibility(tc)
+{
+    if (e == NULL) {
+	type = NULL;
+	my_extent = NULL;
+    } else {
+	type = &e->type;
+	INVARIANT(type != NULL,"bad initialization");
+        shared_extent = e;
+	my_extent = e.get();
+	pos.reset(e.get());
     }
 }
 
@@ -91,6 +108,14 @@ void ExtentSeries::setExtent(Extent *e) {
 void ExtentSeries::setExtent(Extent::Ptr e) {
     shared_extent = e;
     setExtent(e.get());
+}
+
+void ExtentSeries::setExtent(Extent &e) {
+    setExtent(&e);
+}
+
+void ExtentSeries::start(Extent *e) {
+    setExtent(e);
 }
 
 void ExtentSeries::newExtent() {

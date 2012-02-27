@@ -58,7 +58,7 @@ Extent::Ptr RowAnalysisModule::getSharedExtent() {
 	    ++ignored_rows;
 	}
     }
-    series.setExtent(NULL);
+    series.clearExtent();
     return e;
 }
 

@@ -16,11 +16,19 @@ class Field;
 class Extent;
 
 #include <boost/utility.hpp>
+
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/DebugFlag.hpp>
 
 #include <DataSeries/ExtentType.hpp>
 #include <DataSeries/Extent.hpp>
 #include <DataSeries/SubExtentPointer.hpp>
+
+// Allow a few of the files that define transitional functions to use the deprecated functions
+// without a warning.
+#ifndef DS_RAW_EXTENT_PTR_DEPRECATED
+#define DS_RAW_EXTENT_PTR_DEPRECATED FUNC_DEPRECATED
+#endif
 
 /** \brief Encapsulates iteration over a group of similar Extents.
   *
@@ -92,10 +100,16 @@ public:
 	: type(library.getTypeByName(type_name)), my_extent(NULL),
 	  typeCompatibility(_tc) {
     }
+
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
         type to the type of the @c Extent. */
     explicit ExtentSeries(Extent *e, typeCompatibilityT _tc = typeExact);
+
+    /** Initializes with the specified @c Extent. If it is null then this
+        is equivalent to the default constructor. Otherwise sets the
+        type to the type of the @c Extent. */
+    explicit ExtentSeries(Extent::Ptr e, typeCompatibilityT _tc = typeExact);
                           
     /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype,
@@ -134,9 +148,8 @@ public:
         that the type of the new Extent be compatible with the existing
         type, as specified by the typeCompatibilityT argument of all the
         constructors. */
-    void start(Extent *e) {
-	setExtent(e);
-    }
+    void start(Extent *e) FUNC_DEPRECATED;
+
     /** Returns true iff the current extent is not null and has more records. */
     bool more() {
 	return pos.morerecords();
@@ -196,7 +209,7 @@ public:
             - getExtent() = e
             - the current position will be set to the beginning of the
               new @c Extent. */
-    void setExtent(Extent *e);
+    void setExtent(Extent *e) DS_RAW_EXTENT_PTR_DEPRECATED;
 
     // TODO: deprecate the non-shared pointer versions of series stuff; probably want to
     // wait until after the next release since we're already doing a big deprecation transition
@@ -205,9 +218,8 @@ public:
     void setExtent(Extent::Ptr e);
 
     /** Equivalent to @c setExtent(&e) */
-    void setExtent(Extent &e) {
-	setExtent(&e);
-    }
+    void setExtent(Extent &e) DS_RAW_EXTENT_PTR_DEPRECATED;
+
     /** Clears the current Extent. Note that this only affects the
         Extent, the type is left unchanged.  Exactly equivalent to
         setExtent(NULL) */
@@ -218,17 +230,39 @@ public:
     void newExtent();
 
     /** Returns the current extent. */
-    Extent *extent() const { 
+    Extent *extent() const { // DS_RAW_EXTENT_PTR_DEPRECATED { 
 	return my_extent;
     }
-    Extent *getExtent() const {
+    Extent *getExtent() const { // DS_RAW_EXTENT_PTR_DEPRECATED {
 	return my_extent;
     }
 
-    /** Returns the shared version of the extent, assuming that the extent was set that way */
+    /** Returns the shared version of the extent, assuming that the extent was set that way; Note
+        that you normally want getExtentRef() or hasExtent() */
     Extent::Ptr getSharedExtent() const {
         SINVARIANT(my_extent == shared_extent.get());
         return shared_extent;
+    }
+
+    /** Returns whether the series currently has an extent. */
+    bool hasExtent() const {
+        return shared_extent != NULL;
+    }
+
+    /** Returns a reference to the extent, aborts if no extent is set, or if the extent wasn't a
+        shared extent when set. An error to call unless hasExtent() is true, but will work for
+        now in non-debug builds. */
+    Extent &getExtentRef() {
+        DEBUG_SINVARIANT(hasExtent());
+        return *my_extent;
+    }
+
+    /** Returns a constant reference to the extent, aborts if no extent is set, or if the extent
+        wasn't a shared extent when set. An error to call unless hasExtent() is true, but will work
+        for now in non-debug builds. */
+    const Extent &getExtentRef() const {
+        DEBUG_SINVARIANT(hasExtent());
+        return *my_extent;
     }
 
     /** Registers the specified field. This should only be called from

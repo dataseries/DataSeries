@@ -1,4 +1,4 @@
-#define DSM_DEPRECATED /* allow */
+#define DS_RAW_EXTENT_PTR_DEPRECATED /* allow */
 #include <iostream>
 
 #include <boost/foreach.hpp>

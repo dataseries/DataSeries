@@ -1339,7 +1339,7 @@ void GF_FixedWidth::set(const GeneralValue *from) {
     INVARIANT(from->gvtype == ExtentType::ft_fixedwidth,
               "can't set GF_FixedWidth from non-fixedwidth general value");
     SINVARIANT(from->v_variable32->size() == static_cast<size_t>(myfield.size()));
-    myfield.set(from->v_variable32->data());
+    myfield.set(from->v_variable32->data(), from->v_variable32->size());
 }
 
 double GF_FixedWidth::valDouble() {

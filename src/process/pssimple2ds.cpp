@@ -157,7 +157,7 @@ main(int argc, char *argv[])
     Variable32Field command(psseries,"command");
     Variable32Field args(psseries,"args");
 
-    Extent *psextent = new Extent(psseries);
+    psseries.newExtent();
     int nrecords = 0;
     int nread = 0;
     string buffer;
@@ -167,10 +167,10 @@ main(int argc, char *argv[])
     while(1) {
 	readString(infile,buffer);
 	++nread;
-	if ((int)(psextent->size()+buffer.size()) > packing_args.extent_size ||
+	if ((int)(psseries.getExtentRef().size()+buffer.size()) > packing_args.extent_size ||
 	    feof(infile)) {
-	    psdsout.writeExtent(*psextent, NULL);
-	    psextent->clear();
+	    psdsout.writeExtent(psseries.getExtentRef(), NULL);
+	    psseries.newExtent();
 	}
 	
 	if (feof(infile))

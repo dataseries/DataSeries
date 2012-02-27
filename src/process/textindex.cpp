@@ -123,7 +123,7 @@ public:
 	    cout << "indexing " << args[i] << "..."; cout.flush();
 	    DataSeriesSource source(args[i]);
 
-	    ExtentSeries s(source.indexExtent);
+	    ExtentSeries s(source.index_extent);
 	    Variable32Field extenttype(s,"extenttype");
 	    Int64Field offset(s,"offset");
 	
@@ -140,7 +140,7 @@ public:
     void indexExtent(DataSeriesSource &source, const string &filename,
 		     off64_t offset) {
 	off64_t tmp_offset = offset; 
-	Extent *e = source.preadExtent(tmp_offset); // tmp_offset will be auto-updated to next extent
+        Extent::Ptr e(source.preadExtent(tmp_offset)); // tmp_offset will be auto-updated to next extent
 	for(text_entries_series.setExtent(e);
 	    text_entries_series.morerecords();
 	    ++text_entries_series) {
@@ -148,7 +148,6 @@ public:
 	    cout << "."; cout.flush(); 
 	    indexRow(filename, offset);
 	}	    
-	delete e;
     }
 
     virtual void indexRow(const string &filename, int64_t offset) = 0;
@@ -563,7 +562,7 @@ search_and(vector<string> &args, bool case_insensitive)
 	    for(vector<int64_t>::iterator j = extent_offset_list.begin();
 		j != extent_offset_list.end(); ++j) {
 		off64_t offset = *j;
-		Extent *e = source.preadExtent(offset);
+                Extent::Ptr e(source.preadExtent(offset));
 		ExtentSeries s;
 		Int32Field id(s,"id");
 		Variable32Field text(s,"text");
@@ -572,7 +571,6 @@ search_and(vector<string> &args, bool case_insensitive)
 			cout << text.stringval();
 		    }
 		}
-		delete e;
 	    }		
 	}
     }

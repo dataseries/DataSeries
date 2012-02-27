@@ -130,7 +130,7 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
     Int64Field recordid(s,"record-id");
     Int64Field packettime(s,"packet-at");
 
-    Extent *e = source.preadExtent(offset);
+    Extent::Ptr e(source.preadExtent(offset));
 
     for(s.setExtent(e);s.morerecords();++s) {
 	if (f.start_id < 0) {
@@ -177,7 +177,6 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 	    }
 	}
     }
-    delete e;
 }
 
 bool updateIndexMap(char *filename) {
@@ -188,7 +187,7 @@ bool updateIndexMap(char *filename) {
     }
     DataSeriesSource source(filename);
 
-    ExtentSeries s(source.indexExtent);
+    ExtentSeries s(source.index_extent);
     Variable32Field extenttype(s,"extenttype");
     Int64Field offset(s,"offset");
 

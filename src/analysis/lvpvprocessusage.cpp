@@ -948,8 +948,8 @@ main(int argc, char *argv[])
     Int32Field iobytes(iotrace,"bytes");
     Variable32Field command(pstrace,"command");
 
-    Extent *ioextent = iotrace_source.getExtent();
-    Extent *psextent = pstrace_source.getExtent();
+    Extent::Ptr ioextent = iotrace_source.getSharedExtent();
+    Extent::Ptr psextent = pstrace_source.getSharedExtent();
     iotrace.setExtent(ioextent);
     pstrace.setExtent(psextent);
     double time_base = iotime.val(); 
@@ -969,8 +969,7 @@ main(int argc, char *argv[])
     double first_io_time = Double::Inf, last_io_time = -Double::Inf;
     while(true) {
 	if (iotrace.morerecords() == false) {
-	    delete ioextent;
-	    ioextent = iotrace_source.getExtent();
+	    ioextent = iotrace_source.getSharedExtent();
 	    if (ioextent == NULL) {
 		break;
 	    }
@@ -978,8 +977,7 @@ main(int argc, char *argv[])
 	    iotrace.setExtent(ioextent);
 	}
 	if (pstrace.morerecords() == false) {
-	    delete psextent;
-	    psextent = pstrace_source.getExtent();
+	    psextent = pstrace_source.getSharedExtent();
 	    if (psextent == NULL) 
 		break;
 	    ++psextents;

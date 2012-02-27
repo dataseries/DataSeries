@@ -275,8 +275,8 @@ main(int argc, char *argv[])
 
     // Same issue as above w.r.t. multiple files.
 
-    if (toText.printIndex() && first_source->indexExtent != NULL) {
-	ExtentSeries es(first_source->indexExtent);
+    if (toText.printIndex() && first_source->index_extent != NULL) {
+	ExtentSeries es(first_source->index_extent);
 	Int64Field offset(es,"offset");
 	Variable32Field extenttype(es,"extenttype");
 	cout << "extent offset  ExtentType\n";

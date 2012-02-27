@@ -13,7 +13,7 @@
 #include <sys/resource.h>
 #include <unistd.h>
 
-#define DSM_DEPRECATED /* allowed */
+#define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
 #include <DataSeries/DataSeriesModule.hpp>
 
 namespace dataseries { namespace hack {
@@ -108,8 +108,9 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");
-    cur_extent = new Extent(outputtype);
-    series.setExtent(cur_extent);
+    series.setType(outputtype);
+    series.newExtent();
+    cur_extent = series.getSharedExtent();
 }
 
 OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
@@ -123,8 +124,9 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(series.curExtent() == NULL,
 	      "series specified for output module already had an extent");
-    cur_extent = new Extent(outputtype);
-    series.setExtent(cur_extent);
+    series.setType(outputtype);
+    series.newExtent();
+    cur_extent = series.getSharedExtent();
 }
 
 OutputModule::~OutputModule() {
@@ -135,9 +137,9 @@ OutputModule::~OutputModule() {
 }
 
 void OutputModule::newRecord() {
-    INVARIANT(series.curExtent() == cur_extent,
+    INVARIANT(series.hasExtent() && cur_extent != NULL, "called newRecord() after close()");
+    INVARIANT(series.getSharedExtent() == cur_extent,
 	      "usage error, someone else changed the series extent");
-    INVARIANT(cur_extent != NULL, "called newRecord() after close()");
     if ((cur_extent->size() + outputtype.fixedrecordsize()) > target_extent_size) {
 	double fixedsize = cur_extent->fixeddata.size();
 	double variablesize = cur_extent->variabledata.size();
@@ -163,14 +165,13 @@ void OutputModule::flushExtent() {
 }
 
 void OutputModule::close() {
-    Extent *old_extent = cur_extent;
-    cur_extent = NULL;
+    Extent::Ptr old_extent = cur_extent;
+    cur_extent.reset();
     series.clearExtent();
 
     if (old_extent->fixeddata.size() > 0) {
 	sink.writeExtent(*old_extent, &stats);
     }
-    delete old_extent;
 }
 
 IExtentSink::Stats OutputModule::getStats() {

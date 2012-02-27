@@ -245,7 +245,7 @@ public:
 	if (!es_common.morerecords()) {
 	    es_common.setExtent(nfs_common->getSharedExtent());
 	}
-	while(es_common.getExtent() != NULL) {
+	while(es_common.hasExtent()) {
 	    if (es_common.morerecords()) {
 		
 		uint8_t unified_id = opIdToUnifiedId(in_nfs_version.val(),
@@ -857,32 +857,30 @@ public:
 	++es_rw;
     }
 
-    virtual Extent *getExtent() { 
+    virtual Extent::Ptr getSharedExtent() { 
 	if (commonattr_done && rw_done) {
-	    return NULL;
+	    return Extent::Ptr();
 	}
 	if (es_out.getType() == NULL) {
-	    SINVARIANT(es_commonattr.extent() == NULL
-		       && es_rw.extent() == NULL);
+	    SINVARIANT(es_commonattr.extent() == NULL && es_rw.extent() == NULL);
 	    nextCommonAttrExtent();
-	    if (es_commonattr.extent() == NULL) {
+	    if (!es_commonattr.hasExtent()) {
 		SINVARIANT(commonattr_done);
-		return NULL;
+		return Extent::Ptr();
 	    }
 	    nextRWExtent();
-	    if (es_rw.extent() == NULL) {
+	    if (!es_rw.hasExtent()) {
 		SINVARIANT(rw_done);
-		return NULL;
+		return Extent::Ptr();
 	    }
 	    initOutType();
 	}
-	Extent *outextent = new Extent(*es_out.getType());
-	es_out.setExtent(outextent);
-	outextent->extent_source = str(format("(join around %s + %s)") 
-				       % es_commonattr.extent()->extent_source
-				       % es_rw.extent()->extent_source);
+        es_out.newExtent();
+	es_out.getExtentRef().extent_source = str(format("(join around %s + %s)") 
+                                                  % es_commonattr.extent()->extent_source
+                                                  % es_rw.extent()->extent_source);
 
-	while(outextent->size() < 128*1024) {
+	while(es_out.getExtentRef().size() < 128*1024) {
 	restart:
 	    if (es_rw.extent() == NULL || es_rw.morerecords() == false) {
 		nextRWExtent();
@@ -946,8 +944,8 @@ public:
 	    }
 	}
 
-	output_bytes += outextent->size();
-	return outextent;
+	output_bytes += es_out.getExtentRef().size();
+	return es_out.getSharedExtent();
     }
 
     virtual void printResult() {

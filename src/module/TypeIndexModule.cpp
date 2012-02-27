@@ -55,7 +55,7 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 		return NULL;
 	    }
 	    cur_source = new DataSeriesSource(inputFiles[cur_file]);
-	    INVARIANT(cur_source->indexExtent != NULL,
+	    INVARIANT(cur_source->index_extent != NULL,
 		      "can't handle source with null index extent\n");
 	    if (type_match.empty()) {
 		// nothing to do
@@ -71,7 +71,7 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 			  % tmp->getXmlDescriptionString()); 
 	    }
 
-	    indexSeries.setExtent(cur_source->indexExtent);
+	    indexSeries.setExtent(cur_source->index_extent);
 	}
 	for(;indexSeries.morerecords();++indexSeries) {
 	    if (type_match.empty() ||

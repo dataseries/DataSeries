@@ -63,9 +63,9 @@ public:
                     return NULL;
                 }
                 cur_source = new DataSeriesSource(input_files[cur_file]);
-                INVARIANT(cur_source->indexExtent != NULL,
+                INVARIANT(cur_source->index_extent != NULL,
                           "can't handle source with null index extent\n");
-                index_series.setExtent(cur_source->indexExtent);
+                index_series.setExtent(cur_source->index_extent);
             }
             for (; index_series.morerecords(); ++index_series) {
                 if (filter(extent_type.stringval())) {

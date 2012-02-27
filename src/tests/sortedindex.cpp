@@ -26,11 +26,11 @@ void doSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index, int64_t
     Int64Field record_id(series, "record-id");
     std::cout << val << ": ";
     while (true) {
-	boost::scoped_ptr<Extent> e(sim.getExtent());
+	boost::shared_ptr<Extent> e(sim.getSharedExtent());
 	if (!e) {
 	    break;
 	}
-	series.setExtent(e.get());
+	series.setExtent(e);
 	for (; series.morerecords(); ++series) {
 	    if (packet_at.val() == val) {
 		std::cout << record_id.val() << " ";
@@ -48,11 +48,11 @@ void doSetSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index,
     Int64Field packet_at(series, "packet-at");
     Int64Field record_id(series, "record-id");
     while(true) {
-	boost::scoped_ptr<Extent> e(sim.getExtent());
+	boost::shared_ptr<Extent> e(sim.getSharedExtent());
 	if (!e) {
 	    break;
 	}
-	series.setExtent(e.get());
+	series.setExtent(e);
 	for (; series.morerecords(); ++series) {
             BOOST_FOREACH(const int64_t val, vals) {
                 if (packet_at.val() == val) {
@@ -71,11 +71,11 @@ void doRangeSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index,
     Int64Field packet_at(series, "packet-at");
     Int64Field record_id(series, "record-id");
     while(true) {
-	boost::scoped_ptr<Extent> e(sim.getExtent());
+	boost::shared_ptr<Extent> e(sim.getSharedExtent());
 	if (!e) {
 	    break;
 	}
-	series.setExtent(e.get());
+	series.setExtent(e);
 	for (; series.morerecords(); ++series) {
             if (packet_at.val() >= min && packet_at.val() <= max) {
                 std::cout << packet_at.val() << ":\t" << record_id.val() << "\n";

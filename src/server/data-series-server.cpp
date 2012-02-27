@@ -45,6 +45,18 @@ using boost::shared_ptr;
 using boost::format;
 using boost::scoped_ptr;
 
+namespace std {
+ostream &operator <<(ostream &to, const vector<string> &v) {
+    for(vector<string>::const_iterator i = v.begin(); i != v.end(); ++i) {
+        if (i != v.begin()) {
+            to << " ";
+        }
+        to << *i;
+    }
+    return to;
+}
+}
+
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
     struct TableInfo {
@@ -124,6 +136,7 @@ public:
             args.push_back(tableToPath(dest_table));
             unlink(tableToPath(dest_table).c_str()); // ignore errors
 
+            LintelLogDebug("child", format("pid %d running: %s") % getpid() % args);
             exec(args);
         } else {
             waitForSuccessfulChild(pid);
@@ -439,7 +452,8 @@ private:
         if (waitpid(pid, &status, 0) != pid) {
             requestError("waitpid() failed");
         }
-        if (WEXITSTATUS(status) != 0) {
+        LintelLogDebug("child", format("child %d returned %d") % pid % status);
+        if (!WIFEXITED(status) || WEXITSTATUS(status) != 0) {
             requestError("csv2ds failed");
         }
     }

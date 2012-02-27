@@ -8,7 +8,8 @@ use FileHandle;
 use Getopt::Long;
 use Pod::Usage;
 
-my $csv_to_ds = "@CMAKE_INSTALL_PREFIX@/bin/csv2ds";
+my $csv_to_ds = $0;
+$csv_to_ds =~ s/sql2ds/csv2ds/ or die "Can't switch sql2ds to csv2ds in $0";
 my $dsn = "DBI:mysql:database=test;host=localhost";
 my $man;
 

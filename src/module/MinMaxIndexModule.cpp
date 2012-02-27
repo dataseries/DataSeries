@@ -48,7 +48,7 @@ MinMaxIndexModule::init(const std::string &index_filename,
     GeneralField *sort_val = NULL;
 
     while(true) {
-	Extent *e = tim.getExtent();
+        Extent::Ptr e = tim.getSharedExtent();
 	if (e == NULL) {
 	    break;
 	}
@@ -116,7 +116,6 @@ MinMaxIndexModule::init(const std::string &index_filename,
                 }
             }
         }
-	delete e;
     }
     for(unsigned i=0;i<intersection_list.size();++i) {
 	selector &sel = intersection_list[i];

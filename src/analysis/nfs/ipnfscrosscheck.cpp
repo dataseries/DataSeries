@@ -535,7 +535,7 @@ int main(int argc, char *argv[]) {
     ExtentSeries nfs_series;
     ExtentSeries ip_series;
 
-    Extent *tmp_nfs_extent = nfs_input->getExtent();
+    Extent::Ptr tmp_nfs_extent = nfs_input->getSharedExtent();
     SINVARIANT(tmp_nfs_extent != NULL);
     nfs_series.setExtent(tmp_nfs_extent);
 
@@ -605,10 +605,10 @@ int main(int argc, char *argv[]) {
 
     while(true) {
 	if (nfs_series.getExtent() == NULL) {
-	    nfs_series.setExtent(nfs_input->getExtent());
+	    nfs_series.setExtent(nfs_input->getSharedExtent());
 	} 
 	if (ip_series.getExtent() == NULL) {
-	    ip_series.setExtent(ip_input->getExtent());
+	    ip_series.setExtent(ip_input->getSharedExtent());
 	}
 
 	if (nfs_series.getExtent() == NULL || ip_series.getExtent() == NULL) {
@@ -646,7 +646,6 @@ int main(int argc, char *argv[]) {
 	    }
 	    ip_series.next();
 	    if (!ip_series.morerecords()) {
-		delete ip_series.getExtent();
 		ip_series.clearExtent();
 	    }
 	} else {
@@ -658,7 +657,6 @@ int main(int argc, char *argv[]) {
 	    }
 	    nfs_series.next();
 	    if (!nfs_series.morerecords()) {
-		delete nfs_series.getExtent();
 		nfs_series.clearExtent();
 	    }
 	}
