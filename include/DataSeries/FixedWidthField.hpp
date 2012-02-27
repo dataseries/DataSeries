@@ -29,8 +29,8 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     const byte *val() const {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
-        return val(*dataseries.extent(), rowPos());
+        DEBUG_SINVARIANT(dataseries.hasExtent());
+        return val(dataseries.getExtentRef(), rowPos());
     }
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -87,8 +87,8 @@ public:
 	@param val_size size of the value
     */
     void set(const void *val, uint32_t val_size = 0) {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
-        set(*dataseries.extent(), rowPos(), val, val_size);
+        DEBUG_SINVARIANT(dataseries.hasExtent());
+        set(dataseries.getExtentRef(), rowPos(), val, val_size);
     }
 
     /** Sets the value of the field in the @c ExtentSeries' current record.

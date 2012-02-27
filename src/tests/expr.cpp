@@ -87,8 +87,9 @@ void testSeriesSelect() {
     const ExtentType &extent_type_1(library.registerTypeR(extent_type_1_xml));
     const ExtentType &extent_type_2(library.registerTypeR(extent_type_2_xml));
 
-    Extent e1(extent_type_1), e2(extent_type_2);
-    ExtentSeries series1(&e1), series2(&e2);
+    ExtentSeries series1(extent_type_1), series2(extent_type_2);
+    series1.newExtent();
+    series2.newExtent();
     Int32Field a(series1, "a"), b(series1, "b"), c(series2, "c"), d(series2, "d");
 
     vector<ExtentSeries *> all_series;

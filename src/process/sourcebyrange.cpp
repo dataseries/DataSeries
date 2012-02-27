@@ -42,7 +42,7 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     ExtentType::int64 end_ns = (ExtentType::int64)end_secs * 1000000000;
     TypeIndexModule src("NFS trace: common index");
     src.addSource(index_filename);
-    Extent *e = src.getExtent();
+    Extent::Ptr e = src.getSharedExtent();
     INVARIANT(e->type.getName() == "NFS trace: common index",
 	      format("whoa, extent type %s bad") % e->type.getName());
 
@@ -68,12 +68,10 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     }
     INVARIANT(nfiles > 0,format("didn't find any files for range [%d .. %d]")
 	      % start_secs % end_secs);
-    delete e;
     
-    e = src.getExtent(); 
+    e = src.getSharedExtent(); 
     SINVARIANT(e == NULL);
-    delete e;
-    INVARIANT(src.getExtent() == NULL,"whoa, index had incorrect extents");
+    INVARIANT(src.getSharedExtent() == NULL,"whoa, index had incorrect extents");
     char *end_add = (char *)sbrk(0);
     if (false) {
 	cout << format("%d bytes used for %d files, or %d bytes/file\n")

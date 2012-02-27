@@ -468,8 +468,8 @@ public:
 	for(OpsIterator i = ops.begin(); i != ops.end(); ++i) {
 	    INVARIANT(state.latest_reply_at <= i->reply_at, format("%d > %d around %s:%d")
 		      % state.latest_reply_at % i->reply_at 
-		      % (series.getExtent() ? series.getExtent()->extent_source : "eof")
-		      % (series.getExtent() ? series.getExtent()->extent_source_offset : 0));
+		      % (series.hasExtent() ? series.getExtentRef().extent_source : "eof")
+		      % (series.hasExtent() ? series.getExtentRef().extent_source_offset : 0));
 	    SINVARIANT(i->reply_at < cur_reply_at - reset_interval_raw);
 	    processOneOp(state, *i, file_size);
 	}

@@ -29,7 +29,8 @@ const string extent_type_xml =
 
 void writeExtent(IExtentSink &output, const ExtentType &type, uint32_t thread,
                  uint32_t &count, uint32_t rows) {
-    ExtentSeries s(new Extent(type));
+    ExtentSeries s(type);
+    s.newExtent();
     Int32Field f_thread(s, "thread");
     Int32Field f_count(s, "count");
     for (uint32_t i = 0; i < rows; ++i) {
@@ -38,8 +39,7 @@ void writeExtent(IExtentSink &output, const ExtentType &type, uint32_t thread,
         f_count.set(count);
         ++count;
     }
-    output.writeExtent(*s.getExtent(), NULL);
-    delete s.getExtent();
+    output.writeExtent(s.getExtentRef(), NULL);
     s.clearExtent();
 }
 

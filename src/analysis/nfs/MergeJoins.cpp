@@ -275,7 +275,7 @@ public:
 		reportMemoryUsage();
 	    }
 	}
-	if(es_common.curExtent() == NULL) {
+	if(!es_common.hasExtent()) {
             Extent::Ptr tmp = nfs_common->getSharedExtent();
 	    if (tmp == NULL) {
 		all_done = true;
@@ -299,7 +299,7 @@ public:
 	if (attrextent == NULL) {
 	    if (enable_side_data) {
 		finalCommonSideData();
-		SINVARIANT(es_common.curExtent() == NULL);
+		SINVARIANT(!es_common.hasExtent());
 	    }
 	    es_common.clearExtent();
 	    all_done = true;
@@ -319,8 +319,8 @@ public:
 	es_out.setExtent(outextent);
 
 	outextent->extent_source = str(format("(join around %s + %s)") 
-				       % es_common.extent()->extent_source
-				       % es_attrops.extent()->extent_source);
+				       % es_common.getExtentRef().extent_source
+				       % es_attrops.getExtentRef().extent_source);
 
 	string fh;
 	while(es_attrops.morerecords()) {
@@ -372,7 +372,7 @@ public:
 		    // second one nfs-1/set-17, beginning of 09170 vs end of 09169
 		} else {
 		    FATAL_ERROR(format("%d > %d in %s") % last_record_id
-				% in_recordid.val() % es_common.extent()->extent_source); 
+				% in_recordid.val() % es_common.getExtentRef().extent_source); 
 		}
 	    }
 	    last_record_id = in_recordid.val();
@@ -816,7 +816,7 @@ public:
 		return;
 	    }
 	    if (in_rw_request_id.val() <= 19999849433LL && in_rw_reply_id.val() > 19999849433LL
-		&& es_rw.extent()->extent_source.find("nfs-2.set-0.20k.ds") != string::npos) {
+		&& es_rw.getExtentRef().extent_source.find("nfs-2.set-0.20k.ds") != string::npos) {
 		// silently tolerate; nfssubset got this wrong for check-data/nfs-2.set-0.20k.ds
 		++es_rw;
 		return;
@@ -826,9 +826,9 @@ public:
 			% in_rw_request_id.val() % static_cast<const void *>(_request)
 			% in_rw_reply_id.val() % static_cast<const void *>(_reply)
 			% hexstring(in_rw_filehandle.stringval()) % in_offset.val() 
-			% in_bytes.val() % in_is_read.val() % es_rw.extent()->extent_source
-			% es_rw.extent()->extent_source_offset 
-			% (es_commonattr.extent() != NULL ? in_ca_reply_id.val() : 0));
+			% in_bytes.val() % in_is_read.val() % es_rw.getExtentRef().extent_source
+			% es_rw.getExtentRef().extent_source_offset 
+			% (es_commonattr.hasExtent() ? in_ca_reply_id.val() : 0));
 	}
 	const AttrOpsCommonJoin::RWSideData &request(*_request);
 	const AttrOpsCommonJoin::RWSideData &reply(*_reply);
@@ -862,7 +862,7 @@ public:
 	    return Extent::Ptr();
 	}
 	if (es_out.getType() == NULL) {
-	    SINVARIANT(es_commonattr.extent() == NULL && es_rw.extent() == NULL);
+	    SINVARIANT(!es_commonattr.hasExtent() && !es_rw.hasExtent());
 	    nextCommonAttrExtent();
 	    if (!es_commonattr.hasExtent()) {
 		SINVARIANT(commonattr_done);
@@ -877,16 +877,15 @@ public:
 	}
         es_out.newExtent();
 	es_out.getExtentRef().extent_source = str(format("(join around %s + %s)") 
-                                                  % es_commonattr.extent()->extent_source
-                                                  % es_rw.extent()->extent_source);
+                                                  % es_commonattr.getExtentRef().extent_source
+                                                  % es_rw.getExtentRef().extent_source);
 
 	while(es_out.getExtentRef().size() < 128*1024) {
 	restart:
-	    if (es_rw.extent() == NULL || es_rw.morerecords() == false) {
+	    if (!es_rw.hasExtent() || es_rw.morerecords() == false) {
 		nextRWExtent();
 	    }
-	    if (es_commonattr.extent() == NULL 
-		|| es_commonattr.morerecords() == false) {
+	    if (!es_commonattr.hasExtent() || es_commonattr.morerecords() == false) {
 		nextCommonAttrExtent();
 	    }
 	    if (rw_done || commonattr_done) {
@@ -921,7 +920,8 @@ public:
 	    } else {
 		INVARIANT(last_rw_reply_id < in_rw_reply_id.val(), 
 			  format("read-write extent not sorted by reply-id? %d >= %d in %s")
-			  % last_rw_reply_id % in_rw_reply_id.val() % es_rw.getExtent()->extent_source);
+			  % last_rw_reply_id % in_rw_reply_id.val()
+                          % es_rw.getExtentRef().extent_source);
 	    }
 	    last_rw_reply_id = in_rw_reply_id.val();
 	    if (in_ca_reply_id.val() != in_rw_reply_id.val()) {

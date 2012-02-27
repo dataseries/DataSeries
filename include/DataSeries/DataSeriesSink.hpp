@@ -203,7 +203,7 @@ private:
         void checkedWrite(const void *buf, int bufsize);
         bool isQuiesced() {
             return fd == -1 && wrote_library == false && cur_offset == -1
-                && index_series.getExtent() == NULL && chained_checksum == 0;
+                && !index_series.hasExtent() && chained_checksum == 0;
         }
     };
 

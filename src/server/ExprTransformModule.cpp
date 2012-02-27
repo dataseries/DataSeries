@@ -75,7 +75,7 @@ public:
 
     virtual Extent::Ptr getSharedExtent() {
         while (true) {
-            if (input_series.getExtent() == NULL) {
+            if (!input_series.hasExtent()) {
                 Extent::Ptr in = source.getSharedExtent();
                 if (in == NULL) {
                     return returnOutputSeries();
@@ -86,7 +86,7 @@ public:
                 input_series.setExtent(in);
             }
 
-            SINVARIANT(output_series.getExtent() == NULL);
+            SINVARIANT(!output_series.hasExtent());
             output_series.newExtent();
 
             while (input_series.more()) {
@@ -122,7 +122,7 @@ public:
                 }
                 copier.copyRecord();
 
-                if (output_series.getExtent()->size() > 96*1024) {
+                if (output_series.getExtentRef().size() > 96*1024) {
                     return returnOutputSeries();
                 }
             }

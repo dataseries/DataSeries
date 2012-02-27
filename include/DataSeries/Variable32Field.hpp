@@ -27,27 +27,27 @@ public:
 		    bool auto_add = true);
 
     const byte *val() const {
-        return val(dataseries.extent(), rowPos());
+        return val(dataseries.getExtentRef(), rowPos());
     }
 
     int32 size() const {
-        return size(dataseries.extent(), rowPos());
+        return size(dataseries.getExtentRef(), rowPos());
     }
 
     std::string stringval() const {
-        return stringval(dataseries.extent(), rowPos());
+        return stringval(dataseries.getExtentRef(), rowPos());
     }
 
     const byte *val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return val(&e, rowPos(e, row_offset));
+        return val(e, rowPos(e, row_offset));
     }
 
     int32 size(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return size(&e, rowPos(e, row_offset));
+        return size(e, rowPos(e, row_offset));
     }
 
     std::string stringval(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        return stringval(&e, rowPos(e, row_offset));
+        return stringval(e, rowPos(e, row_offset));
     }
 
     /// Allocate, data_size bytes of space.  The space may not be
@@ -55,14 +55,14 @@ public:
     /// partialSet in order to efficiently put together multiple parts
     /// into a single variable32 value.
     void allocateSpace(uint32_t data_size) {
-        allocateSpace(dataseries.extent(), rowPos(), data_size);
+        allocateSpace(dataseries.getExtentRef(), rowPos(), data_size);
     }
 
     /// Allocate, data_size bytes of space in Extent e for row row_offset.  The space may not be
     /// initialized.  This function is intended to be used with partialSet in order to efficiently
     /// put together multiple parts into a single variable32 value.
     void allocateSpace(Extent &e, const dataseries::SEP_RowOffset &row_offset, uint32_t data_size) {
-        allocateSpace(&e, rowPos(e, row_offset), data_size);
+        allocateSpace(e, rowPos(e, row_offset), data_size);
     }
 
     /// Overwrite @param data_size bytes at offset @param offset with
@@ -73,7 +73,7 @@ public:
     /// @param data_size Number of bytes to copy from data into the field.
     /// @param offset Offset in bytes from the start of the field for the first copied byte.
     void partialSet(const void *data, uint32_t data_size, uint32_t offset) {
-        partialSet(dataseries.extent(), rowPos(), data, data_size, offset);
+        partialSet(dataseries.getExtentRef(), rowPos(), data, data_size, offset);
     }
 
     /// Overwrite @param data_size bytes at offset @param offset with
@@ -87,16 +87,16 @@ public:
     /// @param offset Offset in bytes from the start of the field for the first copied byte.
     void partialSet(Extent &e, const dataseries::SEP_RowOffset &row_offset,
                     const void *data, uint32_t data_size, uint32_t offset) {
-        partialSet(&e, rowPos(e, row_offset), data, data_size, offset);
+        partialSet(e, rowPos(e, row_offset), data, data_size, offset);
     }
 
     void set(const void *data, int32 data_size) {
-        set(dataseries.extent(), rowPos(), data, data_size);
+        set(dataseries.getExtentRef(), rowPos(), data, data_size);
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset,
              const void *data, uint32_t data_size) {
-        set(&e, rowPos(e, row_offset), data, data_size);
+        set(e, rowPos(e, row_offset), data, data_size);
     }
 
     void set(const std::string &data) { // note this doesn't propagate the C '\0' at the end (neither does a C++ string)
@@ -137,8 +137,8 @@ public:
     }
 
     void clear() {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
-        clear(*dataseries.extent(), rowPos());
+        DEBUG_SINVARIANT(dataseries.hasExtent());
+        clear(dataseries.getExtentRef(), rowPos());
     }
 
     void clear(Extent &e, const dataseries::SEP_RowOffset &row_offset) {
@@ -177,13 +177,13 @@ protected:
         setNull(e, row_offset, false);
     }        
 
-    void set(Extent *e, uint8_t *row_pos, const void *data, uint32_t data_size) {
+    void set(Extent &e, uint8_t *row_pos, const void *data, uint32_t data_size) {
         allocateSpace(e, row_pos, data_size);
         partialSet(e, row_pos, data, data_size, 0);
     }
 
-    void allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_size);
-    void partialSet(Extent *e, uint8_t *row_pos, 
+    void allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_size);
+    void partialSet(Extent &e, uint8_t *row_pos, 
                     const void *data, uint32_t data_size, uint32_t offset);
 
     virtual void newExtentType();
@@ -200,18 +200,18 @@ protected:
         return *(const int32 *)(record + offset);
     }
 
-    int32_t getVarOffset(const Extent *e, uint8_t *row_pos) const {
-        DEBUG_SINVARIANT(e != NULL);
+    int32_t getVarOffset(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
         DEBUG_SINVARIANT(offset_pos >= 0);
-        DEBUG_SINVARIANT(e->insideExtentFixed(row_pos + offset_pos));
+        DEBUG_SINVARIANT(e.insideExtentFixed(row_pos + offset_pos));
         int32 var_offset = getVarOffset(row_pos, offset_pos);
-        IF_LINTEL_DEBUG(selfcheck(e->variabledata, var_offset));
+        IF_LINTEL_DEBUG(selfcheck(e.variabledata, var_offset));
         return var_offset;
     }
         
-    std::string stringval(const Extent *e, uint8_t *row_pos) const {
-        DEBUG_SINVARIANT(e != NULL);
-        if (nullable && isNull(*e, row_pos)) {
+    std::string stringval(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        if (nullable && isNull(e, row_pos)) {
             return default_value;
         } else {
             return std::string(reinterpret_cast<const char *>(val(e, row_pos)), size(e, row_pos));
@@ -219,13 +219,13 @@ protected:
     }
 
     void selfcheck() const {
-        DEBUG_SINVARIANT(dataseries.extent() != NULL);
+        DEBUG_SINVARIANT(dataseries.hasExtent());
         dataseries.checkOffset(offset_pos);
         int32 varoffset = getVarOffset(recordStart(), offset_pos);
         selfcheck(varoffset);
     }
     void selfcheck(int32 varoffset) const {
-        selfcheck(dataseries.extent()->variabledata,varoffset);
+        selfcheck(dataseries.getExtentRef().variabledata,varoffset);
     }
     static void selfcheck(const Extent::ByteArray &varbytes, int32 varoffset);
 
@@ -236,21 +236,21 @@ protected:
     bool unique;
 
 private:
-    const byte *val(const Extent *e, uint8_t *row_pos) const {
-        DEBUG_SINVARIANT(e != NULL);
-        if (nullable && isNull(*e, row_pos)) {
+    const byte *val(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        if (nullable && isNull(e, row_pos)) {
             return reinterpret_cast<const byte *>(default_value.data());
         } else {
-            return val(e->variabledata, getVarOffset(e, row_pos));
+            return val(e.variabledata, getVarOffset(e, row_pos));
         }
     }
 
-    int32_t size(const Extent *e, uint8_t *row_pos) const {
-        DEBUG_SINVARIANT(e != NULL);
-        if (nullable && isNull(*e, row_pos)) {
+    int32_t size(const Extent &e, uint8_t *row_pos) const {
+        DEBUG_SINVARIANT(&e != NULL);
+        if (nullable && isNull(e, row_pos)) {
             return default_value.size();
         } else {
-            return size(e->variabledata, getVarOffset(e, row_pos));
+            return size(e.variabledata, getVarOffset(e, row_pos));
         }
     }        
 };

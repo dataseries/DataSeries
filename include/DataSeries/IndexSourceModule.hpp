@@ -64,7 +64,7 @@ public:
     IndexSourceModule();
     virtual ~IndexSourceModule();
 
-    virtual Extent *getExtent();
+    virtual Extent::Ptr getSharedExtent();
 
     /** call this to start prefetching; if you don't call it, it will
 	be automatically called when you call getExtent; Max
@@ -120,12 +120,12 @@ public:
     struct PrefetchExtent {
 	Extent::ByteArray bytes;
 	const ExtentType *type;
-	Extent *unpacked;
+        Extent::Ptr unpacked;
 	bool need_bitflip;
 	std::string uncompressed_type, extent_source;
 	int64_t extent_source_offset;
 	PrefetchExtent() 
-	    : type(NULL), unpacked(NULL), need_bitflip(false), extent_source_offset(-1) { }
+	    : type(NULL), unpacked(), need_bitflip(false), extent_source_offset(-1) { }
     };
 
 protected:

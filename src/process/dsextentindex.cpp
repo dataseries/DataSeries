@@ -181,8 +181,8 @@ public:
         delete rowcount;
         delete extent_offset;
         delete filename;
-        delete minmaxseries;
         delete minmaxmodule;
+        delete minmaxseries;
 
         // fsync() and rename
         if(!old_index.empty()) {
@@ -220,7 +220,7 @@ public:
         TypeIndexModule info_mod("DSIndex::Extent::Info");
         info_mod.addSource(old_index);
 
-        Extent *e = info_mod.getExtent();
+        Extent::Ptr e = info_mod.getSharedExtent();
         INVARIANT(e != NULL, format("must have an DSIndex::Extent::Info extent"
                                     " in index %s!") % old_index);
         ExtentSeries infoseries(e);
@@ -235,7 +235,7 @@ public:
         ++infoseries;
         INVARIANT(infoseries.morerecords() == false,
                   "must have at most one row in info extent");
-        e = info_mod.getExtent();
+        e = info_mod.getSharedExtent();
         INVARIANT(e == NULL, format("must have only one DSIndex::Extent::Info in"
                                     " index %s!") % old_index);
 
@@ -442,7 +442,7 @@ public:
         }
 
         // mark the offset of this extent
-        iv.offset = series.extent()->extent_source_offset;
+        iv.offset = series.getExtentRef().extent_source_offset;
     }
 
     virtual void newExtentHook(const Extent &e) {
@@ -506,7 +506,7 @@ public:
             // setting to NULL here just means skipping the index processing loop
             series.setExtent(source->getSharedExtent());
 
-            if (series.getExtent() != NULL) {
+            if (series.hasExtent()) {
                 processIndex();
             }
         }
@@ -552,7 +552,7 @@ protected:
         }
 
         // go through the old index
-        while (series.getExtent() != NULL) {
+        while (series.hasExtent()) {
             curName = filename.stringval();
                 
             // index any missing files at the appropriate place

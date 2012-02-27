@@ -617,13 +617,13 @@ double GF_Bool::valDouble() {
     return myfield.val() ? 1 : 0;
 }
 
-void GF_Bool::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Bool::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         typedef dataseries::detail::BoolFieldImpl ImplType;
-        myfield.ImplType::set(*e, row_pos, from.valBool());
+        myfield.ImplType::set(e, row_pos, from.valBool());
     }
 }
 
@@ -704,13 +704,13 @@ double GF_Byte::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
-void GF_Byte::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Byte::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         typedef dataseries::detail::SimpleFixedFieldImpl<uint8_t> ImplType;
-        myfield.ImplType::set(*e, row_pos, from.valByte());
+        myfield.ImplType::set(e, row_pos, from.valByte());
     }
 }
 
@@ -803,13 +803,13 @@ double GF_Int32::valDouble() {
     return static_cast<double>(myfield.val());
 }
 
-void GF_Int32::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Int32::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         typedef dataseries::detail::SimpleFixedFieldImpl<int32_t> ImplType;
-        myfield.ImplType::set(*e, row_pos, from.valInt32());
+        myfield.ImplType::set(e, row_pos, from.valInt32());
     }
 }
 
@@ -958,13 +958,13 @@ double GF_Int64::valDouble() {
 // inheirit off of GeneralField<their type>, and use common code in GeneralValue.
 // 
 // 3) Use C preprocessor metaprogramming to #define the various set functions.
-void GF_Int64::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Int64::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         typedef dataseries::detail::SimpleFixedFieldImpl<int64_t> ImplType;
-        myfield.ImplType::set(*e, row_pos, from.valInt64());
+        myfield.ImplType::set(e, row_pos, from.valInt64());
     }
 }
 
@@ -1084,13 +1084,13 @@ double GF_Double::valDouble() {
     return myfield.val();
 }
 
-void GF_Double::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Double::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         typedef dataseries::detail::SimpleFixedFieldImpl<double> ImplType;
-        myfield.ImplType::set(*e, row_pos, from.valDouble());
+        myfield.ImplType::set(e, row_pos, from.valDouble());
     }
 }
 
@@ -1264,10 +1264,10 @@ const std::string GF_Variable32::valFormatted() {
     }
 }
 
-void GF_Variable32::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_Variable32::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         string v(from.valString());
         myfield.set(e, row_pos, v.data(), v.size());
@@ -1346,14 +1346,14 @@ double GF_FixedWidth::valDouble() {
     FATAL_ERROR("unimplemented conversion from fixedwidth -> double");
 }
 
-void GF_FixedWidth::set(Extent *e, uint8_t *row_pos, const GeneralValue &from) {
-    DEBUG_SINVARIANT(e != NULL);
+void GF_FixedWidth::set(Extent &e, uint8_t *row_pos, const GeneralValue &from) {
+    DEBUG_SINVARIANT(&e != NULL);
     if (from.getType() == ExtentType::ft_unknown) {
-        myfield.setNull(*e, row_pos, true);
+        myfield.setNull(e, row_pos, true);
     } else {
         string val(from.valString());
         SINVARIANT(val.size() == static_cast<size_t>(myfield.size()));
-        myfield.set(*e, row_pos, val.data(), val.size());
+        myfield.set(e, row_pos, val.data(), val.size());
     }
 }
 

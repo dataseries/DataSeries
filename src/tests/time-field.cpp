@@ -300,8 +300,8 @@ void checkRegisterUnitsEpoch() {
 	 "  <field type=\"int64\" name=\"override\" units=\"nanoseconds\" epoch=\"unix\" />"
 	 "</ExtentType>\n"));
 
-    Extent *e = new Extent(type);
-    ExtentSeries s(e);
+    ExtentSeries s(type);
+    s.newExtent();
 
     Int64TimeField::registerUnitsEpoch("nsec_unix", "test", "test", 1, "nanoseconds", "unix");
     Int64TimeField::registerUnitsEpoch("usec_unix", "test", "test", 1, "microseconds", "unix");

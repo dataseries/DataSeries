@@ -270,7 +270,7 @@ public:
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, 
              const GeneralValue &from) {
-        set(&e, typed_field.rowPos(e, row_offset), from);
+        set(e, typed_field.rowPos(e, row_offset), from);
     }
 
     /// Set a general field from a string, equivalent to creating a general
@@ -294,7 +294,7 @@ public:
     // a default converter from a field to a value and there are the comparison
     // operators on general values.
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from) = 0;
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from) = 0;
 
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
@@ -350,7 +350,7 @@ public:
     BoolField myfield;
     std::string s_true, s_false;  
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Byte : public GeneralField {
@@ -375,7 +375,7 @@ public:
     char *printspec;
     ByteField myfield;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int32 : public GeneralField {
@@ -404,7 +404,7 @@ public:
     ExtentType::int32 divisor;
     Int32Field myfield;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int64 : public GeneralField {
@@ -430,7 +430,7 @@ public:
     int64_t divisor, offset;
     bool offset_first;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Double : public GeneralField {
@@ -453,7 +453,7 @@ public:
     char *printspec;
     double offset, multiplier;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Variable32 : public GeneralField {
@@ -496,7 +496,7 @@ public:
     printstyle_t printstyle;
     Variable32Field myfield;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_FixedWidth : public GeneralField {
@@ -517,7 +517,7 @@ public:
 
     FixedWidthField myfield;
 protected:
-    virtual void set(Extent *e, uint8_t *row_pos, const GeneralValue &from);
+    virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 /** \brief Copies records from one @c Extent to another.

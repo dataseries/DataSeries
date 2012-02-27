@@ -104,7 +104,7 @@ public:
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
         type to the type of the @c Extent. */
-    explicit ExtentSeries(Extent *e, typeCompatibilityT _tc = typeExact);
+    explicit ExtentSeries(Extent *e, typeCompatibilityT _tc = typeExact) DS_RAW_EXTENT_PTR_DEPRECATED;
 
     /** Initializes with the specified @c Extent. If it is null then this
         is equivalent to the default constructor. Otherwise sets the
@@ -230,10 +230,10 @@ public:
     void newExtent();
 
     /** Returns the current extent. */
-    Extent *extent() const { // DS_RAW_EXTENT_PTR_DEPRECATED { 
+    Extent *extent() const DS_RAW_EXTENT_PTR_DEPRECATED { 
 	return my_extent;
     }
-    Extent *getExtent() const { // DS_RAW_EXTENT_PTR_DEPRECATED {
+    Extent *getExtent() const DS_RAW_EXTENT_PTR_DEPRECATED {
 	return my_extent;
     }
 
@@ -402,8 +402,7 @@ public:
     /** Indicates how the ExtentSeries handles different Extent types. */
     typeCompatibilityT getTypeCompat() { return typeCompatibility; }
     /** Returns the current Extent. */
-    const Extent *curExtent() { return my_extent; }
-
+    const Extent *curExtent() FUNC_DEPRECATED { return my_extent; }
 
     dataseries::SEP_RowOffset getRowOffset() {
         DEBUG_SINVARIANT(pos.cur_extent != NULL

@@ -15,8 +15,8 @@ public:
         bool operator()(uint32_t ia, uint32_t ib) {
             const UM_UnionTable &a(sources[ia]);
             const UM_UnionTable &b(sources[ib]);
-            SINVARIANT(a.series.getExtent() != NULL);
-            SINVARIANT(b.series.getExtent() != NULL);
+            SINVARIANT(a.series.hasExtent());
+            SINVARIANT(b.series.hasExtent());
             SINVARIANT(a.order_fields.size() == b.order_fields.size());
             for (size_t i = 0; i < a.order_fields.size(); ++i)  {
                 const SortColumnImpl &sc_a(a.order_fields[i]), &sc_b(b.order_fields[i]);
@@ -71,7 +71,7 @@ public:
 
             SINVARIANT(ut.source != NULL);
             ut.series.setExtent(ut.source->getSharedExtent());
-            if (ut.series.getExtent() == NULL) {
+            if (!ut.series.hasExtent()) {
                 continue; // no point in making the other bits
             }
             
@@ -113,7 +113,7 @@ public:
         output_series.setType(lib.registerTypeR(output_xml));
         for (uint32_t i = 0; i < sources.size(); ++i) {
             UM_UnionTable &ut(sources[i]);
-            if (ut.series.getExtent() != NULL) {
+            if (ut.series.hasExtent()) {
                 ut.copier->prep(ut.extract_values);
                 queue.push(i);
             }
@@ -143,7 +143,7 @@ public:
             if (!sources[best].series.more()) {
                 sources[best].series.setExtent(sources[best].source->getSharedExtent());
             }
-            if (sources[best].series.getExtent() == NULL) {
+            if (!sources[best].series.hasExtent()) {
                 queue.pop();
             } else {
                 queue.replaceTop(best); // it's position may have changed, re-add

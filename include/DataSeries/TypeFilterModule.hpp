@@ -57,7 +57,7 @@ public:
 
     virtual PrefetchExtent *lockedGetCompressedExtent() {
         while(true) {
-            if (index_series.curExtent() == NULL) {
+            if (!index_series.hasExtent()) {
                 if (cur_file == input_files.size()) {
                     INVARIANT(!input_files.empty(), "type index module had no input files??");
                     return NULL;

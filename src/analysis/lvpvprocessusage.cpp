@@ -353,7 +353,7 @@ public:
         Extent::Ptr outExtent(new Extent(output_type));
 	++output_extents;
 	output_series.setExtent(outExtent);
-	if (ps_series.extent() == NULL) {
+	if (!ps_series.hasExtent()) {
             Extent::Ptr ps_extent(ps_input.getSharedExtent());
 	    INVARIANT(ps_extent != NULL, "must get at least one ps extent");
 	    ps_series.setExtent(ps_extent);
@@ -706,8 +706,8 @@ public:
 	}
 	printf("\n\n");
     }
-    Extent *infoAsExtent() {
-	Extent *ret = new Extent(rollupbyidstring_type);
+    Extent::Ptr infoAsExtent() {
+        Extent::Ptr ret(new Extent(rollupbyidstring_type));
 	ExtentSeries retseries(ret);
 	Int32Field retid(retseries,"rollup_id");
 	Variable32Field retstring(retseries,"rollup_string");
@@ -771,8 +771,8 @@ public:
     { }
 
     virtual ~RollupByIdStringInfoExtent() { }
-    virtual Extent *getExtent() {
-	if (done) return NULL;
+    virtual Extent::Ptr getSharedExtent() {
+	if (done) return Extent::Ptr();
 	done = true;
 	return from.infoAsExtent();
     }
@@ -812,8 +812,8 @@ public:
 	}
 	printf("\n\n");
     }
-    Extent *infoAsExtent() {
-	Extent *ret = new Extent(rollupbyid_type);
+    Extent::Ptr infoAsExtent() {
+        Extent::Ptr ret(new Extent(rollupbyid_type));
 	ExtentSeries retseries(ret);
 	Int32Field retid(retseries,"rollup_id");
 	Int32Field readcount(retseries,"read_count");
@@ -871,8 +871,8 @@ public:
     { }
 
     virtual ~RollupByIdInfoExtent() { }
-    virtual Extent *getExtent() {
-	if (done) return NULL;
+    virtual Extent::Ptr getSharedExtent() {
+	if (done) return Extent::Ptr();
 	done = true;
 	return from.infoAsExtent();
     }

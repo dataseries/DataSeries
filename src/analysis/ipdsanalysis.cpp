@@ -306,7 +306,8 @@ public:
     virtual void processRow() {
 	sum_wire_len += wire_len.val();
 	if (measurement_reorder_raw == 0) {
-	    processOnePacket(packet_at.valRaw(), wire_len.val(), series.extent()->extent_source);
+	    processOnePacket(packet_at.valRaw(), wire_len.val(),
+                             series.getExtentRef().extent_source);
 	} else {
 	    reorderProcessRow();
 	}
@@ -315,7 +316,7 @@ public:
     void reorderProcessRow() {
 	INVARIANT(packet_at.valRaw() > last_process_time_raw,
 		  format("bad ordering %d <= %d in %s") % packet_at.valRaw() 
-		  % last_process_time_raw % series.getExtent()->extent_source);
+		  % last_process_time_raw % series.getExtentRef().extent_source);
 	pending_packets.push(packetTimeSize(packet_at.valRaw(), wire_len.val()));
 	if (packet_at.valRaw() > max_packettime_raw) {
 	    max_packettime_raw = packet_at.valRaw();
@@ -378,8 +379,7 @@ private:
 	}
     }	
     void processPendingPackets(int64_t max_process_raw) {
-	const string &file = series.getExtent() == NULL ? "END" 
-	    : series.getExtent()->extent_source;
+	const string &file = series.hasExtent() ? series.getExtentRef().extent_source : "END";
 	while (!pending_packets.empty() 
 	       && pending_packets.top().timestamp_raw <= max_process_raw) {
 	    processOnePacket(pending_packets.top().timestamp_raw, 

@@ -44,7 +44,7 @@ public:
                 firstExtent(*in);
             }
 
-            if (output_series.getExtent() == NULL) {
+            if (!output_series.hasExtent()) {
                 output_series.newExtent();
             }
         
@@ -52,7 +52,7 @@ public:
                 output_series.newRecord();
                 copier.copyRecord();
             }
-            if (output_series.getExtent()->size() > 96*1024) {
+            if (output_series.getExtentRef().size() > 96*1024) {
                 return returnOutputSeries();
             }
         }

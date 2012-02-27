@@ -65,7 +65,7 @@ readExistingIndex(char *out_filename)
 {
     TypeIndexModule src("NFS trace: common index");
     src.addSource(out_filename);
-    Extent *e = src.getExtent();
+    Extent::Ptr e = src.getSharedExtent();
     INVARIANT(e->type.getName() == "NFS trace: common index",
 	      format("whoa, extent type %s bad") % e->type.getName());
 
@@ -86,12 +86,9 @@ readExistingIndex(char *out_filename)
 	filename_to_mtime[f.filename] = f.mtime;
     }
 
-    delete e;
-    
-    e = src.getExtent(); 
+    e = src.getSharedExtent(); 
     SINVARIANT(e->type.getName() == "DataSeries: ExtentIndex");
-    delete e;
-    INVARIANT(src.getExtent() == NULL, "whoa, index had incorrect extents");
+    INVARIANT(src.getSharedExtent() == NULL, "whoa, index had incorrect extents");
 }
 
 struct backward_timeness {
@@ -289,7 +286,7 @@ writeIndexMap(char *out_filename)
     const ExtentType &indextype(library.registerTypeR(indextype_xml));
     sink.writeExtentLibrary(library);
 
-    Extent *e = new Extent(indextype);
+    Extent::Ptr e(new Extent(indextype));
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
 	start_time(s,"start-time"), end_time(s,"end-time"),

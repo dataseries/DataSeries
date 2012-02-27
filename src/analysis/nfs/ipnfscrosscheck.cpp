@@ -604,14 +604,14 @@ int main(int argc, char *argv[]) {
     SummaryInfo summary_info(argv[1], argv[argc-1]);
 
     while(true) {
-	if (nfs_series.getExtent() == NULL) {
+	if (!nfs_series.hasExtent()) {
 	    nfs_series.setExtent(nfs_input->getSharedExtent());
 	} 
-	if (ip_series.getExtent() == NULL) {
+	if (!ip_series.hasExtent()) {
 	    ip_series.setExtent(ip_input->getSharedExtent());
 	}
 
-	if (nfs_series.getExtent() == NULL || ip_series.getExtent() == NULL) {
+	if (!nfs_series.hasExtent() || !ip_series.hasExtent()) {
 	    break; // slight potential error at end of analysis
 	}
 

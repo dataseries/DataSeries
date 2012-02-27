@@ -129,15 +129,15 @@ void Variable32Field::newExtentType() {
 	      % getName() % dataseries.getType()->getName());
 }
 
-void Variable32Field::allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_size) {
-    DEBUG_SINVARIANT(e != NULL);
+void Variable32Field::allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_size) {
+    DEBUG_SINVARIANT(&e != NULL);
     DEBUG_SINVARIANT(offset_pos >= 0);
     uint8_t *fixed_data_ptr = row_pos + offset_pos;
-    DEBUG_SINVARIANT(e->insideExtentFixed(fixed_data_ptr));
+    DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
     if (data_size == 0) {
-	clear(*e, row_pos);
+	clear(e, row_pos);
 	return;
     }
     int32_t roundup = roundupSize(data_size);
@@ -150,11 +150,11 @@ void Variable32Field::allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_s
     // supports overwrite.
 
     // need to repack at the end of the variable data
-    int32_t varoffset = e->variabledata.size();
-    e->variabledata.resize(varoffset + 4 + roundup);
+    int32_t varoffset = e.variabledata.size();
+    e.variabledata.resize(varoffset + 4 + roundup);
     *reinterpret_cast<int32_t *>(fixed_data_ptr) = varoffset;
 
-    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e->variabledata, varoffset));
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
 					      
     *var_data = data_size;
 
@@ -165,15 +165,15 @@ void Variable32Field::allocateSpace(Extent *e, uint8_t *row_pos, uint32_t data_s
 	SINVARIANT(*var_data == 0);
     }
 
-    selfcheck(e->variabledata,varoffset);
+    selfcheck(e.variabledata,varoffset);
 #endif
 
-    setNull(*e, row_pos, false);
+    setNull(e, row_pos, false);
 }    
 
-void Variable32Field::partialSet(Extent *e, uint8_t *row_pos, 
+void Variable32Field::partialSet(Extent &e, uint8_t *row_pos, 
                                  const void *data, uint32_t data_size, uint32_t offset) {
-    DEBUG_SINVARIANT(e != NULL);
+    DEBUG_SINVARIANT(&e != NULL);
     if (data_size == 0) {
 	return; // occurs on set("");
     }
@@ -182,7 +182,7 @@ void Variable32Field::partialSet(Extent *e, uint8_t *row_pos,
 
     // TODO: this is almost like rawval() in fixedfield; think about unifying?
     int32_t varoffset = *reinterpret_cast<int32_t *>(row_pos + offset_pos);
-    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e->variabledata, varoffset));
+    int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
     
     uint32_t cur_size = *var_data;
     INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,

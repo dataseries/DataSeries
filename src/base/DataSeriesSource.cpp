@@ -120,7 +120,7 @@ void DataSeriesSource::readTypeExtent() {
     Extent::ByteArray extentdata;
     INVARIANT(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 	      "Invalid file, must have a first extent");
-    Extent *e = new Extent(mylibrary,extentdata,need_bitflip);
+    Extent::Ptr e(new Extent(mylibrary,extentdata,need_bitflip));
     INVARIANT(&e->type == &ExtentType::getDataSeriesXMLType(),
 	      "First extent must be the type defining extent");
 
@@ -130,7 +130,6 @@ void DataSeriesSource::readTypeExtent() {
 	string v = typevar.stringval();
 	mylibrary.registerTypeR(v);
     }
-    delete e;
 }
 
 void DataSeriesSource::readTailIndex() {

@@ -113,7 +113,7 @@ timediff(struct timeval &end,struct timeval &start)
     return end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec) * 1e-6;
 }
 
-Extent *IndexSourceModule::getExtent() {
+Extent::Ptr IndexSourceModule::getSharedExtent() {
     INVARIANT(getting_extent == false,"incorrect re-entrancy detected");
     getting_extent = true;
 
@@ -132,7 +132,7 @@ Extent *IndexSourceModule::getExtent() {
 	prefetch->mutex.unlock();
         close();
 	getting_extent = false;
-	return NULL;
+	return Extent::Ptr();
     }
     ++prefetch->stats.nextents;
     SINVARIANT(!prefetch->unpacked.empty());
@@ -147,7 +147,7 @@ Extent *IndexSourceModule::getExtent() {
     }
     prefetch->mutex.unlock();
 
-    Extent *ret = buf->unpacked;
+    Extent::Ptr ret = buf->unpacked;
     delete buf;
 
     SINVARIANT(ret->extent_source != Extent::in_memory_str &&
@@ -350,7 +350,7 @@ void IndexSourceModule::unpackThread() {
 	    if (should_yield) {
 		sched_yield();
 	    }
-	    Extent *e = new Extent(*pe->type, pe->bytes, pe->need_bitflip);
+            Extent::Ptr e(new Extent(*pe->type, pe->bytes, pe->need_bitflip));
 	    e->extent_source = pe->extent_source;
 	    e->extent_source_offset = pe->extent_source_offset;
 	    SINVARIANT(e->type.getName() == pe->uncompressed_type);

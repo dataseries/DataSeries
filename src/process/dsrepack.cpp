@@ -179,7 +179,7 @@ struct PerTypeWork {
 	OutputModule *old = output_module;
 	old->close();
 	
-	INVARIANT(outputseries.extent() == NULL, "huh?");
+	INVARIANT(!outputseries.hasExtent(), "huh?");
 
 	DataSeriesSink::Stats stats = old->getStats();
 	sum_unpacked_size += stats.unpacked_size;

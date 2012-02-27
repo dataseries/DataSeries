@@ -49,7 +49,7 @@ void TypeIndexModule::lockedResetModule() {
 
 TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
     while(true) {
-	if (indexSeries.curExtent() == NULL) {
+	if (!indexSeries.hasExtent()) {
 	    if (cur_file == inputFiles.size()) {
 		INVARIANT(!inputFiles.empty(), "type index module had no input files??");
 		return NULL;

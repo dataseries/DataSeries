@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     TypeIndexModule source("Trace::NFS::common");
     source.addSource(argv[1]);
 
-    Extent *extent = source.getExtent();
+    Extent::Ptr extent = source.getSharedExtent();
     SINVARIANT(extent != NULL);
     Extent::ByteArray packeddata;
     if (extent) {

@@ -194,9 +194,9 @@ protected:
     }
 
     uint8_t *rowPos() const {
-	DEBUG_SINVARIANT(dataseries.extent() != NULL);
+	DEBUG_SINVARIANT(dataseries.hasExtent());
 	uint8_t *ret = dataseries.pos.record_start();
-        DEBUG_SINVARIANT(dataseries.extent()->insideExtentFixed(ret));
+        DEBUG_SINVARIANT(dataseries.getExtentRef().insideExtentFixed(ret));
         return ret;
     }
 

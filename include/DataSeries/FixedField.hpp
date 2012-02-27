@@ -45,7 +45,7 @@ public:
             - The name of the Field must have been set and the
               @c ExtentSeries must have a current record. */
     T val() const { 
-        return this->PT::val(*this->dataseries.extent(), this->rowPos());
+        return this->PT::val(this->dataseries.getExtentRef(), this->rowPos());
     }
 
     /** Returns the value of the field in the @c ExtentSeries' current record.
@@ -66,7 +66,7 @@ public:
             - The name of the Field must have been set and the associated
               @c ExtentSeries must have a current record. */
     void set(T val) {
-        this->PT::set(*this->dataseries.extent(), this->rowPos(), val);
+        this->PT::set(this->dataseries.getExtentRef(), this->rowPos(), val);
     }
 
     /** Returns the value of the field in the specified extent and row_offset.

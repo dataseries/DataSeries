@@ -197,7 +197,7 @@ public:
             copier.copyRecord(*se.e, *se.pos);
             ++se.pos;
             merge->delete_min_insert(min, se.pos == se.offsets.end());
-            if (output_series.getExtent()->size() > 96*1024) {
+            if (output_series.getExtentRef().size() > 96*1024) {
                 break;
             }
         }

@@ -61,14 +61,14 @@ public:
     { }
 
     inline bool outputExtentSmall() {
-        return output_series.getExtent()->size() < 96 * 1024;
+        return output_series.getExtentRef().size() < 96 * 1024;
     }
 
     virtual Extent::Ptr getSharedExtent() {
         processMergeExtents();
-        if (output_series.getExtent() != NULL && outputExtentSmall()) {
+        if (output_series.hasExtent() && outputExtentSmall()) {
             // something more to do..
-            SINVARIANT(base_series.getExtent() == NULL || update_series.getExtent() == NULL);
+            SINVARIANT(!base_series.hasExtent() || !update_series.hasExtent());
             if (base_series.hasExtent()) {
                 processBaseExtents();
             } else if (update_series.hasExtent()) {
@@ -149,7 +149,7 @@ public:
 
             if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setType(base_series.getExtent()->getType());
+                output_series.setType(base_series.getExtentRef().getType());
                 output_series.newExtent();
             }
 
@@ -212,7 +212,7 @@ public:
     }
 
     void doUpdateReplace() {
-        if (base_series.getExtent() != NULL && base_primary_key == update_primary_key) {
+        if (base_series.hasExtent() && base_primary_key == update_primary_key) {
             copyUpdate();
             advance(base_series);
         } else {
@@ -221,7 +221,7 @@ public:
     }
 
     void doUpdateDelete() {
-        if (base_series.getExtent() != NULL && base_primary_key == update_primary_key) {
+        if (base_series.hasExtent() && base_primary_key == update_primary_key) {
             advance(base_series);
         } else {
             // already deleted

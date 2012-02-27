@@ -106,7 +106,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
-    INVARIANT(series.curExtent() == NULL,
+    INVARIANT(!series.hasExtent(),
 	      "series specified for output module already had an extent");
     series.setType(outputtype);
     series.newExtent();
@@ -122,7 +122,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
-    INVARIANT(series.curExtent() == NULL,
+    INVARIANT(!series.hasExtent(),
 	      "series specified for output module already had an extent");
     series.setType(outputtype);
     series.newExtent();
