@@ -117,23 +117,23 @@ public:
 	stat->add(value.val());
     }
 
-    virtual Extent *getExtent() {
-      Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 
-      if (e == NULL) {
-	completeProcessing();
-	return NULL;
-      }
-      series.setExtent(e);
+        if (e == NULL) {
+            completeProcessing();
+            return Extent::Ptr();
+        }
+        series.setExtent(e);
 
-      if (!prepared) {
-	prepareForProcessing();
-	prepared = true;
-      }
-      for(;series.morerecords();++series) {
-	processRow();
-      }
-      return e;
+        if (!prepared) {
+            prepareForProcessing();
+            prepared = true;
+        }
+        for(;series.morerecords();++series) {
+            processRow();
+        }
+        return e;
     }
 
     virtual void printResult() {

@@ -174,8 +174,8 @@ public:
     }
 
 #if 0
-    virtual Extent *getExtent() {
-	Extent *e = source.getExtent();
+    virtual Extent::Ptr getSharedExtent() {
+        Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) {
 	    completeProcessing();
 	    return NULL;
@@ -188,7 +188,7 @@ public:
 	for(;series.pos.morerecords();++series.pos) {
 	    inlineProcessRow();
 	}
-	series.setExtent(NULL);
+	series.clearExtent();
 	return e;
     }
     virtual void processRow() { 

@@ -501,7 +501,7 @@ public:
           rowcount(series, "rowcount"), modify(modify), filePos(0), files(files)
     { }
 
-    Extent *getExtent() {
+    Extent::Ptr getSharedExtent() {
         if (source) {
             // setting to NULL here just means skipping the index processing loop
             series.setExtent(source->getSharedExtent());
@@ -517,7 +517,7 @@ public:
             ++filePos;
         }
 
-        return NULL;
+        return Extent::Ptr();
     }
 
 protected:

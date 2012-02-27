@@ -65,9 +65,9 @@ public:
 	series.setType(*output_type);
     }
 
-    virtual Extent *getExtent() {
+    virtual Extent::Ptr getSharedExtent() {
 	if (cur_row == max_rowid) {
-	    return NULL; // No more extents
+	    return Extent::Ptr(); // No more extents
 	}
 
 	INVARIANT(cur_row < max_rowid, "bad");
@@ -80,10 +80,10 @@ public:
 	    extent_rows = max_rowid - cur_row;
 	}
 
+	// Set the series' type.
+	series.setType(output_type);
 	// Make a new extent
-	Extent *out_extent = new Extent(*output_type);
-	// Put it into the series so we can access it.
-	series.setExtent(out_extent);
+        series.newExtent();
 
 	// Generate all of the rows.
 	for(uint32_t i = 0; i < extent_rows; ++i) {
@@ -99,7 +99,7 @@ public:
 	    cur_time += MTRandom.randDoubleOpen(); 
 	    ++cur_row; 
 	}
-	return out_extent;
+	return series.getSharedExtent();
     };
 private:
     ExtentSeries series;

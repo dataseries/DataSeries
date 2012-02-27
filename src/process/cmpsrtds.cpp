@@ -199,7 +199,7 @@ main(int argc, char *argv[])
 	thread_id = new Int32Field(srtseries,"thread_id", Field::flag_nullable);
 	lv_offset = new Int64Field(srtseries,"lv_offset", Field::flag_nullable);
     }
-    Extent *srtheaderextent = srtdsheaderin.getExtent();
+    Extent::Ptr srtheaderextent = srtdsheaderin.getSharedExtent();
     INVARIANT(srtheaderextent != NULL, "can't find srtheader extents in input file");
 	      
     srtheaderseries.setExtent(srtheaderextent);
@@ -253,7 +253,7 @@ main(int argc, char *argv[])
     }
     */
 
-    Extent *srtextent = srtdsin.getExtent();
+    Extent::Ptr srtextent = srtdsin.getSharedExtent();
     INVARIANT(srtextent != NULL, "can't find srt extents in input file");
 	      
     srtseries.setExtent(srtextent);
@@ -262,8 +262,7 @@ main(int argc, char *argv[])
     while(1) {
 	SRTrawRecord *raw_tr = tracestream->record();
 	if (srtseries.pos.morerecords() == false) {
-	    delete srtextent;
-	    srtextent = srtdsin.getExtent();
+	    srtextent = srtdsin.getSharedExtent();
 	    if (srtextent != NULL) {
 		srtseries.setExtent(srtextent);
 	    } else {
