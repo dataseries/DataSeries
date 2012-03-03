@@ -1,3 +1,9 @@
+dataseries (0.2012.02.28) unstable; urgency=low
+
+  * release testing
+
+ -- Eric Anderson <anderse@hpl.hp.com>  Thu, 01 Mar 2012 14:49:49 -0800
+
 dataseries (0.2011.06.13) unstable; urgency=low
 
   * Release.  See NEWS for major changes.
