@@ -1,8 +1,6 @@
 #define DS_RAW_EXTENT_PTR_DEPRECATED /* allow */
 #include <iostream>
 
-#include <boost/foreach.hpp>
-
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/TestUtil.hpp>
 
@@ -193,7 +191,8 @@ void testPipelines() {
     for (uint32_t i = 0; i < 10; ++i) {
         SINVARIANT(keepers[0]->vec[i]->extent_source_offset == (9 - i));
     }
-    BOOST_FOREACH(shared_ptr<KeeperShared> p, keepers) {
+    for(vector< shared_ptr<KeeperShared> >::iterator i = keepers.begin(); i != keepers.end(); ++i) {
+        shared_ptr<KeeperShared> p(*i);
         SINVARIANT(p->vec.size() == 10);
         SINVARIANT(p->vec == keepers[0]->vec);
     }

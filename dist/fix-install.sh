@@ -3,8 +3,6 @@ set -e
 [ -d "$1" ]
 TMP_USR=$1/usr
 
-echo "Figure out how to make the perl stuff not include my path in the release (if happening)"
-exit 1
 # Unclear whether lexgrog or doxygen is wrong, but lexgrog does not accept spaces 
 # on the left hand side of the NAME entry.
 find $TMP_USR/share/man/man3 -type f -print0 | xargs -0 perl -i -p -e 'if ($fix) { ($left, $right) = /^(.+)( \\-.+)$/; $left =~ s/ //go; $_ = "$left$right\n"; $fix = 0; }; $fix = 1 if /^.SH NAME/o;' 
@@ -14,7 +12,7 @@ for i in $TMP_USR/bin/* $TMP_USR/lib/libDataSeries.so.*; do
     case "$TYPE" in
         *dynamically*linked*) chrpath -d $i; strip $i ;;
         *ELF*LSB*shared*object*) chrpath -d $i; strip $i ;;
-        *shell*script*|*perl*script*) : ;;
+        *ASCII*text*|*shell*script*|*[Pp]erl*script*) : ;;
         *symbolic*link*to*) : ;;
         *) echo "File '$i' has unknown type '$TYPE'"; exit 1 ;;
     esac

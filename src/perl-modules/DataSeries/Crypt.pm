@@ -32,7 +32,7 @@ use strict;
 use Exporter;
 use Carp;
 use Crypt::Rijndael;
-use Digest::SHA1 qw(sha1);
+use Lintel::SHA1;
 use Carp;
 use Sys::Hostname;
 
@@ -44,6 +44,15 @@ use vars qw(@EXPORT @ISA);
 # my %hex_to_special;
 my $didkeys;
 my $candecrypt;
+
+sub sha1 ($) {
+    my ($data) = @_;
+
+    my $sha1 = $Lintel::SHA1::impl_package->new();
+    $sha1->add($data);
+    my $digest = $sha1->digest;
+    return $digest;
+}
 
 sub import {
     my $pkg = shift;

@@ -1,7 +1,6 @@
 #include <string>
 
 #include <boost/bind.hpp>
-#include <boost/foreach.hpp>
 #include <boost/format.hpp>
 
 #include <Lintel/StringUtil.hpp>
@@ -62,9 +61,9 @@ DSExprParser::Selector firstMatch(vector<ExtentSeries *> *series, const string &
     if (prefixequal(name, "remove.")) {
         name = name.substr(7);
     }
-    BOOST_FOREACH(ExtentSeries *e, *series) {
-        if (e->getType()->hasColumn(name)) {
-            return make_pair(e, name);
+    for(vector<ExtentSeries *>::iterator i = series->begin(); i != series->end(); ++i) {
+        if ((**i).getType()->hasColumn(name)) {
+            return make_pair(*i, name);
         }
     }
     return DSExprParser::Selector(); // make_pair(static_cast<ExtentSeries *>(NULL), string());
