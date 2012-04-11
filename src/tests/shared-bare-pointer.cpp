@@ -51,8 +51,16 @@ void testConvertValid() {
     SINVARIANT(g->extent_source_offset == -1);
     delete e;
     se.reset();
-    SINVARIANT(e->extent_source_offset == -2); // Read of freed memory!
-    SINVARIANT(g->extent_source_offset == -2); // Read of freed memory!
+    if (e->extent_source_offset != -2 || g->extent_source_offset != -2) { // Read of freed memory!
+        lintel::DeptoolInfo deptool_info = lintel::getDeptoolInfo();
+        SINVARIANT(deptool_info.haveAllInfo());
+        INVARIANT(deptool_info.osVersion() == "ubuntu-8.04"
+                  || deptool_info.os == "centos" && deptool_info.version[0] == '5'
+                  || deptool_info.osVersion() == "opensuse-12.1",
+                  format("unexpected sentinal values %d/%d on '%s'") 
+                  % e->extent_source_offset % g->extent_source_offset
+                  % deptool_info.osVersionArch());
+    }
     
     cout << "passed.\n";
 }
