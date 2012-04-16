@@ -26,6 +26,7 @@ ENDIF(BUILD_SHARED_LIBS)
 
 #### Lintel
 
+INCLUDE(FindBoost)
 # TODO: extend FindLintel to check for all dependencies again and do something
 # useful if the dependencies have vanished.
 SET(LINTEL_FIND_REQUIRED ON)
@@ -44,7 +45,6 @@ ENDIF(LINTEL_program-options_ENABLED)
 #### Threads
 
 INCLUDE(FindThreads)
-INCLUDE(FindBoost)
 SET(BOOST_THREAD_FIND_REQUIRED ON)
 LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-mt")
 

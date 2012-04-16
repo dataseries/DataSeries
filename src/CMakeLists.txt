@@ -6,12 +6,13 @@
 # cmake rules for the src directory
 
 INCLUDE_DIRECTORIES(
-	${DataSeries_SOURCE_DIR}/include
+	${DataSeries_SOURCE_DIR}/include # first to override older installed ones
 	${DataSeries_SOURCE_DIR}/src
+
+	${LINTEL_INCLUDE_DIR} # so local build overrides global install
 
         ${Boost_INCLUDE_DIRS}
         ${LIBXML2_INCLUDE_DIR}
-	${LINTEL_INCLUDE_DIR}
 	${CRYPTO_INCLUDE_DIR}
 	${FULL_SRT_INCLUDE_DIR}
 	${PCRE_INCLUDE_DIR}

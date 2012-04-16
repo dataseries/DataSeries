@@ -56,6 +56,7 @@ void testConvertValid() {
         SINVARIANT(deptool_info.haveAllInfo());
         INVARIANT(deptool_info.osVersion() == "ubuntu-8.04"
                   || deptool_info.os == "centos" && deptool_info.version[0] == '5'
+                  || deptool_info.os == "rhel" && deptool_info.version[0] == '5'
                   || deptool_info.osVersion() == "opensuse-12.1",
                   format("unexpected sentinal values %d/%d on '%s'") 
                   % e->extent_source_offset % g->extent_source_offset
