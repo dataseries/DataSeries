@@ -68,16 +68,18 @@ for i in `seq 0 9`; do
     start=`expr $end + 1`
 done
 
-# On laptop, nthreads=400, rotate=0.1, extent-interval=0.03 is almost perfect; back off by >10x in
-# # threads, 1.5x in extent interval to make timing safer.  If we hit race conditions on this test,
-# then we can fix up the test to be more predictable in how many things get written
 echo "--------------- testing parallel rotation via thread ---------"
 ./file-rotation periodic-threaded-rotater --nthreads=40 --execution-time=2 --rotate-interval=0.25 \
-    --extent-interval=0.05
+    --extent-interval=0.05 >rcfr-ptr-out.txt
 
-# expect 8 ds files.
+ROTATE_COUNT=`grep 'INFO: thread rotated ' rcfr-ptr-out.txt | awk '{print $4}'`
+[ ! -z "$ROTATE_COUNT" ]
+ROTATE_MAX=`expr $ROTATE_COUNT - 1`
+
+[ ! -f ptr-$ROTATE_COUNT.ds ] || exit 1 # max + 1 should not exist.
+# expect $ROTATE_COUNT ds files (usually 8)
 rm rcfr-unsorted.txt rcfr-expect.txt >/dev/null
-for i in `seq 0 7`; do
+for i in `seq 0 $ROTATE_MAX`; do
     if [ ! -f ptr-$i.ds ]; then
         echo "Error: missing ptr-$i.ds"
         exit 1
@@ -99,6 +101,7 @@ echo "--------------- testing parallel rotation via callback ---------"
 ROTATE_COUNT=`grep 'INFO: rotated ' rcfr-parallel-out.txt | awk '{print $3}'`
 ROTATE_MAX=`expr $ROTATE_COUNT - 1`
 
+[ ! -f cbr-$ROTATE_COUNT.ds ] || exit 1 # max + 1 should not exist.
 # expect $ROTATE_COUNT ds files (usually 8).
 rm rcfr-unsorted.txt rcfr-expect.txt
 for i in `seq 0 $ROTATE_MAX`; do
