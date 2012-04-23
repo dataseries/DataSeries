@@ -52,6 +52,9 @@ void testConvertValid() {
     delete e;
     se.reset();
     if (e->extent_source_offset != -2 || g->extent_source_offset != -2) { // Read of freed memory!
+        // undo any user env borkedness
+        unsetenv("BUILD_OS");
+        unsetenv("UNAME_M");
         lintel::DeptoolInfo deptool_info = lintel::getDeptoolInfo();
         SINVARIANT(deptool_info.haveAllInfo());
         INVARIANT(deptool_info.osVersion() == "ubuntu-8.04"
