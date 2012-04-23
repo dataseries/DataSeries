@@ -728,7 +728,7 @@ GF_Int32::GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     if (xml_divisor == NULL) {
 	divisor = 1;
     } else {
-	divisor = atoi((char *)xml_divisor);
+	divisor = stringToInteger<int32_t>(reinterpret_cast<const char *>(xml_divisor));
     }
 }
 
@@ -997,7 +997,7 @@ GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
     if (xml_multiplier == NULL) {
 	multiplier = 1;
     } else {
-	multiplier = atof((char *)xml_multiplier);
+	multiplier = stringToDouble(reinterpret_cast<char *>(xml_multiplier));
     }
 }
 
