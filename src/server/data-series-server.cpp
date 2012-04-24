@@ -142,8 +142,8 @@ public:
             waitForSuccessfulChild(pid);
 
             ExtentTypeLibrary lib;
-            const ExtentType &type(lib.registerTypeR(xml_desc));
-            updateTableInfo(dest_table, &type);
+            const ExtentType::Ptr type(lib.registerTypePtr(xml_desc));
+            updateTableInfo(dest_table, type.get());
         }
     }
 
@@ -182,7 +182,7 @@ public:
             requestError("can not handle more rows");
         }
         ExtentTypeLibrary lib;
-        const ExtentType &type(lib.registerTypeR(xml_desc));
+        const ExtentType::Ptr type(lib.registerTypePtr(xml_desc));
 
         ExtentSeries output_series(type);
         DataSeriesSink output_sink(tableToPath(dest_table), Extent::compress_lzf, 1);
@@ -191,8 +191,8 @@ public:
         output_sink.writeExtentLibrary(lib);
 
         vector<boost::shared_ptr<GeneralField> > fields;
-        for (uint32_t i = 0; i < type.getNFields(); ++i) {
-            GeneralField::Ptr tmp(GeneralField::make(output_series, type.getFieldName(i)));
+        for (uint32_t i = 0; i < type->getNFields(); ++i) {
+            GeneralField::Ptr tmp(GeneralField::make(output_series, type->getFieldName(i)));
             fields.push_back(tmp);
         }
 
@@ -210,7 +210,7 @@ public:
             }
         }
 
-        updateTableInfo(dest_table, &type);
+        updateTableInfo(dest_table, type.get());
     }
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
@@ -478,7 +478,7 @@ private:
 
         DataSeriesSink output(tableToPath(table_name), Extent::compress_lzf, 1);
         ExtentTypeLibrary library;
-        const ExtentType &type(library.registerTypeR(extent_type));
+        const ExtentType::Ptr type(library.registerTypePtr(extent_type));
         output.writeExtentLibrary(library);
         Extent tmp(type);
         output.writeExtent(tmp, NULL);

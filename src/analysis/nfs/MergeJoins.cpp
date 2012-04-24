@@ -227,7 +227,7 @@ public:
 	}
 	string tmp = (boost::format(attropscommonjoin_xml_in) 
 		      % units_epoch).str();
-	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
+	es_out.setType(ExtentTypeLibrary::sharedExtentTypePtr(tmp));
     }
 
     void reportMemoryUsage() {
@@ -698,7 +698,7 @@ public:
 	
 	string repl = str(format("units=\"%s\" epoch=\"%s\"") % units % epoch);
 	string tmp = str(format(commonattrrw_xml_in) % repl);
-	es_out.setType(ExtentTypeLibrary::sharedExtentType(tmp));
+	es_out.setType(ExtentTypeLibrary::sharedExtentTypePtr(tmp));
     }
 
     void setInputs(DataSeriesModule *ca_join,

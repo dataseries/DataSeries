@@ -43,8 +43,8 @@ sourceByIndex(TypeIndexModule *source,char *index_filename,int start_secs, int e
     TypeIndexModule src("NFS trace: common index");
     src.addSource(index_filename);
     Extent::Ptr e = src.getSharedExtent();
-    INVARIANT(e->type.getName() == "NFS trace: common index",
-	      format("whoa, extent type %s bad") % e->type.getName());
+    INVARIANT(e->getType().getName() == "NFS trace: common index",
+	      format("whoa, extent type %s bad") % e->getType().getName());
 
     char *start_add = (char *)sbrk(0);
     ExtentSeries s(e);

@@ -349,7 +349,7 @@ void checkUpdates(FT &field,
 template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_name) {
     cout << format("testing on field %s\n") % field_name;
     ExtentTypeLibrary lib;
-    const ExtentType &t(lib.registerTypeR(fixed_width_types_xml));
+    const ExtentType::Ptr t(lib.registerTypePtr(fixed_width_types_xml));
 
     ExtentSeries s;
     Extent::Ptr e1(new Extent(t)), e2(new Extent(t));
@@ -359,7 +359,7 @@ template<typename T, typename FT> void testOneSEP_RowOffset(const string &field_
     s.setExtent(e1);
 
     FT field(s, field_name); // need to make after series so that type is defined for general fields
-    bool nullable = t.getNullable(field_name);
+    bool nullable = t->getNullable(field_name);
 
     SEP_RowOffset first_e1(s.getRowOffset());
     fillSEP_RowOffset(s, field, o1, r1, nullable);

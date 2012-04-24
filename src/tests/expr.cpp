@@ -28,7 +28,7 @@ static string extent_type_xml(
     DataSeriesSink dsout(dsfn, Extent::compress_lzf, 1);
 
     ExtentTypeLibrary library;
-    const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
+    const ExtentType::Ptr extent_type(library.registerTypePtr(extent_type_xml));
     dsout.writeExtentLibrary(library);
     
     ExtentSeries extent_series(extent_type);
@@ -83,8 +83,8 @@ void testSeriesSelect() {
 
     ExtentTypeLibrary library;
 
-    const ExtentType &extent_type_1(library.registerTypeR(extent_type_1_xml));
-    const ExtentType &extent_type_2(library.registerTypeR(extent_type_2_xml));
+    const ExtentType::Ptr extent_type_1(library.registerTypePtr(extent_type_1_xml));
+    const ExtentType::Ptr extent_type_2(library.registerTypePtr(extent_type_2_xml));
 
     ExtentSeries series1(extent_type_1), series2(extent_type_2);
     series1.newExtent();
@@ -126,7 +126,7 @@ void testNullExpr() {
 
     ExtentTypeLibrary library;
 
-    const ExtentType &extent_type(library.registerTypeR(extent_type_xml));
+    const ExtentType::Ptr extent_type(library.registerTypePtr(extent_type_xml));
 
     ExtentSeries series(extent_type);
     series.newExtent();

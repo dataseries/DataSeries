@@ -27,7 +27,7 @@ const string extent_type_xml =
 "  <field type=\"int32\" name=\"count\" />\n"
 "</ExtentType>\n";
 
-void writeExtent(IExtentSink &output, const ExtentType &type, uint32_t thread,
+void writeExtent(IExtentSink &output, const ExtentType::Ptr type, uint32_t thread,
                  uint32_t &count, uint32_t rows) {
     ExtentSeries s(type);
     s.newExtent();
@@ -45,7 +45,7 @@ void writeExtent(IExtentSink &output, const ExtentType &type, uint32_t thread,
 
 void simpleFileRotation() {
     ExtentTypeLibrary library;
-    const ExtentType &type = library.registerTypeR(extent_type_xml);
+    const ExtentType::Ptr type = library.registerTypePtr(extent_type_xml);
 
     DataSeriesSink output(Extent::compress_lzf);
 
@@ -62,7 +62,7 @@ void simpleFileRotation() {
 void simpleRotatingFileSink() {
     RotatingFileSink rfs(Extent::compress_lzf);
 
-    const ExtentType &type = rfs.registerType(extent_type_xml);
+    const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     
     uint32_t count = 0;
     for (uint32_t i=0; i < 10; ++i) {
@@ -74,7 +74,7 @@ void simpleRotatingFileSink() {
     }
 }
 
-void *ptrExtentWriter(RotatingFileSink *rfs, const ExtentType *type, uint32_t thread_num) {
+void *ptrExtentWriter(RotatingFileSink *rfs, const ExtentType::Ptr type, uint32_t thread_num) {
     Clock::Tfrac start = Clock::todTfrac();
     int64_t stop = start + Clock::secondsToTfrac(po_execution_time.get());
 
@@ -87,7 +87,7 @@ void *ptrExtentWriter(RotatingFileSink *rfs, const ExtentType *type, uint32_t th
             uint32_t microseconds = Clock::TfracToMicroSec(delta);
             usleep(microseconds);
         }
-        writeExtent(*rfs, *type, thread_num, count, 1);
+        writeExtent(*rfs, type, thread_num, count, 1);
     }
     LintelLog::info(format("thread %d wrote %d extents") % thread_num % count);
     return NULL;
@@ -114,13 +114,13 @@ void *ptrRotater(RotatingFileSink *rfs) {
 void periodicThreadedRotater() {
     RotatingFileSink rfs(Extent::compress_lzf);
 
-    const ExtentType &type = rfs.registerType(extent_type_xml);
+    const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     
     SINVARIANT(po_extent_interval.get() > 0 && po_extent_interval.get() < 1);
     SINVARIANT(po_rotate_interval.get() > 0 && po_rotate_interval.get() < 1);
     vector<PThread *> threads;
     for (uint32_t i=0; i < po_nthreads.get(); ++i) {
-        threads.push_back(new PThreadFunction(boost::bind(ptrExtentWriter, &rfs, &type, i)));
+        threads.push_back(new PThreadFunction(boost::bind(ptrExtentWriter, &rfs, type, i)));
         threads.back()->start();
     }
     threads.push_back(new PThreadFunction(boost::bind(ptrRotater, &rfs)));
@@ -157,7 +157,7 @@ void callbackRotate(RotatingFileSink *rfs, off64_t, Extent &) {
 void extentCallbackRotater() {
     RotatingFileSink rfs(Extent::compress_lzf);
 
-    const ExtentType &type = rfs.registerType(extent_type_xml);
+    const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     rfs.setExtentWriteCallback(boost::bind(callbackRotate, &rfs, _1, _2));
     rfs.changeFile("cbr-0.ds");
     cbr_count = 1;
@@ -166,7 +166,7 @@ void extentCallbackRotater() {
     SINVARIANT(po_extent_interval.get() > 0 && po_extent_interval.get() < 1);
     vector<PThread *> threads;
     for (uint32_t i=0; i < po_nthreads.get(); ++i) {
-        threads.push_back(new PThreadFunction(boost::bind(ptrExtentWriter, &rfs, &type, i)));
+        threads.push_back(new PThreadFunction(boost::bind(ptrExtentWriter, &rfs, type, i)));
         threads.back()->start();
     }
     for (vector<PThread *>::iterator i = threads.begin(); i != threads.end(); ++i) {

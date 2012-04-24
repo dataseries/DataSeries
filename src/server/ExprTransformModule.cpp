@@ -52,7 +52,7 @@ public:
         output_xml.append("</ExtentType>\n");
         
         ExtentTypeLibrary lib;
-        output_series.setType(lib.registerTypeR(output_xml));
+        output_series.setType(lib.registerTypePtr(output_xml));
         previous_row_series.setType(*output_series.getType());
         previous_row_series.newExtent();
         previous_row_series.newRecord();

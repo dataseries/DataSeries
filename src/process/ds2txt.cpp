@@ -266,7 +266,7 @@ main(int argc, char *argv[])
 
     if (skip_types == false) {
 	cout << "# Extent Types ...\n";
-	for(map<const string, const ExtentType *>::iterator i 
+	for(ExtentTypeLibrary::NameToType::iterator i 
 		= first_source->getLibrary().name_to_type.begin();
 	    i != first_source->getLibrary().name_to_type.end(); ++i) {
 	    cout << i->second->getXmlDescriptionString() << "\n";

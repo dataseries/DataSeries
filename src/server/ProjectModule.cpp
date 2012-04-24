@@ -27,7 +27,7 @@ public:
         }
         output_xml.append("</ExtentType>\n");
         ExtentTypeLibrary lib;
-        const ExtentType &output_type(lib.registerTypeR(output_xml));
+        const ExtentType::Ptr output_type(lib.registerTypePtr(output_xml));
             
         output_series.setType(output_type);
 

@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     int child = fork();
     if (child == 0) {
         ExtentTypeLibrary library;
-        const ExtentType &type = library.registerTypeR(type_string);
+        const ExtentType::Ptr type = library.registerTypePtr(type_string);
 
         DataSeriesSink sink("incomplete-ds-file.ds", Extent::compress_lzf);
         ExtentSeries series(type);

@@ -20,6 +20,8 @@
 
 #include <libxml/tree.h>
 
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
 #include <Lintel/AssertBoost.hpp>
@@ -52,7 +54,7 @@ namespace dataseries {
   </ExtentType>
 \endverbatim
   */
-class ExtentType : boost::noncopyable {
+class ExtentType : boost::noncopyable, public boost::enable_shared_from_this<const ExtentType> {
 public:
     /** A type that is guaranteed to be a 1 byte unsigned integer;
 	obsolete, just use uint8_t */
@@ -66,6 +68,9 @@ public:
     /** A type that is guaranteed to be a 64 bit signed integer;
 	obsolete, just use int64_t */
     typedef int64_t int64;
+
+    /** Shared pointer type for an ExtentType */
+    typedef boost::shared_ptr<const ExtentType> Ptr;
 
     /** This enumeration identifies the type of field
 
@@ -166,11 +171,11 @@ public:
     /** Returns the type of the Extent that stores the XML descriptions
         of all the ExtentTypes used in a DataSeries file. */
     static const ExtentType &getDataSeriesXMLType() {
-	return dataseries_xml_type;
+	return *dataseries_xml_type;
     }
     /** Returns the type of the index of a DataSeries file. */
     static const ExtentType &getDataSeriesIndexTypeV0() {
-	return dataseries_index_type_v0;
+	return *dataseries_index_type_v0;
     }
 
     // we have visible and invisible fields; visible fields are
@@ -380,9 +385,11 @@ public:
     // utility function, should go somewhere else.
     static std::string strGetXMLProp(xmlNodePtr cur, const std::string &option_name,
 				     bool empty_ok = false);
+
+    ~ExtentType();
 private:
-    static const ExtentType &dataseries_xml_type;
-    static const ExtentType &dataseries_index_type_v0;
+    static const ExtentType::Ptr dataseries_xml_type;
+    static const ExtentType::Ptr dataseries_index_type_v0;
 
     // a compelling case has been made that identifying fields by
     // column number is not necessary (the only use so far is for
@@ -474,7 +481,6 @@ private:
     friend class dataseries::xmlDecode;
 
     ExtentType(const std::string &xmldesc);
-    ~ExtentType();
 private:
     static void parsePackBitFields(ParsedRepresentation &ret, 
 				   int32 &byte_pos);
@@ -504,20 +510,27 @@ public:
 
     // TODO: all the ExtentType *'s in here should turn into smart_ptr's so that we can
     // use weak pointers inside and the use of bare extent types should be removed.
+    /** You should migrate to registerTypePtr.  This function will be removed after 2013-05-01 */
     const ExtentType *registerType(const std::string &xmldesc) FUNC_DEPRECATED {
-	return &registerTypeR(xmldesc);
+	return registerTypePtr(xmldesc).get();
+    }
+
+    /** You should migrate to registerTypePtr.  This function will be removed after 2013-05-01 
+        replace-string 'ExtentType &(.+)\.registerTypeR' 'ExtentType::Ptr $1.registerTypePtr' *.pp
+    */
+    const ExtentType &registerTypeR(const std::string &xmldesc) FUNC_DEPRECATED {
+        return *registerTypePtr(xmldesc);
     }
 
     /** Creates an ExtentType from an XML description using @c sharedExtentType
-        and stores it in the map.  Returns a reference to the ExtentType.  This
+        and stores it in the map.  Returns a shared pointer to the ExtentType.  This
         name is transitory, and will revert back to registerType once we have
         completed deprecating registerType()
 
         Preconditions:
         - xmldesc must be valid XML.
-
     */
-    const ExtentType &registerTypeR(const std::string &xmldesc);
+    const ExtentType::Ptr registerTypePtr(const std::string &xmldesc);
 
     /** Adds an ExtentType to the map */
     void registerType(const ExtentType &type);
@@ -553,12 +566,19 @@ public:
 	\todo TODO: find some other way to do this so that people
 	can't do something bogus, e.g. return a const_iterator.
     */
-    std::map<const std::string, const ExtentType *> name_to_type;
-    /** Creates or looks up an ExtentType object corresponding to
-        the given XML.  Identical XML descriptions will yield
-        the same ExtentType object.  The ExtentTypes returned
-        are valid for the duration of the program. */
-    static const ExtentType &sharedExtentType(const std::string &xmldesc);
+
+    typedef std::map<const std::string, ExtentType::Ptr> NameToType;
+    NameToType name_to_type;
+
+    /** Creates or looks up an ExtentType object corresponding to the given XML.  Identical XML
+        descriptions will yield the same ExtentType object.  The ExtentTypes returned are valid so
+        long as a pointer to the shared pointer remains. */
+    static const ExtentType::Ptr sharedExtentTypePtr(const std::string &xmldesc);
+
+    /** Reference version, prefer to use the shared pointer version */
+    static const ExtentType &sharedExtentType(const std::string &xmldesc) FUNC_DEPRECATED {
+        return *sharedExtentTypePtr(xmldesc);
+    }
 };
 
 #endif

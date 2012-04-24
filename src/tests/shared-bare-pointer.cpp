@@ -25,7 +25,7 @@ string extent_type
 void testConvertValid() {
     cout << "testing convert-valid...";
     ExtentTypeLibrary lib;
-    const ExtentType &type(lib.registerTypeR(extent_type));
+    const ExtentType::Ptr type(lib.registerTypePtr(extent_type));
 
     // raw -> smart -> raw
     Extent *e = new Extent(type);
@@ -72,7 +72,7 @@ void testConvertValid() {
 void testConvertInvalid() {
     cout << "testing convert-invalid...";
     ExtentTypeLibrary lib;
-    const ExtentType &type(lib.registerTypeR(extent_type));
+    const ExtentType::Ptr type(lib.registerTypePtr(extent_type));
 
     boost::shared_ptr<Extent> se1(new Extent(type));
     boost::shared_ptr<Extent> se2 = se1;
@@ -84,7 +84,7 @@ void testConvertInvalid() {
 
 class FakeSourceBare : public DataSeriesModule {
 public:
-    FakeSourceBare(uint32_t num) : num(num), lib(), type(lib.registerTypeR(extent_type)) { }
+    FakeSourceBare(uint32_t num) : num(num), lib(), type(lib.registerTypePtr(extent_type)) { }
 
     virtual Extent *getExtent() {
         if (num == 0) {
@@ -97,12 +97,12 @@ public:
 
     uint32_t num;
     ExtentTypeLibrary lib;
-    const ExtentType &type;
+    const ExtentType::Ptr type;
 };
 
 class FakeSourceShared : public DataSeriesModule {
 public:
-    FakeSourceShared(uint32_t num) : num(num), lib(), type(lib.registerTypeR(extent_type)) { }
+    FakeSourceShared(uint32_t num) : num(num), lib(), type(lib.registerTypePtr(extent_type)) { }
 
     virtual Extent::Ptr getSharedExtent() {
         if (num == 0) {
@@ -117,7 +117,7 @@ public:
 
     uint32_t num;
     ExtentTypeLibrary lib;
-    const ExtentType &type;
+    const ExtentType::Ptr type;
 };
 
 class PassThroughBare : public DataSeriesModule {

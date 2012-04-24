@@ -292,7 +292,7 @@ void checkRegisterUnitsEpoch() {
     cout << format("register units epoch seed %d\n") % seed;
     ExtentTypeLibrary lib;
 
-    const ExtentType &type(lib.registerTypeR
+    const ExtentType::Ptr type(lib.registerTypePtr
 	("<ExtentType name=\"test\" namespace=\"test\" version=\"1.0\" >\n"
 	 "  <field type=\"int64\" name=\"nsec_unix\" />"
 	 "  <field type=\"int64\" name=\"usec_unix\" />"

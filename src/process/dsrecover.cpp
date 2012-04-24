@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 
     const ExtentTypeLibrary &library = source.getLibrary();    
     ExtentTypeLibrary new_library;
-    for (map<const string, const ExtentType *>::const_iterator
+    for (ExtentTypeLibrary::NameToType::const_iterator
 	     i = library.name_to_type.begin(); i != library.name_to_type.end(); i++) {
 	if (!prefixequal(i->second->getName(), "DataSeries: ")) {
 	    new_library.registerType(*i->second);

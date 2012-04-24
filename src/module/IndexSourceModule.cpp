@@ -353,7 +353,7 @@ void IndexSourceModule::unpackThread() {
             Extent::Ptr e(new Extent(*pe->type, pe->bytes, pe->need_bitflip));
 	    e->extent_source = pe->extent_source;
 	    e->extent_source_offset = pe->extent_source_offset;
-	    SINVARIANT(e->type.getName() == pe->uncompressed_type);
+	    SINVARIANT(e->type->getName() == pe->uncompressed_type);
 	    SINVARIANT(e->size() == unpacked_size);
 	    prefetch->mutex.lock();
 	    SINVARIANT(pe->unpacked == NULL && pe->bytes.size() > 0);

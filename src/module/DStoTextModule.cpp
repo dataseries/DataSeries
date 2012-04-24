@@ -294,15 +294,15 @@ Extent::Ptr DStoTextModule::getSharedExtent() {
     if (e == NULL) {
 	return e;
     }
-    if (e->type.getName() == "DataSeries: XmlType") {
+    if (e->type->getName() == "DataSeries: XmlType") {
 	return e; // for now, never print these, that was previous behavior of ds2txt because the default source module skips the type extent at the beginning
     }
 
-    if (print_index == false && e->type.getName() == "DataSeries: ExtentIndex") {
+    if (print_index == false && e->type->getName() == "DataSeries: ExtentIndex") {
 	return e;
     }
 
-    PerTypeState &state = type_to_state[e->type.getName()];
+    PerTypeState &state = type_to_state[e->type->getName()];
 
     state.series.setExtent(e);
     getExtentParseWhereExpr(state);

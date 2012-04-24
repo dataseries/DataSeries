@@ -362,9 +362,9 @@ protected:
 	SINVARIANT(!is_open);
         is_open = true;
 
-        infotype = &library.registerTypeR(indexinfo_xml);
-        minmaxtype = &library.registerTypeR(generateMinMaxType(type_prefix));
-        modifytype = &library.registerTypeR(modifytype_xml);
+        infotype = library.registerTypePtr(indexinfo_xml);
+        minmaxtype = library.registerTypePtr(generateMinMaxType(type_prefix));
+        modifytype = library.registerTypePtr(modifytype_xml);
 
         output = new DataSeriesSink(index_filename,
                                     packing_args.compress_modes,
@@ -388,9 +388,9 @@ private:
     commonPackingArgs packing_args;
 
     ExtentTypeLibrary library;
-    const ExtentType *infotype;
-    const ExtentType *minmaxtype;
-    const ExtentType *modifytype;
+    ExtentType::Ptr infotype;
+    ExtentType::Ptr minmaxtype;
+    ExtentType::Ptr modifytype;
     DataSeriesSink *output;
 
     ExtentSeries *minmaxseries;

@@ -33,7 +33,7 @@ namespace dataseries {
         
         /** Register a type on the rotating sink; only valid to call up to the first call to
             changeFile. */
-        const ExtentType &registerType(const std::string &xmldesc);
+        const ExtentType::Ptr registerType(const std::string &xmldesc);
 
         /** Set the extent write callback; will set the current callback, but the old callback may
             continue to be used until a rotation is completed, i.e. a call to

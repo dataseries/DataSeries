@@ -91,7 +91,7 @@ FilterModule::~FilterModule() { }
 Extent::Ptr FilterModule::getSharedExtent() {
     while(true) {
         Extent::Ptr e = from.getSharedExtent();
-	if (e == NULL || prefixequal(e->type.getName(), type_prefix)) {
+	if (e == NULL || prefixequal(e->type->getName(), type_prefix)) {
 	    return e;
         }
     }
@@ -118,6 +118,21 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
 			   int target_extent_size)
     : outputtype(in_outputtype),
       target_extent_size(target_extent_size),
+      sink(sink), series(series)
+{
+    SINVARIANT(&series != NULL);
+    INVARIANT(&outputtype != NULL, "can't create output module without type");
+    INVARIANT(!series.hasExtent(),
+	      "series specified for output module already had an extent");
+    series.setType(outputtype);
+    series.newExtent();
+    cur_extent = series.getSharedExtent();
+}
+
+OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
+			   const ExtentType::Ptr in_outputtype, 
+			   int target_extent_size)
+    : outputtype(*in_outputtype), target_extent_size(target_extent_size),
       sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);

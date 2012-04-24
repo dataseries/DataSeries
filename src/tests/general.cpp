@@ -71,7 +71,7 @@ void checkExtentRecordCopy() {
                     "  <field type=\"variable32\" name=\"var32\" opt_nullable=\"yes\" />\n"
                     "</ExtentType>\n");
     ExtentTypeLibrary lib;
-    const ExtentType &type(lib.registerTypeR(type_xml));
+    const ExtentType::Ptr type(lib.registerTypePtr(type_xml));
 
     ExtentSeries as(type), bs(type);
     as.newExtent();

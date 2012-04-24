@@ -11,12 +11,12 @@ const string type_string =
 "</ExtentType>\n";
 
 void printIndex(off64_t offset, Extent &extent) {
-    cout << offset << "\t" << extent.type.getName() << "\t" << extent.size() << "\n";
+    cout << offset << "\t" << extent.getType().getName() << "\t" << extent.size() << "\n";
 }
 
 int main(int argc, char *argv[]) {
     ExtentTypeLibrary library;
-    const ExtentType &type = library.registerTypeR(type_string);
+    const ExtentType::Ptr type = library.registerTypePtr(type_string);
 
     DataSeriesSink sink("extent-write-callback.ds", Extent::compress_lzf);
     ExtentSeries series(type);

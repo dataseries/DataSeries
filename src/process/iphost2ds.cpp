@@ -95,7 +95,7 @@ main(int argc, char *argv[])
 				   packing_args.compress_level);
 
     ExtentTypeLibrary library;
-    const ExtentType &ip_hostname_type(library.registerTypeR(ip_hostname_xml));
+    const ExtentType::Ptr ip_hostname_type(library.registerTypePtr(ip_hostname_xml));
 
     ExtentSeries ip_hostname_series(ip_hostname_type);
 

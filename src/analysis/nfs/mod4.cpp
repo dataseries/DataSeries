@@ -62,7 +62,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->type.getName() == "attr-ops-join");
+	SINVARIANT(e->getType().getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -231,7 +231,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->type.getName() != "NFS trace: common")
+	if (e->getType().getName() != "NFS trace: common")
 	    return e;
 
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -375,7 +375,7 @@ public:
     Extent::Ptr e = source.getSharedExtent();
     if (e == NULL) 
       return e;
-    if (e->type.getName() != "NFS trace: common")
+    if (e->getType().getName() != "NFS trace: common")
       return e;
 
     for(s.setExtent(e);s.morerecords();++s) {
@@ -670,7 +670,7 @@ public:
     Extent::Ptr e = source.getSharedExtent();
     if (e == NULL) 
       return e;
-    if (e->type.getName() != "NFS trace: common")
+    if (e->getType().getName() != "NFS trace: common")
       return e;
 
     for(s.setExtent(e);s.morerecords();++s) {

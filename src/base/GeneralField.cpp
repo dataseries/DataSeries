@@ -1391,16 +1391,19 @@ ExtentRecordCopy::ExtentRecordCopy(ExtentSeries &_source, ExtentSeries &_dest)
     : fixed_copy_size(-1), source(_source), dest(_dest)
 { }
 
-void ExtentRecordCopy::prep(const ExtentType *copy_type) {
+void ExtentRecordCopy::prep(const ExtentType *copy_type_in) {
     SINVARIANT(fixed_copy_size == -1);
     SINVARIANT(source.type != NULL);
     SINVARIANT(dest.type != NULL);
-    if (copy_type == NULL) {
+    ExtentType::Ptr copy_type;
+    if (copy_type_in == NULL) {
         copy_type = dest.type;
+    } else {
+        copy_type = copy_type_in->shared_from_this();
     }
     if (source.getTypeCompat() == ExtentSeries::typeExact 
 	&& dest.getTypeCompat() == ExtentSeries::typeExact
-	&& source.getType() == dest.getType() && source.getType() == copy_type) {
+	&& source.getType() == dest.getType() && source.getTypePtr() == copy_type) {
 	// Can do a bitwise copy.
 	fixed_copy_size = source.getType()->fixedrecordsize();
 	INVARIANT(fixed_copy_size > 0,"internal error");

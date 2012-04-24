@@ -171,7 +171,7 @@ void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     // until after we've already compressed the data.
     writer_info.index_series.newRecord(); 
     writer_info.field_extentOffset.set(writer_info.cur_offset);
-    writer_info.field_extentType.set(writer_info.index_series.getExtentRef().type.getName());
+    writer_info.field_extentType.set(writer_info.index_series.getExtentRef().getType().getName());
 
     worker_info.bytes_in_progress += writer_info.index_series.getExtentRef().size();
     worker_info.pending_work.push_back
@@ -236,8 +236,8 @@ void DataSeriesSink::WriterInfo::checkedWrite(const void *buf, int bufsize) {
 void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
     INVARIANT(writer_info.wrote_library,
 	      "must write extent type library before writing extents!\n");
-    INVARIANT(valid_types.exists(&e.type), format("type %s (%p) wasn't in your type library")
-	      % e.type.getName() % &e.type);
+    INVARIANT(valid_types.exists(e.type), format("type %s (%p) wasn't in your type library")
+	      % e.getType().getName() % &e.getType());
     INVARIANT(worker_info.keep_going, "must not call writeExtent after calling close()");
     
     Extent::Ptr we(new Extent(e.getType()));
@@ -252,9 +252,9 @@ void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
     type_extent_series.newExtent();
 
     Variable32Field typevar(type_extent_series,"xmltype");
-    for(map<const string, const ExtentType *>::const_iterator i = lib.name_to_type.begin();
+    for(ExtentTypeLibrary::NameToType::const_iterator i = lib.name_to_type.begin();
 	i != lib.name_to_type.end();++i) {
-	const ExtentType *et = i->second;
+	const ExtentType::Ptr et = i->second;
 	if (et->getName() == "DataSeries: XmlType") {
 	    continue; // no point of writing this out; can't use it.
 	}
@@ -386,7 +386,7 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
             
             index_series.newRecord();
             field_extentOffset.set(cur_offset);
-            field_extentType.set(tc->extent->type.getName());
+            field_extentType.set(tc->extent->getType().getName());
             
             checkedWrite(tc->compressed.begin(), tc->compressed.size());
             cur_offset += tc->compressed.size();

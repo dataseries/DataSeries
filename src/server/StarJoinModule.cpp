@@ -179,7 +179,7 @@ public:
         LintelLogDebug("StarJoinModule", format("constructed output type:\n%s") % output_xml);
 
         ExtentTypeLibrary lib;
-        output_series.setType(lib.registerTypeR(output_xml));
+        output_series.setType(lib.registerTypePtr(output_xml));
 
         Extractor::makeInto(fact_fields, output_series);
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {

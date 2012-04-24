@@ -185,7 +185,7 @@ main(int argc, char *argv[])
 	for(vector<string>::iterator i = copy_names.begin();
 	    i != copy_names.end(); ++i) {
 	    const ExtentType &t(*tmp.getLibrary().getTypeByName(*i));
-	    out_library.registerTypeR(t.getXmlDescriptionString());
+	    out_library.registerTypePtr(t.getXmlDescriptionString());
 	}
 
 	output.writeExtentLibrary(out_library);

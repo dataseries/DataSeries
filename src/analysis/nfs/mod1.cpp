@@ -58,7 +58,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->type.getName() != "NFS trace: common")
+	if (e->getType().getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
@@ -158,7 +158,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->type.getName() != "NFS trace: common")
+	if (e->getType().getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
@@ -246,7 +246,7 @@ public:
     virtual Extent::Ptr getSharedExtent() {
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) return e;
-	if (e->type.getName() != "NFS trace: common") return e;
+	if (e->getType().getName() != "NFS trace: common") return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull()) continue;
 	    stat_payload_length.add(payload_length.val());
@@ -386,7 +386,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->type.getName() != "NFS trace: common")
+	if (e->getType().getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (op_id.isNull())
@@ -579,7 +579,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->type.getName() != "NFS trace: common")
+	if (e->getType().getName() != "NFS trace: common")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    curr = reqtime.val();

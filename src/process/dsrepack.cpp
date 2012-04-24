@@ -79,6 +79,7 @@ dataseries-utils(7), dsselect(1)
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/StringUtil.hpp>
+#include <Lintel/PointerUtil.hpp>
 
 #include <DataSeries/commonargs.hpp>
 #include <DataSeries/DataSeriesFile.hpp>
@@ -92,6 +93,7 @@ static const bool show_progress = true;
 static bool generate_info_extent = true;
 
 using namespace std;
+using lintel::safeDownCast;
 
 // TODO: figure out why when compressing from lzo to lzf, we can only
 // get up to ~200% cpu utilization rather than going to 400% on a 4way
@@ -102,18 +104,6 @@ using namespace std;
 // on a 2 way machine, we only got to ~150% cpu utilization yet no
 // thread was at 100%.  Fiddling with priorities of the compression
 // threads in DataSeriesFile didn't seem to do anything.
-
-// Derived from boost implementation; TODO move this into Lintel.
-template <class Target, class Source>
-inline Target *safe_downcast(Source *x)
-{
-    // detect logic error
-    Target *ret = dynamic_cast<Target *>(x);
-    INVARIANT(ret == x,
-              boost::format("dynamic cast failed in %s")
-              % __PRETTY_FUNCTION__);  
-    return ret;
-}
 
 struct PerTypeWork {
     OutputModule *output_module;
@@ -147,16 +137,16 @@ struct PerTypeWork {
 	    switch(t.getFieldType(s)) 
 		{
 		case ExtentType::ft_bool: 
-		    in_boolfields.push_back(safe_downcast<GF_Bool>(in));
-		    out_boolfields.push_back(safe_downcast<GF_Bool>(out));
+		    in_boolfields.push_back(safeDownCast<GF_Bool>(in));
+		    out_boolfields.push_back(safeDownCast<GF_Bool>(out));
 		    break;
 		case ExtentType::ft_int32: 
-		    in_int32fields.push_back(safe_downcast<GF_Int32>(in));
-		    out_int32fields.push_back(safe_downcast<GF_Int32>(out));
+		    in_int32fields.push_back(safeDownCast<GF_Int32>(in));
+		    out_int32fields.push_back(safeDownCast<GF_Int32>(out));
 		    break;
 		case ExtentType::ft_variable32: 
-		    in_var32fields.push_back(safe_downcast<GF_Variable32>(in));
-		    out_var32fields.push_back(safe_downcast<GF_Variable32>(out));
+		    in_var32fields.push_back(safeDownCast<GF_Variable32>(in));
+		    out_var32fields.push_back(safeDownCast<GF_Variable32>(out));
 		    break;
 		default:
 		    infields.push_back(in);
@@ -198,8 +188,7 @@ struct PerTypeWork {
     }
 };
 
-uint64_t fileSize(const string &filename)
-{
+uint64_t fileSize(const string &filename) {
     struct stat buf;
     INVARIANT(stat(filename.c_str(),&buf) == 0, 
 	      boost::format("stat(%s) failed: %s")
@@ -209,9 +198,7 @@ uint64_t fileSize(const string &filename)
     return buf.st_size;
 }
 
-void
-checkFileMissing(const std::string &filename)
-{
+void checkFileMissing(const std::string &filename) {
     struct stat buf;
     INVARIANT(stat(filename.c_str(), &buf) != 0, 
 	      boost::format("Refusing to overwrite existing file %s.\n")
@@ -230,18 +217,14 @@ const string dsrepack_info_type_xml(
   "</ExtentType>\n"
   );
 
-const ExtentType *dsrepack_info_type;
+ExtentType::Ptr dsrepack_info_type;
 
-void
-writeRepackInfo(DataSeriesSink &sink,
-		const commonPackingArgs &cpa, int file_count)
-{
+void writeRepackInfo(DataSeriesSink &sink, const commonPackingArgs &cpa, int file_count) {
     if (!generate_info_extent) {
 	return;
     }
     ExtentSeries series(*dsrepack_info_type);
-    OutputModule out_module(sink, series, *dsrepack_info_type, 
-			    cpa.extent_size);
+    OutputModule out_module(sink, series, *dsrepack_info_type, cpa.extent_size);
     BoolField enable_bz2(series, "enable_bz2");
     BoolField enable_gz(series, "enable_gz");
     BoolField enable_lzo(series, "enable_lzo");
@@ -264,9 +247,7 @@ writeRepackInfo(DataSeriesSink &sink,
     }
 }
 
-bool
-skipType(const ExtentType &type)
-{
+bool skipType(const ExtentType &type) {
     return type.getName() == "DataSeries: ExtentIndex"
 	|| type.getName() == "DataSeries: XmlType"
 	|| (type.getName() == "Info::DSRepack"
@@ -317,7 +298,7 @@ int main(int argc, char *argv[]) {
     TypeIndexModule source("");
     ExtentTypeLibrary library;
     if (generate_info_extent) {
-	dsrepack_info_type = &library.registerTypeR(dsrepack_info_type_xml);
+	dsrepack_info_type = library.registerTypePtr(dsrepack_info_type_xml);
     }
     map<string, PerTypeWork *> per_type_work;
 
@@ -353,7 +334,7 @@ int main(int argc, char *argv[]) {
 
 	DataSeriesSource f(argv[i]);
 
-	for(map<const string, const ExtentType *>::iterator j 
+	for(ExtentTypeLibrary::NameToType::iterator j 
 		= f.getLibrary().name_to_type.begin();
 	    j != f.getLibrary().name_to_type.end(); ++j) {
 	    if (skipType(*j->second)) {
@@ -363,16 +344,17 @@ int main(int argc, char *argv[]) {
 		cerr << boost::format("Warning, found extent type of name '%s'; probably should skip it") % j->first << endl;
 	    }
 	    const ExtentType *tmp = library.getTypeByName(j->first, true);
-	    INVARIANT(tmp == NULL || tmp == j->second,
+	    INVARIANT(tmp == NULL || tmp == j->second.get(),
 		      boost::format("XML types for type '%s' differ between file %s and an earlier file")
 		      % j->first % argv[i]);
 	    if (tmp == NULL) {
 		if (debug) {
 		    cout << "Registering type of name " << j->first << endl;
 		}
-		const ExtentType &t(library.registerTypeR(j->second->getXmlDescriptionString()));
+		const ExtentType::Ptr t
+                    = library.registerTypePtr(j->second->getXmlDescriptionString());
 		per_type_work[j->first] = 
-		    new PerTypeWork(*output, packing_args.extent_size, t);
+		    new PerTypeWork(*output, packing_args.extent_size, *t);
 	    }
 	    DEBUG_INVARIANT(per_type_work[j->first] != NULL, "internal");
 	}
@@ -409,15 +391,15 @@ int main(int argc, char *argv[]) {
 	if (inextent == NULL)
 	    break;
 	
-	if (skipType(inextent->type)) {
+	if (skipType(*inextent->type)) {
 	    continue;
 	}
 	++extent_num;
 	if (show_progress) {
 	    cout << boost::format("Processing extent #%d/%d of type %s\n")
-		% extent_num % extent_count % inextent->type.getName();
+		% extent_num % extent_count % inextent->type->getName();
 	}
-	PerTypeWork *ptw = per_type_work[inextent->type.getName()];
+	PerTypeWork *ptw = per_type_work[inextent->type->getName()];
 	INVARIANT(ptw != NULL, "internal");
 	for(ptw->inputseries.setExtent(inextent);
 	    ptw->inputseries.morerecords();

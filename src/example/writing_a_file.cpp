@@ -66,8 +66,8 @@ int main() {
         will be the first thing written to the file. */
 
     ExtentTypeLibrary types_for_file;
-    const ExtentType &read_type = types_for_file.registerTypeR(read_xml);
-    const ExtentType &write_type = types_for_file.registerTypeR(write_xml);
+    const ExtentType::Ptr read_type = types_for_file.registerTypePtr(read_xml);
+    const ExtentType::Ptr write_type = types_for_file.registerTypePtr(write_xml);
 
     /*  Then we open a file to write the records to. This will overwrite an existing file.
         DataSeries files can not be updated once closed. */

@@ -97,7 +97,7 @@ lowerCaseString(const string &src)
 class Indexer {
 public:
     Indexer(const string &index_filename, commonPackingArgs &packing_args) 
-	: library(), word_index_type(library.registerTypeR(textindex_word_xml)),
+	: library(), word_index_type(library.registerTypePtr(textindex_word_xml)),
 	  id_out(word_series,"id"), type_out(word_series,"type"), word_out(word_series,"word"),
 	  id_in(text_entries_series,"id"), text_in(text_entries_series,"text"),
 	  filename_out(word_series, "filename"), offset_out(word_series, "offset") {
@@ -154,7 +154,7 @@ public:
 
 protected:
     ExtentTypeLibrary library;
-    const ExtentType &word_index_type;
+    const ExtentType::Ptr word_index_type;
     DataSeriesSink *output;
 
     ExtentSeries word_series;
@@ -329,7 +329,7 @@ email_entries(vector<string> &args, commonPackingArgs &packing_args)
     check_file_missing(entries_filename);
 
     ExtentTypeLibrary library;
-    const ExtentType &entries_type(library.registerTypeR(text_entries_xml));
+    const ExtentType::Ptr entries_type(library.registerTypePtr(text_entries_xml));
 
     DataSeriesSink output(entries_filename, packing_args.compress_modes,
 			  packing_args.compress_level);

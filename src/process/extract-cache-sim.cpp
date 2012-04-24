@@ -160,7 +160,7 @@ void doAnimation(const vector<string> &args, const commonPackingArgs &packing_ar
 
     DataSeriesSink outds(args.back(), packing_args.compress_modes, packing_args.compress_level);
     ExtentTypeLibrary library;
-    const ExtentType &extent_type(library.registerTypeR(output_xml));
+    const ExtentType::Ptr extent_type(library.registerTypePtr(output_xml));
     ExtentSeries out_series(extent_type);
 
     OutputModule out_module(outds, out_series, extent_type, packing_args.extent_size);
@@ -445,7 +445,7 @@ void doEllard(const vector<string> &args, const commonPackingArgs &packing_args)
 
     DataSeriesSink outds(args.back(), packing_args.compress_modes, packing_args.compress_level);
     ExtentTypeLibrary library;
-    const ExtentType &extent_type(library.registerTypeR(output_xml));
+    const ExtentType::Ptr extent_type(library.registerTypePtr(output_xml));
     ExtentSeries out_series(extent_type);
 
     OutputModule out_module(outds, out_series, extent_type, packing_args.extent_size);

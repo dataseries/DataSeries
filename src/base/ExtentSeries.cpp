@@ -18,10 +18,10 @@ ExtentSeries::ExtentSeries(Extent *e, typeCompatibilityT tc)
     : typeCompatibility(tc)
 {
     if (e == NULL) {
-	type = NULL;
+	type.reset();
 	my_extent = NULL;
     } else {
-	type = &e->type;
+	type = e->type->shared_from_this();
 	INVARIANT(type != NULL,"bad initialization");
 	my_extent = e;
 	pos.reset(e);
@@ -32,10 +32,10 @@ ExtentSeries::ExtentSeries(Extent::Ptr e, typeCompatibilityT tc)
     : typeCompatibility(tc)
 {
     if (e == NULL) {
-	type = NULL;
+	type.reset();
 	my_extent = NULL;
     } else {
-	type = &e->type;
+	type = e->type->shared_from_this();
 	INVARIANT(type != NULL,"bad initialization");
         shared_extent = e;
 	my_extent = e.get();
@@ -52,21 +52,21 @@ ExtentSeries::~ExtentSeries() {
 	      % my_fields[0]->getName() % (type == NULL ? "unset type" : type->getName()));
 }
 
-void ExtentSeries::setType(const ExtentType &in_type) {
-    INVARIANT(&in_type != NULL,"you made a NULL reference grr");
-    if (type == &in_type) {
+void ExtentSeries::setType(const ExtentType::Ptr in_type) {
+    INVARIANT(in_type != NULL,"you made a NULL reference grr");
+    if (type == in_type) {
 	return; // nothing to do, a valid but useless call
     }
     switch(typeCompatibility)
 	{
 	case typeExact: 
 	    INVARIANT(type == NULL || type->getXmlDescriptionString() 
-		      != in_type.getXmlDescriptionString(), 
+		      != in_type->getXmlDescriptionString(), 
 		      "internal -- same xmldesc should get same type");
 	    INVARIANT(type == NULL,
 		      boost::format("Unable to change type with typeExact compatibility\n"
                                     "Type 1:\n%s\nType 2:\n%s\n")
-		      % type->getXmlDescriptionString() % in_type.getXmlDescriptionString());
+		      % type->getXmlDescriptionString() % in_type->getXmlDescriptionString());
 	    break;
 	case typeLoose:
 	    break;
@@ -75,7 +75,7 @@ void ExtentSeries::setType(const ExtentType &in_type) {
                         % typeCompatibility);
 	}
 
-    type = &in_type;
+    type = in_type;
     for(vector<Field *>::iterator i = my_fields.begin();
 	i != my_fields.end();++i) {
 	SINVARIANT(&(**i).dataseries == this)
@@ -100,7 +100,7 @@ void ExtentSeries::setExtent(Extent *e) {
         
     my_extent = e;
     pos.reset(my_extent);
-    if (e != NULL && &e->type != type) {
+    if (e != NULL && e->type != type) {
 	setType(e->type);
     }
 }
@@ -160,7 +160,7 @@ void ExtentSeries::iterator::setPos(const void *in_new_pos) {
 }
 
 void ExtentSeries::iterator::update(Extent *e) {
-    if (e->type.fixedrecordsize() == recordsize) {
+    if (e->type->fixedrecordsize() == recordsize) {
 	int offset = cur_pos - cur_extent->fixeddata.begin();
 	byte *begin_pos = cur_extent->fixeddata.begin();
 	cur_pos = begin_pos + offset;
@@ -169,7 +169,7 @@ void ExtentSeries::iterator::update(Extent *e) {
 	size_t offset = cur_pos - cur_extent->fixeddata.begin();
 	INVARIANT(recnum * recordsize == offset,
 		  ("whoa, pointer not on a record boundary?!\n"));
-	recordsize = e->type.fixedrecordsize();
+	recordsize = e->type->fixedrecordsize();
 	byte *begin_pos = cur_extent->fixeddata.begin();
 	cur_pos = begin_pos + recnum * recordsize;
     }

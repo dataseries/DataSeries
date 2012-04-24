@@ -120,7 +120,7 @@ public:
 
         ExtentTypeLibrary lib;
         LintelLog::info(format("output xml: %s") % output_xml);
-        output_series.setType(lib.registerTypeR(output_xml));
+        output_series.setType(lib.registerTypePtr(output_xml));
         
         Extractor::makeInto(extractors, output_series);
     }

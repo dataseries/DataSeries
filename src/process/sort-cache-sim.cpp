@@ -94,7 +94,7 @@ public:
 					  pack_args.extent_size));
 
 
-	const ExtentType &file_extent_type(library.registerTypeR(output_xml));
+	const ExtentType::Ptr file_extent_type(library.registerTypePtr(output_xml));
 	file_out_series.setType(file_extent_type);
 	file_out_module.reset(new OutputModule(*out_sink, file_out_series, file_extent_type,
 					       pack_args.extent_size));

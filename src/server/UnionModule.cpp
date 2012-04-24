@@ -110,7 +110,7 @@ public:
         output_xml.append("</ExtentType>\n");
         LintelLogDebug("UnionModule", format("constructed output type:\n%s") % output_xml);
         ExtentTypeLibrary lib;
-        output_series.setType(lib.registerTypeR(output_xml));
+        output_series.setType(lib.registerTypePtr(output_xml));
         for (uint32_t i = 0; i < sources.size(); ++i) {
             UM_UnionTable &ut(sources[i]);
             if (ut.series.hasExtent()) {

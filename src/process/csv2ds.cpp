@@ -121,7 +121,7 @@ namespace {
     lintel::ProgramOption<string> po_null_string("null-string", "Specify the string that will be interpreted as a null field", "null");
 }
 
-const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
+const ExtentType::Ptr getXMLDescFromFile(const string &filename, ExtentTypeLibrary &lib) {
     ifstream xml_desc_input(filename.c_str());
     INVARIANT(xml_desc_input.good(), 
 	      format("error opening %s: %s") % filename % strerror(errno));
@@ -146,7 +146,7 @@ const ExtentType &getXMLDescFromFile(const string &filename, ExtentTypeLibrary &
 
     LintelLogDebug("csv2ds::xml", format("XML description:\n%s") % xml_desc);
 
-    return lib.registerTypeR(xml_desc);
+    return lib.registerTypePtr(xml_desc);
 }
 
 void makeFields(const ExtentType &type, ExtentSeries &series,
@@ -159,7 +159,7 @@ void makeFields(const ExtentType &type, ExtentSeries &series,
     }
 }
 
-const ExtentType &getType(ExtentTypeLibrary &lib) {
+const ExtentType::Ptr getType(ExtentTypeLibrary &lib) {
     if (po_xml_desc_file.used()) {
 	return getXMLDescFromFile(po_xml_desc_file.get(), lib);
     } else {
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
 
     ExtentTypeLibrary lib;
 
-    const ExtentType &type(getType(lib));
+    const ExtentType::Ptr type(getType(lib));
 
     DataSeriesSink outds(ds_output_filename, packing_args.compress_modes,
 			 packing_args.compress_level);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
 
     vector<bool> is_nullable;
     vector<GeneralField *> fields;
-    makeFields(type, series, fields, is_nullable);
+    makeFields(*type, series, fields, is_nullable);
     istream *csv_input;
 
     if (csv_input_filename == "-") {

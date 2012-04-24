@@ -398,15 +398,16 @@ test_extentpackunpack()
     printf("test_extentpackunpack - start\n");
     ExtentTypeLibrary typelib;
 
-    typelib.registerTypeR("<ExtentType name=\"test type\">\n"
-			  "  <field type=\"int32\" name=\"input1\" pack_relative=\"input1\" />\n"
-			  "  <field type=\"int32\" name=\"input2\" pack_relative=\"input1\" />\n"
-			  "  <field type=\"int64\" name=\"int64-1\" pack_relative=\"int64-1\" />\n"
-			  "  <field type=\"int64\" name=\"int64-2\" pack_relative=\"int64-2\" />\n"
-			  "  <field type=\"double\" name=\"double1\" pack_scale=\"1e-6\" pack_relative=\"double1\" />\n"
-			  "  <field type=\"variable32\" name=\"var1\"/>\n"
-			  "  <field type=\"variable32\" name=\"var2\"/>\n"
-			  "</ExtentType>\n");
+    typelib.registerTypePtr
+        ("<ExtentType name=\"test type\">\n"
+         "  <field type=\"int32\" name=\"input1\" pack_relative=\"input1\" />\n"
+         "  <field type=\"int32\" name=\"input2\" pack_relative=\"input1\" />\n"
+         "  <field type=\"int64\" name=\"int64-1\" pack_relative=\"int64-1\" />\n"
+         "  <field type=\"int64\" name=\"int64-2\" pack_relative=\"int64-2\" />\n"
+         "  <field type=\"double\" name=\"double1\" pack_scale=\"1e-6\" pack_relative=\"double1\" />\n"
+         "  <field type=\"variable32\" name=\"var1\"/>\n"
+         "  <field type=\"variable32\" name=\"var2\"/>\n"
+         "</ExtentType>\n");
 
     ExtentSeries testseries(typelib,"test type");
     testseries.newExtent();
@@ -699,7 +700,7 @@ test_makecomplexfile()
 "  <field type=\"variable32\" name=\"null_variable32\" opt_nullable=\"yes\"/>\n"
 "</ExtentType>");
     ExtentTypeLibrary library;
-    const ExtentType &outputtype(library.registerTypeR(complextype));
+    const ExtentType::Ptr outputtype(library.registerTypePtr(complextype));
     DataSeriesSink output("misc.ds");
     output.writeExtentLibrary(library);
     ExtentSeries outputseries(outputtype);
@@ -784,7 +785,7 @@ test_doublebase_nullable()
 "</ExtentType>");
 
     ExtentTypeLibrary library;
-    const ExtentType &dbntype(library.registerTypeR(dbntype_xml));
+    const ExtentType::Ptr dbntype(library.registerTypePtr(dbntype_xml));
     ExtentSeries dbnseries(dbntype);
     DoubleField f_double(dbnseries,"double",
 			 Field::flag_nullable | DoubleField::flag_allownonzerobase);
@@ -830,15 +831,16 @@ test_compactnull()
     ExtentTypeLibrary typelib;
 
     // One real bool, 7 hidden ones
-    typelib.registerTypeR("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
-			  "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
-			  "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
-			  "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
-			  "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
-			  "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
-			  "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
-			  "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
-			  "</ExtentType>\n");
+    typelib.registerTypePtr
+        ("<ExtentType name=\"Test::CompactNulls\" pack_null_compact=\"non_bool\" >\n"
+         "  <field type=\"bool\" name=\"bool\" opt_nullable=\"yes\" />\n"
+         "  <field type=\"byte\" name=\"byte\" opt_nullable=\"yes\" />\n"
+         "  <field type=\"int32\" name=\"int32\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
+         "  <field type=\"int32\" name=\"int32b\" opt_nullable=\"yes\" pack_relative=\"int32\" />\n"
+         "  <field type=\"int64\" name=\"int64\" opt_nullable=\"yes\" pack_relative=\"int64\" />\n"
+         "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
+         "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+         "</ExtentType>\n");
     
     ExtentSeries series1(typelib,"Test::CompactNulls");
     series1.newExtent();
@@ -974,18 +976,15 @@ test_compactnull()
     cout << "test_compactnull - end\n";
 }
 
-void
-test_empty_field_name()
-{
+void test_empty_field_name() {
     MersenneTwisterRandom rand;
     cout << format("test_empty_field_name - start seed=%d\n") % rand.seed_used;
     ExtentTypeLibrary typelib;
 
-    // One real bool, 7 hidden ones
-    typelib.registerTypeR("<ExtentType name=\"Test::EmptyFieldName\" >\n"
-			  "  <field type=\"int32\" name=\"int32a\" />\n"
-			  "  <field type=\"int32\" name=\"int32b\" />\n"
-			  "</ExtentType>\n");
+    typelib.registerTypePtr("<ExtentType name=\"Test::EmptyFieldName\" >\n"
+                            "  <field type=\"int32\" name=\"int32a\" />\n"
+                            "  <field type=\"int32\" name=\"int32b\" />\n"
+                            "</ExtentType>\n");
 
     ExtentSeries series1(typelib,"Test::EmptyFieldName");
     series1.newExtent();

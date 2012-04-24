@@ -61,7 +61,7 @@ public:
         Postconditions:
             - getType() == 0 and getExtent() == 0 */
     explicit ExtentSeries(typeCompatibilityT _tc = typeExact) 
-	: type(NULL), my_extent(NULL), typeCompatibility(_tc) {
+	: type(), my_extent(NULL), typeCompatibility(_tc) {
     }
 
     /** Sets the type held by the ExtentSeries to the specified type.
@@ -71,9 +71,8 @@ public:
 
         Postconditions:
             - getType() == &_type and getExtent() == 0 */
-    explicit ExtentSeries(const ExtentType &_type,
-		 typeCompatibilityT _tc = typeExact)
-	: type(&_type), my_extent(NULL), typeCompatibility(_tc) {
+    explicit ExtentSeries(const ExtentType &in_type, typeCompatibilityT _tc = typeExact)
+	: type(in_type.shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
     }
     /** Sets the type held by the ExtentSeries to the specified type.
         If the type is null, then this is equivalent to the default
@@ -81,9 +80,18 @@ public:
 
         Postconditions:
             - getType() == _type and getExtent() == 0 */
-    explicit ExtentSeries(const ExtentType *_type,
-		 typeCompatibilityT _tc = typeExact)
-	: type(_type), my_extent(NULL), typeCompatibility(_tc) {
+    explicit ExtentSeries(const ExtentType *in_type, typeCompatibilityT _tc = typeExact)
+	: type(in_type->shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
+    }
+
+    /** Sets the type held by the ExtentSeries to the specified type.
+        If the type is null, then this is equivalent to the default
+        constructor.
+
+        Postconditions:
+            - getType() == _type and getExtent() == 0 */
+    explicit ExtentSeries(const ExtentType::Ptr in_type, typeCompatibilityT _tc = typeExact)
+	: type(in_type), my_extent(NULL), typeCompatibility(_tc) {
     }
     /** Sets the type held by the ExtentSeries by looking it up
         in an @c ExtentTypeLibrary
@@ -97,7 +105,7 @@ public:
             - getExtent() == 0 */
     ExtentSeries(ExtentTypeLibrary &library, std::string type_name,
 		 typeCompatibilityT _tc = typeExact)
-	: type(library.getTypeByName(type_name)), my_extent(NULL),
+	: type(library.getTypeByName(type_name)->shared_from_this()), my_extent(NULL),
 	  typeCompatibility(_tc) {
     }
 
@@ -112,10 +120,9 @@ public:
     explicit ExtentSeries(Extent::Ptr e, typeCompatibilityT _tc = typeExact);
                           
     /** Initialize using the @c ExtentType corresponding to the given XML. */
-    explicit ExtentSeries(const std::string &xmltype,
-		 typeCompatibilityT _tc = typeExact)
-	: type(&ExtentTypeLibrary::sharedExtentType(xmltype)),
-	  my_extent(NULL), typeCompatibility(_tc) { 
+    explicit ExtentSeries(const std::string &xmltype, typeCompatibilityT tc = typeExact)
+	: type(ExtentTypeLibrary::sharedExtentTypePtr(xmltype)),
+	  my_extent(NULL), typeCompatibility(tc) { 
     }
 
     /** Copy constructor */
@@ -192,13 +199,28 @@ public:
     /** Sets the type of Extents. If the type has already been set in any way,
         requires that the new type be compatible with the existing type as
         specified by the typeCompatibilityT of all the constructors. */
-    void setType(const ExtentType &type);
+    void setType(const ExtentType::Ptr type);
+
+    /** Sets the type of Extents. If the type has already been set in any way,
+        requires that the new type be compatible with the existing type as
+        specified by the typeCompatibilityT of all the constructors. */
+    void setType(const ExtentType &type) {
+        setType(type.shared_from_this());
+    }
+
     /** Returns a pointer to the current type. If no type has been set, the
         result will be null.
         Invariants:
             - If getExtent() is not null, then the result is the
               same as getExtent()->type*/
-    const ExtentType *getType() { return type; }
+    const ExtentType *getType() { return type.get(); }
+    /** Returns a pointer to the current type. If no type has been set, the
+        result will be null.
+        Invariants:
+            - If getExtent() is not null, then the result is the
+              same as getExtent()->type*/
+    const ExtentType::Ptr getTypePtr() { return type; }
+
     /** Sets the current extent being processed. If e is null, clears the
         current Extent.  If the type has already been set, requires that
         the type of the new Extent be compatible with the existing type.
@@ -336,7 +358,7 @@ public:
 	    } else {
 		cur_extent = e;
 		cur_pos = e->fixeddata.begin();
-		recordsize = e->type.fixedrecordsize();
+		recordsize = e->getType().fixedrecordsize();
 	    }
 	}
 	
@@ -416,7 +438,7 @@ private:
     friend class Field;
     friend class ExtentRecordCopy;
 
-    const ExtentType *type;
+    ExtentType::Ptr type;
     Extent *my_extent;
     Extent::Ptr shared_extent;
     typeCompatibilityT typeCompatibility;

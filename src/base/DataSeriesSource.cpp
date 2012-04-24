@@ -121,14 +121,14 @@ void DataSeriesSource::readTypeExtent() {
     INVARIANT(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 	      "Invalid file, must have a first extent");
     Extent::Ptr e(new Extent(mylibrary,extentdata,need_bitflip));
-    INVARIANT(&e->type == &ExtentType::getDataSeriesXMLType(),
+    INVARIANT(e->type.get() == &ExtentType::getDataSeriesXMLType(),
 	      "First extent must be the type defining extent");
 
     ExtentSeries type_extent_series(e);
     Variable32Field typevar(type_extent_series,"xmltype");
     for(;type_extent_series.morerecords(); ++type_extent_series) {
 	string v = typevar.stringval();
-	mylibrary.registerTypeR(v);
+	mylibrary.registerTypePtr(v);
     }
 }
 
@@ -178,7 +178,7 @@ Extent *DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     Extent *ret = new Extent(mylibrary,extentdata,need_bitflip);
     ret->extent_source = filename;
     ret->extent_source_offset = save_offset;
-    INVARIANT(&ret->type != &ExtentType::getDataSeriesXMLType(),
+    INVARIANT(ret->type.get() != &ExtentType::getDataSeriesXMLType(),
 	      "Invalid to have a type extent after the first extent.");
     return ret;
 }

@@ -36,12 +36,12 @@ RotatingFileSink::~RotatingFileSink()
     INVARIANT(pending.empty(), "did you write extents but never call changeFile?");
 }
 
-const ExtentType &RotatingFileSink::registerType(const string &xmldesc) {
+const ExtentType::Ptr RotatingFileSink::registerType(const string &xmldesc) {
     PThreadScopedLock lock(mutex);
 
     INVARIANT(worker_continue && current_sink == NULL && pending.empty() && new_filename.empty(),
               "invalid to register types if the sink is active");
-    return library.registerTypeR(xmldesc);
+    return library.registerTypePtr(xmldesc);
 }
 
 void

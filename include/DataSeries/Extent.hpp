@@ -140,12 +140,12 @@ public:
     };
 
     /// \cond INTERNAL_ONLY
-    const ExtentType &type;
+    const ExtentType::Ptr type;
     /// \endcond
 
-    /** Returns the type of the Extent. */
+    /** Returns the type of the Extent; reference valid until extent is destroyed. */
     const ExtentType &getType() const {
-        return type;
+        return *type;
     }
 
     /** This constructor creates an @c Extent from raw bytes in
@@ -159,10 +159,13 @@ public:
            const bool need_bitflip);
     /** Similar to the above constructor, except that
         the ExtentType is passed explicitly. */
-    Extent(const ExtentType &type, Extent::ByteArray &packeddata, 
-           const bool need_bitflip);
+    Extent(const ExtentType &type, Extent::ByteArray &packeddata, const bool need_bitflip);
     /** Creates an empty @c Extent. */
     Extent(const ExtentType &type);
+
+    /** Creates an empty @c Extent. */
+    Extent(const ExtentType::Ptr type);
+
     /** Creates an empty @c Extent. */
     Extent(const std::string &xmltype); 
     
@@ -197,7 +200,7 @@ public:
     
     /** Returns the number of records in this Extent */
     size_t nRecords() {
-	return fixeddata.size() / type.fixedrecordsize();
+	return fixeddata.size() / getType().fixedrecordsize();
     }
 
     /// \cond INTERNAL_ONLY

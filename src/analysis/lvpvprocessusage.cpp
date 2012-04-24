@@ -317,7 +317,7 @@ public:
 	lvoffset(io_series,"lv_offset", Field::flag_nullable), output_lvoffset(output_series,"lv_offset", Field::flag_nullable),
 	command(ps_series,"command"), output_command(output_series,"command"),
 	username(ps_series,"username"), output_username(output_series,"username"),
-	output_type(ExtentTypeLibrary::sharedExtentType(merge_type)),
+	output_type(ExtentTypeLibrary::sharedExtentTypePtr(merge_type)),
 	all_done(false),
 	cur_ps_time(-Double::Inf), prev_ps_time(-Double::Inf), 
 	time_base(Double::NaN), first_io_time(Double::Inf),
@@ -350,7 +350,7 @@ public:
 	if (time_base != time_base) {
 	    time_base = iotime.absval();
 	}
-        Extent::Ptr outExtent(new Extent(output_type));
+        Extent::Ptr outExtent(new Extent(*output_type));
 	++output_extents;
 	output_series.setExtent(outExtent);
 	if (!ps_series.hasExtent()) {
@@ -577,7 +577,7 @@ private:
     Int64Field diskoffset, output_diskoffset, lvoffset, output_lvoffset;
     Variable32Field command, output_command, username, output_username;
 
-    const ExtentType &output_type;
+    const ExtentType::Ptr output_type;
     bool all_done;
     double cur_ps_time, prev_ps_time, prev_prev_ps_time, time_base, first_io_time, last_io_time;
     HashTable<psinfo,psinfo_hashpid,psinfo_comparepid> pid_to_psinfo;

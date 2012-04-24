@@ -156,6 +156,10 @@ public:
 
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
 		 const ExtentType &outputtype, int target_extent_size);
+
+    OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
+		 const ExtentType::Ptr outputtype, int target_extent_size);
+
     /** Calls close unless you have already called close manually. */
     ~OutputModule();
 

@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
     cout << xmloutdesc << "\n";
 
     ExtentTypeLibrary library;
-    const ExtentType &outputtype(library.registerTypeR(xmloutdesc));
+    const ExtentType::Ptr outputtype(library.registerTypePtr(xmloutdesc));
     output.writeExtentLibrary(library);
     outputseries.setType(outputtype);
     for(vector<string>::iterator i = fields.begin();

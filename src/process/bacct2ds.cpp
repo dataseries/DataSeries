@@ -3817,7 +3817,7 @@ int main(int argc,char *argv[]) {
 			 packing_args.compress_modes,
 			 packing_args.compress_level);
     ExtentTypeLibrary library;
-    const ExtentType &lsf_grizzly_type(library.registerTypeR(lsf_grizzly_xml));
+    const ExtentType::Ptr lsf_grizzly_type(library.registerTypePtr(lsf_grizzly_xml));
     lsf_grizzly_series.setType(lsf_grizzly_type);
     lsf_grizzly_outmodule = new OutputModule(outds,lsf_grizzly_series,
 					     lsf_grizzly_type,

@@ -66,8 +66,8 @@ const string dataseries_index_type_v1_xml =
   "</ExtentType>\n";
 
 
-const ExtentType &ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentType(dataseries_xml_type_xml));
-const ExtentType &ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentType(dataseries_index_type_v0_xml));
+const ExtentType::Ptr ExtentType::dataseries_xml_type(ExtentTypeLibrary::sharedExtentTypePtr(dataseries_xml_type_xml));
+const ExtentType::Ptr ExtentType::dataseries_index_type_v0(ExtentTypeLibrary::sharedExtentTypePtr(dataseries_index_type_v0_xml));
 
 string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool empty_ok) {
     xmlChar *option = xmlGetProp(cur, reinterpret_cast<const xmlChar *>(option_name.c_str()));
@@ -719,23 +719,21 @@ const string &ExtentType::fieldTypeString(fieldType ft) {
     return fieldtypes[ft];
 }
 
-const ExtentType &ExtentTypeLibrary::registerTypeR(const string &xmldesc) {
-    const ExtentType &type(sharedExtentType(xmldesc));
+const ExtentType::Ptr ExtentTypeLibrary::registerTypePtr(const string &xmldesc) {
+    const ExtentType::Ptr type(sharedExtentTypePtr(xmldesc));
     
-    INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
-	      boost::format("Type %s already registered")
-	      % type.getName());
+    INVARIANT(name_to_type.find(type->getName()) == name_to_type.end(),
+	      boost::format("Type %s already registered") % type->getName());
 
-    name_to_type[type.getName()] = &type;
+    name_to_type[type->getName()] = type;
     return type;
 }    
 
 void ExtentTypeLibrary::registerType(const ExtentType &type) {
     INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
-	      boost::format("Type %s already registered")
-	      % type.getName());
+	      boost::format("Type %s already registered") % type.getName());
 
-    name_to_type[type.getName()] = &type;
+    name_to_type[type.getName()] = type.shared_from_this();
 }    
 
 const ExtentType * ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const {
@@ -744,23 +742,21 @@ const ExtentType * ExtentTypeLibrary::getTypeByName(const string &name, bool nul
     } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
 	return &ExtentType::getDataSeriesIndexTypeV0();
     }
-    std::map<const std::string, const ExtentType *>::const_iterator i 
-	= name_to_type.find(name);
+    NameToType::const_iterator i = name_to_type.find(name);
     if (i == name_to_type.end()) {
 	if (null_ok) {
 	    return NULL;
 	}
 	FATAL_ERROR(format("No type named %s registered") % name);
     }
-    const ExtentType *f = i->second;
+    const ExtentType::Ptr f = i->second;
     SINVARIANT(f != NULL);
-    return f;
+    return f.get();
 }
 
 const ExtentType * ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const {
-    const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
-	i != name_to_type.end();++i) {
+    ExtentType::Ptr f;
+    for(NameToType::const_iterator i = name_to_type.begin(); i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
 	    INVARIANT(f == NULL,
 		      boost::format("Invalid getTypeByPrefix, two types match prefix '%s': %s and %s\n")
@@ -771,13 +767,12 @@ const ExtentType * ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool
     INVARIANT(null_ok || f != NULL,
 	      boost::format("No type matching prefix %s found?!\n")
 	      % prefix);
-    return f;
+    return f.get();
 }
 
 const ExtentType * ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const {
-    const ExtentType *f = NULL;
-    for(map<const string, const ExtentType *>::const_iterator i = name_to_type.begin();
-	i != name_to_type.end();++i) {
+    ExtentType::Ptr f;
+    for(NameToType::const_iterator i = name_to_type.begin(); i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
 	    INVARIANT(f == NULL,
 		      boost::format("Invalid getTypeBySubstring, two types match substring %s: %s and %s\n")
@@ -788,18 +783,17 @@ const ExtentType * ExtentTypeLibrary::getTypeBySubstring(const string &substr, b
     INVARIANT(null_ok || f != NULL,
 	      boost::format("No type matching substring %s found?!\n")
 	      % substr);
-    return f;
+    return f.get();
 }
 
 const ExtentType * ExtentTypeLibrary::getTypeMatch(const std::string &match, 
 						   bool null_ok, bool skip_info) {
-    const ExtentType *t = NULL;
+    ExtentType::Ptr t;
 
     static string str_DataSeries("DataSeries:");
     static string str_Info("Info:");
     if (match == "*") {
-	for(map<const string, const ExtentType *>::iterator i = name_to_type.begin();
-	    i != name_to_type.end();++i) {
+	for(NameToType::iterator i = name_to_type.begin(); i != name_to_type.end();++i) {
 	    if (prefixequal(i->first,str_DataSeries)) {
 		continue;
 	    }
@@ -811,17 +805,20 @@ const ExtentType * ExtentTypeLibrary::getTypeMatch(const std::string &match,
 		      % t->getName() % i->first);
 	    t = i->second;
 	}
+        if (t != NULL) return t.get();
     } else {
-	t = getTypeByName(match, true);
-	if (t != NULL) return t;
-	t = getTypeByPrefix(match, true);
-	if (t != NULL) return t;
-	t = getTypeBySubstring(match, true);
+        const ExtentType *tx = NULL;
+	tx = getTypeByName(match, true);
+	if (tx != NULL) return tx;
+	tx = getTypeByPrefix(match, true);
+	if (tx != NULL) return tx;
+	tx = getTypeBySubstring(match, true);
+        if (tx != NULL) return tx;
     }
-    INVARIANT(null_ok || t != NULL,
+    INVARIANT(null_ok,
 	      boost::format("No type matching %s found; try '*' if you only have one type.\n")
 	      % match);
-    return t;
+    return NULL;
 }
 
 // This optimization to only have one extent type object for each xml
@@ -833,7 +830,7 @@ namespace dataseries {
     bool in_tilde_xml_decode;
 
     struct xmlDecode {
-	typedef HashMap<string, ExtentType *> HTType;
+	typedef HashMap<string, ExtentType::Ptr> HTType;
 
 	HTType table;
 	PThreadMutex mutex;
@@ -841,7 +838,7 @@ namespace dataseries {
 	    SINVARIANT(!in_tilde_xml_decode);
 	    in_tilde_xml_decode = true;
 	    for(HTType::iterator i = table.begin(); i != table.end(); ++i) {
-		delete i->second;
+		i->second.reset();
 	    }
 	    table.clear();
 	}
@@ -849,25 +846,25 @@ namespace dataseries {
 
     static xmlDecode &decodeInfo() {
 	// C++ semantics say this will be initialized the first time we
-	// pass through this call
+	// pass through this call, thread-safe
 	static xmlDecode decode_info;
 	return decode_info;
     }
 }
 
-const ExtentType &ExtentTypeLibrary::sharedExtentType(const string &xmldesc) {
+const ExtentType::Ptr ExtentTypeLibrary::sharedExtentTypePtr(const string &xmldesc) {
     using dataseries::decodeInfo;
     PThreadAutoLocker lock(decodeInfo().mutex);
 
-    ExtentType **d = decodeInfo().table.lookup(xmldesc);
+    ExtentType::Ptr *d = decodeInfo().table.lookup(xmldesc);
     if (d != NULL) { // should be common case, just return the value
 	SINVARIANT(*d != NULL);
-	return **d;
+	return *d;
     }
 
-    ExtentType *tmp = new ExtentType(xmldesc);
+    ExtentType::Ptr tmp(new ExtentType(xmldesc));
     decodeInfo().table[xmldesc] = tmp;
-    return *tmp;
+    return tmp;
 }
 
 ExtentType::~ExtentType() { 

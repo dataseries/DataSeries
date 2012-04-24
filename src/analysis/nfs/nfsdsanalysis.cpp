@@ -527,7 +527,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL)
 	    return e;
-	INVARIANT(e->type.getName() == "common-attr-rw-join","bad");
+	INVARIANT(e->getType().getName() == "common-attr-rw-join","bad");
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (packetat.val() < first_time) {
@@ -1303,7 +1303,7 @@ public:
 
 	++partial_extents;
 	if (dest_series == NULL) {
-	    dest_series = new ExtentSeries(e->type);
+	    dest_series = new ExtentSeries(e->getType());
 	    copier = new ExtentRecordCopy(s,*dest_series);
 	}
 	

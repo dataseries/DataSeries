@@ -139,7 +139,7 @@ private:
 	    : extent(e), to_update(_to_update), in_progress(false), checksum(0) 
 	{ }
 	void wipeExtent() {
-	    Extent tmp(extent->type);
+	    Extent tmp(extent->getType());
 	    tmp.swap(*extent);
 	}
 	bool readyToWrite() {
@@ -219,8 +219,8 @@ private:
 
     Stats stats;
     PThreadMutex mutex; // this mutex is ordered after Stats::getMutex(), so grab it second if you need both.
-    HashUnique<const ExtentType *, lintel::PointerHash<ExtentType>,
-               lintel::PointerEqual<ExtentType> > valid_types;
+    HashUnique<ExtentType::Ptr, lintel::SharedPointerHash<const ExtentType>,
+               lintel::SharedPointerEqual<const ExtentType> > valid_types;
     const int compression_modes;
     const int compression_level;
 
