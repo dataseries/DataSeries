@@ -33,7 +33,7 @@ public:
 };
 
 namespace dataseries {
-    std::string renameField(const ExtentType *type, const std::string &old_name,
+    std::string renameField(const ExtentType::Ptr type, const std::string &old_name,
                             const std::string &new_name);
 }
 

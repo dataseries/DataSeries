@@ -9,20 +9,20 @@ public:
     virtual ~ProjectModule() { }
 
     void firstExtent(Extent &in) {
-        const ExtentType &t(in.getType());
+        const ExtentType::Ptr t(in.getTypePtr());
         input_series.setType(t);
 
         string output_xml(str(format("<ExtentType name=\"project (%s)\" namespace=\"%s\""
-                                     " version=\"%d.%d\">\n") % t.getName() % t.getNamespace()
-                              % t.majorVersion() % t.minorVersion()));
+                                     " version=\"%d.%d\">\n") % t->getName() % t->getNamespace()
+                              % t->majorVersion() % t->minorVersion()));
         HashUnique<string> kc;
         BOOST_FOREACH(const string &c, keep_columns) {
             kc.add(c);
         }
-        for (uint32_t i = 0; i < t.getNFields(); ++i) {
-            const string &field_name(t.getFieldName(i));
+        for (uint32_t i = 0; i < t->getNFields(); ++i) {
+            const string &field_name(t->getFieldName(i));
             if (kc.exists(field_name)) {
-                output_xml.append(t.xmlFieldDesc(field_name));
+                output_xml.append(t->xmlFieldDesc(field_name));
             }
         }
         output_xml.append("</ExtentType>\n");
@@ -40,7 +40,7 @@ public:
             if (in == NULL) {
                 return returnOutputSeries();
             }
-            if (input_series.getType() == NULL) {
+            if (input_series.getTypePtr() == NULL) {
                 firstExtent(*in);
             }
 

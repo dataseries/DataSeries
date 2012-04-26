@@ -37,9 +37,6 @@ namespace dataseries {
     };
 
 
-    std::string renameField(const ExtentType *type, const std::string &old_name,
-                            const std::string &new_name);
-    
     DataSeriesModule::Ptr makeTeeModule(DataSeriesModule &source_module, 
                                         const std::string &output_path);
     DataSeriesModule::Ptr makeTableDataModule(DataSeriesModule &source_module,

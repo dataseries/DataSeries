@@ -32,22 +32,22 @@ public:
 	    INVARIANT(last_size_report < 2000000000, 
 		      "HashMap about to overflow");
 	}
-	if (series.getType() != NULL) {
+	if (series.getTypePtr() != NULL) {
 	    return; // already did this
 	}
-	const ExtentType &type = e.getType();
-	if (type.getName() == "NFS trace: attr-ops") {
-	    SINVARIANT(type.getNamespace() == "" &&
-		       type.majorVersion() == 0 &&
-		       type.minorVersion() == 0);
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "NFS trace: attr-ops") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
 	    lookup_dir_filehandle.setFieldName("lookup-dir-filehandle");
 	    file_size.setFieldName("file-size");
-	} else if (type.getName() == "Trace::NFS::attr-ops"
-		   && type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::NFS::attr-ops"
+		   && type->versionCompatible(1,0)) {
 	    lookup_dir_filehandle.setFieldName("lookup-dir-filehandle");
 	    file_size.setFieldName("file-size");
-	} else if (type.getName() == "Trace::NFS::attr-ops"
-		   && type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::NFS::attr-ops"
+		   && type->versionCompatible(2,0)) {
 	    lookup_dir_filehandle.setFieldName("lookup_dir_filehandle");
 	    file_size.setFieldName("file_size");
 	} else {

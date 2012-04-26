@@ -45,7 +45,11 @@ public:
 	inputFiles = from.inputFiles;
     }
 
-    const ExtentType *getType() {
+    const ExtentType *getType() FUNC_DEPRECATED {
+        return my_type.get();
+    }
+
+    const ExtentType::Ptr getTypePtr() {
         return my_type;
     }
 protected:
@@ -58,12 +62,12 @@ protected:
     virtual PrefetchExtent *lockedGetCompressedExtent();
 
 private:
-    const ExtentType *matchType(); // May return NULL
+    const ExtentType::Ptr matchType(); // May return NULL
 
     unsigned int cur_file;
     DataSeriesSource *cur_source;
     std::vector<std::string> inputFiles;
-    const ExtentType *my_type;
+    ExtentType::Ptr my_type;
 };
 
 #endif

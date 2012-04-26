@@ -460,7 +460,7 @@ test_extentpackunpack()
 
     Extent::ByteArray packed;
     testseries.getExtentRef().packData(packed,Extent::compress_zlib);
-    Extent::Ptr unpackextent(new Extent(*testseries.getType()));
+    Extent::Ptr unpackextent(new Extent(testseries.getTypePtr()));
     unpackextent->unpackData(packed, false);
 
     testseries.setExtent(unpackextent);

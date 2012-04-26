@@ -84,7 +84,7 @@ public:
 
     virtual void printResult() {
 	cout << boost::format("copied %d records of type %s\n")
-	    % records_copied % series.getType()->getName();
+	    % records_copied % series.getTypePtr()->getName();
     }
 
     OutputModule &output_module;
@@ -106,29 +106,28 @@ checkFileMissing(const std::string &filename)
 }
 
 void
-doCopy(const ExtentType &extenttype, int64_t min_keep, int64_t max_keep,
+doCopy(const ExtentType::Ptr extenttype, int64_t min_keep, int64_t max_keep,
        vector<string> source_files, DataSeriesSink &output, 
        uint32_t extent_size) 
 {
-    TypeIndexModule indata(extenttype.getName());
+    TypeIndexModule indata(extenttype->getName());
     for(vector<string>::iterator i = source_files.begin();
 	i != source_files.end(); ++i) {
 	indata.addSource(*i);
     }
     ExtentSeries output_series(extenttype);
-    OutputModule output_module(output, output_series, 
-			       extenttype, extent_size);
+    OutputModule output_module(output, output_series, extenttype, extent_size);
 
     string sel1, sel2;
-    if (extenttype.hasColumn("request-id")) {
+    if (extenttype->hasColumn("request-id")) {
 	sel1 = "request-id";
 	sel2 = "reply-id";
-    } else if (extenttype.hasColumn("record-id")) {
+    } else if (extenttype->hasColumn("record-id")) {
 	sel1 = sel2 = "record-id";
-    } else if (extenttype.hasColumn("request_id")) {
+    } else if (extenttype->hasColumn("request_id")) {
 	sel1 = "request_id";
 	sel2 = "reply_id";
-    } else if (extenttype.hasColumn("record_id")) {
+    } else if (extenttype->hasColumn("record_id")) {
 	sel1 = sel2 = "record_id";
     } else {
 	FATAL_ERROR("?");
@@ -170,11 +169,11 @@ main(int argc, char *argv[])
 	DataSeriesSource tmp(source_files[0]);
 	ExtentTypeLibrary &lib(tmp.getLibrary());
 
-	if (lib.getTypeByName("NFS trace: common", true) != NULL) {
+	if (lib.getTypeByNamePtr("NFS trace: common", true) != NULL) {
 	    copy_names.push_back("NFS trace: attr-ops");
 	    copy_names.push_back("NFS trace: common");
 	    copy_names.push_back("NFS trace: read-write");
-	} else if (lib.getTypeByName("Trace::NFS::common") != NULL) {
+	} else if (lib.getTypeByNamePtr("Trace::NFS::common") != NULL) {
 	    copy_names.push_back("Trace::NFS::attr-ops");
 	    copy_names.push_back("Trace::NFS::common");
 	    copy_names.push_back("Trace::NFS::read-write");
@@ -184,8 +183,8 @@ main(int argc, char *argv[])
 	
 	for(vector<string>::iterator i = copy_names.begin();
 	    i != copy_names.end(); ++i) {
-	    const ExtentType &t(*tmp.getLibrary().getTypeByName(*i));
-	    out_library.registerTypePtr(t.getXmlDescriptionString());
+	    const ExtentType::Ptr t(tmp.getLibrary().getTypeByNamePtr(*i));
+	    out_library.registerTypePtr(t->getXmlDescriptionString());
 	}
 
 	output.writeExtentLibrary(out_library);
@@ -193,7 +192,7 @@ main(int argc, char *argv[])
 
     for(vector<string>::iterator i = copy_names.begin();
 	i != copy_names.end(); ++i) {
-	doCopy(*out_library.getTypeByName(*i), min_keep, max_keep, 
+	doCopy(out_library.getTypeByNamePtr(*i), min_keep, max_keep, 
 	       source_files, output, packing_args.extent_size);
     }
     return 0;

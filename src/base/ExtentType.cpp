@@ -729,32 +729,34 @@ const ExtentType::Ptr ExtentTypeLibrary::registerTypePtr(const string &xmldesc) 
     return type;
 }    
 
-void ExtentTypeLibrary::registerType(const ExtentType &type) {
-    INVARIANT(name_to_type.find(type.getName()) == name_to_type.end(),
-	      boost::format("Type %s already registered") % type.getName());
+void ExtentTypeLibrary::registerType(const ExtentType::Ptr type) {
+    SINVARIANT(type != NULL)
+    INVARIANT(name_to_type.find(type->getName()) == name_to_type.end(),
+	      boost::format("Type %s already registered") % type->getName());
 
-    name_to_type[type.getName()] = type.shared_from_this();
+    name_to_type[type->getName()] = type;
 }    
 
-const ExtentType * ExtentTypeLibrary::getTypeByName(const string &name, bool null_ok) const {
-    if (name == ExtentType::getDataSeriesXMLType().getName()) {
-	return &ExtentType::getDataSeriesXMLType();
-    } else if (name == ExtentType::getDataSeriesIndexTypeV0().getName()) {
-	return &ExtentType::getDataSeriesIndexTypeV0();
+const ExtentType::Ptr ExtentTypeLibrary::getTypeByNamePtr(const string &name, bool null_ok) const {
+    if (name == ExtentType::getDataSeriesXMLTypePtr()->getName()) {
+	return ExtentType::getDataSeriesXMLTypePtr();
+    } else if (name == ExtentType::getDataSeriesIndexTypeV0Ptr()->getName()) {
+	return ExtentType::getDataSeriesIndexTypeV0Ptr();
     }
     NameToType::const_iterator i = name_to_type.find(name);
     if (i == name_to_type.end()) {
 	if (null_ok) {
-	    return NULL;
+	    return ExtentType::Ptr();
 	}
 	FATAL_ERROR(format("No type named %s registered") % name);
     }
     const ExtentType::Ptr f = i->second;
     SINVARIANT(f != NULL);
-    return f.get();
+    return f;
 }
 
-const ExtentType * ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool null_ok) const {
+const ExtentType::Ptr 
+ExtentTypeLibrary::getTypeByPrefixPtr(const string &prefix, bool null_ok) const {
     ExtentType::Ptr f;
     for(NameToType::const_iterator i = name_to_type.begin(); i != name_to_type.end();++i) {
 	if (prefixequal(i->first, prefix)) {
@@ -764,13 +766,12 @@ const ExtentType * ExtentTypeLibrary::getTypeByPrefix(const string &prefix, bool
 	    f = i->second;
 	}
     }
-    INVARIANT(null_ok || f != NULL,
-	      boost::format("No type matching prefix %s found?!\n")
-	      % prefix);
-    return f.get();
+    INVARIANT(null_ok || f != NULL, boost::format("No type matching prefix %s found?!\n") % prefix);
+    return f;
 }
 
-const ExtentType * ExtentTypeLibrary::getTypeBySubstring(const string &substr, bool null_ok) const {
+const ExtentType::Ptr
+ExtentTypeLibrary::getTypeBySubstringPtr(const string &substr, bool null_ok) const {
     ExtentType::Ptr f;
     for(NameToType::const_iterator i = name_to_type.begin(); i != name_to_type.end();++i) {
 	if (i->first.find(substr) != string::npos) {
@@ -780,14 +781,13 @@ const ExtentType * ExtentTypeLibrary::getTypeBySubstring(const string &substr, b
 	    f = i->second;
 	}
     }
-    INVARIANT(null_ok || f != NULL,
-	      boost::format("No type matching substring %s found?!\n")
-	      % substr);
-    return f.get();
+    INVARIANT(null_ok || f != NULL, boost::format("No type matching substring %s found?!\n")
+              % substr);
+    return f;
 }
 
-const ExtentType * ExtentTypeLibrary::getTypeMatch(const std::string &match, 
-						   bool null_ok, bool skip_info) {
+const ExtentType::Ptr ExtentTypeLibrary::getTypeMatchPtr(const std::string &match, 
+                                                         bool null_ok, bool skip_info) {
     ExtentType::Ptr t;
 
     static string str_DataSeries("DataSeries:");
@@ -805,20 +805,19 @@ const ExtentType * ExtentTypeLibrary::getTypeMatch(const std::string &match,
 		      % t->getName() % i->first);
 	    t = i->second;
 	}
-        if (t != NULL) return t.get();
+        if (t != NULL) return t;
     } else {
-        const ExtentType *tx = NULL;
-	tx = getTypeByName(match, true);
-	if (tx != NULL) return tx;
-	tx = getTypeByPrefix(match, true);
-	if (tx != NULL) return tx;
-	tx = getTypeBySubstring(match, true);
-        if (tx != NULL) return tx;
+	t = getTypeByNamePtr(match, true);
+	if (t != NULL) return t;
+	t = getTypeByPrefixPtr(match, true);
+	if (t != NULL) return t;
+	t = getTypeBySubstringPtr(match, true);
+        if (t != NULL) return t;
     }
     INVARIANT(null_ok,
 	      boost::format("No type matching %s found; try '*' if you only have one type.\n")
 	      % match);
-    return NULL;
+    return ExtentType::Ptr();
 }
 
 // This optimization to only have one extent type object for each xml

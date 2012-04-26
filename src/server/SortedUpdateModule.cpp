@@ -99,7 +99,7 @@ public:
 
             if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setType(base_series.getExtentRef().getType());
+                output_series.setType(base_series.getExtentRef().getTypePtr());
                 output_series.newExtent();
             }
 
@@ -149,7 +149,7 @@ public:
 
             if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setType(base_series.getExtentRef().getType());
+                output_series.setType(base_series.getExtentRef().getTypePtr());
                 output_series.newExtent();
             }
 
@@ -177,7 +177,7 @@ public:
 
             if (!output_series.hasExtent()) {
                 LintelLogDebug("SortedUpdate", "make output extent");
-                output_series.setType(update_series.getSharedExtent()->getType());
+                output_series.setType(update_series.getSharedExtent()->getTypePtr());
                 output_series.newExtent();
             }
 

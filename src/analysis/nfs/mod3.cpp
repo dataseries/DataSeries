@@ -51,7 +51,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	if (e->getType().getName() != "NFS trace: attr-ops")
+	if (e->getTypePtr()->getName() != "NFS trace: attr-ops")
 	    return e;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    string fh = filehandle.stringval();
@@ -140,7 +140,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "NFS trace: attr-ops");
+	SINVARIANT(e->getTypePtr()->getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (filehandle.size() > max_seen_fh_size) {
@@ -214,7 +214,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "NFS trace: attr-ops");
+	SINVARIANT(e->getTypePtr()->getName() == "NFS trace: attr-ops");
 
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (dirfilehandle.isNull())
@@ -389,7 +389,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "common-attr-rw-join");
+	SINVARIANT(e->getTypePtr()->getName() == "common-attr-rw-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {

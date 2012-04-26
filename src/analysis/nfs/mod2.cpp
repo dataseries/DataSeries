@@ -59,7 +59,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "attr-ops-join");
+	SINVARIANT(e->getTypePtr()->getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -153,7 +153,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "attr-ops-join");
+	SINVARIANT(e->getTypePtr()->getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -260,7 +260,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "attr-ops-join");
+	SINVARIANT(e->getTypePtr()->getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -376,7 +376,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "attr-ops-join");
+	SINVARIANT(e->getTypePtr()->getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
@@ -503,7 +503,7 @@ public:
 	Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL) 
 	    return e;
-	SINVARIANT(e->getType().getName() == "attr-ops-join");
+	SINVARIANT(e->getTypePtr()->getName() == "attr-ops-join");
 
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {

@@ -561,7 +561,7 @@ int main(int argc, char *argv[]) {
     Int32Field ip_tcp_seqnum(ip_series, "", Field::flag_nullable);
     BoolField ip_is_udp(ip_series, "", Field::flag_nullable);
 
-    if (tmp_nfs_extent->getType().versionCompatible(1,0)) {
+    if (tmp_nfs_extent->getTypePtr()->versionCompatible(1,0)) {
 	nfs_packet_at.setFieldName("packet-at");
 	nfs_source_port.setFieldName("source-port");
 	nfs_dest.setFieldName("dest");
@@ -576,7 +576,7 @@ int main(int argc, char *argv[]) {
 	ip_dest_port.setFieldName("destination-port");
 	ip_tcp_seqnum.setFieldName("tcp-seqnum");
 	ip_is_udp.setFieldName("udp-tcp");
-    } else if (tmp_nfs_extent->getType().versionCompatible(2,0)) {
+    } else if (tmp_nfs_extent->getTypePtr()->versionCompatible(2,0)) {
 	nfs_packet_at.setFieldName("packet_at");
 	nfs_source_port.setFieldName("source_port");
 	nfs_dest.setFieldName("dest");

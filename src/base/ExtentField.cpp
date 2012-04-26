@@ -23,7 +23,7 @@ Field::~Field() {
 void Field::setFieldName(const string &new_name) {
     INVARIANT(!new_name.empty(), "Can't set field name to empty");
     fieldname = new_name;
-    if (dataseries.getType() != NULL) {
+    if (dataseries.getTypePtr() != NULL) {
 	newExtentType();
     }
 }
@@ -56,21 +56,21 @@ FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field,
     : Field(_dataseries,field, flags), field_size(-1), offset(-1),
       fieldtype(ft)
 {
-    INVARIANT(dataseries.getType() == NULL || field.empty() || 
-	      dataseries.getType()->getFieldType(field) == ft,
+    INVARIANT(dataseries.getTypePtr() == NULL || field.empty() || 
+	      dataseries.getTypePtr()->getFieldType(field) == ft,
 	      format("mismatch on field types for field %s in type %s")
-	      % field % dataseries.getType()->getName());
+	      % field % dataseries.getTypePtr()->getName());
 }
 
 void FixedField::newExtentType() {
     if (getName().empty())
 	return; // Don't have a name yet.
     Field::newExtentType();
-    field_size = dataseries.getType()->getSize(getName());
-    offset = dataseries.getType()->getOffset(getName());
-    INVARIANT(dataseries.getType()->getFieldType(getName()) == fieldtype,
+    field_size = dataseries.getTypePtr()->getSize(getName());
+    offset = dataseries.getTypePtr()->getOffset(getName());
+    INVARIANT(dataseries.getTypePtr()->getFieldType(getName()) == fieldtype,
 	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.getType()->getName());
+	      % getName() % dataseries.getTypePtr()->getName());
 }
 
 namespace dataseries { namespace detail {
@@ -79,7 +79,7 @@ void BoolFieldImpl::newExtentType() {
     FixedField::newExtentType();
     if (getName().empty())
 	return; // Not ready yet
-    int bitpos = dataseries.getType()->getBitPos(getName());
+    int bitpos = dataseries.getTypePtr()->getBitPos(getName());
     bit_mask = (byte)(1 << bitpos);
 }
 
@@ -99,7 +99,7 @@ void DoubleField::newExtentType() {
 	return;
     }
     FixedField::newExtentType();
-    base_val = dataseries.getType()->getDoubleBase(getName());
+    base_val = dataseries.getTypePtr()->getDoubleBase(getName());
     INVARIANT(flags & flag_allownonzerobase || base_val == 0,
 	      format("accessor for field %s doesn't support non-zero base")
 	      % getName());
@@ -121,12 +121,12 @@ Variable32Field::Variable32Field(ExtentSeries &_dataseries,
 
 void Variable32Field::newExtentType() {
     Field::newExtentType();
-    offset_pos = dataseries.getType()->getOffset(getName());
-    unique = dataseries.getType()->getUnique(getName());
-    INVARIANT(dataseries.getType()->getFieldType(getName()) 
+    offset_pos = dataseries.getTypePtr()->getOffset(getName());
+    unique = dataseries.getTypePtr()->getUnique(getName());
+    INVARIANT(dataseries.getTypePtr()->getFieldType(getName()) 
 	      == ExtentType::ft_variable32,
 	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.getType()->getName());
+	      % getName() % dataseries.getTypePtr()->getName());
 }
 
 void Variable32Field::allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_size) {

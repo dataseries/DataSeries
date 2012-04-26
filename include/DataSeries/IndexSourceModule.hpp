@@ -119,13 +119,13 @@ public:
 	the mutex while doing the work to get the compressed data */
     struct PrefetchExtent {
 	Extent::ByteArray bytes;
-	const ExtentType *type;
+	ExtentType::Ptr type;
         Extent::Ptr unpacked;
 	bool need_bitflip;
 	std::string uncompressed_type, extent_source;
 	int64_t extent_source_offset;
 	PrefetchExtent() 
-	    : type(NULL), unpacked(), need_bitflip(false), extent_source_offset(-1) { }
+	    : type(), unpacked(), need_bitflip(false), extent_source_offset(-1) { }
     };
 
 protected:
@@ -172,8 +172,7 @@ private:
 	    return can_add(static_cast<uint32_t>(amount));
 	}
 	bool can_add(PrefetchExtent *pe) {
-	    return can_add(Extent::unpackedSize(pe->bytes, pe->need_bitflip,
-						*pe->type));
+	    return can_add(Extent::unpackedSize(pe->bytes, pe->need_bitflip,pe->type));
 	}
 	bool empty() { 
 	    return data.empty();

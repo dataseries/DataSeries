@@ -128,7 +128,7 @@ public:
     typedef __gnu_parallel::LoserTree<true, uint32_t, LoserTreeCompare> LoserTree;
 
     void firstExtent(Extent &in) {
-        const ExtentType &t(in.getType());
+        const ExtentType::Ptr t(in.getTypePtr());
         input_series.setType(t);
         output_series.setType(t);
 
@@ -211,7 +211,7 @@ public:
                 if (in == NULL) {
                     break;
                 }
-                if (input_series.getType() == NULL) {
+                if (input_series.getTypePtr() == NULL) {
                     firstExtent(*in);
                 }
                 

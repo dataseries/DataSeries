@@ -26,7 +26,7 @@ public:
         ExtentSeries a_series;
 
         a_series.setExtent(a_input.getSharedExtent());
-        b_series.setType(b_e.getType());
+        b_series.setType(b_e.getTypePtr());
         if (a_series.getSharedExtent() == NULL) {
             requestError("a_table is empty?");
         }
@@ -43,8 +43,8 @@ public:
         HashUnique<string> known_a_eq_fields;
 
         BOOST_FOREACH(const CMap::value_type &vt, eq_columns) {
-            SINVARIANT(a_series.getType()->getFieldType(vt.first)
-                       == b_series.getType()->getFieldType(vt.second));
+            SINVARIANT(a_series.getTypePtr()->getFieldType(vt.first)
+                       == b_series.getTypePtr()->getFieldType(vt.second));
             a_eq_fields.push_back(GeneralField::make(a_series, vt.first));
             b_eq_fields.push_back(GeneralField::make(b_series, vt.second));
             known_a_eq_fields.add(vt.first);
@@ -72,20 +72,20 @@ public:
             string output_field_xml;
 
             if (prefixequal(vt.first, "a.") && a_name_to_val_pos.exists(field_name)) { // case 1
-                TINVARIANT(a_series.getType()->hasColumn(field_name));
-                output_field_xml = renameField(a_series.getType(), field_name, vt.second);
+                TINVARIANT(a_series.getTypePtr()->hasColumn(field_name));
+                output_field_xml = renameField(a_series.getTypePtr(), field_name, vt.second);
                 extractors.push_back
                     (ExtractorValue::make(vt.second, a_name_to_val_pos[field_name]));
             } else if (prefixequal(vt.first, "a.") 
                        && eq_columns.find(field_name) != eq_columns.end()) { // case 2a
                 const string b_field_name(eq_columns.find(field_name)->second);
-                TINVARIANT(b_series.getType()->hasColumn(b_field_name));
-                output_field_xml = renameField(a_series.getType(), field_name, vt.second);
+                TINVARIANT(b_series.getTypePtr()->hasColumn(b_field_name));
+                output_field_xml = renameField(a_series.getTypePtr(), field_name, vt.second);
                 GeneralField::Ptr b_field(GeneralField::make(b_series, b_field_name));
                 extractors.push_back(ExtractorField::make(vt.second, b_field));
             } else if (prefixequal(vt.first, "b.")
-                       && b_series.getType()->hasColumn(field_name)) { // case 2b
-                output_field_xml = renameField(b_series.getType(), field_name, vt.second);
+                       && b_series.getTypePtr()->hasColumn(field_name)) { // case 2b
+                output_field_xml = renameField(b_series.getTypePtr(), field_name, vt.second);
                 GeneralField::Ptr b_field(GeneralField::make(b_series, field_name));
                 extractors.push_back(ExtractorField::make(vt.second, b_field));
             } else {
@@ -131,12 +131,12 @@ public:
             if (e == NULL) {
                 break;
             }
-            if (output_series.getType() == NULL) {
+            if (output_series.getTypePtr() == NULL) {
                 firstExtent(*e);
             }
         
             if (output_series.getSharedExtent() == NULL) {
-                SINVARIANT(output_series.getType() != NULL);
+                SINVARIANT(output_series.getTypePtr() != NULL);
                 output_series.newExtent();
             }
             for (b_series.setExtent(e); b_series.more(); b_series.next()) {

@@ -85,9 +85,9 @@ public:
 	out_sink.reset(new DataSeriesSink(out_name, pack_args.compress_modes, 
 					  pack_args.compress_level));
 	ExtentTypeLibrary library;
-	library.registerType(e.getType());
+	library.registerType(e.getTypePtr());
 
-	const ExtentType &extent_type(e.getType());
+	const ExtentType::Ptr extent_type(e.getTypePtr());
 	out_series.setType(extent_type);
 
 	out_module.reset(new OutputModule(*out_sink, out_series, extent_type, 

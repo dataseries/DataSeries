@@ -267,16 +267,16 @@ public:
     virtual ~IPRollingPacketStatistics() { };
     
     virtual void firstExtent(const Extent &e) {
-	const ExtentType &type = e.getType();
-	if (type.getName() == "Network trace: IP packets") {
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "Network trace: IP packets") {
 	    packet_at.setFieldName("packet-at");
 	    wire_len.setFieldName("wire-length");
-	} else if (type.getName() == "Trace::Network::IP" &&
-		   type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::Network::IP" &&
+		   type->versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");
 	    wire_len.setFieldName("wire-length");
-	} else if (type.getName() == "Trace::Network::IP" &&
-		   type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::Network::IP" &&
+		   type->versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    wire_len.setFieldName("wire_length");
 	} else {
@@ -492,16 +492,16 @@ public:
     virtual ~IPTimeSeriesBandwidthPacketsPerSecond() { };
     
     virtual void firstExtent(const Extent &e) {
-	const ExtentType &type = e.getType();
-	if (type.getName() == "Network trace: IP packets") {
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "Network trace: IP packets") {
 	    packet_at.setFieldName("packet-at");
 	    wire_len.setFieldName("wire-length");
-	} else if (type.getName() == "Trace::Network::IP" &&
-		   type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::Network::IP" &&
+		   type->versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");
 	    wire_len.setFieldName("wire-length");
-	} else if (type.getName() == "Trace::Network::IP" &&
-		   type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::Network::IP" &&
+		   type->versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    wire_len.setFieldName("wire_length");
 	} else {
@@ -616,16 +616,16 @@ public:
     virtual ~IPTransmitCube() { };
     
     virtual void firstExtent(const Extent &e) {
-	const ExtentType &type = e.getType();
-	if (type.getName() == "Network trace: IP packets"
-	    || (type.getName() == "Trace::Network::IP" && type.versionCompatible(1,0))) {
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "Network trace: IP packets"
+	    || (type->getName() == "Trace::Network::IP" && type->versionCompatible(1,0))) {
 	    packet_at.setFieldName("packet-at");
 	    wire_len.setFieldName("wire-length");
 	    is_udp.setFieldName("udp-tcp");
 	    source_port.setFieldName("source-port");
 	    dest_port.setFieldName("destination-port");
-	} else if (type.getName() == "Trace::Network::IP" &&
-		   type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::Network::IP" &&
+		   type->versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    wire_len.setFieldName("wire_length");
 	    is_udp.setFieldName("udp_tcp");

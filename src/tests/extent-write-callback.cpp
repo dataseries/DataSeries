@@ -11,7 +11,7 @@ const string type_string =
 "</ExtentType>\n";
 
 void printIndex(off64_t offset, Extent &extent) {
-    cout << offset << "\t" << extent.getType().getName() << "\t" << extent.size() << "\n";
+    cout << offset << "\t" << extent.getTypePtr()->getName() << "\t" << extent.size() << "\n";
 }
 
 int main(int argc, char *argv[]) {

@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
+#define DSM_VAR_DEPRECATED /* allowed */
 #include <DataSeries/DataSeriesModule.hpp>
 
 namespace dataseries { namespace hack {
@@ -108,7 +109,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
 	      "series specified for output module already had an extent");
-    series.setType(outputtype);
+    series.setType(outputtype.shared_from_this());
     series.newExtent();
     cur_extent = series.getSharedExtent();
 }
@@ -124,7 +125,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
 	      "series specified for output module already had an extent");
-    series.setType(outputtype);
+    series.setType(outputtype.shared_from_this());
     series.newExtent();
     cur_extent = series.getSharedExtent();
 }
@@ -139,7 +140,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
 	      "series specified for output module already had an extent");
-    series.setType(outputtype);
+    series.setType(in_outputtype);
     series.newExtent();
     cur_extent = series.getSharedExtent();
 }
@@ -195,4 +196,8 @@ IExtentSink::Stats OutputModule::getStats() {
 
 void OutputModule::printStats(std::ostream &to) {
     getStats().printText(to, outputtype.getName());
+}
+
+ExtentType::Ptr OutputModule::getOutputType() {
+    return outputtype.shared_from_this();
 }

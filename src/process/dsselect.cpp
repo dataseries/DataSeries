@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
     // to get the complete typename and type information...
     DataSeriesSource first_file(extra_args[2]);
-    const ExtentType *intype = first_file.getLibrary().getTypeByPrefix(type_prefix);
+    const ExtentType::Ptr intype = first_file.getLibrary().getTypeByPrefixPtr(type_prefix);
     first_file.closefile();
     INVARIANT(intype != NULL, boost::format("can not find a type matching prefix %s")
 	      % type_prefix);
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
     string xmloutdesc(str(format("<ExtentType name=\"%s\" namespace=\"%s\" version=\"%d.%d\">\n")
 			  % intype->getName() % intype->getNamespace() % intype->majorVersion()
 			  % intype->minorVersion()));
-    inputseries.setType(*intype);
+    inputseries.setType(intype);
     for(vector<string>::iterator i = fields.begin();
 	i != fields.end();++i) {
 	cout << format("%s -> %s\n") % *i % intype->xmlFieldDesc(*i);

@@ -119,8 +119,8 @@ void ExtentSeries::start(Extent *e) {
 }
 
 void ExtentSeries::newExtent() {
-    SINVARIANT(getType() != NULL);
-    Extent::Ptr e(new Extent(*getType()));
+    SINVARIANT(getTypePtr() != NULL);
+    Extent::Ptr e(new Extent(getTypePtr()));
     setExtent(e);
 }
 

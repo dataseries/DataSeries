@@ -38,8 +38,8 @@ public:
     virtual void firstExtent(const Extent &e) {
 	skip_after_count.resize(getMaxUnifiedId()+1);
 	skip_after_skip.resize(getMaxUnifiedId() +1);
-	const ExtentType &type = e.getType();
-	if (type.versionCompatible(0,0) || type.versionCompatible(1,0)) {
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->versionCompatible(0,0) || type->versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");
 	    is_request.setFieldName("is-request");
 	    op_id.setFieldName("op-id");
@@ -47,7 +47,7 @@ public:
 	    transaction_id.setFieldName("transaction-id");
 	    payload_length.setFieldName("payload-length");
 	    record_id.setFieldName("record-id");
-	} else if (type.versionCompatible(2,0)) {
+	} else if (type->versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    is_request.setFieldName("is_request");
 	    op_id.setFieldName("op_id");
@@ -57,7 +57,7 @@ public:
 	    record_id.setFieldName("record_id");
 	} else {
 	    FATAL_ERROR(format("can only handle v[0,1,2].*; not %d.%d")
-			% type.majorVersion() % type.minorVersion());
+			% type->majorVersion() % type->minorVersion());
 	}
     }
 

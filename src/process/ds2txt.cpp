@@ -220,9 +220,8 @@ main(int argc, char *argv[])
 
     if (select_extent_type != "") {
 	string match_extent_type;
-	const ExtentType *match_type 
-	    = first_source->getLibrary().getTypeMatch(select_extent_type, 
-					  	      false, true);
+	const ExtentType::Ptr match_type 
+	    = first_source->getLibrary().getTypeMatchPtr(select_extent_type, false, true);
 
 	match_extent_type = match_type->getName();
 	vector<string> fields;
@@ -231,17 +230,14 @@ main(int argc, char *argv[])
 	xmlspec.append(match_extent_type);
 	xmlspec.append("\">");
 	if (select_fields == "*") {
-	    const ExtentType *t = 
-		first_source->getLibrary().getTypeMatch(match_extent_type);
-	    INVARIANT(t != NULL, "internal");
+	    const ExtentType::Ptr t = first_source->getLibrary().getTypeMatchPtr(match_extent_type);
+	    SINVARIANT(t != NULL);
 	    for(unsigned i = 0; i < t->getNFields(); ++i) {
-		xmlspec.append((format("<field name=\"%s\"/>")
-				% t->getFieldName(i)).str());
+		xmlspec.append((format("<field name=\"%s\"/>") % t->getFieldName(i)).str());
 	    }
 	} else {
 	    for(unsigned i=0;i<fields.size();++i) {
-		xmlspec.append((format("<field name=\"%s\"/>")
-				% fields[i]).str());
+		xmlspec.append((format("<field name=\"%s\"/>") % fields[i]).str());
 	    }
 	}
 	xmlspec.append("</fields>");
@@ -253,9 +249,8 @@ main(int argc, char *argv[])
     }
 
     if (where_extent_type != "") {
-	const ExtentType *match_type 
-	    = first_source->getLibrary().getTypeMatch(where_extent_type, 
-						      false, true);
+	const ExtentType::Ptr match_type 
+	    = first_source->getLibrary().getTypeMatchPtr(where_extent_type, false, true);
 	toText.setWhereExpr(match_type->getName(), where_expr_str);
     }
 

@@ -86,7 +86,7 @@ namespace dataseries {
             Extent *e;
             Stats *to_update;
             Pending(Extent &in_e, Stats *to_update) 
-                : e(new Extent(in_e.getType())), to_update(to_update) 
+                : e(new Extent(in_e.getTypePtr())), to_update(to_update) 
             {
                 e->swap(in_e);
             }

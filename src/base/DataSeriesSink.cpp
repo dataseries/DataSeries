@@ -171,7 +171,7 @@ void DataSeriesSink::close(bool do_fsync, Stats *to_update) {
     // until after we've already compressed the data.
     writer_info.index_series.newRecord(); 
     writer_info.field_extentOffset.set(writer_info.cur_offset);
-    writer_info.field_extentType.set(writer_info.index_series.getExtentRef().getType().getName());
+    writer_info.field_extentType.set(writer_info.index_series.getTypePtr()->getName());
 
     worker_info.bytes_in_progress += writer_info.index_series.getExtentRef().size();
     worker_info.pending_work.push_back
@@ -237,10 +237,10 @@ void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
     INVARIANT(writer_info.wrote_library,
 	      "must write extent type library before writing extents!\n");
     INVARIANT(valid_types.exists(e.type), format("type %s (%p) wasn't in your type library")
-	      % e.getType().getName() % &e.getType());
+	      % e.getTypePtr()->getName() % e.getTypePtr().get());
     INVARIANT(worker_info.keep_going, "must not call writeExtent after calling close()");
     
-    Extent::Ptr we(new Extent(e.getType()));
+    Extent::Ptr we(new Extent(e.getTypePtr()));
     we->swap(e);
     
     queueWriteExtent(we, stats);
@@ -248,7 +248,7 @@ void DataSeriesSink::writeExtent(Extent &e, Stats *stats) {
 
 void DataSeriesSink::writeExtentLibrary(const ExtentTypeLibrary &lib) {
     INVARIANT(!writer_info.wrote_library, "Can only write extent library once");
-    ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLType());
+    ExtentSeries type_extent_series(ExtentType::getDataSeriesXMLTypePtr());
     type_extent_series.newExtent();
 
     Variable32Field typevar(type_extent_series,"xmltype");
@@ -386,7 +386,7 @@ void DataSeriesSink::WriterInfo::writeOutPending(PThreadScopedLock &lock, Worker
             
             index_series.newRecord();
             field_extentOffset.set(cur_offset);
-            field_extentType.set(tc->extent->getType().getName());
+            field_extentType.set(tc->extent->getTypePtr()->getName());
             
             checkedWrite(tc->compressed.begin(), tc->compressed.size());
             cur_offset += tc->compressed.size();

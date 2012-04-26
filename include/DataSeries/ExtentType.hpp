@@ -170,13 +170,20 @@ public:
 
     /** Returns the type of the Extent that stores the XML descriptions
         of all the ExtentTypes used in a DataSeries file. */
-    static const ExtentType &getDataSeriesXMLType() {
+    static const ExtentType::Ptr getDataSeriesXMLTypePtr() {
+	return dataseries_xml_type;
+    }
+    static const ExtentType &getDataSeriesXMLType() FUNC_DEPRECATED {
 	return *dataseries_xml_type;
     }
     /** Returns the type of the index of a DataSeries file. */
-    static const ExtentType &getDataSeriesIndexTypeV0() {
+    static const ExtentType::Ptr getDataSeriesIndexTypeV0Ptr() {
+	return dataseries_index_type_v0;
+    }
+    static const ExtentType &getDataSeriesIndexTypeV0() FUNC_DEPRECATED {
 	return *dataseries_index_type_v0;
     }
+
 
     // we have visible and invisible fields; visible fields are
     // counted by getnfields and accessible through getfieldname;
@@ -533,31 +540,44 @@ public:
     const ExtentType::Ptr registerTypePtr(const std::string &xmldesc);
 
     /** Adds an ExtentType to the map */
-    void registerType(const ExtentType &type);
+    void registerType(const ExtentType::Ptr type);
+
+    /** Adds an ExtentType to the map */
+    void registerType(const ExtentType &type) FUNC_DEPRECATED {
+        registerType(type.shared_from_this());
+    }
 
     /** Find an @c ExtentType whose name is known exactly.
         If @c null_ok is true then, if the name is not present
         in the @c ExtentTypeLibrary, returns a null pointer.
         Otherwise, it is an error if there is no @c ExtentType
         with the given name in the library */
-    const ExtentType *getTypeByName(const std::string &name, 
-				    bool null_ok = false) const;
+    const ExtentType::Ptr getTypeByNamePtr(const std::string &name, bool null_ok = false) const;
+    const ExtentType *getTypeByName(const std::string &name, bool null_ok = false) const FUNC_DEPRECATED {
+        return getTypeByNamePtr(name, null_ok).get();
+    }
     /** Find an ExtentType whose name begins with a known prefix.
         null_ok has the same meaning as in @c getTypeByName.
         Preconditions:
         - Only one type in the library matches. */
-    const ExtentType *getTypeByPrefix(const std::string &prefix, 
-				      bool null_ok = false) const;
+    const ExtentType::Ptr getTypeByPrefixPtr(const std::string &prefix, bool null_ok = false) const;
+    const ExtentType *getTypeByPrefix(const std::string &prefix, bool null_ok = false) const FUNC_DEPRECATED {
+        return getTypeByPrefixPtr(prefix, null_ok).get();
+    }
     /** Find an ExtentType whose name contains some substring.
         null_ok has the same meaning as in @c getTypeByName.
         Preconditions:
         - Only one type in the library matches. */
-    const ExtentType *getTypeBySubstring(const std::string &substr,
-					 bool null_ok = false) const;
+    const ExtentType::Ptr getTypeBySubstringPtr(const std::string &substr, bool null_ok = false) const;
+    const ExtentType *getTypeBySubstring(const std::string &substr, bool null_ok = false) const FUNC_DEPRECATED {
+        return getTypeBySubstringPtr(substr, null_ok).get();
+    }
     /* tries ByName, ByPrefix and BySubstring in that order.
        selects a single unique non-dataseries type if match is "*" */
-    const ExtentType *getTypeMatch(const std::string &match,
-				   bool null_ok = false, bool skip_info=false);
+    const ExtentType::Ptr getTypeMatchPtr(const std::string &match, bool null_ok = false, bool skip_info=false);
+    const ExtentType *getTypeMatch(const std::string &match, bool null_ok = false, bool skip_info=false) FUNC_DEPRECATED {
+        return getTypeMatchPtr(match, null_ok, skip_info).get();
+    }
 
     /** Stores the known @c ExtentType.  You should not modify this
         directly.  Use @c registerType.  The only time this map should

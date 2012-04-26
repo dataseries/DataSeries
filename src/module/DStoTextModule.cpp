@@ -157,7 +157,7 @@ DStoTextModule::getExtentPrintSpecs(PerTypeState &state)
 	return;
     }
     state.print_specs = state.override_print_specs;
-    const xmlDocPtr doc = state.series.getType()->getXmlDescriptionDoc();
+    const xmlDocPtr doc = state.series.getTypePtr()->getXmlDescriptionDoc();
     xmlNodePtr cur = xmlDocGetRootElement(doc);
     cur = cur->xmlChildrenNode;
     while (cur != NULL) {
@@ -215,7 +215,7 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     if (header_only_once && header_printed) return;
     header_printed = true;
 
-    const string &type_name = state.series.getType()->getName();
+    const string &type_name = state.series.getTypePtr()->getName();
     if (print_extent_type) {
 	if (text_dest == NULL) {
 	    *stream_text_dest << "# Extent, type='" << type_name << "'";
@@ -246,8 +246,8 @@ DStoTextModule::getExtentPrintHeaders(PerTypeState &state)
     }
 
     if (state.field_names.empty()) {
-	for(unsigned i=0;i<state.series.getType()->getNFields();++i) {
-	    state.field_names.push_back(state.series.getType()->getFieldName(i));
+	for(unsigned i=0;i<state.series.getTypePtr()->getNFields();++i) {
+	    state.field_names.push_back(state.series.getTypePtr()->getFieldName(i));
 	}
     }
     if (state.fields.empty()) {

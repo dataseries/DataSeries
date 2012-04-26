@@ -60,7 +60,7 @@ ostream &operator <<(ostream &to, const vector<string> &v) {
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
 public:
     struct TableInfo {
-	const ExtentType *extent_type;
+	ExtentType::Ptr extent_type;
 	vector<string> depends_on;
 	Clock::Tfrac last_update;
 	TableInfo() : extent_type(), last_update(0) { }
@@ -102,7 +102,7 @@ public:
 	}
 	output_module->getAndDeleteShared();
 	TableInfo &ti(table_info[dest_table]);
-	ti.extent_type = input.getType();
+	ti.extent_type = input.getTypePtr();
 	ti.last_update = Clock::todTfrac();
     }
 
@@ -143,7 +143,7 @@ public:
 
             ExtentTypeLibrary lib;
             const ExtentType::Ptr type(lib.registerTypePtr(xml_desc));
-            updateTableInfo(dest_table, type.get());
+            updateTableInfo(dest_table, type);
         }
     }
 
@@ -169,7 +169,7 @@ public:
         } else {
             waitForSuccessfulChild(pid);
             DataSeriesSource source(tableToPath(dest_table));
-            const ExtentType *t = source.getLibrary().getTypeByName(src_table);
+            const ExtentType::Ptr t = source.getLibrary().getTypeByNamePtr(src_table);
 
             updateTableInfo(dest_table, t); 
         }
@@ -210,7 +210,7 @@ public:
             }
         }
 
-        updateTableInfo(dest_table, type.get());
+        updateTableInfo(dest_table, type);
     }
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
@@ -288,7 +288,7 @@ public:
         DataSeriesModule::Ptr output_module = makeTeeModule(*hj_module, tableToPath(out_table));
         
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, hj_module->output_series.getType());
+        updateTableInfo(out_table, hj_module->output_series.getTypePtr());
     }
 
     void starJoin(const string &fact_table, const vector<Dimension> &dimensions, 
@@ -320,7 +320,7 @@ public:
         DataSeriesModule::Ptr output_module = makeTeeModule(*sj_module, tableToPath(out_table));
 
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, sj_module->output_series.getType());
+        updateTableInfo(out_table, sj_module->output_series.getTypePtr());
     }
     
     void selectRows(const string &in_table, const string &out_table, const string &where_expr) {
@@ -347,7 +347,7 @@ public:
         OutputSeriesModule::OSMPtr project(makeProjectModule(input, keep_columns));
         DataSeriesModule::Ptr output_module = makeTeeModule(*project, tableToPath(out_table));
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, project->output_series.getType());
+        updateTableInfo(out_table, project->output_series.getTypePtr());
     }
 
     void transformTable(const string &in_table, const string &out_table,
@@ -362,7 +362,7 @@ public:
             (makeExprTransformModule(input, expr_columns, out_table));
         DataSeriesModule::Ptr output_module = makeTeeModule(*transform, tableToPath(out_table));
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, transform->output_series.getType());
+        updateTableInfo(out_table, transform->output_series.getTypePtr());
     }
     
     void sortedUpdateTable(const string &base_table, const string &update_from, 
@@ -411,7 +411,7 @@ public:
         DataSeriesModule::Ptr output_module = makeTeeModule(*union_mod, tableToPath(out_table));
 
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, union_mod->output_series.getType());
+        updateTableInfo(out_table, union_mod->output_series.getTypePtr());
     }
 
     void sortTable(const string &in_table, const string &out_table, const vector<SortColumn> &by) {
@@ -424,7 +424,7 @@ public:
         
         DataSeriesModule::Ptr output_module = makeTeeModule(*sorter, tableToPath(out_table));
         output_module->getAndDeleteShared();
-        updateTableInfo(out_table, sorter->output_series.getType());
+        updateTableInfo(out_table, sorter->output_series.getTypePtr());
     }
 
 private:
@@ -442,7 +442,7 @@ private:
         return prefix + table_name;
     }
 
-    void updateTableInfo(const string &table, const ExtentType *extent_type) {
+    void updateTableInfo(const string &table, const ExtentType::Ptr extent_type) {
         TableInfo &info(table_info[table]);
         info.extent_type = extent_type;
     }
@@ -461,7 +461,7 @@ private:
     NameToInfo::iterator 
     createTable(const string &table_name, NameToInfo::iterator update_table, 
                 const std::string &update_column) {
-        const ExtentType *from_type = update_table->second.extent_type;
+        const ExtentType::Ptr from_type = update_table->second.extent_type;
         string extent_type = str(format("<ExtentType name=\"%s\" namespace=\"%s\""
                                         " version=\"%d.%d\">") % table_name 
                                  % from_type->getNamespace() % from_type->majorVersion()
@@ -483,7 +483,7 @@ private:
         Extent tmp(type);
         output.writeExtent(tmp, NULL);
         output.close();
-        updateTableInfo(table_name, library.getTypeByName(table_name));
+        updateTableInfo(table_name, library.getTypeByNamePtr(table_name));
         return getTableInfo(table_name);
     }
 

@@ -79,7 +79,7 @@ public:
             BOOST_FOREACH(const ss_vt &v, ut.extract_values) {
                 out_to_in[v.second] = v.first;
                 string &output_type(output_name_to_type[v.second]);
-                string renamed_output_type(renameField(ut.series.getType(), v.first, v.second));
+                string renamed_output_type(renameField(ut.series.getTypePtr(), v.first, v.second));
                 if (output_type.empty()) {
                     output_type = renamed_output_type;
                 } else {

@@ -139,7 +139,7 @@ private:
 	    : extent(e), to_update(_to_update), in_progress(false), checksum(0) 
 	{ }
 	void wipeExtent() {
-	    Extent tmp(extent->getType());
+	    Extent tmp(extent->getTypePtr());
 	    tmp.swap(*extent);
 	}
 	bool readyToWrite() {
@@ -194,7 +194,7 @@ private:
 
         WriterInfo()
             : fd(-1), wrote_library(false), in_callback(false), cur_offset(-1), chained_checksum(0),
-              index_series(ExtentType::getDataSeriesIndexTypeV0()), 
+              index_series(ExtentType::getDataSeriesIndexTypeV0Ptr()), 
               field_extentOffset(index_series,"offset"),
               field_extentType(index_series,"extenttype"), 
               extent_write_callback()

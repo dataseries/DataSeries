@@ -64,23 +64,12 @@ public:
 	: type(), my_extent(NULL), typeCompatibility(_tc) {
     }
 
-    /** Sets the type held by the ExtentSeries to the specified type.
-        Note that even when typeLoose is given, this can be useful,
-        because it allows Fields to be checked before an Extent is
-        specified.
-
-        Postconditions:
-            - getType() == &_type and getExtent() == 0 */
-    explicit ExtentSeries(const ExtentType &in_type, typeCompatibilityT _tc = typeExact)
+    /** This function is deprecated, you should switch to ExtentSeries(Ptr) */
+    explicit ExtentSeries(const ExtentType &in_type, typeCompatibilityT _tc = typeExact) FUNC_DEPRECATED
 	: type(in_type.shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
     }
-    /** Sets the type held by the ExtentSeries to the specified type.
-        If the type is null, then this is equivalent to the default
-        constructor.
-
-        Postconditions:
-            - getType() == _type and getExtent() == 0 */
-    explicit ExtentSeries(const ExtentType *in_type, typeCompatibilityT _tc = typeExact)
+    /** This function is deprecated, you should switch to ExtentSeries(Ptr) */
+    explicit ExtentSeries(const ExtentType *in_type, typeCompatibilityT _tc = typeExact) FUNC_DEPRECATED
 	: type(in_type->shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
     }
 
@@ -105,7 +94,7 @@ public:
             - getExtent() == 0 */
     ExtentSeries(ExtentTypeLibrary &library, std::string type_name,
 		 typeCompatibilityT _tc = typeExact)
-	: type(library.getTypeByName(type_name)->shared_from_this()), my_extent(NULL),
+	: type(library.getTypeByNamePtr(type_name)), my_extent(NULL),
 	  typeCompatibility(_tc) {
     }
 
@@ -204,16 +193,22 @@ public:
     /** Sets the type of Extents. If the type has already been set in any way,
         requires that the new type be compatible with the existing type as
         specified by the typeCompatibilityT of all the constructors. */
-    void setType(const ExtentType &type) {
+    void setType(const ExtentType &type) FUNC_DEPRECATED {
         setType(type.shared_from_this());
     }
+    void setType(const ExtentType *type) FUNC_DEPRECATED {
+        SINVARIANT(type != NULL);
+        setType(type->shared_from_this());
+    }
+
+
 
     /** Returns a pointer to the current type. If no type has been set, the
         result will be null.
         Invariants:
             - If getExtent() is not null, then the result is the
               same as getExtent()->type*/
-    const ExtentType *getType() { return type.get(); }
+    const ExtentType *getType() FUNC_DEPRECATED { return type.get(); }
     /** Returns a pointer to the current type. If no type has been set, the
         result will be null.
         Invariants:
@@ -358,7 +353,7 @@ public:
 	    } else {
 		cur_extent = e;
 		cur_pos = e->fixeddata.begin();
-		recordsize = e->getType().fixedrecordsize();
+		recordsize = e->getTypePtr()->fixedrecordsize();
 	    }
 	}
 	

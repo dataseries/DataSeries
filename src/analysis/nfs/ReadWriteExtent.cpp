@@ -25,20 +25,20 @@ public:
     virtual ~ReadWriteExtentAnalysis() { }
 
     void newExtentHook(const Extent &e) {
-	if (series.getType() != NULL) {
+	if (series.getTypePtr() != NULL) {
 	    return; // already did this
 	}
-	const ExtentType &type = e.getType();
-	if (type.getName() == "NFS trace: read-write") {
-	    SINVARIANT(type.getNamespace() == "" &&
-		       type.majorVersion() == 0 &&
-		       type.minorVersion() == 0);
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "NFS trace: read-write") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
 	    is_read.setFieldName("is-read");
-	} else if (type.getName() == "Trace::NFS::read-write"
-		   && type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::NFS::read-write"
+		   && type->versionCompatible(1,0)) {
 	    is_read.setFieldName("is-read");
-	} else if (type.getName() == "Trace::NFS::read-write"
-		   && type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::NFS::read-write"
+		   && type->versionCompatible(2,0)) {
 	    is_read.setFieldName("is_read");
 	} else {
 	    FATAL_ERROR("?");

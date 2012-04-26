@@ -80,20 +80,20 @@ public:
     Variable32Field operation;
 
     void firstExtent(const Extent &e) {
-	const ExtentType &type = e.getType();
-	if (type.versionCompatible(0,0) || type.versionCompatible(1,0)) {
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->versionCompatible(0,0) || type->versionCompatible(1,0)) {
 	    reqtime.setFieldName("packet-at");
 	    is_request.setFieldName("is-request");
 	    transaction_id.setFieldName("transaction-id");
 	    op_id.setFieldName("op-id");
-	} else if (type.versionCompatible(2,0)) {
+	} else if (type->versionCompatible(2,0)) {
 	    reqtime.setFieldName("packet_at");
 	    is_request.setFieldName("is_request");
 	    transaction_id.setFieldName("transaction_id");
 	    op_id.setFieldName("op_id");
 	} else {
 	    FATAL_ERROR(format("can only handle v[0,1,2].*; not %d.%d")
-			% type.majorVersion() % type.minorVersion());
+			% type->majorVersion() % type->minorVersion());
 	}
     }
 

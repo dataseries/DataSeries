@@ -384,28 +384,28 @@ public:
     }
 
     void newExtentHook(const Extent &e) {
-	if (series.getType() != NULL) {
+	if (series.getTypePtr() != NULL) {
 	    return; // already did this
 	}
-	const ExtentType &type = e.getType();
-	if (type.getName() == "NFS trace: common") {
-	    SINVARIANT(type.getNamespace() == "" &&
-		       type.majorVersion() == 0 &&
-		       type.minorVersion() == 0);
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "NFS trace: common") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
 	    packet_at.setFieldName("packet-at");
 	    payload_length.setFieldName("payload-length");
 	    op_id.setFieldName("op-id");
 	    nfs_version.setFieldName("nfs-version");
 	    is_request.setFieldName("is-request");
-	} else if (type.getName() == "Trace::NFS::common"
-		   && type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(1,0)) {
 	    packet_at.setFieldName("packet-at");
 	    payload_length.setFieldName("payload-length");
 	    op_id.setFieldName("op-id");
 	    nfs_version.setFieldName("nfs-version");
 	    is_request.setFieldName("is-request");
-	} else if (type.getName() == "Trace::NFS::common"
-		   && type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(2,0)) {
 	    packet_at.setFieldName("packet_at");
 	    payload_length.setFieldName("payload_length");
 	    op_id.setFieldName("op_id");

@@ -66,8 +66,8 @@ readExistingIndex(char *out_filename)
     TypeIndexModule src("NFS trace: common index");
     src.addSource(out_filename);
     Extent::Ptr e = src.getSharedExtent();
-    INVARIANT(e->getType().getName() == "NFS trace: common index",
-	      format("whoa, extent type %s bad") % e->getType().getName());
+    INVARIANT(e->getTypePtr()->getName() == "NFS trace: common index",
+	      format("whoa, extent type %s bad") % e->getTypePtr()->getName());
 
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
@@ -87,7 +87,7 @@ readExistingIndex(char *out_filename)
     }
 
     e = src.getSharedExtent(); 
-    SINVARIANT(e->getType().getName() == "DataSeries: ExtentIndex");
+    SINVARIANT(e->getTypePtr()->getName() == "DataSeries: ExtentIndex");
     INVARIANT(src.getSharedExtent() == NULL, "whoa, index had incorrect extents");
 }
 

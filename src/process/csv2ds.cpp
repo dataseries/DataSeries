@@ -149,13 +149,13 @@ const ExtentType::Ptr getXMLDescFromFile(const string &filename, ExtentTypeLibra
     return lib.registerTypePtr(xml_desc);
 }
 
-void makeFields(const ExtentType &type, ExtentSeries &series,
+void makeFields(const ExtentType::Ptr type, ExtentSeries &series,
                 vector<GeneralField *> &ret, vector<bool> &is_nullable) {
-    ret.reserve(type.getNFields());
-    is_nullable.reserve(type.getNFields());
-    for(uint32_t i = 0; i < type.getNFields(); ++i) {
-	ret.push_back(GeneralField::create(series, type.getFieldName(i)));
-        is_nullable.push_back(type.getNullable(type.getFieldName(i)));
+    ret.reserve(type->getNFields());
+    is_nullable.reserve(type->getNFields());
+    for(uint32_t i = 0; i < type->getNFields(); ++i) {
+	ret.push_back(GeneralField::create(series, type->getFieldName(i)));
+        is_nullable.push_back(type->getNullable(type->getFieldName(i)));
     }
 }
 
@@ -203,7 +203,7 @@ int main(int argc, char *argv[]) {
 
     vector<bool> is_nullable;
     vector<GeneralField *> fields;
-    makeFields(*type, series, fields, is_nullable);
+    makeFields(type, series, fields, is_nullable);
     istream *csv_input;
 
     if (csv_input_filename == "-") {

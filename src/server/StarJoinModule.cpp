@@ -33,6 +33,7 @@ public:
         typedef boost::shared_ptr<SJM_Dimension> Ptr;
 
         SJM_Dimension(Dimension &d) : Dimension(d), dimension_type() { }
+        ~SJM_Dimension() throw () { }
 
         size_t valuePos(const string &source_field_name) {
             for(size_t i = 0; i < value_columns.size(); ++i) {
@@ -43,7 +44,7 @@ public:
             return numeric_limits<size_t>::max();
         }
 
-        const ExtentType *dimension_type;
+        ExtentType::Ptr dimension_type;
         HashMap<GVVec, GVVec> dimension_data; // map dimension key to dimension values
     };
 
@@ -73,7 +74,7 @@ public:
                            % dim.dimension_name % dim.source_table);
             key_gv.resize(dim.key_columns.size());
             value_gv.resize(dim.value_columns.size());
-            series.setType(e.getType());
+            series.setType(e.getTypePtr());
             BOOST_FOREACH(string key, dim.key_columns) {
                 key_gf.push_back(GeneralField::make(series, key));
             }
@@ -81,7 +82,7 @@ public:
                 value_gf.push_back(GeneralField::make(series, value));
             }
             SINVARIANT(dim.dimension_type == NULL);
-            dim.dimension_type = series.getType();
+            dim.dimension_type = series.getTypePtr();
         }
 
         void processRow() {
@@ -149,14 +150,14 @@ public:
     }
 
     void setOutputType() {
-        SINVARIANT(fact_series.getType() != NULL);
+        SINVARIANT(fact_series.getTypePtr() != NULL);
         string output_xml(str(format("<ExtentType name=\"star-join -> %s\""
                                      " namespace=\"server.example.com\" version=\"1.0\">\n")
                               % output_table_name));
         typedef map<string, string>::value_type ss_pair;
         BOOST_FOREACH(ss_pair &v, fact_column_names) {
-            TINVARIANT(fact_series.getType()->hasColumn(v.first));
-            output_xml.append(renameField(fact_series.getType(), v.first, v.second));
+            TINVARIANT(fact_series.getTypePtr()->hasColumn(v.first));
+            output_xml.append(renameField(fact_series.getTypePtr(), v.first, v.second));
             fact_fields.push_back(ExtractorField::make(fact_series, v.first, v.second));
         }
         BOOST_FOREACH(const SJM_Join::Ptr dfj, dimension_fact_join) {
@@ -189,7 +190,7 @@ public:
 
     void firstExtent(const Extent &fact_extent) {
         processDimensions();
-        fact_series.setType(fact_extent.getType());
+        fact_series.setType(fact_extent.getTypePtr());
         setOutputType();
     }
 
@@ -198,7 +199,7 @@ public:
         if (e == NULL) {
             return e;
         }
-        if (output_series.getType() == NULL) {
+        if (output_series.getTypePtr() == NULL) {
             firstExtent(*e);
         }
         

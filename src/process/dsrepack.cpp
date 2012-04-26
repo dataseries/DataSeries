@@ -124,17 +124,16 @@ struct PerTypeWork {
 
     double sum_unpacked_size, sum_packed_size;
     PerTypeWork(DataSeriesSink &output, unsigned extent_size, 
-		const ExtentType &t) 
-	: inputseries(t), outputseries(t), 
-	  sum_unpacked_size(0), sum_packed_size(0) 
+		const ExtentType::Ptr t) 
+	: inputseries(t), outputseries(t), sum_unpacked_size(0), sum_packed_size(0) 
     {
-	for(unsigned i = 0; i < t.getNFields(); ++i) {
-	    const string &s = t.getFieldName(i);
+	for(unsigned i = 0; i < t->getNFields(); ++i) {
+	    const string &s = t->getFieldName(i);
 	    GeneralField *in = GeneralField::create(NULL, inputseries, s);
 	    GeneralField *out = GeneralField::create(NULL, outputseries, s);
 	    all_fields.push_back(in);
 	    all_fields.push_back(out);
-	    switch(t.getFieldType(s)) 
+	    switch(t->getFieldType(s)) 
 		{
 		case ExtentType::ft_bool: 
 		    in_boolfields.push_back(safeDownCast<GF_Bool>(in));
@@ -175,8 +174,7 @@ struct PerTypeWork {
 	sum_unpacked_size += stats.unpacked_size;
 	sum_packed_size += stats.packed_size;
 
-	output_module = new OutputModule(output, outputseries, 
-					 old->outputtype, 
+	output_module = new OutputModule(output, outputseries, old->getOutputType(),
 					 old->getTargetExtentSize());
 	delete old;
     }
@@ -190,8 +188,7 @@ struct PerTypeWork {
 
 uint64_t fileSize(const string &filename) {
     struct stat buf;
-    INVARIANT(stat(filename.c_str(),&buf) == 0, 
-	      boost::format("stat(%s) failed: %s")
+    INVARIANT(stat(filename.c_str(),&buf) == 0, boost::format("stat(%s) failed: %s")
 	      % filename % strerror(errno));
 
     BOOST_STATIC_ASSERT(sizeof(buf.st_size) >= 8);
@@ -223,8 +220,8 @@ void writeRepackInfo(DataSeriesSink &sink, const commonPackingArgs &cpa, int fil
     if (!generate_info_extent) {
 	return;
     }
-    ExtentSeries series(*dsrepack_info_type);
-    OutputModule out_module(sink, series, *dsrepack_info_type, cpa.extent_size);
+    ExtentSeries series(dsrepack_info_type);
+    OutputModule out_module(sink, series, dsrepack_info_type, cpa.extent_size);
     BoolField enable_bz2(series, "enable_bz2");
     BoolField enable_gz(series, "enable_gz");
     BoolField enable_lzo(series, "enable_lzo");
@@ -247,11 +244,11 @@ void writeRepackInfo(DataSeriesSink &sink, const commonPackingArgs &cpa, int fil
     }
 }
 
-bool skipType(const ExtentType &type) {
-    return type.getName() == "DataSeries: ExtentIndex"
-	|| type.getName() == "DataSeries: XmlType"
-	|| (type.getName() == "Info::DSRepack"
-	    && type.getNamespace() == "ssd.hpl.hp.com");
+bool skipType(const ExtentType::Ptr type) {
+    return type->getName() == "DataSeries: ExtentIndex"
+	|| type->getName() == "DataSeries: XmlType"
+	|| (type->getName() == "Info::DSRepack"
+	    && type->getNamespace() == "ssd.hpl.hp.com");
 }
 
 void usage(const string argv0, const string &error) {
@@ -334,17 +331,16 @@ int main(int argc, char *argv[]) {
 
 	DataSeriesSource f(argv[i]);
 
-	for(ExtentTypeLibrary::NameToType::iterator j 
-		= f.getLibrary().name_to_type.begin();
+	for(ExtentTypeLibrary::NameToType::iterator j = f.getLibrary().name_to_type.begin();
 	    j != f.getLibrary().name_to_type.end(); ++j) {
-	    if (skipType(*j->second)) {
+	    if (skipType(j->second)) {
 		continue;
 	    }
 	    if (prefixequal(j->first, "DataSeries:")) {
 		cerr << boost::format("Warning, found extent type of name '%s'; probably should skip it") % j->first << endl;
 	    }
-	    const ExtentType *tmp = library.getTypeByName(j->first, true);
-	    INVARIANT(tmp == NULL || tmp == j->second.get(),
+	    const ExtentType::Ptr tmp = library.getTypeByNamePtr(j->first, true);
+	    INVARIANT(tmp == NULL || tmp == j->second,
 		      boost::format("XML types for type '%s' differ between file %s and an earlier file")
 		      % j->first % argv[i]);
 	    if (tmp == NULL) {
@@ -354,7 +350,7 @@ int main(int argc, char *argv[]) {
 		const ExtentType::Ptr t
                     = library.registerTypePtr(j->second->getXmlDescriptionString());
 		per_type_work[j->first] = 
-		    new PerTypeWork(*output, packing_args.extent_size, *t);
+		    new PerTypeWork(*output, packing_args.extent_size, t);
 	    }
 	    DEBUG_INVARIANT(per_type_work[j->first] != NULL, "internal");
 	}
@@ -363,7 +359,7 @@ int main(int argc, char *argv[]) {
 	Variable32Field extenttype(s,"extenttype");
 
 	for(;s.morerecords();++s) {
-	    if (skipType(*library.getTypeByName(extenttype.stringval()))) {
+	    if (skipType(library.getTypeByNamePtr(extenttype.stringval()))) {
 		continue;
 	    }
 	    ++extent_count;
@@ -391,7 +387,7 @@ int main(int argc, char *argv[]) {
 	if (inextent == NULL)
 	    break;
 	
-	if (skipType(*inextent->type)) {
+	if (skipType(inextent->type)) {
 	    continue;
 	}
 	++extent_num;
@@ -405,7 +401,7 @@ int main(int argc, char *argv[]) {
 	    ptw->inputseries.morerecords();
 	    ++ptw->inputseries) {
 	    ptw->output_module->newRecord();
-	    cur_file_bytes += ptw->outputseries.getType()->fixedrecordsize();
+	    cur_file_bytes += ptw->outputseries.getTypePtr()->fixedrecordsize();
 	    for(unsigned int i=0; i < ptw->in_boolfields.size(); ++i) {
 		ptw->out_boolfields[i]->set(ptw->in_boolfields[i]);
 	    }

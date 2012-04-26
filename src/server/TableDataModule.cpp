@@ -10,14 +10,14 @@ public:
     }
 
     virtual void firstExtent(const Extent &e) {
-        series.setType(e.getType());
-        const ExtentType &extent_type(e.getType());
-        fields.reserve(extent_type.getNFields());
-        for (uint32_t i = 0; i < extent_type.getNFields(); ++i) {
-            string field_name(extent_type.getFieldName(i));
+        series.setType(e.getTypePtr());
+        const ExtentType::Ptr extent_type(e.getTypePtr());
+        fields.reserve(extent_type->getNFields());
+        for (uint32_t i = 0; i < extent_type->getNFields(); ++i) {
+            string field_name(extent_type->getFieldName(i));
             fields.push_back(GeneralField::make(series, field_name));
             into.columns.push_back(TableColumn(field_name, 
-                                               extent_type.getFieldTypeStr(field_name)));
+                                               extent_type->getFieldTypeStr(field_name)));
         }
         into.__isset.columns = true;
     }

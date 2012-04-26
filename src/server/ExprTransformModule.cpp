@@ -16,7 +16,7 @@ public:
     { }
 
     bool hasColumn(ExtentSeries &series, const string &field_name) {
-        return series.getType()->hasColumn(field_name);
+        return series.getTypePtr()->hasColumn(field_name);
     }
 
     DSExprParser::Selector fieldNameToSeries(const string &name) {
@@ -53,7 +53,7 @@ public:
         
         ExtentTypeLibrary lib;
         output_series.setType(lib.registerTypePtr(output_xml));
-        previous_row_series.setType(*output_series.getType());
+        previous_row_series.setType(output_series.getTypePtr());
         previous_row_series.newExtent();
         previous_row_series.newRecord();
         copier.prep();
@@ -69,7 +69,7 @@ public:
             GeneralField::Ptr field = GeneralField::make(output_series, column.name);
             
             outputs.push_back(Output(expr, field, 
-                                     output_series.getType()->getFieldType(column.name)));
+                                     output_series.getTypePtr()->getFieldType(column.name)));
         }
     }
 
@@ -80,7 +80,7 @@ public:
                 if (in == NULL) {
                     return returnOutputSeries();
                 }
-                if (input_series.getType() == NULL) {
+                if (input_series.getTypePtr() == NULL) {
                     firstExtent(in);
                 }
                 input_series.setExtent(in);

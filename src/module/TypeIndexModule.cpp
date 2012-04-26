@@ -17,7 +17,7 @@ TypeIndexModule::TypeIndexModule(const string &_type_match)
       extentOffset(indexSeries,"offset"), 
       extentType(indexSeries,"extenttype"),
       cur_file(0), cur_source(NULL),
-      my_type(NULL)
+      my_type()
 { }
 
 TypeIndexModule::~TypeIndexModule()
@@ -62,7 +62,7 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
 	    } else if (my_type == NULL) {
 		my_type = matchType();
 	    } else {
-		const ExtentType *tmp = matchType();
+		const ExtentType::Ptr tmp = matchType();
 		// TODO: figure out what we should allow, should the series typematching rules be imported here?
 		INVARIANT(my_type == tmp, 
 			  boost::format("two different types were matched; this is currently invalid\nFile with mismatch was %s\nType 1:\n%s\nType 2:\n%s\n")
@@ -93,12 +93,12 @@ TypeIndexModule::PrefetchExtent *TypeIndexModule::lockedGetCompressedExtent() {
     }
 }
 
-const ExtentType *TypeIndexModule::matchType() {
+const ExtentType::Ptr TypeIndexModule::matchType() {
     INVARIANT(cur_source != NULL, "bad");
-    const ExtentType *t = cur_source->getLibrary().getTypeMatch(type_match, true);
-    const ExtentType *u = NULL;
+    const ExtentType::Ptr t = cur_source->getLibrary().getTypeMatchPtr(type_match, true);
+    ExtentType::Ptr u;
     if (!second_type_match.empty()) {
-	u = cur_source->getLibrary().getTypeMatch(second_type_match, true);
+	u = cur_source->getLibrary().getTypeMatchPtr(second_type_match, true);
     }
     INVARIANT(t == NULL || u == NULL || t == u,
 	      boost::format("both %s and %s matched different types %s and %s")

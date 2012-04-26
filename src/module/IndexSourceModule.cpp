@@ -155,7 +155,7 @@ Extent::Ptr IndexSourceModule::getSharedExtent() {
     getting_extent = false;
 
     LintelLogDebug("IndexSourceModule", format("return extent %s:%d type %s")
-		   % ret->extent_source % ret->extent_source_offset % ret->getType().getName());
+		   % ret->extent_source % ret->extent_source_offset % ret->getTypePtr()->getName());
     return ret;
 }
 
@@ -324,8 +324,7 @@ void IndexSourceModule::unpackThread() {
 	    PrefetchExtent *pe = prefetch->compressed.getFront();
 	    prefetch->compressed.subtract(pe->bytes.size());
 	    uint32_t unpacked_size 
-		= Extent::unpackedSize(pe->bytes, pe->need_bitflip,
-				       *pe->type);
+		= Extent::unpackedSize(pe->bytes, pe->need_bitflip,pe->type);
 	    prefetch->unpacked.add(pe, unpacked_size);
 	    prefetch->compressed_cond.signal();
 	    bool should_yield; 
@@ -350,7 +349,8 @@ void IndexSourceModule::unpackThread() {
 	    if (should_yield) {
 		sched_yield();
 	    }
-            Extent::Ptr e(new Extent(*pe->type, pe->bytes, pe->need_bitflip));
+            Extent::Ptr e(new Extent(pe->type));
+            e->unpackData(pe->bytes, pe->need_bitflip);
 	    e->extent_source = pe->extent_source;
 	    e->extent_source_offset = pe->extent_source_offset;
 	    SINVARIANT(e->type->getName() == pe->uncompressed_type);
@@ -385,7 +385,7 @@ IndexSourceModule::readCompressed(DataSeriesSource *dss,
     p->extent_source_offset = offset;
     bool ok = dss->preadCompressed(offset,p->bytes);
     INVARIANT(ok,"whoa, shouldn't have hit eof!");
-    p->type = dss->getLibrary().getTypeByName(Extent::getPackedExtentType(p->bytes));
+    p->type = dss->getLibrary().getTypeByNamePtr(Extent::getPackedExtentType(p->bytes));
     p->need_bitflip = dss->needBitflip();
     p->uncompressed_type = uncompressed_type;
     prefetch->mutex.lock();

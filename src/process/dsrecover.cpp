@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
     for (ExtentTypeLibrary::NameToType::const_iterator
 	     i = library.name_to_type.begin(); i != library.name_to_type.end(); i++) {
 	if (!prefixequal(i->second->getName(), "DataSeries: ")) {
-	    new_library.registerType(*i->second);
+	    new_library.registerType(i->second);
 	}
     }
 	
@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
 	    if (e==NULL) {
 		break;
 	    }
-	    if (!prefixequal(e->getType().getName(), "DataSeries: ")) {
+	    if (!prefixequal(e->getTypePtr()->getName(), "DataSeries: ")) {
                 sink.writeExtent(*e, NULL);
             }
 	    fails = 0;

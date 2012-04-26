@@ -18,6 +18,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/PThread.hpp>
 
 #include <DataSeries/DataSeriesSource.hpp>
@@ -66,6 +67,10 @@ returns null |    | |               | |               | |
 \endverbatim
     
     */
+
+#ifndef DSM_VAR_DEPRECATED
+#  define DSM_VAR_DEPRECATED VAR_DEPRECATED
+#endif
 
 class DataSeriesModule : boost::noncopyable {
 public:
@@ -155,7 +160,7 @@ public:
 		 const ExtentType *outputtype, int target_extent_size) FUNC_DEPRECATED;
 
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
-		 const ExtentType &outputtype, int target_extent_size);
+		 const ExtentType &outputtype, int target_extent_size) FUNC_DEPRECATED;
 
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
 		 const ExtentType::Ptr outputtype, int target_extent_size);
@@ -189,7 +194,8 @@ public:
     }
 
     void printStats(std::ostream &to);
-    const ExtentType &outputtype;
+    const ExtentType &outputtype DSM_VAR_DEPRECATED;
+    ExtentType::Ptr getOutputType(); // re-inline this function once deprecated var is changed to ptr
 
     size_t curExtentSize() {
 	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();

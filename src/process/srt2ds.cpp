@@ -341,8 +341,8 @@ main(int argc, char *argv[])
     srtheadertype_xml.append(srt_header);
     srtheadertype_xml.append("</ExtentType>\n");
     ExtentTypeLibrary library;
-    const ExtentType *srtheadertype = library.registerType(srtheadertype_xml);
-    ExtentSeries srtheaderseries(*srtheadertype);
+    const ExtentType::Ptr srtheadertype = library.registerTypePtr(srtheadertype_xml);
+    ExtentSeries srtheaderseries(srtheadertype);
     OutputModule headeroutmodule(srtdsout,srtheaderseries,srtheadertype,packing_args.extent_size);
 
     std::string srttype_xml = "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Trace::BlockIO::HP-UX";
@@ -390,8 +390,8 @@ main(int argc, char *argv[])
     }
     srttype_xml.append(srt_ioflags);
     srttype_xml.append("</ExtentType>\n");
-    const ExtentType *srttype = library.registerType(srttype_xml);
-    ExtentSeries srtseries(*srttype);
+    const ExtentType::Ptr srttype = library.registerTypePtr(srttype_xml);
+    ExtentSeries srtseries(srttype);
     OutputModule outmodule(srtdsout,srtseries,srttype,packing_args.extent_size);
     srtdsout.writeExtentLibrary(library);
     /*

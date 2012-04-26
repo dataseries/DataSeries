@@ -117,11 +117,11 @@ public:
 
     void prepFields(Extent::Ptr e) {
 	rw_side_data_thread = pthread_self();
-	const ExtentType &type = e->getType();
-	if (type.getName() == "NFS trace: common") {
-	    SINVARIANT(type.getNamespace() == "" &&
-		       type.majorVersion() == 0 &&
-		       type.minorVersion() == 0);
+	const ExtentType::Ptr type = e->getTypePtr();
+	if (type->getName() == "NFS trace: common") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
 	    // This version of the converter could generate duplicate
 	    // entries in the attr-ops table because it matched
 	    // replies to the last request.  However, the conversion
@@ -140,8 +140,8 @@ public:
 	    in_filesize.setFieldName("file-size");
 	    in_modifytime.setFieldName("modify-time");
 	    in_payloadlen.setFieldName("payload-length");
-	} else if (type.getName() == "Trace::NFS::common"
-		   && type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(1,0)) {
 	    // Later versions of the converter matched each reply to
 	    // exactly one request, so we can quickly prune entries,
 	    // however we can get longer delays because we processed
@@ -158,8 +158,8 @@ public:
 	    in_filesize.setFieldName("file-size");
 	    in_modifytime.setFieldName("modify-time");
 	    in_payloadlen.setFieldName("payload-length");
-	} else if (type.getName() == "Trace::NFS::common"
-		   && type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::NFS::common"
+		   && type->versionCompatible(2,0)) {
 	    // Later versions of the converter matched each reply to
 	    // exactly one request, so we can quickly prune entries,
 	    // however we can get longer delays because we processed
@@ -209,18 +209,17 @@ public:
     typedef HashTable<reqData,reqHash,reqEqual> reqHashTable;
 
     void initOutType() {
-	SINVARIANT(es_common.getType() != NULL &&
-		   es_attrops.getType() != NULL);
+	SINVARIANT(es_common.getTypePtr() != NULL && es_attrops.getTypePtr() != NULL);
 	
 	string units_epoch;
-	if (es_common.getType()->majorVersion() == 0) {
-	    SINVARIANT(es_attrops.getType()->majorVersion() == 0);
+	if (es_common.getTypePtr()->majorVersion() == 0) {
+	    SINVARIANT(es_attrops.getTypePtr()->majorVersion() == 0);
 	    units_epoch = "units=\"nanoseconds\" epoch=\"unix\"";
-	} else if (es_common.getType()->majorVersion() == 1) { 
-	    SINVARIANT(es_attrops.getType()->majorVersion() == 1);
+	} else if (es_common.getTypePtr()->majorVersion() == 1) { 
+	    SINVARIANT(es_attrops.getTypePtr()->majorVersion() == 1);
 	    units_epoch = "units=\"2^-32 seconds\" epoch=\"unix\"";
-	} else if (es_common.getType()->majorVersion() == 2) {
-	    SINVARIANT(es_attrops.getType()->majorVersion() == 2);
+	} else if (es_common.getTypePtr()->majorVersion() == 2) {
+	    SINVARIANT(es_attrops.getTypePtr()->majorVersion() == 2);
 	    units_epoch = "units=\"2^-32 seconds\" epoch=\"unix\"";
 	} else {
 	    FATAL_ERROR("don't know units and epoch");
@@ -310,12 +309,12 @@ public:
 	
 	es_attrops.setExtent(attrextent);
 
-	if (es_out.getType() == NULL) {
+	if (es_out.getTypePtr() == NULL) {
 	    initOutType();
-	    SINVARIANT(es_out.getType() != NULL);
+	    SINVARIANT(es_out.getTypePtr() != NULL);
 	}
 
-        Extent::Ptr outextent(new Extent(*es_out.getType()));
+        Extent::Ptr outextent(new Extent(es_out.getTypePtr()));
 	es_out.setExtent(outextent);
 
 	outextent->extent_source = str(format("(join around %s + %s)") 
@@ -688,11 +687,10 @@ public:
     virtual ~CommonAttrRWJoin() { }
 
     void initOutType() {
-	SINVARIANT(es_commonattr.getType() != NULL &&
-		   es_out.getType() == NULL);
+	SINVARIANT(es_commonattr.getTypePtr() != NULL && es_out.getTypePtr() == NULL);
 
 	xmlNodePtr ftype 
-	    = es_commonattr.getType()->xmlNodeFieldDesc("request-at");
+	    = es_commonattr.getTypePtr()->xmlNodeFieldDesc("request-at");
 	string units = ExtentType::strGetXMLProp(ftype, "units");
 	string epoch = ExtentType::strGetXMLProp(ftype, "epoch");
 	
@@ -713,21 +711,21 @@ public:
     void doFieldNameInit(Extent &e) {
 	did_field_names_init = true;
 
-	const ExtentType &type = e.getType();
-	if (type.getName() == "NFS trace: read-write") {
-	    SINVARIANT(type.getNamespace() == "" &&
-		       type.majorVersion() == 0 &&
-		       type.minorVersion() == 0);
+	const ExtentType::Ptr type = e.getTypePtr();
+	if (type->getName() == "NFS trace: read-write") {
+	    SINVARIANT(type->getNamespace() == "" &&
+		       type->majorVersion() == 0 &&
+		       type->minorVersion() == 0);
 	    in_rw_request_id.setFieldName("request-id");
 	    in_rw_reply_id.setFieldName("reply-id");
 	    in_is_read.setFieldName("is-read");
-	} else if (type.getName() == "Trace::NFS::read-write"
-		   && type.versionCompatible(1,0)) {
+	} else if (type->getName() == "Trace::NFS::read-write"
+		   && type->versionCompatible(1,0)) {
 	    in_rw_request_id.setFieldName("request-id");
 	    in_rw_reply_id.setFieldName("reply-id");
 	    in_is_read.setFieldName("is-read");
-	} else if (type.getName() == "Trace::NFS::read-write"
-		   && type.versionCompatible(2,0)) {
+	} else if (type->getName() == "Trace::NFS::read-write"
+		   && type->versionCompatible(2,0)) {
 	    in_rw_request_id.setFieldName("request_id");
 	    in_rw_reply_id.setFieldName("reply_id");
 	    in_is_read.setFieldName("is_read");
@@ -861,7 +859,7 @@ public:
 	if (commonattr_done && rw_done) {
 	    return Extent::Ptr();
 	}
-	if (es_out.getType() == NULL) {
+	if (es_out.getTypePtr() == NULL) {
 	    SINVARIANT(!es_commonattr.hasExtent() && !es_rw.hasExtent());
 	    nextCommonAttrExtent();
 	    if (!es_commonattr.hasExtent()) {

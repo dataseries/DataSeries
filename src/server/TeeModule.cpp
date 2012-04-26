@@ -13,13 +13,13 @@ public:
     }
 
     virtual void firstExtent(const Extent &e) {
-	series.setType(e.getType());
-	output_series.setType(e.getType());
+	series.setType(e.getTypePtr());
+	output_series.setType(e.getTypePtr());
         SINVARIANT(output_module == NULL);
-	output_module = new OutputModule(output, output_series, e.getType(), 96*1024);
+	output_module = new OutputModule(output, output_series, e.getTypePtr(), 96*1024);
 	copier.prep();
 	ExtentTypeLibrary library;
-	library.registerType(e.getType());
+	library.registerType(e.getTypePtr());
 	output.writeExtentLibrary(library);
         first_extent = true;
     }

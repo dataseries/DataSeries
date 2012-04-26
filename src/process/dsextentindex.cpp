@@ -155,7 +155,7 @@ public:
         Variable32Field modifyfilename(modifyseries,"filename");
         Int64Field modifytime(modifyseries,"modify-time");
         OutputModule *modifymodule 
-            = new OutputModule(*output, modifyseries, *modifyseries.getType(),
+            = new OutputModule(*output, modifyseries, modifyseries.getTypePtr(),
                                packing_args.extent_size);
 
 	// sort so we get consistent output for regression testing.
@@ -244,7 +244,7 @@ public:
         minmax_typename.append(type_prefix);
 
         DataSeriesSource source(old_index);
-        const ExtentType *type = source.getLibrary().getTypeByName(minmax_typename);
+        const ExtentType::Ptr type = source.getLibrary().getTypeByNamePtr(minmax_typename);
         updateNamespaceVersions(type);
     }
 
@@ -289,7 +289,7 @@ public:
 
 protected:
     // update the namespace/version info from an extent type
-    void updateNamespaceVersions(const ExtentType *type) {
+    void updateNamespaceVersions(const ExtentType::Ptr type) {
         if (type->getNamespace().empty()) {
             INVARIANT(type_namespace == NULL, 
 		      "invalid to index some extents with a namespace and some without");
@@ -344,7 +344,7 @@ protected:
         ExtentSeries infoseries(infotype);
         Variable32Field info_type_prefix(infoseries, "type-prefix");
         Variable32Field info_fields(infoseries, "fields");
-        OutputModule infomodule(*output, infoseries, *infotype, packing_args.extent_size);
+        OutputModule infomodule(*output, infoseries, infotype, packing_args.extent_size);
 
         infomodule.newRecord();
         info_type_prefix.set(type_prefix);
@@ -376,7 +376,7 @@ protected:
         extent_offset = new Int64Field(*minmaxseries, "extent_offset");
         rowcount = new Int32Field(*minmaxseries, "rowcount");
 
-        minmaxmodule = new OutputModule(*output, *minmaxseries, *minmaxtype,
+        minmaxmodule = new OutputModule(*output, *minmaxseries, minmaxtype,
                                         packing_args.extent_size);
 
         output->writeExtentLibrary(library);
@@ -652,7 +652,7 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
         ExtentType::int64 *time = modify.lookup(*i);
         if(!time || modifyTimeNanoSec(*i) != *time) {
             DataSeriesSource source(*i);
-            const ExtentType *type = source.getLibrary().getTypeMatch(type_prefix);
+            const ExtentType::Ptr type = source.getLibrary().getTypeMatchPtr(type_prefix);
             updateNamespaceVersions(type);
         }
     }

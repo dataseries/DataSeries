@@ -175,11 +175,11 @@ Int64TimeField::Raw Int64TimeField::doubleSecondsToRaw(double seconds) const {
 
 void Int64TimeField::newExtentType() {
     Int64Field::newExtentType();
-    DEBUG_SINVARIANT(dataseries.getType() != NULL);
+    DEBUG_SINVARIANT(dataseries.getTypePtr() != NULL);
     RegisteredInfo ri(getName(),
-		      dataseries.getType()->getName(),
-		      dataseries.getType()->getNamespace(),
-		      dataseries.getType()->majorVersion());
+		      dataseries.getTypePtr()->getName(),
+		      dataseries.getTypePtr()->getNamespace(),
+		      dataseries.getTypePtr()->majorVersion());
     {
 	PThreadScopedLock lock(registered_mutex);
 	TimeType *t = registered_type_info.lookup(ri);
@@ -190,7 +190,7 @@ void Int64TimeField::newExtentType() {
 	}
     }
     // not registered
-    xmlNodePtr ftype = dataseries.getType()->xmlNodeFieldDesc(getName());
+    xmlNodePtr ftype = dataseries.getTypePtr()->xmlNodeFieldDesc(getName());
     string units = ExtentType::strGetXMLProp(ftype, "units");
     string epoch = ExtentType::strGetXMLProp(ftype, "epoch");
     setUnitsEpoch(units, epoch);
@@ -283,7 +283,7 @@ void Int64TimeField::setUnitsEpoch(const std::string &units,
 		  format("Can not figure out time type for field %s, in type %s:"
                          " units '%s', epoch '%s'") 
 		  % getName() % (dataseries.hasExtent() 
-                                 ? dataseries.getExtentRef().getType().getName() : "unknown")
+                                 ? dataseries.getTypePtr()->getName() : "unknown")
                   % units % epoch);
     } else {
 	INVARIANT(time_type == Unknown  || time_type == new_type, 

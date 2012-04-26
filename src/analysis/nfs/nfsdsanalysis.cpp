@@ -527,7 +527,7 @@ public:
         Extent::Ptr e = source.getSharedExtent();
 	if (e == NULL)
 	    return e;
-	INVARIANT(e->getType().getName() == "common-attr-rw-join","bad");
+	INVARIANT(e->getTypePtr()->getName() == "common-attr-rw-join","bad");
 	hteData k;
 	for(s.setExtent(e);s.morerecords();++s) {
 	    if (packetat.val() < first_time) {
@@ -1151,9 +1151,9 @@ public:
 
     virtual void newExtentHook(const Extent &e) {
 	if (lookup_dir_filehandle.getName().empty()) {
-	    if (e.getType().hasColumn("lookup_dir_filehandle")) {
+	    if (e.getTypePtr()->hasColumn("lookup_dir_filehandle")) {
 		lookup_dir_filehandle.setFieldName("lookup_dir_filehandle");
-	    } else if (e.getType().hasColumn("lookup-dir-filehandle")) {
+	    } else if (e.getTypePtr()->hasColumn("lookup-dir-filehandle")) {
 		lookup_dir_filehandle.setFieldName("lookup-dir-filehandle");
 	    } else {
 		FATAL_ERROR("can't figure out lookup dir filehandle field name");
@@ -1303,7 +1303,7 @@ public:
 
 	++partial_extents;
 	if (dest_series == NULL) {
-	    dest_series = new ExtentSeries(e->getType());
+	    dest_series = new ExtentSeries(e->getTypePtr());
 	    copier = new ExtentRecordCopy(s,*dest_series);
 	}
 	

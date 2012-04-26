@@ -350,7 +350,7 @@ public:
 	if (time_base != time_base) {
 	    time_base = iotime.absval();
 	}
-        Extent::Ptr outExtent(new Extent(*output_type));
+        Extent::Ptr outExtent(new Extent(output_type));
 	++output_extents;
 	output_series.setExtent(outExtent);
 	if (!ps_series.hasExtent()) {

@@ -16,9 +16,9 @@ public:
             if (in == NULL) {
                 return returnOutputSeries();
             }
-            if (input_series.getType() == NULL) {
-                input_series.setType(in->getType());
-                output_series.setType(in->getType());
+            if (input_series.getTypePtr() == NULL) {
+                input_series.setType(in->getTypePtr());
+                output_series.setType(in->getTypePtr());
 
                 copier.prep();
                 where_expr.reset(DSExpr::make(input_series, where_expr_str));

@@ -144,8 +144,13 @@ public:
     /// \endcond
 
     /** Returns the type of the Extent; reference valid until extent is destroyed. */
-    const ExtentType &getType() const {
+    const ExtentType &getType() const FUNC_DEPRECATED {
         return *type;
+    }
+
+    /** Returns the type of the Extent */
+    const ExtentType::Ptr getTypePtr() const {
+        return type;
     }
 
     /** This constructor creates an @c Extent from raw bytes in
@@ -156,12 +161,12 @@ public:
         of the host processor is opposite the endianness of the
         input data. */
     Extent(const ExtentTypeLibrary &library, Extent::ByteArray &packeddata, 
-           const bool need_bitflip);
-    /** Similar to the above constructor, except that
-        the ExtentType is passed explicitly. */
-    Extent(const ExtentType &type, Extent::ByteArray &packeddata, const bool need_bitflip);
+           const bool need_bitflip); // TODO: consider deprecating.
+    /** Similar to the above constructor, except that the ExtentType is passed explicitly.
+        deprecated, just call unpackData directly after making the extent. */
+    Extent(const ExtentType &type, Extent::ByteArray &packeddata, const bool need_bitflip) FUNC_DEPRECATED;
     /** Creates an empty @c Extent. */
-    Extent(const ExtentType &type);
+    Extent(const ExtentType &type) FUNC_DEPRECATED;
 
     /** Creates an empty @c Extent. */
     Extent(const ExtentType::Ptr type);
@@ -200,7 +205,7 @@ public:
     
     /** Returns the number of records in this Extent */
     size_t nRecords() {
-	return fixeddata.size() / getType().fixedrecordsize();
+	return fixeddata.size() / getTypePtr()->fixedrecordsize();
     }
 
     /// \cond INTERNAL_ONLY
@@ -296,7 +301,11 @@ public:
           - from must be in the external representation of Extents. 
     */
     static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
-                                 const ExtentType &type);
+                                 const ExtentType::Ptr type);
+    static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
+                                 const ExtentType &type) FUNC_DEPRECATED {
+        return unpackedSize(from, need_bitflip, type.shared_from_this());
+    }
     
     /** Returns the name of the type of the Extent stored in @param from
 	

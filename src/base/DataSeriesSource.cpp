@@ -48,10 +48,10 @@ DataSeriesSource::DataSeriesSource(const string &filename, bool read_index, bool
     : index_extent(), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
       check_tail(check_tail)
 {
-    mylibrary.registerType(ExtentType::getDataSeriesXMLType());
-    mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0());
-    SINVARIANT(mylibrary.getTypeByName("DataSeries: XmlType") 
-	      == &ExtentType::getDataSeriesXMLType());
+    mylibrary.registerType(ExtentType::getDataSeriesXMLTypePtr());
+    mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0Ptr());
+    SINVARIANT(mylibrary.getTypeByNamePtr("DataSeries: XmlType")
+	      == ExtentType::getDataSeriesXMLTypePtr());
     reopenfile();
 }
 
@@ -121,7 +121,7 @@ void DataSeriesSource::readTypeExtent() {
     INVARIANT(Extent::preadExtent(fd,cur_offset,extentdata,need_bitflip),
 	      "Invalid file, must have a first extent");
     Extent::Ptr e(new Extent(mylibrary,extentdata,need_bitflip));
-    INVARIANT(e->type.get() == &ExtentType::getDataSeriesXMLType(),
+    INVARIANT(e->type == ExtentType::getDataSeriesXMLTypePtr(),
 	      "First extent must be the type defining extent");
 
     ExtentSeries type_extent_series(e);
@@ -178,7 +178,7 @@ Extent *DataSeriesSource::preadExtent(off64_t &offset, unsigned *compressedSize)
     Extent *ret = new Extent(mylibrary,extentdata,need_bitflip);
     ret->extent_source = filename;
     ret->extent_source_offset = save_offset;
-    INVARIANT(ret->type.get() != &ExtentType::getDataSeriesXMLType(),
+    INVARIANT(ret->type != ExtentType::getDataSeriesXMLTypePtr(),
 	      "Invalid to have a type extent after the first extent.");
     return ret;
 }

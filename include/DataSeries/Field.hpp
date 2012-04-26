@@ -76,7 +76,7 @@ public:
     */
     bool isNull(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
         DEBUG_SINVARIANT(&e != NULL);
-        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
+        DEBUG_SINVARIANT(e.getTypePtr() == dataseries.getTypePtr());
         if (!nullable) {
             return false;
         } else {
@@ -103,7 +103,7 @@ public:
               @c ExtentSeries must have a current record. Also,
               the flag_nullable must have been passed to the constructor. */
     void setNull(Extent &e, const dataseries::SEP_RowOffset &row_offset, bool val = true) {
-	DEBUG_INVARIANT(&e.getType() == dataseries.getType() && null_offset >= 0,
+	DEBUG_INVARIANT(e.getTypePtr() == dataseries.getTypePtr() && null_offset >= 0,
 			"internal error; extent not set or field not ready");
         setNull(e, e.fixeddata.begin() + row_offset.row_offset, val);
     }
@@ -201,7 +201,7 @@ protected:
     }
 
     uint8_t *rowPos(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
-        DEBUG_SINVARIANT(&e.getType() == dataseries.getType());
+        DEBUG_SINVARIANT(e.getTypePtr() == dataseries.getTypePtr());
         return row_offset.rowPos(e);
     }
 

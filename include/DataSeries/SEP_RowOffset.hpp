@@ -84,7 +84,7 @@ namespace dataseries {
         static difference_type
         distance(const SEP_RowOffset &a, const SEP_RowOffset &b, const Extent *extent) {
             DEBUG_SINVARIANT(a.extent == b.extent && b.extent == extent);
-            return (b.row_offset - a.row_offset) / extent->getType().fixedrecordsize();
+            return (b.row_offset - a.row_offset) / extent->getTypePtr()->fixedrecordsize();
         }
 
         /// distance from this to that
@@ -95,7 +95,7 @@ namespace dataseries {
         /// advance iterator forward (or backward if negative) by amount
         void advance(int32_t amount, const Extent *within_extent) {
             DEBUG_SINVARIANT(extent == within_extent);
-            row_offset += amount * within_extent->getType().fixedrecordsize();
+            row_offset += amount * within_extent->getTypePtr()->fixedrecordsize();
             // allow <= so that we can have a SEP_RowOffset pointing to the end of an exent.
             DEBUG_SINVARIANT(row_offset <= extent->fixeddata.size());
         }

@@ -62,7 +62,7 @@ DSExprParser::Selector firstMatch(vector<ExtentSeries *> *series, const string &
         name = name.substr(7);
     }
     for(vector<ExtentSeries *>::iterator i = series->begin(); i != series->end(); ++i) {
-        if ((**i).getType()->hasColumn(name)) {
+        if ((**i).getTypePtr()->hasColumn(name)) {
             return make_pair(*i, name);
         }
     }
