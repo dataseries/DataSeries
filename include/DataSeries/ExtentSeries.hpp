@@ -306,7 +306,7 @@ public:
     void newRecord() {
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()");
-	int offset = my_extent->fixeddata.size();
+	size_t offset = my_extent->fixeddata.size();
 	my_extent->createRecords(1);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
@@ -320,7 +320,7 @@ public:
 	// leaves the current record position unchanged
 	INVARIANT(my_extent != NULL,
 		  "must set extent for data series before calling newRecord()\n");
-	int offset = pos.cur_pos - my_extent->fixeddata.begin();
+	size_t offset = pos.cur_pos - my_extent->fixeddata.begin();
 	my_extent->createRecords(nrecords);
 	pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }

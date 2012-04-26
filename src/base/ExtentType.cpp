@@ -82,20 +82,26 @@ string ExtentType::strGetXMLProp(xmlNodePtr cur, const string &option_name, bool
     }
 }
 
-static bool parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val) {
-    string option = ExtentType::strGetXMLProp(cur, option_name);
-    
-    if (option.empty()) {
-	return default_val;
+namespace {
+    bool parseYesNo(const string &option, const string &option_name, bool default_val) {
+        if (option.empty()) {
+            return default_val;
+        }
+        if (option == "yes") {
+            return true;
+        } else if (option == "no") {
+            return false;
+        } else {
+            FATAL_ERROR(format("%s should be either 'yes' or 'no', not '%s'")
+                        % option_name % option);
+            return false;
+        }
     }
-    if (option == "yes") {
-	return true;
-    } else if (option == "no") {
-	return false;
-    } else {
-	FATAL_ERROR(format("%s should be either 'yes' or 'no', not '%s'")
-		    % option_name % option);
-	return false;
+
+    bool parseYesNo(xmlNodePtr cur, const string &option_name, bool default_val) {
+        string option = ExtentType::strGetXMLProp(cur, option_name);
+        
+        return parseYesNo(option, option_name, default_val);
     }
 }
 
@@ -329,6 +335,8 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 	    // test.C:test_makecomplexfile() and the regression test.
 	    if (xmlStrcmp(prop->name,(const xmlChar *)"pack_scale") == 0) {
 		// ok
+	    } else if (xmlStrcmp(prop->name,(const xmlChar *)"pack_scale_warn") == 0) {
+		// ok
 	    } else if (xmlStrcmp(prop->name,(const xmlChar *)"pack_relative") == 0) {
 		// ok
 	    } else if (xmlStrcmp(prop->name,(const xmlChar *)"pack_unique") == 0) {
@@ -430,20 +438,23 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 	// Much further extention would be non-space preserving
 	// transformations to make it take up less space.
 	string pack_scale_v = strGetXMLProp(cur, "pack_scale");
+        string pack_scale_warn_v = strGetXMLProp(cur, "pack_scale_warn");
 	if (!pack_scale_v.empty()) {
-	    INVARIANT(info.type == ft_double,
-		      "pack_scale only valid for double fields");
+	    INVARIANT(info.type == ft_double, "pack_scale only valid for double fields");
 	    double scale = stringToDouble(pack_scale_v);
+            bool warn = parseYesNo(pack_scale_warn_v, "pack_scale_warn", true);
 	    INVARIANT(scale != 0, "pack_scale=0 invalid");
-	    ret.pack_scale.push_back(pack_scaleT(ret.field_info.size(),scale));
-            LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
+	    ret.pack_scale.push_back(pack_scaleT(ret.field_info.size(),scale, warn));
+            LintelLogDebug("ExtentType::XMLDecode", 
+                           boost::format("pack_scaling field %d by %.10g (1/%.10g)\n")
                            % ret.field_info.size() % (1.0/scale) % scale);
-	}
+	} else {
+            INVARIANT(pack_scale_warn_v.empty(),
+                      "Invalid to specify pack_scale_warn without pack_scale");
+        }
 	string pack_relative = strGetXMLProp(cur, "pack_relative");
 	if (!pack_relative.empty()) {
-	    INVARIANT(info.type == ft_double ||
-		      info.type == ft_int64 ||
-		      info.type == ft_int32,
+	    INVARIANT(info.type == ft_double || info.type == ft_int64 || info.type == ft_int32,
 		      "Only double, int32, int64 fields currently supported for relative packing");
 	    unsigned field_num = ret.field_info.size();
 	    if (pack_relative == info.name) {
@@ -456,7 +467,8 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 		    ret.pack_self_relative.back().multiplier 
 			= ret.pack_scale.back().multiplier;
 		}
-                LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_self_relative field %s\n") % field_num);
+                LintelLogDebug("ExtentType::XMLDecode", 
+                               boost::format("pack_self_relative field %s\n") % field_num);
 	    } else {
 		int base_field_num = getColumnNumber(ret, pack_relative);
 		INVARIANT(base_field_num != -1,
@@ -466,7 +478,8 @@ ExtentType::ParsedRepresentation ExtentType::parseXML(const string &xmldesc) {
 			  boost::format("Both fields for relative packing must have same type type(%s) != type(%s)")
 			  % info.name % pack_relative);
 		ret.pack_other_relative.push_back(pack_other_relativeT(field_num, base_field_num));
-                LintelLogDebug("ExtentType::XMLDecode", boost::format("pack_relative_other field %d based on field %d\n")
+                LintelLogDebug("ExtentType::XMLDecode", 
+                               boost::format("pack_relative_other field %d based on field %d\n")
                                % field_num % base_field_num);
 	    }
 	}

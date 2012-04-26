@@ -101,7 +101,7 @@ void Extent::ByteArray::reserve(size_t reserve_bytes) {
     size_t actual_align = reinterpret_cast<size_t>(newV) % expect_align;
 
     INVARIANT(actual_align == 0,
-	      boost::format("internal error, misaligned malloc(%d) return %d mod %d\n")
+	      format("internal error, misaligned malloc(%d) return %d mod %d\n")
 	      % reserve_bytes % actual_align % expect_align);
     memcpy(newV,beginV,oldsize);
     delete [] beginV;
@@ -147,7 +147,7 @@ void Extent::setReadChecksFromEnv(bool defval) {
 	    } else if (*i == "none") {
 		pre = post = var32 = false;
 	    } else {
-		FATAL_ERROR(boost::format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
+		FATAL_ERROR(format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
 			    % *i);
 	    }
 	}
@@ -646,7 +646,7 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 		    
 		    variable_data_pos += 4 + roundup;
 		}		    
-		INVARIANT((packed_varoffset + 4) % 8 == 0, boost::format("bad packing offset %d")
+		INVARIANT((packed_varoffset + 4) % 8 == 0, format("bad packing offset %d")
 			  % packed_varoffset);
 		*(int32 *)(fixed_record + offset) = packed_varoffset;
 	    } 
@@ -728,11 +728,11 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 		break;
 		default:
 		    INVARIANT(field_num < type->rep.field_info.size(), 
-			      boost::format("bad field number %d > %d record %d") 
+			      format("bad field number %d > %d record %d") 
 			      % field_num % type->rep.field_info.size() 
 			      % nrecords);
 
-		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+		    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
 				% field.type % field.name
 				% field_num % offset % type->rep.name);
 		}
@@ -747,10 +747,12 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
 	    double v = *(double *)(fixed_record + offset);
 	    double scaled = v * multiplier;
 	    double rounded = round(scaled);
-	    if (fabs(scaled - rounded) > 0.1 && warnings[field] == false) {
-		cerr << boost::format("Warning, while packing field %s of record %d, error was > 10%%:\n  (%.10g / %.10g = %.2f, round() = %.0f)\n")
-		    % type->rep.field_info[field].name % nrecords
-		    % v % (1.0/multiplier) % scaled % rounded;
+	    if (type->rep.pack_scale[j].warn && fabs(scaled - rounded) > 0.1 
+                && warnings[field] == false) {
+                LintelLog::warn(format("Warning, while packing field %s of record %d, error was"
+                                       " > 10%%:\n  (%.10g / %.10g = %.2f, round() = %.0f)\n")
+                                % type->rep.field_info[field].name % nrecords
+                                % v % (1.0/multiplier) % scaled % rounded);
 		warnings[field] = true;
 	    }
 	    *(double *)(fixed_record + offset) = rounded;
@@ -812,7 +814,7 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     headersize += (4 - headersize % 4) % 4;
     INVARIANT(compressed_fixed->size() < max_packed_size 
               && compressed_variable->size() < max_packed_size,
-              boost::format("very large packed sizes (>%d bytes) indicates misuse: sizes=%d/%d")
+              format("very large packed sizes (>%d bytes) indicates misuse: sizes=%d/%d")
               % max_packed_size % compressed_fixed->size() % compressed_variable->size());
     int extentsize = headersize;
     extentsize += compressed_fixed->size();
@@ -851,7 +853,7 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     adler32sum = adler32(adler32sum, into.begin(), 4*4);
     adler32sum = adler32(adler32sum, into.begin() + 5*4, into.size()-5*4);
     *(int32 *)(into.begin() + 4*4) = adler32sum;
-    if (false) cout << boost::format("final coded size %d bytes\n") % into.size();
+    if (false) cout << format("final coded size %d bytes\n") % into.size();
     if (header_packed != NULL) *header_packed = headersize;
     if (fixed_packed != NULL) *fixed_packed = fixed_coded.size();
     if (variable_packed != NULL) *variable_packed = variable_coded.size();
@@ -877,7 +879,7 @@ bool Extent::packBZ2(byte *input, int32 inputsize,
 	return true;
     }
     INVARIANT(ret == BZ_OUTBUFF_FULL,
-	      boost::format("Whoa, got unexpected libbz2 error %d") % ret);
+	      format("Whoa, got unexpected libbz2 error %d") % ret);
 #endif
     return false;
 }
@@ -897,7 +899,7 @@ bool Extent::packZLib(byte *input, int32 inputsize,
 	return true;
     }
     INVARIANT(ret == Z_BUF_ERROR,
-	      boost::format("Whoa, got unexpected zlib error %d") % ret);
+	      format("Whoa, got unexpected zlib error %d") % ret);
     return false;
 }
 
@@ -912,10 +914,10 @@ bool Extent::packLZO(byte *input, int32 inputsize,
 				       (lzo_byte *)into.begin(), &out_len,
 				       work_memory, NULL, 0, 0, compression_level);
     INVARIANT(ret == LZO_E_OK,
-	      boost::format("internal error: lzo compression failed (%d)")
+	      format("internal error: lzo compression failed (%d)")
 	      % ret);
     INVARIANT(out_len < into.size(),
-	      boost::format("internal error: lzo compression too large %d >= %d\n")
+	      format("internal error: lzo compression too large %d >= %d\n")
 	      % out_len % into.size());
     
     // Might consider calling the optimize function, but the usage is a 
@@ -967,7 +969,7 @@ Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
     if ((compression_modes & compress_lzo)) {
 	Extent::ByteArray *lzo_pack = new Extent::ByteArray;
 	if (packLZO(input,input_size,*lzo_pack,compression_level)) {
-	    if (false) cout << boost::format("lzo packing goes to %d bytes\n") % lzo_pack->size();
+	    if (false) cout << format("lzo packing goes to %d bytes\n") % lzo_pack->size();
 	    if (best_packed == NULL || lzo_pack->size() < best_packed->size()) {
 		best_packed = lzo_pack;
 		*mode = compress_mode_lzo;
@@ -981,7 +983,7 @@ Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
     if ((compression_modes & compress_lzf)) {
 	Extent::ByteArray *lzf_pack = new Extent::ByteArray;
 	if (packLZF(input,input_size,*lzf_pack,compression_level)) {
-	    if (false) cout << boost::format("lzf packing goes to %d bytes\n") % lzf_pack->size();
+	    if (false) cout << format("lzf packing goes to %d bytes\n") % lzf_pack->size();
 	    if (best_packed == NULL || lzf_pack->size() < best_packed->size()) {
 		best_packed = lzf_pack;
 		*mode = compress_mode_lzf;
@@ -997,7 +999,7 @@ Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
 	Extent::ByteArray *bz2_pack = new Extent::ByteArray;
 	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size(), false);
 	if (packBZ2(input,input_size,*bz2_pack,compression_level)) {
-	    if (false) cout << boost::format("bz2 packing goes to %d bytes\n") % bz2_pack->size();
+	    if (false) cout << format("bz2 packing goes to %d bytes\n") % bz2_pack->size();
 	    if (best_packed == NULL || bz2_pack->size() < best_packed->size()) {
 		delete best_packed;
 		best_packed = bz2_pack;
@@ -1013,7 +1015,7 @@ Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
 	Extent::ByteArray *zlib_pack = new Extent::ByteArray;
 	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size(), false);
 	if (packZLib(input,input_size,*zlib_pack,compression_level)) {
-	    if (false) cout << boost::format("zlib packing goes to %d bytes\n") % zlib_pack->size();
+	    if (false) cout << format("zlib packing goes to %d bytes\n") % zlib_pack->size();
 	    if (best_packed == NULL || zlib_pack->size() < best_packed->size()) {
 		delete best_packed;
 		best_packed = zlib_pack;
@@ -1129,7 +1131,7 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     }
     if (preuncompress_check) {
 	INVARIANT(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
-		  boost::format("Invalid extent data, adler32 digest"
+		  format("Invalid extent data, adler32 digest"
 				" mismatch on compressed data %x != %x")
 		  % *(int32 *)(from.begin() + 4*4) % (int32)adler32sum);
     }
@@ -1251,7 +1253,7 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
 					   + type->rep.field_info[j].offset);
 			break;
 		    default:
-			FATAL_ERROR(boost::format("unknown field type %d for fix_endianness") % type->rep.field_info[j].type);
+			FATAL_ERROR(format("unknown field type %d for fix_endianness") % type->rep.field_info[j].type);
 			break;
 		    }
 	    }
@@ -1316,10 +1318,10 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
 		break;
 		default:
 		    INVARIANT(field_num < type->rep.field_info.size(), 
-			      boost::format("bad field number %d > %d") 
+			      format("bad field number %d > %d") 
 			      % field_num % type->rep.field_info.size());
 
-		    FATAL_ERROR(boost::format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+		    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
 				% field.type % field.name
 				% field_num % offset % type->rep.name);
 		}
@@ -1388,12 +1390,12 @@ Extent::unpackedSize(Extent::ByteArray &from, bool fix_endianness, const ExtentT
 
 bool Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok) {
     ssize_t ret = pread64(fd,into,amount,offset);
-    INVARIANT(ret != -1, boost::format("error reading %d bytes: %s") 
+    INVARIANT(ret != -1, format("error reading %d bytes: %s") 
 	      % amount % strerror(errno));
     if (ret == 0 && eof_ok) {
 	return false;
     }
-    INVARIANT(ret == amount, boost::format("partial read %d of %d bytes: %s\n")
+    INVARIANT(ret == amount, format("partial read %d of %d bytes: %s\n")
 	      % ret % amount % strerror(errno));
     return true;
 }
@@ -1422,7 +1424,7 @@ bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool 
 	      && typenamelen >= 0, "Error reading extent");
     INVARIANT(static_cast<uint32_t>(compressed_fixed) < max_packed_size 
               && static_cast<uint32_t>(compressed_variable) < max_packed_size,
-              boost::format("Excessively large extent is almost definitely corruption sizes=%d/%d")
+              format("Excessively large extent is almost definitely corruption sizes=%d/%d")
               % compressed_fixed % compressed_variable);
     uint64_t extentsize = prefix_size+typenamelen;
     extentsize += (4 - extentsize % 4) % 4;
@@ -1430,7 +1432,7 @@ bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool 
     extentsize += (4 - extentsize % 4) % 4;
     extentsize += compressed_variable;
     extentsize += (4 - extentsize % 4) % 4;
-    LintelLogDebug("Extent/size", boost::format("%d %d %d %d ~= %d") % prefix_size % typenamelen
+    LintelLogDebug("Extent/size", format("%d %d %d %d ~= %d") % prefix_size % typenamelen
                    % compressed_fixed % compressed_variable % extentsize);
     into.resize(extentsize, false);
     checkedPread(fd, offset, into.begin() + prefix_size, 

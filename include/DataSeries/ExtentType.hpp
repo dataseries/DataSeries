@@ -419,8 +419,9 @@ private:
     struct pack_scaleT {
 	int field_num;
 	double scale, multiplier;
-	pack_scaleT(int a, double b) 
-	    : field_num(a), scale(b), multiplier(1.0/b) {}
+        bool warn;
+	pack_scaleT(int a, double b, bool warn) 
+	    : field_num(a), scale(b), multiplier(1.0/b), warn(warn) {}
     };
     struct pack_other_relativeT {
 	int field_num, base_field_num;
