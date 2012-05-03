@@ -22,6 +22,7 @@ DATASERIES_SIMPLE_TEST(pack-bug ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.d
 DATASERIES_SIMPLE_TEST(sub-extent-pointer)
 DATASERIES_SIMPLE_TEST(shared-bare-pointer)
 DATASERIES_SIMPLE_TEST(pack-scale)
+DATASERIES_SIMPLE_TEST(test-reopen ${CMAKE_SOURCE_DIR}/check-data/nfs-2.set-1.20k.ds)
 DATASERIES_PROGRAM_NOINST(general general2.cpp)
 ADD_TEST(general ./general)
 
@@ -53,7 +54,6 @@ DATASERIES_SCRIPT_TEST(dsrecover)
 
 DATASERIES_PROGRAM_NOINST(file-rotation)
 DATASERIES_SCRIPT_TEST(file-rotation)
-
 
 # TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)

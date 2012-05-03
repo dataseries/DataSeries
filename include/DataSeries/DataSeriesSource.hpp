@@ -121,6 +121,7 @@ private:
     int fd;
     off64_t cur_offset;
     bool need_bitflip, read_index, check_tail;
+    time_t mtime;
 };
 
 #endif

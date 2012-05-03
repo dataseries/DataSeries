@@ -46,7 +46,7 @@ using boost::format;
 
 DataSeriesSource::DataSeriesSource(const string &filename, bool read_index, bool check_tail)
     : index_extent(), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
-      check_tail(check_tail)
+      check_tail(check_tail), mtime(0)
 {
     mylibrary.registerType(ExtentType::getDataSeriesXMLTypePtr());
     mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0Ptr());
@@ -73,9 +73,16 @@ void DataSeriesSource::reopenfile() {
     INVARIANT(fd >= 0,boost::format("error opening file '%s' for read: %s")
 	      % filename % strerror(errno));
 
-    checkHeader();
-    readTypeExtent();
-    readTailIndex();
+    struct stat statBuf;
+    int error = fstat(fd, &statBuf);
+    INVARIANT(error >= 0, boost::format("error on file '%s' for stat: %s")
+              % filename % strerror(errno));
+    if (statBuf.st_mtime > mtime) {
+        checkHeader();
+        readTypeExtent();
+        readTailIndex();
+    }
+    mtime = statBuf.st_mtime;
 }
 
 void DataSeriesSource::checkHeader() {
