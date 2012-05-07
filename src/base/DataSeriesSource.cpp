@@ -22,6 +22,7 @@
 #include <boost/static_assert.hpp>
 
 #include <Lintel/Double.hpp>
+#include <Lintel/FileUtil.hpp>
 #include <Lintel/HashTable.hpp>
 #include <Lintel/LintelLog.hpp>
 
@@ -46,7 +47,7 @@ using boost::format;
 
 DataSeriesSource::DataSeriesSource(const string &filename, bool read_index, bool check_tail)
     : index_extent(), filename(filename), fd(-1), cur_offset(0), read_index(read_index),
-      check_tail(check_tail), mtime(0)
+      check_tail(check_tail), mtime_nanosec(0)
 {
     mylibrary.registerType(ExtentType::getDataSeriesXMLTypePtr());
     mylibrary.registerType(ExtentType::getDataSeriesIndexTypeV0Ptr());
@@ -62,27 +63,26 @@ DataSeriesSource::~DataSeriesSource() {
 }
 
 void DataSeriesSource::closefile() {
-    CHECKED(close(fd) == 0,
-	    boost::format("close failed: %s") % strerror(errno));
+    CHECKED(close(fd) == 0, format("close failed: %s") % strerror(errno));
     fd = -1;
 }
 
 void DataSeriesSource::reopenfile() {
     INVARIANT(fd == -1, "trying to reopen non-closed source?!");
     fd = open(filename.c_str(), O_RDONLY | O_LARGEFILE);
-    INVARIANT(fd >= 0,boost::format("error opening file '%s' for read: %s")
+    INVARIANT(fd >= 0, format("error opening file '%s' for read: %s")
 	      % filename % strerror(errno));
 
-    struct stat statBuf;
-    int error = fstat(fd, &statBuf);
-    INVARIANT(error >= 0, boost::format("error on file '%s' for stat: %s")
-              % filename % strerror(errno));
-    if (statBuf.st_mtime > mtime) {
+    struct stat stat_buf;
+    int error = fstat(fd, &stat_buf);
+    INVARIANT(error == 0, format("error on file '%s' for stat: %s") % filename % strerror(errno));
+    if (lintel::modifyTimeNanoSec(stat_buf) > mtime_nanosec) {
         checkHeader();
         readTypeExtent();
         readTailIndex();
-    }
-    mtime = statBuf.st_mtime;
+        mtime_nanosec = lintel::modifyTimeNanoSec(stat_buf);
+    } // Tolerate timestamp going backwards in time.  Unclear if that is the correct behavior, but
+      // it makes the test easier to write.
 }
 
 void DataSeriesSource::checkHeader() {
@@ -101,8 +101,7 @@ void DataSeriesSource::checkHeader() {
     } else if (check_int == 0x78563412) {
 	need_bitflip = true;
     } else {
-	FATAL_ERROR(boost::format("Unable to interpret check integer %x")
-		    % check_int);
+	FATAL_ERROR(format("Unable to interpret check integer %x") % check_int);
     }
     if (need_bitflip) {
 	Extent::flip4bytes(data.begin()+4);
@@ -148,9 +147,7 @@ void DataSeriesSource::readTailIndex() {
     if (check_tail) {
 	struct stat ds_file_stats;
 	int ret_val = fstat(fd,&ds_file_stats);
-	INVARIANT(ret_val == 0,
-		boost::format("fstat failed: %s")
-		% strerror(errno));
+	INVARIANT(ret_val == 0, format("fstat failed: %s") % strerror(errno));
 	BOOST_STATIC_ASSERT(sizeof(ds_file_stats.st_size) >= 8); // won't handle large files correctly unless this is true.
 	off64_t tailoffset = ds_file_stats.st_size-7*4;
 	INVARIANT(tailoffset > 0, "file is too small to be a dataseries file??");
@@ -164,8 +161,8 @@ void DataSeriesSource::readTailIndex() {
 	int32_t packedsize = *(int32_t *)(tail + 4);
 	indexoffset = *(int64_t *)(tail + 16);
 	INVARIANT(tailoffset - packedsize == indexoffset,
-		boost::format("mismatch on index offset %d - %d != %d!")
-		% tailoffset % packedsize % indexoffset);
+                  format("mismatch on index offset %d - %d != %d!")
+                  % tailoffset % packedsize % indexoffset);
     }
     index_extent.reset();
     if (read_index) {
