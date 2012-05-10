@@ -735,7 +735,8 @@ const string &ExtentType::fieldTypeString(fieldType ft) {
 const ExtentType::Ptr ExtentTypeLibrary::registerTypePtr(const string &xmldesc) {
     const ExtentType::Ptr type(sharedExtentTypePtr(xmldesc));
     
-    INVARIANT(name_to_type.find(type->getName()) == name_to_type.end(),
+    NameToType::iterator pos = name_to_type.find(type->getName());
+    INVARIANT(pos == name_to_type.end() || pos->second == type,
 	      boost::format("Type %s already registered") % type->getName());
 
     name_to_type[type->getName()] = type;

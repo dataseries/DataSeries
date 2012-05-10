@@ -76,13 +76,12 @@ void DataSeriesSource::reopenfile() {
     struct stat stat_buf;
     int error = fstat(fd, &stat_buf);
     INVARIANT(error == 0, format("error on file '%s' for stat: %s") % filename % strerror(errno));
-    if (lintel::modifyTimeNanoSec(stat_buf) > mtime_nanosec) {
+    if (lintel::modifyTimeNanoSec(stat_buf) != mtime_nanosec) {
         checkHeader();
         readTypeExtent();
         readTailIndex();
         mtime_nanosec = lintel::modifyTimeNanoSec(stat_buf);
-    } // Tolerate timestamp going backwards in time.  Unclear if that is the correct behavior, but
-      // it makes the test easier to write.
+    }      
 }
 
 void DataSeriesSource::checkHeader() {

@@ -5,87 +5,86 @@
    See the file named COPYING for license details
 */
 
+#include <fcntl.h>
+#include <time.h>
+#include <utime.h>
+
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <sys/time.h>
 #include <sys/wait.h>
 
 #include <iostream>
 
+#include <Lintel/TestUtil.hpp>
+
 #include <DataSeries/DataSeriesSource.hpp>
 
 using namespace std;
 
-void doReopen(string file, bool reset_mod_time) {
+void testReopen(string file) {
     // copy the file
     string cmd = "/bin/cp " + file + " test-reopen.ds";
     int ret = system(cmd.c_str());
     SINVARIANT(ret == 0);
     file = "test-reopen.ds";
 
-    if (!reset_mod_time) {
-        // sleep to ensure the modification we make falls into a different mtime
-        sleep(2);
-    }
+    struct utimbuf file_time;
+    file_time.actime = time(NULL);
+    SINVARIANT(file_time.actime > 1000*1000*1000);
+    file_time.actime -= 100;
+    file_time.modtime = file_time.actime;
+    ret = utime(file.c_str(), &file_time);
+    SINVARIANT(ret == 0);
 
-    // test that a corruption is not caught in the common re-open case
+
+    // test we can open the file
     DataSeriesSource source(file);
 
-    // close the source
+    cout << "Open passed.\n";
+    // test we can re-open the file
     source.closefile();
+    file_time.actime += 50;
+    file_time.modtime = file_time.actime;
+    ret = utime(file.c_str(), &file_time);
+    SINVARIANT(ret == 0);
+    source.reopenfile(); // File is valid, reopen should succeed, and should re-read bits
+    cout << "Valid re-open passed.\n";
 
-    // corrupt the file's tail
+    // corrupt the file
     int fd = open(file.c_str(), O_RDWR);
     SINVARIANT(fd >0);
-    off_t ret_off = lseek(fd, -28, SEEK_END);
+    off_t ret_off = lseek(fd, -28, SEEK_END); 
     SINVARIANT(ret_off > 0);
-    ret = write(fd, &fd, 4);
+    ret = write(fd, &fd, 4); // Corrupt if fd != ~0
     SINVARIANT(ret == 4);
 
-    if (reset_mod_time) {
-        // reset mtime to zero
-        struct timeval times[2];
-        memset(times, 0, sizeof(times));
-        ret = futimes(fd, times);
-        SINVARIANT(ret == 0);
-    }
-
-    close(fd);
-
-    // TODO-craig: Use TestUtil.hpp to verify the error message here, and change the
-    // exit check to verify that you exit(213) or some weird thing like that.  Right now it's
-    // failing for a bogus reason (name_to_type.find(type->getName()) == name_to_type.end()), which
-    // makes me think the reopen won't work correctly on a validly updated file.  Perhaps add a test
-    // that you can re-open a file that just had it's mod-time pushed forward?
-
-    // re-open the file... checks will be made or not based on the mtime
+    // test that opening a corrupt file with the same mtime succeeds
+    source.closefile();
+    ret = utime(file.c_str(), &file_time);
+    SINVARIANT(ret == 0);
     source.reopenfile();
+    cout << "Corrupt file, same mtime, reopen succeeded as expected.\n";
+
+    // test that opening a corrupt file with a newer mtime fails
+    file_time.modtime += 1;
+    source.closefile();
+    ret = utime(file.c_str(), &file_time);
+    SINVARIANT(ret == 0);
+    TEST_INVARIANT_MSG1(source.reopenfile(), "bad header for the tail of test-reopen.ds!");
+    cout << "Corrupt file, newer mtime, reopen correctly failed.\n";
+
+    // test that opening a corrupt file with an older mtime fails
+    file_time.modtime -= 2;
+    source.closefile();
+    ret = utime(file.c_str(), &file_time);
+    SINVARIANT(ret == 0);
+    TEST_INVARIANT_MSG1(source.reopenfile(), "bad header for the tail of test-reopen.ds!");
+
+    cout << "Corrupt file, older mtime, reopen correctly failed.\n";
 }
 
 int main(int argc, char *argv[]) {
-    // do it once resetting the mod time, avoiding the checks, so shouldn't notice a problem
-    cout << "Resetting mod time\n";
-    doReopen(argv[1], true);
-    cout << "SUCCESS: still alive!\n";
-
-    // do it once without resetting the mod time, should notice the problem
-    int child = fork();
-    SINVARIANT(child >= 0);
-    if (!child) {
-        cout << "Not resetting mod time\n";
-        doReopen(argv[1], false);
-        cout << "ERROR: still alive!\n";
-        exit(0); // Claim successful exit since parent expects failure
-    }
-
-    int status;
-    waitpid(child, &status, 0);
-
-    if (WIFSIGNALED(status) && WTERMSIG(status) == SIGABRT) {
-        // child properly failed.
-        return 0;
-    } else {
-        return 1;
-    }
+    testReopen(argv[1]);
+    return 0;
 }

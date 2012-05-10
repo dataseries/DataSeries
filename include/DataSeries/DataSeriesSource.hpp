@@ -79,7 +79,10 @@ public:
     void closefile();
 
     /** Re-opens the file. Note that there is no way to change the name of
-        the file.
+        the file.  If the modify time of the file has not changed, then re-opening the file
+        will not re-read the header, type extent or tail index but will just re-use the
+        existing one.  This allows the caller to manage the number of open file descriptors
+        without the cost of re-reading and parsing that information.
 
         Preconditions:
             - The file must be closed. */

@@ -533,10 +533,10 @@ public:
     /** Creates an ExtentType from an XML description using @c sharedExtentType
         and stores it in the map.  Returns a shared pointer to the ExtentType.  This
         name is transitory, and will revert back to registerType once we have
-        completed deprecating registerType()
+        completed deprecating registerType().  
 
         Preconditions:
-        - xmldesc must be valid XML.
+        - xmldesc must be valid XML.  No type with the same name can already be registered.
     */
     const ExtentType::Ptr registerTypePtr(const std::string &xmldesc);
 
