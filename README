@@ -9,51 +9,34 @@ made of it.
 
 COMPILATION:
 
-0) You need to build and install Lintel.
+1) Installing binary packages
+   # Download the repository signing key
+   wget http://tesla.hpl.hp.com/opensource/repositories/signing-key-latest.gpg
+   # Install the repository signing key
+   apt-key add filename # DEB
+   cp filename /etc/pki/rpm-gpg/tesla-opensource-key # RPM
+   # Pick your repository from http://tesla.hpl.hp.com/opensource/repositories
+   # and add it to /etc/apt/sources.list.d or /etc/yum.repos.d
+   $EDITOR filename
+   # Install the packages
+   apt-get install liblintel-dev # DEB
+   yum install Lintel-devel # RPM
 
-1a) Get source code (via version control, inside HP only):
-   [ -d ~/.monotone ] || mkdir ~/.monotone
-   mtn -d ~/.monotone/ssd.db db init
-   mtn -d ~/.monotone/ssd.db pull usi.hpl.hp.com ssd.hpl.hp.com/DataSeries\*
-   [ -d ~/projects ] || mkdir ~/projects
-   cd ~/projects
-   mtn -d ~/.monotone/ssd.db co -b ssd.hpl.hp.com/DataSeries DataSeries
-   cd DataSeries
-   # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro
+2) Installing from the tar source file releases
+   # Download the build tool
+   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
+   # Download and unpack the sources
+   perl deptool-bootstrap tarinit http://tesla.hpl.hp.com/opensource/sources/latest-release
+   # Build, install (-t = and test) the programs
+   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
 
-1b) Get source code (via tarball, from anywhere):
-   [ -d ~/projects ] || mkdir ~/projects
-   cd ~/projects
-   # visit http://tesla.hpl.hp.com/opensource/ to find the most recent version
-   wget http://tesla.hpl.hp.com/opensource/DataSeries-2007-11-07.tar.bz2
-   bunzip2 -c < DataSeries-2007-11-07.tar.bz2 | tar xvvf -
-   mv DataSeries-2007-11-07 DataSeries
-
-2) configure the package:
-   mkdir -p ~/build/optimize/DataSeries
-   cd ~/build/optimize/DataSeries
-   ccmake [-DCMAKE_INSTALL_PREFIX=<install-prefix>] ~/projects/DataSeries
-   # we use an install prefix like ~/build/optimize; it needs to be the
-   # same as for Lintel.
-
-3) compile and install the package:
-   cd ~/build/optimize/DataSeries:
-   make && make test && make install
-
-
------ 
-
-Download/compilation using version control
-
-% cd ~
-% wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
-% eval `perl deptool-bootstrap for-sh`
-# (or for-csh if you have a csh-based shell)
-% perl deptool-bootstrap init --server endpin.cs.hmc.edu
-% perl deptool-bootstrap co DataSeries
-% cd ~/projects/DataSeries
-% perl ~/deptool-bootstrap build -t
-# You can leave off the -t to avoid building tests.
-% PATH=$BUILD_OPT:$PATH
-% echo "DataSeries installed into $BUILD_OPT, and added to your path"
+3) Installing from version control
+   # Download the build tool
+   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
+   # Initialize the source repository (leave off the server option inside HPL)
+   perl deptool-bootstrap init --server=github.com dataseries/Lintel dataseries/DataSeries
+   # Checkout the source code
+   perl deptool-bootstrap checkout DataSeries
+   # Build, install (-t = and test) the programs
+   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
 
