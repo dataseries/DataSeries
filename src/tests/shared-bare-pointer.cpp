@@ -60,7 +60,8 @@ void testConvertValid() {
         INVARIANT(deptool_info.osVersion() == "ubuntu-8.04"
                   || (deptool_info.os == "centos" && deptool_info.version[0] == '5')
                   || (deptool_info.os == "rhel" && deptool_info.version[0] == '5')
-                  || deptool_info.osVersion() == "opensuse-12.1",
+                  || deptool_info.osVersion() == "opensuse-12.1"
+                  || deptool_info.osVersionArch() == "macos-10.7-x86_64", // may be more general than this, but can't easily test.
                   format("unexpected sentinal values %d/%d on '%s'") 
                   % e->extent_source_offset % g->extent_source_offset
                   % deptool_info.osVersionArch());
