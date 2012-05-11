@@ -11,6 +11,41 @@ Deprecation notes:
 
 ---------------------------------------------------------------
 
+2012-05-11:
+   * Release.  Repositories with packages seem to be functional for all OSs we build packages for.
+     Version control has been moved to git and stored on github: https://github.com/dataseries
+     User documentation available there also at https://github.com/dataseries/DataSeries/wiki
+     Source builds now tested on OpenBSD, FreeBSD, and MacOS.  Packaging now handled using
+     project-builder.
+
+2012-04-26:
+   * Add support for pack_scale_warn to disable warnings about losing precision.
+   * Deprecate use of ExtentType * and ExtentType & in preference to ExtentType::Ptr.
+
+2012-02-27:
+   * Deprecate use of Extent * in preference to Extent::Ptr.
+
+2012-01-26:
+   * Improved support for nulls in union, sorting and expressions.
+
+2012-01-23:
+   * Rolling sum support
+
+2011-10-14:
+   * Generic sort module
+
+2012-10-05:
+   * Add random access support for fields, i.e. sub-extent pointers.
+
+2011-08-20:
+   * Add a rotating file sink to make it easier to switch files without delaying operations.
+
+2011-08-01:
+   * Add support for an ordered union.
+
+2011-07-05:
+   * Add support for star-join.
+
 2011-06-13:
    * Release.  Repositories with packages seem to be functional for the few OSs I can easily test.
 
@@ -31,6 +66,18 @@ Deprecation notes:
 2010-11-02:
    * Add dsrecover program that can take a partially written DataSeries file
      and recover any valid extents from it.
+
+2010-10-25:
+   * Add support for sorted update of a table to data series server
+
+2010-10-04:
+   * Add support for hash-join to data series server
+
+2010-09-12:
+   * Add support for importing an SQL table into data series server using sql2ds program
+
+2010-08-22: 
+   * Checkpoint of new data series server, starting work on really generalizing the code
 
 2010-08-21:
    * Extend csv2ds to support comment and field separator characters

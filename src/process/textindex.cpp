@@ -5,7 +5,7 @@
 * Description:  Text indexing tool
 * Author:       Eric Anderson
 *
-* (C) Copyright 2006, Hewlett-Packard Development Company, L.P., all rights reserved.
+* (C) Copyright 2006, Hewlett-Packard Development Company, LP, all rights reserved.
 *
 *******************************************************************************
 
