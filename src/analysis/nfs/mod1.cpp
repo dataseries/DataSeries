@@ -483,7 +483,7 @@ public:
 	    for(vector<tidData *>::iterator i = vals.begin();
 		i != vals.end();++i) {
 		tidData *j = *i;
-		printf("%13Ld %-15s %-15s %-4s %08x %2d %-12s\n",
+		printf("%13lld %-15s %-15s %-4s %08x %2d %-12s\n",
 		       j->reqtime / (1000000),
 		       ipv4tostring(j->clientip).c_str(),
 		       ipv4tostring(j->serverip).c_str(),
@@ -506,7 +506,7 @@ public:
 	    for(vector<tidData *>::iterator p = retransmit.begin();
 		p != retransmit.end();++p) {
 		tidData *j = *p;
-		printf("%13Ld %-15s %-15s %-4s %08x %2d %-12s\n",
+		printf("%13lld %-15s %-15s %-4s %08x %2d %-12s\n",
 		       j->reqtime / (1000000),
 		       ipv4tostring(j->clientip).c_str(),
 		       ipv4tostring(j->serverip).c_str(),
@@ -528,7 +528,7 @@ public:
 	    for(vector<tidData *>::iterator p = duplicateresponse.begin();
 		p != duplicateresponse.end();++p) {
 		tidData *j = *p;
-		printf("%13Ld %-15s %-15s %-4s %08x %2d %-12s\n",
+		printf("%13lld %-15s %-15s %-4s %08x %2d %-12s\n",
 		       j->reqtime / (1000000),
 		       ipv4tostring(j->clientip).c_str(),
 		       ipv4tostring(j->serverip).c_str(),

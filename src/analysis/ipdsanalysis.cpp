@@ -589,12 +589,9 @@ namespace {
 
 enum TcpUdpOther { Tcp, Udp, Other };
 
-namespace lintel {
-    static inline uint32_t hashType(TcpUdpOther tuo) {
-	return static_cast<uint32_t>(tuo);
-    }
+static inline uint32_t hashType(TcpUdpOther tuo) {
+  return static_cast<uint32_t>(tuo);
 }
-
 
 class IPTransmitCube : public RowAnalysisModule {
 public:

@@ -70,7 +70,7 @@ public:
     }
 
     bool inrange(int64_t v, int64_t min, int64_t max) {
-	return min <= min && v <= max;
+	return min <= v && v <= max;
     }
 
     virtual void processRow() {

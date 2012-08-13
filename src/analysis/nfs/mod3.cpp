@@ -488,28 +488,28 @@ public:
 	printf("#RECENT FILE CACHE MISSES\n");
 	for (p = list1.begin(); p != list1.end(); p++)
 	{
-	    printf("%f %d %Ld\n", p->time/1000000000.0, p->n, p->bytes);
+	    printf("%f %d %lld\n", p->time/1000000000.0, p->n, p->bytes);
 	}
 
 	// now print recent unique files read with byte count
 	printf("\n\n#BOTH CACHE MISSES\n");
 	for (p = list2.begin(); p != list2.end(); p++)
 	{
-	    printf("%f %d %Ld\n", p->time/1000000000.0, p->n, p->bytes);
+	    printf("%f %d %lld\n", p->time/1000000000.0, p->n, p->bytes);
 	}
 
 	// now print recent-cache hits
 	printf("\n\n#OLD-CACHE HITS\n");
 	for (p = list3.begin(); p != list3.end(); p++)
 	{
-	    printf("%f %d %Ld\n", p->time/1000000000.0, p->n, p->bytes);
+	    printf("%f %d %lld\n", p->time/1000000000.0, p->n, p->bytes);
 	}
 	
 	// now print old-cache hits
 	printf("\n\n#RECENT-CACHE HITS\n");
 	for (p = list4.begin(); p != list4.end(); p++)
 	{
-	    printf("%f %d %Ld\n", p->time/1000000000.0, p->n, p->bytes);
+	    printf("%f %d %lld\n", p->time/1000000000.0, p->n, p->bytes);
 	}
 	
 	printf("End-%s\n",__PRETTY_FUNCTION__);
