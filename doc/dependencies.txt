@@ -23,12 +23,34 @@ Debian Lenny (debian-5.0):
 
    DataSeries optional:
      # Extra compression choices
-     % aptitutde install libbz2-dev liblzo-dev
+     % aptitude install libbz2-dev liblzo-dev
 
      # Enable crypto
      % aptitude install libssl-dev
 
      # nfsdsanalysis
+     % aptitude install libssl-dev
+
+     # dsdecrypt 
+     % aptitude install libcrypt-rijndael-perl
+
+     ...
+
+----------------------------
+
+Ubuntu Precise Pangolin (ubuntu-12.04):
+   DataSeries required: Lintel
+     % aptitude install libxml2-dev libz-dev
+
+   DataSeries optional:
+     # Lots of programs now need program-options
+     % aptitude install libboost-program-options-dev
+     % echo "Now go reconfigure and rebuild Lintel"
+
+     # Extra compression choices
+     % aptitude install libbz2-dev
+
+     # Enable crypto, nfsdsanalysis
      % aptitude install libssl-dev
 
      # dsdecrypt 

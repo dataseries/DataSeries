@@ -33,14 +33,10 @@ SET(LINTEL_FIND_REQUIRED ON)
 SET(LINTELPTHREAD_FIND_REQUIRED ON)
 INCLUDE(FindLintel)
 
-LINTEL_HAS_FEATURE(program-options)
-
-IF(LINTEL_program-options_ENABLED)
-    LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
-                       "boost_program_options boost_program_options-mt")
-ELSE(LINTEL_program-options_ENABLED)
-    MESSAGE("lintel does not support program-options; csv2ds,dsselect will not be built")
-ENDIF(LINTEL_program-options_ENABLED)
+IF(NOT LINTEL_program-options_ENABLED)
+    MESSAGE("lintel does not support program-options; csv2ds,dsselect,dsrepack,dsrecover"
+            " will not be built")
+ENDIF(NOT LINTEL_program-options_ENABLED)
 
 #### Threads
 
@@ -52,7 +48,7 @@ LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-
 
 INCLUDE(FindLibXml2)
 IF(NOT LIBXML2_FOUND)
-    MESSAGE(FATAL_ERROR "DataSeries requires libxml2 to build")
+    MESSAGE(FATAL_ERROR "ERROR: DataSeries requires libxml2 to build")
 ENDIF(NOT LIBXML2_FOUND)
 
 #### Zlib
@@ -60,7 +56,7 @@ ENDIF(NOT LIBXML2_FOUND)
 INCLUDE(FindZLIB)
 
 IF(NOT ZLIB_FOUND) 
-    MESSAGE(FATAL_ERROR "DataSeries requires zlib to build (for adler32 checksum)")
+    MESSAGE(FATAL_ERROR "ERROR: DataSeries requires zlib to build (for adler32 checksum)")
 ENDIF(NOT ZLIB_FOUND)
 
 #### BZip2

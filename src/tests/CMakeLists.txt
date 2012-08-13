@@ -50,10 +50,6 @@ DATASERIES_PROGRAM_NOINST(extent-write-callback)
 DATASERIES_SCRIPT_TEST(extent-write-callback)
 
 DATASERIES_PROGRAM_NOINST(generate-incomplete-ds)
-DATASERIES_SCRIPT_TEST(dsrecover)
-
-DATASERIES_PROGRAM_NOINST(file-rotation)
-DATASERIES_SCRIPT_TEST(file-rotation)
 
 # TODO; misc test also depends on bzip2
 DATASERIES_PROGRAM_NOINST(misc)
@@ -64,6 +60,9 @@ DATASERIES_SCRIPT_TEST(misc LZO-${LZO_ENABLED})
 IF (LINTEL_program-options_ENABLED)
     DATASERIES_SCRIPT_TEST(dsselect)
     DATASERIES_SCRIPT_TEST(csv2ds)
+    DATASERIES_PROGRAM_NOINST(file-rotation)
+    DATASERIES_SCRIPT_TEST(file-rotation)
+    DATASERIES_SCRIPT_TEST(dsrecover)
 ENDIF (LINTEL_program-options_ENABLED)
 
 IF(BZIP2_ENABLED)
