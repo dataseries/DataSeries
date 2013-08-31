@@ -11,7 +11,7 @@ while(<STDIN>) {
     my ($nmeasure) = ($1);
     $_ = <STDIN>;
     die "?1" unless /^\s+quantiles about every \d+ data points:/o;
-    while(<STDIN>) {
+    while (<STDIN>) {
 	last if /^\s+tails:/o;
 	die "?" unless /^\s+(\d+)\%: (.+)$/o;
 	my $first_quant = $1;

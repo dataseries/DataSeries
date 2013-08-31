@@ -4,7 +4,7 @@
 #include <DataSeries/DataSeriesModule.hpp>
 
 class OutputSeriesModule : public DataSeriesModule {
-public:
+  public:
     typedef boost::shared_ptr<OutputSeriesModule> OSMPtr;
 
     ExtentSeries output_series;

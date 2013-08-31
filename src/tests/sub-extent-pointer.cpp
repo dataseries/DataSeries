@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #include <iostream>
@@ -19,37 +19,37 @@ using namespace dataseries;
 using boost::format;
 
 const string fixed_width_types_xml = 
-"<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"fixed-width-types\" version=\"1.0\" >\n"
-"  <field type=\"bool\" name=\"bool\" />\n"
-"  <field type=\"byte\" name=\"byte\" />\n"
-"  <field type=\"int32\" name=\"int32\" />\n"
-"  <field type=\"int64\" name=\"int64\" />\n"
-"  <field type=\"double\" name=\"double\" />\n"
-"  <field type=\"variable32\" name=\"variable32\" />\n"
-"  <field type=\"fixedwidth\" name=\"fw7\" size=\"7\" />\n"
-"  <field type=\"fixedwidth\" name=\"fw20\" size=\"20\" />\n"
+        "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"fixed-width-types\" version=\"1.0\" >\n"
+        "  <field type=\"bool\" name=\"bool\" />\n"
+        "  <field type=\"byte\" name=\"byte\" />\n"
+        "  <field type=\"int32\" name=\"int32\" />\n"
+        "  <field type=\"int64\" name=\"int64\" />\n"
+        "  <field type=\"double\" name=\"double\" />\n"
+        "  <field type=\"variable32\" name=\"variable32\" />\n"
+        "  <field type=\"fixedwidth\" name=\"fw7\" size=\"7\" />\n"
+        "  <field type=\"fixedwidth\" name=\"fw20\" size=\"20\" />\n"
 
-"  <field type=\"bool\" name=\"n-bool\" opt_nullable=\"yes\" />\n"
-"  <field type=\"byte\" name=\"n-byte\" opt_nullable=\"yes\" />\n"
-"  <field type=\"int32\" name=\"n-int32\" opt_nullable=\"yes\" />\n"
-"  <field type=\"int64\" name=\"n-int64\" opt_nullable=\"yes\" />\n"
-"  <field type=\"double\" name=\"n-double\" opt_nullable=\"yes\" />\n"
-"  <field type=\"variable32\" name=\"n-variable32\" opt_nullable=\"yes\" />\n"
-"  <field type=\"fixedwidth\" name=\"n-fw13\" size=\"13\" opt_nullable=\"yes\" />\n"
-"</ExtentType>\n";
+        "  <field type=\"bool\" name=\"n-bool\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"byte\" name=\"n-byte\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"int32\" name=\"n-int32\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"int64\" name=\"n-int64\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"double\" name=\"n-double\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"variable32\" name=\"n-variable32\" opt_nullable=\"yes\" />\n"
+        "  <field type=\"fixedwidth\" name=\"n-fw13\" size=\"13\" opt_nullable=\"yes\" />\n"
+        "</ExtentType>\n";
 
 template<class T>
 class NullableField : public T {
-public:
+  public:
     NullableField(ExtentSeries &series, const std::string &field)
-        : T(series, field, Field::flag_nullable)
+            : T(series, field, Field::flag_nullable)
     { }
 };
 
 class GFWrapper : boost::noncopyable {
-public:
+  public:
     GFWrapper(ExtentSeries &series, const std::string &column) 
-        : gf(GeneralField::create(series, column)) 
+            : gf(GeneralField::create(series, column)) 
     { }
 
     ~GFWrapper() {
@@ -105,7 +105,7 @@ public:
         SINVARIANT(fw != NULL);
         return fw->size();
     }
-private:
+  private:
     GeneralField *gf;
 };
 
@@ -151,7 +151,7 @@ randomVal(NullableField<FixedWidthField> &field, MersenneTwisterRandom &rng) {
 template<> GeneralValue randomVal(GFWrapper &field, MersenneTwisterRandom &rng) {
     GeneralValue ret;
     switch(field.getType())
-        {
+    {
         case ExtentType::ft_unknown: FATAL_ERROR("?"); break;
         case ExtentType::ft_bool: ret.setBool(rng.randInt(2) ? true : false); break;
         case ExtentType::ft_byte: ret.setByte(rng.randInt(256)); break;
@@ -162,7 +162,7 @@ template<> GeneralValue randomVal(GFWrapper &field, MersenneTwisterRandom &rng) 
             ret.setVariable32(randomString(rng, rng.randInt(256))); break;
         case ExtentType::ft_fixedwidth: 
             ret.setFixedWidth(randomString(rng, field.fixedWidthSize())); break;
-        }
+    }
     return ret;
 }
 
@@ -225,7 +225,7 @@ template<> GeneralValue transform(const GeneralValue &update, const GeneralValue
     GeneralValue ret;
 
     switch (offset.getType())
-        {
+    {
         case ExtentType::ft_unknown: FATAL_ERROR("?");
         case ExtentType::ft_bool: ret.setBool(update.valBool() ^ offset.valBool()); break;
         case ExtentType::ft_byte: ret.setByte(update.valByte() + offset.valByte()); break;
@@ -249,7 +249,7 @@ template<> GeneralValue transform(const GeneralValue &update, const GeneralValue
         }
             break;
         default: FATAL_ERROR("?");
-        }
+    }
     return ret;
 }
 
@@ -327,10 +327,10 @@ updateVal(MersenneTwisterRandom &rng, FT &field, Extent::Ptr &e, const SEP_RowOf
 }
 
 namespace std {
-ostream &operator <<(ostream &to, const vector<uint8_t> &v) {
-    to << "(unimplemented)";
-    return to;
-}
+    ostream &operator <<(ostream &to, const vector<uint8_t> &v) {
+        to << "(unimplemented)";
+        return to;
+    }
 }
 
 template<typename T, typename FT> 

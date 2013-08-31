@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -19,14 +19,14 @@
 #include <DataSeries/DataSeriesModule.hpp>
 
 /** \brief Holds a linear sequence of modules.
-  *
-  * The sequence module holds a linear sequence of modules, which is primarily
-  * used for running a set of extents through a collection of modules.
-  *
-  * As shown in: \dotfile "doxygen-figures/sequence-module.dot" "A sequence module with sub-modules"
-  **/
+ *
+ * The sequence module holds a linear sequence of modules, which is primarily
+ * used for running a set of extents through a collection of modules.
+ *
+ * As shown in: \dotfile "doxygen-figures/sequence-module.dot" "A sequence module with sub-modules"
+ **/
 class SequenceModule : public DataSeriesModule {
-public:
+  public:
     typedef boost::shared_ptr<DataSeriesModule> DsmPtr;
 
     /** head should be dynamically allocated with new.  The @c SequenceModule
@@ -58,7 +58,7 @@ public:
 
         \endcode
 
-        */
+    */
     void addModule(DataSeriesModule *mod);
 
     /** Like addModule with a pointer, but with a shared pointer */
@@ -87,10 +87,10 @@ public:
 
     /** Modules appear in the order in which they were added */
     iterator end() { return modules.end(); }
-private:
+  private:
     std::vector<DsmPtr> modules;
 };
 
 #endif
 
-	
+        

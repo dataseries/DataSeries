@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 
@@ -31,14 +31,14 @@ class Extent;
 #endif
 
 /** \brief Encapsulates iteration over a group of similar Extents.
-  *
-  * Standard loop ends up being:
-  * @code
-  * for(series.start(e); series.more(); series.next()) { ... }
-  * @endcode
-  */
+ *
+ * Standard loop ends up being:
+ * @code
+ * for (series.start(e); series.more(); series.next()) { ... }
+ * @endcode
+ */
 class ExtentSeries {
-public:
+  public:
     // the types for the extents must match:
     //   typeExact: identical XML type descriptions
     //   TODO: typeMajorVersion: major version matches, may want to have
@@ -59,18 +59,18 @@ public:
         later either  explicitly using setType or implicitly using setExtent.
 
         Postconditions:
-            - getType() == 0 and getExtent() == 0 */
+        - getType() == 0 and getExtent() == 0 */
     explicit ExtentSeries(typeCompatibilityT _tc = typeExact) 
-	: type(), my_extent(NULL), typeCompatibility(_tc) {
+            : type(), my_extent(NULL), typeCompatibility(_tc) {
     }
 
     /** This function is deprecated, you should switch to ExtentSeries(Ptr) */
     explicit ExtentSeries(const ExtentType &in_type, typeCompatibilityT _tc = typeExact) FUNC_DEPRECATED
-	: type(in_type.shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
+            : type(in_type.shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
     }
     /** This function is deprecated, you should switch to ExtentSeries(Ptr) */
     explicit ExtentSeries(const ExtentType *in_type, typeCompatibilityT _tc = typeExact) FUNC_DEPRECATED
-	: type(in_type->shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
+            : type(in_type->shared_from_this()), my_extent(NULL), typeCompatibility(_tc) {
     }
 
     /** Sets the type held by the ExtentSeries to the specified type.
@@ -78,24 +78,24 @@ public:
         constructor.
 
         Postconditions:
-            - getType() == _type and getExtent() == 0 */
+        - getType() == _type and getExtent() == 0 */
     explicit ExtentSeries(const ExtentType::Ptr in_type, typeCompatibilityT _tc = typeExact)
-	: type(in_type), my_extent(NULL), typeCompatibility(_tc) {
+            : type(in_type), my_extent(NULL), typeCompatibility(_tc) {
     }
     /** Sets the type held by the ExtentSeries by looking it up
         in an @c ExtentTypeLibrary
 
         Preconditions:
-            - An ExtentType with the specified name has
-            been registered with the library.
+        - An ExtentType with the specified name has
+        been registered with the library.
 
         Postconditions:
-            - getType() == library.getTypeByName(type name)
-            - getExtent() == 0 */
+        - getType() == library.getTypeByName(type name)
+        - getExtent() == 0 */
     ExtentSeries(ExtentTypeLibrary &library, std::string type_name,
-		 typeCompatibilityT _tc = typeExact)
-	: type(library.getTypeByNamePtr(type_name)), my_extent(NULL),
-	  typeCompatibility(_tc) {
+                 typeCompatibilityT _tc = typeExact)
+            : type(library.getTypeByNamePtr(type_name)), my_extent(NULL),
+              typeCompatibility(_tc) {
     }
 
     /** Initializes with the specified @c Extent. If it is null then this
@@ -110,14 +110,14 @@ public:
                           
     /** Initialize using the @c ExtentType corresponding to the given XML. */
     explicit ExtentSeries(const std::string &xmltype, typeCompatibilityT tc = typeExact)
-	: type(ExtentTypeLibrary::sharedExtentTypePtr(xmltype)),
-	  my_extent(NULL), typeCompatibility(tc) { 
+            : type(ExtentTypeLibrary::sharedExtentTypePtr(xmltype)),
+              my_extent(NULL), typeCompatibility(tc) { 
     }
 
     /** Copy constructor */
     ExtentSeries(const ExtentSeries &from)
-        : type(from.type), my_extent(from.my_extent), typeCompatibility(from.typeCompatibility),
-          pos(from.pos), my_fields(from.my_fields)
+    : type(from.type), my_extent(from.my_extent), typeCompatibility(from.typeCompatibility),
+      pos(from.pos), my_fields(from.my_fields)
     { }
 
     /** Copy operator */
@@ -132,7 +132,7 @@ public:
 
 
     /** Preconditions:
-            - All the attached fields must have been destroyed first. */
+        - All the attached fields must have been destroyed first. */
     ~ExtentSeries();
 
     // Next three are the most common way of using a series; may
@@ -148,14 +148,14 @@ public:
 
     /** Returns true iff the current extent is not null and has more records. */
     bool more() {
-	return pos.morerecords();
+        return pos.morerecords();
     }
     /** Advances to the next record in the current Extent.
 
         Preconditions:
-            - more() */
+        - more() */
     void next() {
-	++pos;
+        ++pos;
     }
 
     // TODO: deprecate this function and setCurPos once we have some experience
@@ -169,9 +169,9 @@ public:
         invalidated by any operation which changes the size of the Extent.
 
         Preconditions:
-            - getExtent() != 0 */
+        - getExtent() != 0 */
     const void *getCurPos() {
-	return pos.getPos();
+        return pos.getPos();
     }
 
     /** Restores the current position to a saved state.  position must be the
@@ -182,7 +182,7 @@ public:
         arithmetic and comparisons to verify that the call leaves that
         the @c ExtentSeries in a valid state.) */
     void setCurPos(const void *position) {
-	pos.setPos(position);
+        pos.setPos(position);
     }
     
     /** Sets the type of Extents. If the type has already been set in any way,
@@ -206,14 +206,14 @@ public:
     /** Returns a pointer to the current type. If no type has been set, the
         result will be null.
         Invariants:
-            - If getExtent() is not null, then the result is the
-              same as getExtent()->type*/
+        - If getExtent() is not null, then the result is the
+        same as getExtent()->type*/
     const ExtentType *getType() FUNC_DEPRECATED { return type.get(); }
     /** Returns a pointer to the current type. If no type has been set, the
         result will be null.
         Invariants:
-            - If getExtent() is not null, then the result is the
-              same as getExtent()->type*/
+        - If getExtent() is not null, then the result is the
+        same as getExtent()->type*/
     const ExtentType::Ptr getTypePtr() { return type; }
 
     /** Sets the current extent being processed. If e is null, clears the
@@ -223,9 +223,9 @@ public:
         to clearExtent()
         
         Postconditions:
-            - getExtent() = e
-            - the current position will be set to the beginning of the
-              new @c Extent. */
+        - getExtent() = e
+        - the current position will be set to the beginning of the
+        new @c Extent. */
     void setExtent(Extent *e) DS_RAW_EXTENT_PTR_DEPRECATED;
 
     // TODO: deprecate the non-shared pointer versions of series stuff; probably want to
@@ -248,10 +248,10 @@ public:
 
     /** Returns the current extent. */
     Extent *extent() const DS_RAW_EXTENT_PTR_DEPRECATED { 
-	return my_extent;
+        return my_extent;
     }
     Extent *getExtent() const DS_RAW_EXTENT_PTR_DEPRECATED {
-	return my_extent;
+        return my_extent;
     }
 
     /** Returns the shared version of the extent, assuming that the extent was set that way; Note
@@ -299,30 +299,30 @@ public:
         new record.
 
         Preconditions:
-            - The current Extent is not null. 
+        - The current Extent is not null. 
 
         \todo are multiple @c ExtentSeries even supported?
         \todo should nullable fields be set to null? */
     void newRecord() {
-	INVARIANT(my_extent != NULL,
-		  "must set extent for data series before calling newRecord()");
-	size_t offset = my_extent->fixeddata.size();
-	my_extent->createRecords(1);
-	pos.cur_pos = my_extent->fixeddata.begin() + offset;
+        INVARIANT(my_extent != NULL,
+                  "must set extent for data series before calling newRecord()");
+        size_t offset = my_extent->fixeddata.size();
+        my_extent->createRecords(1);
+        pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
     /** Appends a specified number of records onto the end of the current
         @c Extent.  The same cautions apply as for @c newRecord. The current
         record will be the first one inserted.
 
         Preconditions:
-            - The current extent cannot be null */
+        - The current extent cannot be null */
     void createRecords(int nrecords) {
-	// leaves the current record position unchanged
-	INVARIANT(my_extent != NULL,
-		  "must set extent for data series before calling newRecord()\n");
-	size_t offset = pos.cur_pos - my_extent->fixeddata.begin();
-	my_extent->createRecords(nrecords);
-	pos.cur_pos = my_extent->fixeddata.begin() + offset;
+        // leaves the current record position unchanged
+        INVARIANT(my_extent != NULL,
+                  "must set extent for data series before calling newRecord()\n");
+        size_t offset = pos.cur_pos - my_extent->fixeddata.begin();
+        my_extent->createRecords(nrecords);
+        pos.cur_pos = my_extent->fixeddata.begin() + offset;
     }
     /// \cond INTERNAL_ONLY
     // TODO: make this class go away, it doesn't actually make sense since
@@ -330,11 +330,11 @@ public:
     // within it.  Only use seems to be within Extent.C which is using the
     // raw access that the library has anyway.
     class iterator : boost::noncopyable {
-    public:
-	iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(0) { }
-	iterator(Extent *e) { reset(e); }
+      public:
+        iterator() : cur_extent(NULL), cur_pos(NULL), recordsize(0) { }
+        iterator(Extent *e) { reset(e); }
         iterator(const iterator &from) 
-            : cur_extent(from.cur_extent), cur_pos(from.cur_pos), recordsize(from.recordsize)
+        : cur_extent(from.cur_extent), cur_pos(from.cur_pos), recordsize(from.recordsize)
         { }
         iterator &operator =(const iterator &rhs) {
             cur_extent = rhs.cur_extent;
@@ -343,60 +343,60 @@ public:
             return *this;
         }
 
-	typedef ExtentType::byte byte;
-	iterator &operator++() { cur_pos += recordsize; return *this; }
-	void reset(Extent *e) { 
-	    if (e == NULL) {
-		cur_extent = NULL;
-		cur_pos = NULL;
-		recordsize = 0;
-	    } else {
-		cur_extent = e;
-		cur_pos = e->fixeddata.begin();
-		recordsize = e->getTypePtr()->fixedrecordsize();
-	    }
-	}
-	
-	/// old api
-	void setpos(byte *new_pos) {
-	    setPos(new_pos);
-	}
-	/// old api
-	byte *record_start() { return cur_pos; }
+        typedef ExtentType::byte byte;
+        iterator &operator++() { cur_pos += recordsize; return *this; }
+        void reset(Extent *e) { 
+            if (e == NULL) {
+                cur_extent = NULL;
+                cur_pos = NULL;
+                recordsize = 0;
+            } else {
+                cur_extent = e;
+                cur_pos = e->fixeddata.begin();
+                recordsize = e->getTypePtr()->fixedrecordsize();
+            }
+        }
+        
+        /// old api
+        void setpos(byte *new_pos) {
+            setPos(new_pos);
+        }
+        /// old api
+        byte *record_start() { return cur_pos; }
 
-	void setPos(const void *new_pos);
-	const void *getPos() {
-	    return cur_pos;
-	}
-	uint32_t currecnum() {
-	    SINVARIANT(cur_extent != NULL);
-	    int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
-	    checkOffset(cur_pos - cur_extent->fixeddata.begin());
-	    return recnum;
-	}
-	// You need to call update on any of your iterators after you
-	// call Extent::createRecords() or ExtentSeries::newRecord().
-	// newRecord() will update the series pos iterator. update()
-	// keeps the current position at the same relative record as before
-	void update(Extent *e);
+        void setPos(const void *new_pos);
+        const void *getPos() {
+            return cur_pos;
+        }
+        uint32_t currecnum() {
+            SINVARIANT(cur_extent != NULL);
+            int recnum = (cur_pos - cur_extent->fixeddata.begin()) / recordsize;
+            checkOffset(cur_pos - cur_extent->fixeddata.begin());
+            return recnum;
+        }
+        // You need to call update on any of your iterators after you
+        // call Extent::createRecords() or ExtentSeries::newRecord().
+        // newRecord() will update the series pos iterator. update()
+        // keeps the current position at the same relative record as before
+        void update(Extent *e);
 
-	bool morerecords() {
-	    return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
-	}
-	void checkOffset(long offset) {
+        bool morerecords() {
+            return cur_extent != NULL && cur_pos < cur_extent->fixeddata.end();
+        }
+        void checkOffset(long offset) {
 #if LINTEL_DEBUG
-	    forceCheckOffset(offset);
+            forceCheckOffset(offset);
 #else
-	    (void)offset; // eliminate compilation warning
+            (void)offset; // eliminate compilation warning
 #endif
-	}
-	void forceCheckOffset(long offset);
+        }
+        void forceCheckOffset(long offset);
 
-    private:
-	friend class ExtentSeries;
-	Extent *cur_extent;
-	byte *cur_pos;
-	unsigned recordsize;
+      private:
+        friend class ExtentSeries;
+        Extent *cur_extent;
+        byte *cur_pos;
+        unsigned recordsize;
     };
 
     /// \endcond
@@ -404,7 +404,7 @@ public:
     /** Returns true iff the current Extent is not null and we are not at the
         end of it. */
     bool morerecords() {
-	return pos.morerecords();
+        return pos.morerecords();
     }
 
     /** Increment the current position of the series */
@@ -428,7 +428,7 @@ public:
                                          pos.cur_extent);
     }
 
-private:
+  private:
     // both friends to get at pos.record_start()
     friend class Field;
     friend class ExtentRecordCopy;

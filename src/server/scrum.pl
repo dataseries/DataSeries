@@ -51,7 +51,7 @@ sub updateDateConv {
                   new NullableString(), new NullableString() ]);
     # Could make it work with addition of 24hrs but incrementing 12 hrs and skipping duplicated
     # days is safer to avoid DST issues.
-    for(my $i = $istart; $i <= $iend; $i += 86400/2) {
+    for (my $i = $istart; $i <= $iend; $i += 86400/2) {
 	my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst)
 	    = localtime($i);
 	next if $mday == $prevday;

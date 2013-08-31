@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #ifndef DATASERIES_INT64TIMEFIELD_HPP
@@ -24,7 +24,7 @@
     various base-class operations without doing something special.
 */
 class Int64TimeField : protected Int64Field {
-public:
+  public:
     // TODO: calculate functions that will tell us how much error we
     // introduced by doing a conversion; probably in both directions.
 
@@ -51,14 +51,14 @@ public:
     /// floor(t/1.0e9), and nanoseconds = t - seconds * 1e9.  This
     /// means that -.1s is representated as (-1, 900 * 1000 * 1000).
     struct SecNano {
-	int32_t seconds;
-	uint32_t nanoseconds;
-	SecNano() : seconds(0), nanoseconds(0) { }
-	SecNano(int32_t a, uint32_t b)
-	    : seconds(a), nanoseconds(b) { }
-	bool operator ==(const SecNano &b) const {
-	    return seconds == b.seconds && nanoseconds == b.nanoseconds;
-	}
+        int32_t seconds;
+        uint32_t nanoseconds;
+        SecNano() : seconds(0), nanoseconds(0) { }
+        SecNano(int32_t a, uint32_t b)
+                : seconds(a), nanoseconds(b) { }
+        bool operator ==(const SecNano &b) const {
+            return seconds == b.seconds && nanoseconds == b.nanoseconds;
+        }
     };
 
     // TODO: figure out how to make this more general
@@ -66,42 +66,42 @@ public:
 
     /// Standard field constructor
     Int64TimeField(ExtentSeries &series, const std::string &field,
-		   unsigned flags = 0, TimeType = Unknown,
-		   int64_t default_value = 0, bool auto_add = true);
+                   unsigned flags = 0, TimeType = Unknown,
+                   int64_t default_value = 0, bool auto_add = true);
     virtual ~Int64TimeField();
 
     /// Set the raw time value at current series position
     void setRaw(Raw raw) {
-	Int64Field::set(raw);
+        Int64Field::set(raw);
     }
 
     /// Raw time value at current series position
     Raw valRaw() const {
-	return Int64Field::val();
+        return Int64Field::val();
     }
 
     /// Current value at series position in units of 2^-32 seconds and
     /// unix epoch time.  Note this is slightly different than 
     /// Lintel Clock::Tfrac as that one is unsigned.
     int64_t valFrac32() const {
-	return rawToFrac32(valRaw());
+        return rawToFrac32(valRaw());
     }
     /// (seconds, nanoseconds) with unix epoch time for value at
     /// current series position.
     SecNano valSecNano() const {
-	return rawToSecNano(valRaw());
+        return rawToSecNano(valRaw());
     }
 
     /// seconds with unix epoch for time at current series position.
     int64_t valSec() const {
-	// TODO: make this more efficient.
-	return valSecNano().seconds;
+        // TODO: make this more efficient.
+        return valSecNano().seconds;
     }
-	
+        
     /// Return the seconds.nanoseconds string value for the current
     /// series position.
     std::string valStrSecNano() const {
-	return rawToStrSecNano(valRaw());
+        return rawToStrSecNano(valRaw());
     }
 
     /// convert a raw value into tfrac (2^-32s units, unix epoch); an
@@ -137,37 +137,37 @@ public:
     /// these values.  A call to this will override any specification
     /// in a file.
     static void registerUnitsEpoch(const std::string &field_name,
-				   const std::string &type_name,
-				   const std::string &name_space,
-				   const uint32_t major_version,
-				   const std::string &units,
-				   const std::string &epoch);
+                                   const std::string &type_name,
+                                   const std::string &name_space,
+                                   const uint32_t major_version,
+                                   const std::string &units,
+                                   const std::string &epoch);
     /// Really mostly for testing purposes; you can use it, but you then
     /// have to get it right because it's an error to change it.
     void setUnitsEpoch(const std::string &units, 
-		       const std::string &epoch);
+                       const std::string &epoch);
 
     /// Useful for verifying multiple fields have the same type.
     TimeType getType() const {
-	return time_type;
+        return time_type;
     }
 
     /// allow people to call this function
     const std::string &getName() const {
-	return Field::getName();
+        return Field::getName();
     }
 
     /// allow people to call this function
     void setFieldName(const std::string &new_name) {
-	Field::setFieldName(new_name);
+        Field::setFieldName(new_name);
     }
 
     static TimeType convertUnitsEpoch(const std::string &units,
-				      const std::string &epoch,
-				      const std::string &field_name,
-				      bool unknown_return_ok = false);
+                                      const std::string &epoch,
+                                      const std::string &field_name,
+                                      bool unknown_return_ok = false);
 
-private:
+  private:
     virtual void newExtentType();
 
     static void frac32ToSecNano(int64_t tfrac, SecNano &secnano);
@@ -175,12 +175,12 @@ private:
     static void splitSecNano(int64_t isecnano, SecNano &osecnano);
     static void splitSecMicro(int64_t isecmicro, SecNano &osecnano);
     static inline int64_t joinSecNano(int32_t sec, uint32_t nsec) {
-	DEBUG_SINVARIANT(nsec < 1000 * 1000 * 1000);
-	return static_cast<int64_t>(sec) * 1000 * 1000 * 1000 
-	    + nsec;
+        DEBUG_SINVARIANT(nsec < 1000 * 1000 * 1000);
+        return static_cast<int64_t>(sec) * 1000 * 1000 * 1000 
+                + nsec;
     }
     static inline int64_t joinSecNano(const SecNano &secnano) {
-	return joinSecNano(secnano.seconds, secnano.nanoseconds);
+        return joinSecNano(secnano.seconds, secnano.nanoseconds);
     }
 
     TimeType time_type;

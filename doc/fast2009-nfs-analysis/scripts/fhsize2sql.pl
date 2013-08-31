@@ -23,7 +23,7 @@ sub parseQuantile {
     return if $ndata == 0;
     $_ = <STDIN>;
     die "?" unless /^\s+quantiles about every/o;
-    for(my $i=1; $i < 100; $i += 10) {
+    for (my $i=1; $i < 100; $i += 10) {
 	$_ = <STDIN>;
 	chomp;
 	die "'$_' ? $i " unless /^\s*$i%: (.+)$/;

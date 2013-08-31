@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
 	source->addSource(argv[i]);
     }
 
@@ -226,7 +226,7 @@ int main(int argc, char *argv[]) {
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
 	source->addSource(argv[i]);
     }
 
@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
 	source->addSource(argv[i]);
     }
 

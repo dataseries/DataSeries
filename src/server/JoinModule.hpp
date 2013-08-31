@@ -6,9 +6,9 @@
 #include "OutputSeriesModule.hpp"
 
 class JoinModule : public OutputSeriesModule, public ThrowError {
-public:
+  public:
     class Extractor {
-    public:
+      public:
         typedef boost::shared_ptr<Extractor> Ptr;
 
         Extractor(const std::string &into_field_name) : into_field_name(into_field_name), into() { }
@@ -35,7 +35,7 @@ public:
 
     // Extract from a field and stuff it into a destination field
     class ExtractorField : public Extractor {
-    public:
+      public:
         virtual ~ExtractorField() { }
         static Ptr make(ExtentSeries &from_series, const std::string &from_field_name,
                         const std::string &into_field_name) {
@@ -51,17 +51,17 @@ public:
             into->set(from);
         }
 
-    private:
+      private:
         GeneralField::Ptr from;
 
         ExtractorField(const std::string &into_field_name, GeneralField::Ptr from) 
-            : Extractor(into_field_name), from(from) 
+                : Extractor(into_field_name), from(from) 
         { }
     };
 
     // Extract from a value vector and stuff it into a destination field
     class ExtractorValue : public Extractor {
-    public:
+      public:
         virtual ~ExtractorValue() { }
         static Ptr make(const std::string &into_field_name, uint32_t pos) {
             return Ptr(new ExtractorValue(into_field_name, pos));
@@ -72,11 +72,11 @@ public:
             into->set(a_val.vec[pos]);
         }
 
-    private:
+      private:
         uint32_t pos;
 
         ExtractorValue(const std::string &field_name, uint32_t pos) 
-            : Extractor(field_name), pos(pos)
+                : Extractor(field_name), pos(pos)
         { }
     };
 };

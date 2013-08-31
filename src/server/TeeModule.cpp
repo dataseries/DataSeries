@@ -1,33 +1,34 @@
 #include "DSSModule.hpp"
 
 class TeeModule : public RowAnalysisModule {
-public:
+  public:
     TeeModule(DataSeriesModule &source_module, const string &output_path)
-	: RowAnalysisModule(source_module), output_path(output_path), 
-	  output_series(), output(output_path, Extent::compress_lzf, 1),
-	  output_module(NULL), copier(series, output_series), row_count(0), first_extent(false)
+            : RowAnalysisModule(source_module), output_path(output_path), 
+              output_series(), output(output_path, 
+                                      Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 1),
+              output_module(NULL), copier(series, output_series), row_count(0), first_extent(false)
     { }
 
     virtual ~TeeModule() {
-	delete output_module;
+        delete output_module;
     }
 
     virtual void firstExtent(const Extent &e) {
-	series.setType(e.getTypePtr());
-	output_series.setType(e.getTypePtr());
+        series.setType(e.getTypePtr());
+        output_series.setType(e.getTypePtr());
         SINVARIANT(output_module == NULL);
-	output_module = new OutputModule(output, output_series, e.getTypePtr(), 96*1024);
-	copier.prep();
-	ExtentTypeLibrary library;
-	library.registerType(e.getTypePtr());
-	output.writeExtentLibrary(library);
+        output_module = new OutputModule(output, output_series, e.getTypePtr(), 96*1024);
+        copier.prep();
+        ExtentTypeLibrary library;
+        library.registerType(e.getTypePtr());
+        output.writeExtentLibrary(library);
         first_extent = true;
     }
 
     virtual void processRow() {
-	++row_count;
-	output_module->newRecord();
-	copier.copyRecord();
+        ++row_count;
+        output_module->newRecord();
+        copier.copyRecord();
     }
 
     virtual void completeProcessing() {

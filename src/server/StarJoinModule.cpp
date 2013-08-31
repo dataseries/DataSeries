@@ -15,13 +15,13 @@
 // output values unchanged, or set it to a specified value.  The middle option allows for lookups
 // in multiple tables to select the last set value.
 class StarJoinModule : public JoinModule {
-public:
+  public:
     StarJoinModule(DataSeriesModule &fact_input, const vector<Dimension> &dimensions,
                    const string &output_table_name, const map<string, string> &fact_columns,
                    const vector<DimensionFactJoin> &dimension_fact_join_in,
                    const HashMap< string, shared_ptr<DataSeriesModule> > &dimension_modules) 
-        : fact_input(fact_input), dimensions(dimensions), output_table_name(output_table_name),
-          fact_column_names(fact_columns), dimension_modules(dimension_modules)
+            : fact_input(fact_input), dimensions(dimensions), output_table_name(output_table_name),
+              fact_column_names(fact_columns), dimension_modules(dimension_modules)
     { 
         BOOST_FOREACH(const DimensionFactJoin &dfj, dimension_fact_join_in) {
             SJM_Join::Ptr p(new SJM_Join(dfj));
@@ -36,7 +36,7 @@ public:
         ~SJM_Dimension() throw () { }
 
         size_t valuePos(const string &source_field_name) {
-            for(size_t i = 0; i < value_columns.size(); ++i) {
+            for (size_t i = 0; i < value_columns.size(); ++i) {
                 if (value_columns[i] == source_field_name) {
                     return i;
                 }
@@ -61,7 +61,7 @@ public:
     };
 
     class DimensionModule : public RowAnalysisModule {
-    public:
+      public:
         typedef boost::shared_ptr<DimensionModule> Ptr;
 
         static Ptr make(DataSeriesModule &source, SJM_Dimension &sjm_dimension) {
@@ -92,9 +92,9 @@ public:
             LintelLogDebug("StarJoinModule/Dimension", format("[%d] -> [%d]") % key_gv % value_gv);
         }
 
-    protected:
+      protected:
         DimensionModule(DataSeriesModule &source, SJM_Dimension &sjm_dimension) 
-            : RowAnalysisModule(source), dim(sjm_dimension)
+                : RowAnalysisModule(source), dim(sjm_dimension)
         { }
 
         SJM_Dimension &dim;
@@ -219,7 +219,7 @@ public:
         BOOST_FOREACH(SJM_Join::Ptr join, dimension_fact_join) {
             join->join_key.extract(join->fact_fields);
             HashMap<GVVec, GVVec>::iterator i 
-                = join->dimension->dimension_data.find(join->join_key);
+                    = join->dimension->dimension_data.find(join->join_key);
             if (i == join->dimension->dimension_data.end()) {
                 FATAL_ERROR(format("unimplemented; unable to find key '%s' in dimension '%s'")
                             % join->join_key % join->dimension->dimension_name);
@@ -252,11 +252,11 @@ public:
 };    
 
 OutputSeriesModule::OSMPtr dataseries::makeStarJoinModule
-  (DataSeriesModule &fact_input, const vector<Dimension> &dimensions,
-   const string &output_table_name,
-   const map<string, string> &fact_columns,
-   const vector<DimensionFactJoin> &dimension_fact_join_in,
-   const HashMap< string, boost::shared_ptr<DataSeriesModule> > &dimension_modules) {
+(DataSeriesModule &fact_input, const vector<Dimension> &dimensions,
+ const string &output_table_name,
+ const map<string, string> &fact_columns,
+ const vector<DimensionFactJoin> &dimension_fact_join_in,
+ const HashMap< string, boost::shared_ptr<DataSeriesModule> > &dimension_modules) {
     return OutputSeriesModule::OSMPtr(new StarJoinModule(fact_input, dimensions, output_table_name,
                                                          fact_columns, dimension_fact_join_in,
                                                          dimension_modules));

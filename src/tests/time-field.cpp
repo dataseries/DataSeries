@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 #include <limits>
 
@@ -27,7 +27,7 @@ static const int64_t two32 = static_cast<int64_t>(1) << 32;
 typedef Int64TimeField::SecNano SecNano;
 
 void checkOneFrac32Convert(Int64TimeField &nsec, int64_t ifrac32, 
-			      int64_t nsec_conv, int64_t ofrac32) {
+                           int64_t nsec_conv, int64_t ofrac32) {
     int64_t a = nsec.frac32ToRaw(ifrac32);
     SINVARIANT(a == nsec_conv);
     int64_t b = nsec.rawToFrac32(a);
@@ -156,41 +156,41 @@ void checkConversionStatic() {
     SINVARIANT(nsec.rawToSecNano(-50*1000*1000) == SecNano(-1,950*1000*1000));
 
     {
-	int64_t a_ns = nsec.secNanoToRaw(max_i32, max_ns);
-	int64_t a_frac32 = nsec.rawToFrac32(a_ns);
-	int64_t a_ns_2 = nsec.frac32ToRaw(a_frac32);
-	SINVARIANT(a_ns == a_ns_2);
+        int64_t a_ns = nsec.secNanoToRaw(max_i32, max_ns);
+        int64_t a_frac32 = nsec.rawToFrac32(a_ns);
+        int64_t a_ns_2 = nsec.frac32ToRaw(a_frac32);
+        SINVARIANT(a_ns == a_ns_2);
     }
 
     { 
-	int64_t b_ns = nsec.secNanoToRaw(min_i32, max_ns);
-	int64_t b_frac32 = nsec.rawToFrac32(b_ns);
-	int64_t b_ns_2 = nsec.frac32ToRaw(b_frac32);
-	SINVARIANT(b_ns == b_ns_2);
+        int64_t b_ns = nsec.secNanoToRaw(min_i32, max_ns);
+        int64_t b_frac32 = nsec.rawToFrac32(b_ns);
+        int64_t b_ns_2 = nsec.frac32ToRaw(b_frac32);
+        SINVARIANT(b_ns == b_ns_2);
     }
 
     { 
-	int64_t c_ns = nsec.secNanoToRaw(min_i32, 0);
-	int64_t c_frac32 = nsec.rawToFrac32(c_ns);
-	int64_t c_ns_2 = nsec.frac32ToRaw(c_frac32);
-	SINVARIANT(c_ns == c_ns_2);
+        int64_t c_ns = nsec.secNanoToRaw(min_i32, 0);
+        int64_t c_frac32 = nsec.rawToFrac32(c_ns);
+        int64_t c_ns_2 = nsec.frac32ToRaw(c_frac32);
+        SINVARIANT(c_ns == c_ns_2);
     }
 
     { // special-a: subtle case found through randomized testing,
-      // couldn't precalculate conversion constant in secNanoToFrac32.
-	int32_t s = 1208544069;
-	uint32_t ns = 460581886;
+        // couldn't precalculate conversion constant in secNanoToFrac32.
+        int32_t s = 1208544069;
+        uint32_t ns = 460581886;
 
-	int64_t a_ns = nsec.secNanoToRaw(s,ns);
-	int64_t a_frac32 = nsec.rawToFrac32(a_ns);
-	// calculated used multi-precision time-field.pl
-	SINVARIANT(a_frac32 == 5190657254107951562LL);
+        int64_t a_ns = nsec.secNanoToRaw(s,ns);
+        int64_t a_frac32 = nsec.rawToFrac32(a_ns);
+        // calculated used multi-precision time-field.pl
+        SINVARIANT(a_frac32 == 5190657254107951562LL);
 
-	int64_t b_ns = nsec.secNanoToRaw(-s-1, 1000*1000*1000-ns);
-	SINVARIANT(a_ns == -b_ns);
-	int64_t b_frac32 = nsec.rawToFrac32(b_ns);
-	SINVARIANT(b_frac32 == -5190657254107951562LL);
-	SINVARIANT(a_frac32 == -b_frac32);
+        int64_t b_ns = nsec.secNanoToRaw(-s-1, 1000*1000*1000-ns);
+        SINVARIANT(a_ns == -b_ns);
+        int64_t b_frac32 = nsec.rawToFrac32(b_ns);
+        SINVARIANT(b_frac32 == -5190657254107951562LL);
+        SINVARIANT(a_frac32 == -b_frac32);
     }
     checkManyConversionStaticFrac32(nsec);
     cout << "static time checks successful" << endl;
@@ -207,61 +207,61 @@ void checkConversionRandom() {
     boost::mt19937 rng;
 
     uint32_t seed =
-	lintel::BobJenkinsHashMix3(getpid(), getppid(),
-				   lintel::BobJenkinsHashMixULL(Clock::todTfrac()));
+            lintel::BobJenkinsHashMix3(getpid(), getppid(),
+                                       lintel::BobJenkinsHashMixULL(Clock::todTfrac()));
 
     cout << format("Randomized testing with seed %d\n") % seed;
     rng.seed(seed);
 
     SecNano sn;
     const unsigned random_rounds = 10 * 1000 * 1000;
-    for(unsigned i = 0; i < random_rounds; ++i) {
-	sn.seconds = rng() % max_i32;
-	sn.nanoseconds = rng() % (1000*1000*1000);
-	
-	int64_t a_ns = nsec.secNanoToRaw(sn.seconds, sn.nanoseconds);
-	int64_t a_frac32 = nsec.rawToFrac32(a_ns);
-	int64_t a_ns_2 = nsec.frac32ToRaw(a_frac32);
-	SINVARIANT(a_ns_2 == a_ns);
-	SecNano tmp(frac32.rawToSecNano(a_frac32));
-	SINVARIANT(tmp == sn);
-	
-	if (sn.nanoseconds == 0) {
-	    sn.seconds = -sn.seconds;
-	} else {
-	    sn.seconds = -sn.seconds - 1;
-	    sn.nanoseconds = 1000*1000*1000 - sn.nanoseconds;
-	}
-	int64_t b_ns = nsec.secNanoToRaw(sn.seconds, sn.nanoseconds);
-	SINVARIANT(b_ns == -a_ns);
-	int64_t b_frac32 = nsec.rawToFrac32(b_ns);
-	INVARIANT(b_frac32 == -a_frac32,
-		  format("(%d,%d) -> %d != -%d")
-		  % sn.seconds % sn.nanoseconds % b_frac32 % a_frac32);
-	int64_t b_ns_2 = nsec.frac32ToRaw(b_frac32);
-	SINVARIANT(b_ns == b_ns_2);
+    for (unsigned i = 0; i < random_rounds; ++i) {
+        sn.seconds = rng() % max_i32;
+        sn.nanoseconds = rng() % (1000*1000*1000);
+        
+        int64_t a_ns = nsec.secNanoToRaw(sn.seconds, sn.nanoseconds);
+        int64_t a_frac32 = nsec.rawToFrac32(a_ns);
+        int64_t a_ns_2 = nsec.frac32ToRaw(a_frac32);
+        SINVARIANT(a_ns_2 == a_ns);
+        SecNano tmp(frac32.rawToSecNano(a_frac32));
+        SINVARIANT(tmp == sn);
+        
+        if (sn.nanoseconds == 0) {
+            sn.seconds = -sn.seconds;
+        } else {
+            sn.seconds = -sn.seconds - 1;
+            sn.nanoseconds = 1000*1000*1000 - sn.nanoseconds;
+        }
+        int64_t b_ns = nsec.secNanoToRaw(sn.seconds, sn.nanoseconds);
+        SINVARIANT(b_ns == -a_ns);
+        int64_t b_frac32 = nsec.rawToFrac32(b_ns);
+        INVARIANT(b_frac32 == -a_frac32,
+                  format("(%d,%d) -> %d != -%d")
+                  % sn.seconds % sn.nanoseconds % b_frac32 % a_frac32);
+        int64_t b_ns_2 = nsec.frac32ToRaw(b_frac32);
+        SINVARIANT(b_ns == b_ns_2);
     }
 
     unsigned negative_count = 0;
     vector<unsigned> diff_count;
     diff_count.resize(5);
-    for(unsigned i = 0; i < random_rounds; ++i) {
-	uint32_t lower = rng();
-	int32_t upper = static_cast<int32_t>(rng());
-	if (upper < 0) {
-	    ++negative_count;
-	}
-	int64_t frac32 = static_cast<int64_t>(upper) << 32 | lower;
-	int64_t ns = nsec.frac32ToRaw(frac32);
-	int64_t frac32_b = nsec.rawToFrac32(ns);
-	int64_t diff = frac32_b - frac32;
-	// All we know is that when it comes back it should be within +-2 of
-	// the original value. because frac32 has just over 4x the precision
-	// of ns time.  (Not completely clear we couldn't get a case where
-	// we are 3 off)
-	INVARIANT(diff >= -2 && diff <= 2, 
-		  format("?? %d %d %d %d") % diff % frac32 % ns % frac32_b);
-	++diff_count[diff + 2];
+    for (unsigned i = 0; i < random_rounds; ++i) {
+        uint32_t lower = rng();
+        int32_t upper = static_cast<int32_t>(rng());
+        if (upper < 0) {
+            ++negative_count;
+        }
+        int64_t frac32 = static_cast<int64_t>(upper) << 32 | lower;
+        int64_t ns = nsec.frac32ToRaw(frac32);
+        int64_t frac32_b = nsec.rawToFrac32(ns);
+        int64_t diff = frac32_b - frac32;
+        // All we know is that when it comes back it should be within +-2 of
+        // the original value. because frac32 has just over 4x the precision
+        // of ns time.  (Not completely clear we couldn't get a case where
+        // we are 3 off)
+        INVARIANT(diff >= -2 && diff <= 2, 
+                  format("?? %d %d %d %d") % diff % frac32 % ns % frac32_b);
+        ++diff_count[diff + 2];
     }
     INVARIANT(negative_count > random_rounds/3, "bad rng?");
 
@@ -270,10 +270,10 @@ void checkConversionRandom() {
     // 15m,23m,23m,23m,15m with a little extra distributed around.
 
     SINVARIANT(diff_count[0] + diff_count[1] + diff_count[2]
-	       + diff_count[3] + diff_count[4] == random_rounds);
+               + diff_count[3] + diff_count[4] == random_rounds);
     cout << format("frac32->ns->frac32 diffs: %d,%d,%d,%d,%d\n")
-	% diff_count[0] % diff_count[1] % diff_count[2] 
-	% diff_count[3] % diff_count[4];
+            % diff_count[0] % diff_count[1] % diff_count[2] 
+            % diff_count[3] % diff_count[4];
     cout << "random time checks successful" << endl;
 }
 
@@ -281,10 +281,10 @@ void checkRegisterUnitsEpoch() {
     boost::mt19937 rng;
 
     uint32_t seed =
-	lintel::BobJenkinsHashMix3(getpid(), getppid(),
-				   lintel::BobJenkinsHashMixULL(Clock::todTfrac()));
+            lintel::BobJenkinsHashMix3(getpid(), getppid(),
+                                       lintel::BobJenkinsHashMixULL(Clock::todTfrac()));
     if (getenv("SEED") != NULL) {
-	seed = stringToInteger<uint32_t>(getenv("SEED"));
+        seed = stringToInteger<uint32_t>(getenv("SEED"));
     }
 
     rng.seed(seed);
@@ -293,12 +293,12 @@ void checkRegisterUnitsEpoch() {
     ExtentTypeLibrary lib;
 
     const ExtentType::Ptr type(lib.registerTypePtr
-	("<ExtentType name=\"test\" namespace=\"test\" version=\"1.0\" >\n"
-	 "  <field type=\"int64\" name=\"nsec_unix\" />"
-	 "  <field type=\"int64\" name=\"usec_unix\" />"
-	 "  <field type=\"int64\" name=\"frac32_unix\" />"
-	 "  <field type=\"int64\" name=\"override\" units=\"nanoseconds\" epoch=\"unix\" />"
-	 "</ExtentType>\n"));
+                               ("<ExtentType name=\"test\" namespace=\"test\" version=\"1.0\" >\n"
+                                "  <field type=\"int64\" name=\"nsec_unix\" />"
+                                "  <field type=\"int64\" name=\"usec_unix\" />"
+                                "  <field type=\"int64\" name=\"frac32_unix\" />"
+                                "  <field type=\"int64\" name=\"override\" units=\"nanoseconds\" epoch=\"unix\" />"
+                                "</ExtentType>\n"));
 
     ExtentSeries s(type);
     s.newExtent();
@@ -314,32 +314,32 @@ void checkRegisterUnitsEpoch() {
     Int64TimeField override(s, "override"); // will be microseconds
 
     s.createRecords(1);
-    for(uint32_t i = 0; i < 10; ++i) {
-	double seconds = (rng() % (1000*1000)) + (rng() % 1000000)/1.0e6;
+    for (uint32_t i = 0; i < 10; ++i) {
+        double seconds = (rng() % (1000*1000)) + (rng() % 1000000)/1.0e6;
 
-	int64_t nsec = static_cast<int64_t>(round(seconds * 1.0e9));
-	int64_t usec = static_cast<int64_t>(round(seconds * 1.0e6));
-	double frac32_d = seconds * (4*1024.0*1024.0*1024.0);
-	int64_t frac32 = static_cast<int64_t>(round(frac32_d));
-	
-	nsec_unix.setRaw(nsec);
-	usec_unix.setRaw(usec);
-	frac32_unix.setRaw(frac32);
-	override.setRaw(usec);
+        int64_t nsec = static_cast<int64_t>(round(seconds * 1.0e9));
+        int64_t usec = static_cast<int64_t>(round(seconds * 1.0e6));
+        double frac32_d = seconds * (4*1024.0*1024.0*1024.0);
+        int64_t frac32 = static_cast<int64_t>(round(frac32_d));
+        
+        nsec_unix.setRaw(nsec);
+        usec_unix.setRaw(usec);
+        frac32_unix.setRaw(frac32);
+        override.setRaw(usec);
 
-	SINVARIANT(nsec_unix.valFrac32() == usec_unix.valFrac32());
-	// SEED=1357899212; 
-	// 951475.894468 -> 4086557849672407.500, rounding happens differently
-	// here than in Int64TimeField.
-	INVARIANT(fabs(usec_unix.valFrac32() - frac32_d) <= 0.55,
-		  format("%.6f -> %.3f - %d = %.2f") % seconds % frac32_d
-		  % usec_unix.valFrac32() % (frac32_d - usec_unix.valFrac32()));
-	SINVARIANT(frac32_unix.valFrac32() == frac32);
-	SINVARIANT(usec_unix.valFrac32() == override.valFrac32());
+        SINVARIANT(nsec_unix.valFrac32() == usec_unix.valFrac32());
+        // SEED=1357899212; 
+        // 951475.894468 -> 4086557849672407.500, rounding happens differently
+        // here than in Int64TimeField.
+        INVARIANT(fabs(usec_unix.valFrac32() - frac32_d) <= 0.55,
+                  format("%.6f -> %.3f - %d = %.2f") % seconds % frac32_d
+                  % usec_unix.valFrac32() % (frac32_d - usec_unix.valFrac32()));
+        SINVARIANT(frac32_unix.valFrac32() == frac32);
+        SINVARIANT(usec_unix.valFrac32() == override.valFrac32());
 
-	SINVARIANT(nsec_unix.valSecNano() == usec_unix.valSecNano());
-	SINVARIANT(usec_unix.valSecNano() == frac32_unix.valSecNano());
-	SINVARIANT(frac32_unix.valSecNano() == override.valSecNano());
+        SINVARIANT(nsec_unix.valSecNano() == usec_unix.valSecNano());
+        SINVARIANT(usec_unix.valSecNano() == frac32_unix.valSecNano());
+        SINVARIANT(frac32_unix.valSecNano() == override.valSecNano());
     }
     cout << "register units epoch checks successful\n";
 }

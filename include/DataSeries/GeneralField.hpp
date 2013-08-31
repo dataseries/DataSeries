@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -32,63 +32,63 @@
 class GeneralField;
 
 /** \brief Discriminated union capable of holding any value
-  * that could be stored in dataseries.
-  *
-  * Sometimes it is necessary to store the values associated with GeneralFields so that they can be
-  * used for comparisons in the future.  Rather than having programs convert to a specific type,
-  * such as a double for the numeric fields, it seems better to have a general value type with a
-  * collection of operations on that type that would allow additional values to be added to
-  * dataseries in the future.  A null value is represented as a field type of unknown, because that
-  * means that GeneralValue() == null.
-  */
+ * that could be stored in dataseries.
+ *
+ * Sometimes it is necessary to store the values associated with GeneralFields so that they can be
+ * used for comparisons in the future.  Rather than having programs convert to a specific type,
+ * such as a double for the numeric fields, it seems better to have a general value type with a
+ * collection of operations on that type that would allow additional values to be added to
+ * dataseries in the future.  A null value is represented as a field type of unknown, because that
+ * means that GeneralValue() == null.
+ */
 
 class GeneralValue {
-public:
+  public:
     GeneralValue() : gvtype(ExtentType::ft_unknown), v_variable32(NULL) { }
 
     GeneralValue(const GeneralValue &v)
-	: gvtype(v.gvtype), gvval(v.gvval) {
-	switch (gvtype) {
-        case ExtentType::ft_variable32: case ExtentType::ft_fixedwidth:
-            v_variable32 = new std::string(*v.v_variable32);
-            break;
-        default:
-            v_variable32 = NULL;
+    : gvtype(v.gvtype), gvval(v.gvval) {
+        switch (gvtype) {
+            case ExtentType::ft_variable32: case ExtentType::ft_fixedwidth:
+                v_variable32 = new std::string(*v.v_variable32);
+                break;
+            default:
+                v_variable32 = NULL;
         }
     }
     GeneralValue(const GeneralField &from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
     GeneralValue(const GeneralField *from)
-	: gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+    : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from); }
 
     GeneralValue(const GeneralField &from, const Extent &e,
                  const dataseries::SEP_RowOffset &row_offset)
-        : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
+            : gvtype(ExtentType::ft_unknown), v_variable32(NULL)
     { set(from, e, row_offset); }
 
     ~GeneralValue() { 
-	delete v_variable32; 
+        delete v_variable32; 
     }
 
     GeneralValue &operator =(const GeneralValue &from) {
-	set(from);
-	return *this;
+        set(from);
+        return *this;
     }
     GeneralValue &operator =(const GeneralField &from) {
-	set(from);
-	return *this;
+        set(from);
+        return *this;
     }
 
     void set(const GeneralValue &from);
     void set(const GeneralValue *from) { 
-	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+        DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
     }
     void set(const GeneralField &from);
     void set(const GeneralField *from) { 
-	DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
+        DEBUG_INVARIANT(from != NULL, "bad"); set(*from); 
     }
 
     void set(boost::shared_ptr<GeneralField> from) {
@@ -117,14 +117,14 @@ public:
     bool equal(const GeneralValue &gv) const;
 
     /** allowing FILE * rather than std::ostream as std::ostream is
-	much slower */
+        much slower */
     void write(FILE *to);
 
     std::ostream &write(std::ostream &to) const;
 
     ExtentType::fieldType getType() const { return gvtype; }
     /** calculate a hash of this value, use partial_hash as the
-	starting hash. */
+        starting hash. */
     uint32_t hash(uint32_t partial_hash = 1776) const;
 
     void setBool(bool val);
@@ -141,7 +141,7 @@ public:
     int64_t valInt64() const;
     double valDouble() const;
     const std::string valString() const; // Either variable32 or fixedwidth
-protected:
+  protected:
     // let all of the general field classes get at our value/type
     friend class GF_Bool;
     friend class GF_Byte;
@@ -153,11 +153,11 @@ protected:
     ExtentType::fieldType gvtype;
     /// \cond INTERNAL_ONLY
     union gvvalT {
-	bool v_bool;
-	ExtentType::byte v_byte;
-	ExtentType::int32 v_int32;
-	ExtentType::int64 v_int64;
-	double v_double;
+        bool v_bool;
+        ExtentType::byte v_byte;
+        ExtentType::int32 v_int32;
+        ExtentType::int64 v_int64;
+        double v_double;
     } gvval;
     /// \endcond
     std::string *v_variable32; // only valid if gvtype = ft_variable32 | ft_fixedwidth
@@ -194,30 +194,30 @@ inline std::ostream & operator << (std::ostream &to, const GeneralValue &a) {
 template <>
 struct HashMap_hash<const GeneralValue> {
     unsigned operator()(const GeneralValue &a) const {
-	return a.hash();
+        return a.hash();
     }
 };
 
 /** \brief accessor for fields whose type may not be known at compile time.
 
-  * \note This is a base class and needs to be held by (smart) pointer.
-  *
-  * \note This class does not inherit from @c Field. */
+ * \note This is a base class and needs to be held by (smart) pointer.
+ *
+ * \note This class does not inherit from @c Field. */
 class GeneralField {
-public:
+  public:
     typedef boost::shared_ptr<GeneralField> Ptr;
 
     virtual ~GeneralField();
 
     /** create a new general field for a particular series; assumes that
-	the field type doesn't change over the course of the series. */
+        the field type doesn't change over the course of the series. */
     static GeneralField *create(ExtentSeries &series, const std::string &column) {
-	return create(NULL, series, column);
+        return create(NULL, series, column);
     }
 
     /** fieldxml can be null, in which case it gets it from the series type. */
     static GeneralField *create(xmlNodePtr fieldxml, ExtentSeries &series, 
-				const std::string &column);
+                                const std::string &column);
 
     /** make a new general field smart pointer for a specified series; assumes that
         the field type doesn't change over the course of the series. */
@@ -265,7 +265,7 @@ public:
     virtual void set(const GeneralValue *from) = 0;
 
     void set(const GeneralValue &from) {
-	set(&from);
+        set(&from);
     }
 
     void set(Extent &e, const dataseries::SEP_RowOffset &row_offset, 
@@ -293,18 +293,18 @@ public:
     // TODO: add comparison operators; right now it works because there is
     // a default converter from a field to a value and there are the comparison
     // operators on general values.
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from) = 0;
 
     // TODO: to go away once this moves from ExtentType to somewhere sane.
     static std::string strGetXMLProp(xmlNodePtr cur, 
-				     const std::string &option_name) {
-	return ExtentType::strGetXMLProp(cur, option_name);
+                                     const std::string &option_name) {
+        return ExtentType::strGetXMLProp(cur, option_name);
     }
     ExtentType::fieldType gftype;
     friend class GeneralValue;
     GeneralField(ExtentType::fieldType gftype, Field &typed_field)
-	: gftype(gftype), csv_enabled(false), typed_field(typed_field) { }
+            : gftype(gftype), csv_enabled(false), typed_field(typed_field) { }
     bool csv_enabled;
     Field &typed_field;
 };
@@ -317,7 +317,7 @@ protected:
 // can know the size of the field (including if it is variable)
 
 class GF_Bool : public GeneralField {
-public:
+  public:
     GF_Bool(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
     virtual ~GF_Bool();
 
@@ -333,11 +333,11 @@ public:
     // TODO: add the other type-specific set functions to all of the
     // GF_types.
     void set(const GF_Bool *from) {
-	if (from->myfield.isNull()) {
-	    myfield.setNull();
-	} else {
-	    myfield.set(from->myfield.val());
-	}
+        if (from->myfield.isNull()) {
+            myfield.setNull();
+        } else {
+            myfield.set(from->myfield.val());
+        }
     }
 
     virtual double valDouble();
@@ -349,12 +349,12 @@ public:
 
     BoolField myfield;
     std::string s_true, s_false;  
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Byte : public GeneralField {
-public:
+  public:
     GF_Byte(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Byte();
 
@@ -374,12 +374,12 @@ public:
 
     char *printspec;
     ByteField myfield;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int32 : public GeneralField {
-public:
+  public:
     GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Int32();
 
@@ -389,11 +389,11 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(const GF_Int32 *from) {
-	if (from->myfield.isNull()) {
-	    myfield.setNull();
-	} else {
-	    myfield.set(from->myfield.val());
-	}
+        if (from->myfield.isNull()) {
+            myfield.setNull();
+        } else {
+            myfield.set(from->myfield.val());
+        }
     }
 
     virtual double valDouble();
@@ -403,14 +403,14 @@ public:
     char *printspec;
     ExtentType::int32 divisor;
     Int32Field myfield;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Int64 : public GeneralField {
-public:
+  public:
     GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series, 
-	     const std::string &column);
+             const std::string &column);
     virtual ~GF_Int64();
 
     virtual void write(FILE *to);
@@ -429,12 +429,12 @@ public:
     char *printspec;
     int64_t divisor, offset;
     bool offset_first;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Double : public GeneralField {
-public:
+  public:
     GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column); 
     virtual ~GF_Double();
 
@@ -452,12 +452,12 @@ public:
     DoubleField *relative_field;
     char *printspec;
     double offset, multiplier;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_Variable32 : public GeneralField {
-public:
+  public:
     enum printstyle_t { printnostyle, printhex, printmaybehex, printcsv, printtext };
     GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_Variable32();
@@ -468,11 +468,11 @@ public:
     virtual void set(GeneralField *from);
     virtual void set(const GeneralValue *from);
     void set(GF_Variable32 *from) {
-	if (from->myfield.isNull()) {
-	    myfield.setNull();
-	} else {
-	    myfield.set(from->myfield.val(),from->myfield.size());
-	}
+        if (from->myfield.isNull()) {
+            myfield.setNull();
+        } else {
+            myfield.set(from->myfield.val(),from->myfield.size());
+        }
     }
 
     virtual double valDouble();
@@ -485,22 +485,22 @@ public:
     const std::string valFormatted();
 
     const std::string val_formatted() FUNC_DEPRECATED { // old naming convention
-	return valFormatted();
+        return valFormatted();
     }
 
     void clear() {
-	myfield.clear();
+        myfield.clear();
     }
 
     char *printspec;
     printstyle_t printstyle;
     Variable32Field myfield;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
 class GF_FixedWidth : public GeneralField {
-public:
+  public:
     GF_FixedWidth(xmlNodePtr fieldxml, ExtentSeries &series, const std::string &column);
     virtual ~GF_FixedWidth();
 
@@ -516,7 +516,7 @@ public:
     const int32_t size() const { return myfield.size(); }
 
     FixedWidthField myfield;
-protected:
+  protected:
     virtual void set(Extent &e, uint8_t *row_pos, const GeneralValue &from);
 };
 
@@ -525,10 +525,10 @@ protected:
     \todo TODO: add an output module as an optional argument; if it exists, 
     automatically do the newRecord stuff. */
 class ExtentRecordCopy {
-public:
+  public:
     ExtentRecordCopy(ExtentSeries &source, ExtentSeries &dest);
     /** Prepares the copy structure to do the copy.  Will be automatically
-	called by copyRecord() if necessary. type specifies the type to copy, so
+        called by copyRecord() if necessary. type specifies the type to copy, so
         we can do a subset; defaults to the type of dest if NULL */
     void prepPtr(const ExtentType::Ptr type = ExtentType::Ptr());
 
@@ -551,7 +551,7 @@ public:
         @c ExtentSeries.  Prerequisite: the record for the destination series should already
         exist. */
     void copyRecord(const Extent &extent, const dataseries::SEP_RowOffset &offset);
-private:
+  private:
     bool did_prep;
     int fixed_copy_size;
     ExtentSeries &source, &dest;

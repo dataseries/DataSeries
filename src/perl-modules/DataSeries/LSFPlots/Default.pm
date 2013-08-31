@@ -129,7 +129,7 @@ sub sum_data {
     my $interval = $data[0]->[1]->[0] - $data[0]->[0]->[0];
     map { $curtime = $_->[0]->[0] if $_->[0]->[0] < $curtime } @data;
     my @retdata;
-    while(@data > 0) {
+    while (@data > 0) {
 	my @ent = ($curtime,0,0,0,0,0,0);
 	my $foundany = 0;
 	foreach my $dent (@data) {
@@ -138,7 +138,7 @@ sub sum_data {
 		if $dent->[0]->[0] < $curtime;
 	    next unless $dent->[0]->[0] == $curtime;
 	    $foundany = 1;
-	    for(my $i=1;$i<6;++$i) {
+	    for (my $i=1;$i<6;++$i) {
 		$ent[$i] += $dent->[0]->[$i];
 	    }
 	    shift @$dent;

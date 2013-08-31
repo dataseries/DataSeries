@@ -13,19 +13,19 @@ using namespace std;
 
 
 void makeFile() {
-static string extent_type_xml(
-"<ExtentType name=\"Test::Simple\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\">"
-"  <field type=\"double\" name=\"a\" />"
-"  <field type=\"double\" name=\"b\" />"
-"  <field type=\"double\" name=\"c\" />"
-"  <field type=\"variable32\" name=\"d\" />"
-"  <field type=\"variable32\" name=\"e\" />"
-"</ExtentType>"
-);
+    static string extent_type_xml(
+        "<ExtentType name=\"Test::Simple\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\">"
+        "  <field type=\"double\" name=\"a\" />"
+        "  <field type=\"double\" name=\"b\" />"
+        "  <field type=\"double\" name=\"c\" />"
+        "  <field type=\"variable32\" name=\"d\" />"
+        "  <field type=\"variable32\" name=\"e\" />"
+        "</ExtentType>"
+                                  );
 
     string dsfn("expr.ds");
 
-    DataSeriesSink dsout(dsfn, Extent::compress_lzf, 1);
+    DataSeriesSink dsout(dsfn, Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 1);
 
     ExtentTypeLibrary library;
     const ExtentType::Ptr extent_type(library.registerTypePtr(extent_type_xml));
@@ -42,16 +42,16 @@ static string extent_type_xml(
     OutputModule output(dsout, extent_series, extent_type, extent_size);
 
     for (double ax = 0.0; ax < 20.0; ax += 0.5) {
-	for (double bx = 0.0; bx < 20.0; bx += 0.5) {
-	    output.newRecord();
-	    a.set(ax);
-	    b.set(bx);
-	    c.set(ax * bx);
-	    d.set((boost::format("%1%") % ax).str());
-	    e.set((boost::format("%1%") % bx).str());
-	}
+        for (double bx = 0.0; bx < 20.0; bx += 0.5) {
+            output.newRecord();
+            a.set(ax);
+            b.set(bx);
+            c.set(ax * bx);
+            d.set((boost::format("%1%") % ax).str());
+            e.set((boost::format("%1%") % bx).str());
+        }
     }
-	    
+            
     output.close();
     dsout.close();
 }
@@ -61,7 +61,7 @@ DSExprParser::Selector firstMatch(vector<ExtentSeries *> *series, const string &
     if (prefixequal(name, "remove.")) {
         name = name.substr(7);
     }
-    for(vector<ExtentSeries *>::iterator i = series->begin(); i != series->end(); ++i) {
+    for (vector<ExtentSeries *>::iterator i = series->begin(); i != series->end(); ++i) {
         if ((**i).getTypePtr()->hasColumn(name)) {
             return make_pair(*i, name);
         }
@@ -71,15 +71,15 @@ DSExprParser::Selector firstMatch(vector<ExtentSeries *> *series, const string &
 
 void testSeriesSelect() {
     static string extent_type_1_xml(
-"<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
-"  <field type=\"int32\" name=\"a\" />"
-"  <field type=\"int32\" name=\"b\" />"
-"</ExtentType>");
+        "<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+        "  <field type=\"int32\" name=\"a\" />"
+        "  <field type=\"int32\" name=\"b\" />"
+        "</ExtentType>");
     static string extent_type_2_xml(
-"<ExtentType name=\"Test2\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
-"  <field type=\"int32\" name=\"c\" />"
-"  <field type=\"int32\" name=\"d\" />"
-"</ExtentType>");
+        "<ExtentType name=\"Test2\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+        "  <field type=\"int32\" name=\"c\" />"
+        "  <field type=\"int32\" name=\"d\" />"
+        "</ExtentType>");
 
     ExtentTypeLibrary library;
 
@@ -119,10 +119,10 @@ void testSeriesSelect() {
 
 void testNullExpr() {
     static string extent_type_xml(
-"<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
-"  <field type=\"int32\" name=\"a\" opt_nullable=\"yes\" />"
-"  <field type=\"int32\" name=\"b\" opt_nullable=\"yes\" />"
-"</ExtentType>");
+        "<ExtentType name=\"Test1\" namespace=\"ssd.hpl.hp.com\" version=\"1.0\" >"
+        "  <field type=\"int32\" name=\"a\" opt_nullable=\"yes\" />"
+        "  <field type=\"int32\" name=\"b\" opt_nullable=\"yes\" />"
+        "</ExtentType>");
 
     ExtentTypeLibrary library;
 

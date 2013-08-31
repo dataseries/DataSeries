@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -20,13 +20,13 @@
 #include <DataSeries/RowAnalysisModule.hpp>
 
 class DSStatGroupByModule : public RowAnalysisModule {
-public:
+  public:
     DSStatGroupByModule(DataSeriesModule &source,
-			const std::string &expression,
-			const std::string &groupby,
-			const std::string &stattype = "basic",
-			const std::string &whereexpr = "",
-			ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeExact);
+                        const std::string &expression,
+                        const std::string &groupby,
+                        const std::string &stattype = "basic",
+                        const std::string &whereexpr = "",
+                        ExtentSeries::typeCompatibilityT tc = ExtentSeries::typeExact);
 
     typedef HashMap<GeneralValue, Stats *> mytableT;
 
@@ -39,7 +39,7 @@ public:
     /// return true if the specified stat_type is valid for constructing a
     /// DSStatGroupByModule.
     static bool validStatType(const std::string &stat_type);
-private:
+  private:
     mytableT mystats;
     std::string expression, groupby_name, stattype;
     GeneralField *groupby;

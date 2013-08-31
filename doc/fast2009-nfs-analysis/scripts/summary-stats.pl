@@ -9,7 +9,7 @@ foreach my $filename (@ARGV) {
     my $fh = new FileHandle $filename or die "?$filename";
 
     my %stats;
-    while(<$fh>) {
+    while (<$fh>) {
 	die "$_ ??" unless /^(\w.+) (\d+)$/o;
 	$stats{$1} = $2;
     }

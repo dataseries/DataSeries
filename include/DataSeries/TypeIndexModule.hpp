@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -17,14 +17,14 @@
 
 /** \brief Source module that returns extents matching a particular type
 
-  * Each DataSeries file contains an index that tells the type and
-  * offset of every extent in that file.  This source module takes an
-  * extent type match; if the match type is empty, this returns all of
-  * the extents, and otherwise, chooses a type using
-  * ExtentTypeLibrary::getTypeMatch, and returns all of the extents
-  * which have the same type. */
+ * Each DataSeries file contains an index that tells the type and
+ * offset of every extent in that file.  This source module takes an
+ * extent type match; if the match type is empty, this returns all of
+ * the extents, and otherwise, chooses a type using
+ * ExtentTypeLibrary::getTypeMatch, and returns all of the extents
+ * which have the same type. */
 class TypeIndexModule : public IndexSourceModule {
-public:
+  public:
     typedef boost::shared_ptr<TypeIndexModule> Ptr;
     TypeIndexModule(const std::string &type_match = "");
 
@@ -42,7 +42,7 @@ public:
     bool haveSources() { return !inputFiles.empty(); }
 
     void sameInputFiles(TypeIndexModule &from) {
-	inputFiles = from.inputFiles;
+        inputFiles = from.inputFiles;
     }
 
     const ExtentType *getType() FUNC_DEPRECATED {
@@ -52,7 +52,7 @@ public:
     const ExtentType::Ptr getTypePtr() {
         return my_type;
     }
-protected:
+  protected:
     std::string type_match, second_type_match;
     ExtentSeries indexSeries;
     Int64Field extentOffset;
@@ -61,7 +61,7 @@ protected:
     virtual void lockedResetModule();
     virtual PrefetchExtent *lockedGetCompressedExtent();
 
-private:
+  private:
     const ExtentType::Ptr matchType(); // May return NULL
 
     unsigned int cur_file;

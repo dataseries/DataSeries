@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008 Hewlett-Packard Development Company, LP
+  (c) Copyright 2008 Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file 
@@ -12,38 +12,38 @@
 */
 
 /*
-=pod
+  =pod
 
-=head1 NAME
+  =head1 NAME
 
-ds2wcweb - convert from dataseries to the custom 1998 world cup trace format
+  ds2wcweb - convert from dataseries to the custom 1998 world cup trace format
 
-=head1 SYNOPSIS
+  =head1 SYNOPSIS
 
   % ds2wcweb [ds-common-args] <input-ds-paths...> | gzip -9v >trace.out
 
-=head1 DESCRIPTION
+  =head1 DESCRIPTION
 
-ds2wcweb converts the Log::Web::WorldCup::Custom dataseries traces
-back to the 1998 world cup custom traces format.  The world cup traces
-are a very large, publically available set of web traces.  They have
-been published in a special binary record format that was designed to
-reduce space usage.  This converter converts from a dataseries version
-to that record format.
+  ds2wcweb converts the Log::Web::WorldCup::Custom dataseries traces
+  back to the 1998 world cup custom traces format.  The world cup traces
+  are a very large, publically available set of web traces.  They have
+  been published in a special binary record format that was designed to
+  reduce space usage.  This converter converts from a dataseries version
+  to that record format.
 
-=head1 EXAMPLES
+  =head1 EXAMPLES
 
-% gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
-% wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
+  % gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
+  % wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
 
-=head1 SEE ALSO
+  =head1 SEE ALSO
 
-wcweb2ds(1), DataSeries(5), DSCommonArgs(1)
+  wcweb2ds(1), DataSeries(5), DSCommonArgs(1)
 
-=head1 AUTHOR/CONTACT
+  =head1 AUTHOR/CONTACT
 
-Eric Anderson <software@cello.hpl.hp.com>
-=cut
+  Eric Anderson <software@cello.hpl.hp.com>
+  =cut
 */
 
 #include <arpa/inet.h>
@@ -59,41 +59,41 @@ struct record {
 };
 
 class WorldCupDSToCustom : public RowAnalysisModule {
-public:
+  public:
     WorldCupDSToCustom(DataSeriesModule &source)
-        : RowAnalysisModule(source),
-	  timestamp(series, "timestamp"),
-	  clientID(series, "clientID"),
-	  objectID(series, "objectID"),
-	  size(series, "size"),
-	  method(series, "method"),
-	  status(series, "http_version_and_status"),
-	  type(series, "type"),
-	  server(series, "server")
+    : RowAnalysisModule(source),
+      timestamp(series, "timestamp"),
+      clientID(series, "clientID"),
+      objectID(series, "objectID"),
+      size(series, "size"),
+      method(series, "method"),
+      status(series, "http_version_and_status"),
+      type(series, "type"),
+      server(series, "server")
     { }
 
     virtual ~WorldCupDSToCustom() { }
 
     virtual void processRow() {
-	record buf;
-	buf.timestamp = htonl(timestamp.val());
-	buf.clientID = htonl(clientID.val());
-	buf.objectID = htonl(objectID.val());
-	buf.size = htonl(size.val());
-	buf.method = method.val();
-	buf.status = status.val();
-	buf.type = type.val();
-	buf.server = server.val();
-	
-	size_t amt = fwrite(&buf, 1, sizeof(record), stdout);
-	SINVARIANT(amt == sizeof(record) && !ferror(stdout));
+        record buf;
+        buf.timestamp = htonl(timestamp.val());
+        buf.clientID = htonl(clientID.val());
+        buf.objectID = htonl(objectID.val());
+        buf.size = htonl(size.val());
+        buf.method = method.val();
+        buf.status = status.val();
+        buf.type = type.val();
+        buf.server = server.val();
+        
+        size_t amt = fwrite(&buf, 1, sizeof(record), stdout);
+        SINVARIANT(amt == sizeof(record) && !ferror(stdout));
     }
 
     virtual void printResult() {
-	CHECKED(fclose(stdout) == 0, "close failed");
+        CHECKED(fclose(stdout) == 0, "close failed");
     }
 
-private:
+  private:
     Int32Field timestamp;
     Int32Field clientID;
     Int32Field objectID;
@@ -106,12 +106,12 @@ private:
 
 int main(int argc, char *argv[]) {
     TypeIndexModule *source
-	= new TypeIndexModule("Log::Web::WorldCup::Custom");
+            = new TypeIndexModule("Log::Web::WorldCup::Custom");
 
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
               boost::format("Usage: %s <file...> | gzip >output-path\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         source->addSource(argv[i]);
     }
 

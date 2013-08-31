@@ -1,32 +1,32 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
 
     Pointers to sub-parts of an extent.  There are several choices of how to create these pointer:
 
-      1a) A void * pointer directly to the fixed extent location of a field
-      1b) An offset from the extent start in bytes directly to the fixed extent location of a field
-      1c) A void * pointer directly to the variable32 data for a field
-      1d) An offset from the variable32 part of an extent to the variable32 data
+    1a) A void * pointer directly to the fixed extent location of a field
+    1b) An offset from the extent start in bytes directly to the fixed extent location of a field
+    1c) A void * pointer directly to the variable32 data for a field
+    1d) An offset from the variable32 part of an extent to the variable32 data
 
-      2a) A void * pointer to the beginning of a row
-      2b) An offset in bytes to the beginning of the fixed part of a row
+    2a) A void * pointer to the beginning of a row
+    2b) An offset in bytes to the beginning of the fixed part of a row
 
-      3) A row number
+    3) A row number
 
-      4) An STL iterator as an extent pointer + 1[ab],2* + field offset, or 3 + field offset.
+    4) An STL iterator as an extent pointer + 1[ab],2* + field offset, or 3 + field offset.
 
     There are several goals that we have for using these sub-extent pointers:
-      A) fast direct access to a single field
-      B) space-efficient storage of pointers (including for multiple fields in a row)
-      C) efficient binary search in a sorted extent
-      D) ability to update existing fields.
-      E) work with nullable fields.
+    A) fast direct access to a single field
+    B) space-efficient storage of pointers (including for multiple fields in a row)
+    C) efficient binary search in a sorted extent
+    D) ability to update existing fields.
+    E) work with nullable fields.
 
     1a, 1c are best for goal A, but are poor for goal B, and do not support goal C without a divide
     to compute the number of rows to start. 1b, 1d are better for goal B on 64 bit machines because

@@ -7,12 +7,12 @@
 #include "DSSModule.hpp"
 
 class ExprTransformModule : public OutputSeriesModule {
-public:
+  public:
     ExprTransformModule(DataSeriesModule &source, const vector<ExprColumn> &expr_columns,
                         const string &output_table_name)
-        : OutputSeriesModule(), source(source), input_series(), previous_row_series(),
-          copier(output_series, previous_row_series), expr_columns(expr_columns),
-          output_table_name(output_table_name)
+            : OutputSeriesModule(), source(source), input_series(), previous_row_series(),
+              copier(output_series, previous_row_series), expr_columns(expr_columns),
+              output_table_name(output_table_name)
     { }
 
     bool hasColumn(ExtentSeries &series, const string &field_name) {
@@ -59,11 +59,11 @@ public:
         copier.prep();
 
         DSExprParser::FieldNameToSelector field_name_to_selector
-            = boost::bind(&ExprTransformModule::fieldNameToSeries, this, _1);
+                = boost::bind(&ExprTransformModule::fieldNameToSeries, this, _1);
         boost::scoped_ptr<DSExprParser> parser(DSExprParser::MakeDefaultParser());
         
         outputs.reserve(expr_columns.size());
-        for(size_t i = 0; i < expr_columns.size(); ++i) {
+        for (size_t i = 0; i < expr_columns.size(); ++i) {
             const ExprColumn &column(expr_columns[i]);
             boost::shared_ptr<DSExpr> expr(parser->parse(field_name_to_selector, column.expr));
             GeneralField::Ptr field = GeneralField::make(output_series, column.name);
@@ -98,7 +98,7 @@ public:
                         continue;
                     }
                     switch(output.type) 
-                        {
+                    {
                         case ExtentType::ft_bool: val.setBool(output.expr->valBool()); break;
                         case ExtentType::ft_byte: val.setByte(output.expr->valInt64()); break;
                         case ExtentType::ft_int32: val.setInt32(output.expr->valInt64()); break;
@@ -110,7 +110,7 @@ public:
                             FATAL_ERROR("should have failed to create type");
                         default:
                             FATAL_ERROR("unknown type");
-                        }
+                    }
                     output.field->set(val);
                 }
                 input_series.next();
@@ -135,7 +135,7 @@ public:
 
     struct Output {
         Output(boost::shared_ptr<DSExpr> expr, GeneralField::Ptr field, ExtentType::fieldType type)
-            : expr(expr), field(field), type(type) { }
+                : expr(expr), field(field), type(type) { }
 
         boost::shared_ptr<DSExpr> expr;
         GeneralField::Ptr field;
@@ -154,6 +154,6 @@ OutputSeriesModule::OSMPtr dataseries::makeExprTransformModule
 (DataSeriesModule &source, const vector<ExprColumn> &expr_columns,
  const string &output_table_name) {
     return OutputSeriesModule::OSMPtr
-        (new ExprTransformModule(source, expr_columns, output_table_name));
+            (new ExprTransformModule(source, expr_columns, output_table_name));
 }
 

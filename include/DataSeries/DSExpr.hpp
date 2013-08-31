@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -35,7 +35,7 @@ class DSExprFunction : boost::noncopyable {
 };
 
 class DSExprParserFactory : boost::noncopyable {
-public:
+  public:
     virtual ~DSExprParserFactory() {}
 
     virtual DSExprParser *make() = 0;
@@ -47,12 +47,12 @@ public:
     // static void RegisterParserFactory(const std::string &name,
     //                                   DSExprParserFactory &factory);
 
-protected:
+  protected:
     DSExprParserFactory() {}
 };
 
 class DSExprParser : boost::noncopyable {
-public:
+  public:
     /// Function is allowed to return NULL if it is unable to map field_name to an appropriate
     /// series.
     typedef std::pair<ExtentSeries *, std::string> Selector;
@@ -78,15 +78,15 @@ public:
     virtual void registerFunction(DSExprFunction &) = 0;
 
     static DSExprParser *MakeDefaultParser() {
-	return DSExprParserFactory::GetDefaultParserFactory().make();
+        return DSExprParserFactory::GetDefaultParserFactory().make();
     }
     
-protected:
+  protected:
     DSExprParser() {}
 };
 
 class DSExpr : boost::noncopyable {
-public:
+  public:
     typedef std::vector<DSExpr *> List;
 
     virtual ~DSExpr() {}

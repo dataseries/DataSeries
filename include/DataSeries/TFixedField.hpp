@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 /** @file
     Templated simple fixed-size fields (uint8_t, int32_t, int64_t, double)
@@ -32,32 +32,32 @@ namespace dataseries {
 
     template<typename FIELD_TYPE>
     class TFixedField<FIELD_TYPE, false> : public FixedField {
-	typedef detail::CppTypeToFieldType<FIELD_TYPE> field_type;
-    public:
-	TFixedField(ExtentSeries &series, const std::string &field, 
-		    bool auto_add = true)
-	    : FixedField(series, field, field_type::ft, 0) 
-	{
-	    // most-derived class needs to run this so the field is
-	    // activated.
-	    if (auto_add) {
-		series.addField(*this);
-	    }
-	}
-	virtual ~TFixedField() { };
+        typedef detail::CppTypeToFieldType<FIELD_TYPE> field_type;
+      public:
+        TFixedField(ExtentSeries &series, const std::string &field, 
+                    bool auto_add = true)
+                : FixedField(series, field, field_type::ft, 0) 
+        {
+            // most-derived class needs to run this so the field is
+            // activated.
+            if (auto_add) {
+                series.addField(*this);
+            }
+        }
+        virtual ~TFixedField() { };
 
-	FIELD_TYPE val() const {
-	    return *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset);
-	}
+        FIELD_TYPE val() const {
+            return *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset);
+        }
 
-	FIELD_TYPE operator() () const {
-	    return val();
-	}
+        FIELD_TYPE operator() () const {
+            return val();
+        }
 
-	void set(FIELD_TYPE val) {
-	    *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset) = val;
-	    // Don't need normal setNull(false); field can't be nullable
-	}
+        void set(FIELD_TYPE val) {
+            *reinterpret_cast<FIELD_TYPE *>(rowPos() + offset) = val;
+            // Don't need normal setNull(false); field can't be nullable
+        }
 
         FIELD_TYPE val(const Extent &e, const dataseries::SEP_RowOffset &row_offset) const {
             return *reinterpret_cast<FIELD_TYPE *>(rowPos(e, row_offset) + offset);
@@ -75,62 +75,62 @@ namespace dataseries {
     // specializations that are nullable
     template<>
     class TFixedField<uint8_t, true> : public ByteField { 
-    public:
-	TFixedField(ExtentSeries &series, const std::string &field,
-		    uint8_t default_value = 0, bool auto_add = true) 
-	    : ByteField(series, field, Field::flag_nullable, default_value, 
-			false) {
-	    if (auto_add) {
-		series.addField(*this);
-	    }
-	}
-	virtual ~TFixedField() { };
+      public:
+        TFixedField(ExtentSeries &series, const std::string &field,
+                    uint8_t default_value = 0, bool auto_add = true) 
+                : ByteField(series, field, Field::flag_nullable, default_value, 
+                            false) {
+            if (auto_add) {
+                series.addField(*this);
+            }
+        }
+        virtual ~TFixedField() { };
     };
 
     template<>
     class TFixedField<int32_t, true> : public Int32Field { 
-    public:
-	TFixedField(ExtentSeries &series, const std::string &field,
-		    int32_t default_value = 0, bool auto_add = true) 
-	    : Int32Field(series, field, Field::flag_nullable, default_value,
-			 false) {
-	    if (auto_add) {
-		series.addField(*this);
-	    }
-	}
-	virtual ~TFixedField() { };
+      public:
+        TFixedField(ExtentSeries &series, const std::string &field,
+                    int32_t default_value = 0, bool auto_add = true) 
+                : Int32Field(series, field, Field::flag_nullable, default_value,
+                             false) {
+            if (auto_add) {
+                series.addField(*this);
+            }
+        }
+        virtual ~TFixedField() { };
     };
 
     template<>
     class TFixedField<int64_t, true> : public Int64Field {
-    public:
-	TFixedField(ExtentSeries &series, const std::string &field,
-		    int64_t default_value = 0, bool auto_add = true) 
-	    : Int64Field(series, field, Field::flag_nullable, default_value,
-			 false) {
-	    if (auto_add) {
-		series.addField(*this);
-	    }
-	}
-	virtual ~TFixedField() { };
+      public:
+        TFixedField(ExtentSeries &series, const std::string &field,
+                    int64_t default_value = 0, bool auto_add = true) 
+                : Int64Field(series, field, Field::flag_nullable, default_value,
+                             false) {
+            if (auto_add) {
+                series.addField(*this);
+            }
+        }
+        virtual ~TFixedField() { };
     };
 
     // we sacrifice flag_allownonzerobase, but as commented in
     // DoubleField, this is not a loss.
     template<>
     class TFixedField<double, true> : public DoubleField {
-    public:
-	TFixedField(ExtentSeries &series, const std::string &field,
-		    double default_value = 0.0, bool auto_add = true) 
-	    : DoubleField(series, field, Field::flag_nullable, default_value,
-			  false) {
-	    if (auto_add) {
-		series.addField(*this);
-	    }
-	}
-	virtual ~TFixedField() { };
+      public:
+        TFixedField(ExtentSeries &series, const std::string &field,
+                    double default_value = 0.0, bool auto_add = true) 
+                : DoubleField(series, field, Field::flag_nullable, default_value,
+                              false) {
+            if (auto_add) {
+                series.addField(*this);
+            }
+        }
+        virtual ~TFixedField() { };
     };
     
 };
-		    
+                    
 #endif

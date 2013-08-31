@@ -6,11 +6,11 @@
 #include <DataSeries/GeneralField.hpp>
 
 class RenameCopier {
-public:
+  public:
     typedef boost::shared_ptr<RenameCopier> Ptr;
 
     RenameCopier(ExtentSeries &source, ExtentSeries &dest)
-        : source(source), dest(dest) { }
+            : source(source), dest(dest) { }
 
     void prep(const std::map<std::string, std::string> &copy_columns) {
         typedef std::map<std::string, std::string>::value_type vt;

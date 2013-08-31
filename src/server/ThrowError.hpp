@@ -6,7 +6,7 @@
 #include "gen-cpp/DataSeriesServer.h"
 
 class ThrowError {
-public:
+  public:
     void requestError(const std::string &msg) {
         LintelLog::warn(boost::format("request error: %s") % msg);
         throw dataseries::RequestError(msg);

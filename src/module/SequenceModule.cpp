@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #define DS_RAW_EXTENT_PTR_DEPRECATED /* allowed */
@@ -21,8 +21,8 @@ SequenceModule::SequenceModule(DsmPtr head)
 
 SequenceModule::~SequenceModule() {
     // later modules could depend on earlier ones, so reset in reverse order.
-    for(std::vector<DsmPtr>::reverse_iterator i = modules.rbegin(); i != modules.rend(); ++i) {
-	i->reset();
+    for (std::vector<DsmPtr>::reverse_iterator i = modules.rbegin(); i != modules.rend(); ++i) {
+        i->reset();
     }
 }
 

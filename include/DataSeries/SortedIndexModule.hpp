@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2009, Hewlett-Packard Development Company, LP
+  (c) Copyright 2009, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -27,57 +27,57 @@
     stages to creating a SortedIndexModule: create a SortedIndexModule::Index object (contains
     a base index), which is then used in SortedIndexModule constructors to build the final
     object. A single Index can be used to build multiple modules.
- */
+*/
 template <typename ValueType, typename FieldType, typename LessThan = std::less<ValueType> >
 class SortedIndexModule : public IndexSourceModule {
-public:
+  public:
     /** Index assumes that for each file referenced by the
-	index, that files rows are sorted on the index field. It is an error to
-	violate this rule. */
+        index, that files rows are sorted on the index field. It is an error to
+        violate this rule. */
     class Index {
-    public:
-	/** Create a new Index
-	    @param index_filename The file containing the index (created by 
-	    dsextent index)
-	    @param index_type The type of the extent indexed
-	    @param fieldname The name of the field to use as index
-	*/
-	Index(const std::string &index_filename,
-	      const std::string &index_type,
-	      const std::string &fieldname)
-	    : index_type(index_type)
-	{
-	    // we are going to read all index entries for the fieldname specified,
-	    // set up series and relevant fields to read from it
-	    TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
-	    tim.addSource(index_filename);
-	    ExtentSeries s;
-	    Int64Field extent_offset(s, "extent_offset");
-	    Variable32Field filename(s, "filename");
-	    FieldType min_field(s, "min:" + fieldname);
-	    FieldType max_field(s, "max:" + fieldname);
-	    // keep track of current filename and source being processed
-	    // along with the index for that filename
-	    std::string cur_fname("");
-	    boost::shared_ptr<DataSeriesSource> cur_source;
-	    IndexEntryVector *cur_index = NULL;
-	    // these variables are used to check if input file is sorted
-	    ValueType last_max; 
-	    while(true) {
-		boost::shared_ptr<Extent> e(tim.getSharedExtent());
-		if (!e) {
-		    break;
-		}
-		s.setExtent(e);
-		for (; s.morerecords(); ++s) {
-		    // check to see if this is a new set of per-file entries
-		    if (cur_fname != filename.stringval()) {
-			cur_fname = filename.stringval();
-			cur_source.reset(new DataSeriesSource(cur_fname, false));
-			index.push_back(IndexEntryVector());
-			cur_index = &index[index.size()-1];
-		    }
-		    if (!cur_index->empty()) {
+      public:
+        /** Create a new Index
+            @param index_filename The file containing the index (created by 
+            dsextent index)
+            @param index_type The type of the extent indexed
+            @param fieldname The name of the field to use as index
+        */
+        Index(const std::string &index_filename,
+              const std::string &index_type,
+              const std::string &fieldname)
+                : index_type(index_type)
+        {
+            // we are going to read all index entries for the fieldname specified,
+            // set up series and relevant fields to read from it
+            TypeIndexModule tim("DSIndex::Extent::MinMax::" + index_type);
+            tim.addSource(index_filename);
+            ExtentSeries s;
+            Int64Field extent_offset(s, "extent_offset");
+            Variable32Field filename(s, "filename");
+            FieldType min_field(s, "min:" + fieldname);
+            FieldType max_field(s, "max:" + fieldname);
+            // keep track of current filename and source being processed
+            // along with the index for that filename
+            std::string cur_fname("");
+            boost::shared_ptr<DataSeriesSource> cur_source;
+            IndexEntryVector *cur_index = NULL;
+            // these variables are used to check if input file is sorted
+            ValueType last_max; 
+            while (true) {
+                boost::shared_ptr<Extent> e(tim.getSharedExtent());
+                if (!e) {
+                    break;
+                }
+                s.setExtent(e);
+                for (; s.morerecords(); ++s) {
+                    // check to see if this is a new set of per-file entries
+                    if (cur_fname != filename.stringval()) {
+                        cur_fname = filename.stringval();
+                        cur_source.reset(new DataSeriesSource(cur_fname, false));
+                        index.push_back(IndexEntryVector());
+                        cur_index = &index[index.size()-1];
+                    }
+                    if (!cur_index->empty()) {
                         if (!less_than(min_field.val(), last_max)) {
                             // ok
                         } else {
@@ -85,170 +85,170 @@ public:
                             FATAL_ERROR(boost::format("file %s is not sorted, %s > %s") 
                                         % cur_fname % last_max % min_field.val());
                         }
-		    }
-		    last_max = max_field.val();
+                    }
+                    last_max = max_field.val();
 
-		    cur_index->push_back(IndexEntry(cur_source,
-						    min_field.val(), max_field.val(),
-						    extent_offset.val()));
-		}
-	    }
+                    cur_index->push_back(IndexEntry(cur_source,
+                                                    min_field.val(), max_field.val(),
+                                                    extent_offset.val()));
+                }
+            }
             tim.close();
-	}
+        }
 
-	/** Destructor */
-	virtual ~Index() { };
+        /** Destructor */
+        virtual ~Index() { };
 
-    private:
-	friend class SortedIndexModule;
-	// IndexEntry describes a single extent in the index
-	struct IndexEntry {
-	    boost::shared_ptr<DataSeriesSource> source;
-	    ValueType minv;	// min value of index field in extent
-	    ValueType maxv;	// max value of index field in extent
-	    uint64_t offset;	// offset of extent in source
-	    LessThan less_than; // comparator for ValueType
+      private:
+        friend class SortedIndexModule;
+        // IndexEntry describes a single extent in the index
+        struct IndexEntry {
+            boost::shared_ptr<DataSeriesSource> source;
+            ValueType minv;     // min value of index field in extent
+            ValueType maxv;     // max value of index field in extent
+            uint64_t offset;    // offset of extent in source
+            LessThan less_than; // comparator for ValueType
 
-	    IndexEntry(boost::shared_ptr<DataSeriesSource> source,
-		       const ValueType &minv, const ValueType &maxv, 
-		       uint64_t offset) 
-		: source(source), minv(minv), maxv(maxv), offset(offset) 
-	    {}
+            IndexEntry(boost::shared_ptr<DataSeriesSource> source,
+                       const ValueType &minv, const ValueType &maxv, 
+                       uint64_t offset) 
+                    : source(source), minv(minv), maxv(maxv), offset(offset) 
+            {}
 
-	    // Consider the following entry values for minv, maxv:
-	    // 
-	    // [ 1, 4 ]
-	    // [ 5, 7 ]
-	    // [ 7, 11 ]
-	    //
-	    // When we search for 7, we want to find the first extent
-	    // containing 7, which means that we have to compare based on
-	    // maxv rather than minv.
-	    bool operator<(const ValueType &rhs) const {
-		return less_than(maxv, rhs);
-	    }
+            // Consider the following entry values for minv, maxv:
+            // 
+            // [ 1, 4 ]
+            // [ 5, 7 ]
+            // [ 7, 11 ]
+            //
+            // When we search for 7, we want to find the first extent
+            // containing 7, which means that we have to compare based on
+            // maxv rather than minv.
+            bool operator<(const ValueType &rhs) const {
+                return less_than(maxv, rhs);
+            }
 
-	    bool inRange(const ValueType &v) const {
-		// (v >= minv && v <= maxv), using less_than
-		return !less_than(v, minv) && !less_than(maxv, v);
-	    }
+            bool inRange(const ValueType &v) const {
+                // (v >= minv && v <= maxv), using less_than
+                return !less_than(v, minv) && !less_than(maxv, v);
+            }
 
-	    bool overlaps(const ValueType &min, const ValueType &max) const {
-		// (maxv >= min && minv <= max), using less_than
-		return !less_than(maxv, min) && !less_than(max, minv);
-	    }
-	};
+            bool overlaps(const ValueType &min, const ValueType &max) const {
+                // (maxv >= min && minv <= max), using less_than
+                return !less_than(maxv, min) && !less_than(max, minv);
+            }
+        };
 
-	static bool entrySorter(const IndexEntry &lhs, const IndexEntry &rhs) {
-	    return lhs.source.get() < rhs.source.get() 
-		|| (lhs.source.get() == rhs.source.get() && lhs.offset < rhs.offset);
-	}
+        static bool entrySorter(const IndexEntry &lhs, const IndexEntry &rhs) {
+            return lhs.source.get() < rhs.source.get() 
+                    || (lhs.source.get() == rhs.source.get() && lhs.offset < rhs.offset);
+        }
 
-	static bool entryEqual(const IndexEntry &lhs, const IndexEntry &rhs) {
-	    return lhs.source.get() == rhs.source.get() && lhs.offset == rhs.offset;
-	}
+        static bool entryEqual(const IndexEntry &lhs, const IndexEntry &rhs) {
+            return lhs.source.get() == rhs.source.get() && lhs.offset == rhs.offset;
+        }
 
-    private:
-	typedef std::vector<IndexEntry> IndexEntryVector; // an index for a single file
-	std::vector<IndexEntryVector> index; // index for all indexed files
-	const std::string index_type; 
-	LessThan less_than;
+      private:
+        typedef std::vector<IndexEntry> IndexEntryVector; // an index for a single file
+        std::vector<IndexEntryVector> index; // index for all indexed files
+        const std::string index_type; 
+        LessThan less_than;
     };
 
-public:
+  public:
     /** Create a new SortedIndexModule, which will return extents that may contain a single value
-	@param index base index
-	@param value value to search for
+        @param index base index
+        @param value value to search for
     */
     SortedIndexModule(const Index &index, const ValueType &value)
-	: IndexSourceModule(),
-	  cur_extent(0),
-	  index_type(index.index_type) {
-	// search each index for relevant extents
-	BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
-	    // See comment for IndexEntry::operator< for use of lower bound and < operator.
-	    for(typename Index::IndexEntryVector::const_iterator i = 
-		    std::lower_bound(iev.begin(), iev.end(), value);
-		i != iev.end() && i->inRange(value); ++i) {
-		extents.push_back(*i);
-	    }
-	}
+            : IndexSourceModule(),
+              cur_extent(0),
+              index_type(index.index_type) {
+        // search each index for relevant extents
+        BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
+            // See comment for IndexEntry::operator< for use of lower bound and < operator.
+            for (typename Index::IndexEntryVector::const_iterator i = 
+                        std::lower_bound(iev.begin(), iev.end(), value);
+                i != iev.end() && i->inRange(value); ++i) {
+                extents.push_back(*i);
+            }
+        }
     }
 
     /** Create a new SortedIndexModule, which will return extents that may contain a set of values
-	@param index base index
-	@param values set of values to search for
+        @param index base index
+        @param values set of values to search for
     */
     SortedIndexModule(const Index &index, const std::vector<ValueType> &values)
-	: IndexSourceModule(),
-	  cur_extent(0),
-	  index_type(index.index_type) {
-	BOOST_FOREACH(const ValueType &value, values) {
-	    // search each index for relevant extents
-	    BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
-		// See comment in header for use of lower bound and < operator.
-		for(typename Index::IndexEntryVector::const_iterator i = 
-			std::lower_bound(iev.begin(), iev.end(), value);
-		    i != iev.end() && i->inRange(value); ++i) {
-		    extents.push_back(*i);
-		}
-	    }
-	}
+            : IndexSourceModule(),
+              cur_extent(0),
+              index_type(index.index_type) {
+        BOOST_FOREACH(const ValueType &value, values) {
+            // search each index for relevant extents
+            BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
+                // See comment in header for use of lower bound and < operator.
+                for (typename Index::IndexEntryVector::const_iterator i = 
+                            std::lower_bound(iev.begin(), iev.end(), value);
+                    i != iev.end() && i->inRange(value); ++i) {
+                    extents.push_back(*i);
+                }
+            }
+        }
 
-	// sort the extents co-located by file (source pointer sorted) and
-	// then ordered by location
-	std::sort(extents.begin(), extents.end(), Index::entrySorter);
+        // sort the extents co-located by file (source pointer sorted) and
+        // then ordered by location
+        std::sort(extents.begin(), extents.end(), Index::entrySorter);
     }
 
     /** Create a new SortedIndexModule, which will return extents that may contain a range of values
-	@param index base index
-	@param start first value in range
-	@param end last value in range
+        @param index base index
+        @param start first value in range
+        @param end last value in range
     */
     SortedIndexModule(const Index &index, const ValueType &start, const ValueType &end)
-	: IndexSourceModule(),
-	  cur_extent(0),
-	  index_type(index.index_type) {
+            : IndexSourceModule(),
+              cur_extent(0),
+              index_type(index.index_type) {
 
-	// search each index for relevant extents
-	BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
-	    // See comment in header for use of lower bound and < operator.
-	    for(typename Index::IndexEntryVector::const_iterator i = 
-		    std::lower_bound(iev.begin(), iev.end(), start);
-		i != iev.end() && i->overlaps(start, end); ++i) {
-		extents.push_back(*i);
-	    }
-	}
+        // search each index for relevant extents
+        BOOST_FOREACH(const typename Index::IndexEntryVector &iev, index.index) {
+            // See comment in header for use of lower bound and < operator.
+            for (typename Index::IndexEntryVector::const_iterator i = 
+                        std::lower_bound(iev.begin(), iev.end(), start);
+                i != iev.end() && i->overlaps(start, end); ++i) {
+                extents.push_back(*i);
+            }
+        }
     }
 
     ~SortedIndexModule() {};
 
-protected:
+  protected:
     virtual PrefetchExtent *lockedGetCompressedExtent() {
-	// while there are more extents, read them. Return NULL if no more
-	if (cur_extent == extents.size()) {
-	    return NULL;
-	}
-	// skip duplicate extents
-	while (cur_extent + 1 != extents.size() &&
-	       Index::entryEqual(extents[cur_extent], extents[cur_extent + 1])) {
-	    ++cur_extent;
-	}
+        // while there are more extents, read them. Return NULL if no more
+        if (cur_extent == extents.size()) {
+            return NULL;
+        }
+        // skip duplicate extents
+        while (cur_extent + 1 != extents.size() &&
+               Index::entryEqual(extents[cur_extent], extents[cur_extent + 1])) {
+            ++cur_extent;
+        }
 
-	SINVARIANT(cur_extent < extents.size());
-	PrefetchExtent *ret = readCompressed(extents[cur_extent].source.get(), 
-					     extents[cur_extent].offset,
-					     index_type);
+        SINVARIANT(cur_extent < extents.size());
+        PrefetchExtent *ret = readCompressed(extents[cur_extent].source.get(), 
+                                             extents[cur_extent].offset,
+                                             index_type);
     
-	++cur_extent;
-	return ret;
+        ++cur_extent;
+        return ret;
     }
 
     virtual void lockedResetModule() {
-	cur_extent = 0;
+        cur_extent = 0;
     }
 
-private:
+  private:
     size_t cur_extent;
     typename Index::IndexEntryVector extents;
     const std::string index_type;

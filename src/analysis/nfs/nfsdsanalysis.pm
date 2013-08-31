@@ -14,7 +14,7 @@ sub parse_NFSOpPayload {
     my($fh) = @_;
 
     my %op2dir2info;
-    while(<$fh>) {
+    while (<$fh>) {
 	last if /^End-virtual/o;
 	die "AA $_" unless /^((?:TCP)|(?:UDP))\s+(\w+)\s+(\w+):\s+(\d+\.\d+) MB,\s+(\d+\.\d+) bytes.op,.*,\s+(\d+) ops$/o;
 	die "?? $_" unless /^((?:TCP)|(?:UDP))\s+(\w+)\s+(\w+):\s+(\d+\.\d+) MB,\s+(\d+\.\d+) bytes.op,.*,\s+(\d+) ops\s*$/o;
@@ -43,7 +43,7 @@ sub parse_FileageByFilehandle {
     my $total_fh_gb;
     my $recent_fh_gb;
 
-    while(<$fh>) {
+    while (<$fh>) {
 	last if /^End-virtual/o;
 	if (/^(\d+) unique filehandles, (\d+) recent .(\d+) seconds.: (\d+\.\d+) GB total files accessed; (\d+\.\d+) GB recent, or \d+\.\d+%$/o) {
 	    ($unique_fh, $recent_fh, $recent_age_secs, $total_fh_gb, 
@@ -88,7 +88,7 @@ sub parse_ServerLatency {
 	push(@quantiles,@quantiles2);
 	$serverinfo{duplicates}->{req_iat_quantiles} = \@quantiles;
     }
-    while(<$fh>) {
+    while (<$fh>) {
 	last if /^End-virtual/o;
 	chomp;
 	die "?a? '$_'" unless /^(\d+\.\d+\.\d+\.\d+)\s+(\w+):\s+(\d+)\s+(\d+)\s+(\d+\.\d+) ;\s+/o;

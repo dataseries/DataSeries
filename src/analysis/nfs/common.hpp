@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 #ifndef __NFSDSANALYSIS_MOD_H
 #define __NFSDSANALYSIS_MOD_H
@@ -15,7 +15,7 @@
 #include <DataSeries/RowAnalysisModule.hpp>
 
 class NFSDSModule : public DataSeriesModule {
-public:
+  public:
     virtual ~NFSDSModule();
     virtual void printResult() = 0;
 };
@@ -38,32 +38,32 @@ struct fh2mountData {
     ExtentType::int32 server;
     int common_bytes_seen_count;
     fh2mountData(const ExtentType::byte *a, int b) {
-	std::string tmp(reinterpret_cast<const char *>(a),b);
-	pruneToMountPart(tmp);
-	mountpartfh = tmp;
+        std::string tmp(reinterpret_cast<const char *>(a),b);
+        pruneToMountPart(tmp);
+        mountpartfh = tmp;
     }
-	
+        
     fh2mountData(const ConstantString &a) {
-	mountpartfh = pruneToMountPart(a);
+        mountpartfh = pruneToMountPart(a);
     }
 
     fh2mountData(const ConstantString &a, const ConstantString &b, ExtentType::int32 c) 
-	: fullfh(a), pathname(b), server(c), common_bytes_seen_count(0) {
-	mountpartfh = pruneToMountPart(fullfh);
+            : fullfh(a), pathname(b), server(c), common_bytes_seen_count(0) {
+        mountpartfh = pruneToMountPart(fullfh);
     }
 };
 
 class fh2mountHash {
-public:
+  public:
     unsigned int operator()(const fh2mountData &k) const {
-	return lintel::hashBytes(k.mountpartfh.data(),k.mountpartfh.size());
+        return lintel::hashBytes(k.mountpartfh.data(),k.mountpartfh.size());
     }
 };
 
 class fh2mountEqual {
-public:
+  public:
     bool operator()(const fh2mountData &a, const fh2mountData &b) const {
-	return a.mountpartfh == b.mountpartfh;
+        return a.mountpartfh == b.mountpartfh;
     }
 };
 
@@ -88,7 +88,7 @@ uint8_t opIdToUnifiedId(uint8_t nfs_version, uint8_t op_id);
 const std::string &unifiedIdToName(uint8_t unified_id);
 uint8_t nameToUnifiedId(const std::string &name);
 bool validateUnifiedId(uint8_t nfs_version, uint8_t op_id, 
-		       const std::string &op_name);
+                       const std::string &op_name);
 unsigned getMaxUnifiedId();
 
 uint64_t md5FileHash(const Variable32Field &filehandle);

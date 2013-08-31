@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008 Harvey Mudd College
+  (c) Copyright 2008 Harvey Mudd College
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #include <cmath>
@@ -17,7 +17,7 @@
     For this example, we will find the mean and standard deviation of
     the time taken by some operations. */
 class ElapsedTimeStats : public RowAnalysisModule {
-public:
+  public:
     /*  Our constructor takes a DataSeriesModule from which to get
         Extents and passes it on to the base class constructor.
         Then, we use the inherited ExtentSeries called series to
@@ -26,9 +26,9 @@ public:
         a particular ExtentSeries and provide access to the
         values of each record as the ExtentSeries points to it. */
     ElapsedTimeStats(DataSeriesModule& source)
-        : RowAnalysisModule(source),
-          time_begin(series, "time_begin"),
-          time_end(series, "time_end") {}
+    : RowAnalysisModule(source),
+      time_begin(series, "time_begin"),
+      time_end(series, "time_end") {}
     /*  There are a couple of functions that we need to override.
         The first is processRow.  This function will be called
         by RowAnalysisModule once for every row in the Extents
@@ -47,10 +47,10 @@ public:
     virtual void printResult() {
         std::cout << "Average time per operation: " << sum / count << std::endl;
         double std_dev =
-            std::sqrt((sum_of_squares - sum*(sum / count)) / (count - 1));
+                std::sqrt((sum_of_squares - sum*(sum / count)) / (count - 1));
         std::cout << "std. dev. of operation time: " << std_dev << std::endl;
     }
-private:
+  private:
     Int64Field time_begin;
     Int64Field time_end;
     double sum;
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         command line. */
 
     TypeIndexModule source("MyExtent");
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
         source.addSource(argv[i]);
     }
 

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2010, Hewlett-Packard Development Company, LP
+  (c) Copyright 2010, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -27,8 +27,8 @@ int main(int argc, char *argv[]) {
     SINVARIANT(extent != NULL);
     Extent::ByteArray packeddata;
     if (extent) {
-        extent->packData(packeddata, Extent::compress_lzf, 9, NULL, NULL, NULL);
-	std::cout << "packed: " << packeddata.size() << " bytes\n";
+        extent->packData(packeddata, Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 9, NULL, NULL, NULL);
+        std::cout << "packed: " << packeddata.size() << " bytes\n";
     }
     source.close();
     return 0;

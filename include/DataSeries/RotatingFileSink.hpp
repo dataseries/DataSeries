@@ -2,9 +2,9 @@
 #define DATASERIES_ROTATING_FILE_SINK_HPP
 
 /*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -24,7 +24,7 @@ namespace dataseries {
         fast. This implementation is probably slightly less efficient than one directly in
         DataSeriesSink, but it is much less invasive. */
     class RotatingFileSink : public IExtentSink {
-    public:
+      public:
         RotatingFileSink(uint32_t compression_modes = Extent::compress_all, 
                          uint32_t compression_level = 9);
         virtual ~RotatingFileSink();
@@ -81,12 +81,12 @@ namespace dataseries {
             be closed, but the sink will still accept extents.  Precondition: canChangeFile() or
             failure_ok set to true.  Returns true on successful change or false otherwise */
         bool changeFile(const std::string &new_filename, bool failure_ok = false);
-    private:
+      private:
         struct Pending {
             Extent *e;
             Stats *to_update;
             Pending(Extent &in_e, Stats *to_update) 
-                : e(new Extent(in_e.getTypePtr())), to_update(to_update) 
+                    : e(new Extent(in_e.getTypePtr())), to_update(to_update) 
             {
                 e->swap(in_e);
             }

@@ -3,9 +3,9 @@
 #include "DSSModule.hpp"
 
 class SelectModule : public OutputSeriesModule {
-public:
+  public:
     SelectModule(DataSeriesModule &source, const string &where_expr_str)
-        : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
+            : source(source), where_expr_str(where_expr_str), copier(input_series, output_series)
     { }
 
     virtual ~SelectModule() { }

@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #ifndef __NFSDSANALYSIS_MOD4_H
@@ -14,7 +14,7 @@ namespace NFSDSAnalysisMod {
     NFSDSModule *newServersPerFilehandle(DataSeriesModule &prev);
     NFSDSModule *newTransactions(DataSeriesModule &prev);
     NFSDSModule *newOutstandingRequests(DataSeriesModule &prev, 
-					int latency_offset);
+                                        int latency_offset);
 }
 
 #endif

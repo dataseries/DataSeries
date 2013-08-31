@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -16,7 +16,7 @@
 using namespace std;
 using boost::format;
 
-void expectRecordSize(const string &type_in, unsigned original,	unsigned max_column_size) {
+void expectRecordSize(const string &type_in, unsigned original, unsigned max_column_size) {
     string a_type((format(type_in) % "original").str());
     const ExtentType::Ptr a(ExtentTypeLibrary::sharedExtentTypePtr(a_type));
     SINVARIANT(a->fixedrecordsize() == original);
@@ -28,51 +28,51 @@ void expectRecordSize(const string &type_in, unsigned original,	unsigned max_col
 
 void testExtentTypeSize() {
     string bool_max_xml("<ExtentType name=\"Test::PackPadRecord\" pack_pad_record=\"%s\" >\n"
-			"  <field type=\"bool\" name=\"bool1\" />\n"
-			"  <field type=\"bool\" name=\"bool2\" />\n"
-			"</ExtentType>\n");
+                        "  <field type=\"bool\" name=\"bool1\" />\n"
+                        "  <field type=\"bool\" name=\"bool2\" />\n"
+                        "</ExtentType>\n");
 
     expectRecordSize(bool_max_xml, 8, 1);
 
     string byte_max_xml("<ExtentType name=\"Test::PackPadRecord\" pack_pad_record=\"%s\" >\n"
-			"  <field type=\"bool\" name=\"bool1\" />\n"
-			"  <field type=\"bool\" name=\"bool2\" />\n"
-			"  <field type=\"byte\" name=\"byte1\" />\n"
-			"  <field type=\"byte\" name=\"byte2\" />\n"
-			"</ExtentType>\n");
+                        "  <field type=\"bool\" name=\"bool1\" />\n"
+                        "  <field type=\"bool\" name=\"bool2\" />\n"
+                        "  <field type=\"byte\" name=\"byte1\" />\n"
+                        "  <field type=\"byte\" name=\"byte2\" />\n"
+                        "</ExtentType>\n");
 
     expectRecordSize(byte_max_xml, 8, 3);
 
     string int1_max_xml("<ExtentType name=\"Test::PackPadRecord\" pack_pad_record=\"%s\" >\n"
-			"  <field type=\"bool\" name=\"bool1\" />\n"
-			"  <field type=\"bool\" name=\"bool2\" />\n"
-			"  <field type=\"byte\" name=\"byte1\" />\n"
-			"  <field type=\"byte\" name=\"byte2\" />\n"
-			"  <field type=\"int32\" name=\"int1\" />\n"
-			"</ExtentType>\n");
+                        "  <field type=\"bool\" name=\"bool1\" />\n"
+                        "  <field type=\"bool\" name=\"bool2\" />\n"
+                        "  <field type=\"byte\" name=\"byte1\" />\n"
+                        "  <field type=\"byte\" name=\"byte2\" />\n"
+                        "  <field type=\"int32\" name=\"int1\" />\n"
+                        "</ExtentType>\n");
 
     expectRecordSize(int1_max_xml, 8, 8);
 
     string int2_max_xml("<ExtentType name=\"Test::PackPadRecord\" pack_pad_record=\"%s\" >\n"
-			"  <field type=\"bool\" name=\"bool1\" />\n"
-			"  <field type=\"bool\" name=\"bool2\" />\n"
-			"  <field type=\"byte\" name=\"byte1\" />\n"
-			"  <field type=\"byte\" name=\"byte2\" />\n"
-			"  <field type=\"int32\" name=\"int1\" />\n"
-			"  <field type=\"variable32\" name=\"var1\" />\n"
-			"</ExtentType>\n");
+                        "  <field type=\"bool\" name=\"bool1\" />\n"
+                        "  <field type=\"bool\" name=\"bool2\" />\n"
+                        "  <field type=\"byte\" name=\"byte1\" />\n"
+                        "  <field type=\"byte\" name=\"byte2\" />\n"
+                        "  <field type=\"int32\" name=\"int1\" />\n"
+                        "  <field type=\"variable32\" name=\"var1\" />\n"
+                        "</ExtentType>\n");
 
     expectRecordSize(int2_max_xml, 16, 12);
 
     string dbl1_max_xml("<ExtentType name=\"Test::PackPadRecord\" pack_pad_record=\"%s\" >\n"
-			"  <field type=\"bool\" name=\"bool1\" />\n"
-			"  <field type=\"bool\" name=\"bool2\" />\n"
-			"  <field type=\"byte\" name=\"byte1\" />\n"
-			"  <field type=\"byte\" name=\"byte2\" />\n"
-			"  <field type=\"int32\" name=\"int1\" />\n"
-			"  <field type=\"variable32\" name=\"var1\" />\n"
-			"  <field type=\"double\" name=\"dbl1\" />\n"
-			"</ExtentType>\n");
+                        "  <field type=\"bool\" name=\"bool1\" />\n"
+                        "  <field type=\"bool\" name=\"bool2\" />\n"
+                        "  <field type=\"byte\" name=\"byte1\" />\n"
+                        "  <field type=\"byte\" name=\"byte2\" />\n"
+                        "  <field type=\"int32\" name=\"int1\" />\n"
+                        "  <field type=\"variable32\" name=\"var1\" />\n"
+                        "  <field type=\"double\" name=\"dbl1\" />\n"
+                        "</ExtentType>\n");
 
     expectRecordSize(dbl1_max_xml, 24, 24);
 }

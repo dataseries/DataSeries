@@ -11,9 +11,9 @@ using namespace std;
 using namespace boost;
 
 namespace dataseries { namespace hack {
-    Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
-    size_t extentSharedPtrSize();
-}}
+        Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
+        size_t extentSharedPtrSize();
+    }}
 
 using namespace dataseries::hack;
 
@@ -84,7 +84,7 @@ void testConvertInvalid() {
 }
 
 class FakeSourceBare : public DataSeriesModule {
-public:
+  public:
     FakeSourceBare(uint32_t num) : num(num), lib(), type(lib.registerTypePtr(extent_type)) { }
 
     virtual Extent *getExtent() {
@@ -102,7 +102,7 @@ public:
 };
 
 class FakeSourceShared : public DataSeriesModule {
-public:
+  public:
     FakeSourceShared(uint32_t num) : num(num), lib(), type(lib.registerTypePtr(extent_type)) { }
 
     virtual Extent::Ptr getSharedExtent() {
@@ -122,7 +122,7 @@ public:
 };
 
 class PassThroughBare : public DataSeriesModule {
-public:
+  public:
     PassThroughBare(DataSeriesModule &src) : src(src) { }
 
     virtual Extent *getExtent() {
@@ -133,7 +133,7 @@ public:
 };
 
 class PassThroughShared : public DataSeriesModule {
-public:
+  public:
     PassThroughShared(DataSeriesModule &src) : src(src) { }
 
     virtual Extent::Ptr getSharedExtent() {
@@ -144,7 +144,7 @@ public:
 };
 
 class KeeperShared : public DataSeriesModule {
-public:
+  public:
     KeeperShared(DataSeriesModule &src) : src(src) { }
 
     virtual Extent::Ptr getSharedExtent() {
@@ -204,7 +204,7 @@ void testPipelines() {
     for (uint32_t i = 0; i < 10; ++i) {
         SINVARIANT(keepers[0]->vec[i]->extent_source_offset == (9 - i));
     }
-    for(vector< shared_ptr<KeeperShared> >::iterator i = keepers.begin(); i != keepers.end(); ++i) {
+    for (vector< shared_ptr<KeeperShared> >::iterator i = keepers.begin(); i != keepers.end(); ++i) {
         shared_ptr<KeeperShared> p(*i);
         SINVARIANT(p->vec.size() == 10);
         SINVARIANT(p->vec == keepers[0]->vec);

@@ -28,7 +28,7 @@ sub setup_keys {
 
     die "$keyfile doesn't exist; can't setup keys"
         unless -r $keyfile;
-    while(1) {
+    while (1) {
         print "Getting encrypt key from $keyfile...\n";
         open(KEYS,"gpg --decrypt $keyfile |") 
             || die "fail keys\n";

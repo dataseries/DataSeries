@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #ifndef __PREFETCH_BUFFER_MODULE_H
@@ -21,16 +21,16 @@
     extents from an upstream source.
 */
 class PrefetchBufferModule : public DataSeriesModule {
-public:
+  public:
     /** \arg source The Module to get Extents from.
 
         \arg maxextentmemory The maximum size of the queue in bytes.
-            The queue may exceed maxextentmemory by one extent.  When
-            the queue is full, we stop getting Extents from source until
-            the queue is small enough again.
-      */
+        The queue may exceed maxextentmemory by one extent.  When
+        the queue is full, we stop getting Extents from source until
+        the queue is small enough again.
+    */
     PrefetchBufferModule(DataSeriesModule &source, 
-			 unsigned maxextentmemory = 32*1024*1024);
+                         unsigned maxextentmemory = 32*1024*1024);
     virtual ~PrefetchBufferModule();
 
     /** this function should return exactly the same
@@ -45,7 +45,7 @@ public:
     /// \cond INTERNAL_ONLY
     void prefetcherThread();
     /// \endcond
-private:
+  private:
     DataSeriesModule &source;
     pthread_t prefetch_thread;
     Deque<Extent::Ptr> buffer;

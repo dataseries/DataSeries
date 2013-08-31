@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -16,15 +16,15 @@
 
 /** \brief Accessor for variable32 fields. */
 class Variable32Field : public Field {
-public:
+  public:
     typedef ExtentType::byte byte;
     typedef ExtentType::int32 int32;
     static const std::string empty_string;
 
     Variable32Field(ExtentSeries &_dataseries, const std::string &field, 
-		    int flags = 0, 
-		    const std::string &default_value = empty_string,
-		    bool auto_add = true);
+                    int flags = 0, 
+                    const std::string &default_value = empty_string,
+                    bool auto_add = true);
 
     const byte *val() const {
         return val(dataseries.getExtentRef(), rowPos());
@@ -156,16 +156,16 @@ public:
     }
 
     bool equal(const Variable32Field &to) {
-	if (isNull()) {
-	    return to.isNull();
-	}
-	if (to.isNull()) {
-	    return false;
-	}
-	return size() == to.size() && memcmp(val(), to.val(), size()) == 0;
+        if (isNull()) {
+            return to.isNull();
+        }
+        if (to.isNull()) {
+            return false;
+        }
+        return size() == to.size() && memcmp(val(), to.val(), size()) == 0;
     }
     std::string default_value;
-protected:
+  protected:
     friend class Extent;
     friend class GF_Variable32;
 
@@ -173,7 +173,7 @@ protected:
         byte *fixed_data_ptr = row_offset + offset_pos;
         DEBUG_SINVARIANT(e.insideExtentFixed(fixed_data_ptr));
         *reinterpret_cast<int32_t *>(fixed_data_ptr) = 0;
-	DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(e.variabledata.begin()) == 0);
+        DEBUG_SINVARIANT(*reinterpret_cast<int32_t *>(e.variabledata.begin()) == 0);
         setNull(e, row_offset, false);
     }        
 
@@ -235,7 +235,7 @@ protected:
     int offset_pos;
     bool unique;
 
-private:
+  private:
     const byte *val(const Extent &e, uint8_t *row_pos) const {
         DEBUG_SINVARIANT(&e != NULL);
         if (nullable && isNull(e, row_pos)) {

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -10,31 +10,31 @@
 */
 
 /*
-=pod
+  =pod
 
-=head1 NAME
+  =head1 NAME
 
-dsextentindex - calculate a min-max extent index over one or more input files
+  dsextentindex - calculate a min-max extent index over one or more input files
 
-=head1 SYNOPSIS
+  =head1 SYNOPSIS
 
- % dsextentindex [common-args] [--new type-prefix field[,field...]] index.ds input-filename..."
+  % dsextentindex [common-args] [--new type-prefix field[,field...]] index.ds input-filename..."
 
-=head1 DESCRIPTION
+  =head1 DESCRIPTION
 
-dsextentindex calculates a min-max index over a set of fields for a given set of inputs.  For each
-index in a file, it records the minimum and maximum value of each field as well as recording the
-extent offset and filename.  For that reason, it is generally best to use full pathnames for the
-input filenames.  If index.ds already exists, then dsextentindex will read in the existing index
-and update it, only scanning files that have not yet been read.  If index.ds does not exist then
-the --new option is required to tell dsextentindex what extent to index as well as which fields
-to index within that extent.
+  dsextentindex calculates a min-max index over a set of fields for a given set of inputs.  For each
+  index in a file, it records the minimum and maximum value of each field as well as recording the
+  extent offset and filename.  For that reason, it is generally best to use full pathnames for the
+  input filenames.  If index.ds already exists, then dsextentindex will read in the existing index
+  and update it, only scanning files that have not yet been read.  If index.ds does not exist then
+  the --new option is required to tell dsextentindex what extent to index as well as which fields
+  to index within that extent.
 
-=head1 SEE ALSO
+  =head1 SEE ALSO
 
-dataseries-utils(7)
+  dataseries-utils(7)
 
-=cut
+  =cut
 
 */
 
@@ -92,33 +92,33 @@ static const string str_hasnull("hasnull:");
 vector<ExtentType::fieldType> infieldtypes;
 
 const string modifytype_xml = 
-"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::ModifyTimes\" version=\"1.0\" >\n"
-"  <field type=\"variable32\" name=\"filename\" />\n"
-"  <field type=\"int64\" name=\"modify-time\" />\n"
-"</ExtentType>\n";
+        "<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::ModifyTimes\" version=\"1.0\" >\n"
+        "  <field type=\"variable32\" name=\"filename\" />\n"
+        "  <field type=\"int64\" name=\"modify-time\" />\n"
+        "</ExtentType>\n";
 
 typedef HashMap<string, ExtentType::int64> ModifyTimesT;
 struct ModifyTimesByFilename {
     bool operator() (const ModifyTimesT::HashTableT::hte &a, 
-		     const ModifyTimesT::HashTableT::hte &b) const {
-	return a.data.first < b.data.first;
+                     const ModifyTimesT::HashTableT::hte &b) const {
+        return a.data.first < b.data.first;
     }
 };
 
 const string indexinfo_xml =
-"<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::Info\" version=\"1.0\">\n"
-"  <field type=\"variable32\" name=\"type-prefix\" />\n"
-"  <field type=\"variable32\" name=\"fields\" />\n"
-"</ExtentType>\n";
+        "<ExtentType namespace=\"dataseries.hpl.hp.com\" name=\"DSIndex::Extent::Info\" version=\"1.0\">\n"
+        "  <field type=\"variable32\" name=\"type-prefix\" />\n"
+        "  <field type=\"variable32\" name=\"fields\" />\n"
+        "</ExtentType>\n";
 
 
 // reads in existing DSIndex::Extent::ModifyTimes extent(s) and creates 
 // a hash table for efficient checking if a file has changed.
 class ModTimesModule : public RowAnalysisModule {
-public:
+  public:
     ModTimesModule(DataSeriesModule &source, ModifyTimesT &times)
-        : RowAnalysisModule(source), times(times),
-          filename(series, "filename"), mtime(series, "modify-time")
+            : RowAnalysisModule(source), times(times),
+              filename(series, "filename"), mtime(series, "modify-time")
     { }
 
     void processRow() {
@@ -127,7 +127,7 @@ public:
 
     ModifyTimesT &times; // needed by others so make it public
 
-private:
+  private:
     Variable32Field filename;
     Int64Field mtime;
 };
@@ -135,30 +135,30 @@ private:
 
 // reads an existing index, manages the creation of a new DSIndex file
 class MinMaxOutput {
-public:
+  public:
     MinMaxOutput(const commonPackingArgs &packing_args)
-        : packing_args(packing_args), is_open(false), is_finished(false), type_namespace(NULL)
+    : packing_args(packing_args), is_open(false), is_finished(false), type_namespace(NULL)
     { }
 
     ~MinMaxOutput() {
         minmaxmodule->flushExtent();
 
-        if(!is_finished) {
+        if (!is_finished) {
             finish();
         }
     }
 
     void finish() {
-	SINVARIANT(!is_finished);
+        SINVARIANT(!is_finished);
         // write modify extents
         ExtentSeries modifyseries(modifytype);
         Variable32Field modifyfilename(modifyseries,"filename");
         Int64Field modifytime(modifyseries,"modify-time");
         OutputModule *modifymodule 
-            = new OutputModule(*output, modifyseries, modifyseries.getTypePtr(),
-                               packing_args.extent_size);
+                = new OutputModule(*output, modifyseries, modifyseries.getTypePtr(),
+                                   packing_args.extent_size);
 
-	// sort so we get consistent output for regression testing.
+        // sort so we get consistent output for regression testing.
         typedef ModifyTimesT::HashTableT::hte_vectorT mt_vectorT;
         mt_vectorT mt_rawtable = modify.getHashTable().unsafeGetRawDataVector();
         sort(mt_rawtable.begin(), mt_rawtable.end(), ModifyTimesByFilename());
@@ -185,7 +185,7 @@ public:
         delete minmaxseries;
 
         // fsync() and rename
-        if(!old_index.empty()) {
+        if (!old_index.empty()) {
             output->close(true);
             rename(index_filename.c_str(), old_index.c_str());
         }
@@ -230,7 +230,7 @@ public:
                   "must have at least one rows in info extent");
         this->type_prefix = info_type_prefix.stringval();
         this->fieldlist = info_fields.stringval();
-	split(this->fieldlist,",",fields);
+        split(this->fieldlist,",",fields);
 
         ++infoseries;
         INVARIANT(infoseries.morerecords() == false,
@@ -249,50 +249,50 @@ public:
     }
 
     void add(IndexValues &v) {
-	// TODO-future: pre-determine the infieldtypes during the type
+        // TODO-future: pre-determine the infieldtypes during the type
         // library scans and do the open when you start indexing
 
         // Note: it is not safe to open the file until we know the
         // infieldtypes, which are unknown until we open the first
         // file.  This is guaranteed to happen after that.
-        if(!is_open) {
+        if (!is_open) {
             open();
         }
 
-	if (LintelLog::wouldDebug(debug_min_max_output)) {
-	    for (unsigned i = 0; i < fields.size(); ++i) {
-		LintelLog::debug(format("  field %1% min'%2%' max '%3%' rowcount %4%\n")
-				 % fields[i] % v.mins[i] % v.maxs[i] % v.rowcount);
-	    }
-	}
+        if (LintelLog::wouldDebug(debug_min_max_output)) {
+            for (unsigned i = 0; i < fields.size(); ++i) {
+                LintelLog::debug(format("  field %1% min'%2%' max '%3%' rowcount %4%\n")
+                                 % fields[i] % v.mins[i] % v.maxs[i] % v.rowcount);
+            }
+        }
 
         // create a new min/max index record
-	minmaxmodule->newRecord();
+        minmaxmodule->newRecord();
 
-	filename->set(v.filename);
-	extent_offset->set(v.offset);
-	rowcount->set(v.rowcount);
+        filename->set(v.filename);
+        extent_offset->set(v.offset);
+        rowcount->set(v.rowcount);
         LintelLogDebug("MinMaxOutput", format("%s:%d %d rows\n")
                        % v.filename % v.offset % v.rowcount);
 
-	for (unsigned i = 0; i < fields.size(); ++i) {
-	    mins[i]->set(v.mins[i]);
-	    maxs[i]->set(v.maxs[i]);
-	    hasnulls[i]->set(v.hasnulls[i]);
+        for (unsigned i = 0; i < fields.size(); ++i) {
+            mins[i]->set(v.mins[i]);
+            maxs[i]->set(v.maxs[i]);
+            hasnulls[i]->set(v.hasnulls[i]);
             LintelLogDebug("MinMaxOutput", format("  field %1% min '%2%' max '%3%'\n")
                            % fields[i] % v.mins[i] % v.maxs[i]);
-	}
+        }
     }
 
     // defined below
     void indexFiles(const vector<string> &files);
 
-protected:
+  protected:
     // update the namespace/version info from an extent type
     void updateNamespaceVersions(const ExtentType::Ptr type) {
         if (type->getNamespace().empty()) {
             INVARIANT(type_namespace == NULL, 
-		      "invalid to index some extents with a namespace and some without");
+                      "invalid to index some extents with a namespace and some without");
         } else {
             if (type_namespace == NULL) {
                 type_namespace = new string(type->getNamespace());
@@ -300,7 +300,7 @@ protected:
                 minor_version = type->minorVersion();
                 LintelLogDebug("MinMaxOutput",
                                boost::format("Using namespace %s, major version %d")
-			       % *type_namespace % major_version);
+                               % *type_namespace % major_version);
             }
             INVARIANT(*type_namespace == type->getNamespace(),
                       boost::format("conflicting namespaces, found both '%s' and '%s'")
@@ -351,7 +351,7 @@ protected:
         info_fields.set(fieldlist);
         infomodule.flushExtent();
 
-        for(unsigned i = 0; i < fields.size(); ++i) {
+        for (unsigned i = 0; i < fields.size(); ++i) {
             mins.push_back(GeneralField::create(NULL, *minmaxseries, str_min + fields[i]));
             maxs.push_back(GeneralField::create(NULL, *minmaxseries, str_max + fields[i]));
             hasnulls.push_back(new BoolField(*minmaxseries, str_hasnull + fields[i]));
@@ -359,7 +359,7 @@ protected:
     }
 
     void open() {
-	SINVARIANT(!is_open);
+        SINVARIANT(!is_open);
         is_open = true;
 
         infotype = library.registerTypePtr(indexinfo_xml);
@@ -384,7 +384,7 @@ protected:
         setFieldList(fieldlist);
     }
 
-private:
+  private:
     commonPackingArgs packing_args;
 
     ExtentTypeLibrary library;
@@ -413,9 +413,9 @@ private:
 };
 
 class IndexFileModule : public RowAnalysisModule {
-public:
+  public:
     IndexFileModule(DataSeriesModule &source, const string &filename, MinMaxOutput *minMaxOutput)
-        : RowAnalysisModule(source, ExtentSeries::typeLoose), minMaxOutput(minMaxOutput)
+            : RowAnalysisModule(source, ExtentSeries::typeLoose), minMaxOutput(minMaxOutput)
     {
         iv.filename = filename; // set the filename in the index values
     }
@@ -484,7 +484,7 @@ public:
         ++iv.rowcount;
     }
 
-private:
+  private:
     vector<GeneralField *> infields;
     IndexValues iv;
     MinMaxOutput *minMaxOutput;
@@ -492,13 +492,13 @@ private:
 
 
 class OldIndexModule : public DataSeriesModule {
-public:
+  public:
     OldIndexModule(DataSeriesModule *source, MinMaxOutput *minMaxOutput,
                    ModifyTimesT &modify, const vector<string> &files,
                    ExtentSeries::typeCompatibilityT type_compatibility = ExtentSeries::typeExact)
-        : source(source), minMaxOutput(minMaxOutput), series(type_compatibility),
-          filename(series, "filename"), extent_offset(series, "extent_offset"),
-          rowcount(series, "rowcount"), modify(modify), filePos(0), files(files)
+            : source(source), minMaxOutput(minMaxOutput), series(type_compatibility),
+              filename(series, "filename"), extent_offset(series, "extent_offset"),
+              rowcount(series, "rowcount"), modify(modify), filePos(0), files(files)
     { }
 
     Extent::Ptr getSharedExtent() {
@@ -520,10 +520,10 @@ public:
         return Extent::Ptr();
     }
 
-protected:
+  protected:
     bool nextRow() {
         ++series;
-        if(!series.morerecords()) {
+        if (!series.morerecords()) {
             Extent::Ptr e = source->getSharedExtent();
             if (e == NULL) {
                 series.clearExtent();
@@ -564,7 +564,7 @@ protected:
             // process the current file
             int64_t modify_time = modifyTimeNanoSec(curName);
             int64_t *stored = modify.lookup(curName);
-            if(stored && (*stored) == modify_time) {
+            if (stored && (*stored) == modify_time) {
                 cout << curName << " already indexed.\n";
 
                 // pull the index data from the existing index
@@ -630,7 +630,7 @@ protected:
         processFile(files[filePos], modify_time);
     }
 
-private:
+  private:
     DataSeriesModule *source;
     MinMaxOutput *minMaxOutput;
     ExtentSeries series;
@@ -648,9 +648,9 @@ private:
 
 void MinMaxOutput::indexFiles(const vector<string> &files) {
     // update the namespace/version information
-    for(vector<string>::const_iterator i = files.begin(); i != files.end(); ++i) {
+    for (vector<string>::const_iterator i = files.begin(); i != files.end(); ++i) {
         ExtentType::int64 *time = modify.lookup(*i);
-        if(!time || modifyTimeNanoSec(*i) != *time) {
+        if (!time || modifyTimeNanoSec(*i) != *time) {
             DataSeriesSource source(*i);
             const ExtentType::Ptr type = source.getLibrary().getTypeMatchPtr(type_prefix);
             updateNamespaceVersions(type);
@@ -661,7 +661,7 @@ void MinMaxOutput::indexFiles(const vector<string> &files) {
     string minmax_typename("DSIndex::Extent::MinMax::");
     minmax_typename.append(type_prefix);
     TypeIndexModule *source = NULL;
-    if(!old_index.empty()) {
+    if (!old_index.empty()) {
         source = new TypeIndexModule(minmax_typename);
         source->addSource(old_index);
     }
@@ -684,46 +684,46 @@ int main(int argc, char *argv[]) {
     MinMaxOutput minMaxOutput(packing_args);
 
     INVARIANT(argc >= 3, 
-	      format("Usage: %s <common-args>"
-		     " [--new type-prefix field,field,field,...]"
-		     " index-dataseries input-filename...") % argv[0]);
+              format("Usage: %s <common-args>"
+                     " [--new type-prefix field,field,field,...]"
+                     " index-dataseries input-filename...") % argv[0]);
     int files_start= -1;
     const char *index_filename = NULL;
     if (strcmp(argv[1],"--new") == 0) {
-	INVARIANT(argc > 5, "--new needs more arguments");
-	string type_prefix = argv[2];
-	string fieldlist = argv[3];
-	
-	split(fieldlist,",",fields);
-	files_start = 5;
-	index_filename = argv[4];
-	struct stat statbuf;
-	int ret = stat(index_filename,&statbuf);
-	INVARIANT(ret == -1 && errno == ENOENT,
-		  format("refusing to run with existing index dataseries %s"
-			 " in --new mode (%d,%s)") % index_filename % errno
-		  % strerror(errno));
+        INVARIANT(argc > 5, "--new needs more arguments");
+        string type_prefix = argv[2];
+        string fieldlist = argv[3];
+        
+        split(fieldlist,",",fields);
+        files_start = 5;
+        index_filename = argv[4];
+        struct stat statbuf;
+        int ret = stat(index_filename,&statbuf);
+        INVARIANT(ret == -1 && errno == ENOENT,
+                  format("refusing to run with existing index dataseries %s"
+                         " in --new mode (%d,%s)") % index_filename % errno
+                  % strerror(errno));
 
         minMaxOutput.newIndex(index_filename, type_prefix, fieldlist);
     } else {
-	index_filename = argv[1];
-	files_start = 2;
+        index_filename = argv[1];
+        files_start = 2;
 
         minMaxOutput.openIndex(index_filename);
     }
 
     vector<string> files;
     INVARIANT(files_start < argc, "missing input files?");
-    for(int i = files_start; i < argc; ++i) {
+    for (int i = files_start; i < argc; ++i) {
         files.push_back(argv[i]);
     }
     sort(files.begin(), files.end());
 
     minMaxOutput.indexFiles(files);
 
-//     printf("indexed %d extents over %d files with %d files already indexed\n",
-// 	   indexed_extents,argc - files_start,already_indexed_files);
-//     printf("%d total extents indexed in file\n",ivHashTable.size());
+    //     printf("indexed %d extents over %d files with %d files already indexed\n",
+    //     indexed_extents,argc - files_start,already_indexed_files);
+    //     printf("%d total extents indexed in file\n",ivHashTable.size());
 
     return 0;
 }

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -34,39 +34,39 @@ namespace dataseries {
 }
 /** \brief This class describes the format of records in an @c Extent.
 
-  * Provides the mapping from the DataSeries XML descriptions to 
-  *  - the total space used by the fixed size portion record.
-  *  - the offsets of each member 
-  *  - options specified for each member
+ * Provides the mapping from the DataSeries XML descriptions to 
+ *  - the total space used by the fixed size portion record.
+ *  - the offsets of each member 
+ *  - options specified for each member
 
-  Example:
-\verbatim
-  <ExtentType name="test-type" namespace="example.com" version="1.0" comment="an example type">
-      <field type="int32" name="input1" pack_relative="input1" />
-      <field type="int32" name="input2" pack_relative="input1" />
-      <field type="int64" name="int64-1" pack_relative="int64-1" opt_nullable="yes" />
-      <field type="int64" name="int64-2" />
-      <field type="double" name="double1" pack_scale="1e-6" pack_relative="double1" />
-      <field type="variable32" name="var1" pack_unique="yes"/>\n"
-      <field type="variable32" name="var2"/>\n"
-      <field type="fixedwidth" name="fw1" size="7" note="experimental" />
-      <field type="fixedwidth" name="fw2" size="20" note="experimental" />
-  </ExtentType>
-\endverbatim
-  */
+ Example:
+ \verbatim
+ <ExtentType name="test-type" namespace="example.com" version="1.0" comment="an example type">
+ <field type="int32" name="input1" pack_relative="input1" />
+ <field type="int32" name="input2" pack_relative="input1" />
+ <field type="int64" name="int64-1" pack_relative="int64-1" opt_nullable="yes" />
+ <field type="int64" name="int64-2" />
+ <field type="double" name="double1" pack_scale="1e-6" pack_relative="double1" />
+ <field type="variable32" name="var1" pack_unique="yes"/>\n"
+ <field type="variable32" name="var2"/>\n"
+ <field type="fixedwidth" name="fw1" size="7" note="experimental" />
+ <field type="fixedwidth" name="fw2" size="20" note="experimental" />
+ </ExtentType>
+ \endverbatim
+*/
 class ExtentType : boost::noncopyable, public boost::enable_shared_from_this<const ExtentType> {
-public:
+  public:
     /** A type that is guaranteed to be a 1 byte unsigned integer;
-	obsolete, just use uint8_t */
+        obsolete, just use uint8_t */
     typedef uint8_t byte;
     /** A type that is guaranteed to be a 32 bit signed integer;
-	obsolete, just use int32_t */
+        obsolete, just use int32_t */
     typedef int32_t int32;
     /** A type that is guaranteed to be a 32 bit unsigned integer;
-	obsolete, just use uint32_t */
+        obsolete, just use uint32_t */
     typedef uint32_t uint32;
     /** A type that is guaranteed to be a 64 bit signed integer;
-	obsolete, just use int64_t */
+        obsolete, just use int64_t */
     typedef int64_t int64;
 
     /** Shared pointer type for an ExtentType */
@@ -100,11 +100,11 @@ public:
         /** Indicates a field which can store up to 2^31 bytes of data.
             Most closely corresponds to the C++ type @c string. 
 
-	    \internal Note that for alignment purposes @c variable32
-	    is considered a 4 byte type, because the fixed size
-	    portion is a 32 bit index into a string pool.  The first
-	    four bytes at the indicated position are the length of the
-	    string. */
+            \internal Note that for alignment purposes @c variable32
+            is considered a 4 byte type, because the fixed size
+            portion is a 32 bit index into a string pool.  The first
+            four bytes at the indicated position are the length of the
+            string. */
         ft_variable32,
         /** Indicates a fixed-width byte array. */
         ft_fixedwidth
@@ -120,9 +120,9 @@ public:
             compressed before being written to a file, first check to
             see whether it has been marked as null. If it is, skip
             it. */
-	CompactNonBool,
+        CompactNonBool,
         /** Do not remove any null fields when compressing before
-	    writing to a file. */
+            writing to a file. */
         CompactNo
     };
 
@@ -145,7 +145,7 @@ public:
         /** Align all records to an 8 byte boundary. This was the
             original format and is retained as the default for
             backwards compatibility. */
-	PadRecordOriginal,
+        PadRecordOriginal,
         /** Align records to the alignment of the widest column. For example,
             a record that contains an int32 and a byte will be aligned to a
             4 byte boundary, but one which contains a double will be aligned
@@ -163,7 +163,7 @@ public:
         indicate that it is data-dependent. */
     enum PackFieldOrdering {
         /** Put the smallest fields first; the default option. */
-	FieldOrderingSmallToBigSepVar32,
+        FieldOrderingSmallToBigSepVar32,
         /** Put the largest fields first. */
         FieldOrderingBigToSmallSepVar32,
     };
@@ -171,17 +171,17 @@ public:
     /** Returns the type of the Extent that stores the XML descriptions
         of all the ExtentTypes used in a DataSeries file. */
     static const ExtentType::Ptr getDataSeriesXMLTypePtr() {
-	return dataseries_xml_type;
+        return dataseries_xml_type;
     }
     static const ExtentType &getDataSeriesXMLType() FUNC_DEPRECATED {
-	return *dataseries_xml_type;
+        return *dataseries_xml_type;
     }
     /** Returns the type of the index of a DataSeries file. */
     static const ExtentType::Ptr getDataSeriesIndexTypeV0Ptr() {
-	return dataseries_index_type_v0;
+        return dataseries_index_type_v0;
     }
     static const ExtentType &getDataSeriesIndexTypeV0() FUNC_DEPRECATED {
-	return *dataseries_index_type_v0;
+        return *dataseries_index_type_v0;
     }
 
 
@@ -195,8 +195,8 @@ public:
     /** Returns true iff this ExtentType contains a field with the
         given name. */
     bool hasColumn(const std::string &column) const {
-	int cnum = getColumnNumber(rep,column);
-	return cnum != -1;
+        int cnum = getColumnNumber(rep,column);
+        return cnum != -1;
     }
 
     /** Returns the type of the field with the specified name.
@@ -204,8 +204,8 @@ public:
         Preconditions:
         - The field must exist */
     fieldType getFieldType(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getFieldType(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getFieldType(cnum);
     }
 
     /** Converts a specified field type into the string representation
@@ -223,18 +223,18 @@ public:
 
         Preconditions:
         - The field with the specified name exists and is not
-	  a @c variable32 field. */
+        a @c variable32 field. */
     int32 getSize(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getSize(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getSize(cnum);
     }
     /** Returns the byte offset of a field in a record.
 
         Preconditions:
         - The field exists. */
     int32 getOffset(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getOffset(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getOffset(cnum);
     }
     /** Returns the bit position of a boolean field within the
         byte determined by @c getOffset. The result is in the
@@ -243,8 +243,8 @@ public:
         Preconditions:
         - The field exists and is a @c bool field. */
     int getBitPos(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getBitPos(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getBitPos(cnum);
     }
     /** Returns true for a @c variable32 field which has been marked
         as unique. This means that identical values in the same @c
@@ -254,8 +254,8 @@ public:
         Preconditions:
         - The field exists and is a @c variable32 field. */
     bool getUnique(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getUnique(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getUnique(cnum);
     }
     /** Returns true if a field is nullable. A nullable field does not have
         to be present in any given record.
@@ -263,22 +263,22 @@ public:
         Preconditions:
         - The specified field exists.*/
     bool getNullable(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getNullable(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getNullable(cnum);
     }
     /** Returns the double base for the field. The functions
         @c DoubleField::getabs and @c DoubleField::setabs use this. For
         example, if the double base is 100.0 and the value of a
         particular field is 1.0 than @c DoubleField::absval will
         return 101.0. @c DoubleField::setabs does the reverse conversion. 
-	
-	This option was created to allow for more precision of large
-	numbers, e.g. storing the current time in doubles with
-	nanosecond precision.  It is retained for backwards
-	compatibility, but is now considered to be a bad idea. */
+        
+        This option was created to allow for more precision of large
+        numbers, e.g. storing the current time in doubles with
+        nanosecond precision.  It is retained for backwards
+        compatibility, but is now considered to be a bad idea. */
     double getDoubleBase(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return getDoubleBase(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return getDoubleBase(cnum);
     }
 
     /** Returns the name of a field at a particular index.
@@ -286,10 +286,10 @@ public:
         Preconditions:
         - columnIndex < getNFields() */
     const std::string &getFieldName(unsigned int columnnum) const {
-	INVARIANT(columnnum < rep.visible_fields.size(),
-		  boost::format("invalid column num %d") % columnnum);
-	int i = rep.visible_fields[columnnum];
-	return rep.field_info[i].name;
+        INVARIANT(columnnum < rep.visible_fields.size(),
+                  boost::format("invalid column num %d") % columnnum);
+        int i = rep.visible_fields[columnnum];
+        return rep.field_info[i].name;
     }
 
     /** Returns the size of the fixed portion of each record. i.e.
@@ -307,13 +307,13 @@ public:
 
     /** Returns the XML associated with the given field as a @c std::string */
     std::string xmlFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return xmlFieldDesc(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return xmlFieldDesc(cnum);
     }
     /** Returns the XML associated with the given field as an @c xmlNodePtr */
     xmlNodePtr xmlNodeFieldDesc(const std::string &column) const {
-	int cnum = getColumnNumber(rep, column, false);
-	return xmlNodeFieldDesc(cnum);
+        int cnum = getColumnNumber(rep, column, false);
+        return xmlNodeFieldDesc(cnum);
     }
 
     /** Returns the string used to represent the type in XML */
@@ -331,7 +331,7 @@ public:
         \internal
         Update doc/tr/design.tex if you change this description. */
     bool versionCompatible(unsigned app_major, unsigned app_minor) const {
-	return app_major == majorVersion() && app_minor <= minorVersion();
+        return app_major == majorVersion() && app_minor <= minorVersion();
     }
     /** Returns the major version of the ExtentType.  Note that every
         extent type is versioned separately. */
@@ -342,18 +342,18 @@ public:
     /** Returns a flag indicating how null fields are compressed when
         writing to a file. */
     PackNullCompact getPackNullCompact() const { 
-	return rep.pack_null_compact; 
+        return rep.pack_null_compact; 
     }
     /** Returns the name of the ExtentType. This corresponds the the "name"
         attribute in the XML. */
     const std::string &getName() const { return rep.name; }
     /** Returns the XML that describes the ExtentType as a @c std::string. */
     const std::string &getXmlDescriptionString() const {
-	return rep.xml_description_str;
+        return rep.xml_description_str;
     }
     /** Returns the XML that describes the ExtentType as a @c xmlDocPtr. */
     const xmlDocPtr &getXmlDescriptionDoc() const {
-	return rep.xml_description_doc;
+        return rep.xml_description_doc;
     }
     /** Returns the namespace of the ExtentType. Corresponds to the
         "namespace" XML attribute.*/
@@ -362,39 +362,39 @@ public:
     /// \cond INTERNAL_ONLY
 
     struct nullCompactInfo {
-	fieldType type;
-	uint32_t field_num;
-	int32 size, offset; // The nullable data
-	int32 null_offset;
-	int null_bitmask;
-	nullCompactInfo() : type(ft_unknown), field_num(0), 
-			    size(0), offset(0), 
-			    null_offset(0), null_bitmask(0) { }
+        fieldType type;
+        uint32_t field_num;
+        int32 size, offset; // The nullable data
+        int32 null_offset;
+        int null_bitmask;
+        nullCompactInfo() : type(ft_unknown), field_num(0), 
+                            size(0), offset(0), 
+                            null_offset(0), null_bitmask(0) { }
     };
 
     struct fieldInfo {
-	std::string name;
-	fieldType type;
-	// size is byte size used in the fixed record, bitpos is only
-	// valid for bool fields.
-	int32 size, offset, bitpos; 
-	int null_fieldnum;
-	bool unique;
-	nullCompactInfo *null_compact_info;
-	double doublebase;
-	xmlNodePtr xmldesc;
-	fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
-		      null_fieldnum(-1), unique(false), 
-		      null_compact_info(NULL), doublebase(0), xmldesc(NULL)
-	{ }
+        std::string name;
+        fieldType type;
+        // size is byte size used in the fixed record, bitpos is only
+        // valid for bool fields.
+        int32 size, offset, bitpos; 
+        int null_fieldnum;
+        bool unique;
+        nullCompactInfo *null_compact_info;
+        double doublebase;
+        xmlNodePtr xmldesc;
+        fieldInfo() : type(ft_unknown), size(-1), offset(-1), bitpos(-1),
+                      null_fieldnum(-1), unique(false), 
+                      null_compact_info(NULL), doublebase(0), xmldesc(NULL)
+        { }
     };
 
     // utility function, should go somewhere else.
     static std::string strGetXMLProp(xmlNodePtr cur, const std::string &option_name,
-				     bool empty_ok = false);
+                                     bool empty_ok = false);
 
     ~ExtentType();
-private:
+  private:
     static const ExtentType::Ptr dataseries_xml_type;
     static const ExtentType::Ptr dataseries_index_type_v0;
 
@@ -417,25 +417,25 @@ private:
     xmlNodePtr xmlNodeFieldDesc(int field_num) const;
 
     struct pack_scaleT {
-	int field_num;
-	double scale, multiplier;
+        int field_num;
+        double scale, multiplier;
         bool warn;
-	pack_scaleT(int a, double b, bool warn) 
-	    : field_num(a), scale(b), multiplier(1.0/b), warn(warn) {}
+        pack_scaleT(int a, double b, bool warn) 
+                : field_num(a), scale(b), multiplier(1.0/b), warn(warn) {}
     };
     struct pack_other_relativeT {
-	int field_num, base_field_num;
-	pack_other_relativeT(int a, int b) : field_num(a), base_field_num(b) {}
+        int field_num, base_field_num;
+        pack_other_relativeT(int a, int b) : field_num(a), base_field_num(b) {}
     };
     struct pack_self_relativeT {
-	unsigned field_num;
-	double double_prev_v;
-	double scale,multiplier;
-	int32 int32_prev_v;
-	int64 int64_prev_v;
-	pack_self_relativeT(int a) 
-	    : field_num(a), double_prev_v(0), scale(1), multiplier(1), 
-	      int32_prev_v(0), int64_prev_v(0) {}
+        unsigned field_num;
+        double double_prev_v;
+        double scale,multiplier;
+        int32 int32_prev_v;
+        int64 int64_prev_v;
+        pack_self_relativeT(int a) 
+        : field_num(a), double_prev_v(0), scale(1), multiplier(1), 
+          int32_prev_v(0), int64_prev_v(0) {}
     };
 
     // All the parsed state is in here so that we can have a const
@@ -444,41 +444,41 @@ private:
     // piece separately as C++ only allows initialization of const
     // values in the constructor.
     struct ParsedRepresentation {
-	std::string name, xml_description_str;
-	xmlDocPtr xml_description_doc;
+        std::string name, xml_description_str;
+        xmlDocPtr xml_description_doc;
 
-	// mapping from visible fields (defined in the XML) to the actual
-	// field_info (which may have hidden fields)
-	std::vector<int> visible_fields; 
-	std::vector<fieldInfo> field_info;
-	std::vector<nullCompactInfo> nonbool_compact_info_size1,
-	    nonbool_compact_info_size4, nonbool_compact_info_size8; 
-	int bool_bytes;
-	std::vector<int32> variable32_field_columns;
-	
-	std::vector<pack_scaleT> pack_scale;
-	std::vector<pack_other_relativeT> pack_other_relative;
-	std::vector<pack_self_relativeT> pack_self_relative;
+        // mapping from visible fields (defined in the XML) to the actual
+        // field_info (which may have hidden fields)
+        std::vector<int> visible_fields; 
+        std::vector<fieldInfo> field_info;
+        std::vector<nullCompactInfo> nonbool_compact_info_size1,
+            nonbool_compact_info_size4, nonbool_compact_info_size8; 
+        int bool_bytes;
+        std::vector<int32> variable32_field_columns;
+        
+        std::vector<pack_scaleT> pack_scale;
+        std::vector<pack_other_relativeT> pack_other_relative;
+        std::vector<pack_self_relativeT> pack_self_relative;
 
-	int32_t fixed_record_size;
-	uint32_t major_version, minor_version;
-	std::string type_namespace;
-	PackNullCompact pack_null_compact;
-	PackPadRecord pad_record;
-	PackFieldOrdering field_ordering;
-	void sortAssignNCI(std::vector<nullCompactInfo> &nci);
+        int32_t fixed_record_size;
+        uint32_t major_version, minor_version;
+        std::string type_namespace;
+        PackNullCompact pack_null_compact;
+        PackPadRecord pad_record;
+        PackFieldOrdering field_ordering;
+        void sortAssignNCI(std::vector<nullCompactInfo> &nci);
 
-	~ParsedRepresentation() {
-	    xmlFreeDoc(xml_description_doc);
-	}
+        ~ParsedRepresentation() {
+            xmlFreeDoc(xml_description_doc);
+        }
     };
     
     static int getColumnNumber(const ParsedRepresentation &rep,
-			       const std::string &column,
-			       bool missing_ok = true);
+                               const std::string &column,
+                               bool missing_ok = true);
     static int getColumnNumber(const ParsedRepresentation &rep,
-			       const xmlChar *column) {
-	return getColumnNumber(rep, reinterpret_cast<const char *>(column));
+                               const xmlChar *column) {
+        return getColumnNumber(rep, reinterpret_cast<const char *>(column));
     }
     static ParsedRepresentation parseXML(const std::string &xmldesc);
     const ParsedRepresentation rep;
@@ -489,17 +489,17 @@ private:
     friend class dataseries::xmlDecode;
 
     ExtentType(const std::string &xmldesc);
-private:
+  private:
     static void parsePackBitFields(ParsedRepresentation &ret, 
-				   int32 &byte_pos);
+                                   int32 &byte_pos);
     static void parsePackByteAlignedFields(ParsedRepresentation &ret, 
                                            int32 &byte_pos);
     static void parsePackInt32Fields(ParsedRepresentation &ret, 
-				     int32 &byte_pos);
+                                     int32 &byte_pos);
     static void parsePackVar32Fields(ParsedRepresentation &ret, 
-				     int32 &byte_pos);
+                                     int32 &byte_pos);
     static void parsePackSize8Fields(ParsedRepresentation &ret, 
-				     int32 &byte_pos);
+                                     int32 &byte_pos);
 
     
     /// \endcond INTERNAL_ONLY
@@ -507,20 +507,20 @@ private:
 
 /** \brief This class represents a group of ExtentTypes keyed by name.
   
-  * The primary use is to store the types from a single file.
-  * All ExtentTypes are ultimately created by
-  * @c ExtentTypeLibrary::sharedExtentType and thus survive the
-  * deletion of the library -- they are shared across all of the
-  * ExtentTypeLibraries based on the actual XML type information */
+ * The primary use is to store the types from a single file.
+ * All ExtentTypes are ultimately created by
+ * @c ExtentTypeLibrary::sharedExtentType and thus survive the
+ * deletion of the library -- they are shared across all of the
+ * ExtentTypeLibraries based on the actual XML type information */
 class ExtentTypeLibrary : boost::noncopyable {
-public:
+  public:
     ExtentTypeLibrary() {};
 
     // TODO: all the ExtentType *'s in here should turn into smart_ptr's so that we can
     // use weak pointers inside and the use of bare extent types should be removed.
     /** You should migrate to registerTypePtr.  This function will be removed after 2013-05-01 */
     const ExtentType *registerType(const std::string &xmldesc) FUNC_DEPRECATED {
-	return registerTypePtr(xmldesc).get();
+        return registerTypePtr(xmldesc).get();
     }
 
     /** You should migrate to registerTypePtr.  This function will be removed after 2013-05-01 
@@ -584,8 +584,8 @@ public:
         directly.  Use @c registerType.  The only time this map should
         be used directly is to iterate over the library elements. 
 
-	\todo TODO: find some other way to do this so that people
-	can't do something bogus, e.g. return a const_iterator.
+        \todo TODO: find some other way to do this so that people
+        can't do something bogus, e.g. return a const_iterator.
     */
 
     typedef std::map<const std::string, ExtentType::Ptr> NameToType;

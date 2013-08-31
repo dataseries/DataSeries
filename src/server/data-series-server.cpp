@@ -46,24 +46,24 @@ using boost::format;
 using boost::scoped_ptr;
 
 namespace std {
-ostream &operator <<(ostream &to, const vector<string> &v) {
-    for(vector<string>::const_iterator i = v.begin(); i != v.end(); ++i) {
-        if (i != v.begin()) {
-            to << " ";
+    ostream &operator <<(ostream &to, const vector<string> &v) {
+        for (vector<string>::const_iterator i = v.begin(); i != v.end(); ++i) {
+            if (i != v.begin()) {
+                to << " ";
+            }
+            to << *i;
         }
-        to << *i;
+        return to;
     }
-    return to;
-}
 }
 
 class DataSeriesServerHandler : public DataSeriesServerIf, public ThrowError {
-public:
+  public:
     struct TableInfo {
-	ExtentType::Ptr extent_type;
-	vector<string> depends_on;
-	Clock::Tfrac last_update;
-	TableInfo() : extent_type(), last_update(0) { }
+        ExtentType::Ptr extent_type;
+        vector<string> depends_on;
+        Clock::Tfrac last_update;
+        TableInfo() : extent_type(), last_update(0) { }
     };
 
     typedef HashMap<string, TableInfo> NameToInfo;
@@ -71,11 +71,11 @@ public:
     DataSeriesServerHandler() { };
 
     void ping() {
-	LintelLog::info("ping()");
+        LintelLog::info("ping()");
     }
 
     void shutdown() {
-	LintelLog::info("shutdown()");
+        LintelLog::info("shutdown()");
         exit(0);
     }
 
@@ -89,33 +89,33 @@ public:
     }
 
     void importDataSeriesFiles(const vector<string> &source_paths, const string &extent_type, 
-			       const string &dest_table) {
-	verifyTableName(dest_table);
-	if (extent_type.empty()) {
-	    requestError("extent type empty");
-	}
+                               const string &dest_table) {
+        verifyTableName(dest_table);
+        if (extent_type.empty()) {
+            requestError("extent type empty");
+        }
 
-	TypeIndexModule input(extent_type);
-	DataSeriesModule::Ptr output_module = makeTeeModule(input, tableToPath(dest_table));
-	BOOST_FOREACH(const string &path, source_paths) {
-	    input.addSource(path);
-	}
-	output_module->getAndDeleteShared();
-	TableInfo &ti(table_info[dest_table]);
-	ti.extent_type = input.getTypePtr();
-	ti.last_update = Clock::todTfrac();
+        TypeIndexModule input(extent_type);
+        DataSeriesModule::Ptr output_module = makeTeeModule(input, tableToPath(dest_table));
+        BOOST_FOREACH(const string &path, source_paths) {
+            input.addSource(path);
+        }
+        output_module->getAndDeleteShared();
+        TableInfo &ti(table_info[dest_table]);
+        ti.extent_type = input.getTypePtr();
+        ti.last_update = Clock::todTfrac();
     }
 
     void importCSVFiles(const vector<string> &source_paths, const string &xml_desc, 
                         const string &dest_table, const string &field_separator,
                         const string &comment_prefix) {
-	if (source_paths.empty()) {
-	    requestError("missing source paths");
-	}
+        if (source_paths.empty()) {
+            requestError("missing source paths");
+        }
         if (source_paths.size() > 1) {
             requestError("only supporting single insert");
         }
-	verifyTableName(dest_table);
+        verifyTableName(dest_table);
         pid_t pid = fork();
         if (pid < 0) {
             requestError("fork failed");
@@ -154,7 +154,7 @@ public:
         if (pid < 0) {
             requestError("fork failed");
         } else if (pid == 0) {
-            for(int i = 3; i < 100; ++i) {
+            for (int i = 3; i < 100; ++i) {
                 close(i);
             }
             vector<string> args;
@@ -185,7 +185,8 @@ public:
         const ExtentType::Ptr type(lib.registerTypePtr(xml_desc));
 
         ExtentSeries output_series(type);
-        DataSeriesSink output_sink(tableToPath(dest_table), Extent::compress_lzf, 1);
+        DataSeriesSink output_sink(tableToPath(dest_table), 
+                                   Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 1);
         OutputModule output_module(output_sink, output_series, type, 96*1024);
 
         output_sink.writeExtentLibrary(lib);
@@ -214,36 +215,36 @@ public:
     }
 
     void mergeTables(const vector<string> &source_tables, const string &dest_table) {
-	if (source_tables.empty()) {
-	    requestError("missing source tables");
-	}
-	verifyTableName(dest_table);
-	vector<string> input_paths;
-	input_paths.reserve(source_tables.size());
-	string source_extent_type;
-	BOOST_FOREACH(const string &table, source_tables) {
-	    if (table == dest_table) {
-		invalidTableName(table, "duplicated with destination table");
-	    }
-	    TableInfo *ti = table_info.lookup(table);
-	    if (ti == NULL) {
-		invalidTableName(table, "table not present");
-	    }
-	    if (source_extent_type.empty()) {
-		source_extent_type = ti->extent_type->getName();
-	    }
-	    if (source_extent_type != ti->extent_type->getName()) {
-		invalidTableName(table, str(format("extent type '%s' does not match earlier table"
+        if (source_tables.empty()) {
+            requestError("missing source tables");
+        }
+        verifyTableName(dest_table);
+        vector<string> input_paths;
+        input_paths.reserve(source_tables.size());
+        string source_extent_type;
+        BOOST_FOREACH(const string &table, source_tables) {
+            if (table == dest_table) {
+                invalidTableName(table, "duplicated with destination table");
+            }
+            TableInfo *ti = table_info.lookup(table);
+            if (ti == NULL) {
+                invalidTableName(table, "table not present");
+            }
+            if (source_extent_type.empty()) {
+                source_extent_type = ti->extent_type->getName();
+            }
+            if (source_extent_type != ti->extent_type->getName()) {
+                invalidTableName(table, str(format("extent type '%s' does not match earlier table"
                                                    " types of '%s'")
                                             % ti->extent_type % source_extent_type));
-	    }
-				       
-	    input_paths.push_back(tableToPath(table));
-	}
-	if (source_extent_type.empty()) {
-	    requestError("internal: extent type is missing?");
-	}
-	importDataSeriesFiles(input_paths, source_extent_type, dest_table);
+            }
+                                       
+            input_paths.push_back(tableToPath(table));
+        }
+        if (source_extent_type.empty()) {
+            requestError("internal: extent type is missing?");
+        }
+        importDataSeriesFiles(input_paths, source_extent_type, dest_table);
     }
 
     void getTableData(TableData &ret, const string &source_table, int32_t max_rows, 
@@ -282,8 +283,8 @@ public:
         b_input.addSource(tableToPath(b_table));
 
         OutputSeriesModule::OSMPtr 
-            hj_module(makeHashJoinModule(a_input, max_a_rows, b_input,
-                                         eq_columns, keep_columns, out_table));
+                hj_module(makeHashJoinModule(a_input, max_a_rows, b_input,
+                                             eq_columns, keep_columns, out_table));
 
         DataSeriesModule::Ptr output_module = makeTeeModule(*hj_module, tableToPath(out_table));
         
@@ -303,7 +304,7 @@ public:
             if (!dimension_modules.exists(dim.source_table)) {
                 NameToInfo::iterator dim_info = getTableInfo(dim.source_table);
                 shared_ptr<TypeIndexModule> 
-                    ptr(new TypeIndexModule(dim_info->second.extent_type->getName()));
+                        ptr(new TypeIndexModule(dim_info->second.extent_type->getName()));
                 ptr->addSource(tableToPath(dim.source_table));
                 dimension_modules[dim.source_table] = ptr;
             }
@@ -314,8 +315,8 @@ public:
 
         // TODO: use and check max_dimension_rows
         OutputSeriesModule::OSMPtr
-            sj_module(makeStarJoinModule(fact_input, dimensions, out_table,
-                                         fact_columns, dimension_columns, dimension_modules));
+                sj_module(makeStarJoinModule(fact_input, dimensions, out_table,
+                                             fact_columns, dimension_columns, dimension_modules));
 
         DataSeriesModule::Ptr output_module = makeTeeModule(*sj_module, tableToPath(out_table));
 
@@ -359,7 +360,7 @@ public:
         TypeIndexModule input(info->second.extent_type->getName());
         input.addSource(tableToPath(in_table));
         OutputSeriesModule::OSMPtr transform
-            (makeExprTransformModule(input, expr_columns, out_table));
+                (makeExprTransformModule(input, expr_columns, out_table));
         DataSeriesModule::Ptr output_module = makeTeeModule(*transform, tableToPath(out_table));
         output_module->getAndDeleteShared();
         updateTableInfo(out_table, transform->output_series.getTypePtr());
@@ -386,7 +387,7 @@ public:
                                                              update_column, primary_key));
 
         DataSeriesModule::Ptr output_module 
-            = makeTeeModule(*updater, tableToPath(base_table, "tmp."));
+                = makeTeeModule(*updater, tableToPath(base_table, "tmp."));
         output_module->getAndDeleteShared();
         output_module.reset();
         string from(tableToPath(base_table, "tmp.")), to(tableToPath(base_table));
@@ -402,7 +403,7 @@ public:
             NameToInfo::iterator table_info(getTableInfo(table.table_name));
 
             TypeIndexModule::Ptr p =
-                TypeIndexModule::make(table_info->second.extent_type->getName());
+                    TypeIndexModule::make(table_info->second.extent_type->getName());
             p->addSource(tableToPath(table_info->first));
             tables.push_back(UM_UnionTable(table, p));
         }
@@ -427,14 +428,14 @@ public:
         updateTableInfo(out_table, sorter->output_series.getTypePtr());
     }
 
-private:
+  private:
     void verifyTableName(const string &name) {
-	if (name.size() >= 200) {
-	    invalidTableName(name, "name too long");
-	}
-	if (name.find('/') != string::npos) {
-	    invalidTableName(name, "contains /");
-	}
+        if (name.size() >= 200) {
+            invalidTableName(name, "name too long");
+        }
+        if (name.find('/') != string::npos) {
+            invalidTableName(name, "contains /");
+        }
     }
 
     string tableToPath(const string &table_name, const string &prefix = "ds.") {
@@ -476,7 +477,8 @@ private:
         }
         extent_type.append("</ExtentType>");
 
-        DataSeriesSink output(tableToPath(table_name), Extent::compress_lzf, 1);
+        DataSeriesSink output(tableToPath(table_name), 
+                              Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 1);
         ExtentTypeLibrary library;
         const ExtentType::Ptr type(library.registerTypePtr(extent_type));
         output.writeExtentLibrary(library);
@@ -516,23 +518,23 @@ lintel::ProgramOption<string> po_working_directory
 void setupWorkingDirectory() {
     string working_directory = po_working_directory.get();
     if (!po_working_directory.used()) {
-	working_directory = "/tmp/ds-server.";
-	struct passwd *p = getpwuid(getuid());
-	SINVARIANT(p != NULL);
-	working_directory += p->pw_name;
+        working_directory = "/tmp/ds-server.";
+        struct passwd *p = getpwuid(getuid());
+        SINVARIANT(p != NULL);
+        working_directory += p->pw_name;
     }
 
     struct stat stat_buf;
     int ret = stat(working_directory.c_str(), &stat_buf);
     CHECKED((ret == -1 && errno == ENOENT) || (ret == 0 && S_ISDIR(stat_buf.st_mode)),
-	    format("Error accessing %s: %s") % working_directory
-	    % (ret == 0 ? "not a directory" : strerror(errno)));
+            format("Error accessing %s: %s") % working_directory
+            % (ret == 0 ? "not a directory" : strerror(errno)));
     if (ret == -1 && errno == ENOENT) {
-	CHECKED(mkdir(working_directory.c_str(), 0777) == 0,
-		format("Unable to create directory %s: %s") % working_directory % strerror(errno));
+        CHECKED(mkdir(working_directory.c_str(), 0777) == 0,
+                format("Unable to create directory %s: %s") % working_directory % strerror(errno));
     }
     CHECKED(chdir(working_directory.c_str()) == 0,
-	    format("Unable to chdir to %s: %s") % working_directory % strerror(errno));
+            format("Unable to chdir to %s: %s") % working_directory % strerror(errno));
 }
 
 int main(int argc, char *argv[]) {

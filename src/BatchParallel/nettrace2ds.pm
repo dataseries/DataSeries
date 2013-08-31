@@ -164,7 +164,7 @@ or \\w+.pcap#{,.bz2}"
     my $group_count = 0;
     my $running_record_num = $this->{first_record_num};
     $this->{finished_before} ||= 0;
-    for(my $i=0; $i < @nums; $i += $this->{groupsize}) {
+    for (my $i=0; $i < @nums; $i += $this->{groupsize}) {
 	print ".";
 	my @group;
 	my $first_num = $nums[$i];
@@ -189,7 +189,7 @@ or \\w+.pcap#{,.bz2}"
 	} elsif ($this->{mode} eq 'convert') {
 	    open(INFO, $infoname)
 		or die "Unable to open $infoname: $!";
-	    while(<INFO>) {
+	    while (<INFO>) {
 		last if /^first_record_id: 0$/o;
 	    }
 	    die "can't find first_record_id in $infoname"
@@ -401,7 +401,7 @@ sub freeup {
 	or die "No opendir $this->{freedir}: $!";
     $|=1;
     my @pairs;
-    while(my $file = readdir(DIR)) {
+    while (my $file = readdir(DIR)) {
       retry:
 	last if @todirs == 0;
 	next unless -f "$this->{freedir}/$file";

@@ -92,7 +92,7 @@ foreach my $file (@files) {
     my @datagroup;
     my $startevfile = 'N/A';
     my $last_ev_time = 0;
-    while(<$fh>) {
+    while (<$fh>) {
 	last unless /\n$/o; # ignore truncated final line
       	die "unknown input line $_"
 	    unless /^"[A-Z_]+" "\d+\.\d+" (\d+) \d+/o;
@@ -136,7 +136,7 @@ sub pending_compress {
 
     my $minfile;
     my @to_compress;
-    while(my($file,$at) = each %pending_compresses) {
+    while (my($file,$at) = each %pending_compresses) {
 	$minfile ||= $file;
 	$min_pending_compress = $at if $at < $min_pending_compress;
 	$minfile = $file if $at < $pending_compresses{$minfile};

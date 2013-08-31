@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2004-2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2004-2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -93,15 +93,15 @@ struct team_remap_ent team_remap_list[] = {
 void
 prepareCommonValues()
 {
-    for(unsigned i=0;i<sizeof(team_remap_list)/sizeof(team_remap_ent);++i) {
-	if (team_remap_list[i].from[0] == 'X' &&
-	    team_remap_list[i].from[1] == ':') {
-	    string &tmp = team_remap_list[i].from;
-	    string unhexed = hex2raw(tmp.substr(2,tmp.size()-2));
-	    team_remap[unhexed] = team_remap_list[i].to;
-	} else {
-	    team_remap[team_remap_list[i].from] = team_remap_list[i].to;
-	}
+    for (unsigned i=0;i<sizeof(team_remap_list)/sizeof(team_remap_ent);++i) {
+        if (team_remap_list[i].from[0] == 'X' &&
+            team_remap_list[i].from[1] == ':') {
+            string &tmp = team_remap_list[i].from;
+            string unhexed = hex2raw(tmp.substr(2,tmp.size()-2));
+            team_remap[unhexed] = team_remap_list[i].to;
+        } else {
+            team_remap[team_remap_list[i].from] = team_remap_list[i].to;
+        }
     }
     str_ok_neq_rr_rj_1 = hex2raw("4c3aba05d7ab6232dc6a21b899466c63");
     str_ok_neq_rr_rj_2 = hex2raw("a725515bc6272f6707684a76b3cbe6ca");

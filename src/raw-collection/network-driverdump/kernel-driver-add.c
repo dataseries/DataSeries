@@ -201,7 +201,7 @@ do_driver_packet_dump_memcpy(struct driver_dump_privdata *dd_priv,
     if (dpd_debug_test_only_skip_memcpy)
         return;
 
-    while(1) {
+    while (1) {
 	uint32_t csum = 0;
 	int page = filling->cur_write_offset >> PAGE_SHIFT;
 	int offset = filling->cur_write_offset & (PAGE_SIZE - 1);
@@ -218,7 +218,7 @@ do_driver_packet_dump_memcpy(struct driver_dump_privdata *dd_priv,
 	    unsigned char *buf = (unsigned char *)src;
 	    unsigned i;
 	    csum = 0;
-	    for(i=0;i<copy_amt; ++i) {
+	    for (i=0;i<copy_amt; ++i) {
 		csum += buf[i];
 	    }
 	    printk("at %d (%d,%d), copy %d csum %u; src[0] = %d %p\n",
@@ -232,7 +232,7 @@ do_driver_packet_dump_memcpy(struct driver_dump_privdata *dd_priv,
 	    unsigned char *buf = (unsigned char *)pageaddr;
 	    uint32_t xsum = 0;
 	    unsigned i;
-	    for(i=0;i<copy_amt; ++i) {
+	    for (i=0;i<copy_amt; ++i) {
 		xsum += buf[i+offset];
 	    }
 	    if (xsum != csum) {
@@ -509,7 +509,7 @@ static void do_driver_packet_dump_sleep(int wait_jiffies)
 	printk("DPD sleep call %d\n",wait_jiffies);
     init_waitqueue_head(&tmp_wq);
     start_wait = jiffies;
-    while((jiffies - start_wait) < wait_jiffies) {
+    while ((jiffies - start_wait) < wait_jiffies) {
 	int sleep_jiffies = wait_jiffies - (jiffies - start_wait);
 	if (sleep_jiffies < 1) {
 	    sleep_jiffies = 1;
@@ -691,7 +691,7 @@ do_driver_packet_dump_locked_init_empty(struct driver_packet_dump_ioctl *dpd_ioc
     
     if (dpd_debug_packet_dump_file)
 	printk("DPD: reading and mapping pages...\n");
-    for(i = 0;i<new_ddd->npages;++i) {
+    for (i = 0;i<new_ddd->npages;++i) {
 	new_ddd->pages[i] 
 	    = do_driver_packet_dump_getpage(new_ddd->fp, i);
 	if (new_ddd->pages[i] == NULL) {

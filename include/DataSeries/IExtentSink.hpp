@@ -1,10 +1,12 @@
 #ifndef DATASERIES_IEXTENTSINK_HPP
 #define DATASERIES_IEXTENTSINK_HPP
 
-/*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#include <DataSeries/Extent.hpp>
 
-   See the file named COPYING for license details
+/*
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
+
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -15,7 +17,7 @@ namespace dataseries {
     /** \brief Interface to sinks sufficient to support OutputModule */
     // TODO: see whether this interface is also sufficient for network sinks on the tomer branch.
     class IExtentSink {
-    public:
+      public:
         /** \brief Statistics on extents written via this sink.  Note that each implementation
             of the interface needs to maintain thread safety, and to provide implementations
             of getStats/removeStatsUpdate that are properly thread safe for callers */
@@ -23,51 +25,47 @@ namespace dataseries {
         // TODO-sprint: We need mutex in Stats to avoid it being updated by multiple sinks, since
         // now it would be passed to multiple since through RotateFileSink.
         class Stats {
-        public:
+          public:
             Stats(const Stats &from) {
                 *this = from;
             }
             Stats & operator=(const Stats &from);
             // If anything other than plain old data gets put in here, 
-            // then the assignment operator needs to be fixed.
+            // then the assignment operator needs to be fixed.    
             /** The total number of Extents written */
             uint32_t extents;
-
-            uint32_t
-            /** The number of Extents that were not compressed at all */
-            compress_none,
-            /** The number of Extents that were compressed using lzo */
-                compress_lzo,
-            /** The number of Extents that were compressed using gzip */
-                compress_gzip, 
-            /** The number of Extents that were compressed using bzip2 */
-                compress_bz2,
-            /** The number of Extents that were compressed using lzf */
-                compress_lzf;
+          
+            /** Stores the number of Extents whose fixed-sized fields were compressed using each compression
+                algorithm. */
+            uint32_t num_fixed_per_alg[ Extent::num_comp_algs ];
+     
+            /** Stores the number of Extents whose variable-sized fields were compressed using each compression
+                algorithm. */
+            uint32_t num_var_per_alg[ Extent::num_comp_algs ];
 
             uint64_t
             /** The total number of bytes in the Extents before compression. */
             unpacked_size,
-            /** The number of bytes in fixed size records before
-                compression. */
+                /** The number of bytes in fixed size records before
+                    compression. */
                 unpacked_fixed,
-            /** The number of bytes in the Extents' string pools
-                before compression. */
+                /** The number of bytes in the Extents' string pools
+                    before compression. */
                 unpacked_variable,
-            /** The number of bytes in the Extents' string pools
-                before any processing.  In particular it will
-                include duplicate fields marked with pack_unique. */
+                /** The number of bytes in the Extents' string pools
+                    before any processing.  In particular it will
+                    include duplicate fields marked with pack_unique. */
                 unpacked_variable_raw,
-            /** The total number of bytes after compression. */
+                /** The total number of bytes after compression. */
                 packed_size,
-	    /** The number of records that were written */
+                /** The number of records that were written */
                 nrecords;
 
             /** The time spent packing/compressing Extents.  This is
                 supposed to be the thread time, rather than wall clock time.
-                The pack_time statistic has been disabled pending figuring
-                out how to make it accurate.  For mor discussion, see
-                DataSeriesFile.C:get_thread_cputime() */
+                The pack_time statistic may not be reliable, and is 
+                currently only supported on Linux.  For more discussion, see
+                DataSeriesSink.cpp:get_thread_cputime() */
             double pack_time; 
 
             /** Initializes all statistics to 0. */
@@ -91,8 +89,7 @@ namespace dataseries {
                         unsigned char fixed_compress_mode,
                         unsigned char variable_compress_mode);
 
-            uint32_t use_count; // how many updates are pending to this stats?
-            void updateCompressMode(unsigned char compress_mode);
+            uint32_t use_count; // how many updates are pending to this stats?    
         };
 
         IExtentSink() { }
@@ -106,20 +103,20 @@ namespace dataseries {
             stats allows for separate statistics for different extent types.
             
             \arg e writeExtent is destructive, the contents of e will be
-                moved (not copied) to the queue, so e will be empty on return.
+            moved (not copied) to the queue, so e will be empty on return.
             
             \arg toUpdate If toUpdate is not NULL, it will be updated
-                with statistics about writing e, when e is actually written.
+            with statistics about writing e, when e is actually written.
             
             \warning A copy of the pointer toUpdate is saved, so the pointee must
-                not be destroyed, without either closing the file or calling
-                \link DataSeriesSink::removeStatsUpdate removeStatsUpdate \endlink
-                first.  Also the stats are updated under a per sink lock, so should
-                not be shared across multiple sinks.
+            not be destroyed, without either closing the file or calling
+            \link DataSeriesSink::removeStatsUpdate removeStatsUpdate \endlink
+            first.  Also the stats are updated under a per sink lock, so should
+            not be shared across multiple sinks.
             
-           \pre \link DataSeriesSink::writeExtentLibrary writeExtentLibrary
-               \endlink must have been called and the @c ExtentTypeLibrary passed
-               to it must contain the type of e. */
+            \pre \link DataSeriesSink::writeExtentLibrary writeExtentLibrary
+            \endlink must have been called and the @c ExtentTypeLibrary passed
+            to it must contain the type of e. */
         virtual void writeExtent(Extent &e, Stats *to_update) = 0;
 
         /** Returns combined stats for all the Extents that have been written so far.  (Meaning

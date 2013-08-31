@@ -26,67 +26,67 @@ void doSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index, int64_t
     Int64Field record_id(series, "record-id");
     std::cout << val << ": ";
     while (true) {
-	boost::shared_ptr<Extent> e(sim.getSharedExtent());
-	if (!e) {
-	    break;
-	}
-	series.setExtent(e);
-	for (; series.morerecords(); ++series) {
-	    if (packet_at.val() == val) {
-		std::cout << record_id.val() << " ";
-	    }
-	}
+        boost::shared_ptr<Extent> e(sim.getSharedExtent());
+        if (!e) {
+            break;
+        }
+        series.setExtent(e);
+        for (; series.morerecords(); ++series) {
+            if (packet_at.val() == val) {
+                std::cout << record_id.val() << " ";
+            }
+        }
     }
     std::cout << "\n";
 }
 
 void doSetSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index, 
-		 const std::vector<int64_t> &vals) {
+                 const std::vector<int64_t> &vals) {
     SortedIndexModule<int64_t,Int64Field> sim(index, vals);
 
     ExtentSeries series;
     Int64Field packet_at(series, "packet-at");
     Int64Field record_id(series, "record-id");
-    while(true) {
-	boost::shared_ptr<Extent> e(sim.getSharedExtent());
-	if (!e) {
-	    break;
-	}
-	series.setExtent(e);
-	for (; series.morerecords(); ++series) {
+    while (true) {
+        boost::shared_ptr<Extent> e(sim.getSharedExtent());
+        if (!e) {
+            break;
+        }
+        series.setExtent(e);
+        for (; series.morerecords(); ++series) {
             BOOST_FOREACH(const int64_t val, vals) {
                 if (packet_at.val() == val) {
                     std::cout << val << ":\t" << record_id.val() << "\n";
                 }
             }
-	}
+        }
     }
 }
 
 void doRangeSearch(const SortedIndexModule<int64_t,Int64Field>::Index &index, 
-		   int64_t min, int64_t max) {
+                   int64_t min, int64_t max) {
     SortedIndexModule<int64_t,Int64Field> sim(index, min, max);
 
     ExtentSeries series;
     Int64Field packet_at(series, "packet-at");
     Int64Field record_id(series, "record-id");
-    while(true) {
-	boost::shared_ptr<Extent> e(sim.getSharedExtent());
-	if (!e) {
-	    break;
-	}
-	series.setExtent(e);
-	for (; series.morerecords(); ++series) {
+    while (true) {
+        boost::shared_ptr<Extent> e(sim.getSharedExtent());
+        if (!e) {
+            break;
+        }
+        series.setExtent(e);
+        for (; series.morerecords(); ++series) {
             if (packet_at.val() >= min && packet_at.val() <= max) {
                 std::cout << packet_at.val() << ":\t" << record_id.val() << "\n";
             }
-	}
+        }
     }
 }
 
 int main(int argc, char *argv[]) {
     SortedIndexModule<int64_t,Int64Field>::Index 
-        index("sortedindex.ds", "NFS trace: common", "packet-at");
+            index("sortedindex.ds", "NFS trace: common", "packet-at");
 
     // These are in the first extent
     doSearch(index, 1063931188266052000LL);
@@ -137,9 +137,9 @@ int main(int argc, char *argv[]) {
     // using an unsorted index is an error
     AssertBoostFnBefore(AssertBoostThrowExceptionFn);
     try {
-	SortedIndexModule<int32_t,Int32Field>::Index uindex("unsortedindex.ds", "NFS trace: common", "source");
+        SortedIndexModule<int32_t,Int32Field>::Index uindex("unsortedindex.ds", "NFS trace: common", "source");
     } catch (AssertBoostException &e) {
-	std::cout << "Error: " << e.msg.substr(e.msg.find("nfs.set6.20k.ds")) << "\n";
+        std::cout << "Error: " << e.msg.substr(e.msg.find("nfs.set6.20k.ds")) << "\n";
     }
 
     return 0;

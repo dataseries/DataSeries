@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
-
-   See the file named COPYING for license details
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -32,11 +32,29 @@
 #define DATASERIES_ENABLE_LZO 0
 #endif
 
+#ifndef DATASERIES_ENABLE_SNAPPY
+#define DATASERIES_ENABLE_SNAPPY 0
+#endif
+
+#ifndef DATASERIES_ENABLE_LZ4
+#define DATASERIES_ENABLE_LZ4 0
+#endif
+
 #if DATASERIES_ENABLE_BZIP2
 #include <bzlib.h>
 #endif
+
 #if DATASERIES_ENABLE_LZO
 #include <lzo1x.h>
+#endif
+
+#if DATASERIES_ENABLE_SNAPPY
+#include <snappy-c.h>
+#endif
+
+#if DATASERIES_ENABLE_LZ4
+#include <lz4.h>
+#include <lz4hc.h>
 #endif
 
 #include <zlib.h>
@@ -61,15 +79,28 @@ using boost::format;
 
 extern "C" {
     char *dataseriesVersion() {
-	return (char *)DATASERIES_VERSION;
+        return (char *)DATASERIES_VERSION;
     }
 }
 
 static bool did_init_malloc_tuning = false;
 
+Extent::compression_alg Extent::compression_algs[] = 
+{
+    { "none", 0, NULL, NULL },
+    { "lzo", 1, packLZO, unpackLZO },
+    { "zlib", 2, packZLib, unpackZLib },
+    { "bz2", 4, packBZ2, unpackBZ2 },
+    { "lzf", 8, packLZF, unpackLZF },
+    { "snappy", 16, packSnappy, unpackSnappy },
+    { "lz4", 32, packLZ4, unpackLZ4 },
+    { "lz4hc", 64, packLZ4HC, unpackLZ4 }
+};
+
+
 void Extent::ByteArray::initMallocTuning() {
     if (did_init_malloc_tuning) 
-	return;
+        return;
     did_init_malloc_tuning = true;
 
 #if defined(M_MMAP_THRESHOLD)
@@ -88,10 +119,10 @@ void Extent::ByteArray::clear() {
 
 void Extent::ByteArray::reserve(size_t reserve_bytes) {
     if (reserve_bytes <= static_cast<size_t>(maxV - beginV)) {
-	return; // have enough already;
+        return; // have enough already;
     }
     if (!did_init_malloc_tuning) {
-	initMallocTuning();
+        initMallocTuning();
     }
     size_t oldsize = size();
     byte *newV = new byte [reserve_bytes];
@@ -101,8 +132,8 @@ void Extent::ByteArray::reserve(size_t reserve_bytes) {
     size_t actual_align = reinterpret_cast<size_t>(newV) % expect_align;
 
     INVARIANT(actual_align == 0,
-	      format("internal error, misaligned malloc(%d) return %d mod %d\n")
-	      % reserve_bytes % actual_align % expect_align);
+              format("internal error, misaligned malloc(%d) return %d mod %d\n")
+              % reserve_bytes % actual_align % expect_align);
     memcpy(newV,beginV,oldsize);
     delete [] beginV;
     beginV = newV;
@@ -118,7 +149,7 @@ void Extent::ByteArray::copyResize(size_t newsize, bool zero_it) {
     endV = beginV + newsize;
 
     if (zero_it) {
-	memset(beginV + oldsize,0,newsize - oldsize);
+        memset(beginV + oldsize,0,newsize - oldsize);
     }
 }
 
@@ -132,25 +163,25 @@ void Extent::setReadChecksFromEnv(bool defval) {
     bool pre = defval, post = defval, var32 = defval;
 
     if (getenv("DATASERIES_READ_CHECKS") != NULL) {
-	vector<string> checks;
-	split(getenv("DATASERIES_READ_CHECKS"), ",", checks);
-	for(vector<string>::iterator i = checks.begin(); 
-	    i != checks.end(); ++i) {
-	    if (*i == "preuncompress") {
-		pre = true;
-	    } else if (*i == "postuncompress") {
-		post = true;
-	    } else if (*i == "variable32") {
-		var32 = true;
-	    } else if (*i == "all") {
-		pre = post = var32 = true;
-	    } else if (*i == "none") {
-		pre = post = var32 = false;
-	    } else {
-		FATAL_ERROR(format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
-			    % *i);
-	    }
-	}
+        vector<string> checks;
+        split(getenv("DATASERIES_READ_CHECKS"), ",", checks);
+        for (vector<string>::iterator i = checks.begin(); 
+            i != checks.end(); ++i) {
+            if (*i == "preuncompress") {
+                pre = true;
+            } else if (*i == "postuncompress") {
+                post = true;
+            } else if (*i == "variable32") {
+                var32 = true;
+            } else if (*i == "all") {
+                pre = post = var32 = true;
+            } else if (*i == "none") {
+                pre = post = var32 = false;
+            } else {
+                FATAL_ERROR(format("unrecognized extent check %s; expected {preuncompress,postuncompress,variable32}")
+                            % *i);
+            }
+        }
     }
     preuncompress_check = pre;
     postuncompress_check = post;
@@ -185,50 +216,52 @@ void Extent::init() {
     *(int32 *)variabledata.begin() = 0;
     extent_source = in_memory_str;
     extent_source_offset = -1;
+
 }
 
+
 Extent::Extent(const ExtentTypeLibrary &library, 
-	       Extent::ByteArray &packeddata,
-	       const bool need_bitflip)
-    : type(library.getTypeByNamePtr(getPackedExtentType(packeddata)))
+               Extent::ByteArray &packeddata,
+               const bool need_bitflip)
+        : type(library.getTypeByNamePtr(getPackedExtentType(packeddata)))
 {
     init();
     unpackData(packeddata, need_bitflip);
 }
 
 Extent::Extent(const ExtentType &_type,
-	       Extent::ByteArray &packeddata,
-	       const bool need_bitflip)
-    : type(_type.shared_from_this())
+               Extent::ByteArray &packeddata,
+               const bool need_bitflip)
+        : type(_type.shared_from_this())
 {
     init();
     unpackData(packeddata, need_bitflip);
 }
 
 Extent::Extent(const ExtentType &_type)
-    : type(_type.shared_from_this())
+        : type(_type.shared_from_this())
 {
     init();
 }
 
 Extent::Extent(const ExtentType::Ptr type)
-    : type(type)
+        : type(type)
 {
     init();
 }
 
 Extent::Extent(const string &xmltype)
-    : type(ExtentTypeLibrary::sharedExtentTypePtr(xmltype))
+        : type(ExtentTypeLibrary::sharedExtentTypePtr(xmltype))
 {
     init();
 }
 
 Extent::Extent(ExtentSeries &myseries)
-    : type(myseries.getTypePtr())
+        : type(myseries.getTypePtr())
 {
     init();
     if (myseries.extent() == NULL) {
-	myseries.setExtent(*this);
+        myseries.setExtent(*this);
     }
 }
 
@@ -260,41 +293,41 @@ struct variableDuplicateEliminate {
 };
 
 class variableDuplicateEliminate_Equal {
-public:
+  public:
     typedef ExtentType::int32 int32;
     bool operator()(const variableDuplicateEliminate &a, 
-		    const variableDuplicateEliminate &b) const {
-	int32 size_a = *(int32 *)(a.varbits);
-	int32 size_b = *(int32 *)(b.varbits);
-	if (size_a != size_b) return false;
-	return memcmp(a.varbits,b.varbits,size_a + 4) == 0;
+                    const variableDuplicateEliminate &b) const {
+        int32 size_a = *(int32 *)(a.varbits);
+        int32 size_b = *(int32 *)(b.varbits);
+        if (size_a != size_b) return false;
+        return memcmp(a.varbits,b.varbits,size_a + 4) == 0;
     }
 };
 
 class variableDuplicateEliminate_Hash {
-public:
+  public:
     typedef ExtentType::int32 int32;
     unsigned int operator()(const variableDuplicateEliminate &a) const {
-	int32 size_a = *(int32 *)(a.varbits);
-	return lintel::bobJenkinsHash(1776, a.varbits, 4+size_a);
+        int32 size_a = *(int32 *)(a.varbits);
+        return lintel::bobJenkinsHash(1776, a.varbits, 4+size_a);
     }
 };
 
 static bool compactIsNull(const ExtentType::byte *fixed_record, 
-			  const ExtentType::nullCompactInfo &f) {
+                          const ExtentType::nullCompactInfo &f) {
     DEBUG_INVARIANT(f.null_bitmask != 0 || f.null_offset == 0, "?");
     if (*(fixed_record + f.null_offset) & f.null_bitmask) {
-	return true;
+        return true;
     } else {
-	return false;
+        return false;
     }
 }
 
 static const bool debug_compact = false;
 void Extent::compactNulls(Extent::ByteArray &fixed_coded) {
     if (debug_compact) {
-	cout << format("compacting %s\n")
-	    % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
+        cout << format("compacting %s\n")
+                % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
     }
     INVARIANT(type->getPackNullCompact() == ExtentType::CompactNonBool, "bad");
     Extent::ByteArray into;
@@ -307,84 +340,84 @@ void Extent::compactNulls(Extent::ByteArray &fixed_coded) {
 
     byte *cur = into.begin();
     INVARIANT(type->rep.bool_bytes > 0, "?");
-    for(byte *fixed_record = fixed_coded.begin();
-	fixed_record != fixed_coded.end(); 
-	fixed_record += type->rep.fixed_record_size) {
+    for (byte *fixed_record = fixed_coded.begin();
+        fixed_record != fixed_coded.end(); 
+        fixed_record += type->rep.fixed_record_size) {
 
-	if (debug_compact) {
-	    cout << format("compact from@%d/%d row %d/%d to@%d\n")
-		% (fixed_record - fixed_coded.begin()) 
-		% (fixed_coded.size())
-		% ((fixed_record - fixed_coded.begin())/type->rep.fixed_record_size)
-		% (fixed_coded.size() / type->rep.fixed_record_size)
-		% (cur - into.begin());
-	}
-	DEBUG_INVARIANT(static_cast<size_t>(cur - into.begin()) 
-			<= static_cast<size_t>(fixed_coded.size()), 
-			format("internal %d > %d") % (cur - into.begin()) 
-			% fixed_coded.size());
+        if (debug_compact) {
+            cout << format("compact from@%d/%d row %d/%d to@%d\n")
+                    % (fixed_record - fixed_coded.begin()) 
+                    % (fixed_coded.size())
+                    % ((fixed_record - fixed_coded.begin())/type->rep.fixed_record_size)
+                    % (fixed_coded.size() / type->rep.fixed_record_size)
+                    % (cur - into.begin());
+        }
+        DEBUG_INVARIANT(static_cast<size_t>(cur - into.begin()) 
+                        <= static_cast<size_t>(fixed_coded.size()), 
+                        format("internal %d > %d") % (cur - into.begin()) 
+                        % fixed_coded.size());
 
-	INVARIANT(cur + type->rep.fixed_record_size <= into.end(), "bad");
-	memcpy(cur, fixed_record, type->rep.bool_bytes);
-	cur += type->rep.bool_bytes;
+        INVARIANT(cur + type->rep.fixed_record_size <= into.end(), "bad");
+        memcpy(cur, fixed_record, type->rep.bool_bytes);
+        cur += type->rep.bool_bytes;
 
-	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
-	
-	// copy the bytes...
-	for(nciiT i = type->rep.nonbool_compact_info_size1.begin(); 
-	    i != type->rep.nonbool_compact_info_size1.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_byte, "bad");
-	    if (compactIsNull(fixed_record, *i)) {
-		DEBUG_INVARIANT(*(fixed_record + i->offset) == 0, "?");
-		continue;
-	    }
-	    *cur = *(fixed_record + i->offset);
-	    cur += 1;
-	}
-	// copy the 4 byte things
-	for(nciiT i = type->rep.nonbool_compact_info_size4.begin(); 
-	    i != type->rep.nonbool_compact_info_size4.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_int32 ||
-			    i->type == ExtentType::ft_variable32, "bad");
-	    if (compactIsNull(fixed_record, *i)) {
-		DEBUG_INVARIANT(*reinterpret_cast<int32_t *>(fixed_record + i->offset) == 0, "?");
-		continue;
-	    }
-	    // pad to 4 byte boundary; do it here so we only pad if we 
-	    // have to
-	    for(; reinterpret_cast<size_t>(cur) % 4 != 0; ++cur) {
-		*cur = '\0';
-	    }
-	    *reinterpret_cast<uint32_t *>(cur) = 
-		*reinterpret_cast<uint32_t *>(fixed_record + i->offset);
-	    cur += 4;
-	}
-	// copy the 8 byte things
-	for(nciiT i = type->rep.nonbool_compact_info_size8.begin(); 
-	    i != type->rep.nonbool_compact_info_size8.end(); ++i) {
-	    DEBUG_INVARIANT(i->type == ExtentType::ft_int64 ||
-			    i->type == ExtentType::ft_double, "bad");
-	    if (compactIsNull(fixed_record, *i)) {
-		DEBUG_INVARIANT(*reinterpret_cast<int64_t *>(fixed_record + i->offset) == 0, format("? %d") % ((fixed_record - fixed_coded.begin())/type->rep.fixed_record_size));
-		continue;
-	    }
-	    // pad to 8 byte boundary, do it here so we only pad if needed
-	    for(; reinterpret_cast<size_t>(cur) % 8 != 0; ++cur) {
-		*reinterpret_cast<int32_t *>(cur) = 0;
-	    }
-	    *reinterpret_cast<uint64_t *>(cur) = 
-		*reinterpret_cast<uint64_t *>(fixed_record + i->offset);
-	    cur += 8;
-	}
+        typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+        
+        // copy the bytes...
+        for (nciiT i = type->rep.nonbool_compact_info_size1.begin(); 
+            i != type->rep.nonbool_compact_info_size1.end(); ++i) {
+            DEBUG_INVARIANT(i->type == ExtentType::ft_byte, "bad");
+            if (compactIsNull(fixed_record, *i)) {
+                DEBUG_INVARIANT(*(fixed_record + i->offset) == 0, "?");
+                continue;
+            }
+            *cur = *(fixed_record + i->offset);
+            cur += 1;
+        }
+        // copy the 4 byte things
+        for (nciiT i = type->rep.nonbool_compact_info_size4.begin(); 
+            i != type->rep.nonbool_compact_info_size4.end(); ++i) {
+            DEBUG_INVARIANT(i->type == ExtentType::ft_int32 ||
+                            i->type == ExtentType::ft_variable32, "bad");
+            if (compactIsNull(fixed_record, *i)) {
+                DEBUG_INVARIANT(*reinterpret_cast<int32_t *>(fixed_record + i->offset) == 0, "?");
+                continue;
+            }
+            // pad to 4 byte boundary; do it here so we only pad if we 
+            // have to
+            for (; reinterpret_cast<size_t>(cur) % 4 != 0; ++cur) {
+                *cur = '\0';
+            }
+            *reinterpret_cast<uint32_t *>(cur) = 
+                    *reinterpret_cast<uint32_t *>(fixed_record + i->offset);
+            cur += 4;
+        }
+        // copy the 8 byte things
+        for (nciiT i = type->rep.nonbool_compact_info_size8.begin(); 
+            i != type->rep.nonbool_compact_info_size8.end(); ++i) {
+            DEBUG_INVARIANT(i->type == ExtentType::ft_int64 ||
+                            i->type == ExtentType::ft_double, "bad");
+            if (compactIsNull(fixed_record, *i)) {
+                DEBUG_INVARIANT(*reinterpret_cast<int64_t *>(fixed_record + i->offset) == 0, format("? %d") % ((fixed_record - fixed_coded.begin())/type->rep.fixed_record_size));
+                continue;
+            }
+            // pad to 8 byte boundary, do it here so we only pad if needed
+            for (; reinterpret_cast<size_t>(cur) % 8 != 0; ++cur) {
+                *reinterpret_cast<int32_t *>(cur) = 0;
+            }
+            *reinterpret_cast<uint64_t *>(cur) = 
+                    *reinterpret_cast<uint64_t *>(fixed_record + i->offset);
+            cur += 8;
+        }
     }
     size_t new_size = cur - into.begin();
     INVARIANT(new_size <= into.size(), 
-	      format("internal %d > %d") % new_size % into.size());
+              format("internal %d > %d") % new_size % into.size());
     if (debug_compact) {
-	cout << format("compacted nulls %d -> %d\n")
-	    % fixed_coded.size() % new_size;
-	cout << format("compacted to %s\n")
-	    % hexstring(string((char *)into.begin(), new_size));
+        cout << format("compacted nulls %d -> %d\n")
+                % fixed_coded.size() % new_size;
+        cout << format("compacted to %s\n")
+                % hexstring(string((char *)into.begin(), new_size));
     }
     into.resize(new_size);
     fixed_coded.swap(into);
@@ -397,20 +430,20 @@ void Extent::compactNulls(Extent::ByteArray &fixed_coded) {
 // re-test performance improvement; see below for x86_64 discussion.
 
 static inline void * asm_memcpy(void * to, const void * from, size_t n) {
-int d0, d1, d2;
-__asm__ __volatile__(
-	"rep ; movsl\n\t"
-	"movl %4,%%ecx\n\t"
-	"andl $3,%%ecx\n\t"
-#if 1	/* want to pay 2 byte penalty for a chance to skip microcoded rep? */
-	"jz 1f\n\t"
+    int d0, d1, d2;
+    __asm__ __volatile__(
+        "rep ; movsl\n\t"
+        "movl %4,%%ecx\n\t"
+        "andl $3,%%ecx\n\t"
+#if 1   /* want to pay 2 byte penalty for a chance to skip microcoded rep? */
+        "jz 1f\n\t"
 #endif
-	"rep ; movsb\n\t"
-	"1:"
-	: "=&c" (d0), "=&D" (d1), "=&S" (d2)
-	: "0" (n/4), "g" (n), "1" ((long) to), "2" ((long) from)
-	: "memory");
-return (to);
+        "rep ; movsb\n\t"
+        "1:"
+        : "=&c" (d0), "=&D" (d1), "=&S" (d2)
+        : "0" (n/4), "g" (n), "1" ((long) to), "2" ((long) from)
+        : "memory");
+    return (to);
 }
 #endif
 
@@ -442,36 +475,36 @@ const ExtentType::byte *uncompactCopy(const vector<ExtentType::nullCompactInfo> 
     // copy the n byte things
     nciiT i = nci.begin(); 
     nciiT end = nci.end();
-    for(; i != end; ++i) {
-	DEBUG_INVARIANT(i->size == sizeof(T), "internal");
-	if (!compactIsNull(to, *i)) {
-	    size_t tmp = reinterpret_cast<size_t>(from);
-	    tmp += sizeof(T) - 1;
-	    tmp = tmp & ~(sizeof(T)-1);
-	    from = reinterpret_cast<const ExtentType::byte *>(tmp);
+    for (; i != end; ++i) {
+        DEBUG_INVARIANT(i->size == sizeof(T), "internal");
+        if (!compactIsNull(to, *i)) {
+            size_t tmp = reinterpret_cast<size_t>(from);
+            tmp += sizeof(T) - 1;
+            tmp = tmp & ~(sizeof(T)-1);
+            from = reinterpret_cast<const ExtentType::byte *>(tmp);
 
-	    goto copySome;
-	}
+            goto copySome;
+        }
     }
     return from;
 
- copySome:
+copySome:
     
     DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
     *reinterpret_cast<T *>(to + i->offset) =
-	*reinterpret_cast<const T *>(from);
+            *reinterpret_cast<const T *>(from);
     from += sizeof(T);
     ++i;
 
-    for(; i != end; ++i) {
-	DEBUG_INVARIANT(i->size == sizeof(T), "internal");
-	if (compactIsNull(to, *i)) {
-	    continue;
-	}
-	DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
-	*reinterpret_cast<T *>(to + i->offset) =
-	    *reinterpret_cast<const T *>(from);
-	from += sizeof(T);
+    for (; i != end; ++i) {
+        DEBUG_INVARIANT(i->size == sizeof(T), "internal");
+        if (compactIsNull(to, *i)) {
+            continue;
+        }
+        DEBUG_INVARIANT(from + sizeof(T) <= from_end, "internal");
+        *reinterpret_cast<T *>(to + i->offset) =
+                *reinterpret_cast<const T *>(from);
+        from += sizeof(T);
     }
     return from;
 }
@@ -499,39 +532,39 @@ void Extent::uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size) {
     // need to turn the from debug invariants into invariants and
     // check that we aren't running off the end early.  The invariant
     // at the end will catch it overall, so we still can't go "wrong"
-    while(from < from_end && to < into.end()) {
-	if (debug_compact) {
-	    cout << format("uncompact from@%d/%d to@%d row %d/%d\n")
-		% (from - fixed_coded.begin()) % (from_end - fixed_coded.begin())
-		% (to - into.begin())
-		% ((to - into.begin())/type->rep.fixed_record_size)
-		% (size / type->rep.fixed_record_size);
-	}
-	DEBUG_INVARIANT(to + type->rep.fixed_record_size <= into.end(), 
-			"internal");
-	DEBUG_INVARIANT(from + type->rep.bool_bytes <= from_end, "internal");
-	    
-	asm_memcpy(to, from, type->rep.bool_bytes);
-	from += type->rep.bool_bytes;
+    while (from < from_end && to < into.end()) {
+        if (debug_compact) {
+            cout << format("uncompact from@%d/%d to@%d row %d/%d\n")
+                    % (from - fixed_coded.begin()) % (from_end - fixed_coded.begin())
+                    % (to - into.begin())
+                    % ((to - into.begin())/type->rep.fixed_record_size)
+                    % (size / type->rep.fixed_record_size);
+        }
+        DEBUG_INVARIANT(to + type->rep.fixed_record_size <= into.end(), 
+                        "internal");
+        DEBUG_INVARIANT(from + type->rep.bool_bytes <= from_end, "internal");
+            
+        asm_memcpy(to, from, type->rep.bool_bytes);
+        from += type->rep.bool_bytes;
 
-	typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
-	// copy the bytes...
-	from = uncompactCopy<byte>(type->rep.nonbool_compact_info_size1, 
-				   to, from, from_end);
+        typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+        // copy the bytes...
+        from = uncompactCopy<byte>(type->rep.nonbool_compact_info_size1, 
+                                   to, from, from_end);
 
-	from = uncompactCopy<uint32_t>(type->rep.nonbool_compact_info_size4, 
-				       to, from, from_end);
+        from = uncompactCopy<uint32_t>(type->rep.nonbool_compact_info_size4, 
+                                       to, from, from_end);
 
-	from = uncompactCopy<uint64_t>(type->rep.nonbool_compact_info_size8, 
-				       to, from, from_end);
+        from = uncompactCopy<uint64_t>(type->rep.nonbool_compact_info_size8, 
+                                       to, from, from_end);
 
-	to += type->rep.fixed_record_size;
+        to += type->rep.fixed_record_size;
     }
     INVARIANT(from == from_end && to == into.end(), "internal");
     fixed_coded.swap(into);
     if (debug_compact) {
-	cout << format("recovered %s\n")
-	    % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
+        cout << format("recovered %s\n")
+                % hexstring(string((char *)fixed_coded.begin(), fixed_coded.size()));
     }
 }
 
@@ -540,11 +573,11 @@ static const uint32_t max_packed_size = 512*1024*1024;
 static const unsigned variable_sizes_batch_size = 1024;
 
 // Note: Can't split this into pack fixed and pack variable because 
-// packing the variable data can involve updating the fixed dat
+// packing the variable data can involve updating the fixed data
 
 uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes, 
-			  uint32_t compression_level, uint32_t *header_packed, 
-			  uint32_t *fixed_packed, uint32_t *variable_packed) {
+                          uint32_t compression_level, uint32_t *header_packed, 
+                          uint32_t *fixed_packed, uint32_t *variable_packed) {
     // Don't need to zero the coded arrays as we will be filling them
     // all in.
     Extent::ByteArray fixed_coded;
@@ -554,209 +587,209 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     SINVARIANT(variabledata.size() >= 4);
 
     HashTable<variableDuplicateEliminate, 
-	variableDuplicateEliminate_Hash, 
-	variableDuplicateEliminate_Equal> vardupelim;
+            variableDuplicateEliminate_Hash, 
+            variableDuplicateEliminate_Equal> vardupelim;
 
     memcpy(fixed_coded.begin(), fixeddata.begin(), fixeddata.size());
     vector<bool> warnings;
     warnings.resize(type->rep.field_info.size(),false);
     // copy so that packing is thread safe
     vector<ExtentType::pack_self_relativeT> psr_copy 
-	= type->rep.pack_self_relative;
-    for(unsigned int j=0; j<type->rep.pack_self_relative.size(); ++j) {
-	INVARIANT(psr_copy[j].field_num < type->rep.field_info.size(), "whoa");
-	psr_copy[j].double_prev_v = 0; // shouldn't be necessary
-	psr_copy[j].int32_prev_v = 0;
-	psr_copy[j].int64_prev_v = 0;
+            = type->rep.pack_self_relative;
+    for (unsigned int j=0; j<type->rep.pack_self_relative.size(); ++j) {
+        INVARIANT(psr_copy[j].field_num < type->rep.field_info.size(), "whoa");
+        psr_copy[j].double_prev_v = 0; // shouldn't be necessary
+        psr_copy[j].int32_prev_v = 0;
+        psr_copy[j].int64_prev_v = 0;
     }
     uint32_t nrecords = 0;
     byte *variable_data_pos = variable_coded.begin();
     *(int32 *)variable_data_pos = 0;
     variable_data_pos += 4;
     bool null_compact = type->getPackNullCompact() != ExtentType::CompactNo;
-    for(Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
-	fixed_record != fixed_coded.end(); 
-	fixed_record += type->rep.fixed_record_size) {
-	INVARIANT(fixed_record < fixed_coded.end(),"internal error");
-	++nrecords;
-	
-	if (null_compact) {
-	    // Might want to always do this -- except it seems unlikely people
-	    // would commonly fill in a value and then null it.
-	    //
-	    // Need to zero fill these as when we do null compaction,
-	    // we will stuff zeros in to all null fields, and if
-	    // someone did relative packing we need it to unpack
-	    // properly.
+    for (Extent::ByteArray::iterator fixed_record = fixed_coded.begin();
+        fixed_record != fixed_coded.end(); 
+        fixed_record += type->rep.fixed_record_size) {
+        INVARIANT(fixed_record < fixed_coded.end(),"internal error");
+        ++nrecords;
+        
+        if (null_compact) {
+            // Might want to always do this -- except it seems unlikely people
+            // would commonly fill in a value and then null it.
+            //
+            // Need to zero fill these as when we do null compaction,
+            // we will stuff zeros in to all null fields, and if
+            // someone did relative packing we need it to unpack
+            // properly.
 
-	    typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
-	    for(nciiT j = type->rep.nonbool_compact_info_size1.begin(); 
-		j != type->rep.nonbool_compact_info_size1.end(); ++j) {
-		if (!compactIsNull(fixed_record, *j)) 
-		    continue;
-		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
-		*raw = 0;
-	    }
+            typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
+            for (nciiT j = type->rep.nonbool_compact_info_size1.begin(); 
+                j != type->rep.nonbool_compact_info_size1.end(); ++j) {
+                if (!compactIsNull(fixed_record, *j)) 
+                    continue;
+                ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+                *raw = 0;
+            }
 
-	    for(nciiT j = type->rep.nonbool_compact_info_size4.begin(); 
-		j != type->rep.nonbool_compact_info_size4.end(); ++j) {
-		if (!compactIsNull(fixed_record, *j)) 
-		    continue;
-		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
-		*reinterpret_cast<int32_t *>(raw) = 0;
-	    }
+            for (nciiT j = type->rep.nonbool_compact_info_size4.begin(); 
+                j != type->rep.nonbool_compact_info_size4.end(); ++j) {
+                if (!compactIsNull(fixed_record, *j)) 
+                    continue;
+                ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+                *reinterpret_cast<int32_t *>(raw) = 0;
+            }
 
-	    for(nciiT j = type->rep.nonbool_compact_info_size8.begin(); 
-		j != type->rep.nonbool_compact_info_size8.end(); ++j) {
-		if (!compactIsNull(fixed_record, *j)) 
-		    continue;
-		ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
-		*reinterpret_cast<int64_t *>(raw) = 0;
-	    }
-	}
+            for (nciiT j = type->rep.nonbool_compact_info_size8.begin(); 
+                j != type->rep.nonbool_compact_info_size8.end(); ++j) {
+                if (!compactIsNull(fixed_record, *j)) 
+                    continue;
+                ExtentType::byte *raw = static_cast<unsigned char *>(fixed_record + j->offset);
+                *reinterpret_cast<int64_t *>(raw) = 0;
+            }
+        }
 
-	// pack variable sized fields ...
-	for(unsigned int j=0; j < type->rep.variable32_field_columns.size(); ++j) {
-	    int field = type->rep.variable32_field_columns[j];
-	    int offset = type->rep.field_info[field].offset;
-	    int varoffset = Variable32Field::getVarOffset(&(*fixed_record), offset);
-	    Variable32Field::selfcheck(variabledata, varoffset);
-	    int32 size = Variable32Field::size(variabledata, varoffset);
-	    int32 roundup = Variable32Field::roundupSize(size);
-	    if (size == 0) {
-		SINVARIANT(varoffset == 0);
-	    } else {
-		int32 packed_varoffset = -1;
-		bool unique = type->rep.field_info[field].unique;
-		variableDuplicateEliminate v(variabledata.begin() + varoffset);
-		variableDuplicateEliminate *vde = unique ? vardupelim.lookup(v) : NULL;
-		if (vde != NULL) { // present
-		    packed_varoffset = vde->varbits - variable_coded.begin();
-		    DEBUG_SINVARIANT(static_cast<size_t>(packed_varoffset) < variable_coded.size());
-		} else {
-		    DEBUG_SINVARIANT(static_cast<size_t>(variable_data_pos + 4 + roundup 
-							 - variable_coded.begin())
-				     <= variable_coded.size());
-		    memcpy(variable_data_pos, variabledata.begin() + varoffset, 4 + roundup);
-		    packed_varoffset = variable_data_pos - variable_coded.begin();
-		    if (unique) {
-			v.varbits = variable_data_pos;
-			vardupelim.add(v);
-		    }
-		    
-		    variable_data_pos += 4 + roundup;
-		}		    
-		INVARIANT((packed_varoffset + 4) % 8 == 0, format("bad packing offset %d")
-			  % packed_varoffset);
-		*(int32 *)(fixed_record + offset) = packed_varoffset;
-	    } 
-	}
-	// pack other relative fields ...  do the packing in reverse
-	// order so that the base field in each packing is still in
-	// unpacked form
-	for(int j=type->rep.pack_other_relative.size()-1;j>=0;--j) {
-	    const ExtentType::fieldInfo &field(type->rep.field_info[type->rep.pack_other_relative[j].field_num]);
-	    if (null_compact && compactIsNull(fixed_record, 
-					      *field.null_compact_info)) {
-		// Don't overwrite nulls, must remain 0.
-		continue;
-	    }
-	    int base_field = type->rep.pack_other_relative[j].base_field_num;
-	    int field_offset = field.offset;
-	    DEBUG_INVARIANT(field_offset < type->rep.fixed_record_size, "bad");
-	    switch(field.type)
-		{
-		case ExtentType::ft_double: {
-		    double v = *(double *)(fixed_record + field_offset);
-		    double base_v = 
-			*(double *)(fixed_record + 
-				    type->rep.field_info[base_field].offset);
-		    *(double *)(fixed_record + field_offset) = v - base_v;
-		}
-		break;
-		case ExtentType::ft_int32: { 
-		    int32 v = *(int32 *)(fixed_record + field_offset);
-		    int32 base_v = 
-			*(int32 *)(fixed_record + 
-				   type->rep.field_info[base_field].offset);
-		    *(int32 *)(fixed_record + field_offset) = v - base_v;
-		}
-		break;
-		case ExtentType::ft_int64: {
-		    int64 v = *(int64 *)(fixed_record + field_offset);
-		    int64 base_v = 
-			*(int64 *)(fixed_record + 
-				   type->rep.field_info[base_field].offset);
-		    *(int64 *)(fixed_record + field_offset) = v - base_v;
-		}
-		break;
+        // pack variable sized fields ...
+        for (unsigned int j=0; j < type->rep.variable32_field_columns.size(); ++j) {
+            int field = type->rep.variable32_field_columns[j];
+            int offset = type->rep.field_info[field].offset;
+            int varoffset = Variable32Field::getVarOffset(&(*fixed_record), offset);
+            Variable32Field::selfcheck(variabledata, varoffset);
+            int32 size = Variable32Field::size(variabledata, varoffset);
+            int32 roundup = Variable32Field::roundupSize(size);
+            if (size == 0) {
+                SINVARIANT(varoffset == 0);
+            } else {
+                int32 packed_varoffset = -1;
+                bool unique = type->rep.field_info[field].unique;
+                variableDuplicateEliminate v(variabledata.begin() + varoffset);
+                variableDuplicateEliminate *vde = unique ? vardupelim.lookup(v) : NULL;
+                if (vde != NULL) { // present
+                    packed_varoffset = vde->varbits - variable_coded.begin();
+                    DEBUG_SINVARIANT(static_cast<size_t>(packed_varoffset) < variable_coded.size());
+                } else {
+                    DEBUG_SINVARIANT(static_cast<size_t>(variable_data_pos + 4 + roundup 
+                                                         - variable_coded.begin())
+                                     <= variable_coded.size());
+                    memcpy(variable_data_pos, variabledata.begin() + varoffset, 4 + roundup);
+                    packed_varoffset = variable_data_pos - variable_coded.begin();
+                    if (unique) {
+                        v.varbits = variable_data_pos;
+                        vardupelim.add(v);
+                    }
+                    
+                    variable_data_pos += 4 + roundup;
+                }                   
+                INVARIANT((packed_varoffset + 4) % 8 == 0, format("bad packing offset %d")
+                          % packed_varoffset);
+                *(int32 *)(fixed_record + offset) = packed_varoffset;
+            } 
+        }
+        // pack other relative fields ...  do the packing in reverse
+        // order so that the base field in each packing is still in
+        // unpacked form
+        for (int j=type->rep.pack_other_relative.size()-1;j>=0;--j) {
+            const ExtentType::fieldInfo &field(type->rep.field_info[type->rep.pack_other_relative[j].field_num]);
+            if (null_compact && compactIsNull(fixed_record, 
+                                              *field.null_compact_info)) {
+                // Don't overwrite nulls, must remain 0.
+                continue;
+            }
+            int base_field = type->rep.pack_other_relative[j].base_field_num;
+            int field_offset = field.offset;
+            DEBUG_INVARIANT(field_offset < type->rep.fixed_record_size, "bad");
+            switch(field.type)
+            {
+                case ExtentType::ft_double: {
+                    double v = *(double *)(fixed_record + field_offset);
+                    double base_v = 
+                            *(double *)(fixed_record + 
+                                        type->rep.field_info[base_field].offset);
+                    *(double *)(fixed_record + field_offset) = v - base_v;
+                }
+                    break;
+                case ExtentType::ft_int32: { 
+                    int32 v = *(int32 *)(fixed_record + field_offset);
+                    int32 base_v = 
+                            *(int32 *)(fixed_record + 
+                                       type->rep.field_info[base_field].offset);
+                    *(int32 *)(fixed_record + field_offset) = v - base_v;
+                }
+                    break;
+                case ExtentType::ft_int64: {
+                    int64 v = *(int64 *)(fixed_record + field_offset);
+                    int64 base_v = 
+                            *(int64 *)(fixed_record + 
+                                       type->rep.field_info[base_field].offset);
+                    *(int64 *)(fixed_record + field_offset) = v - base_v;
+                }
+                    break;
 
-		default:
-		    FATAL_ERROR("Internal error");
-		}
-	}
-	// pack self relative ...
-	for(unsigned int j=0;j<psr_copy.size();++j) {
-	    unsigned field_num = psr_copy[j].field_num;
-	    const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
-	    if (null_compact && compactIsNull(fixed_record, 
-					      *field.null_compact_info)) {
-		// Don't overwrite nulls, must remain 0.
-		continue;
-	    }
-	    int offset = field.offset;
-	    DEBUG_INVARIANT(offset < type->rep.fixed_record_size, "bad");
-	    switch(field.type) 
-		{
-		case ExtentType::ft_double: {
-		    double v = *(double *)(fixed_record + offset);
-		    *(double *)(fixed_record + offset) = v - psr_copy[j].double_prev_v;
-		    psr_copy[j].double_prev_v = v;
-		}
-		break;
-		case ExtentType::ft_int32: {
-		    int32 v = *(int32 *)(fixed_record + offset);
-		    *(int32 *)(fixed_record + offset) = v - psr_copy[j].int32_prev_v;
-		    psr_copy[j].int32_prev_v = v;
-		}
-		break;
-		case ExtentType::ft_int64: {
-		    int64 v = *(int64 *)(fixed_record + offset);
-		    *(int64 *)(fixed_record + offset) = v - psr_copy[j].int64_prev_v;
-		    psr_copy[j].int64_prev_v = v;
-		}
-		break;
-		default:
-		    INVARIANT(field_num < type->rep.field_info.size(), 
-			      format("bad field number %d > %d record %d") 
-			      % field_num % type->rep.field_info.size() 
-			      % nrecords);
+                default:
+                    FATAL_ERROR("Internal error");
+            }
+        }
+        // pack self relative ...
+        for (unsigned int j=0;j<psr_copy.size();++j) {
+            unsigned field_num = psr_copy[j].field_num;
+            const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
+            if (null_compact && compactIsNull(fixed_record, 
+                                              *field.null_compact_info)) {
+                // Don't overwrite nulls, must remain 0.
+                continue;
+            }
+            int offset = field.offset;
+            DEBUG_INVARIANT(offset < type->rep.fixed_record_size, "bad");
+            switch(field.type) 
+            {
+                case ExtentType::ft_double: {
+                    double v = *(double *)(fixed_record + offset);
+                    *(double *)(fixed_record + offset) = v - psr_copy[j].double_prev_v;
+                    psr_copy[j].double_prev_v = v;
+                }
+                    break;
+                case ExtentType::ft_int32: {
+                    int32 v = *(int32 *)(fixed_record + offset);
+                    *(int32 *)(fixed_record + offset) = v - psr_copy[j].int32_prev_v;
+                    psr_copy[j].int32_prev_v = v;
+                }
+                    break;
+                case ExtentType::ft_int64: {
+                    int64 v = *(int64 *)(fixed_record + offset);
+                    *(int64 *)(fixed_record + offset) = v - psr_copy[j].int64_prev_v;
+                    psr_copy[j].int64_prev_v = v;
+                }
+                    break;
+                default:
+                    INVARIANT(field_num < type->rep.field_info.size(), 
+                              format("bad field number %d > %d record %d") 
+                              % field_num % type->rep.field_info.size() 
+                              % nrecords);
 
-		    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
-				% field.type % field.name
-				% field_num % offset % type->rep.name);
-		}
-	}
-	// pack scaled fields ...
-	for(unsigned int j=0;j<type->rep.pack_scale.size();++j) {
-	    int field = type->rep.pack_scale[j].field_num;
-	    INVARIANT(type->rep.field_info[field].type == ExtentType::ft_double,
-		      "internal error, scaled only supported for ft_double");
-	    int offset = type->rep.field_info[field].offset;
-	    double multiplier = type->rep.pack_scale[j].multiplier;
-	    double v = *(double *)(fixed_record + offset);
-	    double scaled = v * multiplier;
-	    double rounded = round(scaled);
-	    if (type->rep.pack_scale[j].warn && fabs(scaled - rounded) > 0.1 
+                    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+                                % field.type % field.name
+                                % field_num % offset % type->rep.name);
+            }
+        }
+        // pack scaled fields ...
+        for (unsigned int j=0;j<type->rep.pack_scale.size();++j) {
+            int field = type->rep.pack_scale[j].field_num;
+            INVARIANT(type->rep.field_info[field].type == ExtentType::ft_double,
+                      "internal error, scaled only supported for ft_double");
+            int offset = type->rep.field_info[field].offset;
+            double multiplier = type->rep.pack_scale[j].multiplier;
+            double v = *(double *)(fixed_record + offset);
+            double scaled = v * multiplier;
+            double rounded = round(scaled);
+            if (type->rep.pack_scale[j].warn && fabs(scaled - rounded) > 0.1 
                 && warnings[field] == false) {
                 LintelLog::warn(format("Warning, while packing field %s of record %d, error was"
                                        " > 10%%:\n  (%.10g / %.10g = %.2f, round() = %.0f)\n")
                                 % type->rep.field_info[field].name % nrecords
                                 % v % (1.0/multiplier) % scaled % rounded);
-		warnings[field] = true;
-	    }
-	    *(double *)(fixed_record + offset) = rounded;
-	}
+                warnings[field] = true;
+            }
+            *(double *)(fixed_record + offset) = rounded;
+        }
     }
     // unfortunately have to take the hash after we do all of the
     // sundry conversions, as the conversions are not perfectly
@@ -764,51 +797,51 @@ uint32_t Extent::packData(Extent::ByteArray &into, uint32_t compression_modes,
     // deliberately not precisely reversable
     SINVARIANT(fixed_coded.size() == type->rep.fixed_record_size * nrecords);
     uint32_t bjhash = lintel::bobJenkinsHash(1972, fixed_coded.begin(),
-					     type->rep.fixed_record_size * nrecords);
+                                             type->rep.fixed_record_size * nrecords);
 
     if (type->getPackNullCompact() != ExtentType::CompactNo) {
-	// do this after we do the fixed hash, so the checksum will
-	// verify this is reversable.
+        // do this after we do the fixed hash, so the checksum will
+        // verify this is reversable.
 
-	compactNulls(fixed_coded);
+        compactNulls(fixed_coded);
     }
 
     SINVARIANT(static_cast<size_t>(variable_data_pos - variable_coded.begin()) 
-	       <= variable_coded.size())
-    variable_coded.resize(variable_data_pos - variable_coded.begin());
+               <= variable_coded.size())
+            variable_coded.resize(variable_data_pos - variable_coded.begin());
 
     bjhash = lintel::bobJenkinsHash(bjhash, variable_coded.begin(), variable_coded.size());
     vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variable_coded.begin() + variable_coded.size();
-    for(byte *curvarpos = variable_coded.begin(4);curvarpos != endvarpos;) {
-	int32 size = *(int32 *)curvarpos;
-	variable_sizes.push_back(size);
-	if (variable_sizes.size() == variable_sizes_batch_size) {
-	    bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
-					    4*variable_sizes_batch_size);
-	    variable_sizes.resize(0);
-	}
-	curvarpos += 4 + Variable32Field::roundupSize(size);
-	SINVARIANT(curvarpos <= endvarpos);
+    for (byte *curvarpos = variable_coded.begin(4);curvarpos != endvarpos;) {
+        int32 size = *(int32 *)curvarpos;
+        variable_sizes.push_back(size);
+        if (variable_sizes.size() == variable_sizes_batch_size) {
+            bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
+                                            4*variable_sizes_batch_size);
+            variable_sizes.resize(0);
+        }
+        curvarpos += 4 + Variable32Field::roundupSize(size);
+        SINVARIANT(curvarpos <= endvarpos);
     }
     bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]), 4*variable_sizes.size());
     variable_sizes.resize(0);
 
     byte compressed_fixed_mode;
     Extent::ByteArray *compressed_fixed 
-	= compressBytes(fixed_coded.begin(),fixed_coded.size(),
-			compression_modes, compression_level,
-			&compressed_fixed_mode);
+            = compressBytes(fixed_coded.begin(),fixed_coded.size(),
+                            compression_modes, compression_level,
+                            &compressed_fixed_mode);
     byte compressed_variable_mode;
     Extent::ByteArray *compressed_variable;
-    // +4, -4 avoids packing the 0 bytes at the beginning of the
+    // beginning at 4 bytes into the array avoids packing the 0 bytes at the beginning of the
     // variable coded stuff since that is fixed
     compressed_variable 
-	= compressBytes(variable_coded.begin() + 4,
-			variable_coded.size() - 4,
-			compression_modes, compression_level,
-			&compressed_variable_mode);
+            = compressBytes(variable_coded.begin() + 4,
+                            variable_coded.size() - 4,
+                            compression_modes, compression_level,
+                            &compressed_variable_mode);
 
     int headersize = 6*4+4*1+type->getName().size();
     headersize += (4 - headersize % 4) % 4;
@@ -866,41 +899,72 @@ bool Extent::packBZ2(byte *input, int32 inputsize,
                      Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_BZIP2    
     if (into.size() == 0) {
-	into.resize(inputsize, false);
+        into.resize(inputsize, false);
     }
 
     unsigned int outsize = into.size();
-    int ret = BZ2_bzBuffToBuffCompress((char *)into.begin(),&outsize,
-				       (char *)input,inputsize,
-				       compression_level,0,0);
+    int ret = BZ2_bzBuffToBuffCompress((char *)into.begin(), &outsize,
+                                       (char *)input, inputsize,
+                                       compression_level, 0, 0);
     if (ret == BZ_OK) {
-	INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
-	into.resize(outsize);
-	return true;
+        INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
+        into.resize(outsize);
+        return true;
     }
     INVARIANT(ret == BZ_OUTBUFF_FULL,
-	      format("Whoa, got unexpected libbz2 error %d") % ret);
-#endif
+              format("Whoa, got unexpected libbz2 error %d") % ret);
+   
     return false;
+#else
+    return false;
+#endif
 }
 
+bool Extent::unpackBZ2(byte* output, byte* input, 
+                       int32 input_size, int32& output_size) {
+#if DATASERIES_ENABLE_BZIP2
+    unsigned int destlen = output_size;
+    int ret = BZ2_bzBuffToBuffDecompress((char *)output, &destlen,
+                                         (char *)input, input_size, 0, 0);
+    INVARIANT(ret == BZ_OK, "Error decompressing extent!");
+    output_size = destlen;
+
+    return true;
+#else
+    return false;
+#endif
+}
+
+// ZLib is required, so there are no preprocessor conditionals for this function
 bool Extent::packZLib(byte *input, int32 inputsize,
                       Extent::ByteArray &into, int compression_level) {
     if (into.size() == 0) {
-	into.resize(inputsize, false);
+        into.resize(inputsize, false);
     }
     uLongf outsize = into.size();
-    int ret = compress2((Bytef *)into.begin(),&outsize,
-			(const Bytef *)input,inputsize,
-			compression_level);
+    int ret = compress2((Bytef *)into.begin(), &outsize,
+                        (const Bytef *)input, inputsize,
+                        compression_level);
     if (ret == Z_OK) {
-	INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
-	into.resize(outsize);
-	return true;
+        INVARIANT(outsize <= into.size(), "internal error, outsize is bad");
+        into.resize(outsize);
+        return true;
     }
     INVARIANT(ret == Z_BUF_ERROR,
-	      format("Whoa, got unexpected zlib error %d") % ret);
+              format("Whoa, got unexpected zlib error %d") % ret);
     return false;
+}
+
+bool Extent::unpackZLib(byte* output, byte* input, 
+                        int32 input_size, int32 &output_size) {
+    uLongf destlen = output_size;
+    int ret = uncompress((Bytef *)output, &destlen,
+                         (const Bytef *)input, input_size);
+
+    INVARIANT(ret == Z_OK, "Error decompressing extent!");
+    output_size = destlen;
+
+    return true;  
 }
 
 bool Extent::packLZO(byte *input, int32 inputsize,
@@ -911,24 +975,42 @@ bool Extent::packLZO(byte *input, int32 inputsize,
 
     lzo_byte *work_memory = new lzo_byte[LZO1X_999_MEM_COMPRESS];
     int ret = lzo1x_999_compress_level((lzo_byte *)input, inputsize,
-				       (lzo_byte *)into.begin(), &out_len,
-				       work_memory, NULL, 0, 0, compression_level);
+                                       (lzo_byte *)into.begin(), &out_len,
+                                       work_memory, NULL, 0, 0, compression_level);
     INVARIANT(ret == LZO_E_OK,
-	      format("internal error: lzo compression failed (%d)")
-	      % ret);
+              format("internal error: lzo compression failed (%d)")
+              % ret);
     INVARIANT(out_len < into.size(),
-	      format("internal error: lzo compression too large %d >= %d\n")
-	      % out_len % into.size());
+              format("internal error: lzo compression too large %d >= %d\n")
+              % out_len % into.size());
     
     // Might consider calling the optimize function, but the usage is a 
     // little confusing; it appears that it would need another output
     // buffer
     delete [] work_memory;
-	
+        
     into.resize(out_len);
     if ((int32)out_len >= inputsize)
-	return false;
+        return false;
 
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool Extent::unpackLZO(byte* output, byte* input, 
+                       int32 input_size, int32 &output_size ) {
+#if DATASERIES_ENABLE_LZO
+
+    lzo_uint orig_len = output_size;
+    int ret = lzo1x_decompress_safe((const lzo_byte *)input, input_size,
+                                    (lzo_byte *)output, &orig_len, NULL);
+
+    INVARIANT(ret == LZO_E_OK,
+              format("Error decompressing extent (%d,%d =? %d)!")
+              % ret % orig_len % output_size);
+    output_size = orig_len;
     return true;
 #else
     return false;
@@ -938,17 +1020,160 @@ bool Extent::packLZO(byte *input, int32 inputsize,
 bool Extent::packLZF(byte *input, int32 inputsize,
                      Extent::ByteArray &into, int compression_level) {
     if (into.size() == 0) {
-	into.resize(inputsize, false);
+        into.resize(inputsize, false);
     }
 
-    unsigned int ret = lzf_compress(input,inputsize,
-				    (void *)into.begin(),into.size());
+    unsigned int ret = lzf_compress(input, inputsize,
+                                    (void *)into.begin(), into.size());
     if (ret == 0) {
-	return false;
+        return false;
     }
 
     into.resize(ret);
     return true;
+}
+
+bool Extent::unpackLZF(byte* output, byte* input,
+                       int32 input_size, int32 &output_size) {
+    output_size = lzf_decompress((const void *)input, input_size,
+                                 (void *)output, output_size);
+    return true;
+}
+
+bool Extent::packSnappy(byte* input, int32 inputsize,
+                        Extent::ByteArray &into, int compression_level) {
+#if DATASERIES_ENABLE_SNAPPY
+    if (into.size() == 0) {
+        into.resize(inputsize, false);
+    }
+    
+    size_t output_length = snappy_max_compressed_length((size_t)inputsize);
+    char output[output_length];
+    snappy_status ret = snappy_compress((const char *)input,
+                                        (size_t)inputsize,
+                                        output,
+                                        &output_length);
+    if (ret != SNAPPY_OK) {
+        return false;
+    }
+
+    Extent::ByteArray::iterator it = into.begin();
+    char* outIt = output;
+    char* start = output; 
+
+    for (; it != into.end() && outIt != (start + output_length); ++it,++outIt) {
+        *it = *outIt;
+    }
+  
+    into.resize(output_length);
+   
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool Extent::unpackSnappy(byte* output, byte* input,
+                          int32 input_size, int32 &output_size) {
+#if DATASERIES_ENABLE_SNAPPY
+    
+    size_t* destlen = (size_t *)&output_size;
+    snappy_status ret = snappy_uncompress((const char *)input, 
+                                          (size_t)input_size,
+                                          (char *)output,
+                                          destlen);   
+    output_size = (int32)(*destlen);
+
+    INVARIANT(output_size > 0, format("Nonpositive output size of %d") % output_size);
+    INVARIANT(ret == SNAPPY_OK, "Error decompressing extent!");
+
+    return true;
+
+#else
+    return false;
+#endif
+}
+
+bool Extent::packLZ4(byte* input, int32 inputsize,
+                     Extent::ByteArray &into, int compression_level) {
+#if DATASERIES_ENABLE_LZ4
+    if (into.size() == 0) {
+        into.resize(inputsize, false);
+    }
+  
+    int output_length = LZ4_compressBound((int)inputsize);
+    char output[output_length];
+    int32 ret = LZ4_compress((const char *)input,
+                             (char *)&output,
+                             inputsize);
+
+    if (ret == 0) {
+        return false;
+    }
+
+    Extent::ByteArray::iterator it = into.begin();
+    char* outIt = output;
+    char* start = output;
+
+    for (; it != into.end() && outIt != (start + ret); ++it,++outIt) {
+        *it = *outIt;
+    }
+
+    into.resize(ret);
+
+    return true;
+#else
+    return false;
+#endif
+}
+
+bool Extent::packLZ4HC(byte* input, int32 inputsize,
+                       Extent::ByteArray &into, int compression_level) {
+#if DATASERIES_ENABLE_LZ4
+    if (into.size() == 0) {
+        into.resize(inputsize, false);
+    }
+  
+    int output_length = LZ4_compressBound((int)inputsize);
+    char output[output_length];
+    int32 ret = LZ4_compressHC((const char *)input,
+                               (char *)&output,
+                               inputsize);
+    if (ret == 0) {
+        return false;
+    }
+
+    Extent::ByteArray::iterator it = into.begin();
+    char* outIt = output;
+    char* start = output;
+
+    for (; it != into.end() && outIt != (start + ret); ++it,++outIt) {
+        *it = *outIt;
+    }
+
+    into.resize(ret);
+
+    return true;
+#else
+    return false;
+#endif
+}
+
+// unpackLZ4 is called to decompress both lz4 and lz4hc 
+
+bool Extent::unpackLZ4(byte* output, byte* input,
+                       int32 input_size, int32 &output_size) {
+#if DATASERIES_ENABLE_LZ4
+   
+    int ret = LZ4_decompress_safe((const char *)input, (char *)output,
+                                  (int)input_size, (int)output_size);
+  
+    INVARIANT(ret > 0, "Error decompressing extent!");
+    output_size = (int32)ret;
+    return true;
+#else
+    return false;
+#endif
 }
 
 // TODO: test that this works, but I believe that if we do a resize on
@@ -959,138 +1184,108 @@ bool Extent::packLZF(byte *input, int32 inputsize,
 Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
                                          int compression_modes,
                                          int compression_level, byte *mode) {
+    if (input_size == 0) {
+        return new Extent::ByteArray;
+    }
+
     Extent::ByteArray *best_packed = NULL;
     *mode = 0;
-    if (input_size == 0) {
-	return new Extent::ByteArray;
-    }
-    // lzo coding doesn't understand how to limit the amount of memory
-    // used, so try that one first
-    if ((compression_modes & compress_lzo)) {
-	Extent::ByteArray *lzo_pack = new Extent::ByteArray;
-	if (packLZO(input,input_size,*lzo_pack,compression_level)) {
-	    if (false) cout << format("lzo packing goes to %d bytes\n") % lzo_pack->size();
-	    if (best_packed == NULL || lzo_pack->size() < best_packed->size()) {
-		best_packed = lzo_pack;
-		*mode = compress_mode_lzo;
-	    } 
-	}
-	if (best_packed != lzo_pack) { // we weren't best
-	    delete lzo_pack;
-	}
-    }
-    // lzf compresses really fast, try that one second
-    if ((compression_modes & compress_lzf)) {
-	Extent::ByteArray *lzf_pack = new Extent::ByteArray;
-	if (packLZF(input,input_size,*lzf_pack,compression_level)) {
-	    if (false) cout << format("lzf packing goes to %d bytes\n") % lzf_pack->size();
-	    if (best_packed == NULL || lzf_pack->size() < best_packed->size()) {
-		best_packed = lzf_pack;
-		*mode = compress_mode_lzf;
-	    } 
-	}
-	if (best_packed != lzf_pack) { // we weren't best
-	    delete lzf_pack;
-	}
+
+    // Notes on the order of attempted compression algorithms:
+    // On reasonably powerful machines today in 2013, this should not be of
+    // practical relevance.  So, the order in which the algorithms are attempted
+    // here simply follows the order mandated by the numbers assigned to the
+    // formats early on in the DataSeries design, as explained with regards to
+    // the compression_algs[] constant.
+    // However, before changing to this more-flexible approach, there was a
+    // specific order of the algorithms chosen.  The quotes below come from
+    // those old comments.
+    // lzo was done first because "lzo coding doesn't understand how to limit the
+    // amount of memory used"
+    // lzf was done second because it "compresses really fast"
+    // bz2 was third because it "tends to pack the best if used"
+    // zlib was last because, with no reason given
+    // -- DYS and ASB July 2013
+
+    // Loop over all the available compression algorithms.
+    // Starting at 1 because index 0 corresponds to no compression, which is
+    // being treated as a special case, and properly addressed at the bottom
+    // of this function.
+    for (int i = 1 ; i < Extent::num_comp_algs ; ++i) {
+        if (!(compression_modes & compression_algs[i].compress_flag)) {
+            continue;
+            // Skip over this compression algorithm if it's not supposed to be
+            // attempted (according to compression_modes, which is
+            // a bunch of binary flags)
+        }
+
+        Extent::ByteArray* next_pack = new Extent::ByteArray;
+        
+        bool packResult = compression_algs[i].packFunc(input, input_size,
+                                                       *next_pack, 
+                                                       compression_level);
+        if (packResult) {
+            if (best_packed == NULL || next_pack->size() < best_packed->size()) {
+                best_packed = next_pack;
+                *mode = i;
+            }
+        }
+
+        if (best_packed != next_pack) {
+            delete next_pack;
+        }
     }
     
-    // bz2 tends to pack the best if used, so try this one next
-    if ((compression_modes & compress_bz2)) {
-	Extent::ByteArray *bz2_pack = new Extent::ByteArray;
-	bz2_pack->resize(best_packed == NULL ? input_size : best_packed->size(), false);
-	if (packBZ2(input,input_size,*bz2_pack,compression_level)) {
-	    if (false) cout << format("bz2 packing goes to %d bytes\n") % bz2_pack->size();
-	    if (best_packed == NULL || bz2_pack->size() < best_packed->size()) {
-		delete best_packed;
-		best_packed = bz2_pack;
-		*mode = compress_mode_bz2;
-	    }
-	}
-	if (best_packed != bz2_pack) { // we weren't best
-	    delete bz2_pack;
-	}
-    }
-    // try zlib last...
-    if ((compression_modes & compress_zlib)) {
-	Extent::ByteArray *zlib_pack = new Extent::ByteArray;
-	zlib_pack->resize(best_packed == NULL ? input_size: best_packed->size(), false);
-	if (packZLib(input,input_size,*zlib_pack,compression_level)) {
-	    if (false) cout << format("zlib packing goes to %d bytes\n") % zlib_pack->size();
-	    if (best_packed == NULL || zlib_pack->size() < best_packed->size()) {
-		delete best_packed;
-		best_packed = zlib_pack;
-		*mode = compress_mode_zlib;
-	    }
-	}
-	if (best_packed != zlib_pack) { // we weren't best
-	    delete zlib_pack;
-	}
-    }
     if (best_packed == NULL) {
-	// must be no coding, or all compression algorithms worked badly
-	best_packed = new Extent::ByteArray;
-	best_packed->resize(input_size, false);
-	memcpy(best_packed->begin(),input,input_size);
+        // must be no coding, or all compression algorithms worked badly
+        best_packed = new Extent::ByteArray;
+        best_packed->resize(input_size, false);
+        memcpy(best_packed->begin(), input, input_size);
     }
+    // TODO: Check if having a ">=" rather than a ">" here would have any
+    // noticeable effect on the running time (positive or negative)
+    else if (best_packed->size() > (size_t)input_size) {
+        // So, no compression at all would have been better than any
+        // compression algorithm that we attempted.
+        delete best_packed;
+        best_packed = new Extent::ByteArray;
+        best_packed->resize(input_size, false);
+        memcpy(best_packed->begin(), input, input_size);
+        *mode = 0; // no compression
+    }
+
     return best_packed;
 }
 
-int32_t Extent::uncompressBytes(byte *into, byte *from, byte compression_mode, int32 intosize,
-                                int32 fromsize) {
-    int32 outsize = -1;
-    if (compression_mode == compress_mode_none) {
-	outsize = fromsize;
-        SINVARIANT(intosize >= fromsize);
-	memcpy(into, from, fromsize);
-#if DATASERIES_ENABLE_LZO
-    } else if (compression_mode == compress_mode_lzo) {
-	lzo_uint orig_len = intosize;
-	int ret = lzo1x_decompress_safe((const lzo_byte *)from,
-					fromsize,
-					(lzo_byte *)into,
-					&orig_len, NULL);
-	INVARIANT(ret == LZO_E_OK,
-		  format("Error decompressing extent (%d,%d =? %d)!")
-		  % ret % orig_len % intosize);
-	outsize = orig_len;
-#endif
-    } else if (compression_mode == compress_mode_zlib) {
-	uLongf destlen = intosize;
-	int ret = uncompress((Bytef *)into, &destlen,
-			     (const Bytef *)from, fromsize);
-	INVARIANT(ret == Z_OK, "Error decompressing extent!");
-	outsize = destlen;
-#if DATASERIES_ENABLE_BZIP2
-    } else if (compression_mode == compress_mode_bz2) {
-	unsigned int destlen = intosize;
-	int ret = BZ2_bzBuffToBuffDecompress((char *)into,
-					     &destlen,
-					     (char *)from,
-					     fromsize,
-					     0,0);
-	INVARIANT(ret == BZ_OK, "Error decompressing extent!");
-	outsize = destlen;
-#endif
-    } else if (compression_mode == compress_mode_lzf) {
-	unsigned int destlen = lzf_decompress((const void *)from, fromsize,
-					       (void *)into, intosize);
-	outsize = destlen;
-    } else {
-	string mode_name("unknown");
-	if (compression_mode == compress_mode_lzo) {
-	    mode_name = "lzo";
-	} else if (compression_mode == compress_mode_zlib) {
-	    mode_name = "zlib";
-	} else if (compression_mode == compress_mode_bz2) {
-	    mode_name = "bz2";
-	} else if (compression_mode == compress_mode_lzf) {
-	    mode_name = "lzf";
-	} 
-	FATAL_ERROR(format("Unknown/disabled compression method %s (#%d)")
-		    % mode_name % static_cast<int>(compression_mode));
+/* Compression_mode here refers to the integer assigned to
+   the compression algorithm rather than its boolean flag, as
+   the compressed data should have a specific compress type. */
+int32_t Extent::uncompressBytes(byte *into, byte *from, byte compression_mode,
+                                int32 intosize, int32 fromsize) {
+    if (intosize == 0) {
+        return 0;
     }
+
+    int32 outsize = -1;
+    string mode_name("unknown");
+    if (compression_mode == compress_mode_none) {
+        outsize = fromsize;
+        SINVARIANT(intosize >= fromsize);
+        memcpy(into, from, fromsize);
+        return outsize;
+    }
+
+    bool success = compression_algs[(int)compression_mode].unpackFunc(
+        into, from, fromsize, intosize );
+    if (success) {
+        outsize = intosize;
+        mode_name = compression_algs[(int)compression_mode].name;
+    } else {
+        FATAL_ERROR( "Failed to Uncompress" );
+    }
+
     INVARIANT(outsize >= 0 && outsize <= intosize, 
-	      format("bad uncompressbytes %d/%d") % intosize % fromsize);
+              format("bad uncompressbytes %d/%d") % intosize % fromsize);
     return outsize;
 }
 
@@ -1111,29 +1306,29 @@ const string Extent::getPackedExtentType(const Extent::ByteArray &from) {
 
 void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     if (!did_checks_init) {
-	setReadChecksFromEnv();
+        setReadChecksFromEnv();
     }
     INVARIANT(type->getName() == getPackedExtentType(from), 
-	      "Internal: type mismatch") ;
+              "Internal: type mismatch") ;
 
     TIME_UNPACKING(Clock::Tdbl time_start = Clock::tod());
     INVARIANT(from.size() > (6*4+2), "Invalid extent data, too small.");
 
     uLong adler32sum = adler32(0L, Z_NULL, 0);
     if (preuncompress_check) {
-	adler32sum = adler32(adler32sum, from.begin(), 4*4);
-	adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
+        adler32sum = adler32(adler32sum, from.begin(), 4*4);
+        adler32sum = adler32(adler32sum, from.begin() + 5*4, from.size()-5*4);
     }
     if (fix_endianness) {
-	for(int i=0;i<6*4;i+=4) {
-	    Extent::flip4bytes(from.begin() + i);
-	}
+        for (int i=0 ; i < 6*4 ; i += 4) {
+            Extent::flip4bytes(from.begin() + i);
+        }
     }
     if (preuncompress_check) {
-	INVARIANT(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
-		  format("Invalid extent data, adler32 digest"
-				" mismatch on compressed data %x != %x")
-		  % *(int32 *)(from.begin() + 4*4) % (int32)adler32sum);
+        INVARIANT(*(int32 *)(from.begin() + 4*4) == (int32)adler32sum,
+                  format("Invalid extent data, adler32 digest"
+                         " mismatch on compressed data %x != %x")
+                  % *(int32 *)(from.begin() + 4*4) % (int32)adler32sum);
     }
     TIME_UNPACKING(Clock::Tdbl time_upc = Clock::tod());
     int32 compressed_fixed_size = *(int32 *)from.begin();
@@ -1156,16 +1351,17 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     rounded_variable += (4-(rounded_variable%4))%4;
 
     INVARIANT(header_len + rounded_fixed + rounded_variable == from.size(),
-	      "Invalid extent data");
+              "Invalid extent data");
 
     fixeddata.resize(nrecords * type->rep.fixed_record_size, false);
+
     int32 fixed_uncompressed_size
-	= uncompressBytes(fixeddata.begin(),compressed_fixed_begin,
-			  compressed_fixed_mode,
-			  nrecords * type->rep.fixed_record_size,
-			  compressed_fixed_size);
+            = uncompressBytes(fixeddata.begin(),compressed_fixed_begin,
+                              compressed_fixed_mode,
+                              nrecords * type->rep.fixed_record_size,
+                              compressed_fixed_size);
     if (type->getPackNullCompact() != ExtentType::CompactNo) {
-	uncompactNulls(fixeddata, fixed_uncompressed_size);
+        uncompactNulls(fixeddata, fixed_uncompressed_size);
     }
     INVARIANT(fixed_uncompressed_size == nrecords * type->rep.fixed_record_size, "internal");
     
@@ -1173,52 +1369,54 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     INVARIANT(variable_size >= 4, "error unpacking, invalid variable size");
     *(int32 *)variabledata.begin() = 0;
     int32 variable_uncompressed_size
-	= uncompressBytes(variabledata.begin()+4, compressed_variable_begin,
-			  compressed_variable_mode,
-			  variable_size-4, compressed_variable_size);
+            = uncompressBytes(variabledata.begin()+4, compressed_variable_begin,
+                              compressed_variable_mode,
+                              variable_size-4, compressed_variable_size);
     INVARIANT(variable_uncompressed_size == variable_size - 4, "internal");
     uint32_t bjhash = 0;
     if (postuncompress_check) {
-	bjhash = lintel::bobJenkinsHash(1972, fixeddata.begin(), fixeddata.size());
-	bjhash = lintel::bobJenkinsHash(bjhash, variabledata.begin(), variabledata.size());
+        bjhash = lintel::bobJenkinsHash(1972, fixeddata.begin(), fixeddata.size());
+        bjhash = lintel::bobJenkinsHash(bjhash, variabledata.begin(), variabledata.size());
     }
     vector<int32> variable_sizes;
     variable_sizes.reserve(variable_sizes_batch_size);
     byte *endvarpos = variabledata.begin() + variabledata.size();
-    for(byte *curvarpos = &variabledata[4];curvarpos != endvarpos;) {
-	int32 size = *(int32 *)curvarpos;
-	if (postuncompress_check) {
-	    variable_sizes.push_back(size);
+    for (byte *curvarpos = &variabledata[4];curvarpos != endvarpos;) {
+        int32 size = *(int32 *)curvarpos;
+        if (postuncompress_check) {
+            variable_sizes.push_back(size);
 
-	    if (variable_sizes.size() == variable_sizes_batch_size) {
-		bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
-						4*variable_sizes_batch_size);
-		variable_sizes.resize(0);
-	    }
-	}
-	if (fix_endianness) {
-	    size = Extent::flip4bytes(size);
-	    *(int32 *)curvarpos = size;
-	}
-	curvarpos += 4 + Variable32Field::roundupSize(size);
-	INVARIANT(curvarpos <= endvarpos,"internal error on variable data");
+            if (variable_sizes.size() == variable_sizes_batch_size) {
+                bjhash = lintel::bobJenkinsHash(bjhash, &(variable_sizes[0]),
+                                                4*variable_sizes_batch_size);
+                variable_sizes.resize(0);
+            }
+        }
+        if (fix_endianness) {
+            size = Extent::flip4bytes(size);
+            *(int32 *)curvarpos = size;
+        }
+        curvarpos += 4 + Variable32Field::roundupSize(size);
+        INVARIANT(curvarpos <= endvarpos,"internal error on variable data");
     }
     if (postuncompress_check) {
-	bjhash = lintel::bobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
+        bjhash = lintel::bobJenkinsHash(bjhash,&(variable_sizes[0]),4*variable_sizes.size());
     }
+   
     variable_sizes.resize(0);
+
     INVARIANT(postuncompress_check == false 
-	      || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
-	      "final partially unpacked hash check failed");
+              || *(int32 *)(from.begin() + 5*4) == (int32)bjhash,
+              "final partially unpacked hash check failed");
     
     vector<ExtentType::pack_self_relativeT> psr_copy 
-	= type->rep.pack_self_relative;
-    for(unsigned int j=0;j<type->rep.pack_self_relative.size();++j) {
-	SINVARIANT(psr_copy[j].field_num < type->rep.field_info.size());
-	
-	SINVARIANT(psr_copy[j].double_prev_v == 0 &&
-		   psr_copy[j].int32_prev_v == 0 &&
-		   psr_copy[j].int64_prev_v == 0);
+            = type->rep.pack_self_relative;
+    for (unsigned int j=0;j<type->rep.pack_self_relative.size();++j) {
+        SINVARIANT(psr_copy[j].field_num < type->rep.field_info.size());
+        
+        SINVARIANT(psr_copy[j].double_prev_v == 0 &&
+                   psr_copy[j].int32_prev_v == 0 &&
+                   psr_copy[j].int64_prev_v == 0);
     }
     TIME_UNPACKING(Clock::Tdbl time_postuc = Clock::tod());
     int record_count = 0;
@@ -1227,153 +1425,153 @@ void Extent::unpackData(Extent::ByteArray &from, bool fix_endianness) {
     // made when profiling accidentally with the debugging library, 
     // and there is no point in removing the fix.
     const size_t type_variable32_field_columns_size 
-	= type->rep.variable32_field_columns.size();
+            = type->rep.variable32_field_columns.size();
     const size_t type_pack_scale_size = type->rep.pack_scale.size();
     const size_t type_pack_self_relative_size = psr_copy.size();
     const size_t type_pack_other_relative_size 
-	= type->rep.pack_other_relative.size();
+            = type->rep.pack_other_relative.size();
     const bool null_compact = type->getPackNullCompact() != ExtentType::CompactNo;
-    for(ExtentSeries::iterator pos(this); pos.morerecords(); ++pos) {
-	++record_count;
-	if (fix_endianness) {
-	    for(unsigned int j=0; j<type->rep.field_info.size(); j++) {
-		switch(type->rep.field_info[j].type)
-		    {
-		    case ExtentType::ft_bool: 
-		    case ExtentType::ft_byte:
-			break;
-		    case ExtentType::ft_int32:
-		    case ExtentType::ft_variable32:
-			Extent::flip4bytes(pos.record_start() 
-					   + type->rep.field_info[j].offset);
-			break;
-		    case ExtentType::ft_int64:
-		    case ExtentType::ft_double:
-			Extent::flip8bytes(pos.record_start() 
-					   + type->rep.field_info[j].offset);
-			break;
-		    default:
-			FATAL_ERROR(format("unknown field type %d for fix_endianness") % type->rep.field_info[j].type);
-			break;
-		    }
-	    }
-	}
-	// check variable sized fields ...
-	if (unpack_variable32_check) {
-	    for(unsigned int j=0;j<type_variable32_field_columns_size;j++) {
-		int field = type->rep.variable32_field_columns[j];
-		int32 offset = type->rep.field_info[field].offset;
-		int32 varoffset 
-		    = Variable32Field::getVarOffset(pos.record_start(), 
-						    offset);
-		// now check with the standard verification routine
-		Variable32Field::selfcheck(variabledata,varoffset);
-	    }
-	}     
-	// Unpacking is done in the reverse order as packing.
+    for (ExtentSeries::iterator pos(this); pos.morerecords(); ++pos) {
+        ++record_count;
+        if (fix_endianness) {
+            for (unsigned int j=0; j<type->rep.field_info.size(); j++) {
+                switch(type->rep.field_info[j].type)
+                {
+                    case ExtentType::ft_bool: 
+                    case ExtentType::ft_byte:
+                        break;
+                    case ExtentType::ft_int32:
+                    case ExtentType::ft_variable32:
+                        Extent::flip4bytes(pos.record_start() 
+                                           + type->rep.field_info[j].offset);
+                        break;
+                    case ExtentType::ft_int64:
+                    case ExtentType::ft_double:
+                        Extent::flip8bytes(pos.record_start() 
+                                           + type->rep.field_info[j].offset);
+                        break;
+                    default:
+                        FATAL_ERROR(format("unknown field type %d for fix_endianness") % type->rep.field_info[j].type);
+                        break;
+                }
+            }
+        }
+        // check variable sized fields ...
+        if (unpack_variable32_check) {
+            for (unsigned int j=0;j<type_variable32_field_columns_size;j++) {
+                int field = type->rep.variable32_field_columns[j];
+                int32 offset = type->rep.field_info[field].offset;
+                int32 varoffset 
+                        = Variable32Field::getVarOffset(pos.record_start(), 
+                                                        offset);
+                // now check with the standard verification routine
+                Variable32Field::selfcheck(variabledata,varoffset);
+            }
+        }     
+        // Unpacking is done in the reverse order as packing.
 
-	// unpack scaled fields ...
-	for(unsigned int j=0;j<type_pack_scale_size;++j) {
-	    int field = type->rep.pack_scale[j].field_num;
-	    INVARIANT(type->rep.field_info[field].type == ExtentType::ft_double,
-		      "internal error, scaled only supported for ft_double");
-	    int offset = type->rep.field_info[field].offset;
-	    double scale = type->rep.pack_scale[j].scale;
-	    double v = *(double *)(pos.record_start() + offset);
-	    *(double *)(pos.record_start() + offset) = v * scale;
-	}
+        // unpack scaled fields ...
+        for (unsigned int j=0;j<type_pack_scale_size;++j) {
+            int field = type->rep.pack_scale[j].field_num;
+            INVARIANT(type->rep.field_info[field].type == ExtentType::ft_double,
+                      "internal error, scaled only supported for ft_double");
+            int offset = type->rep.field_info[field].offset;
+            double scale = type->rep.pack_scale[j].scale;
+            double v = *(double *)(pos.record_start() + offset);
+            *(double *)(pos.record_start() + offset) = v * scale;
+        }
 
-	// unpack self-relative fields ...
-	for(unsigned int j=0;j<type_pack_self_relative_size;++j) {
-	    unsigned field_num = psr_copy[j].field_num;
-	    const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
-	    if (null_compact && compactIsNull(pos.record_start(),
-					      *field.null_compact_info)) {
-		// Don't overwrite nulls, must remain 0 to unpack properly.
-		continue;
-	    }
-	    int offset = field.offset;
-	    switch(field.type) 
-		{
-		case ExtentType::ft_double: {
-		    double v = *(double *)(pos.record_start() + offset) + psr_copy[j].double_prev_v;
-		    double multiplier = psr_copy[j].multiplier;
-		    double scale = psr_copy[j].scale;
-		    v = round(v * multiplier) * scale;
-		    *(double *)(pos.record_start() + offset) = v;
-		    psr_copy[j].double_prev_v = v;
-		}
-		break;
-		case ExtentType::ft_int32: {
-		    int32 v = *(int32 *)(pos.record_start() + offset) + psr_copy[j].int32_prev_v;
-		    *(int32 *)(pos.record_start() + offset) = v;
-		    psr_copy[j].int32_prev_v = v;
-		}		    
-		break;
-		case ExtentType::ft_int64: {
-		    int64 v = *(int64 *)(pos.record_start() + offset) + psr_copy[j].int64_prev_v;
-		    *(int64 *)(pos.record_start() + offset) = v;
-		    psr_copy[j].int64_prev_v = v;
-		}		    
-		break;
-		default:
-		    INVARIANT(field_num < type->rep.field_info.size(), 
-			      format("bad field number %d > %d") 
-			      % field_num % type->rep.field_info.size());
+        // unpack self-relative fields ...
+        for (unsigned int j=0;j<type_pack_self_relative_size;++j) {
+            unsigned field_num = psr_copy[j].field_num;
+            const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
+            if (null_compact && compactIsNull(pos.record_start(),
+                                              *field.null_compact_info)) {
+                // Don't overwrite nulls, must remain 0 to unpack properly.
+                continue;
+            }
+            int offset = field.offset;
+            switch(field.type) 
+            {
+                case ExtentType::ft_double: {
+                    double v = *(double *)(pos.record_start() + offset) + psr_copy[j].double_prev_v;
+                    double multiplier = psr_copy[j].multiplier;
+                    double scale = psr_copy[j].scale;
+                    v = round(v * multiplier) * scale;
+                    *(double *)(pos.record_start() + offset) = v;
+                    psr_copy[j].double_prev_v = v;
+                }
+                    break;
+                case ExtentType::ft_int32: {
+                    int32 v = *(int32 *)(pos.record_start() + offset) + psr_copy[j].int32_prev_v;
+                    *(int32 *)(pos.record_start() + offset) = v;
+                    psr_copy[j].int32_prev_v = v;
+                }                   
+                    break;
+                case ExtentType::ft_int64: {
+                    int64 v = *(int64 *)(pos.record_start() + offset) + psr_copy[j].int64_prev_v;
+                    *(int64 *)(pos.record_start() + offset) = v;
+                    psr_copy[j].int64_prev_v = v;
+                }                   
+                    break;
+                default:
+                    INVARIANT(field_num < type->rep.field_info.size(), 
+                              format("bad field number %d > %d") 
+                              % field_num % type->rep.field_info.size());
 
-		    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
-				% field.type % field.name
-				% field_num % offset % type->rep.name);
-		}
-	}
-	// unpack other-relative fields ...
-	for(unsigned int j=0;j<type_pack_other_relative_size;++j) {
-	    // 2004-09-26 I cannot believe this is worth a 1% speedup (pulling out v).
-	    const ExtentType::pack_other_relativeT &v 
-		= type->rep.pack_other_relative[j];
-	    int field_num = v.field_num;
-	    const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
-	    if (null_compact && compactIsNull(pos.record_start(), 
-					      *field.null_compact_info)) {
-		// Don't overwrite nulls, must remain 0 to unpack properly.
-		continue;
-	    }
-	    int base_field = v.base_field_num;
-	    int field_offset = field.offset;
-	    byte *base_ptr = pos.record_start()
-		+ type->rep.field_info[base_field].offset;
-	    switch(field.type)
-		{
-		case ExtentType::ft_double: {
-		    double v = *(double *)(pos.record_start() + field_offset);
-		    double base_v = *reinterpret_cast<double *>(base_ptr);
-		    *(double *)(pos.record_start() + field_offset) = v + base_v;
-		}
-		break;
-		case ExtentType::ft_int32: {
-		    int32 v = *(int32 *)(pos.record_start() + field_offset);
-		    int32 base_v = *reinterpret_cast<int32 *>(base_ptr);
-		    *(int32 *)(pos.record_start() + field_offset) = v + base_v;
-		}
-		break;
-		case ExtentType::ft_int64: {
-		    int64 v = *(int64 *)(pos.record_start() + field_offset);
-		    int64 base_v = *reinterpret_cast<int64 *>(base_ptr);
-		    *(int64 *)(pos.record_start() + field_offset) = v + base_v;
-		}
-		break;
-		default:
-		    FATAL_ERROR("Internal error");
-		}
-	}
-    }	
+                    FATAL_ERROR(format("Internal Error: unrecognized field type %d for field %s (#%d) offset %d in type %s")
+                                % field.type % field.name
+                                % field_num % offset % type->rep.name);
+            }
+        }
+        // unpack other-relative fields ...
+        for (unsigned int j=0;j<type_pack_other_relative_size;++j) {
+            // 2004-09-26 I cannot believe this is worth a 1% speedup (pulling out v).
+            const ExtentType::pack_other_relativeT &v 
+                    = type->rep.pack_other_relative[j];
+            int field_num = v.field_num;
+            const ExtentType::fieldInfo &field(type->rep.field_info[field_num]);
+            if (null_compact && compactIsNull(pos.record_start(), 
+                                              *field.null_compact_info)) {
+                // Don't overwrite nulls, must remain 0 to unpack properly.
+                continue;
+            }
+            int base_field = v.base_field_num;
+            int field_offset = field.offset;
+            byte *base_ptr = pos.record_start()
+                             + type->rep.field_info[base_field].offset;
+            switch(field.type)
+            {
+                case ExtentType::ft_double: {
+                    double v = *(double *)(pos.record_start() + field_offset);
+                    double base_v = *reinterpret_cast<double *>(base_ptr);
+                    *(double *)(pos.record_start() + field_offset) = v + base_v;
+                }
+                    break;
+                case ExtentType::ft_int32: {
+                    int32 v = *(int32 *)(pos.record_start() + field_offset);
+                    int32 base_v = *reinterpret_cast<int32 *>(base_ptr);
+                    *(int32 *)(pos.record_start() + field_offset) = v + base_v;
+                }
+                    break;
+                case ExtentType::ft_int64: {
+                    int64 v = *(int64 *)(pos.record_start() + field_offset);
+                    int64 base_v = *reinterpret_cast<int64 *>(base_ptr);
+                    *(int64 *)(pos.record_start() + field_offset) = v + base_v;
+                }
+                    break;
+                default:
+                    FATAL_ERROR("Internal error");
+            }
+        }
+    }   
     INVARIANT(record_count == nrecords,"internal error");
     TIME_UNPACKING(Clock::Tdbl time_done = Clock::tod();
-    printf("%d records, unpackcheck %.6g; uncompress %.6g; unpack %.6g\n",
-	   nrecords,
-	   time_upc - time_start,
-	   time_postuc - time_upc,
-	   time_done - time_postuc));
+                   printf("%d records, unpackcheck %.6g; uncompress %.6g; unpack %.6g\n",
+                          nrecords,
+                          time_upc - time_start,
+                          time_postuc - time_upc,
+                          time_done - time_postuc));
 }
 
 uint32_t
@@ -1382,8 +1580,8 @@ Extent::unpackedSize(Extent::ByteArray &from, bool fix_endianness, const ExtentT
     uint32_t nrecords = *reinterpret_cast<uint32_t *>(from.begin() + 8);
     uint32_t variable_size = *reinterpret_cast<uint32_t *>(from.begin() + 12);
     if (fix_endianness) {
-	nrecords = flip4bytes(nrecords);
-	variable_size = flip4bytes(variable_size);
+        nrecords = flip4bytes(nrecords);
+        variable_size = flip4bytes(variable_size);
     }
     return nrecords * type->fixedrecordsize() + variable_size;
 }
@@ -1391,12 +1589,12 @@ Extent::unpackedSize(Extent::ByteArray &from, bool fix_endianness, const ExtentT
 bool Extent::checkedPread(int fd, off64_t offset, byte *into, int amount, bool eof_ok) {
     ssize_t ret = pread64(fd,into,amount,offset);
     INVARIANT(ret != -1, format("error reading %d bytes: %s") 
-	      % amount % strerror(errno));
+              % amount % strerror(errno));
     if (ret == 0 && eof_ok) {
-	return false;
+        return false;
     }
     INVARIANT(ret == amount, format("partial read %d of %d bytes: %s\n")
-	      % ret % amount % strerror(errno));
+              % ret % amount % strerror(errno));
     return true;
 }
 
@@ -1404,8 +1602,8 @@ bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool 
     int prefix_size = 6*4 + 4*1;
     into.resize(prefix_size, false);
     if (checkedPread(fd,offset,into.begin(),prefix_size, true) == false) {
-	into.resize(0);
-	return false;
+        into.resize(0);
+        return false;
     }
     offset += prefix_size;
     byte *l = into.begin();
@@ -1413,15 +1611,15 @@ bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool 
     int32_t compressed_variable = *(int32_t *)l; l += 4;
     int32 typenamelen = into[6*4+2];
     if (need_bitflip) {
-	compressed_fixed = flip4bytes(compressed_fixed);
-	compressed_variable = flip4bytes(compressed_variable);
+        compressed_fixed = flip4bytes(compressed_fixed);
+        compressed_variable = flip4bytes(compressed_variable);
     }
     if (compressed_fixed == -1) {
-	DataSeriesSink::verifyTail(into.begin(), need_bitflip,"*unknown*");
-	return false;
+        DataSeriesSink::verifyTail(into.begin(), need_bitflip,"*unknown*");
+        return false;
     }
     INVARIANT(compressed_fixed >= 0 && compressed_variable >= 0
-	      && typenamelen >= 0, "Error reading extent");
+              && typenamelen >= 0, "Error reading extent");
     INVARIANT(static_cast<uint32_t>(compressed_fixed) < max_packed_size 
               && static_cast<uint32_t>(compressed_variable) < max_packed_size,
               format("Excessively large extent is almost definitely corruption sizes=%d/%d")
@@ -1436,13 +1634,13 @@ bool Extent::preadExtent(int fd, off64_t &offset, Extent::ByteArray &into, bool 
                    % compressed_fixed % compressed_variable % extentsize);
     into.resize(extentsize, false);
     checkedPread(fd, offset, into.begin() + prefix_size, 
-		 extentsize - prefix_size);
+                 extentsize - prefix_size);
     offset += extentsize - prefix_size;
     return true;
 }
 
 void Extent::run_flip4bytes(uint32_t *buf, unsigned buflen) {
-    for(unsigned i=0;i<buflen;++i) {
-	buf[i] = Extent::flip4bytes(buf[i]);
+    for (unsigned i=0;i<buflen;++i) {
+        buf[i] = Extent::flip4bytes(buf[i]);
     }
 }

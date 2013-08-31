@@ -107,7 +107,7 @@ sub make_lvusagesheet {
 	    $lvusagesheet->write($cur_line,6,$lvios->{read}->[1]);
 	    $lvusagesheet->write($cur_line,7,$lvios->{write}->[0]);
 	    $lvusagesheet->write($cur_line,8,$lvios->{write}->[1]);
-	    for(my $i=0;$i<3;++$i) {
+	    for (my $i=0;$i<3;++$i) {
 		last if $i == @{$lvios->{procs}};
 		my $procinfo = $lvios->{procs}->[$i];
 		$lvusagesheet->write($cur_line,9+$i,
@@ -121,7 +121,7 @@ sub make_lvusagesheet {
 	}
 	++$cur_line;
     }
-    while(my ($lvid,$lvinfo) = each %{$lvpvproc->{lvs}}) {
+    while (my ($lvid,$lvinfo) = each %{$lvpvproc->{lvs}}) {
 	next if $lvinfo->{found};
 	push(@warnings,"didn't find lvid $lvid in sys_info?!, it had $lvinfo->{read}->[0] reads and $lvinfo->{write}->[0] writes.");
     }
@@ -210,7 +210,7 @@ sub make_lvinfosheet {
 	    my %devused;
 
 	    my $nstripes = $lvinfo->{nstripes} || 1;
-	    for(my $i=0;$i<$nstripes;++$i) {
+	    for (my $i=0;$i<$nstripes;++$i) {
 		if ($nstripes > 1) {
 		    $lvinfosheet->write($cur_line,4,"$i/$nstripes");
 		} else {
@@ -325,7 +325,7 @@ sub make_xpinfosheet {
     write_titles($xpinfosheet,2,
 		 "XP ID","ACP","Array Group","CU:ldev","Port/Device");
     my %summary;
-    while(my($rdsk,$diskinfo) = each %{$sysinfo->{diskinfo}}) {
+    while (my($rdsk,$diskinfo) = each %{$sysinfo->{diskinfo}}) {
 	next unless $diskinfo->{type} eq 'xp';
 	die "?! xpinfosheet.1 $diskinfo->{raid_group}\n"
 	    unless $diskinfo->{raid_group} =~ /^([1-4]):(\d{2})$/o;
@@ -366,7 +366,7 @@ sub make_xpinfosheet {
 
 sub write_titles {
     my ($sheet,$row,@titles) = @_;
-    for(my $i = 0;$i<@titles;++$i) {
+    for (my $i = 0;$i<@titles;++$i) {
 	$sheet->write($row,$i,$titles[$i],$titleformat);
     }
 }
@@ -419,7 +419,7 @@ sub add_string_rollup {
 	die "?? $hexid\n" unless defined $rollup->{$hexid};
 	push(@{$rollup->{$hexid}->{procs}},$i);
     }
-    while(my($k,$v) = each %$rollup) {
+    while (my($k,$v) = each %$rollup) {
 	$v->{procs} = pick_topn($topn,@{$v->{procs}});
     }
 }
@@ -432,7 +432,7 @@ sub pick_topn {
     my @bybytes = sort { $b->{bytes} <=> $a->{bytes} } @data;
     my @bycount = sort { $b->{iocount} <=> $a->{iocount} } @data;
     my @ret;
-    for(my $i=0;$i<@data;++$i) {
+    for (my $i=0;$i<@data;++$i) {
 	unless (defined $bycount[$i]->{used}) {
 	    push(@ret,$bycount[$i]);
 	    $bycount[$i]->{used} = 1;
@@ -473,7 +473,7 @@ sub getIdStringRollup {
     die "??2\n" unless $data->[$i] eq 'rollup_id rollup_string read_count read_bytes write_count write_bytes ';
     ++$i;
     my @ret;
-    while($data->[$i] !~ /^# Extent/o) {
+    while ($data->[$i] !~ /^# Extent/o) {
 	die "??3 $data->[$i]\n" 
 	    unless $data->[$i] =~ /^(\d+) (\S+) (\d+) (\d+) (\d+) (\d+) $/o;
 	push(@ret,{ 'id' => $1, 
@@ -499,7 +499,7 @@ sub getIdRollup {
     die "??2\n" unless $data->[$i] eq 'rollup_id read_count read_bytes write_count write_bytes ';
     ++$i;
     my @ret;
-    while($data->[$i] !~ /^# Extent/o) {
+    while ($data->[$i] !~ /^# Extent/o) {
 	die "??3 $data->[$i]\n" unless $data->[$i] =~ /^(\d+) (\d+) (\d+) (\d+) (\d+) $/o;
 	push(@ret,{ 'id' => $1, 
 		    'read_count' => $2,
@@ -524,7 +524,7 @@ sub new_0_2 {
     my ($first_time,$last_time) = ($1,$2);
     ++$i;
     die "?! bad lvpv output 3\n" unless $data[$i] =~ /^Rollup by PV:$/o;
-    while($data[$i] !~ /^Rollup by LV:$/o) {
+    while ($data[$i] !~ /^Rollup by LV:$/o) {
 	die "?! bad lvpv output\n" if $i == @data;
 	++$i;
     }
@@ -533,7 +533,7 @@ sub new_0_2 {
 		'last_time' => $last_time};
     bless $this, $class;
     my %lvrollup;
-    while($i < @data) {
+    while ($i < @data) {
 	last if $data[$i] =~ /^read \d+ ps extents, \d+ io extents$/o;
 	die "?! bad lvpvoutput 1 '$data[$i]'\n" 
 	    unless $data[$i] =~ m!^  lv=40([0-9a-f]+) reads=(\d+\.\d+) MB/(\d+) ios, writes=(\d+\.\d+) MB/(\d+) ios; commands:$!o;

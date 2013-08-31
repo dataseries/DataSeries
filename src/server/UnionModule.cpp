@@ -3,7 +3,7 @@
 #include "DSSModule.hpp"
 
 class UnionModule : public OutputSeriesModule {
-public:
+  public:
     struct Compare {
         Compare(const vector<UM_UnionTable> &sources) : sources(sources) { }
         // Below has almost the same logic as sorting, but not quite.
@@ -47,14 +47,14 @@ public:
             // They are equal, order by union position
             return ia >= ib;
         }
-    private:
+      private:
         const vector<UM_UnionTable> &sources;
     };
 
     UnionModule(const vector<UM_UnionTable> &in_sources, const vector<SortColumn> &order_columns,
                 const string &output_table_name) 
-        : sources(in_sources), compare(sources), queue(compare, sources.size()),
-          order_columns(order_columns), output_table_name(output_table_name)
+            : sources(in_sources), compare(sources), queue(compare, sources.size()),
+              order_columns(order_columns), output_table_name(output_table_name)
     {
         SINVARIANT(!sources.empty());
     }
@@ -164,8 +164,8 @@ public:
 };
 
 OutputSeriesModule::OSMPtr dataseries::makeUnionModule
-    (const vector<UM_UnionTable> &in_sources, const vector<SortColumn> &order_columns,
-     const string &output_table_name) {
+(const vector<UM_UnionTable> &in_sources, const vector<SortColumn> &order_columns,
+ const string &output_table_name) {
     return OutputSeriesModule::OSMPtr(new UnionModule(in_sources, order_columns,
                                                       output_table_name));
 }

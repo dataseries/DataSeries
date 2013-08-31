@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003,2004,2007 Hewlett-Packard Development Company, LP
+  (c) Copyright 2003,2004,2007 Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file 
@@ -12,34 +12,34 @@
 */
 
 /*
-=pod
+  =pod
 
-=head1 NAME
+  =head1 NAME
 
-bacct2ds - convert the LSF bacct accounting logs into dataseries
+  bacct2ds - convert the LSF bacct accounting logs into dataseries
 
-=head1 SYNOPSIS
+  =head1 SYNOPSIS
 
- % bacct2ds input-name cluster-name output-ds-name
+  % bacct2ds input-name cluster-name output-ds-name
 
-=head1 DESCRIPTION
+  =head1 DESCRIPTION
 
-bacct2ds converts the LSF bacct accounting logs into dataseries.  It also has some complicated
-logic for parsing job names and directories and extracting from them information to record in
-specific columns.  That parsing is currently specific to parsing the names used by a feature
-animation company. bacct2ds is most commonly used with the bacct2ds batch-parallel module 
-to convert a large collection of accounting files in single go.
+  bacct2ds converts the LSF bacct accounting logs into dataseries.  It also has some complicated
+  logic for parsing job names and directories and extracting from them information to record in
+  specific columns.  That parsing is currently specific to parsing the names used by a feature
+  animation company. bacct2ds is most commonly used with the bacct2ds batch-parallel module 
+  to convert a large collection of accounting files in single go.
 
-=head1 EXAMPLES
+  =head1 EXAMPLES
 
- % bacct2ds log.bacct palo-alto log.ds
- % gunzip -c 2010-01-05.bacct.gz | bacct2ds - lax 2010-01-05.ds
+  % bacct2ds log.bacct palo-alto log.ds
+  % gunzip -c 2010-01-05.bacct.gz | bacct2ds - lax 2010-01-05.ds
 
-=head1 SEE ALSO
+  =head1 SEE ALSO
 
-batch-parallel(1)
+  batch-parallel(1)
 
-=cut
+  =cut
 */
 
 // TODO: fix this up so that it has a portion which parses the
@@ -147,63 +147,63 @@ int jobdirectory_odd_fail_count = 0;
 
 // TODO: add conversion statistics
 const string lsf_grizzly_xml(
-  "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Batch::LSF::Grizzly\" version=\"1.0\">\n"
-  "  <field type=\"variable32\" name=\"cluster_name\" pack_unique=\"yes\" />\n"
+    "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"Batch::LSF::Grizzly\" version=\"1.0\">\n"
+    "  <field type=\"variable32\" name=\"cluster_name\" pack_unique=\"yes\" />\n"
 
-// This gets passed through encrypted, which, unless you're archiving
-// the lsf logs as dataseries, serves little purpose.  Worse, it
-// generates lots of large unique encrypted strings, which really
-// hurts the compression process.
-//  "  <field type=\"variable32\" name=\"job_name\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
+    // This gets passed through encrypted, which, unless you're archiving
+    // the lsf logs as dataseries, serves little purpose.  Worse, it
+    // generates lots of large unique encrypted strings, which really
+    // hurts the compression process.
+    //  "  <field type=\"variable32\" name=\"job_name\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
 
-  "  <field type=\"bool\" name=\"job_name_unpacked\" note=\"true if the conversion managed to decode the job name to generate production,sequence,shot,task,object,subtask,jobname_username, may have some of production/sequence/shot anyway from decoding the directory path\" />\n"
-  "  <field type=\"bool\" name=\"directory_path_unpacked\" note=\"true if the conversion managed to decode the directory path, may have production/sequence/shot anyway from decoding the job name\" />\n"
-  "  <field type=\"bool\" name=\"directory_name_info_matched\" opt_nullable=\"yes\" note=\"true if prod/seq/shot matched in decode of directory name and job name, false on mismatch, null if one or the other didn't decode\" />\n"
-  "  <field type=\"int32\" name=\"meta_id\" opt_nullable=\"yes\" pack_relative=\"meta_id\" />\n"
-  "  <field type=\"variable32\" name=\"production\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"sequence\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"shot\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"task\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"object\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually object the task is operating on\" />\n"
-  "  <field type=\"variable32\" name=\"subtask\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"jobname_username\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"sometimes the generic submission account, sometimes the user that actually put in the request which is submitted by the generic account, the username field always contains the LSF username\" />\n"
-  "  <field type=\"variable32\" name=\"frames\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"start_frame\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"end_frame\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"nframes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"frame_step\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"job_parallel_limit\" opt_nullable=\"yes\" note=\"how many jobs can run at the same time\" />\n"
-  "  <field type=\"variable32\" name=\"command\" pack_unique=\"yes\" note=\"this is the full command with all arguments\" />\n"
-  "  <field type=\"variable32\" name=\"command_path\" pack_unique=\"yes\" note=\"this is the full path to the binary executed\" />\n"
-  "  <field type=\"variable32\" name=\"command_name\" pack_unique=\"yes\" note=\"this is the name only of the binary executed\" />\n"
-  "  <field type=\"double\" name=\"job_resolution\" opt_nullable=\"yes\" note=\"special resolution of 2.33 is ddr resolution, larger numbers mean fewer pixels, e.g. job_res=2 ==> 1/2 the pixels in each dimension.\" />\n"
-  "  <field type=\"int32\" name=\"job_frame\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"created\" pack_relative=\"created\" />\n"
-  "  <field type=\"int32\" name=\"job_id\" pack_relative=\"job_id\" />\n"
-  "  <field type=\"int32\" name=\"job_idx\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"username\" pack_unique=\"yes\" />\n"
-  "  <field type=\"int32\" name=\"user_id\" />\n"
-  "  <field type=\"int32\" name=\"event_time\" note=\"current time for a still pending/running job, end_time for a finished job\" pack_relative=\"event_time\" />\n"
-  "  <field type=\"int32\" name=\"submit_time\" pack_relative=\"submit_time\" />\n"
-  "  <field type=\"int32\" name=\"req_start_time\" opt_nullable=\"yes\" note=\"requested start-after time, if any\" pack_relative=\"req_start_time\" />\n"
-  "  <field type=\"int32\" name=\"start_time\" opt_nullable=\"yes\" pack_relative=\"submit_time\" />\n"
-  "  <field type=\"int32\" name=\"end_time\" opt_nullable=\"yes\" pack_relative=\"start_time\" />\n"
-  "  <field type=\"variable32\" name=\"queue\" pack_unique=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"email\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"status\" pack_unique=\"yes\" note=\"status of LSF job, usually EXIT or DONE\" />\n"
-  "  <field type=\"int32\" name=\"status_int\" note=\"integer version of status, 32=EXIT, 64=DONE\" />\n"
-  "  <field type=\"variable32\" name=\"team\" pack_unique=\"yes\" note=\"from the LSF fair-share name\" />\n"
-  "  <field type=\"int32\" name=\"exit_code\" />\n"
-  "  <field type=\"double\" name=\"user_time\" pack_scale=\"1e-6\" />\n"
-  "  <field type=\"double\" name=\"system_time\" pack_scale=\"1e-6\" />\n"
-  "  <field type=\"double\" name=\"cpu_time\" pack_scale=\"1e-6\" />\n"
-  "  <field type=\"int64\" name=\"max_memory\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
-  "  <field type=\"int64\" name=\"max_swap\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
-  "  <field type=\"int32\" name=\"num_processors\" />\n"
-  "  <field type=\"int32\" name=\"num_hosts\" />\n"
-  "  <field type=\"variable32\" name=\"exec_host\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
-  "  <field type=\"variable32\" name=\"exec_host_group\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually machines are purchased in batches; if we can identify the batch, which one is it? dedicated groups (almost always serving LSF jobs) are named dedicated-\" />\n"
-  "</ExtentType>\n");
+    "  <field type=\"bool\" name=\"job_name_unpacked\" note=\"true if the conversion managed to decode the job name to generate production,sequence,shot,task,object,subtask,jobname_username, may have some of production/sequence/shot anyway from decoding the directory path\" />\n"
+    "  <field type=\"bool\" name=\"directory_path_unpacked\" note=\"true if the conversion managed to decode the directory path, may have production/sequence/shot anyway from decoding the job name\" />\n"
+    "  <field type=\"bool\" name=\"directory_name_info_matched\" opt_nullable=\"yes\" note=\"true if prod/seq/shot matched in decode of directory name and job name, false on mismatch, null if one or the other didn't decode\" />\n"
+    "  <field type=\"int32\" name=\"meta_id\" opt_nullable=\"yes\" pack_relative=\"meta_id\" />\n"
+    "  <field type=\"variable32\" name=\"production\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"sequence\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"shot\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"task\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"object\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually object the task is operating on\" />\n"
+    "  <field type=\"variable32\" name=\"subtask\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"jobname_username\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"sometimes the generic submission account, sometimes the user that actually put in the request which is submitted by the generic account, the username field always contains the LSF username\" />\n"
+    "  <field type=\"variable32\" name=\"frames\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"start_frame\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"end_frame\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"nframes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"frame_step\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"job_parallel_limit\" opt_nullable=\"yes\" note=\"how many jobs can run at the same time\" />\n"
+    "  <field type=\"variable32\" name=\"command\" pack_unique=\"yes\" note=\"this is the full command with all arguments\" />\n"
+    "  <field type=\"variable32\" name=\"command_path\" pack_unique=\"yes\" note=\"this is the full path to the binary executed\" />\n"
+    "  <field type=\"variable32\" name=\"command_name\" pack_unique=\"yes\" note=\"this is the name only of the binary executed\" />\n"
+    "  <field type=\"double\" name=\"job_resolution\" opt_nullable=\"yes\" note=\"special resolution of 2.33 is ddr resolution, larger numbers mean fewer pixels, e.g. job_res=2 ==> 1/2 the pixels in each dimension.\" />\n"
+    "  <field type=\"int32\" name=\"job_frame\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"created\" pack_relative=\"created\" />\n"
+    "  <field type=\"int32\" name=\"job_id\" pack_relative=\"job_id\" />\n"
+    "  <field type=\"int32\" name=\"job_idx\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"username\" pack_unique=\"yes\" />\n"
+    "  <field type=\"int32\" name=\"user_id\" />\n"
+    "  <field type=\"int32\" name=\"event_time\" note=\"current time for a still pending/running job, end_time for a finished job\" pack_relative=\"event_time\" />\n"
+    "  <field type=\"int32\" name=\"submit_time\" pack_relative=\"submit_time\" />\n"
+    "  <field type=\"int32\" name=\"req_start_time\" opt_nullable=\"yes\" note=\"requested start-after time, if any\" pack_relative=\"req_start_time\" />\n"
+    "  <field type=\"int32\" name=\"start_time\" opt_nullable=\"yes\" pack_relative=\"submit_time\" />\n"
+    "  <field type=\"int32\" name=\"end_time\" opt_nullable=\"yes\" pack_relative=\"start_time\" />\n"
+    "  <field type=\"variable32\" name=\"queue\" pack_unique=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"email\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"status\" pack_unique=\"yes\" note=\"status of LSF job, usually EXIT or DONE\" />\n"
+    "  <field type=\"int32\" name=\"status_int\" note=\"integer version of status, 32=EXIT, 64=DONE\" />\n"
+    "  <field type=\"variable32\" name=\"team\" pack_unique=\"yes\" note=\"from the LSF fair-share name\" />\n"
+    "  <field type=\"int32\" name=\"exit_code\" />\n"
+    "  <field type=\"double\" name=\"user_time\" pack_scale=\"1e-6\" />\n"
+    "  <field type=\"double\" name=\"system_time\" pack_scale=\"1e-6\" />\n"
+    "  <field type=\"double\" name=\"cpu_time\" pack_scale=\"1e-6\" />\n"
+    "  <field type=\"int64\" name=\"max_memory\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
+    "  <field type=\"int64\" name=\"max_swap\" units=\"bytes\" opt_nullable=\"yes\" note=\"0 if job didn't run, null if unknown\" />\n"
+    "  <field type=\"int32\" name=\"num_processors\" />\n"
+    "  <field type=\"int32\" name=\"num_hosts\" />\n"
+    "  <field type=\"variable32\" name=\"exec_host\" pack_unique=\"yes\" opt_nullable=\"yes\" />\n"
+    "  <field type=\"variable32\" name=\"exec_host_group\" pack_unique=\"yes\" opt_nullable=\"yes\" note=\"usually machines are purchased in batches; if we can identify the batch, which one is it? dedicated groups (almost always serving LSF jobs) are named dedicated-\" />\n"
+    "</ExtentType>\n");
 
 ExtentSeries lsf_grizzly_series;
 OutputModule *lsf_grizzly_outmodule;
@@ -213,7 +213,7 @@ Variable32Field cluster_name(lsf_grizzly_series, "cluster_name");
 BoolField job_name_unpacked(lsf_grizzly_series, "job_name_unpacked");
 BoolField directory_path_unpacked(lsf_grizzly_series, "directory_path_unpacked");
 BoolField directory_name_info_matched(lsf_grizzly_series,"directory_name_info_matched",
-				      Field::flag_nullable);
+                                      Field::flag_nullable);
 Int32Field meta_id(lsf_grizzly_series, "meta_id", Field::flag_nullable);
 Variable32Field production(lsf_grizzly_series, "production", Field::flag_nullable);
 Variable32Field sequence(lsf_grizzly_series, "sequence", Field::flag_nullable);
@@ -263,26 +263,26 @@ parselsfstring(char *start,string &into, int maxlen)
 {
     static string tmpstring;
     if ((int)tmpstring.size() < maxlen) {
-	tmpstring.resize(maxlen);
+        tmpstring.resize(maxlen);
     }
     INVARIANT(start[0] == '"', format("bad %s") % start);
     char *finish = start+1;
 
     int i = 0;
-    while(true) {
-	if (finish[0] == '"' && finish[1] == '"') {
-	    tmpstring[i] = '"'; ++i;
-	    // into.push_back('"');
-	    finish += 2;
-	} else if (finish[0] == '"') {
-	    finish += 1;
-	    break;
-	} else {
-	    tmpstring[i] = finish[0]; ++i;
-	    // into.push_back(finish[0]);
-	    finish += 1;
-	}
-	INVARIANT(*finish != '\n' && *finish != '\0', "parse error");
+    while (true) {
+        if (finish[0] == '"' && finish[1] == '"') {
+            tmpstring[i] = '"'; ++i;
+            // into.push_back('"');
+            finish += 2;
+        } else if (finish[0] == '"') {
+            finish += 1;
+            break;
+        } else {
+            tmpstring[i] = finish[0]; ++i;
+            // into.push_back(finish[0]);
+            finish += 1;
+        }
+        INVARIANT(*finish != '\n' && *finish != '\0', "parse error");
     }
 
     SINVARIANT(i < maxlen);
@@ -295,17 +295,17 @@ parsenumber(char *start,string &into, int line_num)
 {
     char *finish = start;
     if (*finish == '-') {
-	++finish;
+        ++finish;
     }
-    while(true) {
-	if (isdigit(*finish) || *finish == '.') {
-	    ++finish;
-	} else {
-	    INVARIANT(*finish == ' ' || *finish == '\n',
-		    format("parse error, got '%c' at line %d from '%s'")
-		      % *finish % line_num % start);
-	    break;
-	}
+    while (true) {
+        if (isdigit(*finish) || *finish == '.') {
+            ++finish;
+        } else {
+            INVARIANT(*finish == ' ' || *finish == '\n',
+                      format("parse error, got '%c' at line %d from '%s'")
+                      % *finish % line_num % start);
+            break;
+        }
     }
     into.assign(start,finish-start);
     return finish;
@@ -317,38 +317,38 @@ extract_fields(char *buf, vector<string> &fields, int linenum)
     static const bool debug_extract_fields = false;
 
     if (debug_extract_fields) {
-	cout << format("%s parsed as:\n") % buf;
+        cout << format("%s parsed as:\n") % buf;
     }
     int maxlen = strlen(buf);
-    while(*buf != '\n') {
-	string tmp;
-	INVARIANT(*buf != '\0', "parse error");
-	if (*buf == '"') {
-	    buf = parselsfstring(buf,tmp,maxlen);
-	} else {
-	    buf = parsenumber(buf,tmp, linenum);
-	}
-	if (debug_extract_fields) {
-	    cout << format("%d. %s\n") % fields.size() % tmp.c_str();
-	}
-	fields.push_back(tmp);
-	if (*buf == ' ') {
-	    ++buf;
-	    INVARIANT(*buf != '\n' && *buf != '\0', "parse error");
-	} else {
-	    INVARIANT(*buf == '\n',
-		      format("parse error, got '%c' from '%s' at line %d")
-		      % *buf % buf % linenum);
-	}
+    while (*buf != '\n') {
+        string tmp;
+        INVARIANT(*buf != '\0', "parse error");
+        if (*buf == '"') {
+            buf = parselsfstring(buf,tmp,maxlen);
+        } else {
+            buf = parsenumber(buf,tmp, linenum);
+        }
+        if (debug_extract_fields) {
+            cout << format("%d. %s\n") % fields.size() % tmp.c_str();
+        }
+        fields.push_back(tmp);
+        if (*buf == ' ') {
+            ++buf;
+            INVARIANT(*buf != '\n' && *buf != '\0', "parse error");
+        } else {
+            INVARIANT(*buf == '\n',
+                      format("parse error, got '%c' from '%s' at line %d")
+                      % *buf % buf % linenum);
+        }
     }
 }
 
 bool encmatch(const string &in, const string &match)
 {
     if (encryptString(in) == match)
-	return true;
+        return true;
     if (match == empty_string) {
-	cerr << format("%s -> %s\n") % in % hexstring(encryptString(in));
+        cerr << format("%s -> %s\n") % in % hexstring(encryptString(in));
     }
     return false;
 }
@@ -424,12 +424,12 @@ bool encmatch(const string &in, const string &match)
 // 59.  commandSpool (%s) --   >= 4.0
 // 60.  Reservation ID (%s) -- >= 5.1
 // 61.  additionalInfo (%s) -- >= 6.0
-// 62.  exitInfo (%d)	       >= 6.0
+// 62.  exitInfo (%d)          >= 6.0
 // 63.  warningAction (%s)     >= 6.0
 // 64.  warningTimePeriod (%d) >= 6.0
 // 65.  chargedSAAP (%s)       >= 6.0
 // 66.  unknown (%d)           >= 6.0 // docs say this field doesn't exist, but it's in the files
-// 67.  sla(%s)		       >= 6.0
+// 67.  sla(%s)                >= 6.0
 // 68.  unknown(%s)            >= 6.1
 
 // by default when printing as SQL, unsigned 0's -> NULL,
@@ -477,154 +477,154 @@ struct job_info {
     ExtentType::int64 max_memory, max_swap;
     string exec_host;
     job_info()
-	: job_name_unpacked(false), directory_name_unpacked(false), meta_id(0), start_frame(0), end_frame(0),
-	  frame_step(0), nframes(0), job_parallel_limit(0), job_resolution(-1), job_frame(0),
-	  created(0), job_id(0), job_idx(0), user_id(0), event_time(0),
-	  submit_time(0), req_start_time(0), start_time(0), end_time(0),
-	  status_int(0), exit_code(0), user_time(-1), system_time(-1),
-	  cpu_time(-1), max_memory(-1), max_swap(-1)
+            : job_name_unpacked(false), directory_name_unpacked(false), meta_id(0), start_frame(0), end_frame(0),
+              frame_step(0), nframes(0), job_parallel_limit(0), job_resolution(-1), job_frame(0),
+              created(0), job_id(0), job_idx(0), user_id(0), event_time(0),
+              submit_time(0), req_start_time(0), start_time(0), end_time(0),
+              status_int(0), exit_code(0), user_time(-1), system_time(-1),
+              cpu_time(-1), max_memory(-1), max_swap(-1)
     { }
 
     void parse_command(const string &lsf_command, const string &lsf_idx_str) {
-	command = lsf_command;
-	int space_idx = command.find(" ");
-	if (space_idx == -1)
-	    space_idx = command.size();
-	int slash_idx = command.rfind("/",space_idx);
-	if (slash_idx == -1) {
-	    slash_idx = 0;
-	} else {
-	    slash_idx += 1; //skip the slash
-	}
-	command_name = command.substr(slash_idx,space_idx - slash_idx);
-	command_path = command.substr(0,space_idx);
+        command = lsf_command;
+        int space_idx = command.find(" ");
+        if (space_idx == -1)
+            space_idx = command.size();
+        int slash_idx = command.rfind("/",space_idx);
+        if (slash_idx == -1) {
+            slash_idx = 0;
+        } else {
+            slash_idx += 1; //skip the slash
+        }
+        command_name = command.substr(slash_idx,space_idx - slash_idx);
+        command_path = command.substr(0,space_idx);
 
-	if (false) {
-	    cout << format("XX %s -> '%s' ; '%s'\n") % command % command_name
-		% command_path;
-	}
-	job_resolution = -1;
-	job_frame = 0;
-	int res_idx = lsf_command.find("-r ");
-	if (res_idx == -1) {
-	    job_resolution = -1;
-	} else {
-	    SINVARIANT(lsf_command[res_idx] == '-' &&
-		       lsf_command[res_idx+1] == 'r' &&
-		       lsf_command[res_idx+2] == ' ');
-	    res_idx = res_idx+2;
-	    bool found_res = true;
-	    while(isspace(lsf_command[res_idx])) {
-		++res_idx;
-		if (res_idx >= (int)lsf_command.size()) {
-		    found_res = false;
-		    break;
-		}
-	    }
-	    int res_end = res_idx;
-	    while(found_res && res_end < (int)lsf_command.size() &&
-		  !isspace(lsf_command[res_end]) &&
-		  lsf_command[res_end] != '"' &&
-		  lsf_command[res_end] != ';') {
-		if (isdigit(lsf_command[res_end]) ||
-		    lsf_command[res_end] == '.') {
-		    ++res_end;
-		} else if (lsf_command[res_end] == 'd' && lsf_command[res_end+1] == 'd' &&
-			   lsf_command[res_end+2] == 'r') {
-		    res_end += 3;
-		    break;
-		} else {
-		    found_res = false;
-		    if (print_parse_warnings) {
-			cerr << format("bad resolution char '%c' '%c' in %s\n")
-			    % lsf_command[res_end] % lsf_command[res_end+1] % lsf_command;
-		    }
-		    break;
-		}
+        if (false) {
+            cout << format("XX %s -> '%s' ; '%s'\n") % command % command_name
+                    % command_path;
+        }
+        job_resolution = -1;
+        job_frame = 0;
+        int res_idx = lsf_command.find("-r ");
+        if (res_idx == -1) {
+            job_resolution = -1;
+        } else {
+            SINVARIANT(lsf_command[res_idx] == '-' &&
+                       lsf_command[res_idx+1] == 'r' &&
+                       lsf_command[res_idx+2] == ' ');
+            res_idx = res_idx+2;
+            bool found_res = true;
+            while (isspace(lsf_command[res_idx])) {
+                ++res_idx;
+                if (res_idx >= (int)lsf_command.size()) {
+                    found_res = false;
+                    break;
+                }
+            }
+            int res_end = res_idx;
+            while (found_res && res_end < (int)lsf_command.size() &&
+                  !isspace(lsf_command[res_end]) &&
+                  lsf_command[res_end] != '"' &&
+                  lsf_command[res_end] != ';') {
+                if (isdigit(lsf_command[res_end]) ||
+                    lsf_command[res_end] == '.') {
+                    ++res_end;
+                } else if (lsf_command[res_end] == 'd' && lsf_command[res_end+1] == 'd' &&
+                           lsf_command[res_end+2] == 'r') {
+                    res_end += 3;
+                    break;
+                } else {
+                    found_res = false;
+                    if (print_parse_warnings) {
+                        cerr << format("bad resolution char '%c' '%c' in %s\n")
+                                % lsf_command[res_end] % lsf_command[res_end+1] % lsf_command;
+                    }
+                    break;
+                }
 
-	    }
-	    if (found_res) {
-		string res_str = lsf_command.substr(res_idx,res_end-res_idx);
-		if (res_str == str_ddr) {
-		    job_resolution = 2.33; // if you change this, update the note.
-		} else {
-		    job_resolution = atof(res_str.c_str());
-		}
-		if (false) {
-		    cout << format("%s -> %d..%d %s ; %f\n") % lsf_command % res_idx % res_end
-			% res_str % job_resolution;
-		}
-	    } else {
-		job_resolution = -1;
-	    }
-	}
-	unsigned lsf_idx = uintfield(lsf_idx_str.c_str());
-	int frame_idx = lsf_command.rfind("-c ");
-	int array_idx = lsf_command.rfind("-array");
-	int frames_idx = lsf_command.rfind("-frames ");
-	if (lsf_idx == 0) {
-	    if (frame_idx >= 0 && isdigit(lsf_command[frame_idx+3])) { // some commands take -c, but it isn't a frame #
-		job_frame = atoi(lsf_command.c_str() + (frame_idx + 3));
-		if (false) cout << format("XX %s -> %d\n") % lsf_command % job_frame;
-	    }
-	    //	    INVARIANT(frame_idx == -1, format("bad %s %d") % lsf_command % lsf_idx);
-	} else if (array_idx > 0) {
-	    job_frame = lsf_idx;
-	} else if (frame_idx == -1) {
-	    string enccmd = encryptString(command_name);
-	    bool *v = encrypted_ok_idx_noframe.lookup(enccmd);
-	    if (v) {
-		SINVARIANT(*v);
-	    } else if (print_frame_lsfidx_warnings) {
-		cerr << format("Warning, got lsf_idx (but not frame option) for unrecognized '%s'/'%s'/'%s'\n")
-		    % command_name % hexstring(encryptString(command_name)) % command;
-	    }
-	    job_frame = 0;
-	} else if (frame_idx > 0 && frames_idx > 0) {
-	    string encx = encryptString(lsf_command.substr(frame_idx,  6));
-	    if (encx == encrypted_parse_special[2] &&
-		lsf_command.size() >= static_cast<uint32_t>(frames_idx) + 9 + 12 && 
-		lsf_command.substr(frames_idx+9, 12) == str_lsb_jobindex) {
-		job_frame = lsf_idx;
-	    } else {
-		job_frame = 0;
-		if (print_parse_warning_non_override_frame_number) {
-		    cerr << format("Warning non-override frame numbers in '%s':\n")
-			% lsf_command;
-		    if (encx != encrypted_parse_special[2]) {
-			cerr << format("  '%s' => '%s' != '%s'\n")
-			    % lsf_command.substr(frame_idx, 6)
-			    % hexstring(encx) % hexstring(encrypted_parse_special[2]);
-		    }
-		    if (lsf_command.substr(frames_idx+9, 12) != str_lsb_jobindex) {
-			cerr << format("  '%s' != '%s'\n") % lsf_command.substr(frames_idx+9, 12)
-			    % str_lsb_jobindex;
-		    }			
-		}
-	    }
-	} else {
-	    INVARIANT(frame_idx >= 0,
-		      format("bad frame index %d in command '%s' lsf_idx=%d")
-		      % frame_idx % lsf_command % lsf_idx);
-	    if (false) {
-		cout << format("XX %s -> %d %d '%s'\n") % lsf_command
-		    % lsf_idx % frame_idx % lsf_command.substr(frame_idx,5);
-	    }
-	    if (lsf_command.substr(frame_idx+3,13) == str_dollar_lsb_jobindex ||
-		lsf_command.substr(frame_idx+3,15) == str_quote_dollar_lsb_jobindex ||
-		lsf_command.substr(frame_idx+3,12) == str_frame_number ||
-		lsf_command.substr(frame_idx+3,2) == str_percent_d ||
-		atoi(lsf_command.c_str()+frame_idx+3) == (int)lsf_idx) {
-		job_frame = lsf_idx;
-	    } else {
-		job_frame = 0;
-		if (print_parse_warnings) {
-		    cerr << format("Warning, inconsistent frame numbers lsf_idx = %d; -c = %s ; %s\n")
-			% lsf_idx % lsf_command.substr(frame_idx+3,13) % lsf_command;
-		}
-	    }
-	    if (false) cout << format("YY %s -> %d\n") % lsf_command % job_frame;
-	}
+            }
+            if (found_res) {
+                string res_str = lsf_command.substr(res_idx,res_end-res_idx);
+                if (res_str == str_ddr) {
+                    job_resolution = 2.33; // if you change this, update the note.
+                } else {
+                    job_resolution = atof(res_str.c_str());
+                }
+                if (false) {
+                    cout << format("%s -> %d..%d %s ; %f\n") % lsf_command % res_idx % res_end
+                            % res_str % job_resolution;
+                }
+            } else {
+                job_resolution = -1;
+            }
+        }
+        unsigned lsf_idx = uintfield(lsf_idx_str.c_str());
+        int frame_idx = lsf_command.rfind("-c ");
+        int array_idx = lsf_command.rfind("-array");
+        int frames_idx = lsf_command.rfind("-frames ");
+        if (lsf_idx == 0) {
+            if (frame_idx >= 0 && isdigit(lsf_command[frame_idx+3])) { // some commands take -c, but it isn't a frame #
+                job_frame = atoi(lsf_command.c_str() + (frame_idx + 3));
+                if (false) cout << format("XX %s -> %d\n") % lsf_command % job_frame;
+            }
+            //      INVARIANT(frame_idx == -1, format("bad %s %d") % lsf_command % lsf_idx);
+        } else if (array_idx > 0) {
+            job_frame = lsf_idx;
+        } else if (frame_idx == -1) {
+            string enccmd = encryptString(command_name);
+            bool *v = encrypted_ok_idx_noframe.lookup(enccmd);
+            if (v) {
+                SINVARIANT(*v);
+            } else if (print_frame_lsfidx_warnings) {
+                cerr << format("Warning, got lsf_idx (but not frame option) for unrecognized '%s'/'%s'/'%s'\n")
+                        % command_name % hexstring(encryptString(command_name)) % command;
+            }
+            job_frame = 0;
+        } else if (frame_idx > 0 && frames_idx > 0) {
+            string encx = encryptString(lsf_command.substr(frame_idx,  6));
+            if (encx == encrypted_parse_special[2] &&
+                lsf_command.size() >= static_cast<uint32_t>(frames_idx) + 9 + 12 && 
+                lsf_command.substr(frames_idx+9, 12) == str_lsb_jobindex) {
+                job_frame = lsf_idx;
+            } else {
+                job_frame = 0;
+                if (print_parse_warning_non_override_frame_number) {
+                    cerr << format("Warning non-override frame numbers in '%s':\n")
+                            % lsf_command;
+                    if (encx != encrypted_parse_special[2]) {
+                        cerr << format("  '%s' => '%s' != '%s'\n")
+                                % lsf_command.substr(frame_idx, 6)
+                                % hexstring(encx) % hexstring(encrypted_parse_special[2]);
+                    }
+                    if (lsf_command.substr(frames_idx+9, 12) != str_lsb_jobindex) {
+                        cerr << format("  '%s' != '%s'\n") % lsf_command.substr(frames_idx+9, 12)
+                                % str_lsb_jobindex;
+                    }                   
+                }
+            }
+        } else {
+            INVARIANT(frame_idx >= 0,
+                      format("bad frame index %d in command '%s' lsf_idx=%d")
+                      % frame_idx % lsf_command % lsf_idx);
+            if (false) {
+                cout << format("XX %s -> %d %d '%s'\n") % lsf_command
+                        % lsf_idx % frame_idx % lsf_command.substr(frame_idx,5);
+            }
+            if (lsf_command.substr(frame_idx+3,13) == str_dollar_lsb_jobindex ||
+                lsf_command.substr(frame_idx+3,15) == str_quote_dollar_lsb_jobindex ||
+                lsf_command.substr(frame_idx+3,12) == str_frame_number ||
+                lsf_command.substr(frame_idx+3,2) == str_percent_d ||
+                atoi(lsf_command.c_str()+frame_idx+3) == (int)lsf_idx) {
+                job_frame = lsf_idx;
+            } else {
+                job_frame = 0;
+                if (print_parse_warnings) {
+                    cerr << format("Warning, inconsistent frame numbers lsf_idx = %d; -c = %s ; %s\n")
+                            % lsf_idx % lsf_command.substr(frame_idx+3,13) % lsf_command;
+                }
+            }
+            if (false) cout << format("YY %s -> %d\n") % lsf_command % job_frame;
+        }
     }
     static const int jStatusPEND = 1;
     static const int jStatusRUN  = 4;
@@ -632,86 +632,86 @@ struct job_info {
     static const int jStatusEXIT = 32;
     static const int jStatusDONE = 64;
     void parse_jobline42(vector<string> &fields, int exechostsoffset, int tailoffset) {
-	created = uintfield(fields[2]);
-	job_id = uintfield(fields[3]);
-	job_idx = uintfield(fields[55+tailoffset]);
-	username = fields[11];
-	user_id = uintfield(fields[4]);
-	event_time = uintfield(fields[2]);
-	submit_time = uintfield(fields[7]);
-	req_start_time = uintfield(fields[8]);
-	start_time = uintfield(fields[10]);
-	if (fields[0] == job_finish) {
-	    end_time = event_time;
-	} else if (fields[0] == job_cache) {
-	    end_time = 0;
-	} else {
-	    FATAL_ERROR("internal");
-	}
-	queue = fields[12];
-	email = fields[49+tailoffset];
-	if (fields[26+tailoffset] == empty_string) {
-	    status_int = -1;
-	} else {
-	    status_int = uintfield(fields[26+tailoffset]);
-	}
-	if (status_int == jStatusPEND) {
-	    status = status_pend;
-	} else if (status_int == jStatusRUN) {
-	    status = status_run;
-	} else if (status_int == jStatusSSUSP) {
-	    status = status_ssusp;
-	} else if (status_int == jStatusEXIT) {
-	    status = status_exit;
-	} else if (status_int == jStatusDONE) {
-	    status = status_done;
-	} else {
-	    FATAL_ERROR(format("unrecognized job status %d") % status_int);
-	}
-	team = fields[50+tailoffset];
-	exit_code = uintfield(fields[51+tailoffset]);
-	user_time = dblfield(fields[30+tailoffset]);
-	system_time = dblfield(fields[31+tailoffset]);
-	cpu_time = user_time + system_time;
-	int nhosts = uintfield(fields[24+exechostsoffset]);
-	if (nhosts == 0) {
-	    // empty
-	} else if (nhosts == 1) {
-	    exec_host = fields[25+tailoffset];
-	} else {
-	    exec_host = "*lots; not handled correctly yet*";
-	    cerr << format("Warning, got %d exechosts\n") % nhosts;
-	}
+        created = uintfield(fields[2]);
+        job_id = uintfield(fields[3]);
+        job_idx = uintfield(fields[55+tailoffset]);
+        username = fields[11];
+        user_id = uintfield(fields[4]);
+        event_time = uintfield(fields[2]);
+        submit_time = uintfield(fields[7]);
+        req_start_time = uintfield(fields[8]);
+        start_time = uintfield(fields[10]);
+        if (fields[0] == job_finish) {
+            end_time = event_time;
+        } else if (fields[0] == job_cache) {
+            end_time = 0;
+        } else {
+            FATAL_ERROR("internal");
+        }
+        queue = fields[12];
+        email = fields[49+tailoffset];
+        if (fields[26+tailoffset] == empty_string) {
+            status_int = -1;
+        } else {
+            status_int = uintfield(fields[26+tailoffset]);
+        }
+        if (status_int == jStatusPEND) {
+            status = status_pend;
+        } else if (status_int == jStatusRUN) {
+            status = status_run;
+        } else if (status_int == jStatusSSUSP) {
+            status = status_ssusp;
+        } else if (status_int == jStatusEXIT) {
+            status = status_exit;
+        } else if (status_int == jStatusDONE) {
+            status = status_done;
+        } else {
+            FATAL_ERROR(format("unrecognized job status %d") % status_int);
+        }
+        team = fields[50+tailoffset];
+        exit_code = uintfield(fields[51+tailoffset]);
+        user_time = dblfield(fields[30+tailoffset]);
+        system_time = dblfield(fields[31+tailoffset]);
+        cpu_time = user_time + system_time;
+        int nhosts = uintfield(fields[24+exechostsoffset]);
+        if (nhosts == 0) {
+            // empty
+        } else if (nhosts == 1) {
+            exec_host = fields[25+tailoffset];
+        } else {
+            exec_host = "*lots; not handled correctly yet*";
+            cerr << format("Warning, got %d exechosts\n") % nhosts;
+        }
     }
     void parse_maxrmem(vector<string> &fields, int tailoffset, int linenum) {
-	int rmem_kb = intfield(fields[56+tailoffset]);
-	int rswap_kb = intfield(fields[57+tailoffset]);
-	if (start_time > 0) {
-	    if (rmem_kb <= 0 || rswap_kb <= 0) {
-		if (print_parse_warnings) {
-		    cerr << format("warning, invalid rmem/rswap for started job %d/%d on line %d, sse %d .. %d .. %d\n") % rmem_kb % rswap_kb % linenum % submit_time % (start_time-submit_time) % (end_time-start_time);
-		}
-		rmem_kb = -1;
-		rswap_kb = -1;
-	    }
-	} else {
-	    // sometimes lsf uses -1 in not run things, sometimes 0; dunno
-	    // what causes it to choose -1
-	    if (rmem_kb == -1) rmem_kb = 0;
-	    if (rswap_kb == -1) rswap_kb = 0;
-	    if (rmem_kb != 0 || rswap_kb != 0) {
-		if (print_parse_warnings) {
-		    cerr << format("warning, invalid rmem/rswap %d/%d on line %d\n")
-			% rmem_kb % rswap_kb % linenum;
-		}
-		rmem_kb = 0;
-		rswap_kb = 0;
-	    }
-	}
-	if (rmem_kb >= 0) {
-	    max_memory = (ExtentType::int64)rmem_kb * 1024;
-	    max_swap = (ExtentType::int64)rswap_kb * 1024;
-	}
+        int rmem_kb = intfield(fields[56+tailoffset]);
+        int rswap_kb = intfield(fields[57+tailoffset]);
+        if (start_time > 0) {
+            if (rmem_kb <= 0 || rswap_kb <= 0) {
+                if (print_parse_warnings) {
+                    cerr << format("warning, invalid rmem/rswap for started job %d/%d on line %d, sse %d .. %d .. %d\n") % rmem_kb % rswap_kb % linenum % submit_time % (start_time-submit_time) % (end_time-start_time);
+                }
+                rmem_kb = -1;
+                rswap_kb = -1;
+            }
+        } else {
+            // sometimes lsf uses -1 in not run things, sometimes 0; dunno
+            // what causes it to choose -1
+            if (rmem_kb == -1) rmem_kb = 0;
+            if (rswap_kb == -1) rswap_kb = 0;
+            if (rmem_kb != 0 || rswap_kb != 0) {
+                if (print_parse_warnings) {
+                    cerr << format("warning, invalid rmem/rswap %d/%d on line %d\n")
+                            % rmem_kb % rswap_kb % linenum;
+                }
+                rmem_kb = 0;
+                rswap_kb = 0;
+            }
+        }
+        if (rmem_kb >= 0) {
+            max_memory = (ExtentType::int64)rmem_kb * 1024;
+            max_swap = (ExtentType::int64)rswap_kb * 1024;
+        }
     }
 };
 
@@ -729,15 +729,15 @@ xpcre_get_substring(const string &str, int *ovector, int rc, int stringnum, stri
 {
     const char *stringptr;
     CHECKED(pcre_get_substring(str.c_str(),ovector,rc,stringnum,
-			       &stringptr) >= 0, "get substring failed");
+                               &stringptr) >= 0, "get substring failed");
     outstr = stringptr;
     pcre_free((void *)stringptr);
 }
 
 bool
 extract_framerange_step_parallel(job_info &jinfo,const string &framebits,
-				 int ovector[], int rc,
-				 int step_pos, int limit_pos)
+                                 int ovector[], int rc,
+                                 int step_pos, int limit_pos)
 {
     jinfo.frames = framebits;
     string str;
@@ -749,15 +749,15 @@ extract_framerange_step_parallel(job_info &jinfo,const string &framebits,
     jinfo.end_frame = uintfield(str);
 
     if (step_pos > 0) {
-	xpcre_get_substring(framebits,ovector,rc,step_pos,str);
-	jinfo.frame_step = uintfield(str);
+        xpcre_get_substring(framebits,ovector,rc,step_pos,str);
+        jinfo.frame_step = uintfield(str);
     }  else {
-	jinfo.frame_step = 1;
+        jinfo.frame_step = 1;
     }
 
     if (limit_pos > 0) {
-	xpcre_get_substring(framebits,ovector,rc,limit_pos,str);
-	jinfo.job_parallel_limit = uintfield(str);
+        xpcre_get_substring(framebits,ovector,rc,limit_pos,str);
+        jinfo.job_parallel_limit = uintfield(str);
     }
 
     jinfo.nframes = (jinfo.end_frame - jinfo.start_frame + 1)/jinfo.frame_step;
@@ -772,8 +772,8 @@ xpcre_compile(const char *regex)
 
     pcre *ret = pcre_compile(regex,0,&errptr,&erroffset,NULL);
     INVARIANT(ret != NULL,
-	      format("pcre compile(%s) failed at: %s")
-	      % regex % errptr);
+              format("pcre compile(%s) failed at: %s")
+              % regex % errptr);
     return ret;
 }
 
@@ -781,112 +781,112 @@ bool // true on success
 parse_frameinfo(const string &framebits, job_info &jinfo)
 {
     if (regex_frame_one == NULL) {
-	regex_frame_one = xpcre_compile("^(\\d+)$");
-	regex_frame_range = xpcre_compile("^\\[(\\d+)-(\\d+)\\]$");
-	regex_frame_range_step_1 =
-	    xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]$");
-	regex_frame_range_step_2 =
-	    xpcre_compile("^\\[(\\d+)-(\\d+)\\]%(\\d+)$");
-	regex_frame_range_step_3 =
-	    xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]%(\\d+)$");
-	regex_frame_list = xpcre_compile("^\\[(\\d+)(,\\d+)*,(\\d+)\\]$");
-	regex_frame_complex = xpcre_compile("^\\[(\\d|-|:|,)+\\](%\\d+)?$");
-	regex_frame_single_step = 
-	    xpcre_compile("^\\[(\\d)+\\]%(\\d+)$");
+        regex_frame_one = xpcre_compile("^(\\d+)$");
+        regex_frame_range = xpcre_compile("^\\[(\\d+)-(\\d+)\\]$");
+        regex_frame_range_step_1 =
+                xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]$");
+        regex_frame_range_step_2 =
+                xpcre_compile("^\\[(\\d+)-(\\d+)\\]%(\\d+)$");
+        regex_frame_range_step_3 =
+                xpcre_compile("^\\[(\\d+)-(\\d+):(\\d+)\\]%(\\d+)$");
+        regex_frame_list = xpcre_compile("^\\[(\\d+)(,\\d+)*,(\\d+)\\]$");
+        regex_frame_complex = xpcre_compile("^\\[(\\d|-|:|,)+\\](%\\d+)?$");
+        regex_frame_single_step = 
+                xpcre_compile("^\\[(\\d)+\\]%(\\d+)$");
     }
     const int novector = 30;
     int ovector[novector];
 
     int rc = pcre_exec(regex_frame_one, NULL, framebits.c_str(),
-		       framebits.length(),0,0,ovector,novector);
+                       framebits.length(),0,0,ovector,novector);
     if (rc == 2) {
-	jinfo.frames = framebits;
-	string str;
-	xpcre_get_substring(framebits,ovector,rc,1,str);
-	jinfo.start_frame = jinfo.end_frame = uintfield(str);
-	jinfo.nframes = 1;
-	return true;
+        jinfo.frames = framebits;
+        string str;
+        xpcre_get_substring(framebits,ovector,rc,1,str);
+        jinfo.start_frame = jinfo.end_frame = uintfield(str);
+        jinfo.nframes = 1;
+        return true;
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      format("inexplicable error from pcre: %d") % rc);
+              format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_range, NULL, framebits.c_str(),
-		   framebits.length(),0,0,ovector,novector);
+                   framebits.length(),0,0,ovector,novector);
     if (rc == 3) {
-	jinfo.frames = framebits;
-	string str;
-	xpcre_get_substring(framebits,ovector,rc,1,str);
-	jinfo.start_frame = uintfield(str);
-	xpcre_get_substring(framebits,ovector,rc,2,str);
-	jinfo.end_frame = uintfield(str);
-	jinfo.nframes = jinfo.end_frame - jinfo.start_frame + 1;
-	jinfo.frame_step = 1;
-	return true;
+        jinfo.frames = framebits;
+        string str;
+        xpcre_get_substring(framebits,ovector,rc,1,str);
+        jinfo.start_frame = uintfield(str);
+        xpcre_get_substring(framebits,ovector,rc,2,str);
+        jinfo.end_frame = uintfield(str);
+        jinfo.nframes = jinfo.end_frame - jinfo.start_frame + 1;
+        jinfo.frame_step = 1;
+        return true;
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      format("inexplicable error from pcre: %d") % rc);
+              format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_range_step_1, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 4) {
-	return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,3,-1);
+        return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,3,-1);
     }
 
     rc = pcre_exec(regex_frame_range_step_2, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 4) {
-	return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,-1,3);
+        return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,-1,3);
     }
 
     rc = pcre_exec(regex_frame_range_step_3, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 5) {
-	return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,3,4);
+        return extract_framerange_step_parallel(jinfo,framebits,ovector,rc,3,4);
     }
 
     rc = pcre_exec(regex_frame_list, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 4) {
-	jinfo.frames = framebits;
-	string str;
-	xpcre_get_substring(framebits,ovector,rc,1,str);
-	jinfo.start_frame = uintfield(str);
-	xpcre_get_substring(framebits,ovector,rc,3,str);
-	jinfo.end_frame = uintfield(str);
-	jinfo.nframes = 1;
-	for(unsigned i = 0;i<framebits.length();++i) {
-	    if (framebits[i] == ',')
-		jinfo.nframes += 1;
-	}
-	return true;
+        jinfo.frames = framebits;
+        string str;
+        xpcre_get_substring(framebits,ovector,rc,1,str);
+        jinfo.start_frame = uintfield(str);
+        xpcre_get_substring(framebits,ovector,rc,3,str);
+        jinfo.end_frame = uintfield(str);
+        jinfo.nframes = 1;
+        for (unsigned i = 0;i<framebits.length();++i) {
+            if (framebits[i] == ',')
+                jinfo.nframes += 1;
+        }
+        return true;
     }
     rc = pcre_exec(regex_frame_complex, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 2 || rc == 3) {
-	jinfo.frames = framebits;
-	// dunno how to extract start, end, count, step from that mess
-	return true;
+        jinfo.frames = framebits;
+        // dunno how to extract start, end, count, step from that mess
+        return true;
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      format("inexplicable error from pcre: %d") % rc);
+              format("inexplicable error from pcre: %d") % rc);
 
     rc = pcre_exec(regex_frame_single_step, NULL, framebits.c_str(),
-		   framebits.length(), 0,0,ovector,novector);
+                   framebits.length(), 0,0,ovector,novector);
     if (rc == 3) {
-	jinfo.frames = framebits;
-	string str;
-	xpcre_get_substring(framebits,ovector,rc,1,str);
-	jinfo.start_frame = uintfield(str);
-	jinfo.end_frame = uintfield(str);
-	jinfo.nframes = 1;
-	xpcre_get_substring(framebits,ovector,rc,2,str);
-	jinfo.frame_step = uintfield(str);
-	return true;
+        jinfo.frames = framebits;
+        string str;
+        xpcre_get_substring(framebits,ovector,rc,1,str);
+        jinfo.start_frame = uintfield(str);
+        jinfo.end_frame = uintfield(str);
+        jinfo.nframes = 1;
+        xpcre_get_substring(framebits,ovector,rc,2,str);
+        jinfo.frame_step = uintfield(str);
+        return true;
     }
 
     if (false) {
-	cout << format("Unable to parse frameinfo %s // %s\n")
-	    % framebits % hexstring(encryptString(framebits));
+        cout << format("Unable to parse frameinfo %s // %s\n")
+                % framebits % hexstring(encryptString(framebits));
     }
     return false;
 
@@ -1059,11 +1059,11 @@ static string encrypted_parse_special_hexstrings[] =
 };
 
 void unhex_array(string hexstrings[], int nhexstrings,
-		 vector<string> &raw)
+                 vector<string> &raw)
 {
     raw.resize(nhexstrings);
-    for(int i = 0;i<nhexstrings;++i) {
-	raw[i] = hex2raw(hexstrings[i]);
+    for (int i = 0;i<nhexstrings;++i) {
+        raw[i] = hex2raw(hexstrings[i]);
     }
 }
 
@@ -1091,47 +1091,47 @@ static hostgroup_defnsT hostgroup_defns[] =
 void prepEncryptedStuff()
 {
     unhex_array(encrypted_parse_directory_hexstrings,
-		sizeof(encrypted_parse_directory_hexstrings)/sizeof(string),
-		encrypted_parse_directory);
+                sizeof(encrypted_parse_directory_hexstrings)/sizeof(string),
+                encrypted_parse_directory);
     unhex_array(encrypted_parse_periodsep_hexstrings,
-		sizeof(encrypted_parse_periodsep_hexstrings)/sizeof(string),
-		encrypted_parse_periodsep);
+                sizeof(encrypted_parse_periodsep_hexstrings)/sizeof(string),
+                encrypted_parse_periodsep);
     unhex_array(encrypted_parse_colonsep_hexstrings,
-		sizeof(encrypted_parse_colonsep_hexstrings)/sizeof(string),
-		encrypted_parse_colonsep);
+                sizeof(encrypted_parse_colonsep_hexstrings)/sizeof(string),
+                encrypted_parse_colonsep);
     unhex_array(encrypted_parse_pipesep_hexstrings,
-		sizeof(encrypted_parse_pipesep_hexstrings)/sizeof(string),
-		encrypted_parse_pipesep);
+                sizeof(encrypted_parse_pipesep_hexstrings)/sizeof(string),
+                encrypted_parse_pipesep);
     unhex_array(encrypted_parse_special_hexstrings,
-		sizeof(encrypted_parse_special_hexstrings)/sizeof(string),
-		encrypted_parse_special);
+                sizeof(encrypted_parse_special_hexstrings)/sizeof(string),
+                encrypted_parse_special);
 
     int count = sizeof(noframerange_strings)/sizeof(string);
 
-    for(int i=0;i<count;++i) {
-	string f = hex2raw(noframerange_strings[i]);
-	noframerange_map[f] = true;
+    for (int i=0;i<count;++i) {
+        string f = hex2raw(noframerange_strings[i]);
+        noframerange_map[f] = true;
     }
 
     count = sizeof(ok_idx_noframe_strings)/sizeof(string);
-    for(int i=0;i<count;++i) {
-	string f = hex2raw(ok_idx_noframe_strings[i]);
-	encrypted_ok_idx_noframe[f] = true;
+    for (int i=0;i<count;++i) {
+        string f = hex2raw(ok_idx_noframe_strings[i]);
+        encrypted_ok_idx_noframe[f] = true;
     }
 
-    for(unsigned i = 0; i < sizeof(hostgroup_defns)/sizeof(hostgroup_defnsT); 
-	++i) {
-	encrypted_hostgroups[hex2raw(hostgroup_defns[i].encrypted)] 
-	    = hostgroup_defns[i].group;
+    for (unsigned i = 0; i < sizeof(hostgroup_defns)/sizeof(hostgroup_defnsT); 
+        ++i) {
+        encrypted_hostgroups[hex2raw(hostgroup_defns[i].encrypted)] 
+                = hostgroup_defns[i].group;
     }
 }
 
 bool
 isuint(const string &a)
 {
-    for(unsigned i=0;i<a.size();++i) {
-	if (!isdigit(a[i]))
-	    return false;
+    for (unsigned i=0;i<a.size();++i) {
+        if (!isdigit(a[i]))
+            return false;
     }
     return true;
 }
@@ -1154,568 +1154,568 @@ parse_pipesep_jobname(const string &jobname, job_info &jinfo)
     split(jobname,str_pipe,fields);
 
     if (fields.size() == 9) {
-	if (!isuint(fields[6])) {
-	    error = "!isuint(fields[6])";
-	    goto failparse;
-	}
-	if (!(fields[8] == empty_string ||
-	      parse_frameinfo(fields[8],jinfo))) {
-	    error = "noparse frames";
-	    goto failparse;
-	}
-	jinfo.jobname_username = fields[0];
-	jinfo.meta_id = uintfield(fields[1]);
-	jinfo.production = fields[2];
-	jinfo.sequence = fields[3];
-	jinfo.shot = fields[4];
-	jinfo.task = fields[5];
-	if (fields[7] != jinfo.task &&
-	    fields[7] != empty_string) {
-	    vector<string> tasks;
-	    split(fields[7],str_colon,tasks);
-	    if (tasks.size() > 0 && tasks[0] == jinfo.task) {
-		tasks.erase(tasks.begin());
-	    }
-	    if (tasks.size() > 0 && tasks[0] == jinfo.jobname_username) {
-		tasks.erase(tasks.begin());
-	    }
-	    if (tasks.size() == 2 &&
-		jinfo.production == jinfo.sequence &&
-		encryptString(jinfo.production) == encrypted_parse_pipesep[0] &&
-		tasks[0] == jinfo.dir_production &&
-		tasks[1][0] == 's' && tasks[1][1] == 'q' && // not always seeing match between dir and task sequence, and task one looks right.
-		encryptString(jinfo.task) == encrypted_parse_pipesep[1]) {
-		// prod/seq encoded in task, and not in name
-		jinfo.production = tasks[0];
-		jinfo.sequence = tasks[1];
-		jinfo.shot = empty_string; // no shot for this task
-		tasks.clear();
-	    }
+        if (!isuint(fields[6])) {
+            error = "!isuint(fields[6])";
+            goto failparse;
+        }
+        if (!(fields[8] == empty_string ||
+              parse_frameinfo(fields[8],jinfo))) {
+            error = "noparse frames";
+            goto failparse;
+        }
+        jinfo.jobname_username = fields[0];
+        jinfo.meta_id = uintfield(fields[1]);
+        jinfo.production = fields[2];
+        jinfo.sequence = fields[3];
+        jinfo.shot = fields[4];
+        jinfo.task = fields[5];
+        if (fields[7] != jinfo.task &&
+            fields[7] != empty_string) {
+            vector<string> tasks;
+            split(fields[7],str_colon,tasks);
+            if (tasks.size() > 0 && tasks[0] == jinfo.task) {
+                tasks.erase(tasks.begin());
+            }
+            if (tasks.size() > 0 && tasks[0] == jinfo.jobname_username) {
+                tasks.erase(tasks.begin());
+            }
+            if (tasks.size() == 2 &&
+                jinfo.production == jinfo.sequence &&
+                encryptString(jinfo.production) == encrypted_parse_pipesep[0] &&
+                tasks[0] == jinfo.dir_production &&
+                tasks[1][0] == 's' && tasks[1][1] == 'q' && // not always seeing match between dir and task sequence, and task one looks right.
+                encryptString(jinfo.task) == encrypted_parse_pipesep[1]) {
+                // prod/seq encoded in task, and not in name
+                jinfo.production = tasks[0];
+                jinfo.sequence = tasks[1];
+                jinfo.shot = empty_string; // no shot for this task
+                tasks.clear();
+            }
 
-	    if (tasks.size() >= 3 &&
-		tasks[0] == jinfo.production &&
-		tasks[1] == jinfo.sequence &&
-		tasks[2] == jinfo.shot) {
-		tasks.erase(tasks.begin(),tasks.begin()+3);
-	    }
-	    if (tasks.size() == 0) {
-		// no subtask
-	    } else if (tasks.size() == 1) {
-		jinfo.subtask = tasks[0];
-	    } else if (tasks.size() == 2 &&
-		       parse_framerange_addbrackets(tasks[1],jinfo)) {
-		jinfo.subtask = tasks[0];
-	    } else if (tasks.size() == 2) {
-		jinfo.subtask = tasks[0];
-		jinfo.object = tasks[1];
-	    } else if (tasks.size() == 3) {
-		if (tasks[1].empty()) {
-		    jinfo.subtask = tasks[0];
-		    jinfo.object = tasks[1];
-		} else {
-		    if (print_parse_warnings) {
-			cerr << format("confused (tasks.size() == 3) on %s\n") % jobname;
-		    }
-		}
-	    } else if (tasks.size() == 4) {
-		if (tasks[0] == jinfo.production &&
-		    tasks[1] == jinfo.sequence &&
-		    tasks[2] == jinfo.shot) {
-		    jinfo.subtask = tasks[3];
-		} else if (encryptString(jinfo.production) ==
-			   encrypted_parse_special[3] &&
-			   encryptString(jinfo.sequence) ==
-			   encrypted_parse_special[4] &&
-			   encryptString(jinfo.shot) ==
-			   encrypted_parse_special[4]) {
-		    // job info bits are useless; extract from subinfo.
-		    // could check for prefix for sequence, shot.
-		    jinfo.production = tasks[0];
-		    jinfo.sequence = tasks[1];
-		    jinfo.shot = tasks[2];
-		    jinfo.subtask = tasks[3];
-		} else {
-		    if (print_parse_warnings) {
-			cerr << format("pipesep: 4 subtask mismatch (%s,%s), (%s,%s), (%s,%s) in %s\n")
-			    % tasks[0] % jinfo.production % tasks[1] % jinfo.sequence
-			    % tasks[2] % jinfo.shot % jobname;
-		    }
-		}
-	    } else {
-		error = "too many subtasks in fields[7]";
-		// ought to clean up, but for now, who cares
-		goto failparse;
-	    }
-	}
-	return true;
+            if (tasks.size() >= 3 &&
+                tasks[0] == jinfo.production &&
+                tasks[1] == jinfo.sequence &&
+                tasks[2] == jinfo.shot) {
+                tasks.erase(tasks.begin(),tasks.begin()+3);
+            }
+            if (tasks.size() == 0) {
+                // no subtask
+            } else if (tasks.size() == 1) {
+                jinfo.subtask = tasks[0];
+            } else if (tasks.size() == 2 &&
+                       parse_framerange_addbrackets(tasks[1],jinfo)) {
+                jinfo.subtask = tasks[0];
+            } else if (tasks.size() == 2) {
+                jinfo.subtask = tasks[0];
+                jinfo.object = tasks[1];
+            } else if (tasks.size() == 3) {
+                if (tasks[1].empty()) {
+                    jinfo.subtask = tasks[0];
+                    jinfo.object = tasks[1];
+                } else {
+                    if (print_parse_warnings) {
+                        cerr << format("confused (tasks.size() == 3) on %s\n") % jobname;
+                    }
+                }
+            } else if (tasks.size() == 4) {
+                if (tasks[0] == jinfo.production &&
+                    tasks[1] == jinfo.sequence &&
+                    tasks[2] == jinfo.shot) {
+                    jinfo.subtask = tasks[3];
+                } else if (encryptString(jinfo.production) ==
+                           encrypted_parse_special[3] &&
+                           encryptString(jinfo.sequence) ==
+                           encrypted_parse_special[4] &&
+                           encryptString(jinfo.shot) ==
+                           encrypted_parse_special[4]) {
+                    // job info bits are useless; extract from subinfo.
+                    // could check for prefix for sequence, shot.
+                    jinfo.production = tasks[0];
+                    jinfo.sequence = tasks[1];
+                    jinfo.shot = tasks[2];
+                    jinfo.subtask = tasks[3];
+                } else {
+                    if (print_parse_warnings) {
+                        cerr << format("pipesep: 4 subtask mismatch (%s,%s), (%s,%s), (%s,%s) in %s\n")
+                                % tasks[0] % jinfo.production % tasks[1] % jinfo.sequence
+                                % tasks[2] % jinfo.shot % jobname;
+                    }
+                }
+            } else {
+                error = "too many subtasks in fields[7]";
+                // ought to clean up, but for now, who cares
+                goto failparse;
+            }
+        }
+        return true;
     }
 
     if (fields.size() == 11 &&
-	isuint(fields[6]) &&
-	fields[5] == fields[7] &&
-	parse_frameinfo(fields[10],jinfo) &&
-	parse_framerange_addbrackets(fields[9],jinfo)) {
-	jinfo.jobname_username = fields[0];
-	jinfo.meta_id = uintfield(fields[1]);
-	jinfo.production = fields[2];
-	jinfo.sequence = fields[3];
-	jinfo.shot = fields[4];
-	jinfo.task = fields[5];
-	jinfo.subtask = fields[9];
-	return true;
+        isuint(fields[6]) &&
+        fields[5] == fields[7] &&
+        parse_frameinfo(fields[10],jinfo) &&
+        parse_framerange_addbrackets(fields[9],jinfo)) {
+        jinfo.jobname_username = fields[0];
+        jinfo.meta_id = uintfield(fields[1]);
+        jinfo.production = fields[2];
+        jinfo.sequence = fields[3];
+        jinfo.shot = fields[4];
+        jinfo.task = fields[5];
+        jinfo.subtask = fields[9];
+        return true;
     }
 
     error = "unknown";
     // PIPESEP
- failparse:
+failparse:
     if (fields.size() > 1) {
-	if (print_parse_warnings) {
-	    cerr << format("pipesep failed to parse(%s) %s (%d)\n") 
-		% error % jobname % fields.size();
-	    for(unsigned i=0;i<fields.size();++i) {
-		cerr << format("  field %d: %s  // %s\n") % i % fields[i]
-		    % hexstring(encryptString(fields[i]));
-	    }
-	}
+        if (print_parse_warnings) {
+            cerr << format("pipesep failed to parse(%s) %s (%d)\n") 
+                    % error % jobname % fields.size();
+            for (unsigned i=0;i<fields.size();++i) {
+                cerr << format("  field %d: %s  // %s\n") % i % fields[i]
+                        % hexstring(encryptString(fields[i]));
+            }
+        }
     }
     return false;
 }
 
 bool // true on success
 parse_colonsep_jobname(const string &jobname, const string &jobdirectory,
-		       job_info &jinfo)
+                       job_info &jinfo)
 {
     vector<string> fields;
     unsigned start_offset = 0;
     while (start_offset < jobname.size()) {
-	bool inbracket = jobname[start_offset] == '[';
-	unsigned end_offset = start_offset;
-	for(;end_offset < jobname.size();++end_offset) {
-	    if (inbracket) {
-		if (jobname[end_offset] == ']') {
-		    end_offset += 1; // want to include the close \]
-		    inbracket = false;
-		}
-	    } else {
-		if (jobname[end_offset] == ':') break;
-	    }
-	}
-	string foo = jobname.substr(start_offset,end_offset - start_offset);
-	if (false) cout << format("  ColonSep JobName field %d: %s\n") % fields.size() % foo.c_str();
-	fields.push_back(foo);
-	start_offset = end_offset + 1;
+        bool inbracket = jobname[start_offset] == '[';
+        unsigned end_offset = start_offset;
+        for (;end_offset < jobname.size();++end_offset) {
+            if (inbracket) {
+                if (jobname[end_offset] == ']') {
+                    end_offset += 1; // want to include the close \]
+                    inbracket = false;
+                }
+            } else {
+                if (jobname[end_offset] == ':') break;
+            }
+        }
+        string foo = jobname.substr(start_offset,end_offset - start_offset);
+        if (false) cout << format("  ColonSep JobName field %d: %s\n") % fields.size() % foo.c_str();
+        fields.push_back(foo);
+        start_offset = end_offset + 1;
     }
     if (fields.size() > 5 &&
-	(fields[5] == "0" || fields[5] == "1" || fields[5] == "2")) {
-	fields.erase(fields.begin() + 5,fields.begin() + 6);
+        (fields[5] == "0" || fields[5] == "1" || fields[5] == "2")) {
+        fields.erase(fields.begin() + 5,fields.begin() + 6);
 
-	if ((fields.size() == 8 || fields.size() == 9) &&
-	    encryptString(fields[4]) == encrypted_parse_colonsep[0]) {
-	    string f5enc = encryptString(fields[5]);
-	    if (f5enc == encrypted_parse_colonsep[0] ||
-		f5enc == encrypted_parse_colonsep[1] ||
-		f5enc == encrypted_parse_colonsep[2]) {
-		jinfo.meta_id = uintfield(fields[0]);
-		jinfo.production = fields[1];
-		jinfo.sequence = fields[2];
-		jinfo.shot = fields[3];
-		jinfo.task = fields[4];
-		// parsing frame range for this type of entry doesn't quite
-		// make sense, but if it did, either fields 7 or 8 would
-		// be right, 7 has the real range, 8 has the batching
-		if (f5enc == encrypted_parse_colonsep[2]) {
-		    jinfo.object = fields[5];
-		    jinfo.frames = fields[6];
-		} else {
-		    jinfo.object = fields[6];
-		    jinfo.frames = fields[7];
-		}
-		return true;
-	    }
-	}
+        if ((fields.size() == 8 || fields.size() == 9) &&
+            encryptString(fields[4]) == encrypted_parse_colonsep[0]) {
+            string f5enc = encryptString(fields[5]);
+            if (f5enc == encrypted_parse_colonsep[0] ||
+                f5enc == encrypted_parse_colonsep[1] ||
+                f5enc == encrypted_parse_colonsep[2]) {
+                jinfo.meta_id = uintfield(fields[0]);
+                jinfo.production = fields[1];
+                jinfo.sequence = fields[2];
+                jinfo.shot = fields[3];
+                jinfo.task = fields[4];
+                // parsing frame range for this type of entry doesn't quite
+                // make sense, but if it did, either fields 7 or 8 would
+                // be right, 7 has the real range, 8 has the batching
+                if (f5enc == encrypted_parse_colonsep[2]) {
+                    jinfo.object = fields[5];
+                    jinfo.frames = fields[6];
+                } else {
+                    jinfo.object = fields[6];
+                    jinfo.frames = fields[7];
+                }
+                return true;
+            }
+        }
 
-	if (fields.size() == 11 &&
-	    fields[1] == jinfo.dir_production &&
-	    fields[2] == jinfo.dir_sequence &&
-	    fields[3] == jinfo.dir_shot &&
-	    fields[6] == fields[8] &&
-	    parse_framerange_addbrackets(fields[10],jinfo)) {
+        if (fields.size() == 11 &&
+            fields[1] == jinfo.dir_production &&
+            fields[2] == jinfo.dir_sequence &&
+            fields[3] == jinfo.dir_shot &&
+            fields[6] == fields[8] &&
+            parse_framerange_addbrackets(fields[10],jinfo)) {
 
-	    jinfo.production = fields[1];
-	    jinfo.sequence = fields[2];
-	    jinfo.shot = fields[3];
-	    jinfo.task = fields[4];
-	    jinfo.subtask = fields[5];
-	    jinfo.object = fields[6];
-	    return true;
-	}
+            jinfo.production = fields[1];
+            jinfo.sequence = fields[2];
+            jinfo.shot = fields[3];
+            jinfo.task = fields[4];
+            jinfo.subtask = fields[5];
+            jinfo.object = fields[6];
+            return true;
+        }
 
-	if (fields.size() == 7 && parse_frameinfo(fields[6],jinfo)) {
-	    jinfo.meta_id = uintfield(fields[0]);
-	    jinfo.production = fields[1];
-	    jinfo.sequence = fields[2];
-	    jinfo.shot = fields[3];
-	    jinfo.task = fields[4];
-	    jinfo.subtask = fields[5];
-	    return true;
-	}
-	if (fields.size() == 6 && parse_frameinfo(fields[5],jinfo)) {
-	    jinfo.meta_id = uintfield(fields[0]);
-	    jinfo.production = fields[1];
-	    jinfo.sequence = fields[2];
-	    jinfo.shot = fields[3];
-	    jinfo.task = fields[4];
-	    return true;
-	}
+        if (fields.size() == 7 && parse_frameinfo(fields[6],jinfo)) {
+            jinfo.meta_id = uintfield(fields[0]);
+            jinfo.production = fields[1];
+            jinfo.sequence = fields[2];
+            jinfo.shot = fields[3];
+            jinfo.task = fields[4];
+            jinfo.subtask = fields[5];
+            return true;
+        }
+        if (fields.size() == 6 && parse_frameinfo(fields[5],jinfo)) {
+            jinfo.meta_id = uintfield(fields[0]);
+            jinfo.production = fields[1];
+            jinfo.sequence = fields[2];
+            jinfo.shot = fields[3];
+            jinfo.task = fields[4];
+            return true;
+        }
     }
     if ((fields.size() == 5 || fields.size() == 6) &&
-	fields[1] == jinfo.dir_production) {
-	bool *v = noframerange_map.lookup(encryptString(fields[4]));
-	if (v != NULL) {
-	    SINVARIANT(*v);
-	    jinfo.meta_id = uintfield(fields[0]);
-	    jinfo.production = fields[1];
-	    jinfo.sequence = fields[2];
-	    jinfo.shot = fields[3];
-	    jinfo.task = fields[4];
-	    if (fields.size() == 6) {
-		jinfo.subtask = fields[5];
-	    }
-	    return true;
-	}
+        fields[1] == jinfo.dir_production) {
+        bool *v = noframerange_map.lookup(encryptString(fields[4]));
+        if (v != NULL) {
+            SINVARIANT(*v);
+            jinfo.meta_id = uintfield(fields[0]);
+            jinfo.production = fields[1];
+            jinfo.sequence = fields[2];
+            jinfo.shot = fields[3];
+            jinfo.task = fields[4];
+            if (fields.size() == 6) {
+                jinfo.subtask = fields[5];
+            }
+            return true;
+        }
     }
     if (fields.size() == 7 &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[0]) {
-	jinfo.meta_id = uintfield(fields[0]);
-	jinfo.production = fields[1];
-	jinfo.sequence = fields[2];
-	jinfo.shot = fields[3];
-	jinfo.task = fields[4];
-	jinfo.subtask = fields[5];
-	jinfo.object = fields[6];
-	return true;
+        encryptString(fields[4]) == encrypted_parse_colonsep[0]) {
+        jinfo.meta_id = uintfield(fields[0]);
+        jinfo.production = fields[1];
+        jinfo.sequence = fields[2];
+        jinfo.shot = fields[3];
+        jinfo.task = fields[4];
+        jinfo.subtask = fields[5];
+        jinfo.object = fields[6];
+        return true;
     }
     if ((fields.size() == 5 || fields.size() == 6) &&
-	isuint(fields[0]) &&
-	fields[2] == jinfo.dir_sequence &&
-	fields[3] == jinfo.dir_shot) {
-	jinfo.meta_id = uintfield(fields[0]);
-	jinfo.production = fields[1];
-	jinfo.sequence = fields[2];
-	jinfo.shot = fields[3];
-	jinfo.task = fields[4];
-	if (fields.size() == 6) {
-	    jinfo.subtask = fields[5];
-	}
-	return true;
+        isuint(fields[0]) &&
+        fields[2] == jinfo.dir_sequence &&
+        fields[3] == jinfo.dir_shot) {
+        jinfo.meta_id = uintfield(fields[0]);
+        jinfo.production = fields[1];
+        jinfo.sequence = fields[2];
+        jinfo.shot = fields[3];
+        jinfo.task = fields[4];
+        if (fields.size() == 6) {
+            jinfo.subtask = fields[5];
+        }
+        return true;
     }
 
     if (fields.size() == 5 && fields[0] == empty_string &&
-	encryptString(fields[1]) == encrypted_parse_colonsep[3] &&
-	isuint(fields[2]) && parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[3];
-	return true;
+        encryptString(fields[1]) == encrypted_parse_colonsep[3] &&
+        isuint(fields[2]) && parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[3];
+        return true;
     }
 
     if (fields.size() == 5 &&
-	encryptString(fields[2]) == encrypted_parse_colonsep[4] &&
-	isuint(fields[0])) {
-	jinfo.meta_id = uintfield(fields[0]);
-	jinfo.task = fields[1];
-	return true;
+        encryptString(fields[2]) == encrypted_parse_colonsep[4] &&
+        isuint(fields[0])) {
+        jinfo.meta_id = uintfield(fields[0]);
+        jinfo.task = fields[1];
+        return true;
     }
 
     bool meta_pss = false;
     if (fields.size() >= 4 && isuint(fields[0]) &&
-	fields[1] == jinfo.dir_production &&
-	fields[2] == jinfo.dir_sequence && fields[3] == jinfo.dir_shot) {
-	meta_pss = true;
+        fields[1] == jinfo.dir_production &&
+        fields[2] == jinfo.dir_sequence && fields[3] == jinfo.dir_shot) {
+        meta_pss = true;
     }
 
     if ((fields.size() == 10 || fields.size() == 11) && meta_pss &&
-	fields[5] == fields[7] && isuint(fields[8]) &&
-	encryptString(fields[5]) == encrypted_parse_colonsep[5] &&
-	parse_framerange_addbrackets(fields[9],jinfo)) {
-	jinfo.meta_id = uintfield(fields[0]);
-	jinfo.task = fields[4];
-	jinfo.subtask = fields[5];
-	return true;
+        fields[5] == fields[7] && isuint(fields[8]) &&
+        encryptString(fields[5]) == encrypted_parse_colonsep[5] &&
+        parse_framerange_addbrackets(fields[9],jinfo)) {
+        jinfo.meta_id = uintfield(fields[0]);
+        jinfo.task = fields[4];
+        jinfo.subtask = fields[5];
+        return true;
     }
 
     if (fields.size() == 8 && meta_pss &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[6] &&
-	parse_framerange_addbrackets(fields[5],jinfo)) {
-	jinfo.task = fields[4];
-	return true;
+        encryptString(fields[4]) == encrypted_parse_colonsep[6] &&
+        parse_framerange_addbrackets(fields[5],jinfo)) {
+        jinfo.task = fields[4];
+        return true;
     }
 
     if (fields.size() == 3 && fields[2] == jinfo.sequence &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[1];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[1];
+        return true;
     }
 
     if (fields.size() == 6 && fields[1] == jinfo.production &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[5]) {
-	jinfo.task = fields[0];
-	jinfo.sequence = fields[2];
-	jinfo.shot = fields[3];
-	jinfo.subtask = fields[4];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        encryptString(fields[4]) == encrypted_parse_colonsep[5]) {
+        jinfo.task = fields[0];
+        jinfo.sequence = fields[2];
+        jinfo.shot = fields[3];
+        jinfo.subtask = fields[4];
+        return true;
     }
 
     if (fields.size() == 5 && fields[1] == jinfo.production &&
-	fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[5]) {
-	jinfo.task = fields[0];
-	return true;
+        fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        encryptString(fields[4]) == encrypted_parse_colonsep[5]) {
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 3 && fields[1] == jinfo.production &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	jinfo.sequence == empty_string) {
-	jinfo.sequence = fields[2];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        jinfo.sequence == empty_string) {
+        jinfo.sequence = fields[2];
+        return true;
     }
 
     if (fields.size() == 4 && fields[2] == jinfo.sequence &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	fields[3][0] == 's') {
-	jinfo.task = fields[0];
-	jinfo.shot = fields[3];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        fields[3][0] == 's') {
+        jinfo.task = fields[0];
+        jinfo.shot = fields[3];
+        return true;
     }
 
     if (fields.size() == 6 && fields[1] == jinfo.production &&
-	fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[4];
-	jinfo.object = fields[5];
-	return true;
+        fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
+        encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[4];
+        jinfo.object = fields[5];
+        return true;
     }
 
     if (fields.size() == 5 && fields[1] == jinfo.production &&
-	fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[4];
-	return true;
+        fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
+        encryptString(fields[0]) == encrypted_parse_colonsep[7]) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[4];
+        return true;
     }
 
     if (fields.size() == 3 &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	fields[2][0] == 's' && fields[2][1] == 'q') {
-	jinfo.sequence = fields[2];
-	jinfo.task = fields[0];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        fields[2][0] == 's' && fields[2][1] == 'q') {
+        jinfo.sequence = fields[2];
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 5 &&
-	encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
-	fields[2] == jinfo.sequence &&
-	fields[3][0] == 's' &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[8]) {
-	jinfo.shot = fields[3];
-	jinfo.task = fields[0];
-	return true;
+        encryptString(fields[0]) == encrypted_parse_colonsep[7] &&
+        fields[2] == jinfo.sequence &&
+        fields[3][0] == 's' &&
+        encryptString(fields[4]) == encrypted_parse_colonsep[8]) {
+        jinfo.shot = fields[3];
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 4 &&
-	fields[0] == str_java_service &&
-	fields[0] == jinfo.production &&
-	parse_frameinfo(fields[3],jinfo)) {
-	jinfo.sequence = fields[1];
-	jinfo.shot = fields[2];
-	return true;
+        fields[0] == str_java_service &&
+        fields[0] == jinfo.production &&
+        parse_frameinfo(fields[3],jinfo)) {
+        jinfo.sequence = fields[1];
+        jinfo.shot = fields[2];
+        return true;
     }
 
     if (fields.size() == 8 && fields[0] == str_batch_parallel &&
-	fields[3] == str_BPMake && parse_frameinfo(fields[7],jinfo)) {
-	jinfo.sequence = fields[3];
-	jinfo.task = fields[5];
-	return true;
+        fields[3] == str_BPMake && parse_frameinfo(fields[7],jinfo)) {
+        jinfo.sequence = fields[3];
+        jinfo.task = fields[5];
+        return true;
     }
 
     if (fields.size() == 3 && fields[0] == str_sstress &&
-	parse_frameinfo(fields[2],jinfo)) {
-	jinfo.sequence = fields[0];
-	jinfo.task = fields[1];
-	return true;
+        parse_frameinfo(fields[2],jinfo)) {
+        jinfo.sequence = fields[0];
+        jinfo.task = fields[1];
+        return true;
     }
 
     if (fields.size() == 7 &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[3] &&
-	fields[3].size() > fields[2].size() &&
-	fields[3].substr(0,fields[2].size()) == fields[2] &&
-	encryptString(fields[5]) == encrypted_parse_colonsep[9] &&
-	parse_frameinfo(fields[6],jinfo)) {
-	jinfo.production = fields[1];
-	jinfo.sequence = fields[2];
-	jinfo.task = fields[3];
-	return true;
+        encryptString(fields[4]) == encrypted_parse_colonsep[3] &&
+        fields[3].size() > fields[2].size() &&
+        fields[3].substr(0,fields[2].size()) == fields[2] &&
+        encryptString(fields[5]) == encrypted_parse_colonsep[9] &&
+        parse_frameinfo(fields[6],jinfo)) {
+        jinfo.production = fields[1];
+        jinfo.sequence = fields[2];
+        jinfo.task = fields[3];
+        return true;
     }
 
     if (fields.size() == 7 &&
-	fields[0] == empty_string &&
-	fields[1] == jinfo.dir_production &&
-	fields[2] == jinfo.dir_sequence &&
-	fields[3] == jinfo.dir_shot &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[10] &&
-	isuint(fields[6])) {
-	jinfo.task = fields[4];
-	jinfo.subtask = fields[5];
-	return true;
+        fields[0] == empty_string &&
+        fields[1] == jinfo.dir_production &&
+        fields[2] == jinfo.dir_sequence &&
+        fields[3] == jinfo.dir_shot &&
+        encryptString(fields[4]) == encrypted_parse_colonsep[10] &&
+        isuint(fields[6])) {
+        jinfo.task = fields[4];
+        jinfo.subtask = fields[5];
+        return true;
     }
 
     if (fields.size() == 7 &&
-	fields[0] == empty_string &&
-	fields[1] == jinfo.dir_production &&
-	fields[2] == jinfo.dir_sequence &&
-	fields[3] == jinfo.dir_shot &&
-	encryptString(fields[4]) == encrypted_parse_colonsep[3] &&
-	parse_frameinfo(fields[6],jinfo)) {
-	jinfo.task = fields[5];
-	return true;
+        fields[0] == empty_string &&
+        fields[1] == jinfo.dir_production &&
+        fields[2] == jinfo.dir_sequence &&
+        fields[3] == jinfo.dir_shot &&
+        encryptString(fields[4]) == encrypted_parse_colonsep[3] &&
+        parse_frameinfo(fields[6],jinfo)) {
+        jinfo.task = fields[5];
+        return true;
     }
 
     if (fields.size() == 5 && isuint(fields[0]) &&
-	fields[1] == jinfo.dir_production &&
-	fields[3] == jinfo.dir_shot) {
-	jinfo.sequence = fields[2];
-	jinfo.task = fields[4];
-	return true;
+        fields[1] == jinfo.dir_production &&
+        fields[3] == jinfo.dir_shot) {
+        jinfo.sequence = fields[2];
+        jinfo.task = fields[4];
+        return true;
     }
 
     if (fields.size() == 5 && isuint(fields[0]) &&
-	fields[1] == jinfo.dir_production &&
-	fields[2].size() > jinfo.dir_sequence.size() &&
-	fields[2].substr(0,jinfo.dir_sequence.size()) == jinfo.dir_sequence) {
-	jinfo.sequence = fields[2];
-	jinfo.shot = fields[3];
-	jinfo.task = fields[4];
-	return true;
+        fields[1] == jinfo.dir_production &&
+        fields[2].size() > jinfo.dir_sequence.size() &&
+        fields[2].substr(0,jinfo.dir_sequence.size()) == jinfo.dir_sequence) {
+        jinfo.sequence = fields[2];
+        jinfo.shot = fields[3];
+        jinfo.task = fields[4];
+        return true;
     }
 
     if (fields.size() == 5 && fields[0].size() >= 12 &&
-	encmatch(fields[0].substr(0,12),encrypted_parse_colonsep[11]) &&
-	fields[2] == jinfo.shot && fields[3].size() >= 4 &&
-	encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
-	parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0];
-	return true;
+        encmatch(fields[0].substr(0,12),encrypted_parse_colonsep[11]) &&
+        fields[2] == jinfo.shot && fields[3].size() >= 4 &&
+        encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
+        parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 2 &&
-	encmatch(fields[0],encrypted_parse_colonsep[13]) &&
-	fields[1].size() > jobdirectory.size() &&
-	fields[1].substr(0,jobdirectory.size()) == jobdirectory) {
-	int off = jobdirectory.size() + 1;
-	SINVARIANT(off < (int)fields[1].size());
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[1].substr(off,fields[1].size() - off);
-	return true;
+        encmatch(fields[0],encrypted_parse_colonsep[13]) &&
+        fields[1].size() > jobdirectory.size() &&
+        fields[1].substr(0,jobdirectory.size()) == jobdirectory) {
+        int off = jobdirectory.size() + 1;
+        SINVARIANT(off < (int)fields[1].size());
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[1].substr(off,fields[1].size() - off);
+        return true;
     }
 
     if (fields.size() == 5 && fields[0].size() >= 12 &&
-	encmatch(fields[0].substr(0,12),encrypted_parse_colonsep[11]) &&
-	fields[2] == jinfo.shot && parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[3];
-	return true;
+        encmatch(fields[0].substr(0,12),encrypted_parse_colonsep[11]) &&
+        fields[2] == jinfo.shot && parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[3];
+        return true;
     }
 
     if (fields.size() == 5 && fields[0].size() >= 9 &&
-	encmatch(fields[0].substr(0,9),encrypted_parse_colonsep[14]) &&
-	fields[2] == jinfo.shot && parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[3];
-	return true;
+        encmatch(fields[0].substr(0,9),encrypted_parse_colonsep[14]) &&
+        fields[2] == jinfo.shot && parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[3];
+        return true;
     }
 
     if (fields.size() == 4 &&
-	encmatch(fields[0],encrypted_parse_colonsep[15]) &&
-	isuint(fields[2]) && parse_frameinfo(fields[3],jinfo)) {
-	jinfo.task = fields[0];
-	return true;
+        encmatch(fields[0],encrypted_parse_colonsep[15]) &&
+        isuint(fields[2]) && parse_frameinfo(fields[3],jinfo)) {
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 6 && fields[0].size() > 11 &&
-	encmatch(fields[0].substr(0,11),encrypted_parse_colonsep[16]) &&
-	fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
-	parse_frameinfo(fields[5],jinfo)) {
-	jinfo.task = fields[0];
-	jinfo.subtask = fields[4];
-	return true;
+        encmatch(fields[0].substr(0,11),encrypted_parse_colonsep[16]) &&
+        fields[2] == jinfo.sequence && fields[3] == jinfo.shot &&
+        parse_frameinfo(fields[5],jinfo)) {
+        jinfo.task = fields[0];
+        jinfo.subtask = fields[4];
+        return true;
     }
 
     if (fields.size() == 5 &&
-	encmatch(fields[0],encrypted_parse_colonsep[15]) &&
-	fields[2] == jinfo.shot && fields[3].size() > 4 &&
-	encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
-	parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0];
-	return true;
+        encmatch(fields[0],encrypted_parse_colonsep[15]) &&
+        fields[2] == jinfo.shot && fields[3].size() > 4 &&
+        encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
+        parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 5 &&
-	encmatch(fields[0],encrypted_parse_colonsep[17]) &&
-	fields[2] == jinfo.shot && fields[3].size() > 4 &&
-	encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
-	parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0];
-	return true;
+        encmatch(fields[0],encrypted_parse_colonsep[17]) &&
+        fields[2] == jinfo.shot && fields[3].size() > 4 &&
+        encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
+        parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0];
+        return true;
     }
 
     if (fields.size() == 5 && fields[0].size() >= 15 &&
-	encmatch(fields[0].substr(0,15),encrypted_parse_colonsep[18]) &&
-	fields[2] == jinfo.shot && fields[3].size() > 4 &&
-	encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
-	parse_frameinfo(fields[4],jinfo)) {
-	jinfo.task = fields[0].substr(0,14);
-	jinfo.subtask = fields[0].substr(15,fields[0].size() - 15);
-	return true;
+        encmatch(fields[0].substr(0,15),encrypted_parse_colonsep[18]) &&
+        fields[2] == jinfo.shot && fields[3].size() > 4 &&
+        encmatch(fields[3].substr(0,4),encrypted_parse_colonsep[12]) &&
+        parse_frameinfo(fields[4],jinfo)) {
+        jinfo.task = fields[0].substr(0,14);
+        jinfo.subtask = fields[0].substr(15,fields[0].size() - 15);
+        return true;
     }
 
     if (fields.size() == 3 && fields[0] == str_perl_service2 &&
-	jinfo.dir_production == str_tuscany &&
-	parse_frameinfo(fields[2],jinfo)) {
-	jinfo.production = str_tuscany;
-	jinfo.sequence = str_perl_service2;
-	jinfo.task = jinfo.dir_shot;
-	jinfo.dir_shot = jinfo.shot = fields[1];
-	return true;
+        jinfo.dir_production == str_tuscany &&
+        parse_frameinfo(fields[2],jinfo)) {
+        jinfo.production = str_tuscany;
+        jinfo.sequence = str_perl_service2;
+        jinfo.task = jinfo.dir_shot;
+        jinfo.dir_shot = jinfo.shot = fields[1];
+        return true;
     }
 
     // COLONSEP PARSE -- for finding place to add parsing in code
 
     if (print_parse_warnings && fields.size() > 2) {
-	cerr << format("colonsep failed to parse %s (%d)\n") % jobname % fields.size();
-	for(unsigned i=0;i<fields.size();++i) {
-	    cerr << format("  field %d: %s  // %s\n") % i % fields[i]
-		% hexstring(encryptString(fields[i]));
-	}
+        cerr << format("colonsep failed to parse %s (%d)\n") % jobname % fields.size();
+        for (unsigned i=0;i<fields.size();++i) {
+            cerr << format("  field %d: %s  // %s\n") % i % fields[i]
+                    % hexstring(encryptString(fields[i]));
+        }
     }
     return false;
 }
 
 bool xpcre_check_encrypted(const string &instr, int *ovector, int rc, int stringnum,
-			   const string &match_encrypted)
+                           const string &match_encrypted)
 {
     string str;
     xpcre_get_substring(instr,ovector,rc,stringnum,str);
     if (encryptString(str) == match_encrypted) {
-	return true;
+        return true;
     } else {
-	if (print_parse_warnings) {
-	    cerr << format("******* Unable to match %s -> %s == %d/%s in %s\n")
-		% str % hexstring(encryptString(str)) % match_encrypted.size() 
-		% hexstring(match_encrypted) % instr;
-	}
-	return false;
+        if (print_parse_warnings) {
+            cerr << format("******* Unable to match %s -> %s == %d/%s in %s\n")
+                    % str % hexstring(encryptString(str)) % match_encrypted.size() 
+                    % hexstring(match_encrypted) % instr;
+        }
+        return false;
     }
 }
 
@@ -1726,7 +1726,7 @@ pcre *xpcre_compile(const string &regex)
 
     pcre *ret = pcre_compile(regex.c_str(),0,&errptr,&erroffset,NULL);
     INVARIANT(ret != NULL, 
-	      format("pcre compile of %s failed at: %s") % regex % errptr);
+              format("pcre compile of %s failed at: %s") % regex % errptr);
     return ret;
 }
 
@@ -1734,13 +1734,13 @@ bool
 match_directory_str13(const string &part)
 {
     if (part.size() == 3 &&
-	encryptString(part) == encrypted_parse_directory[13]) {
-	return true;
+        encryptString(part) == encrypted_parse_directory[13]) {
+        return true;
     }
     if (part.size() != 4)
-	return false;
+        return false;
     if (!isdigit(part[3]))
-	return false;
+        return false;
     return encryptString(part.substr(0,3)) == encrypted_parse_directory[13];
 }
 
@@ -1749,7 +1749,7 @@ trimstring(string &str,const string &trimafter)
 {
     int idx = str.find(trimafter);
     if (idx == -1)
-	return;
+        return;
     str = str.substr(0,idx);
 }
 
@@ -1757,16 +1757,16 @@ trimstring(string &str,const string &trimafter)
 // as all caps because that will look ugly
 
 #define encdirmatch(x,y) (encrypted_strs[(x)] == encrypted_parse_directory[(y)])
-#define noretdirpss(a,b,c) jinfo.dir_production = parts[(a)]; \
-  jinfo.dir_sequence = parts[(b)]; \
-  jinfo.dir_shot = parts[(c)];
+#define noretdirpss(a,b,c) jinfo.dir_production = parts[(a)];   \
+    jinfo.dir_sequence = parts[(b)];                            \
+    jinfo.dir_shot = parts[(c)];
 #define dirpss(a,b,c) noretdirpss(a,b,c); return true;
-#define dirps(a,b) jinfo.dir_production = parts[(a)]; \
-  jinfo.dir_sequence = parts[(b)]; \
-  jinfo.dir_shot = empty_string; \
-  return true;
-#define sqsmatch(x,y) (parts[(x)][0] == 's' && parts[(x)][1] == 'q' && \
-		       parts[(y)][0] == 's')
+#define dirps(a,b) jinfo.dir_production = parts[(a)];   \
+    jinfo.dir_sequence = parts[(b)];                    \
+    jinfo.dir_shot = empty_string;                      \
+    return true;
+#define sqsmatch(x,y) (parts[(x)][0] == 's' && parts[(x)][1] == 'q' &&  \
+                       parts[(y)][0] == 's')
 
 const string str_slash("/");
 bool
@@ -1775,708 +1775,708 @@ try_parse_directory_jobinfo(const string &jobdirectory, job_info &jinfo)
     vector<string> parts;
     split(jobdirectory,str_slash,parts);
     if (parts[0] != empty_string) {
-	return false; // non absolute path, time to give up
+        return false; // non absolute path, time to give up
     }
 
     parts.erase(parts.begin());
 
     vector<string> encrypted_strs;
     encrypted_strs.resize(parts.size());
-    for(unsigned i=0;i<parts.size();++i) {
-	  encrypted_strs[i] = encryptString(parts[i]);
+    for (unsigned i=0;i<parts.size();++i) {
+        encrypted_strs[i] = encryptString(parts[i]);
     }
 
     if (parts.size() > 1 && encdirmatch(0,8)) {
-	parts.erase(parts.begin());
-	encrypted_strs.erase(encrypted_strs.begin());
+        parts.erase(parts.begin());
+        encrypted_strs.erase(encrypted_strs.begin());
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(3,1)) {
-	dirpss(1,4,5);
+        dirpss(1,4,5);
     }
     if (parts.size() == 9 && encdirmatch(0,0) && encdirmatch(3,2) &&
-	encdirmatch(4,3) && encdirmatch(8,4)) {
-	dirpss(1,6,7);
+        encdirmatch(4,3) && encdirmatch(8,4)) {
+        dirpss(1,6,7);
     }
 
     if (parts.size() == 10 && encdirmatch(0,0) && encdirmatch(3,2) &&
-	encdirmatch(4,3) && encdirmatch(9,4)) {
-	// sequence could be 7 also, but I think 6 makes a little more sense
-	// shot as 8 needed to get match with job names
-	dirpss(1,6,8);
+        encdirmatch(4,3) && encdirmatch(9,4)) {
+        // sequence could be 7 also, but I think 6 makes a little more sense
+        // shot as 8 needed to get match with job names
+        dirpss(1,6,8);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,1)) {
-	dirpss(3,6,7);
-	return true;
+        encdirmatch(5,1)) {
+        dirpss(3,6,7);
+        return true;
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3) &&	encdirmatch(9,4)) {
-	// decode seq/shot into two possible forms that show up in job names
-	// for consistency with next form
-	noretdirpss(3,8,8);
-	jinfo.dir_sequence.append(str_slash).append(parts[9]);
-	return true;
+        encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(9,4)) {
+        // decode seq/shot into two possible forms that show up in job names
+        // for consistency with next form
+        noretdirpss(3,8,8);
+        jinfo.dir_sequence.append(str_slash).append(parts[9]);
+        return true;
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3) &&
-	(parts[9].size() > 4 && parts[9][4] == '_' &&
-	 encryptString(parts[9].substr(0,4)) == encrypted_parse_directory[4])) {
-	// decode seq/shot into two possible forms that show up in job names
-	noretdirpss(3,8,8);
-	jinfo.dir_sequence.append(str_slash).append(parts[9]);
-	jinfo.dir_shot.append(parts[9].substr(4,parts[9].size()-4));
-	return true;
+        encdirmatch(5,2) && encdirmatch(6,3) &&
+        (parts[9].size() > 4 && parts[9][4] == '_' &&
+         encryptString(parts[9].substr(0,4)) == encrypted_parse_directory[4])) {
+        // decode seq/shot into two possible forms that show up in job names
+        noretdirpss(3,8,8);
+        jinfo.dir_sequence.append(str_slash).append(parts[9]);
+        jinfo.dir_shot.append(parts[9].substr(4,parts[9].size()-4));
+        return true;
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3) &&	encdirmatch(10,4)) {
-	dirpss(3,8,9);
+        encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(10,4)) {
+        dirpss(3,8,9);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,7) &&
-	encdirmatch(5,1)) {
-	dirpss(3,6,7);
+        encdirmatch(5,1)) {
+        dirpss(3,6,7);
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,7) &&
-	encdirmatch(4,9) && encdirmatch(5,10)) {
-	// these productions appear to only have one sequence
-	dirpss(3,5,6);
+        encdirmatch(4,9) && encdirmatch(5,10)) {
+        // these productions appear to only have one sequence
+        dirpss(3,5,6);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,4)) {
-	// sequence could also be parts[6], but 5 makes a little more sense
-	dirpss(1,5,7);
+        encdirmatch(3,4)) {
+        // sequence could also be parts[6], but 5 makes a little more sense
+        dirpss(1,5,7);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,12) &&
-	encdirmatch(3,4)) {
-	noretdirpss(1,4,6);
-	jinfo.dir_sequence.append(str_slash).append(parts[5]);
-	return true;
+        encdirmatch(3,4)) {
+        noretdirpss(1,4,6);
+        jinfo.dir_sequence.append(str_slash).append(parts[5]);
+        return true;
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	encdirmatch(4,14)) {
-	dirpss(1,3,4);
+        encdirmatch(4,14)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,15)) {
-	// same problem as above for the only slightly makes sense,
-	// could also be 8
-	dirpss(1,4,5);
+        encdirmatch(4,15)) {
+        // same problem as above for the only slightly makes sense,
+        // could also be 8
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,4)) {
-	dirpss(1,5,6);
+        encdirmatch(3,4)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,16)) {
-	dirpss(1,5,7);
+        encdirmatch(4,16)) {
+        dirpss(1,5,7);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,17)) {
-	dirpss(1,5,6);
+        encdirmatch(4,17)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,12) &&
-	encdirmatch(3,1)) {
-	dirps(1,4);
+        encdirmatch(3,1)) {
+        dirps(1,4);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	sqsmatch(3,4)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,16)) {
-	// could make sequence parts[5] also, only weakly this part
-	dirpss(1,4,5);
+        encdirmatch(4,16)) {
+        // could make sequence parts[5] also, only weakly this part
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(3,2) &&
-	encdirmatch(4,3) && encdirmatch(7,4)) {
-	// oddly, the sample for this example is actually classified
-	// with the wrong production, but that was the directory it
-	// ran out of.
-	dirpss(1,6,6);
+        encdirmatch(4,3) && encdirmatch(7,4)) {
+        // oddly, the sample for this example is actually classified
+        // with the wrong production, but that was the directory it
+        // ran out of.
+        dirpss(1,6,6);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,18) && encdirmatch(4,19)) {
-	dirpss(1,5,6);
+        encdirmatch(3,18) && encdirmatch(4,19)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,2)) {
-	// sequence/shot for this is a little goofy
-	dirpss(1,6,7);
+        encdirmatch(3,2)) {
+        // sequence/shot for this is a little goofy
+        dirpss(1,6,7);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,20) &&
-	encdirmatch(3,1)) {
-	dirps(1,4);
+        encdirmatch(3,1)) {
+        dirps(1,4);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	encdirmatch(3,1)) {
-	dirpss(1,4,5);
+        encdirmatch(3,1)) {
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) &&
-	(int)parts[4].find("_") > 0 &&
-	sqsmatch(5,6)) {
-	jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
-	jinfo.dir_sequence = parts[5];
-	jinfo.dir_shot = parts[6];
-	return true;
+        match_directory_str13(parts[3]) &&
+        (int)parts[4].find("_") > 0 &&
+        sqsmatch(5,6)) {
+        jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
+        jinfo.dir_sequence = parts[5];
+        jinfo.dir_shot = parts[6];
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,18) && encdirmatch(6,19)) {
-	dirpss(3,7,8);
+        encdirmatch(5,18) && encdirmatch(6,19)) {
+        dirpss(3,7,8);
     }
 
     if (parts.size() == 12 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(11,4)) {
-	noretdirpss(3,8,10);
-	jinfo.dir_sequence.append(str_slash).append(parts[9]);
-	return true;
+        encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(11,4)) {
+        noretdirpss(3,8,10);
+        jinfo.dir_sequence.append(str_slash).append(parts[9]);
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,22)) {
-	dirpss(3,7,8);
+        encdirmatch(5,2) && encdirmatch(6,22)) {
+        dirpss(3,7,8);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,23) && encdirmatch(6,16)) {
-	// duplicate seq/shot to match with next form
-	dirpss(3,7,7);
+        encdirmatch(5,23) && encdirmatch(6,16)) {
+        // duplicate seq/shot to match with next form
+        dirpss(3,7,7);
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,23) && encdirmatch(6,16)) {
-	dirpss(3,7,8);
+        encdirmatch(5,23) && encdirmatch(6,16)) {
+        dirpss(3,7,8);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,24)) {
-	// same seq/shot, nothing else better
-	dirpss(3,7,7);
+        encdirmatch(5,2) && encdirmatch(6,24)) {
+        // same seq/shot, nothing else better
+        dirpss(3,7,7);
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(7,24)) {
-	// same seq/shot, nothing else better
-	dirpss(3,8,8);
+        encdirmatch(5,2) && encdirmatch(7,24)) {
+        // same seq/shot, nothing else better
+        dirpss(3,8,8);
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(6,1)) {
-	dirpss(4,7,8);
+        match_directory_str13(parts[3]) && encdirmatch(6,1)) {
+        dirpss(4,7,8);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,1)) {
-	dirpss(4,6,7);
+        match_directory_str13(parts[3]) && encdirmatch(5,1)) {
+        dirpss(4,6,7);
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3)) {
-	dirpss(3,8,9);
+        encdirmatch(5,2) && encdirmatch(6,3)) {
+        dirpss(3,8,9);
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(4,13) && encdirmatch(5,1)) {
-	dirpss(3,6,7);
+        encdirmatch(4,13) && encdirmatch(5,1)) {
+        dirpss(3,6,7);
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(3,25) && encdirmatch(4,1) &&
-	parts[6][0] == 's' && parts[6][1] == 'q') {
-	int dot = parts[6].find(".");
-	if (dot > 0 && (dot + 2) < (int)parts[6].size() && parts[6][dot+1] == 's') {
-	    jinfo.dir_production = parts[4];
-	    jinfo.dir_sequence = parts[6].substr(0,dot);
-	    jinfo.dir_shot = parts[6].substr(dot+1,parts[6].size()-(dot+1));
-	    return true;
-	}
+        encdirmatch(3,25) && encdirmatch(4,1) &&
+        parts[6][0] == 's' && parts[6][1] == 'q') {
+        int dot = parts[6].find(".");
+        if (dot > 0 && (dot + 2) < (int)parts[6].size() && parts[6][dot+1] == 's') {
+            jinfo.dir_production = parts[4];
+            jinfo.dir_sequence = parts[6].substr(0,dot);
+            jinfo.dir_shot = parts[6].substr(dot+1,parts[6].size()-(dot+1));
+            return true;
+        }
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,10)) {
-	jinfo.dir_production = parts[4];
-	int idx = jinfo.dir_production.find("_");
-	if (idx > 0) {
-	    jinfo.dir_production = jinfo.dir_production.substr(0,idx);
-	}
-	jinfo.dir_sequence = parts[4]; // these productions appear to only have one sequence, but preserve _ bit
-	jinfo.dir_shot = parts[6];
-	return true;
+        match_directory_str13(parts[3]) && encdirmatch(5,10)) {
+        jinfo.dir_production = parts[4];
+        int idx = jinfo.dir_production.find("_");
+        if (idx > 0) {
+            jinfo.dir_production = jinfo.dir_production.substr(0,idx);
+        }
+        jinfo.dir_sequence = parts[4]; // these productions appear to only have one sequence, but preserve _ bit
+        jinfo.dir_shot = parts[6];
+        return true;
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,1)) {
-	jinfo.dir_production = parts[4];
-	int idx = jinfo.dir_production.find("_");
-	if (idx > 0) {
-	    jinfo.dir_production = jinfo.dir_production.substr(0,idx);
-	}
-	jinfo.dir_sequence = parts[4]; // these productions appear to only have one sequence, but preserve _ bit
-	jinfo.dir_shot = parts[6];
-	return true;
+        match_directory_str13(parts[3]) && encdirmatch(5,1)) {
+        jinfo.dir_production = parts[4];
+        int idx = jinfo.dir_production.find("_");
+        if (idx > 0) {
+            jinfo.dir_production = jinfo.dir_production.substr(0,idx);
+        }
+        jinfo.dir_sequence = parts[4]; // these productions appear to only have one sequence, but preserve _ bit
+        jinfo.dir_shot = parts[6];
+        return true;
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,9) &&
-	encdirmatch(6,10)) {
-	// these productions appear to only have one sequence
-	dirpss(4,6,7);
+        match_directory_str13(parts[3]) && encdirmatch(5,9) &&
+        encdirmatch(6,10)) {
+        // these productions appear to only have one sequence
+        dirpss(4,6,7);
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,8) &&
-	encdirmatch(3,5) && encdirmatch(5,21) &&
-	match_directory_str13(parts[6]) && encdirmatch(8,1)) {
-	dirpss(7,9,10);
+        encdirmatch(3,5) && encdirmatch(5,21) &&
+        match_directory_str13(parts[6]) && encdirmatch(8,1)) {
+        dirpss(7,9,10);
     }
 
     if (parts.size() == 6 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,26)) {
-	// either a special case, or a case where the production name isn't
-	// in the pathname
-	dirpss(4,4,5);
+        match_directory_str13(parts[3]) && encdirmatch(4,26)) {
+        // either a special case, or a case where the production name isn't
+        // in the pathname
+        dirpss(4,4,5);
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,23) &&
-	encdirmatch(6,16)) {
-	dirpss(4,9,10);
+        match_directory_str13(parts[3]) && encdirmatch(5,23) &&
+        encdirmatch(6,16)) {
+        dirpss(4,9,10);
     }
 
     if (parts.size() == 6 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,1) &&
-	(int)parts[4].find("_") > 0) {
-	jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
-	jinfo.dir_sequence = jinfo.dir_shot = empty_string;
-	return true;
+        match_directory_str13(parts[3]) && encdirmatch(5,1) &&
+        (int)parts[4].find("_") > 0) {
+        jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
+        jinfo.dir_sequence = jinfo.dir_shot = empty_string;
+        return true;
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(4,1)) {
-	dirpss(3,5,6);
+        encdirmatch(4,1)) {
+        dirpss(3,5,6);
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,2) &&
-	encdirmatch(7,16)) {
-	dirpss(4,9,10); // kinda arbitrary, could be 4,8,9 also
+        match_directory_str13(parts[3]) && encdirmatch(5,2) &&
+        encdirmatch(7,16)) {
+        dirpss(4,9,10); // kinda arbitrary, could be 4,8,9 also
     }
 
     if (parts.size() == 6 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && match_directory_str13(parts[4])) {
-	jinfo.dir_production = parts[5]; // only have a production here
-	jinfo.dir_sequence = jinfo.dir_shot = empty_string;
-	return true;
+        match_directory_str13(parts[3]) && match_directory_str13(parts[4])) {
+        jinfo.dir_production = parts[5]; // only have a production here
+        jinfo.dir_sequence = jinfo.dir_shot = empty_string;
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,1) &&
-	(int)parts[4].find("_") > 0) {
-	noretdirpss(4,6,7);
-	jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
-	return true;
+        match_directory_str13(parts[3]) && encdirmatch(5,1) &&
+        (int)parts[4].find("_") > 0) {
+        noretdirpss(4,6,7);
+        jinfo.dir_production = parts[4].substr(0,parts[4].find("_"));
+        return true;
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,23)) {
-	dirpss(4,6,7); // this one is a little odd.
+        match_directory_str13(parts[3]) && encdirmatch(5,23)) {
+        dirpss(4,6,7); // this one is a little odd.
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,7) &&
-	encdirmatch(5,10)) {
-	dirpss(3,5,6); // only one sequence here
+        encdirmatch(5,10)) {
+        dirpss(3,5,6); // only one sequence here
     }
 
     if (parts.size() == 6 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,27)) {
-	dirps(4,5); // ?? not clear what to choose
+        match_directory_str13(parts[3]) && encdirmatch(4,27)) {
+        dirps(4,5); // ?? not clear what to choose
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(5,23)) {
-	dirpss(6,7,8); // could also be 4,7,8
+        match_directory_str13(parts[3]) && encdirmatch(5,23)) {
+        dirpss(6,7,8); // could also be 4,7,8
     }
 
     if (parts.size() == 2 && encdirmatch(0,21) && encdirmatch(1,28)) {
-	return false; // no information
+        return false; // no information
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(4,13) && encdirmatch(5,1) && encdirmatch(9,29)
-	&& (int)parts[7].find("_") > 0) {
-       	noretdirpss(3,6,7);
-	trimstring(jinfo.dir_shot,"_");
-	return true;
+        encdirmatch(4,13) && encdirmatch(5,1) && encdirmatch(9,29)
+        && (int)parts[7].find("_") > 0) {
+        noretdirpss(3,6,7);
+        trimstring(jinfo.dir_shot,"_");
+        return true;
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,6) &&
-	encdirmatch(7,1)) {
-	dirpss(5,8,9);
+        match_directory_str13(parts[3]) && encdirmatch(4,6) &&
+        encdirmatch(7,1)) {
+        dirpss(5,8,9);
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(9,30)) {
-	dirpss(3,7,8); // 3,8,8 would also make sense
+        encdirmatch(5,2) && encdirmatch(6,3) && encdirmatch(9,30)) {
+        dirpss(3,7,8); // 3,8,8 would also make sense
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,31)) {
-	dirpss(3,6,7);
+        encdirmatch(5,31)) {
+        dirpss(3,6,7);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,2) && encdirmatch(6,32)) {
-	jinfo.dir_production = parts[3];
-	jinfo.dir_sequence = jinfo.dir_shot = empty_string;
-	return true;
+        encdirmatch(5,2) && encdirmatch(6,32)) {
+        jinfo.dir_production = parts[3];
+        jinfo.dir_sequence = jinfo.dir_shot = empty_string;
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(3,13) && encdirmatch(5,13) && encdirmatch(6,1)) {
-	dirpss(4,7,8);
+        encdirmatch(3,13) && encdirmatch(5,13) && encdirmatch(6,1)) {
+        dirpss(4,7,8);
     }
 
     if (parts.size() == 10 && encdirmatch(0,5) && encdirmatch(2,6) &&
-	encdirmatch(5,1) && encdirmatch(8,16)) {
-	dirpss(3,6,7);
+        encdirmatch(5,1) && encdirmatch(8,16)) {
+        dirpss(3,6,7);
     }
 
     if (parts.size() == 8 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,33)) {
-	noretdirpss(6,7,7); // not really a production
-	trimstring(jinfo.dir_shot,str_underbar);
-	return true;
+        match_directory_str13(parts[3]) && encdirmatch(4,33)) {
+        noretdirpss(6,7,7); // not really a production
+        trimstring(jinfo.dir_shot,str_underbar);
+        return true;
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,34)) {
-	dirpss(4,5,6); // not really a production
+        match_directory_str13(parts[3]) && encdirmatch(4,34)) {
+        dirpss(4,5,6); // not really a production
     }
 
     if (parts.size() == 6 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && encdirmatch(4,35)) {
-	dirps(4,5); // not really a production
+        match_directory_str13(parts[3]) && encdirmatch(4,35)) {
+        dirps(4,5); // not really a production
     }
 
     if (parts.size() == 5 && encdirmatch(0,21) &&
-	match_directory_str13(parts[1]) && encdirmatch(3,1)) {
-	dirpss(2,2,4); // only one sequence in this production
+        match_directory_str13(parts[1]) && encdirmatch(3,1)) {
+        dirpss(2,2,4); // only one sequence in this production
     }
 
     if (parts.size() == 4 && encdirmatch(0,0) &&
-	encdirmatch(1,36) && encdirmatch(2,37)) {
-	dirps(1,3); // not really a production
+        encdirmatch(1,36) && encdirmatch(2,37)) {
+        dirps(1,3); // not really a production
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) &&
-	encdirmatch(2,38) && match_directory_str13(parts[3])) {
-	noretdirpss(4,5,6);
-	trimstring(jinfo.dir_production,str_underbar);
-	return true;
+        encdirmatch(2,38) && match_directory_str13(parts[3])) {
+        noretdirpss(4,5,6);
+        trimstring(jinfo.dir_production,str_underbar);
+        return true;
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) &&
-	encdirmatch(2,13) && encdirmatch(3,39)) {
-	dirps(1,4);
+        encdirmatch(2,13) && encdirmatch(3,39)) {
+        dirps(1,4);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) &&
-	encdirmatch(2,13) && encdirmatch(3,39)) {
-	dirpss(1,4,6);
+        encdirmatch(2,13) && encdirmatch(3,39)) {
+        dirpss(1,4,6);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) &&
-	encdirmatch(2,13) && sqsmatch(3,4)) {
-	dirpss(1,3,4);
+        encdirmatch(2,13) && sqsmatch(3,4)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(3,1) &&
-	sqsmatch(4,5)) {
-	dirpss(1,4,5);
+        sqsmatch(4,5)) {
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 4 && encdirmatch(0,0) && encdirmatch(2,40) &&
-	encdirmatch(3,41)) {
-	dirpss(1,2,3); // not really a sequence/shot
+        encdirmatch(3,41)) {
+        dirpss(1,2,3); // not really a sequence/shot
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,12) &&
-	encdirmatch(3,2) && encdirmatch(4,42)) {
-	dirpss(1,5,6);
+        encdirmatch(3,2) && encdirmatch(4,42)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) &&
-	match_directory_str13(parts[2]) &&
-	(int)parts[3].find(str_underbar) > 0) {
-	noretdirpss(3,4,5); // not really sequence/shot
-	trimstring(jinfo.dir_production,str_underbar);
-	return true;
+        match_directory_str13(parts[2]) &&
+        (int)parts[3].find(str_underbar) > 0) {
+        noretdirpss(3,4,5); // not really sequence/shot
+        trimstring(jinfo.dir_production,str_underbar);
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,1) && sqsmatch(4,5) && encdirmatch(6,16)) {
-	dirpss(1,4,5);
+        encdirmatch(3,1) && sqsmatch(4,5) && encdirmatch(6,16)) {
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) &&
-	match_directory_str13(parts[2]) && sqsmatch(3,4) &&
-	encdirmatch(6,43)) {
-	dirpss(1,3,4);
+        match_directory_str13(parts[2]) && sqsmatch(3,4) &&
+        encdirmatch(6,43)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,16)) {
-	dirpss(1,5,6);
+        encdirmatch(4,16)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 4 && encdirmatch(0,0) && encdirmatch(2,44)) {
-	dirps(1,3); // not really a sequence
+        dirps(1,3); // not really a sequence
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) &&
-	match_directory_str13(parts[2]) && encdirmatch(4,45) &&
-	parts[3].find("_")) {
-	jinfo.dir_production = parts[3];
-	trimstring(jinfo.dir_production,str_underbar);
-	return true;
+        match_directory_str13(parts[2]) && encdirmatch(4,45) &&
+        parts[3].find("_")) {
+        jinfo.dir_production = parts[3];
+        trimstring(jinfo.dir_production,str_underbar);
+        return true;
     }
 
     if (parts.size() == 9 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	sqsmatch(3,4) && encdirmatch(7,46)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4) && encdirmatch(7,46)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,47) &&
-	sqsmatch(3,4) && encdirmatch(5,16)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4) && encdirmatch(5,16)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,48)) {
-	dirpss(1,5,6);
+        encdirmatch(4,48)) {
+        dirpss(1,5,6);
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	sqsmatch(3,4) && encdirmatch(6,46)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4) && encdirmatch(6,46)) {
+        dirpss(1,3,4);
     }
 
     if ((parts.size() == 5 || parts.size() == 6) &&
-	encdirmatch(0,0) && encdirmatch(2,40) && encdirmatch(3,49)) {
-	dirps(1,4);
+        encdirmatch(0,0) && encdirmatch(2,40) && encdirmatch(3,49)) {
+        dirps(1,4);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,11) &&
-	encdirmatch(3,1) && sqsmatch(4,5) && encdirmatch(6,16)) {
-	dirpss(1,4,5);
+        encdirmatch(3,1) && sqsmatch(4,5) && encdirmatch(6,16)) {
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(2,40) &&
-	sqsmatch(3,4)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 3 && encdirmatch(0,0) && encdirmatch(2,12)) {
-	jinfo.dir_production = parts[1];
-	return true;
+        jinfo.dir_production = parts[1];
+        return true;
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(3,4)) {
-	dirpss(1,4,5);
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,50) &&
-	encdirmatch(4,51) && encdirmatch(6,52)) {
-	dirps(1,5); // no shot
+        encdirmatch(4,51) && encdirmatch(6,52)) {
+        dirps(1,5); // no shot
     }
 
     if (parts.size() == 7 && encdirmatch(2,53) && encdirmatch(3,54) &&
-	encdirmatch(5,52)) {
-	dirps(1,4); // no shot
+        encdirmatch(5,52)) {
+        dirps(1,4); // no shot
     }
 
     if (parts.size() == 10 && encdirmatch(0,0) && encdirmatch(2,53) &&
-	encdirmatch(3,55) && encdirmatch(8,52)) {
-	dirpss(1,6,7);
+        encdirmatch(3,55) && encdirmatch(8,52)) {
+        dirpss(1,6,7);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,50) &&
-	encdirmatch(4,56)) {
-	jinfo.dir_production = parts[1];
-	return true;
+        encdirmatch(4,56)) {
+        jinfo.dir_production = parts[1];
+        return true;
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,50) &&
-	encdirmatch(4,49)) {
-	jinfo.dir_production = parts[1];
-	return true;
+        encdirmatch(4,49)) {
+        jinfo.dir_production = parts[1];
+        return true;
     }
 
     if (parts.size() == 2 && parts[1] == str_ers_java_service) {
-	jinfo.dir_production = str_java_service;
-	return true;
+        jinfo.dir_production = str_java_service;
+        return true;
     }
 
     if (parts.size() == 3 && parts[1] == str_ers &&
-	parts[2] == str_sstress_0_1_0) {
-	jinfo.dir_production = str_sstress_0_1_0;
-	return true;
+        parts[2] == str_sstress_0_1_0) {
+        jinfo.dir_production = str_sstress_0_1_0;
+        return true;
     }
 
     if (parts.size() >= 2 && parts[1] == str_ers_host_traces) {
-	jinfo.dir_production = str_ers_host_traces;
-	return true;
+        jinfo.dir_production = str_ers_host_traces;
+        return true;
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(2,50) &&
-	encdirmatch(4,56)) {
-	dirpss(1,3,5);
+        encdirmatch(4,56)) {
+        dirpss(1,3,5);
     }
 
     if (parts.size() == 7 && encdirmatch(0,5) && encdirmatch(2,38) &&
-	encdirmatch(4,36) && encdirmatch(5,37)) {
-	dirps(4,6); // not a movie
+        encdirmatch(4,36) && encdirmatch(5,37)) {
+        dirps(4,6); // not a movie
     }
 
     if (parts.size() == 10 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	encdirmatch(3,4) && encdirmatch(7,43) && encdirmatch(8,58)) {
-	noretdirpss(1,4,5);
-	jinfo.subtask = parts[9];
-	return true;
+        encdirmatch(3,4) && encdirmatch(7,43) && encdirmatch(8,58)) {
+        noretdirpss(1,4,5);
+        jinfo.subtask = parts[9];
+        return true;
     }
 
     if (parts.size() == 10 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	encdirmatch(3,4) && encdirmatch(7,43)) {
-	noretdirpss(1,4,5);
-	jinfo.subtask = parts[8];
-	return true;
+        encdirmatch(3,4) && encdirmatch(7,43)) {
+        noretdirpss(1,4,5);
+        jinfo.subtask = parts[8];
+        return true;
     }
 
     if (parts.size() == 11 && encdirmatch(0,5) && encdirmatch(2,21) &&
-	match_directory_str13(parts[3]) && sqsmatch(5,6) &&
-	encdirmatch(7,43) && encdirmatch(9,52)) {
-	jinfo.dir_production = "*unknown*";
-	jinfo.dir_sequence = parts[5];
-	jinfo.dir_shot = parts[6];
-	return true;
+        match_directory_str13(parts[3]) && sqsmatch(5,6) &&
+        encdirmatch(7,43) && encdirmatch(9,52)) {
+        jinfo.dir_production = "*unknown*";
+        jinfo.dir_sequence = parts[5];
+        jinfo.dir_shot = parts[6];
+        return true;
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,48)) {
-	dirpss(1,5,7);
+        encdirmatch(4,48)) {
+        dirpss(1,5,7);
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(3,4) &&
-	encdirmatch(4,17)) {
-	dirpss(1,4,5);
+        encdirmatch(4,17)) {
+        dirpss(1,4,5);
     }
 
     if (parts.size() == 9 && encdirmatch(0,0) && encdirmatch(2,13) &&
-	sqsmatch(3,4) && encdirmatch(6,43)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4) && encdirmatch(6,43)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 4 && encdirmatch(0,0) && encdirmatch(2,59) &&
-	encdirmatch(3,60)) {
-	dirps(2,3);
+        encdirmatch(3,60)) {
+        dirps(2,3);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(2,59) &&
-	encdirmatch(3,60)) {
-	dirpss(2,3,4);
+        encdirmatch(3,60)) {
+        dirpss(2,3,4);
     }
 
     if (parts.size() == 5 && encdirmatch(0,0) && encdirmatch(3,1) &&
-	parts[4][0] == 's' && parts[4][1] == 'q') {
-	dirps(1,4);
+        parts[4][0] == 's' && parts[4][1] == 'q') {
+        dirps(1,4);
     }
 
     if (parts.size() == 5 && encdirmatch(0,61) && encdirmatch(2,62) &&
-	parts[3].size() >= 4 &&
-	encmatch(parts[3].substr(0,4),encrypted_parse_directory[63]) &&
-	(int)parts[4].find(str_dotcount) > 0) {
-	jinfo.dir_production = str_ers_trace_data;
-	jinfo.dir_sequence = parts[3];
-	jinfo.dir_shot = parts[4].substr(0,parts[4].find(str_dotcount));
-	return true;
+        parts[3].size() >= 4 &&
+        encmatch(parts[3].substr(0,4),encrypted_parse_directory[63]) &&
+        (int)parts[4].find(str_dotcount) > 0) {
+        jinfo.dir_production = str_ers_trace_data;
+        jinfo.dir_sequence = parts[3];
+        jinfo.dir_shot = parts[4].substr(0,parts[4].find(str_dotcount));
+        return true;
     }
 
     if (parts.size() == 8 && encdirmatch(0,0) && encdirmatch(2,64) &&
-	sqsmatch(3,4) && encdirmatch(6,43)) {
-	noretdirpss(1,3,4);
-	jinfo.task = parts[7];
-	return true;
+        sqsmatch(3,4) && encdirmatch(6,43)) {
+        noretdirpss(1,3,4);
+        jinfo.task = parts[7];
+        return true;
     }
 
     if (parts.size() == 7 && encdirmatch(0,0) && encdirmatch(2,64) &&
-	sqsmatch(3,4) && encdirmatch(6,43)) {
-	dirpss(1,3,4);
+        sqsmatch(3,4) && encdirmatch(6,43)) {
+        dirpss(1,3,4);
     }
 
     if (parts.size() == 5 && encdirmatch(0,61) && encdirmatch(2,62) &&
-	parts[3].size() >= 6 && parts[3].substr(0,6) == str_trace_dash &&
-	isdigit(parts[4][0])) {
-	jinfo.dir_production = str_ers_trace_data;
-	jinfo.dir_sequence = parts[4];
-	jinfo.dir_shot = parts[3];
-	return true;
+        parts[3].size() >= 6 && parts[3].substr(0,6) == str_trace_dash &&
+        isdigit(parts[4][0])) {
+        jinfo.dir_production = str_ers_trace_data;
+        jinfo.dir_sequence = parts[4];
+        jinfo.dir_shot = parts[3];
+        return true;
     }
 
     if (parts.size() == 6 && encdirmatch(0,61) && encdirmatch(2,62) &&
-	parts[3].size() >= 6 && parts[3].substr(0,6) == str_trace_dash &&
-	isdigit(parts[4][0]) && (int)parts[5].find(str_dotbsubdashlogdot)>0) {
-	jinfo.dir_production = str_ers_trace_data;
-	jinfo.dir_sequence = parts[4];
-	jinfo.dir_shot = parts[5].substr(0,parts[5].find(str_dotbsubdashlogdot));
-	return true;
+        parts[3].size() >= 6 && parts[3].substr(0,6) == str_trace_dash &&
+        isdigit(parts[4][0]) && (int)parts[5].find(str_dotbsubdashlogdot)>0) {
+        jinfo.dir_production = str_ers_trace_data;
+        jinfo.dir_sequence = parts[4];
+        jinfo.dir_shot = parts[5].substr(0,parts[5].find(str_dotbsubdashlogdot));
+        return true;
     }
 
     if (parts.size() == 5 && encdirmatch(0,61) && encdirmatch(2,62) &&
-	parts[3].size() >= 4 &&
-	encmatch(parts[3].substr(0,4),encrypted_parse_directory[63]) &&
-	(int)parts[4].find(str_dotbsubdashlogdot) > 0) {
-	jinfo.dir_production = str_ers_trace_data;
-	jinfo.dir_sequence = parts[3];
-	jinfo.dir_shot = parts[4].substr(0,parts[4].find(str_dotbsubdashlogdot));
-	return true;
+        parts[3].size() >= 4 &&
+        encmatch(parts[3].substr(0,4),encrypted_parse_directory[63]) &&
+        (int)parts[4].find(str_dotbsubdashlogdot) > 0) {
+        jinfo.dir_production = str_ers_trace_data;
+        jinfo.dir_sequence = parts[3];
+        jinfo.dir_shot = parts[4].substr(0,parts[4].find(str_dotbsubdashlogdot));
+        return true;
     }
 
     if (parts.size() == 6 && encdirmatch(0,0) && encdirmatch(2,50) &&
-	encdirmatch(4,51) && parts[5][0] == 's' && parts[5][1] == 'q') {
-	jinfo.dir_production = parts[1];
-	jinfo.dir_sequence = parts[5];
-	return true;
+        encdirmatch(4,51) && parts[5][0] == 's' && parts[5][1] == 'q') {
+        jinfo.dir_production = parts[1];
+        jinfo.dir_sequence = parts[5];
+        return true;
     }
 
     if (parts.size() == 7 && parts[0] == str_tuscany &&
-	parts[2] == str_perl_service && parts[3] == str_chroot_jail) {
-	jinfo.dir_production = parts[0];
-	jinfo.dir_sequence = str_perl_service2;
-	jinfo.dir_shot = parts[5]; // will be replaced with shot from jobname in jobname parsing
-	return true;
+        parts[2] == str_perl_service && parts[3] == str_chroot_jail) {
+        jinfo.dir_production = parts[0];
+        jinfo.dir_sequence = str_perl_service2;
+        jinfo.dir_shot = parts[5]; // will be replaced with shot from jobname in jobname parsing
+        return true;
     }
 
     // DIRECTORY PARSE -- for finding place to add parsing in code
@@ -2488,97 +2488,97 @@ bool
 parse_directory_warning(const string &dirpath, int linenum)
 {
     if (dirpath == empty_string)
-	return false;
+        return false;
     if (dirpath == str_dev_null) // we don't parse this log name
-	return false;
+        return false;
     if (hexstring(encryptString(dirpath)) == "dd171f15f9772a4bdb2b4f04e117c69c4a2f897af26fbf5bbe0550526022a033154dae897b1a4f322392c22d666b208a2dfa3daf38f6ff6e8248618c05d2d218") {
-	return false; // no useful information, don't generate warning
+        return false; // no useful information, don't generate warning
     }
     vector<string> parts;
     split(dirpath,str_slash,parts);
 
     if (parts[0] != empty_string) {
-	return false; // we don't try to parse these, so don't generate warnings
+        return false; // we don't try to parse these, so don't generate warnings
     }
     if (parts.size() == 2 && parts[0] == empty_string &&
-	parts[1] == empty_string) {
-	return false; // no information in "/"
+        parts[1] == empty_string) {
+        return false; // no information in "/"
     }
 
     if (parts.size() == 4 && parts[0] == empty_string &&
-	parts[1] == str_tmp) {
-      return false; // no useful information in here, logged into /tmp/x/y
+        parts[1] == str_tmp) {
+        return false; // no useful information in here, logged into /tmp/x/y
     }
 
     if (false) {
-	// Dunno why this was here, leaving it in in case it once made
+        // Dunno why this was here, leaving it in in case it once made
         // sense.  TODO: remove once under version control.
-	parts.erase(parts.begin());
-	if (parts.size() > 0 &&
-	    encryptString(parts[0]) == encrypted_parse_directory[8]) {
-	    parts.erase(parts.begin());
-	}
+        parts.erase(parts.begin());
+        if (parts.size() > 0 &&
+            encryptString(parts[0]) == encrypted_parse_directory[8]) {
+            parts.erase(parts.begin());
+        }
     }
 
     if (print_parse_warnings) {
-	cerr << format("Unable to parse directory path(line%d) (%d parts) '%s' --> '%s'\n")
-	    % linenum % parts.size() % dirpath % hexstring(encryptString(dirpath));
-	for(unsigned i=0;i<parts.size();++i) {
-	    cerr << format("  %d: %s -> %s\n") % i % parts[i] % hexstring(encryptString(parts[i]));
-	}
+        cerr << format("Unable to parse directory path(line%d) (%d parts) '%s' --> '%s'\n")
+                % linenum % parts.size() % dirpath % hexstring(encryptString(dirpath));
+        for (unsigned i=0;i<parts.size();++i) {
+            cerr << format("  %d: %s -> %s\n") % i % parts[i] % hexstring(encryptString(parts[i]));
+        }
     }
     return true;
 }
 
 void
 parse_directory_jobinfo(const string &run_directory,
-			const string &log_filename,
-			job_info &jinfo,
-			int linenum)
+                        const string &log_filename,
+                        job_info &jinfo,
+                        int linenum)
 {
     jinfo.directory_name_unpacked =
-	try_parse_directory_jobinfo(run_directory,jinfo);
+            try_parse_directory_jobinfo(run_directory,jinfo);
     if (jinfo.directory_name_unpacked == false) {
-	jinfo.directory_name_unpacked =
-	    try_parse_directory_jobinfo(log_filename,jinfo);
+        jinfo.directory_name_unpacked =
+                try_parse_directory_jobinfo(log_filename,jinfo);
     }
 
     if (jinfo.directory_name_unpacked) {
-	SINVARIANT(jinfo.dir_production != empty_string);
-	jinfo.production = jinfo.dir_production;
-	jinfo.sequence = jinfo.dir_sequence;
-	jinfo.shot = jinfo.dir_shot;
+        SINVARIANT(jinfo.dir_production != empty_string);
+        jinfo.production = jinfo.dir_production;
+        jinfo.sequence = jinfo.dir_sequence;
+        jinfo.shot = jinfo.dir_shot;
     } else {
-	bool p1 = parse_directory_warning(run_directory,linenum);
-	bool p2 = parse_directory_warning(log_filename,linenum);
-	if (p1 || p2) {
-	    ++jobdirectory_parse_fail_count;
-	} else {
-	    ++jobdirectory_odd_fail_count;
-	}
-	SINVARIANT(jinfo.dir_production == empty_string &&
-		   jinfo.dir_sequence == empty_string &&
-		   jinfo.dir_shot == empty_string);
+        bool p1 = parse_directory_warning(run_directory,linenum);
+        bool p2 = parse_directory_warning(log_filename,linenum);
+        if (p1 || p2) {
+            ++jobdirectory_parse_fail_count;
+        } else {
+            ++jobdirectory_odd_fail_count;
+        }
+        SINVARIANT(jinfo.dir_production == empty_string &&
+                   jinfo.dir_sequence == empty_string &&
+                   jinfo.dir_shot == empty_string);
     }
 }
 
 bool
 period_parse_any(string &tmp_jobname, string &write_into,
-		 bool entire_string_ok = false,
-		 const string &sepstr = str_period)
+                 bool entire_string_ok = false,
+                 const string &sepstr = str_period)
 {
     int idx = tmp_jobname.find(sepstr);
     if (idx > 0) {
-	if (false) cout << format("XX %s -> ") % tmp_jobname;
-	write_into = tmp_jobname.substr(0,idx);
-	tmp_jobname = tmp_jobname.substr(idx+1,
-					 tmp_jobname.length() - (idx+1));
-	if (false) cout << format("%s/%s\n") % write_into % tmp_jobname;
-	return true;
+        if (false) cout << format("XX %s -> ") % tmp_jobname;
+        write_into = tmp_jobname.substr(0,idx);
+        tmp_jobname = tmp_jobname.substr(idx+1,
+                                         tmp_jobname.length() - (idx+1));
+        if (false) cout << format("%s/%s\n") % write_into % tmp_jobname;
+        return true;
     } else if (idx == -1 && entire_string_ok) {
-	write_into = tmp_jobname;
-	tmp_jobname = empty_string;
-	return true;
+        write_into = tmp_jobname;
+        tmp_jobname = empty_string;
+        return true;
     }
 
     return false;
@@ -2586,59 +2586,59 @@ period_parse_any(string &tmp_jobname, string &write_into,
 
 bool
 period_parse_match(string &tmp_jobname, const string &target_str,
-		   const char sep_char = '.')
+                   const char sep_char = '.')
 {
     if (tmp_jobname == target_str) {
-	tmp_jobname = empty_string;
-	return true;
+        tmp_jobname = empty_string;
+        return true;
     }
     if (tmp_jobname.length() <= target_str.length())
-	return false;
+        return false;
     if (tmp_jobname.substr(0,target_str.length()) != target_str)
-	return false;
+        return false;
     if (tmp_jobname[target_str.length()] != sep_char)
-	return false;
+        return false;
     tmp_jobname = tmp_jobname.substr(target_str.length()+1,
-				     tmp_jobname.length() - (target_str.length()+1));
+                                     tmp_jobname.length() - (target_str.length()+1));
     return true;
 }
 
 bool
 period_parse_xmatch(string &tmp_jobname, const string &encrypted_str,
-		    string *target_str = NULL)
+                    string *target_str = NULL)
 {
     int period_idx = tmp_jobname.find(".");
     if (period_idx == -1)
-	return false;
+        return false;
     if (encryptString(tmp_jobname.substr(0,period_idx)) == encrypted_str) {
-	if (target_str != NULL) {
-	    *target_str = tmp_jobname.substr(0,period_idx);
-	}
-	tmp_jobname = tmp_jobname.substr(period_idx + 1,
-					 tmp_jobname.length() - (period_idx + 1));
-	return true;
+        if (target_str != NULL) {
+            *target_str = tmp_jobname.substr(0,period_idx);
+        }
+        tmp_jobname = tmp_jobname.substr(period_idx + 1,
+                                         tmp_jobname.length() - (period_idx + 1));
+        return true;
     } else {
-	if (encrypted_str.size() == 0) { // finding new string...
-	    cerr << format("Unable to match %s -> %s == '%s'\n")
-		% tmp_jobname.substr(0,period_idx) 
-		% hexstring(encryptString(tmp_jobname.substr(0,period_idx)))
-		% hexstring(encrypted_str);
-	}
-	return false;
+        if (encrypted_str.size() == 0) { // finding new string...
+            cerr << format("Unable to match %s -> %s == '%s'\n")
+                    % tmp_jobname.substr(0,period_idx) 
+                    % hexstring(encryptString(tmp_jobname.substr(0,period_idx)))
+                    % hexstring(encrypted_str);
+        }
+        return false;
     }
 }
 
 bool
 period_parse_digits(string &tmp_jobname, const char sepchar = '.')
 {
-    for(unsigned i=0;i<tmp_jobname.size();++i) {
-	if (tmp_jobname[i] == sepchar) {
-	    tmp_jobname = tmp_jobname.substr(i+1,tmp_jobname.size() - (i+1));
-	    return true;
-	}
-	if (!isdigit(tmp_jobname[i])) {
-	    return false;
-	}
+    for (unsigned i=0;i<tmp_jobname.size();++i) {
+        if (tmp_jobname[i] == sepchar) {
+            tmp_jobname = tmp_jobname.substr(i+1,tmp_jobname.size() - (i+1));
+            return true;
+        }
+        if (!isdigit(tmp_jobname[i])) {
+            return false;
+        }
     }
     tmp_jobname = empty_string;
     return true;
@@ -2650,36 +2650,36 @@ bool
 parse_jobname_trim_framespec(string &jobname, job_info &jinfo)
 {
     if (regex_jobname_framespec == NULL) {
-	regex_jobname_framespec =
-	    xpcre_compile(":?(\\[(\\d|-|:|,)+\\])(%\\d+)?$");
+        regex_jobname_framespec =
+                xpcre_compile(":?(\\[(\\d|-|:|,)+\\])(%\\d+)?$");
     }
 
     const int novector = 30;
     int ovector[novector];
     // trim frame spec
     int rc = pcre_exec(regex_jobname_framespec, NULL, jobname.c_str(),
-		       jobname.length(),0,0,ovector,novector);
+                       jobname.length(),0,0,ovector,novector);
     if (rc == 3 || rc == 4) {
-	string str;
-	xpcre_get_substring(jobname,ovector,rc,1,str);
-	if (parse_frameinfo(str,jinfo) == false) {
-	    if (print_parse_warnings) {
-		cerr << format("can't parse '%s' in '%s'\n") % str % jobname;
-	    }
-	    return true; 
-	}
-	xpcre_get_substring(jobname,ovector,rc,0,str);
-	if (false) cout << format("trimmed %s to ") % jobname;
-	jobname = jobname.substr(0,jobname.length() - str.length());
-	if(jobname.size() > 0 && jobname[jobname.size()-1] == '.') {
-	    jobname = jobname.substr(0,jobname.length() - 1);
-	}
-	if (false) cout << format("%s\n") % jobname;
+        string str;
+        xpcre_get_substring(jobname,ovector,rc,1,str);
+        if (parse_frameinfo(str,jinfo) == false) {
+            if (print_parse_warnings) {
+                cerr << format("can't parse '%s' in '%s'\n") % str % jobname;
+            }
+            return true; 
+        }
+        xpcre_get_substring(jobname,ovector,rc,0,str);
+        if (false) cout << format("trimmed %s to ") % jobname;
+        jobname = jobname.substr(0,jobname.length() - str.length());
+        if (jobname.size() > 0 && jobname[jobname.size()-1] == '.') {
+            jobname = jobname.substr(0,jobname.length() - 1);
+        }
+        if (false) cout << format("%s\n") % jobname;
     } else {
-	if (false) cout << format("nomatch on %s\n") % jobname;
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  format("inexplicable error from pcre: %d on %s")
-		  % rc % jobname);
+        if (false) cout << format("nomatch on %s\n") % jobname;
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  format("inexplicable error from pcre: %d on %s")
+                  % rc % jobname);
     }
     return true;
 }
@@ -2688,10 +2688,10 @@ bool
 parse_periodsep_trim_periods(string &tmp_jobname)
 {
     if (tmp_jobname.length() > 0 && tmp_jobname[0] == '.') {
-	tmp_jobname = tmp_jobname.substr(1,tmp_jobname.length()-1);
+        tmp_jobname = tmp_jobname.substr(1,tmp_jobname.length()-1);
     }
     if (tmp_jobname.length() > 0 && tmp_jobname[tmp_jobname.length()-1] == '.') {
-	tmp_jobname = tmp_jobname.substr(0,tmp_jobname.length()-1);
+        tmp_jobname = tmp_jobname.substr(0,tmp_jobname.length()-1);
     }
     return true; // always succeeds
 }
@@ -2706,28 +2706,28 @@ pcre *regex_periodsep_tasknumnum;
 
 bool // true on success, assumes the directory parsed
 parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
-			job_info &jinfo)
+                        job_info &jinfo)
 {
     if (regex_periodsep_jobname_1a == NULL) {
-	regex_periodsep_jobname_1a =
-	    xpcre_compile("^(\\w+)\\.(\\w+)\\.([A-Za-z0-9_\\.]+)$");
+        regex_periodsep_jobname_1a =
+                xpcre_compile("^(\\w+)\\.(\\w+)\\.([A-Za-z0-9_\\.]+)$");
 
-	regex_periodsep_jobname_1b = xpcre_compile("\\.?({[rs]\\d+})$");
+        regex_periodsep_jobname_1b = xpcre_compile("\\.?({[rs]\\d+})$");
 
-	regex_periodsep_jobname_task_subtask =
-	    xpcre_compile("^(\\w+)\\.(\\w*)$");
+        regex_periodsep_jobname_task_subtask =
+                xpcre_compile("^(\\w+)\\.(\\w*)$");
 
-	regex_periodsep_bsub_path_task_1 =
-	    xpcre_compile("^BSUB.(\\w+)/(.+)/(\\w+)$");
+        regex_periodsep_bsub_path_task_1 =
+                xpcre_compile("^BSUB.(\\w+)/(.+)/(\\w+)$");
 
-	regex_periodsep_bsub_path_task_2 =
-	    xpcre_compile("^BSUB.[\\./]+lib/(\\w+)/(.+)/(\\w+)$");
+        regex_periodsep_bsub_path_task_2 =
+                xpcre_compile("^BSUB.[\\./]+lib/(\\w+)/(.+)/(\\w+)$");
 
-	regex_periodsep_taskCAPS_sq_shot =
-	    xpcre_compile("^([A-Z_]+)\\.(sq\\d+)\\.(s.+)$");
+        regex_periodsep_taskCAPS_sq_shot =
+                xpcre_compile("^([A-Z_]+)\\.(sq\\d+)\\.(s.+)$");
 
-	regex_periodsep_tasknumnum =
-	    xpcre_compile("^(\\w+)_\\d+\\.\\d+$");
+        regex_periodsep_tasknumnum =
+                xpcre_compile("^(\\w+)_\\d+\\.\\d+$");
     }
 
     const int novector = 30;
@@ -2738,628 +2738,628 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
     string jobname = framespec_trimmed_jobname;
     // remove weird brace thing ...
     int rc = pcre_exec(regex_periodsep_jobname_1b, NULL, jobname.c_str(),
-		       jobname.length(),0,0,ovector,novector);
+                       jobname.length(),0,0,ovector,novector);
     if (rc == 2) {
-	// drop the {[rs]#}
-	string str;
+        // drop the {[rs]#}
+        string str;
 
-	xpcre_get_substring(jobname,ovector,rc,0,str);
-	framespec_trimmed_jobname
-	    = jobname.substr(0,jobname.length() - str.length());
+        xpcre_get_substring(jobname,ovector,rc,0,str);
+        framespec_trimmed_jobname
+                = jobname.substr(0,jobname.length() - str.length());
     } else {
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  format("inexplicable error from pcre: %d") % rc);
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  format("inexplicable error from pcre: %d") % rc);
     }
 
     // seq.shot.task.?[framespec]
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	parse_periodsep_trim_periods(jobname) &&
-	period_parse_any(jobname,jinfo.task,true) &&
-	jobname == empty_string) {
-	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
-	return true;
+        period_parse_match(jobname,jinfo.shot) &&
+        parse_periodsep_trim_periods(jobname) &&
+        period_parse_any(jobname,jinfo.task,true) &&
+        jobname == empty_string) {
+        if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // seq.shot.task.subtask
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.task) &&
-	period_parse_any(jobname,jinfo.subtask,true) &&
-	jobname == empty_string) {
-	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
-	return true;
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.task) &&
+        period_parse_any(jobname,jinfo.subtask,true) &&
+        jobname == empty_string) {
+        if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
     }
 
     // seq.shot.task.subtask.object
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.task) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_any(jobname,jinfo.object,true) &&
-	jobname == empty_string) {
-	if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
-	return true;
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.task) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_any(jobname,jinfo.object,true) &&
+        jobname == empty_string) {
+        if (false) cout << format("YY %s -> ss %s\n") % jobname % jinfo.task;
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
+        jinfo.object = empty_string;
     }
 
     // task.prod.seq.shot[framespec]
     jobname = framespec_trimmed_jobname;
 
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.production) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.production) &&
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.seq.shot[framespec]
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.object.seq.shot[framespec]
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_any(jobname,jinfo.object) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_any(jobname,jinfo.object) &&
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.object = empty_string;
     }
 
     // task.subtask.seq.shot.object[framespec]
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.object,true) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.object,true) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
+        jinfo.object = empty_string;
     }
 
     // *match-1/task*.shot.*match-2*.subtask.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[2]) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[2]) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
     }
 
     // task-object.seq.shot.subtask ; but currently merging task and object
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.subtask,true) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.subtask,true) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
     }
 
     // *task-1*.object[framespec]
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	encryptString(jinfo.task) == encrypted_parse_periodsep[0]) {
-	jinfo.object = jobname;
-	return true;
+        encryptString(jinfo.task) == encrypted_parse_periodsep[0]) {
+        jinfo.object = jobname;
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.sequence.shot_subtask[framespec]
     jobname = framespec_trimmed_jobname;
     if (jobname.length() > 10) {
-	for(int i=5;i<=7;++i) {
-	    if (jobname[jobname.length()-i] == '_') {
-		jobname[jobname.length()-i] = '.';
-	    }
-	}
-	if (period_parse_any(jobname,jinfo.task) &&
-	    period_parse_match(jobname,jinfo.sequence) &&
-	    period_parse_match(jobname,jinfo.shot) &&
-	    period_parse_any(jobname,jinfo.subtask,true) &&
-	    (encryptString(jinfo.subtask) == encrypted_parse_periodsep[3] ||
-	     encryptString(jinfo.subtask) == encrypted_parse_periodsep[4] ||
-	     encryptString(jinfo.subtask) == encrypted_parse_periodsep[5])) {
-	    return true;
-	} else {
-	    if (false) {
-		cerr << format("XX %s -> %s\n") % jinfo.subtask 
-		    % hexstring(encryptString(jinfo.subtask));
-	    }
-	    jinfo.task = empty_string;
-	    jinfo.subtask = empty_string;
-	}
+        for (int i=5;i<=7;++i) {
+            if (jobname[jobname.length()-i] == '_') {
+                jobname[jobname.length()-i] = '.';
+            }
+        }
+        if (period_parse_any(jobname,jinfo.task) &&
+            period_parse_match(jobname,jinfo.sequence) &&
+            period_parse_match(jobname,jinfo.shot) &&
+            period_parse_any(jobname,jinfo.subtask,true) &&
+            (encryptString(jinfo.subtask) == encrypted_parse_periodsep[3] ||
+             encryptString(jinfo.subtask) == encrypted_parse_periodsep[4] ||
+             encryptString(jinfo.subtask) == encrypted_parse_periodsep[5])) {
+            return true;
+        } else {
+            if (false) {
+                cerr << format("XX %s -> %s\n") % jinfo.subtask 
+                        % hexstring(encryptString(jinfo.subtask));
+            }
+            jinfo.task = empty_string;
+            jinfo.subtask = empty_string;
+        }
     }
 
     // task.seq/shot.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence,'/') &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence,'/') &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.seq.shot; no shot in directory parse
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	jinfo.dir_shot == empty_string &&
-	jobname[0] == 's' &&
-	period_parse_any(jobname,jinfo.shot,true) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        jinfo.dir_shot == empty_string &&
+        jobname[0] == 's' &&
+        period_parse_any(jobname,jinfo.shot,true) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // production.*match-1/task*.shot.*match-2*.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.production) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[6],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[7]) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[6],
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[7]) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // *match-1/task*.shot.subtask.object.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_any(jobname,jinfo.object) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_any(jobname,jinfo.object) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
+        jinfo.object = empty_string;
     }
 
     // *match-1/task*.sequence.subtask.object.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_any(jobname,jinfo.object) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_any(jobname,jinfo.object) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
+        jinfo.object = empty_string;
     }
 
     // odd construction here, match the shot directory, then pickup the
     // sequence and shot remainder
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.dir_shot) &&
-	jobname[0] == 's' && jobname[1] == 'q' &&
-	period_parse_any(jobname,jinfo.sequence) &&
-	jobname[0] == 's' && jobname.size() >= 2) {
-	bool allok = true;
-	for(unsigned i=1;i<jobname.size();++i) {
-	    if (isdigit(jobname[i]) || jobname[i] == '.') {
-		// ok
-	    } else {
-		allok = false;
-		break;
-	    }
-	}
-	if (allok) {
-	    jinfo.shot = jobname;
-	    return true;
-	} else {
-	    jinfo.sequence = jinfo.dir_sequence;
-	}
+        jobname[0] == 's' && jobname[1] == 'q' &&
+        period_parse_any(jobname,jinfo.sequence) &&
+        jobname[0] == 's' && jobname.size() >= 2) {
+        bool allok = true;
+        for (unsigned i=1;i<jobname.size();++i) {
+            if (isdigit(jobname[i]) || jobname[i] == '.') {
+                // ok
+            } else {
+                allok = false;
+                break;
+            }
+        }
+        if (allok) {
+            jinfo.shot = jobname;
+            return true;
+        } else {
+            jinfo.sequence = jinfo.dir_sequence;
+        }
     } else {
-	jinfo.sequence = jinfo.dir_sequence;
+        jinfo.sequence = jinfo.dir_sequence;
     }
 
     // *match-1*.shot/(match-4chars)+.task.subtask.#
     // then replace shot->seq and match-4chars+ -> shot
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1]) &&
-	period_parse_match(jobname,jinfo.shot,'/') &&
-	jobname.size() > 4 &&
-	encryptString(jobname.substr(0,4)) == encrypted_parse_periodsep[6] &&
-	period_parse_any(jobname,jinfo.object) &&  // replace later
-	period_parse_any(jobname,jinfo.task) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	jinfo.sequence = jinfo.shot;
-	jinfo.shot = jinfo.object;
-	jinfo.object = empty_string;
-	return true;
+        period_parse_match(jobname,jinfo.shot,'/') &&
+        jobname.size() > 4 &&
+        encryptString(jobname.substr(0,4)) == encrypted_parse_periodsep[6] &&
+        period_parse_any(jobname,jinfo.object) &&  // replace later
+        period_parse_any(jobname,jinfo.task) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        jinfo.sequence = jinfo.shot;
+        jinfo.shot = jinfo.object;
+        jinfo.object = empty_string;
+        return true;
     } else {
-	jinfo.task = jinfo.subtask = jinfo.object = empty_string;
+        jinfo.task = jinfo.subtask = jinfo.object = empty_string;
     }
 
     // odd construction here, have to trim off an 'a'/'b' at the end of the
     // shot name to get a match
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence,'/') &&
-	(jinfo.shot[jinfo.shot.size()-1] == 'a' ||
-	 jinfo.shot[jinfo.shot.size()-1] == 'b') &&
-	period_parse_match(jobname,jinfo.shot.substr(0,jinfo.shot.size()-1)) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence,'/') &&
+        (jinfo.shot[jinfo.shot.size()-1] == 'a' ||
+         jinfo.shot[jinfo.shot.size()-1] == 'b') &&
+        period_parse_match(jobname,jinfo.shot.substr(0,jinfo.shot.size()-1)) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // *match-1/task*.shot.subtask.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[6],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task...# or task...f
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,empty_string) &&
-	period_parse_match(jobname,empty_string) &&
-	(period_parse_digits(jobname) ||
-	 period_parse_match(jobname,str_f)) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,empty_string) &&
+        period_parse_match(jobname,empty_string) &&
+        (period_parse_digits(jobname) ||
+         period_parse_match(jobname,str_f)) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.*match*.shot.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[8]) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[8]) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.*match-1*.*match-2*.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[9]) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[10]) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[9]) &&
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[10]) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.shot.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.production.shot.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.production) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.production) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.*match-1*.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[11]) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[11]) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.sq.shot_#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot,'_') &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot,'_') &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     jobname = framespec_trimmed_jobname;
     rc = pcre_exec(regex_periodsep_bsub_path_task_1, NULL, jobname.c_str(),
-		   jobname.length(),0,0,ovector,novector);
+                   jobname.length(),0,0,ovector,novector);
     if (rc == 4) {
-	string str;
-	xpcre_get_substring(jobname,ovector,rc,1,str);
-	if (encryptString(str) == encrypted_parse_periodsep[12]) {
-	    xpcre_get_substring(jobname,ovector,rc,3,jinfo.task);
-	    xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
-	    return true;
-	} else {
-	    cout << format("nomatch %s\n") % hexstring(encryptString(str));
-	}
+        string str;
+        xpcre_get_substring(jobname,ovector,rc,1,str);
+        if (encryptString(str) == encrypted_parse_periodsep[12]) {
+            xpcre_get_substring(jobname,ovector,rc,3,jinfo.task);
+            xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
+            return true;
+        } else {
+            cout << format("nomatch %s\n") % hexstring(encryptString(str));
+        }
     } else {
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  format("inexplicable error from pcre: %d") % rc);
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  format("inexplicable error from pcre: %d") % rc);
     }
 
     rc = pcre_exec(regex_periodsep_bsub_path_task_2, NULL, jobname.c_str(),
-		   jobname.length(),0,0,ovector,novector);
+                   jobname.length(),0,0,ovector,novector);
     if (rc == 4) {
-	string str;
-	xpcre_get_substring(jobname,ovector,rc,1,str);
-	if (encryptString(str) == encrypted_parse_periodsep[12]) {
-	    xpcre_get_substring(jobname,ovector,rc,3,jinfo.task);
-	    xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
-	    return true;
-	} else {
-	    cout << format("nomatch %s\n") % hexstring(encryptString(str));
-	}
+        string str;
+        xpcre_get_substring(jobname,ovector,rc,1,str);
+        if (encryptString(str) == encrypted_parse_periodsep[12]) {
+            xpcre_get_substring(jobname,ovector,rc,3,jinfo.task);
+            xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
+            return true;
+        } else {
+            cout << format("nomatch %s\n") % hexstring(encryptString(str));
+        }
     } else {
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  format("inexplicable error from pcre: %d") % rc);
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  format("inexplicable error from pcre: %d") % rc);
     }
 
     rc = pcre_exec(regex_periodsep_taskCAPS_sq_shot, NULL, jobname.c_str(),
-		   jobname.length(),0,0,ovector,novector);
+                   jobname.length(),0,0,ovector,novector);
     if (rc == 4) {
-	xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
-	xpcre_get_substring(jobname,ovector,rc,2,jinfo.sequence);
-	xpcre_get_substring(jobname,ovector,rc,3,jinfo.shot);
-	return true;
+        xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
+        xpcre_get_substring(jobname,ovector,rc,2,jinfo.sequence);
+        xpcre_get_substring(jobname,ovector,rc,3,jinfo.shot);
+        return true;
     } else {
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  format("inexplicable error from pcre: %d") % rc);
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  format("inexplicable error from pcre: %d") % rc);
     }
 
     // *match-1/task*.shot.*match-2*.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_xmatch(jobname,encrypted_parse_periodsep[2]) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_xmatch(jobname,encrypted_parse_periodsep[2]) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // *match-1/task*.shot.subtask.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_xmatch(jobname,encrypted_parse_periodsep[1],
-			    &jinfo.task) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+                            &jinfo.task) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
-	jinfo.subtask = empty_string;
-	jinfo.object = empty_string;
+        jinfo.task = empty_string;
+        jinfo.subtask = empty_string;
+        jinfo.object = empty_string;
     }
 
     // shot.?
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.shot) &&
-	jobname.size() == 1 &&
-	period_parse_any(jobname,jinfo.task,true)) {
-	return true;
+        jobname.size() == 1 &&
+        period_parse_any(jobname,jinfo.task,true)) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.prod.subtask.shot
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.production) &&
-	period_parse_any(jobname,jinfo.subtask) &&
-	period_parse_match(jobname,jinfo.shot)) {
-	return true;
+        period_parse_match(jobname,jinfo.production) &&
+        period_parse_any(jobname,jinfo.subtask) &&
+        period_parse_match(jobname,jinfo.shot)) {
+        return true;
     } else {
-	jinfo.task = jinfo.subtask = empty_string;
+        jinfo.task = jinfo.subtask = empty_string;
     }
 
     // task.sequence.shot.empty.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_match(jobname,empty_string) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_match(jobname,empty_string) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // prod.sequence.shot.task_#.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.production) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot)) {
-	rc = pcre_exec(regex_periodsep_tasknumnum, NULL, jobname.c_str(),
-		       jobname.length(),0,0,ovector,novector);
-	if (rc == 2) {
-	    xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
-	    return true;
-	}
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot)) {
+        rc = pcre_exec(regex_periodsep_tasknumnum, NULL, jobname.c_str(),
+                       jobname.length(),0,0,ovector,novector);
+        if (rc == 2) {
+            xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
+            return true;
+        }
     }
 
     // test.sq.shot/subtask
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname, jinfo.task) &&
-	period_parse_match(jobname, jinfo.sequence) &&
-	period_parse_match(jobname, jinfo.shot, '/') &&
-	period_parse_any(jobname, jinfo.subtask, true) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname, jinfo.sequence) &&
+        period_parse_match(jobname, jinfo.shot, '/') &&
+        period_parse_any(jobname, jinfo.subtask, true) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = jinfo.subtask = empty_string;
+        jinfo.task = jinfo.subtask = empty_string;
     }
 
     // task.sq.shot:#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname, jinfo.task) &&
-	period_parse_match(jobname, jinfo.sequence) &&
-	period_parse_match(jobname, jinfo.shot, ':') &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname, jinfo.sequence) &&
+        period_parse_match(jobname, jinfo.shot, ':') &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // *empty*.seq.shot
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,empty_string) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        jobname == empty_string) {
+        return true;
     }
 
     // task.#.shot.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_digits(jobname) && jinfo.shot.size() > 1 &&
-	period_parse_match(jobname,jinfo.shot.substr(1,jinfo.shot.size()-1)) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_digits(jobname) && jinfo.shot.size() > 1 &&
+        period_parse_match(jobname,jinfo.shot.substr(1,jinfo.shot.size()-1)) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.seq.shot.{#}
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot.substr(1,jinfo.shot.size()-1)) &&
-	jobname[0] == '{' && jobname[jobname.size()-1] == '}') {
-	jobname = jobname.substr(1,jobname.size()-2);
-	if (period_parse_digits(jobname) &&
-	    jobname == empty_string) {
-	    return true;
-	} else {
-	    jinfo.task = empty_string;
-	}
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot.substr(1,jinfo.shot.size()-1)) &&
+        jobname[0] == '{' && jobname[jobname.size()-1] == '}') {
+        jobname = jobname.substr(1,jobname.size()-2);
+        if (period_parse_digits(jobname) &&
+            jobname == empty_string) {
+            return true;
+        } else {
+            jinfo.task = empty_string;
+        }
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // production.sequence.shot.task.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.production) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.task) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.task) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // production.sequence.shot.task.#_#
     jobname = framespec_trimmed_jobname;
     if (period_parse_match(jobname,jinfo.production) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_any(jobname,jinfo.task) &&
-	period_parse_digits(jobname,'_') &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_any(jobname,jinfo.task) &&
+        period_parse_digits(jobname,'_') &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // task.sequence.shot.#.#
     jobname = framespec_trimmed_jobname;
     if (period_parse_any(jobname,jinfo.task) &&
-	period_parse_match(jobname,jinfo.sequence) &&
-	period_parse_match(jobname,jinfo.shot) &&
-	period_parse_digits(jobname) &&
-	period_parse_digits(jobname) &&
-	jobname == empty_string) {
-	return true;
+        period_parse_match(jobname,jinfo.sequence) &&
+        period_parse_match(jobname,jinfo.shot) &&
+        period_parse_digits(jobname) &&
+        period_parse_digits(jobname) &&
+        jobname == empty_string) {
+        return true;
     } else {
-	jinfo.task = empty_string;
+        jinfo.task = empty_string;
     }
 
     // PERIODSEP PARSE -- for finding place to add parsing in code
@@ -3369,38 +3369,38 @@ parse_periodsep_jobname(const string &_jobname, const string &jobdirectory,
     // task only, without any unexpected separators
     jobname = framespec_trimmed_jobname;
     if ((int)jobname.find(str_period) == -1 &&
-	(int)jobname.find(str_colon) == -1 &&
-	(int)jobname.find(str_pipe) == -1) {
-	jinfo.task = jobname;
-	return true;
+        (int)jobname.find(str_colon) == -1 &&
+        (int)jobname.find(str_pipe) == -1) {
+        jinfo.task = jobname;
+        return true;
     }
 
     rc = pcre_exec(regex_periodsep_jobname_task_subtask, NULL, jobname.c_str(),
-		   jobname.length(),0,0,ovector,novector);
+                   jobname.length(),0,0,ovector,novector);
     if (rc == 3) {
-	xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
-	xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
-	return true;
+        xpcre_get_substring(jobname,ovector,rc,1,jinfo.task);
+        xpcre_get_substring(jobname,ovector,rc,2,jinfo.subtask);
+        return true;
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      format("inexplicable error from pcre: %d") % rc);
+              format("inexplicable error from pcre: %d") % rc);
 
     // bizarre special case; copied stuff
     if (encryptString(jinfo.production) == encrypted_parse_periodsep[13] &&
-	encryptString(jinfo.sequence) == encrypted_parse_periodsep[14] &&
-	encryptString(jinfo.shot) == encrypted_parse_periodsep[15]) {
-	jobname = framespec_trimmed_jobname;
-	period_parse_any(jobname,jinfo.task);
-	period_parse_any(jobname,jinfo.subtask);
-	if (encryptString(jinfo.subtask) == encrypted_parse_periodsep[16]) {
-	    jinfo.sequence = jinfo.subtask;
-	    jinfo.subtask = empty_string;
-	    period_parse_any(jobname,jinfo.shot,true);
-	    INVARIANT(jobname == empty_string,
-		      boost::format("internal %s") % jobname);
-	    return true;
-	}
-	jinfo.task = jinfo.subtask = empty_string;
+        encryptString(jinfo.sequence) == encrypted_parse_periodsep[14] &&
+        encryptString(jinfo.shot) == encrypted_parse_periodsep[15]) {
+        jobname = framespec_trimmed_jobname;
+        period_parse_any(jobname,jinfo.task);
+        period_parse_any(jobname,jinfo.subtask);
+        if (encryptString(jinfo.subtask) == encrypted_parse_periodsep[16]) {
+            jinfo.sequence = jinfo.subtask;
+            jinfo.subtask = empty_string;
+            period_parse_any(jobname,jinfo.shot,true);
+            INVARIANT(jobname == empty_string,
+                      boost::format("internal %s") % jobname);
+            return true;
+        }
+        jinfo.task = jinfo.subtask = empty_string;
     }
 
     return false;
@@ -3410,38 +3410,38 @@ const string jobcommand_A_sha1("bd9c767839e140a4fae8cc8c68aecd016008a32b");
 
 bool
 parse_jobname_special(const string &jobname, const string &jobcommand,
-		      const string &jobdirectory, job_info &jinfo)
+                      const string &jobdirectory, job_info &jinfo)
 {
     static const string systest_prod = "system-testing";
     static const string systest_seq = "lsf-verification";
     if (jobname.size() == 0) {
-	if (encmatch(jobcommand,encrypted_parse_special[0])) {
-	    jinfo.production = systest_prod;
-	    jinfo.sequence = systest_seq;
-	    return true;
-	}
+        if (encmatch(jobcommand,encrypted_parse_special[0])) {
+            jinfo.production = systest_prod;
+            jinfo.sequence = systest_seq;
+            return true;
+        }
     }
     if (jobname.size() > 4 &&
-	encmatch(jobname.substr(0,4),encrypted_parse_special[1])) {
-	int idx = jobname.find(str_underbar,4);
-	if (idx > 0) {
-	    jinfo.production = jobname.substr(4,idx-4);
-	    idx++;
-	    jinfo.sequence = jobname.substr(idx,jobname.size() - idx);
-	    return true;
-	}
+        encmatch(jobname.substr(0,4),encrypted_parse_special[1])) {
+        int idx = jobname.find(str_underbar,4);
+        if (idx > 0) {
+            jinfo.production = jobname.substr(4,idx-4);
+            idx++;
+            jinfo.sequence = jobname.substr(idx,jobname.size() - idx);
+            return true;
+        }
     }
     if (jobdirectory.size() == 0) {
-	string tmp_name = jobname;
-	if (parse_jobname_trim_framespec(tmp_name,jinfo)) {
-	    for(unsigned i=0;i<tmp_name.size();i++) {
-		if (isalpha(tmp_name[i]) == false) {
-		    return false;
-		}
-	    }
-	    jinfo.task = tmp_name;
-	    return true;
-	}
+        string tmp_name = jobname;
+        if (parse_jobname_trim_framespec(tmp_name,jinfo)) {
+            for (unsigned i=0;i<tmp_name.size();i++) {
+                if (isalpha(tmp_name[i]) == false) {
+                    return false;
+                }
+            }
+            jinfo.task = tmp_name;
+            return true;
+        }
     }
 
     return false;
@@ -3449,9 +3449,9 @@ parse_jobname_special(const string &jobname, const string &jobcommand,
 
 void
 parse_jobname(const string &jobname, const string &jobcommand,
-	      const string &jobdirectory,
-	      const string &outfilename, job_info &jinfo,
-	      int linenum)
+              const string &jobdirectory,
+              const string &outfilename, job_info &jinfo,
+              int linenum)
 {
     jinfo.job_name = jobname;
     jinfo.job_name_unpacked = false;
@@ -3462,50 +3462,50 @@ parse_jobname(const string &jobname, const string &jobcommand,
 
     // special cases
     if (parse_jobname_special(jobname, jobcommand, jobdirectory, jinfo)) {
-	jinfo.job_name_unpacked = true;
-	return;
+        jinfo.job_name_unpacked = true;
+        return;
     }
 
     if (parse_pipesep_jobname(jobname,jinfo)) {
-	jinfo.job_name_unpacked = true;
-	return;
+        jinfo.job_name_unpacked = true;
+        return;
     }
 
     if (parse_colonsep_jobname(jobname,jobdirectory,jinfo)) {
-	if (false) {
-	    cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
-		% jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
-		% jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
-		% jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
-	}
-	jinfo.job_name_unpacked = true;
-	return;
+        if (false) {
+            cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
+                    % jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
+                    % jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
+                    % jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
+        }
+        jinfo.job_name_unpacked = true;
+        return;
     }
 
     if (jinfo.directory_name_unpacked && parse_periodsep_jobname(jobname,jobdirectory,jinfo)) {
-	if (false) {
-	    cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
-		% jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
-		% jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
-		% jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
-	}
-	jinfo.job_name_unpacked = true;
-	return;
+        if (false) {
+            cout << format("parse %s as meta_id = %d, prod %s, seq %s, shot %s, task %s, object %s, subtask %s, frames %s (%d-%d, step %d #%d)\n")
+                    % jobname % jinfo.meta_id % jinfo.production % jinfo.sequence % jinfo.shot 
+                    % jinfo.task % jinfo.object % jinfo.subtask % jinfo.frames % jinfo.start_frame 
+                    % jinfo.end_frame % jinfo.frame_step % jinfo.nframes;
+        }
+        jinfo.job_name_unpacked = true;
+        return;
     }
 
     if (jobname == empty_string) {
-	jobname_odd_fail_count++;
-	return;
+        jobname_odd_fail_count++;
+        return;
     }
 
     if (print_parse_warnings) {
-	if (jinfo.directory_name_unpacked) {
-	    cerr << format("Warning: unable to parse jobname, directory ok; linenum %d name = '%s'\n  cmd='%s'\n  dir='%s'\n")
-		% linenum % jobname % jobcommand % jobdirectory;
-	} else {
-	    cerr << format("Warning: unable to parse jobname or directory\n  name='%s'\n  cmd='%s'\n  dir='%s'\n")
-	    % jobname % jobcommand % jobdirectory;
-	}
+        if (jinfo.directory_name_unpacked) {
+            cerr << format("Warning: unable to parse jobname, directory ok; linenum %d name = '%s'\n  cmd='%s'\n  dir='%s'\n")
+                    % linenum % jobname % jobcommand % jobdirectory;
+        } else {
+            cerr << format("Warning: unable to parse jobname or directory\n  name='%s'\n  cmd='%s'\n  dir='%s'\n")
+                    % jobname % jobcommand % jobdirectory;
+        }
     }
     ++jobname_parse_fail_count;
 }
@@ -3515,7 +3515,7 @@ int hexcount;
 
 string sqluint(unsigned val) { // "NULL" value is 0
     if (val == 0) {
-	return "NULL";
+        return "NULL";
     }
     char buf[30];
     snprintf(buf,30,"%d",val);
@@ -3525,7 +3525,7 @@ string sqluint(unsigned val) { // "NULL" value is 0
 
 string sqlint(int val, int null_val = -1) {
     if (val == null_val) {
-	return "NULL";
+        return "NULL";
     }
     char buf[30];
     snprintf(buf,30,"%d",val);
@@ -3537,7 +3537,7 @@ string
 sqldouble(double val) // "NULL" value is -1
 {
     if (val == -1) {
-	return "NULL";
+        return "NULL";
     }
     char buf[50];
     snprintf(buf, 50, "%.15g", val);
@@ -3548,10 +3548,10 @@ sqldouble(double val) // "NULL" value is -1
 void
 framelike(const string &v)
 {
-    for(unsigned i = 0;i<v.size();++i) {
-	INVARIANT(isdigit(v[i]) || v[i] == '[' || v[i] == ']' || v[i] == '-'
-		  || v[i] == '%' || v[i] == ',' || v[i] == ':',
-		  format("whoa, not framelike '%c' %s") % v[i] % v);
+    for (unsigned i = 0;i<v.size();++i) {
+        INVARIANT(isdigit(v[i]) || v[i] == '[' || v[i] == ']' || v[i] == '-'
+                  || v[i] == '%' || v[i] == ',' || v[i] == ':',
+                  format("whoa, not framelike '%c' %s") % v[i] % v);
     }
 }
 
@@ -3561,14 +3561,14 @@ hostGroupUnrecognized(const string &group, const string &hostname)
     HashUnique<string> &tmp = unrecognized_hostgroups[group];
     tmp.add(hostname);
     if (tmp.size() > 10) {
-	vector<string> hostnames;
-	for(HashUnique<string>::iterator i = tmp.begin();
-	    i != tmp.end(); ++i) {
-	    hostnames.push_back(*i);
-	}
-	FATAL_ERROR(format("too many hosts in group %s -> %s: %s")
-		    % group % hexstring(encryptString(group)) 
-		    % join(", ", hostnames));
+        vector<string> hostnames;
+        for (HashUnique<string>::iterator i = tmp.begin();
+            i != tmp.end(); ++i) {
+            hostnames.push_back(*i);
+        }
+        FATAL_ERROR(format("too many hosts in group %s -> %s: %s")
+                    % group % hexstring(encryptString(group)) 
+                    % join(", ", hostnames));
     }
     return empty_string;
 }
@@ -3583,21 +3583,21 @@ hostGroupWordPrefixCheck(const string &hostname)
     int ovector[novector];
 
     int rc = pcre_exec(regex_hostgroup_two, NULL, hostname.c_str(),
-		       hostname.length(), 0,0,ovector,novector);
+                       hostname.length(), 0,0,ovector,novector);
     if (rc == 2) {
-	string group;
-	xpcre_get_substring(hostname, ovector, rc, 1, group);
-	if (group.size() != hostname.size()) {
-	    return hostGroupUnrecognized(group, hostname);
-	} else {
-	    // full match, no unexpected group here unless someone 
-	    // names their group hosta hostb hostc
-	    return empty_string;
-	}
+        string group;
+        xpcre_get_substring(hostname, ovector, rc, 1, group);
+        if (group.size() != hostname.size()) {
+            return hostGroupUnrecognized(group, hostname);
+        } else {
+            // full match, no unexpected group here unless someone 
+            // names their group hosta hostb hostc
+            return empty_string;
+        }
     }
     INVARIANT(rc == PCRE_ERROR_NOMATCH,
-	      format("unexpected error from pcre on %s: %d") 
-	      % hostname % rc);
+              format("unexpected error from pcre on %s: %d") 
+              % hostname % rc);
 
     return empty_string;
 }
@@ -3606,41 +3606,41 @@ string
 hostGroup(const string &hostname)
 {
     if (regex_hostgroup_one == NULL) {
-	regex_hostgroup_one = xpcre_compile("^([a-z]+)\\d+$");
-	regex_hostgroup_two = xpcre_compile("^(\\w+)\\b");
+        regex_hostgroup_one = xpcre_compile("^([a-z]+)\\d+$");
+        regex_hostgroup_two = xpcre_compile("^(\\w+)\\b");
     }
 
     if (cluster_name_str == "rwc" || cluster_name_str == "gld") {
-	const int novector = 30;
-	int ovector[novector];
+        const int novector = 30;
+        int ovector[novector];
 
-	int rc = pcre_exec(regex_hostgroup_one, NULL, hostname.c_str(),
-			   hostname.length(), 0,0,ovector,novector);
-	if (rc == 2) {
-	    string group;
-	    xpcre_get_substring(hostname, ovector, rc, 1, group);
-	    string encrypted_group = encryptString(group);
-	    if (encrypted_hostgroups.exists(encrypted_group)) {
-		return encrypted_hostgroups[encrypted_group];
-	    } else {
-		return hostGroupUnrecognized(group, hostname);
-	    }
-	}
-	INVARIANT(rc == PCRE_ERROR_NOMATCH,
-		  "unexpected error from pcre");
+        int rc = pcre_exec(regex_hostgroup_one, NULL, hostname.c_str(),
+                           hostname.length(), 0,0,ovector,novector);
+        if (rc == 2) {
+            string group;
+            xpcre_get_substring(hostname, ovector, rc, 1, group);
+            string encrypted_group = encryptString(group);
+            if (encrypted_hostgroups.exists(encrypted_group)) {
+                return encrypted_hostgroups[encrypted_group];
+            } else {
+                return hostGroupUnrecognized(group, hostname);
+            }
+        }
+        INVARIANT(rc == PCRE_ERROR_NOMATCH,
+                  "unexpected error from pcre");
 
-	return hostGroupWordPrefixCheck(hostname);
+        return hostGroupWordPrefixCheck(hostname);
     } else if (cluster_name_str == "uc-hpl-pa") {
-	static string batch_cli = "batch-cli-";
-	static string dedicated_hpl_1 = "dedicated-hpl-1";
-	if (hostname.substr(0,10) == batch_cli) {
-	    return dedicated_hpl_1;
-	}
-	return hostGroupWordPrefixCheck(hostname);
+        static string batch_cli = "batch-cli-";
+        static string dedicated_hpl_1 = "dedicated-hpl-1";
+        if (hostname.substr(0,10) == batch_cli) {
+            return dedicated_hpl_1;
+        }
+        return hostGroupWordPrefixCheck(hostname);
     } else {
-	FATAL_ERROR(format("Don't know how to determine host groups for cluster %s")
-		    % cluster_name_str);
-	return empty_string;
+        FATAL_ERROR(format("Don't know how to determine host groups for cluster %s")
+                    % cluster_name_str);
+        return empty_string;
     }
 }
 
@@ -3654,83 +3654,83 @@ process_line(char *buf, int linenum)
     bool has_maxrmem = true;
 
     INVARIANT(fields.size() > 22,
-	      format("bad field count %d\n") % fields.size());
+              format("bad field count %d\n") % fields.size());
     int fieldcount = -1;
     if (false) {
     } else if (fields[1] == ver_62) {
-	fieldcount = 69; 
+        fieldcount = 69; 
     } else if (fields[1] == ver_61) {
         fieldcount = 69;
     } else if (fields[1] == ver_60) {
-	fieldcount = 68;
+        fieldcount = 68;
     } else if (fields[1] == ver_51 || fields[1] == ver_na) {
-	fieldcount = 61;
+        fieldcount = 61;
     } else if (fields[1] == ver_42 || fields[1] == ver_41 ||
-	       fields[1] == ver_40) {
-	fieldcount = 60;
+               fields[1] == ver_40) {
+        fieldcount = 60;
     } else if (fields[1] == ver_32 || fields[1] == ver_31) {
-	fieldcount = 58;
+        fieldcount = 58;
     } else if (fields[1] == ver_30) {
-	has_maxrmem = false;
-	fieldcount = 58;
-	// we're faking up the maxRMem, maxRSwap, but leaving the rest
-	// with actually correct values
-	fields.push_back(empty_string);
-	fields.push_back(str_zero);
-	fields.push_back(str_zero);
-	fields.push_back(str_zero);
+        has_maxrmem = false;
+        fieldcount = 58;
+        // we're faking up the maxRMem, maxRSwap, but leaving the rest
+        // with actually correct values
+        fields.push_back(empty_string);
+        fields.push_back(str_zero);
+        fields.push_back(str_zero);
+        fields.push_back(str_zero);
     } else {
-	FATAL_ERROR(format("bad version '%s' %d fields")
-		    % fields[1] % fields.size());
+        FATAL_ERROR(format("bad version '%s' %d fields")
+                    % fields[1] % fields.size());
     }
     INVARIANT(fieldcount > 0, format("no version %s??") % fields[1]);
     INVARIANT(fields[0] == job_finish || fields[0] == job_cache,
-	      format("don't know how to handle a %s line") % fields[0]);
+              format("don't know how to handle a %s line") % fields[0]);
     int naskhosts = uintfield(fields[22]);
     int exechostsoffset = naskhosts - 1;
     INVARIANT((int)fields.size() > 24+exechostsoffset,
-	      format("bad field count %d at line %d\n") 
-	      % fields.size() % linenum);
+              format("bad field count %d at line %d\n") 
+              % fields.size() % linenum);
     int nexechosts = uintfield(fields[24+exechostsoffset]);
     int tailoffset = exechostsoffset + nexechosts - 1;
 
     // 4.2 doesn't have the reservation entry added to the end.
     INVARIANT((int)fields.size() == fieldcount+tailoffset,
-	      format("bad %d != %d + %d on line %d")
-	      % fields.size() % fieldcount % tailoffset % linenum);
+              format("bad %d != %d + %d on line %d")
+              % fields.size() % fieldcount % tailoffset % linenum);
     SINVARIANT(fields[54+tailoffset].size() == 0);
     SINVARIANT(fieldcount <= 61 || fields[66+tailoffset] == str_minus1);
-	
+        
     job_info jinfo;
     jinfo.parse_command(fields[29+tailoffset],fields[55+tailoffset]);
     jinfo.parse_jobline42(fields,exechostsoffset,tailoffset);
     if (has_maxrmem) {
-	jinfo.parse_maxrmem(fields,tailoffset,linenum);
+        jinfo.parse_maxrmem(fields,tailoffset,linenum);
     }
     parse_jobname(fields[28+tailoffset],fields[29+tailoffset],fields[17],
-		  fields[19], jinfo, linenum);
+                  fields[19], jinfo, linenum);
     bool jinfo_pss_match = true;
     if (jinfo.job_name_unpacked && jinfo.directory_name_unpacked) {
-	if (jinfo.dir_production != jinfo.production ||
-	    jinfo.dir_sequence != jinfo.sequence ||
-	    jinfo.dir_shot != jinfo.shot) {
-	    if (false) {
-		cerr << format("Error: mismatch on shot info '%s;%s;%s' vs '%s;%s;%s' '%s'\n")
-		    % jinfo.production % jinfo.sequence % jinfo.shot
-		    % jinfo.dir_production % jinfo.dir_sequence % jinfo.dir_shot % fields[17];
-	    }
-	    jinfo_pss_match = false;
-	}
+        if (jinfo.dir_production != jinfo.production ||
+            jinfo.dir_sequence != jinfo.sequence ||
+            jinfo.dir_shot != jinfo.shot) {
+            if (false) {
+                cerr << format("Error: mismatch on shot info '%s;%s;%s' vs '%s;%s;%s' '%s'\n")
+                        % jinfo.production % jinfo.sequence % jinfo.shot
+                        % jinfo.dir_production % jinfo.dir_sequence % jinfo.dir_shot % fields[17];
+            }
+            jinfo_pss_match = false;
+        }
     }
 
     {
-	int i = jinfo.sequence.find(str_imax);
-	if (i > 0) {
-	    if (false) cout << format("rewrite IMAX %s %s -> ") % jinfo.production % jinfo.sequence;
-	    jinfo.production.append(str_imax);
-	    jinfo.sequence = jinfo.sequence.substr(0,jinfo.sequence.length() - str_imax.length());
-	    if (false) cout << format("%s %s\n") % jinfo.production % jinfo.sequence;
-	}
+        int i = jinfo.sequence.find(str_imax);
+        if (i > 0) {
+            if (false) cout << format("rewrite IMAX %s %s -> ") % jinfo.production % jinfo.sequence;
+            jinfo.production.append(str_imax);
+            jinfo.sequence = jinfo.sequence.substr(0,jinfo.sequence.length() - str_imax.length());
+            if (false) cout << format("%s %s\n") % jinfo.production % jinfo.sequence;
+        }
     }
 
     if (false) cout << format("%d fields\n") % (fields.size() - tailoffset);
@@ -3746,9 +3746,9 @@ process_line(char *buf, int linenum)
     directory_path_unpacked.set(jinfo.directory_name_unpacked);
     meta_id.nset(jinfo.meta_id,0);
     if (jinfo.job_name_unpacked && jinfo.directory_name_unpacked) {
-	    directory_name_info_matched.set(jinfo_pss_match);
+        directory_name_info_matched.set(jinfo_pss_match);
     } else {
-	directory_name_info_matched.setNull();
+        directory_name_info_matched.setNull();
     }
     production.nset(dsstring(jinfo.production),empty_string);
     sequence.nset(dsstring(jinfo.sequence),empty_string);
@@ -3765,9 +3765,9 @@ process_line(char *buf, int linenum)
     command_name.set(dsstring(jinfo.command_name));
     command_path.set(dsstring(jinfo.command_path));
     if (jinfo.job_resolution == -1) {
-	job_resolution.setNull(true);
+        job_resolution.setNull(true);
     } else {
-	job_resolution.set(jinfo.job_resolution);
+        job_resolution.set(jinfo.job_resolution);
     }
     job_frame.nset(jinfo.job_frame,0);
     created.set(jinfo.created);
@@ -3801,51 +3801,51 @@ int main(int argc,char *argv[]) {
     getPackingArgs(&argc,argv,&packing_args);
 
     INVARIANT(argc == 4, format("Usage: %s inname cluster-name outdsname;"
-				" - valid for inname") % argv[0]);
+                                " - valid for inname") % argv[0]);
     cluster_name_str = argv[2];
     prepareEncryptEnvOrRandom();
     prepEncryptedStuff();
     FILE *infile;
     if (strcmp(argv[1],"-")==0) {
-	infile = stdin;
+        infile = stdin;
     } else {
-	infile = fopen(argv[1],"r");
+        infile = fopen(argv[1],"r");
     }
     INVARIANT(infile != NULL, format("Unable to open %s for read: %s")
-	      % argv[1] % strerror(errno));
+              % argv[1] % strerror(errno));
     DataSeriesSink outds(argv[3],
-			 packing_args.compress_modes,
-			 packing_args.compress_level);
+                         packing_args.compress_modes,
+                         packing_args.compress_level);
     ExtentTypeLibrary library;
     const ExtentType::Ptr lsf_grizzly_type(library.registerTypePtr(lsf_grizzly_xml));
     lsf_grizzly_series.setType(lsf_grizzly_type);
     lsf_grizzly_outmodule = new OutputModule(outds,lsf_grizzly_series,
-					     lsf_grizzly_type,
-					     packing_args.extent_size);
+                                             lsf_grizzly_type,
+                                             packing_args.extent_size);
     outds.writeExtentLibrary(library);
     // stupid, ought to be a way to read an entire line into a STL string;
     // can't find one.
     const unsigned bufsize = 1024*1024;
     char buf[bufsize];
     int nlines = 0;
-    while(true) {
-	buf[0] = '\0';
-	fgets(buf,bufsize,infile);
-	++nlines;
-	if (buf[0] == '#') {
-	    continue;
-	}
-	if (buf[0] == '\0') {
-	    break;
-	}
-	INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
-	process_line(buf,nlines);
+    while (true) {
+        buf[0] = '\0';
+        fgets(buf,bufsize,infile);
+        ++nlines;
+        if (buf[0] == '#') {
+            continue;
+        }
+        if (buf[0] == '\0') {
+            break;
+        }
+        INVARIANT(strlen(buf) < (bufsize - 1), "increase bufsize constant.");
+        process_line(buf,nlines);
     }
     cerr << format("\nProcessed %d lines; failed to decode %d jobnames (%.2f%%), %d directories (%.2f%%), %d/%d odd names/directories\n")
-	% nlines % jobname_parse_fail_count
-	% (jobname_parse_fail_count * 100.0 / (double)nlines)
-	% jobdirectory_parse_fail_count % (jobdirectory_parse_fail_count * 100.0 / (double)nlines)
-	% jobname_odd_fail_count % jobdirectory_odd_fail_count;
+            % nlines % jobname_parse_fail_count
+            % (jobname_parse_fail_count * 100.0 / (double)nlines)
+            % jobdirectory_parse_fail_count % (jobdirectory_parse_fail_count * 100.0 / (double)nlines)
+            % jobname_odd_fail_count % jobdirectory_odd_fail_count;
     lsf_grizzly_outmodule->flushExtent();
     delete lsf_grizzly_outmodule;
 

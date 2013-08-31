@@ -11,9 +11,9 @@ using namespace dataseries;
 const string RotatingFileSink::closed_filename("/");
 
 RotatingFileSink::RotatingFileSink(uint32_t compression_modes, uint32_t compression_level) 
-    : mutex(), cond(), compression_modes(compression_modes), compression_level(compression_level), 
-      pthread_worker(), library(), pending(), current_sink(), callback(),
-      worker_mutex(), worker_continue(true), new_filename()
+        : mutex(), cond(), compression_modes(compression_modes), compression_level(compression_level), 
+          pthread_worker(), library(), pending(), current_sink(), callback(),
+          worker_mutex(), worker_continue(true), new_filename()
 {
     pthread_worker = new PThreadFunction(boost::bind(&RotatingFileSink::worker, this));
     pthread_worker->start();
@@ -82,7 +82,7 @@ void RotatingFileSink::writeExtent(Extent &e, Stats *to_update) {
         pending.push_back(Pending(e, to_update));
         if (pending.size() > 49 && (pending.size() % 10) == 0) { // 1MB extents --> 50MB
             LintelLog::warn(boost::format("warning, you have %d pending extents, did you remember"
-                                   " to RotatingFileSink::changeFile()?") % pending.size());
+                                          " to RotatingFileSink::changeFile()?") % pending.size());
         }
     }
 }
@@ -172,7 +172,7 @@ void *RotatingFileSink::worker() {
 
                 // Stage 1, create new sink.
                 DataSeriesSink *new_sink 
-                    = new DataSeriesSink(to_filename, compression_modes, compression_level);
+                        = new DataSeriesSink(to_filename, compression_modes, compression_level);
                 // safe, all changes to library must have been made while there is no current sink,
                 // and new_filename is empty.
                 new_sink->writeExtentLibrary(library);

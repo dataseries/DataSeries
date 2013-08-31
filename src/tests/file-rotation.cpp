@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 #include <boost/format.hpp>
 
@@ -22,10 +22,10 @@ ProgramOption<double> po_extent_interval("extent-interval", "interval between ex
 ProgramOption<double> po_rotate_interval("rotate-interval", "rotate interval in seconds", 0.5);
 
 const string extent_type_xml = 
-"<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"File-Rotation\" version=\"1.0\" >\n"
-"  <field type=\"int32\" name=\"thread\" />\n"
-"  <field type=\"int32\" name=\"count\" />\n"
-"</ExtentType>\n";
+        "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"File-Rotation\" version=\"1.0\" >\n"
+        "  <field type=\"int32\" name=\"thread\" />\n"
+        "  <field type=\"int32\" name=\"count\" />\n"
+        "</ExtentType>\n";
 
 void writeExtent(IExtentSink &output, const ExtentType::Ptr type, uint32_t thread,
                  uint32_t &count, uint32_t rows) {
@@ -47,7 +47,7 @@ void simpleFileRotation() {
     ExtentTypeLibrary library;
     const ExtentType::Ptr type = library.registerTypePtr(extent_type_xml);
 
-    DataSeriesSink output(Extent::compress_lzf);
+    DataSeriesSink output(Extent::compression_algs[Extent::compress_mode_lzf].compress_flag);
 
     uint32_t count = 0;
     for (uint32_t i=0; i < 10; ++i) {
@@ -60,7 +60,7 @@ void simpleFileRotation() {
 }
 
 void simpleRotatingFileSink() {
-    RotatingFileSink rfs(Extent::compress_lzf);
+    RotatingFileSink rfs(Extent::compression_algs[Extent::compress_mode_lzf].compress_flag);
 
     const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     
@@ -80,7 +80,7 @@ void *ptrExtentWriter(RotatingFileSink *rfs, const ExtentType::Ptr type, uint32_
 
     Clock::Tfrac interval = Clock::secondsToTfrac(po_extent_interval.get());
     uint32_t count = 0;
-    for(int64_t i = start; i < stop; i += interval) {
+    for (int64_t i = start; i < stop; i += interval) {
         int64_t now = Clock::todTfrac();
         int64_t delta = i - now;
         if (delta > 0) {
@@ -112,7 +112,7 @@ void *ptrRotater(RotatingFileSink *rfs) {
 
 
 void periodicThreadedRotater() {
-    RotatingFileSink rfs(Extent::compress_lzf);
+    RotatingFileSink rfs(Extent::compression_algs[Extent::compress_mode_lzf].compress_flag);
 
     const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     
@@ -155,7 +155,7 @@ void callbackRotate(RotatingFileSink *rfs, off64_t, Extent &) {
 }
 
 void extentCallbackRotater() {
-    RotatingFileSink rfs(Extent::compress_lzf);
+    RotatingFileSink rfs(Extent::compression_algs[Extent::compress_mode_lzf].compress_flag);
 
     const ExtentType::Ptr type = rfs.registerType(extent_type_xml);
     rfs.setExtentWriteCallback(boost::bind(callbackRotate, &rfs, _1, _2));

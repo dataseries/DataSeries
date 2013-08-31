@@ -32,7 +32,7 @@ sub parseResult {
     my ($reorder, $total) = ($1,$2);
 
     my $unknown_file_size_count;
-    while(<STDIN>) {
+    while (<STDIN>) {
 	if (/^(.+) distribution:/o) {
 	    parseQuantile($config, $1);
 	} elsif (/^(\w+):$/o) {
@@ -56,7 +56,7 @@ sub parseQuantile {
     return if $ndata == 0;
     $_ = <STDIN>;
     die "?" unless /^\s+quantiles about every/o;
-    for(my $i=1; $i < 100; $i += 10) {
+    for (my $i=1; $i < 100; $i += 10) {
 	$_ = <STDIN>;
 	chomp;
 	die "'$_' ? $i " unless /^\s*$i%: (.+)$/;

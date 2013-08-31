@@ -1,9 +1,9 @@
 #include "DSSModule.hpp"
 
 class ProjectModule : public OutputSeriesModule {
-public:
+  public:
     ProjectModule(DataSeriesModule &source, const vector<string> &keep_columns)
-        : source(source), keep_columns(keep_columns), copier(input_series, output_series)
+            : source(source), keep_columns(keep_columns), copier(input_series, output_series)
     { }
 
     virtual ~ProjectModule() { }

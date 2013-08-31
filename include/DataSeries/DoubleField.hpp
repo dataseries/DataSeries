@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -18,7 +18,7 @@
 
 /** \brief Accessor for double fields. */
 class DoubleField : public dataseries::detail::SimpleFixedField<double> {
-public:
+  public:
     /// flag_allownonzerobase is deprecated.  It seemed like a good
     /// idea when we initially created it, but in practice it just
     /// makes writing analysis really difficult.  It was intended to
@@ -27,9 +27,9 @@ public:
     static const int flag_allownonzerobase = 1024;
 
     DoubleField(ExtentSeries &dataseries, const std::string &field, 
-		int flags = 0, double default_value = 0, bool auto_add = true)
-        : dataseries::detail::SimpleFixedField<double>(dataseries, field, flags, default_value),
-          base_val(Double::NaN)
+                int flags = 0, double default_value = 0, bool auto_add = true)
+            : dataseries::detail::SimpleFixedField<double>(dataseries, field, flags, default_value),
+              base_val(Double::NaN)
     { 
         if (auto_add) {
             dataseries.addField(*this);

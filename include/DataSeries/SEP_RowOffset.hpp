@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -24,35 +24,35 @@ class ExtentRecordCopy;
 
 namespace dataseries {
     class SEP_RowOffset {
-    public:
+      public:
         typedef int32_t difference_type;
 
         // TODO: deprecate the below.
         SEP_RowOffset(uint32_t row_offset, const Extent *extent)
-            : row_offset(row_offset)
+                : row_offset(row_offset)
 #if LINTEL_DEBUG
-              , extent(extent)
+                , extent(extent)
 #endif
         { }
 
         SEP_RowOffset(uint32_t row_offset, const Extent::Ptr &extent)
-            : row_offset(row_offset)
+                : row_offset(row_offset)
 #if LINTEL_DEBUG
-              , extent(extent.get())
+                , extent(extent.get())
 #endif
         { }
 
         SEP_RowOffset(const SEP_RowOffset &from)
-            : row_offset(from.row_offset)
+        : row_offset(from.row_offset)
 #if LINTEL_DEBUG
-              , extent(from.extent)
+        , extent(from.extent)
 #endif
         { }
 
         /// Copy a row offset and then advance it by distance
         SEP_RowOffset(const SEP_RowOffset &from, 
                       difference_type distance, const Extent *within_extent)
-            : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
+                : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
         { 
             advance(distance, within_extent);
         }
@@ -60,7 +60,7 @@ namespace dataseries {
         /// Copy a row offset and then advance it by distance
         SEP_RowOffset(const SEP_RowOffset &from, 
                       difference_type distance, const Extent &within_extent)
-            : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
+                : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
         { 
             advance(distance, &within_extent);
         }
@@ -68,7 +68,7 @@ namespace dataseries {
         /// Copy a row offset and then advance it by distance
         SEP_RowOffset(const SEP_RowOffset &from, 
                       difference_type distance, const Extent::Ptr &within_extent)
-            : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
+                : row_offset(from.row_offset) IF_LINTEL_DEBUG2(, extent(from.extent))
         { 
             advance(distance, within_extent.get());
         }
@@ -129,7 +129,7 @@ namespace dataseries {
             return row_offset >= them.row_offset;
         }
         
-    private:
+      private:
         uint8_t *rowPos(const Extent &e) const {
             uint8_t *ret = e.fixeddata.begin() + row_offset;
             DEBUG_SINVARIANT(e.insideExtentFixed(ret));

@@ -47,7 +47,7 @@ prepareEncrypt(const std::string &key_a, const std::string &key_b)
     hmac_key_1 = key_a;
     hmac_key_2 = key_b;
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
+              boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     AES_set_encrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&encrypt_key);
     AES_set_decrypt_key(reinterpret_cast<const unsigned char *>(hmac_key_1.data()),16*8,&decrypt_key);
     raw2encrypted.clear();
@@ -157,21 +157,21 @@ runCryptUtilChecks()
     encrypt_memoize_entries = 0;
     prepareEncrypt("abcdefghijklmnop","0123456789qrstuv");
 
-    for(unsigned i = 0;!tests[i].in.empty(); ++i) {
-	string t_out = encryptString(tests[i].in);
-	string t_in = decryptString(t_out);
-	INVARIANT(hexstring(t_out) == tests[i].out, 
-		  boost::format("mismatch %s -> %s != %s") % tests[i].in % hexstring(t_out) % tests[i].out);
-	INVARIANT(t_in == tests[i].in, 
-		  boost::format("mismatch %s did not decrypt back to original") % tests[i].in);
+    for (unsigned i = 0;!tests[i].in.empty(); ++i) {
+        string t_out = encryptString(tests[i].in);
+        string t_in = decryptString(t_out);
+        INVARIANT(hexstring(t_out) == tests[i].out, 
+                  boost::format("mismatch %s -> %s != %s") % tests[i].in % hexstring(t_out) % tests[i].out);
+        INVARIANT(t_in == tests[i].in, 
+                  boost::format("mismatch %s did not decrypt back to original") % tests[i].in);
     }
 
     string in;
-    for(int i = 0;i<4096;++i) {
-	string enc = encryptString(in);
-	string dec = decryptString(enc);
-	SINVARIANT(enc != dec && dec == in);
-	in.append(" ");
+    for (int i = 0;i<4096;++i) {
+        string enc = encryptString(in);
+        string dec = decryptString(enc);
+        SINVARIANT(enc != dec && dec == in);
+        in.append(" ");
     }
     if (false) cout << "CryptUtilChecks passed." << endl;
     encrypt_memoize_entries = save_memoize;
@@ -183,31 +183,31 @@ prepareEncryptEnvOrRandom(bool random_ok)
     runCryptUtilChecks();
 
     if (getenv("NAME_KEY_1") != NULL && getenv("NAME_KEY_2") != NULL) {
-	prepareEncrypt(hex2raw(getenv("NAME_KEY_1")),
-		       hex2raw(getenv("NAME_KEY_2")));
+        prepareEncrypt(hex2raw(getenv("NAME_KEY_1")),
+                       hex2raw(getenv("NAME_KEY_2")));
     } else {
-	INVARIANT(random_ok, "Missing environment variables NAME_KEY_1 and NAME_KEY_2; random choice not ok");
-	fprintf(stderr,"Warning; no NAME_KEY_[12] env variables, using random hmac\n");
-	FILE *f = fopen("/dev/urandom","r");
-	SINVARIANT(f != NULL);
-	const int randombytes = 32;
-	char buf[randombytes + 100];
-	int i = fread(buf,1,randombytes,f);
-	INVARIANT(i == randombytes, boost::format("bad %d") % i);
-	string key_a;
-	key_a.assign(buf,randombytes);
-	i = fread(buf,1,randombytes,f);
-	SINVARIANT(i==randombytes);
-	string key_b;
-	key_b.assign(buf,randombytes);
-	prepareEncrypt(key_a,key_b);
-	fclose(f);
+        INVARIANT(random_ok, "Missing environment variables NAME_KEY_1 and NAME_KEY_2; random choice not ok");
+        fprintf(stderr,"Warning; no NAME_KEY_[12] env variables, using random hmac\n");
+        FILE *f = fopen("/dev/urandom","r");
+        SINVARIANT(f != NULL);
+        const int randombytes = 32;
+        char buf[randombytes + 100];
+        int i = fread(buf,1,randombytes,f);
+        INVARIANT(i == randombytes, boost::format("bad %d") % i);
+        string key_a;
+        key_a.assign(buf,randombytes);
+        i = fread(buf,1,randombytes,f);
+        SINVARIANT(i==randombytes);
+        string key_b;
+        key_b.assign(buf,randombytes);
+        prepareEncrypt(key_a,key_b);
+        fclose(f);
     }
     int neoklist = sizeof(eoklist)/sizeof(eokent);
  
-    for(int i = 0;i<neoklist;++i) {
-	string f = hex2raw(eoklist[i].encrypted);
-	encrypted_to_okstring[f] = eoklist[i].ok;
+    for (int i = 0;i<neoklist;++i) {
+        string f = hex2raw(eoklist[i].encrypted);
+        encrypted_to_okstring[f] = eoklist[i].ok;
     }
 }
 
@@ -222,12 +222,12 @@ aesEncryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
     uint32_t *v = (uint32_t *)buf;
     uint32_t *vend = v + bufsize/4;
     AES_encrypt((const unsigned char *)v,(unsigned char *)v, key);
-    for(v += 4;v < vend;v += 4) {
+    for (v += 4;v < vend;v += 4) {
         v[0] ^= v[-4];
         v[1] ^= v[-3];
         v[2] ^= v[-2];
         v[3] ^= v[-1];
-	AES_encrypt((const unsigned char *)v, (unsigned char *)v, key);
+        AES_encrypt((const unsigned char *)v, (unsigned char *)v, key);
     }
 }
 
@@ -237,12 +237,12 @@ aesDecryptFast(AES_KEY *key,unsigned char *buf, int bufsize)
     SINVARIANT((bufsize % 16) == 0);
     uint32_t *vbegin = (uint32_t *)buf;
     uint32_t *v = vbegin + bufsize/4;
-    for(v -= 4; v > vbegin; v -= 4) {
-	AES_decrypt((const unsigned char *)v, (unsigned char *)v, key);
-	v[0] ^= v[-4];
-	v[1] ^= v[-3];
-	v[2] ^= v[-2];
-	v[3] ^= v[-1];
+    for (v -= 4; v > vbegin; v -= 4) {
+        AES_decrypt((const unsigned char *)v, (unsigned char *)v, key);
+        v[0] ^= v[-4];
+        v[1] ^= v[-3];
+        v[2] ^= v[-2];
+        v[3] ^= v[-1];
     }
     AES_decrypt((const unsigned char *)v,(unsigned char *)v, key);
 }
@@ -256,14 +256,14 @@ string
 encryptString(string in)
 {
     if (encrypt_memoize_entries > 0) {
-	string *v = raw2encrypted.lookup(in);
-	if (v != NULL) {
-	    return *v;
-	}
+        string *v = raw2encrypted.lookup(in);
+        if (v != NULL) {
+            return *v;
+        }
     }
 
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
+              boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     // partial HMAC construction
     string tmp = hmac_key_2;
     tmp.append(in);
@@ -278,19 +278,19 @@ encryptString(string in)
     // 1 of hmacsize = 22 hmac
 
     INVARIANT(hmaclen >= 7 && hmaclen <= 22,
-	      "should have at least 7-22 bytes of hmac!");
+              "should have at least 7-22 bytes of hmac!");
     tmp[0] = hmaclen;
-    for(;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
-	tmp.append(" ");
+    for (;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
+        tmp.append(" ");
     }
     tmp.append((char *)sha_out,hmaclen);
     tmp.append(in);
     aesEncryptFast(&encrypt_key,(unsigned char *)&*tmp.begin(),tmp.size());
     if (encrypt_memoize_entries > 0) {
-	if (raw2encrypted.size() >= encrypt_memoize_entries) {
-	    raw2encrypted.clear();
-	}
-	raw2encrypted[in] = tmp;
+        if (raw2encrypted.size() >= encrypt_memoize_entries) {
+            raw2encrypted.clear();
+        }
+        raw2encrypted[in] = tmp;
     }
     return tmp;
 }
@@ -299,11 +299,11 @@ string
 decryptString(string in)
 {
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-	      boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
+              boost::format("no %d %d") % hmac_key_1.size() % hmac_key_2.size());
     aesDecryptFast(&decrypt_key,(unsigned char *)&*in.begin(),in.size());
     unsigned hmaclen = static_cast<unsigned>(in[0]);
     INVARIANT(hmaclen >= 7 && hmaclen <= 22,
-	      format("bad decrypt; hmaclen = %d") % hmaclen);
+              format("bad decrypt; hmaclen = %d") % hmaclen);
     INVARIANT(in.size() >= (hmaclen + 1), "bad decrypt");
     string ret = in.substr(hmaclen + 1,in.size() - (hmaclen + 1));
     string tmp = hmac_key_2;
@@ -311,12 +311,12 @@ decryptString(string in)
     unsigned char sha_out[SHA_DIGEST_LENGTH];
     SHA1((unsigned char *)&*tmp.begin(),tmp.size(),sha_out);
     char *cmpto = &in[1];
-    for(;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
-	INVARIANT(*cmpto == ' ', "bad decrypt");
-	++cmpto;
+    for (;hmaclen > SHA_DIGEST_LENGTH;--hmaclen) {
+        INVARIANT(*cmpto == ' ', "bad decrypt");
+        ++cmpto;
     }
     INVARIANT(memcmp(sha_out,cmpto,hmaclen)==0, 
-	      boost::format("bad decrypt %d") % hmaclen);
+              boost::format("bad decrypt %d") % hmaclen);
     return ret;
 }
     
@@ -330,14 +330,14 @@ string
 dsstring(string &instr, bool do_encrypt)
 {
     if (instr == empty_string) {
-	return empty_string;
+        return empty_string;
     }
     //    Clock::Tll a = Clock::now();
     string encrypt;
     if (do_encrypt) {
-	encrypt = encryptString(instr);
+        encrypt = encryptString(instr);
     } else {
-	encrypt = instr;
+        encrypt = instr;
     }
     //    Clock::Tll b = Clock::now();
     //    encrypt_cycles += b - a;
@@ -345,7 +345,7 @@ dsstring(string &instr, bool do_encrypt)
     //    Clock::Tll c = Clock::now();
     //    lookup_cycles += c - b;
     if (ok) {
-	return *ok;
+        return *ok;
     } 
     return encrypt;
 }
@@ -354,28 +354,28 @@ string
 sqlstring(string &instr, bool do_encrypt)
 {
     if (instr == empty_string) {
-	return null_string;
+        return null_string;
     }
     string ret(quote_string);
     //    Clock::Tll a = Clock::now();
     string encrypt;
     if (do_encrypt) {
-	encrypt = encryptString(instr);
-	//	Clock::Tll b = Clock::now();
-	//	encrypt_cycles += b - a;
-	string *ok = encrypted_to_okstring.lookup(encrypt);
-	//	Clock::Tll c = Clock::now();
-	//	lookup_cycles += c - b;
-	if (ok) {
-	    ret.append(*ok);
-	} else {
-	    ++hexcount;
-	    ret.append(hexstring(encrypt));
-	    //	    Clock::Tll d = Clock::now();
-	    //	    hex_cycles += d - c;
-	}
+        encrypt = encryptString(instr);
+        //      Clock::Tll b = Clock::now();
+        //      encrypt_cycles += b - a;
+        string *ok = encrypted_to_okstring.lookup(encrypt);
+        //      Clock::Tll c = Clock::now();
+        //      lookup_cycles += c - b;
+        if (ok) {
+            ret.append(*ok);
+        } else {
+            ++hexcount;
+            ret.append(hexstring(encrypt));
+            //      Clock::Tll d = Clock::now();
+            //      hex_cycles += d - c;
+        }
     } else {
-	ret.append(instr);
+        ret.append(instr);
     }
     ret.append(quote_string);
     if (false) printf("sqlstringret: %s\n",ret.c_str());
@@ -385,20 +385,20 @@ sqlstring(string &instr, bool do_encrypt)
 void
 printEncodeStats()
 {
-//    Clock::calibrateClock();
-//    Clock myclock;
-//    fprintf(stderr,"encrypt %.3f; hex(%d) %.3f; lookup %.3f\n",
-//	    1.0e-6 * encrypt_cycles * myclock.inverse_clock_rate, 
-//	    hexcount,1.0e-6 * hex_cycles * myclock.inverse_clock_rate, 
-//	    1.0e-6 * lookup_cycles * myclock.inverse_clock_rate);
+    //    Clock::calibrateClock();
+    //    Clock myclock;
+    //    fprintf(stderr,"encrypt %.3f; hex(%d) %.3f; lookup %.3f\n",
+    //      1.0e-6 * encrypt_cycles * myclock.inverse_clock_rate, 
+    //      hexcount,1.0e-6 * hex_cycles * myclock.inverse_clock_rate, 
+    //      1.0e-6 * lookup_cycles * myclock.inverse_clock_rate);
 }
 
 unsigned
 uintfield(const string &str)
 {
-    for(unsigned i = 0;i<str.size();++i) {
-	INVARIANT(isdigit(str[i]),
-		  boost::format("parse error (not uint) on '%s'") % str);
+    for (unsigned i = 0;i<str.size();++i) {
+        INVARIANT(isdigit(str[i]),
+                  boost::format("parse error (not uint) on '%s'") % str);
     }
     return atoi(str.c_str());
 }
@@ -407,18 +407,18 @@ int
 intfield(const string &str)
 {
     if (str.size() > 0 && str[0] == '-') {
-	return - uintfield(str.substr(1,str.size()-1));
+        return - uintfield(str.substr(1,str.size()-1));
     } else {
-	return uintfield(str);
+        return uintfield(str);
     }
 }
 
 double
 dblfield(const string &str)
 {
-    for(unsigned i = 0;i<str.size();++i) {
-	INVARIANT(isdigit(str[i]) || str[i] == '.' || str[i] == '-',
-		  boost::format("parse error on %s") % str);
+    for (unsigned i = 0;i<str.size();++i) {
+        INVARIANT(isdigit(str[i]) || str[i] == '.' || str[i] == '-',
+                  boost::format("parse error on %s") % str);
     }
     return atof(str.c_str());
 }
@@ -433,8 +433,8 @@ hexhmac(string &in)
     // H-Mac construction from Applied Cryptography:
     // H(K_1, H(K_2,M))
     INVARIANT(hmac_key_1.size() >= 16 && hmac_key_2.size() >= 16,
-	      boost::format("no %d %d") 
-	      % hmac_key_1.size() % hmac_key_2.size());
+              boost::format("no %d %d") 
+              % hmac_key_1.size() % hmac_key_2.size());
     string tmp = hmac_key_2;
     tmp.append(in);
     unsigned char sha_out[SHA_DIGEST_LENGTH];

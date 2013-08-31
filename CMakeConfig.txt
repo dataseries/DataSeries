@@ -80,6 +80,40 @@ SET(BUNZIP2_PROGRAM_MISSING_EXTRA
     "  will not be able to run the pssimple regression test")
 LINTEL_WITH_PROGRAM(BUNZIP2_PROGRAM bunzip2)
 
+#### Snappy
+
+INCLUDE(FindSnappy)
+
+OPTION(WITH_SNAPPY "Build with Snappy support?" ON)
+
+IF(WITH_SNAPPY AND SNAPPY_FOUND)
+    SET(SNAPPY_ENABLED ON)
+ELSE(WITH_SNAPPY AND SNAPPY_FOUND)
+    SET(SNAPPY_ENABLED OFF)
+ENDIF(WITH_SNAPPY AND SNAPPY_FOUND)
+
+IF(WITH_SNAPPY AND NOT SNAPPY_ENABLED)
+    MESSAGE("WITH_SNAPPY on, but could not find Snappy includes/libraries.")
+    MESSAGE("  Snappy compression support will be skipped.")
+ENDIF(WITH_SNAPPY AND NOT SNAPPY_ENABLED)
+
+#### LZ4
+
+INCLUDE(FindLZ4)
+
+OPTION(WITH_LZ4 "Build with LZ4 support?" ON)
+
+IF(WITH_LZ4 AND LZ4_FOUND)
+    SET(LZ4_ENABLED ON)
+ELSE(WITH_LZ4 AND LZ4_FOUND)
+    SET(LZ4_ENABLED OFF)
+ENDIF(WITH_LZ4 AND LZ4_FOUND)
+
+IF(WITH_LZ4 AND NOT LZ4_ENABLED)
+    MESSAGE("WITH_LZ4 on, but could not find lz4 includes/libraries.")
+    MESSAGE("  LZ4 compression support will be skipped.")
+ENDIF(WITH_LZ4 AND NOT LZ4_ENABLED)
+
 #### SRT
 
 SET(SRT_MISSING_EXTRA "  will skip building srt2ds, cmpsrtds")
@@ -111,6 +145,7 @@ LINTEL_BOOST_EXTRA(BOOST_FOREACH boost/foreach.hpp None)
 LINTEL_WITH_LIBRARY(AVRO avro.h avro)
 
 LINTEL_WITH_PROGRAM(GNUPLOT gnuplot)
+
 #### Perl
 
 LINTEL_WITH_PERL_MODULE(PERL_XML_PARSER XML::Parser)
@@ -124,7 +159,7 @@ INCLUDE(LintelDocs)
 
 LINTEL_DOCS_CONFIG("DataSeries")
 LINTEL_POD2MAN_SETUP()
-# TODO: consider redoing lintel in the same way as this, it's way more convinient.
+# TODO: consider redoing lintel in the same way as this, it's way more convenient.
 # then this could just be LINTEL_POD2MAN_RELEASE since it's likely constant for
 # any individual cmake package.
 SET(DATASERIES_POD2MAN_RELEASE "DataSeries ${DATASERIES_VERSION}")

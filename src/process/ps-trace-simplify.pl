@@ -35,7 +35,7 @@ foreach my $file (@ARGV) {
     }
     my $curtime;
     my $psformat;
-    while(<FILE>) {
+    while (<FILE>) {
 	next if /^\s*$/o;
 	chomp;
 	if (/^PS starts at: (.+)$/o) {

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -23,14 +23,14 @@ static void *pthreadfn(void *arg) {
 }
 
 PrefetchBufferModule::PrefetchBufferModule(DataSeriesModule &_source, unsigned maxextentmemory)
-    : source(_source), source_done(false), start_prefetching(false), abort_prefetching(false),
-    cur_used_memory(0), max_used_memory(maxextentmemory)
+        : source(_source), source_done(false), start_prefetching(false), abort_prefetching(false),
+          cur_used_memory(0), max_used_memory(maxextentmemory)
 {
 #ifdef COMPILE_PROFILE
     prefetch_thread = 0;
 #else
     INVARIANT(pthread_create(&prefetch_thread, NULL, pthreadfn, this)==0,
-	      "Pthread create failed??");
+              "Pthread create failed??");
 #endif
     INVARIANT(max_used_memory > 0, "can't have 0 max used memory");
 }
@@ -45,7 +45,7 @@ PrefetchBufferModule::~PrefetchBufferModule() {
     mutex.unlock();
     INVARIANT(pthread_join(prefetch_thread, NULL) == 0, "pthread_join failed.");
     while (buffer.empty() == false) {
-	buffer.pop_front();
+        buffer.pop_front();
     }
 #endif
 }
@@ -57,20 +57,20 @@ Extent::Ptr PrefetchBufferModule::getSharedExtent() {
     Extent::Ptr ret;
     mutex.lock();
     while (true) {
-	SINVARIANT(abort_prefetching == false);
-	if (buffer.empty() == false) {
-	    ret = buffer.front();
-	    buffer.pop_front();
-	    cur_used_memory -= ret->size();
-	    break;
-	} else if (source_done) {
-	    ret = Extent::Ptr();
-	    break;
-	} else {
-	    start_prefetching = true;
-	    cond.signal();
-	    cond.wait(mutex);
-	}
+        SINVARIANT(abort_prefetching == false);
+        if (buffer.empty() == false) {
+            ret = buffer.front();
+            buffer.pop_front();
+            cur_used_memory -= ret->size();
+            break;
+        } else if (source_done) {
+            ret = Extent::Ptr();
+            break;
+        } else {
+            start_prefetching = true;
+            cond.signal();
+            cond.wait(mutex);
+        }
     }
     mutex.unlock();
     return ret;
@@ -94,27 +94,27 @@ void PrefetchBufferModule::prefetcherThread() {
 #endif
     mutex.lock();
     while (start_prefetching == false) {
-	if (abort_prefetching)
-	    break;
-	cond.wait(mutex);
+        if (abort_prefetching)
+            break;
+        cond.wait(mutex);
     }
     while (abort_prefetching == false) {
-	if (cur_used_memory < max_used_memory) {
-	    mutex.unlock();
+        if (cur_used_memory < max_used_memory) {
+            mutex.unlock();
             Extent::Ptr e = source.getSharedExtent();
-	    mutex.lock();
-	    if (e == NULL) {
-		source_done = true;
-		cond.signal();
-		break;
-	    }
-	    buffer.push_back(e);
-	    cond.signal();
-	    cur_used_memory += e->size();
-	} else {
-	    SINVARIANT(buffer.empty() == false);
-	    cond.wait(mutex);
-	}
+            mutex.lock();
+            if (e == NULL) {
+                source_done = true;
+                cond.signal();
+                break;
+            }
+            buffer.push_back(e);
+            cond.signal();
+            cur_used_memory += e->size();
+        } else {
+            SINVARIANT(buffer.empty() == false);
+            cond.wait(mutex);
+        }
     }
     mutex.unlock();
 }

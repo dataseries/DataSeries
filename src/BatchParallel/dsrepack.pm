@@ -459,7 +459,7 @@ sub rebuild {
     $this->setup_dest_dir($dest);
 
     my $basename = $this->basename($dest);
-    for(my $i = 0; 1; ++$i) {
+    for (my $i = 0; 1; ++$i) {
 	my $splitname = sprintf("%s.part-%02d.ds", $basename, $i);
 	last unless -f $splitname;
 	unlink($splitname) or die "can't unlink $splitname: $!";

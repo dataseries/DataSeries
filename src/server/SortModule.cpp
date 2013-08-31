@@ -22,7 +22,7 @@
 using namespace std;
 
 class Comparator {
-public:
+  public:
     Comparator() { }
 
     Comparator(const Comparator &) { abort(); }
@@ -45,10 +45,10 @@ int main() {
 #endif
 
 class SortModule : public OutputSeriesModule {
-public:
+  public:
     SortModule(DataSeriesModule &source, const vector<SortColumn> &sort_by)
-        : source(source), sort_by(sort_by), copier(input_series, output_series), ercs(),
-          sorted_extents(), merge()
+            : source(source), sort_by(sort_by), copier(input_series, output_series), ercs(),
+              sorted_extents(), merge()
     { }
 
     virtual ~SortModule() { }
@@ -62,35 +62,35 @@ public:
     static bool strictlyLessThan(const Extent::Ptr &ea, const SEP_RowOffset &oa,
                                  const Extent::Ptr &eb, const SEP_RowOffset &ob,
                                  const vector<SortColumnImpl> &columns) {
-            BOOST_FOREACH(const SortColumnImpl &c, columns) {
-                bool a_null = c.field->isNull(*ea, oa);
-                bool b_null = c.field->isNull(*eb, ob);
+        BOOST_FOREACH(const SortColumnImpl &c, columns) {
+            bool a_null = c.field->isNull(*ea, oa);
+            bool b_null = c.field->isNull(*eb, ob);
 
-                if (a_null || b_null) {
-                    if (a_null && !b_null) { //         a < b : a > b
-                        return c.null_mode == NM_First ? true : false;
-                    } else if (!a_null && b_null) { //   a > b : a < b
-                        return c.null_mode == NM_First ? false : true;
-                    } else {
-                        // ==; keep going
-                    }
+            if (a_null || b_null) {
+                if (a_null && !b_null) { //         a < b : a > b
+                    return c.null_mode == NM_First ? true : false;
+                } else if (!a_null && b_null) { //   a > b : a < b
+                    return c.null_mode == NM_First ? false : true;
                 } else {
-                    GeneralValue va(c.field->val(*ea, oa));
-                    GeneralValue vb(c.field->val(*eb, ob));
-                    if (va < vb) {
-                        return c.sort_less;
-                    } else if (vb < va) {
-                        return !c.sort_less;
-                    } else {
-                        // ==; keep going
-                    }
+                    // ==; keep going
+                }
+            } else {
+                GeneralValue va(c.field->val(*ea, oa));
+                GeneralValue vb(c.field->val(*eb, ob));
+                if (va < vb) {
+                    return c.sort_less;
+                } else if (vb < va) {
+                    return !c.sort_less;
+                } else {
+                    // ==; keep going
                 }
             }
-            return false; // all == so not <
+        }
+        return false; // all == so not <
     }
 
     class ExtentRowCompare {
-    public:
+      public:
         ExtentRowCompare(ExtentRowCompareState *state) : state(state) { }
         ExtentRowCompare(const ExtentRowCompare &from) : state(from.state) { }
         ExtentRowCompare &operator =(const ExtentRowCompare &rhs) {

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -27,52 +27,52 @@
  */
 
 class MinMaxIndexModule : public IndexSourceModule {
-public:
+  public:
     /** selects extents where [minv..maxv] overlaps with
-    [min_fieldname..max_fieldname] and returns the extents sorted by
-    sort_fieldname with ties broken by filename and extent offset the
-    module will automatically put the min: and max: on the min/max
-    fieldnames, you need to put it on the sort one as neither choice
-    makes generic sense */
+        [min_fieldname..max_fieldname] and returns the extents sorted by
+        sort_fieldname with ties broken by filename and extent offset the
+        module will automatically put the min: and max: on the min/max
+        fieldnames, you need to put it on the sort one as neither choice
+        makes generic sense */
     MinMaxIndexModule(const std::string &index_filename,
-		      const std::string &index_type, 
-		      const GeneralValue minv, 
-		      const GeneralValue maxv,
-		      const std::string &min_fieldname,
-		      const std::string &max_fieldname,
-		      const std::string &sort_fieldname);
+                      const std::string &index_type, 
+                      const GeneralValue minv, 
+                      const GeneralValue maxv,
+                      const std::string &min_fieldname,
+                      const std::string &max_fieldname,
+                      const std::string &sort_fieldname);
 
     /** structure for defining an overlap range, caller defines
-	minv, maxv, min_fieldname, max_fieldname */
+        minv, maxv, min_fieldname, max_fieldname */
     struct selector {
-	// 2004-10-28, anderse: wanted to make the next 4 variables
-	// const, but doing so means that the tmp.push_back(foo) in
-	// the simple constructor throws some weird C++ error that I
-	// can't understand enough to know how to fix it.
-	GeneralValue minv, maxv;
-	std::string min_fieldname, max_fieldname;
+        // 2004-10-28, anderse: wanted to make the next 4 variables
+        // const, but doing so means that the tmp.push_back(foo) in
+        // the simple constructor throws some weird C++ error that I
+        // can't understand enough to know how to fix it.
+        GeneralValue minv, maxv;
+        std::string min_fieldname, max_fieldname;
 
-	GeneralField *minf, *maxf;
-	selector(const GeneralValue &a, const GeneralValue &b,
-		 const std::string &c, const std::string &d) 
-	    : minv(a), maxv(b), 
-	    min_fieldname(c), max_fieldname(d), 
-	    minf(NULL), maxf(NULL) { }
+        GeneralField *minf, *maxf;
+        selector(const GeneralValue &a, const GeneralValue &b,
+                 const std::string &c, const std::string &d) 
+                : minv(a), maxv(b), 
+                  min_fieldname(c), max_fieldname(d), 
+                  minf(NULL), maxf(NULL) { }
     };
 
     struct kept_extent {
-	std::string filename;
-	ExtentType::int64 extent_offset;
-	GeneralValue sortvalue;
-	kept_extent(const std::string &a,ExtentType::int64 b,GeneralValue &c)
-	    : filename(a), extent_offset(b), sortvalue(c) { }
+        std::string filename;
+        ExtentType::int64 extent_offset;
+        GeneralValue sortvalue;
+        kept_extent(const std::string &a,ExtentType::int64 b,GeneralValue &c)
+                : filename(a), extent_offset(b), sortvalue(c) { }
     };
 
     class kept_extent_bysortvalue {
-    public:
-	bool operator() (const kept_extent &a, const kept_extent &b) const {
-	    return a.sortvalue < b.sortvalue;
-	}
+      public:
+        bool operator() (const kept_extent &a, const kept_extent &b) const {
+            return a.sortvalue < b.sortvalue;
+        }
     };
 
 
@@ -94,15 +94,15 @@ public:
                       std::vector<selector> intersection_list,
                       const std::string &sort_fieldname);
 
-protected:
+  protected:
     virtual void lockedResetModule();
 
     virtual PrefetchExtent *lockedGetCompressedExtent();
 
-private:
+  private:
     void init(const std::string &index_filename,
-	      std::vector<selector> &intersection_list,
-	      const std::string &sort_fieldname);
+              std::vector<selector> &intersection_list,
+              const std::string &sort_fieldname);
 
     std::vector<kept_extent> kept_extents;
     const std::string index_type;

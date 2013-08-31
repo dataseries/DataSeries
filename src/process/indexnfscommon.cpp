@@ -5,25 +5,25 @@
 */
 
 /*
-=pod
+  =pod
 
-=head1 NAME
+  =head1 NAME
 
-indexnfscommon - indexer for NFS Common DataSeries files
+  indexnfscommon - indexer for NFS Common DataSeries files
 
-=head1 SYNOPSIS
+  =head1 SYNOPSIS
 
- % indexnfscommon <index.ds> <nfs-common-files.ds...>
+  % indexnfscommon <index.ds> <nfs-common-files.ds...>
 
-=head1 DESCRIPTION
+  =head1 DESCRIPTION
 
-A bad version of dsextentindex that is specific to nfs common files.
+  A bad version of dsextentindex that is specific to nfs common files.
 
-=head1 BUGS
+  =head1 BUGS
 
-TODO: obsolete this program, merge it into dsextentindex
+  TODO: obsolete this program, merge it into dsextentindex
 
-=cut
+  =cut
 */
 
 
@@ -67,23 +67,23 @@ readExistingIndex(char *out_filename)
     src.addSource(out_filename);
     Extent::Ptr e = src.getSharedExtent();
     INVARIANT(e->getTypePtr()->getName() == "NFS trace: common index",
-	      format("whoa, extent type %s bad") % e->getTypePtr()->getName());
+              format("whoa, extent type %s bad") % e->getTypePtr()->getName());
 
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
-	start_time(s,"start-time"), end_time(s,"end-time"),
-	mtime(s,"modify-time");
+            start_time(s,"start-time"), end_time(s,"end-time"),
+            mtime(s,"modify-time");
     Variable32Field filename(s,"filename");
-    for(;s.morerecords();++s) {
-	fileinfo f;
-	f.start_id = start_id.val();
-	f.end_id = end_id.val();
-	f.start_time = start_time.val();
-	f.end_time = end_time.val();
-	f.filename = filename.stringval();
-	f.mtime = mtime.val();
-	indexmap[f.start_id] = f;
-	filename_to_mtime[f.filename] = f.mtime;
+    for (;s.morerecords();++s) {
+        fileinfo f;
+        f.start_id = start_id.val();
+        f.end_id = end_id.val();
+        f.start_time = start_time.val();
+        f.end_time = end_time.val();
+        f.filename = filename.stringval();
+        f.mtime = mtime.val();
+        indexmap[f.start_id] = f;
+        filename_to_mtime[f.filename] = f.mtime;
     }
 
     e = src.getSharedExtent(); 
@@ -129,58 +129,58 @@ updateFileInfo(DataSeriesSource &source, off64_t offset, fileinfo &f)
 
     Extent::Ptr e(source.preadExtent(offset));
 
-    for(s.setExtent(e);s.morerecords();++s) {
-	if (f.start_id < 0) {
-	    f.start_id = f.end_id = recordid.val();
-	    f.start_time = f.end_time = packettime.val();
-	} else {
-	    SINVARIANT(recordid.val() > f.end_id);
-	    f.end_id = recordid.val();
-	    if (packettime.val() < f.end_time) {
-		// this happens all the time; the large jumps are
-		// probably ntp time stepping, the smaller ones are
-		// probably linux's clock sucking.
-		bool found_ok_backwardness = false;
-		for(int i=0;i<nok_backwards;++i) {
-		    if (packettime.val() == ok_backwards[i].packettime &&
-			f.end_time == ok_backwards[i].end_time) {
-			SINVARIANT(found_ok_backwardness == false);
-			found_ok_backwardness = true;
-		    }
-		}
-		long long backward_ns = f.end_time - packettime.val();
-		if (backward_ns <= min_backward_ns_print_warning) {
-		    // 50 us backwards is a little high to complete
-		    // ignore, but starts occurring alot in set-8;
-		    // don't even bother to print a warning.
+    for (s.setExtent(e);s.morerecords();++s) {
+        if (f.start_id < 0) {
+            f.start_id = f.end_id = recordid.val();
+            f.start_time = f.end_time = packettime.val();
+        } else {
+            SINVARIANT(recordid.val() > f.end_id);
+            f.end_id = recordid.val();
+            if (packettime.val() < f.end_time) {
+                // this happens all the time; the large jumps are
+                // probably ntp time stepping, the smaller ones are
+                // probably linux's clock sucking.
+                bool found_ok_backwardness = false;
+                for (int i=0;i<nok_backwards;++i) {
+                    if (packettime.val() == ok_backwards[i].packettime &&
+                        f.end_time == ok_backwards[i].end_time) {
+                        SINVARIANT(found_ok_backwardness == false);
+                        found_ok_backwardness = true;
+                    }
+                }
+                long long backward_ns = f.end_time - packettime.val();
+                if (backward_ns <= min_backward_ns_print_warning) {
+                    // 50 us backwards is a little high to complete
+                    // ignore, but starts occurring alot in set-8;
+                    // don't even bother to print a warning.
 
-		    // this is probably happening because we're tracing on two interfaces, and so
-		    // the packets from the different interfaces can get to user level slightly out
-		    // of order.
-		} else if (found_ok_backwardness) {
-		    cout << format("tolerating backwards timeness on recordid %d of %d ns: %d < %d\n")
-			% recordid.val() % (f.end_time - packettime.val())
-			% packettime.val() % f.end_time;
-		} else {
-		    INVARIANT(backward_ns <= max_backward_ns_in_extent,
-			      format("bad2 %lld < %lld -> %lld")
-			      % packettime.val() % f.end_time % backward_ns);
-		    cout << format("warning backwards timeness on recordid %d of %d ns: %d < %d\n")
-			% recordid.val() % (f.end_time - packettime.val()) 
-			% packettime.val() % f.end_time;
-		}
-	    } else {
-		f.end_time = packettime.val();
-	    }
-	}
+                    // this is probably happening because we're tracing on two interfaces, and so
+                    // the packets from the different interfaces can get to user level slightly out
+                    // of order.
+                } else if (found_ok_backwardness) {
+                    cout << format("tolerating backwards timeness on recordid %d of %d ns: %d < %d\n")
+                            % recordid.val() % (f.end_time - packettime.val())
+                            % packettime.val() % f.end_time;
+                } else {
+                    INVARIANT(backward_ns <= max_backward_ns_in_extent,
+                              format("bad2 %lld < %lld -> %lld")
+                              % packettime.val() % f.end_time % backward_ns);
+                    cout << format("warning backwards timeness on recordid %d of %d ns: %d < %d\n")
+                            % recordid.val() % (f.end_time - packettime.val()) 
+                            % packettime.val() % f.end_time;
+                }
+            } else {
+                f.end_time = packettime.val();
+            }
+        }
     }
 }
 
 bool updateIndexMap(char *filename) {
     ExtentType::int64 mtime = modifyTimeNanoSec(filename);
     if (filename_to_mtime[filename] == mtime) {
-	printf("%s: up to date\n",filename);
-	return false;
+        printf("%s: up to date\n",filename);
+        return false;
     }
     DataSeriesSource source(filename);
 
@@ -189,15 +189,15 @@ bool updateIndexMap(char *filename) {
     Int64Field offset(s,"offset");
 
     ExtentType::int64 first_offset = -1, last_offset = -1;
-    for(;s.morerecords();++s) {
-	if (extenttype.equal("NFS trace: common")) {
-	    if (first_offset < 0) {
-		first_offset = last_offset = offset.val();
-	    }
-	    if (offset.val() > last_offset) {
-		last_offset = offset.val();
-	    }
-	}
+    for (;s.morerecords();++s) {
+        if (extenttype.equal("NFS trace: common")) {
+            if (first_offset < 0) {
+                first_offset = last_offset = offset.val();
+            }
+            if (offset.val() > last_offset) {
+                last_offset = offset.val();
+            }
+        }
     }
     cout << format("%s: first offset @ %d, last @ %d\n") % filename % first_offset % last_offset;
     fileinfo f;
@@ -207,20 +207,20 @@ bool updateIndexMap(char *filename) {
     f.mtime = mtime;
     updateFileInfo(source,first_offset,f);
     if (last_offset > first_offset) {
-	updateFileInfo(source,last_offset,f);
+        updateFileInfo(source,last_offset,f);
     }
     cout << format("  ids: %d .. %d; time: %.6f .. %.6f\n")
-	% f.start_id % f.end_id % ((double)f.start_time / 1.0e9) % ((double)f.end_time / 1.0e9);
+            % f.start_id % f.end_id % ((double)f.start_time / 1.0e9) % ((double)f.end_time / 1.0e9);
     indexmapT::iterator exist = indexmap.find(f.start_id);
     if (exist != indexmap.end()) {
-	SINVARIANT(exist->second.start_id == f.start_id &&
-		   exist->second.end_id == f.end_id &&
-		   exist->second.start_time == f.start_time &&
-		   exist->second.end_time == f.end_time &&
-		   exist->second.filename == f.filename);
-	exist->second.mtime = mtime;
+        SINVARIANT(exist->second.start_id == f.start_id &&
+                   exist->second.end_id == f.end_id &&
+                   exist->second.start_time == f.start_time &&
+                   exist->second.end_time == f.end_time &&
+                   exist->second.filename == f.filename);
+        exist->second.mtime = mtime;
     } else {
-	indexmap[f.start_id] = f;
+        indexmap[f.start_id] = f;
     }
     return true;
 }
@@ -236,47 +236,47 @@ void
 validateIndexMap()
 {
     ExtentType::int64 last_id = -1, last_time = -1;
-    for(indexmapT::iterator i = indexmap.begin();
-	i != indexmap.end();++i) {
-	SINVARIANT(i->second.start_id > last_id);
-	last_id = i->second.end_id;
-	if (i->second.start_time < last_time) {
-	    bool found_ok_backwardness = false;
-	    for(int j=0;j<nok_validate;++j) {
-		if (i->second.start_time == ok_validate[j].packettime &&
-		    last_time == ok_validate[j].end_time) {
-		    SINVARIANT(found_ok_backwardness == false);
-		    found_ok_backwardness = true;
-		}
-	    }
-	    long long backward_ns = last_time - i->second.start_time;
-	    SINVARIANT(backward_ns > 0);
-	    if (backward_ns < max_backward_ns_between_extent)
-		found_ok_backwardness = true;
-	    if (found_ok_backwardness) {
-		if (backward_ns > min_backward_ns_print_warning) {
-		    cout << format("tolerating validation backwards of %d ns: %lld < %d\n")
-			% backward_ns % i->second.start_time % last_time;
-		}
-	    } else {
-		INVARIANT(i->second.start_time >= last_time,
-			  format("bad out of order %lld < %lld -> %lld")
-			  % i->second.start_time % last_time % backward_ns);
-	    }
-	}
-	last_time = i->second.end_time;
+    for (indexmapT::iterator i = indexmap.begin();
+        i != indexmap.end();++i) {
+        SINVARIANT(i->second.start_id > last_id);
+        last_id = i->second.end_id;
+        if (i->second.start_time < last_time) {
+            bool found_ok_backwardness = false;
+            for (int j=0;j<nok_validate;++j) {
+                if (i->second.start_time == ok_validate[j].packettime &&
+                    last_time == ok_validate[j].end_time) {
+                    SINVARIANT(found_ok_backwardness == false);
+                    found_ok_backwardness = true;
+                }
+            }
+            long long backward_ns = last_time - i->second.start_time;
+            SINVARIANT(backward_ns > 0);
+            if (backward_ns < max_backward_ns_between_extent)
+                found_ok_backwardness = true;
+            if (found_ok_backwardness) {
+                if (backward_ns > min_backward_ns_print_warning) {
+                    cout << format("tolerating validation backwards of %d ns: %lld < %d\n")
+                            % backward_ns % i->second.start_time % last_time;
+                }
+            } else {
+                INVARIANT(i->second.start_time >= last_time,
+                          format("bad out of order %lld < %lld -> %lld")
+                          % i->second.start_time % last_time % backward_ns);
+            }
+        }
+        last_time = i->second.end_time;
     }
 }
 
 const string indextype_xml = 
-"<ExtentType name=\"NFS trace: common index\">\n"
-"  <field type=\"int64\" name=\"start-id\" />\n"
-"  <field type=\"int64\" name=\"end-id\" />\n"
-"  <field type=\"int64\" name=\"start-time\" />\n"
-"  <field type=\"int64\" name=\"end-time\" />\n"
-"  <field type=\"variable32\" name=\"filename\" />\n"
-"  <field type=\"int64\" name=\"modify-time\" comment=\"file modify time in ns since unix epoch\" />\n"
-"</ExtentType>";
+        "<ExtentType name=\"NFS trace: common index\">\n"
+        "  <field type=\"int64\" name=\"start-id\" />\n"
+        "  <field type=\"int64\" name=\"end-id\" />\n"
+        "  <field type=\"int64\" name=\"start-time\" />\n"
+        "  <field type=\"int64\" name=\"end-time\" />\n"
+        "  <field type=\"variable32\" name=\"filename\" />\n"
+        "  <field type=\"int64\" name=\"modify-time\" comment=\"file modify time in ns since unix epoch\" />\n"
+        "</ExtentType>";
 
 void
 writeIndexMap(char *out_filename)
@@ -289,20 +289,20 @@ writeIndexMap(char *out_filename)
     Extent::Ptr e(new Extent(indextype));
     ExtentSeries s(e);
     Int64Field start_id(s,"start-id"), end_id(s,"end-id"), 
-	start_time(s,"start-time"), end_time(s,"end-time"),
-	mtime(s,"modify-time");
+            start_time(s,"start-time"), end_time(s,"end-time"),
+            mtime(s,"modify-time");
     Variable32Field filename(s,"filename");
 
-    for(indexmapT::iterator i = indexmap.begin();
-	i != indexmap.end();++i) {
-	s.newRecord();
-	start_id.set(i->second.start_id);
-	end_id.set(i->second.end_id);
-	start_time.set(i->second.start_time);
-	end_time.set(i->second.end_time);
-	filename.set(i->second.filename);
-	SINVARIANT(i->second.mtime > 0);
-	mtime.set(i->second.mtime);
+    for (indexmapT::iterator i = indexmap.begin();
+        i != indexmap.end();++i) {
+        s.newRecord();
+        start_id.set(i->second.start_id);
+        end_id.set(i->second.end_id);
+        start_time.set(i->second.start_time);
+        end_time.set(i->second.end_time);
+        filename.set(i->second.filename);
+        SINVARIANT(i->second.mtime > 0);
+        mtime.set(i->second.mtime);
     } 
     sink.writeExtent(*e, NULL);
 }
@@ -311,21 +311,21 @@ int
 main(int argc, char *argv[])
 {
     INVARIANT(argc > 2 && strncmp(argv[0],"-h",2) != 0,
-	      format("Usage: %s <index-dataseries> <nfs common dataseries...>")
-	      % argv[0]);
+              format("Usage: %s <index-dataseries> <nfs common dataseries...>")
+              % argv[0]);
     struct stat buf;
 
     if (stat(argv[1],&buf) == 0) {
-	readExistingIndex(argv[1]);
+        readExistingIndex(argv[1]);
     }
     bool any_change = false;
-    for(int i=2;i<argc;++i) {
-	bool t = updateIndexMap(argv[i]);
-	any_change = any_change || t;
+    for (int i=2;i<argc;++i) {
+        bool t = updateIndexMap(argv[i]);
+        any_change = any_change || t;
     }
     validateIndexMap();
     if (any_change) {
-	writeIndexMap(argv[1]);
+        writeIndexMap(argv[1]);
     }
 }
 

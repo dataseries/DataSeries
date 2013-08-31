@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2012, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2012, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -18,9 +18,9 @@
 #include <DataSeries/DataSeriesModule.hpp>
 
 namespace dataseries { namespace hack {
-    Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
-    size_t extentSharedPtrSize();
-}}
+        Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
+        size_t extentSharedPtrSize();
+    }}
 
 using namespace dataseries;
 
@@ -58,10 +58,10 @@ Extent::Ptr DataSeriesModule::getSharedExtent() {
 }
 
 void DataSeriesModule::getAndDelete() {
-    while(true) {
-	Extent *e = getExtent();
-	if (e == NULL) return;
-	delete e;
+    while (true) {
+        Extent *e = getExtent();
+        if (e == NULL) return;
+        delete e;
     }
 }
 
@@ -73,7 +73,7 @@ void DataSeriesModule::getAndDeleteShared() {
 }
 
 SourceModule::SourceModule()
-    : total_uncompressed_bytes(0), total_compressed_bytes(0)
+        : total_uncompressed_bytes(0), total_compressed_bytes(0)
 { }
 
 SourceModule::~SourceModule() { }
@@ -83,63 +83,63 @@ static inline double timediff(struct timeval &end, struct timeval &start) {
 }
 
 FilterModule::FilterModule(DataSeriesModule &_from, 
-			   const std::string &_type_prefix)
-    : from(_from), type_prefix(_type_prefix)
+                           const std::string &_type_prefix)
+        : from(_from), type_prefix(_type_prefix)
 { }
 
 FilterModule::~FilterModule() { }
 
 Extent::Ptr FilterModule::getSharedExtent() {
-    while(true) {
+    while (true) {
         Extent::Ptr e = from.getSharedExtent();
-	if (e == NULL || prefixequal(e->type->getName(), type_prefix)) {
-	    return e;
+        if (e == NULL || prefixequal(e->type->getName(), type_prefix)) {
+            return e;
         }
     }
 }
 
 OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
-			   const ExtentType *in_outputtype, 
-			   int target_extent_size)
-    : outputtype(*in_outputtype),
-      target_extent_size(target_extent_size),
-      sink(sink), series(series)
+                           const ExtentType *in_outputtype, 
+                           int target_extent_size)
+        : outputtype(*in_outputtype),
+          target_extent_size(target_extent_size),
+          sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
-	      "series specified for output module already had an extent");
+              "series specified for output module already had an extent");
     series.setType(outputtype.shared_from_this());
     series.newExtent();
     cur_extent = series.getSharedExtent();
 }
 
 OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
-			   const ExtentType &in_outputtype, 
-			   int target_extent_size)
-    : outputtype(in_outputtype),
-      target_extent_size(target_extent_size),
-      sink(sink), series(series)
+                           const ExtentType &in_outputtype, 
+                           int target_extent_size)
+        : outputtype(in_outputtype),
+          target_extent_size(target_extent_size),
+          sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
-	      "series specified for output module already had an extent");
+              "series specified for output module already had an extent");
     series.setType(outputtype.shared_from_this());
     series.newExtent();
     cur_extent = series.getSharedExtent();
 }
 
 OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
-			   const ExtentType::Ptr in_outputtype, 
-			   int target_extent_size)
-    : outputtype(*in_outputtype), target_extent_size(target_extent_size),
-      sink(sink), series(series)
+                           const ExtentType::Ptr in_outputtype, 
+                           int target_extent_size)
+        : outputtype(*in_outputtype), target_extent_size(target_extent_size),
+          sink(sink), series(series)
 {
     SINVARIANT(&series != NULL);
     INVARIANT(&outputtype != NULL, "can't create output module without type");
     INVARIANT(!series.hasExtent(),
-	      "series specified for output module already had an extent");
+              "series specified for output module already had an extent");
     series.setType(in_outputtype);
     series.newExtent();
     cur_extent = series.getSharedExtent();
@@ -147,7 +147,7 @@ OutputModule::OutputModule(IExtentSink &sink, ExtentSeries &series,
 
 OutputModule::~OutputModule() {
     if (cur_extent != NULL) {
-	close();
+        close();
     }
     sink.removeStatsUpdate(&stats);
 }
@@ -155,19 +155,19 @@ OutputModule::~OutputModule() {
 void OutputModule::newRecord() {
     INVARIANT(series.hasExtent() && cur_extent != NULL, "called newRecord() after close()");
     INVARIANT(series.getSharedExtent() == cur_extent,
-	      "usage error, someone else changed the series extent");
+              "usage error, someone else changed the series extent");
     if ((cur_extent->size() + outputtype.fixedrecordsize()) > target_extent_size) {
-	double fixedsize = cur_extent->fixeddata.size();
-	double variablesize = cur_extent->variabledata.size();
-	double sumsize = fixedsize + variablesize;
-	double fixedfrac = fixedsize / sumsize;
-	double variablefrac = variablesize / sumsize;
-	flushExtent();
-	double inflate_size = 1.1 * target_extent_size; // a little extra
-	size_t fixed = static_cast<size_t>(inflate_size * fixedfrac);
-	cur_extent->fixeddata.reserve(fixed);
-	size_t variable = static_cast<size_t>(inflate_size * variablefrac);
-	cur_extent->variabledata.reserve(variable);
+        double fixedsize = cur_extent->fixeddata.size();
+        double variablesize = cur_extent->variabledata.size();
+        double sumsize = fixedsize + variablesize;
+        double fixedfrac = fixedsize / sumsize;
+        double variablefrac = variablesize / sumsize;
+        flushExtent();
+        double inflate_size = 1.1 * target_extent_size; // a little extra
+        size_t fixed = static_cast<size_t>(inflate_size * fixedfrac);
+        cur_extent->fixeddata.reserve(fixed);
+        size_t variable = static_cast<size_t>(inflate_size * variablefrac);
+        cur_extent->variabledata.reserve(variable);
     }
     series.newRecord();
 }
@@ -175,8 +175,8 @@ void OutputModule::newRecord() {
 void OutputModule::flushExtent() {
     INVARIANT(cur_extent != NULL, "??");
     if (cur_extent->fixeddata.size() > 0) {
-	sink.writeExtent(*cur_extent, &stats);
-	cur_extent->clear();
+        sink.writeExtent(*cur_extent, &stats);
+        cur_extent->clear();
     }
 }
 
@@ -186,7 +186,7 @@ void OutputModule::close() {
     series.clearExtent();
 
     if (old_extent->fixeddata.size() > 0) {
-	sink.writeExtent(*old_extent, &stats);
+        sink.writeExtent(*old_extent, &stats);
     }
 }
 

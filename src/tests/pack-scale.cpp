@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2012, Hewlett-Packard Development Company, LP
+  (c) Copyright 2012, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -20,11 +20,11 @@ using namespace std;
 using boost::format;
 
 const string test_xml =
-"<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"scale-tests\" version=\"1.0\" >\n"
-"  <field type=\"double\" name=\"s-1\" pack_scale=\"1.0\" />\n"
-"  <field type=\"double\" name=\"s-1-nowarn\" pack_scale=\"1.0\" pack_scale_warn=\"no\" />\n"
-"  <field type=\"double\" name=\"s-0.1\" pack_scale=\"0.1\" pack_scale_warn=\"yes\" />\n"
-"</ExtentType>\n";
+        "<ExtentType namespace=\"ssd.hpl.hp.com\" name=\"scale-tests\" version=\"1.0\" >\n"
+        "  <field type=\"double\" name=\"s-1\" pack_scale=\"1.0\" />\n"
+        "  <field type=\"double\" name=\"s-1-nowarn\" pack_scale=\"1.0\" pack_scale_warn=\"no\" />\n"
+        "  <field type=\"double\" name=\"s-0.1\" pack_scale=\"0.1\" pack_scale_warn=\"yes\" />\n"
+        "</ExtentType>\n";
 
 vector<string> log_msgs;
 void saveAppender(const std::string &msg, const LintelLog::LogType type) {
@@ -58,7 +58,7 @@ void testSimple() {
     
     LintelLog::addAppender(boost::bind(saveAppender, _1, _2));
     Extent::ByteArray packed_data;
-    e->packData(packed_data, Extent::compress_lzf, 9, NULL, NULL, NULL);
+    e->packData(packed_data, Extent::compression_algs[Extent::compress_mode_lzf].compress_flag, 9, NULL, NULL, NULL);
     SINVARIANT(log_msgs.size() == 2);
     SINVARIANT(log_msgs[0] == "Warning, while packing field s-1 of record 1, error was > 10%:\n"
                "  (0.2 / 1 = 0.20, round() = 0)\n");

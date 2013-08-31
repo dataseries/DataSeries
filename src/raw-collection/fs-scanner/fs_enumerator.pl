@@ -111,7 +111,7 @@ sub waitFor {
     my($what) = @_;
 
     print "waitFor $what: ";
-    for(my $i = 0; $i < 300; ++$i) {
+    for (my $i = 0; $i < 300; ++$i) {
 	last if -d $what || -f $what;
 	print ".";
 	sleep(1);

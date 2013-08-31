@@ -1,12 +1,12 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
-     first attempt at trying to build a modular structure for data series
+    first attempt at trying to build a modular structure for data series
 */
 
 // TODO: figure out how to cleanly support multi-threaded modules; they are now necessary
@@ -38,42 +38,42 @@
     derived class should to its processing in getExtent.  Derived
     classes are expected to be chained together, giving a structure like:
 
-\verbatim
+    \verbatim
 
-            +----------------+
-            | SequenceModule |<>-----+-----------------+------------------+
-            +----------------+       |                 |                  |
-                   |                 |                 |                  |
-                             +-------------+  +----------------+  +---------------+   +------------------+
- getAndDelete()    |         | Some Module |->| Another Module |->| Source Module |<>-| DataSeriesSource |
------------------>+-+        +-------------+  +----------------+  +---------------+   +------------------+
-                  | |                |                 |                  |                      |
-              /-->+ |  getExtent()                                                                
-             |    | |-------------->+-+  getExtent()   |                  |                      |
-             |    | |               | |-------------->+-+   getExtent()                           
-             |    | |               | |               | |--------------->+-+    preadExtent()    |
-             |    | |               | |               | |                | |------------------->+-+
-             |    | |               | |               | |                | |                    | |
-loop until   |    | |               | |               | |                | |<-------------------+-+
-getExtent()  |    | |               | |               | |<---------------+-+
-returns null |    | |               | |               | |
-             |    | |               | |               | | Process the Extent
-             |    | |               | |<--------------+-+
-             |    | |               | |
-             |    | |               | | Process the Extent
-             |    | |<--------------+-+
-              \--<+-+
+    +----------------+
+    | SequenceModule |<>-----+-----------------+------------------+
+    +----------------+       |                 |                  |
+    |                 |                 |                  |
+    +-------------+  +----------------+  +---------------+   +------------------+
+    getAndDelete()    |         | Some Module |->| Another Module |->| Source Module |<>-| DataSeriesSource |
+    ----------------->+-+        +-------------+  +----------------+  +---------------+   +------------------+
+    | |                |                 |                  |                      |
+    /-->+ |  getExtent()                                                                
+    |    | |-------------->+-+  getExtent()   |                  |                      |
+    |    | |               | |-------------->+-+   getExtent()                           
+    |    | |               | |               | |--------------->+-+    preadExtent()    |
+    |    | |               | |               | |                | |------------------->+-+
+    |    | |               | |               | |                | |                    | |
+    loop until   |    | |               | |               | |                | |<-------------------+-+
+    getExtent()  |    | |               | |               | |<---------------+-+
+    returns null |    | |               | |               | |
+    |    | |               | |               | | Process the Extent
+    |    | |               | |<--------------+-+
+    |    | |               | |
+    |    | |               | | Process the Extent
+    |    | |<--------------+-+
+    \--<+-+
 
-\endverbatim
+    \endverbatim
     
-    */
+*/
 
 #ifndef DSM_VAR_DEPRECATED
 #  define DSM_VAR_DEPRECATED VAR_DEPRECATED
 #endif
 
 class DataSeriesModule : boost::noncopyable {
-public:
+  public:
     typedef boost::shared_ptr<DataSeriesModule> Ptr;
 
     virtual ~DataSeriesModule();
@@ -100,7 +100,7 @@ public:
 /** \brief Base class for source modules that keeps statistics about
     reading from files. Otherwise it is just empty for now. */
 class SourceModule : public DataSeriesModule {
-public:
+  public:
     // Eventually, we should add some sort of shared DataSource buffer
     // cache, in the current design if we have multiple modules
     // accessing the same file, they will end up separately reading in
@@ -126,14 +126,14 @@ public:
 
 /** \brief Module for filtering out any extents not matching type_prefix */
 class FilterModule : public DataSeriesModule {
-public:
+  public:
     FilterModule(DataSeriesModule &_from, const std::string &_type_prefix) FUNC_DEPRECATED;
     virtual ~FilterModule();
     virtual Extent::Ptr getSharedExtent();
     void setPrefix(const std::string &prefix) {
-	type_prefix = prefix;
+        type_prefix = prefix;
     }
-private:
+  private:
     DataSeriesModule &from;
     std::string type_prefix;
 };
@@ -144,7 +144,7 @@ private:
     @c Extent, this provides a way to keep Extents from getting
     too big to fit in memory. */
 class OutputModule {
-public:
+  public:
     // TODO: Replace constructor with OutputModule(DataSeriesSink
     // &sink, const ExtentType &outputtype, uint32_t
     // target_extent_size = 0) auto-infer tes if it is 0 same as with
@@ -157,13 +157,13 @@ public:
     // target extent size.
     // TODO: remove after 2012-02-01
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
-		 const ExtentType *outputtype, int target_extent_size) FUNC_DEPRECATED;
+                 const ExtentType *outputtype, int target_extent_size) FUNC_DEPRECATED;
 
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
-		 const ExtentType &outputtype, int target_extent_size) FUNC_DEPRECATED;
+                 const ExtentType &outputtype, int target_extent_size) FUNC_DEPRECATED;
 
     OutputModule(dataseries::IExtentSink &sink, ExtentSeries &series,
-		 const ExtentType::Ptr outputtype, int target_extent_size);
+                 const ExtentType::Ptr outputtype, int target_extent_size);
 
     /** Calls close unless you have already called close manually. */
     ~OutputModule();
@@ -184,13 +184,13 @@ public:
     dataseries::IExtentSink::Stats getStats();
 
     uint32_t getTargetExtentSize() {
-	return target_extent_size;
+        return target_extent_size;
     }
 
     void setTargetExtentSize(uint32_t bytes) {
-	// setting this will only have an effect after the next call to
-	// newRecord.
-	target_extent_size = bytes;
+        // setting this will only have an effect after the next call to
+        // newRecord.
+        target_extent_size = bytes;
     }
 
     void printStats(std::ostream &to);
@@ -198,17 +198,17 @@ public:
     ExtentType::Ptr getOutputType(); // re-inline this function once deprecated var is changed to ptr
 
     size_t curExtentSize() {
-	return cur_extent->fixeddata.size() + cur_extent->variabledata.size();
+        return cur_extent->fixeddata.size() + cur_extent->variabledata.size();
     }
 
     ExtentSeries &getSeries() {
-	return series;
+        return series;
     }
 
     const dataseries::IExtentSink &getSink() { 
-	return sink; 
+        return sink; 
     }
-private:
+  private:
     uint32_t target_extent_size; 
 
     dataseries::IExtentSink::Stats stats;

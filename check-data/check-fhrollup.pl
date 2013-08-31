@@ -43,7 +43,7 @@ sub getAt {
 
     open(GET_AT, qq{ds2txt --skip-all --select common record_id,packet_at --printSpec='type="Trace::NFS::common" name="packet_at" print_format="sec.nsec" units="2^-32 seconds" epoch="unix"' $file  |}) or die "?";
 
-    while(<GET_AT>) {
+    while (<GET_AT>) {
 	my @F = split;
 	die "??" unless @F == 2;
 	if ($F[0] == $record_id) {

@@ -11,17 +11,17 @@ compression arguments.  These arguments include:
 
 =over
 
-=item --disable-{lzf,lzo,gz,bz2}
+=item --disable {lzf,lzo,gz,bz2,snappy,lz4,lz4hc}
 
 Disable one or more of the compression algorithms
 
-=item --compress-{lzf,lzo,gz,bz2,none}
+=item --compress {lzf,lzo,gz,bz2,snappy,lz4,lz4hc,none}
 
 Specify exactly one compression algorithm (or to use no compression)
 
-=item --enable-{lzf,lzo,gz,bz2}
+=item --enable {lzf,lzo,gz,bz2,snappy,lz4,lz4hc}
 
-Enable one compression algorithm.  Usually used as --compress-none --enable-lzf --enable-gz.
+Enable one compression algorithm.  Usually used as --compress none --enable lzf gz.
 
 =item --compress-level=I<[0-9]>
 
@@ -33,8 +33,12 @@ Specify the size of the extents.  Defaults to 16MiB if bz2 is enabled and 64KiB 
 
 =back
 
-The options are specified in order, and the default is --enable-*.  Therefore --disable-lzf
---disable-lzo is equivalent to --compress-none --enable-gz --enable-bz2 and is equivalent to
---compress-bz2 --enable-gz.
+The options are specified in order, and the default is --enable *.  Therefore 
+
+--disable lzf lzo
+--compress none --enable gz bz2 snappy lz4 lz4hc
+--compress bz2 --enable gz snappy lz4 lz4hc
+
+are all equivalent (provided all 7 compression libraries are available).
 
 =cut

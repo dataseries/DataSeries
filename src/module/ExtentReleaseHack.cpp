@@ -15,42 +15,42 @@
 #include <DataSeries/Extent.hpp>
 
 namespace dataseries { namespace hack {
-    Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
-    size_t extentSharedPtrSize();
-}}
+        Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e);
+        size_t extentSharedPtrSize();
+    }}
 
 class more_evil_hack_1 : public boost::detail::sp_counted_base {
-public:
+  public:
     Extent *magic;
 };
 
 class more_evil_hack_2 {
-public:
+  public:
     more_evil_hack_1 *evil_1;
 };
 
 namespace dataseries { namespace hack {
-    Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e) {
-        INVARIANT(p.use_count() == 1, "Attempting to convert a shared pointer back to a native"
-                  " pointer only works with use count 1; likely you need getExtentShared()");
-        Extent *ret = p.px;
-        SINVARIANT(ret == e);
-        p.px = NULL;
-        more_evil_hack_2 *evil = reinterpret_cast<more_evil_hack_2 *>(&p.pn);
-        more_evil_hack_1 *more_evil = evil->evil_1;
-        SINVARIANT(more_evil->magic == ret);
-        more_evil->magic = NULL;
-        p.reset();
-        try {
-            Extent::Ptr p = ret->shared_from_this();
-            FATAL_ERROR("how did we get the shared back?");
-        } catch (std::exception &) {
-            // ok
+        Extent *releaseExtentSharedPtr(boost::shared_ptr<Extent> &p, Extent *e) {
+            INVARIANT(p.use_count() == 1, "Attempting to convert a shared pointer back to a native"
+                      " pointer only works with use count 1; likely you need getExtentShared()");
+            Extent *ret = p.px;
+            SINVARIANT(ret == e);
+            p.px = NULL;
+            more_evil_hack_2 *evil = reinterpret_cast<more_evil_hack_2 *>(&p.pn);
+            more_evil_hack_1 *more_evil = evil->evil_1;
+            SINVARIANT(more_evil->magic == ret);
+            more_evil->magic = NULL;
+            p.reset();
+            try {
+                Extent::Ptr p = ret->shared_from_this();
+                FATAL_ERROR("how did we get the shared back?");
+            } catch (std::exception &) {
+                // ok
+            }
+            return ret;
         }
-        return ret;
-    }
 
-    size_t extentSharedPtrSize() {
-        return sizeof(boost::shared_ptr<Extent>);
-    }
-} }
+        size_t extentSharedPtrSize() {
+            return sizeof(boost::shared_ptr<Extent>);
+        }
+    } }

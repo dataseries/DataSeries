@@ -43,20 +43,20 @@ DSExprImpl::ExprField::ExprField(ExtentSeries &series, const string &fieldname_)
 { 
     // Allow for almost arbitrary fieldnames through escaping...
     if (fieldname_.find('\\', 0) != string::npos) {
-	string fixup;
-	fixup.reserve(fieldname_.size());
-	for(unsigned i=0; i<fieldname_.size(); ++i) {
-	    if (fieldname_[i] == '\\') {
-		++i;
-		INVARIANT(i < fieldname_.size(), "missing escaped value");
-	    }
-	    fixup.push_back(fieldname_[i]);
-	}
-	field = GeneralField::create(NULL, series, fixup);
-	fieldname = fixup;
+        string fixup;
+        fixup.reserve(fieldname_.size());
+        for (unsigned i=0; i<fieldname_.size(); ++i) {
+            if (fieldname_[i] == '\\') {
+                ++i;
+                INVARIANT(i < fieldname_.size(), "missing escaped value");
+            }
+            fixup.push_back(fieldname_[i]);
+        }
+        field = GeneralField::create(NULL, series, fixup);
+        fieldname = fixup;
     } else {
-	field = GeneralField::create(NULL, series, fieldname_);
-	fieldname = fieldname_;
+        field = GeneralField::create(NULL, series, fieldname_);
+        fieldname = fieldname_;
     }
 }
 
@@ -100,42 +100,42 @@ DSExprImpl::ExprStrLiteral::ExprStrLiteral(const string &l)
     SINVARIANT(l[l.size() - 1] == '\"');
     fixup.reserve(l.size() - 2);
     for (unsigned i = 1; i < l.size() - 1; ++i) {
-	char cc = l[i];
-	if (cc == '\\') {
-	    ++i;
-	    cc = l[i];
-	    INVARIANT(i < l.size(), "missing escaped value");
-	    switch (cc) {
-	    case '\\':
-		fixup.push_back('\\');
-		break;
-	    case '\"':
-		fixup.push_back('\"');
-		break;
-	    case 'f':
-		fixup.push_back('\f');
-		break;
-	    case 'r':
-		fixup.push_back('\r');
-		break;
-	    case 'n':
-		fixup.push_back('\n');
-		break;
-	    case 'b':
-		fixup.push_back('\b');
-		break;
-	    case 't':
-		fixup.push_back('\t');
-		break;
-	    case 'v':
-		fixup.push_back('\v');
-		break;
-	    default:
-		FATAL_ERROR("unknown escape");
-	    }
-	} else {
-	    fixup.push_back(cc);
-	}
+        char cc = l[i];
+        if (cc == '\\') {
+            ++i;
+            cc = l[i];
+            INVARIANT(i < l.size(), "missing escaped value");
+            switch (cc) {
+                case '\\':
+                    fixup.push_back('\\');
+                    break;
+                case '\"':
+                    fixup.push_back('\"');
+                    break;
+                case 'f':
+                    fixup.push_back('\f');
+                    break;
+                case 'r':
+                    fixup.push_back('\r');
+                    break;
+                case 'n':
+                    fixup.push_back('\n');
+                    break;
+                case 'b':
+                    fixup.push_back('\b');
+                    break;
+                case 't':
+                    fixup.push_back('\t');
+                    break;
+                case 'v':
+                    fixup.push_back('\v');
+                    break;
+                default:
+                    FATAL_ERROR("unknown escape");
+            }
+        } else {
+            fixup.push_back(cc);
+        }
     }
     s = fixup;
 }
@@ -144,8 +144,8 @@ DSExprImpl::ExprStrLiteral::ExprStrLiteral(const string &l)
 
 DSExprImpl::ExprFunctionApplication::~ExprFunctionApplication()
 {
-    for(DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
-	delete *i;
+    for (DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
+        delete *i;
     }
     args.clear();
 }
@@ -156,13 +156,13 @@ DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
     out << "(";
     out << " ";
     bool first = true;
-    for(DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
-	if (first) {
-	    first = false;
-	} else {
-	    out << ", ";
-	}
-	(**i).dump(out);
+    for (DSExpr::List::iterator i = args.begin(); i != args.end(); ++i) {
+        if (first) {
+            first = false;
+        } else {
+            out << ", ";
+        }
+        (**i).dump(out);
     }
     out << " ";
     out << ")";
@@ -173,7 +173,7 @@ DSExprImpl::ExprFunctionApplication::dump(ostream &out) {
 
 void
 DSExprImpl::Parser::error(const DSExprImpl::location &,
-			  const string &err)
+                          const string &err)
 {
     FATAL_ERROR(format("error parsing: %s starting") % err);
 }

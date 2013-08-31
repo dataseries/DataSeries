@@ -8,7 +8,7 @@ sub basic_table {
 	
     my %data;
     my %datasets;
-    while(my @row = $sth->fetchrow_array) { 
+    while (my @row = $sth->fetchrow_array) { 
 	my ($dataset, $operation, $count, $bytes) = @row;
 	$operation ||= '*';
 	$data{$operation}->{$dataset} = [$count, $bytes];

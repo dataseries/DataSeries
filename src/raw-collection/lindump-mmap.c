@@ -349,7 +349,7 @@ void do_tracing(int argc, char *argv[], int device_ids[])
     printf("starting tracing, writing to %s\n",argv[argc-1]);
     last_message = getcurtime();
     fflush(stdout);
-    for(cur_ring_pos=0;;) {
+    for (cur_ring_pos=0;;) {
 	while(*(volatile unsigned long*)ring[cur_ring_pos].iov_base) {
 	    struct tpacket_hdr *h=ring[cur_ring_pos].iov_base;
 	    struct sockaddr_ll *sll=(void *)h + TPACKET_ALIGN(sizeof(*h));
@@ -456,7 +456,7 @@ pt_repeat_copy(void *a, void *b, int buffer_size, const int copy_size, const dou
     buffer_size = copy_size * (buffer_size/copy_size);
     printf("  repeat (%d->large) copy: ",copy_size); fflush(stdout);
     reps = 0;
-    for(start = end = getcurtime();end - start < test_len; end = getcurtime()) {
+    for (start = end = getcurtime();end - start < test_len; end = getcurtime()) {
 	int pos = 0;
 	for(pos = 0;pos+copy_size<buffer_size;pos += copy_size) {
 	    memcpy(a+pos,b,copy_size);
@@ -479,7 +479,7 @@ pt_shift_copy(void *a, void *b, int buffer_size, const int copy_size, const doub
     buffer_size = copy_size * (buffer_size/copy_size);
     printf("  shifting (%d->large) copy: ",copy_size); fflush(stdout);
     reps = 0;
-    for(start = end = getcurtime();end - start < test_len; end = getcurtime()) {
+    for (start = end = getcurtime();end - start < test_len; end = getcurtime()) {
 	int pos = 0;
 	for(pos = 0;pos+copy_size<buffer_size;pos += copy_size) {
 	    memcpy(a+pos,b+pos,copy_size);
@@ -491,7 +491,7 @@ pt_shift_copy(void *a, void *b, int buffer_size, const int copy_size, const doub
 
     printf("  shifting (%d->large) test-copy: ",copy_size); fflush(stdout);
     reps = 0;
-    for(start = end = getcurtime();end - start < test_len; end = getcurtime()) {
+    for (start = end = getcurtime();end - start < test_len; end = getcurtime()) {
 	int pos = 0;
 	for(pos = 0;pos+copy_size<buffer_size;pos += copy_size) {
 	    test_memcpy(a+pos,b+pos,copy_size);
@@ -522,7 +522,7 @@ performance_test()
     }
     printf("  long copy: "); fflush(stdout);
     reps = 0;
-    for(start = end = getcurtime();end - start < test_len; end = getcurtime()) {
+    for (start = end = getcurtime();end - start < test_len; end = getcurtime()) {
 	memcpy(a,b,buffer_size);
 	++reps;
     }
@@ -531,7 +531,7 @@ performance_test()
 
     printf("  long test-copy: "); fflush(stdout);
     reps = 0;
-    for(start = end = getcurtime();end - start < test_len; end = getcurtime()) {
+    for (start = end = getcurtime();end - start < test_len; end = getcurtime()) {
 	test_memcpy(a,b,buffer_size);
 	++reps;
     }
@@ -615,7 +615,7 @@ int main ( int argc, char **argv )
     }
 
     /* Setup our ringbuffer */
-    for(j=0; j<req.tp_frame_nr; j++) {
+    for (j=0; j<req.tp_frame_nr; j++) {
 	ring[j].iov_base=(void *)((long)map)+(j*req.tp_frame_size);
 	ring[j].iov_len=req.tp_frame_size;
     }
@@ -635,7 +635,7 @@ int main ( int argc, char **argv )
 	return 1;
     }
 	
-    for(j=1;j<(argc-1);j++) {
+    for (j=1;j<(argc-1);j++) {
 	int device_id;
 	printf("promiscuous on %s\n",argv[j]);
 	device_id = iface_get_id(fd,argv[j]);

@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+  (c) Copyright 2008, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 // TODO: Test all of the other GeneralField and GeneralValue conversions
@@ -39,9 +39,9 @@ void checkSet() {
     // Re-enabling the below test.  If it fails, please document the result that you got and
     // the compiler, OS, flags that it failed under.
     INVARIANT(testAgain.valByte() == dblToUint8(v),
-	      boost::format("Got %d, expected %d/%d") % static_cast<uint32_t>(testAgain.valByte())
-	      % static_cast<uint32_t>(dblToUint8(v))
-	      % static_cast<uint32_t>(static_cast<uint8_t>(v)));
+              boost::format("Got %d, expected %d/%d") % static_cast<uint32_t>(testAgain.valByte())
+              % static_cast<uint32_t>(dblToUint8(v))
+              % static_cast<uint32_t>(static_cast<uint8_t>(v)));
 
     //valString is unimplemented for all values except bool
     //SINVARIANT(testAgain.valString() == "123456789.0987654321");

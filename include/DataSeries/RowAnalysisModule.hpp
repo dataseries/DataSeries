@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -19,19 +19,19 @@ class SequenceModule;
 
 /** \brief Single series analysis handling each row in order.  
 
-  * Based on the experience of building a lot of analysis modules, it
-  * has become clear that one of the common usage models is to have an
-  * analysis that operates over a single source, performs some
-  * calculation over each row in the series, and at the very end a
-  * function is called to print out the result of each of the
-  * analysis.  This class moves the common operations into a parent
-  * class, so that we can also add things like automatic select over
-  * top of the analysis to further prune out values.  */
+ * Based on the experience of building a lot of analysis modules, it
+ * has become clear that one of the common usage models is to have an
+ * analysis that operates over a single source, performs some
+ * calculation over each row in the series, and at the very end a
+ * function is called to print out the result of each of the
+ * analysis.  This class moves the common operations into a parent
+ * class, so that we can also add things like automatic select over
+ * top of the analysis to further prune out values.  */
 
 class RowAnalysisModule : public DataSeriesModule {
-public:
+  public:
     RowAnalysisModule(DataSeriesModule &source, ExtentSeries::typeCompatibilityT type_compatibility
-                                                   = ExtentSeries::typeExact);
+                      = ExtentSeries::typeExact);
     virtual ~RowAnalysisModule();
     
     virtual Extent::Ptr getSharedExtent();
@@ -48,21 +48,21 @@ public:
     // set on every row.
 
     /** Called right after each extent is retrieved, but before the 
-	extent is set in the series.  Serves two purposes: 1) infrequent
-	statistics/processing; and 2) setting up fields with unknown 
-	field names */
+        extent is set in the series.  Serves two purposes: 1) infrequent
+        statistics/processing; and 2) setting up fields with unknown 
+        field names */
     virtual void newExtentHook(const Extent &e);
 
 
     /** This function will be called once, with the first extent that will be
-	processed by the module.  The series will not be set when this function
-	is called so that field names can be set.  This function is called
-	before the newExtentHook is called on the same extent. */
+        processed by the module.  The series will not be set when this function
+        is called so that field names can be set.  This function is called
+        before the newExtentHook is called on the same extent. */
     virtual void firstExtent(const Extent &e);
 
     /** this function will be called once after the first extent has been
-	retrieved, but before processRow() has been called; it will not 
-	be called if there were no extents to process */
+        retrieved, but before processRow() has been called; it will not 
+        be called if there were no extents to process */
     virtual void prepareForProcessing();
 
     /** this function will get called to process each row. */
@@ -97,7 +97,7 @@ public:
 
     uint64_t processed_rows, ignored_rows;
 
-protected:
+  protected:
     ExtentSeries series;
     DataSeriesModule &source;
     bool prepared;

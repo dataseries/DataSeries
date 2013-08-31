@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -22,39 +22,39 @@ using namespace std;
 using boost::format;
 
 class IndexSourceModuleCompressedPrefetchThread : public PThread {
-public:
+  public:
     IndexSourceModuleCompressedPrefetchThread(IndexSourceModule &_ism)
-	: ism(_ism) { 
-	setStackSize(256*1024); // shouldn't need much
+    : ism(_ism) { 
+        setStackSize(256*1024); // shouldn't need much
     }
 
     virtual ~IndexSourceModuleCompressedPrefetchThread() { }
 
     virtual void *run() {
-	ism.compressedPrefetchThread();
-	return NULL;
+        ism.compressedPrefetchThread();
+        return NULL;
     }
     IndexSourceModule &ism;
 };
 
 class IndexSourceModuleUnpackThread : public PThread {
-public:
+  public:
     IndexSourceModuleUnpackThread(IndexSourceModule &_ism)
-	: ism(_ism) { 
-	setStackSize(256*1024); // shouldn't need much
+    : ism(_ism) { 
+        setStackSize(256*1024); // shouldn't need much
     }
 
     virtual ~IndexSourceModuleUnpackThread() { }
 
     virtual void *run() {
-	ism.unpackThread();
-	return NULL;
+        ism.unpackThread();
+        return NULL;
     }
     IndexSourceModule &ism;
 };
 
 IndexSourceModule::IndexSourceModule()
-    : getting_extent(false), prefetch(NULL)
+        : getting_extent(false), prefetch(NULL)
 {
 }
 
@@ -67,26 +67,26 @@ IndexSourceModule::~IndexSourceModule() {
 
 void
 IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
-				    unsigned prefetch_max_unpacked,
-				    int n_unpack_threads)
+                                    unsigned prefetch_max_unpacked,
+                                    int n_unpack_threads)
 {
     INVARIANT(prefetch == NULL, "invalid to start prefetching twice without closing.");
     SINVARIANT(prefetch_max_compressed > 0);
     SINVARIANT(prefetch_max_unpacked > 0);
 
     PrefetchInfo *tmp = new PrefetchInfo(prefetch_max_compressed,
-					 prefetch_max_unpacked);
+                                         prefetch_max_unpacked);
     tmp->mutex.lock();
     prefetch = tmp;
 
     unsigned unpack_count;
     if (n_unpack_threads == -1) {
-        unpack_count = PThreadMisc::getNCpus();
+        unpack_count = min(PThreadMisc::getNCpus(), MAX_THREADS/2);
     } else {
         // TODO: Add support (and test) for 0 unpack threads which should
         // disable all of the prefetching.
-	SINVARIANT(n_unpack_threads > 0);
-	unpack_count = static_cast<unsigned>(n_unpack_threads);
+        SINVARIANT(n_unpack_threads > 0);
+        unpack_count = static_cast<unsigned>(n_unpack_threads);
     } 
 
     INVARIANT(unpack_count > 0, "?");
@@ -99,11 +99,11 @@ IndexSourceModule::startPrefetching(unsigned prefetch_max_compressed,
 
 void IndexSourceModule::lockedStartThreads() {
     prefetch->compressed_prefetch_thread = 
-	new IndexSourceModuleCompressedPrefetchThread(*this);
+            new IndexSourceModuleCompressedPrefetchThread(*this);
     prefetch->compressed_prefetch_thread->start();
-    for(unsigned i = 0; i < prefetch->unpack_threads.size(); ++i) {
-	prefetch->unpack_threads[i] = new IndexSourceModuleUnpackThread(*this);
-	prefetch->unpack_threads[i]->start();
+    for (unsigned i = 0; i < prefetch->unpack_threads.size(); ++i) {
+        prefetch->unpack_threads[i] = new IndexSourceModuleUnpackThread(*this);
+        prefetch->unpack_threads[i]->start();
     }
 }
 
@@ -118,21 +118,21 @@ Extent::Ptr IndexSourceModule::getSharedExtent() {
     getting_extent = true;
 
     if (prefetch == NULL) {
-	startPrefetching();
+        startPrefetching();
     }
     SINVARIANT(prefetch != NULL);
     prefetch->mutex.lock();
-    while(!prefetch->allDone() &&
-	  !prefetch->unpackedReady()) {
-	++prefetch->stats.consumer;
-	prefetch->unpack_cond.broadcast();
-	prefetch->ready_cond.wait(prefetch->mutex);
+    while (!prefetch->allDone() &&
+          !prefetch->unpackedReady()) {
+        ++prefetch->stats.consumer;
+        prefetch->unpack_cond.broadcast();
+        prefetch->ready_cond.wait(prefetch->mutex);
     }
     if (prefetch->allDone()) {
-	prefetch->mutex.unlock();
+        prefetch->mutex.unlock();
         close();
-	getting_extent = false;
-	return Extent::Ptr();
+        getting_extent = false;
+        return Extent::Ptr();
     }
     ++prefetch->stats.nextents;
     SINVARIANT(!prefetch->unpacked.empty());
@@ -140,10 +140,10 @@ Extent::Ptr IndexSourceModule::getSharedExtent() {
     SINVARIANT(buf->bytes.empty() && buf->unpacked != NULL);
     prefetch->unpacked.subtract(buf->unpacked->size());
     if (!prefetch->compressed.empty() &&
-	prefetch->unpacked.can_add(prefetch->compressed.front())) {
-	prefetch->unpack_cond.signal();
+        prefetch->unpacked.can_add(prefetch->compressed.front())) {
+        prefetch->unpack_cond.signal();
     } else {
-	++prefetch->stats.skip_unpack_signal;
+        ++prefetch->stats.skip_unpack_signal;
     }
     prefetch->mutex.unlock();
 
@@ -151,11 +151,11 @@ Extent::Ptr IndexSourceModule::getSharedExtent() {
     delete buf;
 
     SINVARIANT(ret->extent_source != Extent::in_memory_str &&
-	       ret->extent_source_offset > 0);
+               ret->extent_source_offset > 0);
     getting_extent = false;
 
     LintelLogDebug("IndexSourceModule", format("return extent %s:%d type %s")
-		   % ret->extent_source % ret->extent_source_offset % ret->getTypePtr()->getName());
+                   % ret->extent_source % ret->extent_source_offset % ret->getTypePtr()->getName());
     return ret;
 }
 
@@ -190,21 +190,21 @@ void IndexSourceModule::close() {
             prefetch->compressed_cond.wait(prefetch->mutex);
         }
 
-	prefetch->compressed_prefetch_thread->join();
+        prefetch->compressed_prefetch_thread->join();
         delete prefetch->compressed_prefetch_thread;
         prefetch->compressed_prefetch_thread = NULL;
-	for(vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
-	    i != prefetch->unpack_threads.end(); ++i) {
-	    (**i).join();
+        for (vector<PThread *>::iterator i = prefetch->unpack_threads.begin();
+            i != prefetch->unpack_threads.end(); ++i) {
+            (**i).join();
             delete *i;
             *i = NULL;
-	}
-	while (prefetch->compressed.empty() == false) {
-	    delete prefetch->compressed.getFront();
-	}
-	while (prefetch->unpacked.empty() == false) {
-	    delete prefetch->unpacked.getFront();
-	}
+        }
+        while (prefetch->compressed.empty() == false) {
+            delete prefetch->compressed.getFront();
+        }
+        while (prefetch->unpacked.empty() == false) {
+            delete prefetch->unpacked.getFront();
+        }
         SINVARIANT(prefetch->abort_prefetching == 1);
         prefetch->abort_prefetching = 0;
         prefetch->compressed_cond.broadcast();
@@ -243,16 +243,16 @@ double
 IndexSourceModule::waitFraction()
 {
     if (prefetch == NULL) {
-	return 0; // never got anything
+        return 0; // never got anything
     } else {
-	prefetch->mutex.lock();
-	double ret = 0;
-	if (prefetch->stats.nextents > 0) {
-	    ret = prefetch->stats.consumer
-		/ static_cast<double>(prefetch->stats.nextents);
-	}
-	prefetch->mutex.unlock();
-	return ret;
+        prefetch->mutex.lock();
+        double ret = 0;
+        if (prefetch->stats.nextents > 0) {
+            ret = prefetch->stats.consumer
+                  / static_cast<double>(prefetch->stats.nextents);
+        }
+        prefetch->mutex.unlock();
+        return ret;
     }
 }
 
@@ -260,13 +260,13 @@ bool
 IndexSourceModule::getWaitStats(WaitStats &stats)
 {
     if (prefetch == NULL) {
-	return false;
+        return false;
     }
     prefetch->mutex.lock();
     stats = prefetch->stats;
     prefetch->mutex.unlock();
     SINVARIANT(stats.active_unpack_stats.count() == 0 ||
-	       stats.active_unpack_stats.min() > 0);
+               stats.active_unpack_stats.min() > 0);
     return true;
 }
 
@@ -274,23 +274,23 @@ void IndexSourceModule::compressedPrefetchThread() {
     prefetch->mutex.lock();
     while (prefetch->abort_prefetching == 0) {
         if (!prefetch->source_done && prefetch->compressed.can_add(0)) {
-	    PrefetchExtent *p = lockedGetCompressedExtent();
-	    if (p == NULL) {
-		prefetch->source_done = true;
-		prefetch->ready_cond.signal();
-	    } else {
-		SINVARIANT(p->extent_source != Extent::in_memory_str &&
-			   p->extent_source_offset > 0);
-		prefetch->compressed.add(p, p->bytes.size());
-		if (prefetch->unpacked.can_add(prefetch->compressed.front())) {
-		    prefetch->unpack_cond.signal();
-		} else {
-		    ++prefetch->stats.skip_unpack_signal;
-		}
-	    }
-	} else {
-	    prefetch->compressed_cond.wait(prefetch->mutex);
-	}
+            PrefetchExtent *p = lockedGetCompressedExtent();
+            if (p == NULL) {
+                prefetch->source_done = true;
+                prefetch->ready_cond.signal();
+            } else {
+                SINVARIANT(p->extent_source != Extent::in_memory_str &&
+                           p->extent_source_offset > 0);
+                prefetch->compressed.add(p, p->bytes.size());
+                if (prefetch->unpacked.can_add(prefetch->compressed.front())) {
+                    prefetch->unpack_cond.signal();
+                } else {
+                    ++prefetch->stats.skip_unpack_signal;
+                }
+            }
+        } else {
+            prefetch->compressed_cond.wait(prefetch->mutex);
+        }
     }
     SINVARIANT(prefetch->abort_prefetching > 0);
     --prefetch->abort_prefetching;
@@ -302,70 +302,70 @@ void IndexSourceModule::unpackThread() {
     prefetch->mutex.lock();
     ++prefetch->stats.active_unpackers;
     while (prefetch->abort_prefetching == 0) {
-	if (prefetch->compressed.data.empty() || 
-	   !prefetch->unpacked.can_add(prefetch->compressed.front())) {
-	    --prefetch->stats.active_unpackers;
-	    if (prefetch->compressed.data.empty()) {
-		++prefetch->stats.unpack_no_upstream;
-	    } else {
-		++prefetch->stats.unpack_downstream_full;
-	    }
-	    prefetch->unpack_cond.wait(prefetch->mutex);
-	    ++prefetch->stats.active_unpackers;
-	}
-	
-	if (prefetch->abort_prefetching > 0) {
-	    break;
-	}
+        if (prefetch->compressed.data.empty() || 
+            !prefetch->unpacked.can_add(prefetch->compressed.front())) {
+            --prefetch->stats.active_unpackers;
+            if (prefetch->compressed.data.empty()) {
+                ++prefetch->stats.unpack_no_upstream;
+            } else {
+                ++prefetch->stats.unpack_downstream_full;
+            }
+            prefetch->unpack_cond.wait(prefetch->mutex);
+            ++prefetch->stats.active_unpackers;
+        }
+        
+        if (prefetch->abort_prefetching > 0) {
+            break;
+        }
 
-	prefetch->stats.lockedUpdateActive();
-	if (!prefetch->compressed.data.empty() &&
-	    prefetch->unpacked.can_add(prefetch->compressed.front())) {
-	    PrefetchExtent *pe = prefetch->compressed.getFront();
-	    prefetch->compressed.subtract(pe->bytes.size());
-	    uint32_t unpacked_size 
-		= Extent::unpackedSize(pe->bytes, pe->need_bitflip,pe->type);
-	    prefetch->unpacked.add(pe, unpacked_size);
-	    prefetch->compressed_cond.signal();
-	    bool should_yield; 
-	    if (prefetch->unpackedReady()) {
-		// For small extents, almost equivalent to just having the
-		// next condition, but not equivalent with large extents.
-		// really want a directed yield here to the consumer.
-		++prefetch->stats.unpack_yield_ready;
-		should_yield = true;
-	    } else if (prefetch->unpacked.data.size() > 2*prefetch->unpack_threads.size()) {
-		++prefetch->stats.unpack_yield_front;
-		// The front of the queue isn't done, but we have a lot of 
-		// things in the queue, this means whatever thread is working
-		// on that element has been preempted.
-		// really want a directed yield to the thread processing the
-		// first extent.
-		should_yield = true;
-	    } else {
-		should_yield = false;
-	    }
-	    prefetch->mutex.unlock();
-	    if (should_yield) {
-		sched_yield();
-	    }
+        prefetch->stats.lockedUpdateActive();
+        if (!prefetch->compressed.data.empty() &&
+            prefetch->unpacked.can_add(prefetch->compressed.front())) {
+            PrefetchExtent *pe = prefetch->compressed.getFront();
+            prefetch->compressed.subtract(pe->bytes.size());
+            uint32_t unpacked_size 
+                    = Extent::unpackedSize(pe->bytes, pe->need_bitflip,pe->type);
+            prefetch->unpacked.add(pe, unpacked_size);
+            prefetch->compressed_cond.signal();
+            bool should_yield; 
+            if (prefetch->unpackedReady()) {
+                // For small extents, almost equivalent to just having the
+                // next condition, but not equivalent with large extents.
+                // really want a directed yield here to the consumer.
+                ++prefetch->stats.unpack_yield_ready;
+                should_yield = true;
+            } else if (prefetch->unpacked.data.size() > 2*prefetch->unpack_threads.size()) {
+                ++prefetch->stats.unpack_yield_front;
+                // The front of the queue isn't done, but we have a lot of 
+                // things in the queue, this means whatever thread is working
+                // on that element has been preempted.
+                // really want a directed yield to the thread processing the
+                // first extent.
+                should_yield = true;
+            } else {
+                should_yield = false;
+            }
+            prefetch->mutex.unlock();
+            if (should_yield) {
+                sched_yield();
+            }
             Extent::Ptr e(new Extent(pe->type));
             e->unpackData(pe->bytes, pe->need_bitflip);
-	    e->extent_source = pe->extent_source;
-	    e->extent_source_offset = pe->extent_source_offset;
-	    SINVARIANT(e->type->getName() == pe->uncompressed_type);
-	    SINVARIANT(e->size() == unpacked_size);
-	    prefetch->mutex.lock();
-	    SINVARIANT(pe->unpacked == NULL && pe->bytes.size() > 0);
-	    total_compressed_bytes += pe->bytes.size();
-	    total_uncompressed_bytes += e->size();
-	    pe->bytes.clear();
-	    pe->unpacked = e;
-	    SINVARIANT(!prefetch->unpacked.empty());
-	    if (prefetch->unpackedReady()) {
-		prefetch->ready_cond.signal();
-	    }
-	}
+            e->extent_source = pe->extent_source;
+            e->extent_source_offset = pe->extent_source_offset;
+            SINVARIANT(e->type->getName() == pe->uncompressed_type);
+            SINVARIANT(e->size() == unpacked_size);
+            prefetch->mutex.lock();
+            SINVARIANT(pe->unpacked == NULL && pe->bytes.size() > 0);
+            total_compressed_bytes += pe->bytes.size();
+            total_uncompressed_bytes += e->size();
+            pe->bytes.clear();
+            pe->unpacked = e;
+            SINVARIANT(!prefetch->unpacked.empty());
+            if (prefetch->unpackedReady()) {
+                prefetch->ready_cond.signal();
+            }
+        }
     }
     --prefetch->stats.active_unpackers;
     SINVARIANT(prefetch->abort_prefetching > 0);
@@ -376,8 +376,8 @@ void IndexSourceModule::unpackThread() {
 
 IndexSourceModule::PrefetchExtent *
 IndexSourceModule::readCompressed(DataSeriesSource *dss,
-				  off64_t offset,
-				  const string &uncompressed_type)
+                                  off64_t offset,
+                                  const string &uncompressed_type)
 {
     prefetch->mutex.unlock();
     PrefetchExtent *p = new PrefetchExtent;

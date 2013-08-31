@@ -110,7 +110,7 @@ $obj->finish();
 sub readFH {
     my($fh) = @_;
 
-    while(<$fh>) {
+    while (<$fh>) {
 	next unless /\<ExtentType/o;
 	if (/\"\<ExtentType/o) {
 	    parseFHCxx($_, $fh);
@@ -125,7 +125,7 @@ sub parseFHCxx {
     my($firstline, $fh) = @_;
 
     my @data = cxxToString($firstline);
-    while(my $line = <$fh>) {
+    while (my $line = <$fh>) {
 	push(@data, cxxToString($line));
 	last if /\<\/ExtentType\>/o;
     }
@@ -149,7 +149,7 @@ sub parseFHText {
     my($firstline, $fh) = @_;
 
     my @data = ($firstline);
-    while(<$fh>) {
+    while (<$fh>) {
 	push(@data, $_);
 	last if m!</ExtentType>!o;
     }
@@ -318,7 +318,7 @@ int main(int argc, char *argv[]) {
     INVARIANT(argc >= 2 && strcmp(argv[1], "-h") != 0,
 	      boost::format("Usage: %s <file...>\\n") % argv[0]);
 
-    for(int i = 1; i < argc; ++i) {
+    for (int i = 1; i < argc; ++i) {
 	source->addSource(argv[i]);
     }
 

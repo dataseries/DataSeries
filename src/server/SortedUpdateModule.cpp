@@ -1,7 +1,7 @@
 #include "DSSModule.hpp"
 
 class PrimaryKey {
-public:
+  public:
     PrimaryKey() { }
 
     void init(ExtentSeries &series, const vector<string> &field_names) {
@@ -51,13 +51,13 @@ ostream &operator <<(ostream &to, const PrimaryKey &key) {
 }
 
 class SortedUpdateModule : public OutputSeriesModule, public ThrowError {
-public:
+  public:
     SortedUpdateModule(DataSeriesModule &base_input, DataSeriesModule &update_input,
                        const string &update_column, const vector<string> &primary_key) 
-        : base_input(base_input), update_input(update_input), 
-          base_series(), update_series(), base_copier(base_series, output_series),
-          update_copier(update_series, output_series), update_column(update_series, update_column),
-          primary_key_names(primary_key),  base_primary_key(), update_primary_key()
+            : base_input(base_input), update_input(update_input), 
+              base_series(), update_series(), base_copier(base_series, output_series),
+              update_copier(update_series, output_series), update_column(update_series, update_column),
+              primary_key_names(primary_key),  base_primary_key(), update_primary_key()
     { }
 
     inline bool outputExtentSmall() {
@@ -198,13 +198,13 @@ public:
 
     void doUpdate() {
         switch (update_column()) 
-            {
+        {
             case 1: doUpdateInsert(); break;
             case 2: doUpdateReplace(); break;
             case 3: doUpdateDelete(); break;
             default: requestError(format("invalid update column value %d")
                                   % static_cast<uint32_t>(update_column()));
-            }
+        }
     }
 
     void doUpdateInsert() {

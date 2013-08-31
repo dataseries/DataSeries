@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2008 Harvey Mudd College
+  (c) Copyright 2008 Harvey Mudd College
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #include <boost/regex.hpp>
@@ -50,17 +50,17 @@ int main() {
         we want each field to be non-null. */
 
     const char* read_xml =
-        "<ExtentType name=\"ExtentType1\">"
-        "  <field name=\"timestamp\" type=\"int64\" />"
-        "  <field name=\"requested_bytes\" type=\"int64\" />"
-        "  <field name=\"actual_bytes\" type=\"int64\" />"
-        "</ExtentType>\n";
+            "<ExtentType name=\"ExtentType1\">"
+            "  <field name=\"timestamp\" type=\"int64\" />"
+            "  <field name=\"requested_bytes\" type=\"int64\" />"
+            "  <field name=\"actual_bytes\" type=\"int64\" />"
+            "</ExtentType>\n";
 
     const char* write_xml =
-        "<ExtentType name=\"ExtentType2\">"
-        "  <field name=\"timestamp\" type=\"int64\" />"
-        "  <field name=\"bytes\" type=\"int64\" />"
-        "</ExtentType>\n";
+            "<ExtentType name=\"ExtentType2\">"
+            "  <field name=\"timestamp\" type=\"int64\" />"
+            "  <field name=\"bytes\" type=\"int64\" />"
+            "</ExtentType>\n";
 
     /*  Next we need to put both of these in an ExtentType library which
         will be the first thing written to the file. */
@@ -99,13 +99,13 @@ int main() {
     BOOST_FOREACH(const char* record, original_records) {
         boost::cmatch match;
         boost::regex_match(record, record_regex);
-        if(match[submatches::read].matched) {
+        if (match[submatches::read].matched) {
             /*  Create a new record and set its fields. */
             read_output.newRecord();
             read_timestamp.set(get_field(match, submatches::read_timestamp));
             read_requested_bytes.set(get_field(match, submatches::read_requested));
             read_actual_bytes.set(get_field(match, submatches::read_actual));
-        } else if(match[submatches::write].matched) {
+        } else if (match[submatches::write].matched) {
             /*  Create a new record and set its fields. */
             write_output.newRecord();
             write_timestamp.set(get_field(match, submatches::write_timestamp));
@@ -115,6 +115,6 @@ int main() {
 
     /*  At this point the destructors will kick in.
         - the OutputModules will flush the Extents that
-          they are currently holding
+        they are currently holding
         - the DataSeriesFile will be closed. */
 }

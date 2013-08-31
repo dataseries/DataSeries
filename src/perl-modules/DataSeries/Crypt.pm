@@ -108,7 +108,7 @@ sub initCrypt {
 	    chomp $key_1;
 	    $key_2 = <KEYS>;
 	    chomp $key_2;
-	    while(<KEYS>) { };
+	    while (<KEYS>) { };
 	    close(KEYS);
 	    if ($? == 0) {
 		die "?key1? '$key_1'\n" 
@@ -130,7 +130,7 @@ sub initCrypt {
     $zeroiv = pack("C",0) x 16;
 
     my $tmp = 'a';
-    for(my $i=0;$i<255;++$i) {
+    for (my $i=0;$i<255;++$i) {
 	my $enc = encryptString($tmp);
 	my $dec = decryptString($enc);
 	die "bad" unless $dec eq $tmp && $enc ne $tmp;
@@ -159,7 +159,7 @@ sub encryptString {
     my $hmaclen = $totallen - (length($in) + 1);
     confess "bad hmaclen $hmaclen\n" unless $hmaclen >= 7;
     my $out = pack("C",$hmaclen);
-    while($hmaclen > 20) {
+    while ($hmaclen > 20) {
 	$out .= " ";
 	--$hmaclen;
     }
@@ -182,7 +182,7 @@ sub decryptString {
     my $tmp = $key_2 . $ret;
     my $sha_out = sha1($tmp);
     my $cmpto = 1;
-    while($hmaclen > 20) {
+    while ($hmaclen > 20) {
 	die "bad" unless substr($in,$cmpto,1) eq ' ';
 	++$cmpto;
 	--$hmaclen;
@@ -207,7 +207,7 @@ sub decode {
     my $tmp = $_[0];
 #    $tmp = $mdr{$tmp} if defined $mdr{$tmp};
     my @parts;
-    while($tmp ne '') {
+    while ($tmp ne '') {
 	if ($tmp =~ s!^([0-9a-f]{8,10000})!!o) {
 	    my $part = $1;
 	    if (((length $part) % 16) == 0) {
@@ -301,7 +301,7 @@ sub encode {
 # 	     "rr-molasses-lighting-2" => "c62d49a0a05050023d0480565e9cc5d7",
 # 	     "rr-rough-layout" => "fc011b138e4cd3632eab5121b3716b0d",
 # 	     );
-#     while(my($k,$v) = each %special_to_hex) {
+#     while (my($k,$v) = each %special_to_hex) {
 # 	$hex_to_special{$v} = $k;
 #     }
 # }

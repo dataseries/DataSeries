@@ -5,10 +5,10 @@
 class Counter : public RowAnalysisModule {
     uint64_t count;
 
-public:
+  public:
     Counter(DataSeriesModule &source)
-        : RowAnalysisModule(source, ExtentSeries::typeLoose),
-          count(0)
+    : RowAnalysisModule(source, ExtentSeries::typeLoose),
+      count(0)
     { }
 
     virtual void
@@ -23,7 +23,7 @@ public:
 };
 
 class PostfixFilter {
-public:
+  public:
     PostfixFilter(const std::string &p) : postfix(p) { }
 
     bool operator()(const std::string &type) {
@@ -31,7 +31,7 @@ public:
                             postfix.size()) == postfix);
     }
 
-private:
+  private:
     std::string postfix;
 };
 

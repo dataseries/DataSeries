@@ -1,7 +1,7 @@
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 #include <Lintel/Double.hpp>
@@ -11,9 +11,9 @@ using namespace std;
 using boost::format;
 
 Field::Field(ExtentSeries &_dataseries, const std::string &_fieldname, 
-	     uint32_t _flags)
-    : nullable(0),null_offset(0), null_bit_mask(0), 
-      dataseries(_dataseries), flags(_flags), fieldname(_fieldname) 
+             uint32_t _flags)
+        : nullable(0),null_offset(0), null_bit_mask(0), 
+          dataseries(_dataseries), flags(_flags), fieldname(_fieldname) 
 { }
 
 Field::~Field() {
@@ -24,70 +24,70 @@ void Field::setFieldName(const string &new_name) {
     INVARIANT(!new_name.empty(), "Can't set field name to empty");
     fieldname = new_name;
     if (dataseries.getTypePtr() != NULL) {
-	newExtentType();
+        newExtentType();
     }
 }
 
 void Field::newExtentType() {
     SINVARIANT(!fieldname.empty());
     if (flags & flag_nullable) {
-	nullable = dataseries.type->getNullable(fieldname);
-	if (nullable) {
-	    std::string nullfieldname = ExtentType::nullableFieldname(fieldname);
-	    SINVARIANT(dataseries.type->getFieldType(nullfieldname) == ExtentType::ft_bool);
-	    null_offset = dataseries.type->getOffset(nullfieldname);
-	    SINVARIANT(null_offset >= 0);
-	    int bitpos = dataseries.type->getBitPos(nullfieldname);
-	    SINVARIANT(bitpos >= 0);
-	    null_bit_mask = 1 << bitpos;
-	} else {
-	    null_offset = 0;
-	    null_bit_mask = 0;
-	}
+        nullable = dataseries.type->getNullable(fieldname);
+        if (nullable) {
+            std::string nullfieldname = ExtentType::nullableFieldname(fieldname);
+            SINVARIANT(dataseries.type->getFieldType(nullfieldname) == ExtentType::ft_bool);
+            null_offset = dataseries.type->getOffset(nullfieldname);
+            SINVARIANT(null_offset >= 0);
+            int bitpos = dataseries.type->getBitPos(nullfieldname);
+            SINVARIANT(bitpos >= 0);
+            null_bit_mask = 1 << bitpos;
+        } else {
+            null_offset = 0;
+            null_bit_mask = 0;
+        }
     } else {
-	INVARIANT(dataseries.type->getNullable(fieldname) == false,
-		  format("field %s accessor doesn't support nullable fields")
-		  % getName());
+        INVARIANT(dataseries.type->getNullable(fieldname) == false,
+                  format("field %s accessor doesn't support nullable fields")
+                  % getName());
     }
 }
 
 FixedField::FixedField(ExtentSeries &_dataseries, const std::string &field, 
-		       ExtentType::fieldType ft, int flags)
-    : Field(_dataseries,field, flags), field_size(-1), offset(-1),
-      fieldtype(ft)
+                       ExtentType::fieldType ft, int flags)
+        : Field(_dataseries,field, flags), field_size(-1), offset(-1),
+          fieldtype(ft)
 {
     INVARIANT(dataseries.getTypePtr() == NULL || field.empty() || 
-	      dataseries.getTypePtr()->getFieldType(field) == ft,
-	      format("mismatch on field types for field %s in type %s")
-	      % field % dataseries.getTypePtr()->getName());
+              dataseries.getTypePtr()->getFieldType(field) == ft,
+              format("mismatch on field types for field %s in type %s")
+              % field % dataseries.getTypePtr()->getName());
 }
 
 void FixedField::newExtentType() {
     if (getName().empty())
-	return; // Don't have a name yet.
+        return; // Don't have a name yet.
     Field::newExtentType();
     field_size = dataseries.getTypePtr()->getSize(getName());
     offset = dataseries.getTypePtr()->getOffset(getName());
     INVARIANT(dataseries.getTypePtr()->getFieldType(getName()) == fieldtype,
-	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.getTypePtr()->getName());
+              format("mismatch on field types for field named %s in type %s")
+              % getName() % dataseries.getTypePtr()->getName());
 }
 
 namespace dataseries { namespace detail {
 
-void BoolFieldImpl::newExtentType() {
-    FixedField::newExtentType();
-    if (getName().empty())
-	return; // Not ready yet
-    int bitpos = dataseries.getTypePtr()->getBitPos(getName());
-    bit_mask = (byte)(1 << bitpos);
-}
+        void BoolFieldImpl::newExtentType() {
+            FixedField::newExtentType();
+            if (getName().empty())
+                return; // Not ready yet
+            int bitpos = dataseries.getTypePtr()->getBitPos(getName());
+            bit_mask = (byte)(1 << bitpos);
+        }
 
-}}
+    }}
 
 FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &field,
                                  int flags, bool auto_add)
-    : FixedField(_dataseries, field, ExtentType::ft_fixedwidth, flags)
+        : FixedField(_dataseries, field, ExtentType::ft_fixedwidth, flags)
 {
     if (auto_add) {
         dataseries.addField(*this);
@@ -96,26 +96,26 @@ FixedWidthField::FixedWidthField(ExtentSeries &_dataseries, const std::string &f
 
 void DoubleField::newExtentType() {
     if (getName().empty()) {
-	return;
+        return;
     }
     FixedField::newExtentType();
     base_val = dataseries.getTypePtr()->getDoubleBase(getName());
     INVARIANT(flags & flag_allownonzerobase || base_val == 0,
-	      format("accessor for field %s doesn't support non-zero base")
-	      % getName());
+              format("accessor for field %s doesn't support non-zero base")
+              % getName());
 }
 
 const std::string Variable32Field::empty_string("");
 
 Variable32Field::Variable32Field(ExtentSeries &_dataseries, 
-				 const std::string &field, int flags, 
-				 const std::string &_default_value,
-				 bool auto_add) 
-    : Field(_dataseries,field,flags), default_value(_default_value), 
-      offset_pos(-1), unique(false)
+                                 const std::string &field, int flags, 
+                                 const std::string &_default_value,
+                                 bool auto_add) 
+: Field(_dataseries,field,flags), default_value(_default_value), 
+    offset_pos(-1), unique(false)
 { 
     if (auto_add) {
-	dataseries.addField(*this);
+        dataseries.addField(*this);
     }
 }
 
@@ -124,9 +124,9 @@ void Variable32Field::newExtentType() {
     offset_pos = dataseries.getTypePtr()->getOffset(getName());
     unique = dataseries.getTypePtr()->getUnique(getName());
     INVARIANT(dataseries.getTypePtr()->getFieldType(getName()) 
-	      == ExtentType::ft_variable32,
-	      format("mismatch on field types for field named %s in type %s")
-	      % getName() % dataseries.getTypePtr()->getName());
+              == ExtentType::ft_variable32,
+              format("mismatch on field types for field named %s in type %s")
+              % getName() % dataseries.getTypePtr()->getName());
 }
 
 void Variable32Field::allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_size) {
@@ -137,12 +137,12 @@ void Variable32Field::allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_s
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
 
     if (data_size == 0) {
-	clear(e, row_pos);
-	return;
+        clear(e, row_pos);
+        return;
     }
     int32_t roundup = roundupSize(data_size);
     DEBUG_SINVARIANT((roundup+4) % 8 == 0);
-		    
+                    
     // TODO: we can eventually decide to support overwrites at some
     // point, but it doesn't seem worth it now since I (Eric) don't
     // think that feature is used at all -- pack_unique is effectively
@@ -155,14 +155,14 @@ void Variable32Field::allocateSpace(Extent &e, uint8_t *row_pos, uint32_t data_s
     *reinterpret_cast<int32_t *>(fixed_data_ptr) = varoffset;
 
     int32_t *var_data = reinterpret_cast<int32_t *>(vardata(e.variabledata, varoffset));
-					      
+                                              
     *var_data = data_size;
 
 #if LINTEL_DEBUG
     // we get to avoid zeroing since it happens automatically for us
     // when we resize the bytearray
-    for(++var_data; roundup > 0; roundup -= 4) {
-	SINVARIANT(*var_data == 0);
+    for (++var_data; roundup > 0; roundup -= 4) {
+        SINVARIANT(*var_data == 0);
     }
 
     selfcheck(e.variabledata,varoffset);
@@ -175,7 +175,7 @@ void Variable32Field::partialSet(Extent &e, uint8_t *row_pos,
                                  const void *data, uint32_t data_size, uint32_t offset) {
     DEBUG_SINVARIANT(&e != NULL);
     if (data_size == 0) {
-	return; // occurs on set("");
+        return; // occurs on set("");
     }
     SINVARIANT(data_size <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
     SINVARIANT(offset <= static_cast<uint32_t>(numeric_limits<int32_t>::max()));
@@ -186,7 +186,7 @@ void Variable32Field::partialSet(Extent &e, uint8_t *row_pos,
     
     uint32_t cur_size = *var_data;
     INVARIANT(offset < cur_size && data_size <= cur_size && offset + data_size <= cur_size,
-	      boost::format("%d + %d > %d") % offset % data_size % cur_size);
+              boost::format("%d + %d > %d") % offset % data_size % cur_size);
     uint8_t *var_bits = reinterpret_cast<uint8_t *>(var_data + 1); // + 1 as it's int32_t
     memcpy(var_bits + offset, data, data_size);
 }
@@ -194,22 +194,22 @@ void Variable32Field::partialSet(Extent &e, uint8_t *row_pos,
 
 void Variable32Field::selfcheck(const Extent::ByteArray &varbytes, int32 varoffset) {
     INVARIANT(varoffset >= 0 && (uint32_t)varoffset <= (varbytes.size() - 4),
-	      format("Internal error, bad variable offset %d") % varoffset);
+              format("Internal error, bad variable offset %d") % varoffset);
     if (varoffset == 0) {
-	// special case this check, as it is slightly different
-	INVARIANT(*(int32 *)varbytes.begin() == 0, "Whoa, zero string got a size");
-	return;
+        // special case this check, as it is slightly different
+        INVARIANT(*(int32 *)varbytes.begin() == 0, "Whoa, zero string got a size");
+        return;
     }
     INVARIANT((varoffset % 4) == 0, "Internal error, bad variable offset");
     INVARIANT(varoffset == 0 || ((varoffset + 4) % 8) == 0,
-	      "Internal error, bad variable offset");
+              "Internal error, bad variable offset");
     int32 size = *(int32 *)(vardata(varbytes, varoffset));
     INVARIANT(size >= 0, "Internal error, bad variable size");
     int32 roundup = roundupSize(size);
     INVARIANT((unsigned int)(varoffset + 4 + roundup) <= varbytes.size(),
-	      "Internal error, bad variable offset");
-    for(int32 i=size;i<roundup;++i) {
-	INVARIANT(*(byte *)vardata(varbytes,varoffset + 4 + i) == 0,
-		  "Internal error, bad padding");
+              "Internal error, bad variable offset");
+    for (int32 i=size;i<roundup;++i) {
+        INVARIANT(*(byte *)vardata(varbytes,varoffset + 4 + i) == 0,
+                  "Internal error, bad padding");
     }
 }

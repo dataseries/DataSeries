@@ -95,7 +95,7 @@ while (defined (my $cur_dir_host = <DIRHOST>)) {
 	}
 
 	if (defined $ip) {
-	    while(<PING>) {
+	    while (<PING>) {
 		if (m!^rtt min/avg/max/mdev = (\d+\.\d+)/\d+\.\d+!o) {
 		    $host_ping = $1;
 		    print " (ping time $host_ping)";

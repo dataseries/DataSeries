@@ -1,9 +1,9 @@
 
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -26,13 +26,13 @@ extern "C" {
 #if defined(__linux__) && defined(__GNUC__) && __GNUC__ >= 2 
 #  ifdef __i386__
 #    if defined __i486__ || defined __pentium__ || defined __pentiumpro__ || defined __pentium4__ || defined __k6__ || defined __k8__ || defined __athlon__ 
-       // ok, will get the good byteswap
+// ok, will get the good byteswap
 #    else
-       // Note that in particular __i386__ is not enough to have defined here
-       // the swap routine is significantly worse than the i486 version; see
-       // /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
-       // for the performance test, it will fail unless you've selected the
-       // best of the routines
+// Note that in particular __i386__ is not enough to have defined here
+// the swap routine is significantly worse than the i486 version; see
+// /usr/include/bits/byteswap.h.  See the test_byteflip part of test.C
+// for the performance test, it will fail unless you've selected the
+// best of the routines
 #      warning "Automatically defining __i486__ on the assumption you have at least that type of CPU"
 #      warning "Not doing this gets a much slower byte swap routine"
 #      define __i486__ 1
@@ -42,10 +42,10 @@ extern "C" {
 #endif
 
 #if (defined(__FreeBSD__)||defined(__OpenBSD__)) && defined(__GNUC__) && __GNUC__ >= 2 && (defined(__i486__) || defined (__x86_64__))
-#  define bswap_32(x) \
-     (__extension__                                                     \
-      ({ register uint32_t bswap32_out, bswap32_in = (x);               \
-           __asm__("bswap %0" : "=r" (bswap32_out) : "0" (bswap32_in)); \
+#  define bswap_32(x)                                                   \
+    (__extension__                                                      \
+     ({ register uint32_t bswap32_out, bswap32_in = (x);                \
+         __asm__("bswap %0" : "=r" (bswap32_out) : "0" (bswap32_in));   \
          bswap32_out; }))
 #endif
 
@@ -58,18 +58,22 @@ extern "C" {
 
 #include <DataSeries/ExtentType.hpp>
 
+
+// Defined and explained in DataSeriesSink.cpp
+extern const int MAX_THREADS;
+
 class ExtentSeries;
 
 /** \brief Stores a sequence of records having the same type.
-  *
-  * Each @c Extent has two components
-  *   - A buffer containing fixed size records.  The size of
-  *     each individual record can be determined from the ExtentType,
-  *     allowing random access.  Variable32 fields are represented
-  *     by a 4 byte index into the string pool.
-  *   - A string pool for variable32 fields. */
+ *
+ * Each @c Extent has two components
+ *   - A buffer containing fixed size records.  The size of
+ *     each individual record can be determined from the ExtentType,
+ *     allowing random access.  Variable32 fields are represented
+ *     by a 4 byte index into the string pool.
+ *   - A string pool for variable32 fields. */
 class Extent : boost::noncopyable, public boost::enable_shared_from_this<Extent> {
-public:
+  public:
     typedef boost::shared_ptr<Extent> Ptr;
 
     typedef ExtentType::byte byte;
@@ -84,11 +88,11 @@ public:
     // really representing a variable sized array of bytes, which is
     // what we want.  Later change to the C++ spec clarified that 
     // arrays have to be contiguous, so we could switch back at some point.
-    class ByteArray { 
-    public:
+    class ByteArray {
+      public:
         ByteArray() { beginV = endV = maxV = NULL; }
         ~ByteArray();
-	size_t size() const { return endV - beginV; }
+        size_t size() const { return endV - beginV; }
         void resize(size_t newsize, bool zero_it = true) {
             size_t oldsize = size();
             if (newsize <= oldsize) {
@@ -116,9 +120,9 @@ public:
             swap(endV,with.endV);
             swap(maxV,with.maxV);
         }
-
+      
         typedef byte * iterator;
-
+      
         // glibc prefers to use mmap to allocate large memory chunks; we 
         // allocate and de-allocate those fairly regularly; so we increase
         // the threshold.  This function is automatically called once when
@@ -128,17 +132,17 @@ public:
         // d5bb884b572b07590a8131710f01513577e24813, prior to 2007-10-25
         // will have a copy of the old code.
         static void initMallocTuning();
-    private:
+      private:
         void swap(byte * &a, byte * &b) {
             byte *tmp = a;
             a = b;
             b = tmp;
         }
-
+      
         void copyResize(size_t newsize, bool zero_it);
         byte *beginV, *endV, *maxV;
     };
-
+  
     /// \cond INTERNAL_ONLY
     const ExtentType::Ptr type;
     /// \endcond
@@ -185,7 +189,7 @@ public:
     /** Swap the contents of two &c Extent. 
 
         Preconditions:
-          - Both Extents must have the same type. 
+        - Both Extents must have the same type. 
 
         Provided the preconditions are met, this
         function does not throw. */
@@ -205,20 +209,45 @@ public:
     
     /** Returns the number of records in this Extent */
     size_t nRecords() {
-	return fixeddata.size() / getTypePtr()->fixedrecordsize();
+        return fixeddata.size() / getTypePtr()->fixedrecordsize();
     }
 
     /// \cond INTERNAL_ONLY
-    // The following are defined by the file format and can't be changed.
+    /** The following are defined by the file format and can't be changed.
+        These determine the index of each compression algorithm in the
+        compression_algs[] array */
     static const Extent::byte compress_mode_none = 0;
     static const Extent::byte compress_mode_lzo = 1;
     static const Extent::byte compress_mode_zlib = 2;
     static const Extent::byte compress_mode_bz2 = 3;
     static const Extent::byte compress_mode_lzf = 4;
+    static const Extent::byte compress_mode_snappy = 5;
+    static const Extent::byte compress_mode_lz4 = 6;
+    static const Extent::byte compress_mode_lz4hc = 7;
     /// \endcond
 
+    // Should be equal to the number of constants compress_mode_{name}
+    // specified above.  Careful: because of the way the compression bit flags
+    // are stored in ints, this cannot ever be greater than 16.
+    static const int num_comp_algs = 8;
+
+    struct compression_alg 
+    {
+        const char* name;
+        int compress_flag;
+        bool (*packFunc)( byte*, int32, ByteArray&, int );
+        bool (*unpackFunc)( byte*, byte*, int32, int32& );
+    };
+
+    /* This array contains the available compression algorithms */
+    static compression_alg compression_algs[];
+
+    /* Compress_all is set to the bitwise or of all the compress flags in compression_algs */
+    static const int compress_all = ~( INT_MIN >> ( sizeof(INT_MIN)*8 - num_comp_algs ) );
+
+
     /** \defgroup Extent_compress Extent::compress
-        These constants are used to indicate which compression
+        The compress_flag ints are used to indicate which compression
         algorithms will be tried when converting an Extent
         to its external representation.  Multiple flags can
         be |'ed together and the algorithm that
@@ -226,43 +255,25 @@ public:
         algorithms are available depends on which libraries
         are found when DataSeries is compiled.  If an algorithm
         which is not supported is requested, it will be ignored.
-        @{ */
 
-    /** Do not attempt any compression */
-    static const int compress_none = 0;
-    /** Try the lzo algorithm. */
-    static const int compress_lzo = 1;
-    /** Use zlib */
-    static const int compress_zlib = 2;
-    /** technically gz and zlib are different -- gz has a header, but
-        everyone knows it as gz and it's the same compression algorithm */
-    static const int compress_gz = 2;
-    /** Use bzip2 */
-    static const int compress_bz2 = 4;
-    /** Use lzf (lzf is included in the DataSeries distribution) */
-    static const int compress_lzf = 8;
-    /** Try all available compression schemes */
-    static const int compress_all = compress_bz2 | compress_zlib | compress_lzo | compress_lzf;
-    /// @}
-
-    /** \brief converts an Extent to the external representation which is stored
-            in files.
+        \brief converts an Extent to the external representation which is stored
+        in files.
 
         \arg into Output buffer to write the result to.
 
         \arg compression_modes Specifies which compression algorithms will be
-            tried.  The one that yields the smallest result will be selected.
+        tried.  The one that yields the smallest result will be selected.
 
         \arg compression_level must be between 1 and 9 inclusive.  In general larger
-             values give better compression but require more time/space.  See the
-             documentation of the individual compression schemes for details.
+        values give better compression but require more time/space.  See the
+        documentation of the individual compression schemes for details.
              
         \arg header_packed If header_packed is not null, *header_packed will recieve
-            the pre-compression size of the Extent header.
+        the pre-compression size of the Extent header.
         \arg fixed_packed If fixed_packed is not null, *fixed_packed will recieve
-            the pre-compression size in bytes of the fixed size records.
+        the pre-compression size in bytes of the fixed size records.
         \arg variable_packed If variable_packed is not null, *variable_packed
-            will recieve the pre-compression size of the string pool.
+        will recieve the pre-compression size of the string pool.
     
         \return a "checksum" calculated from the underlying checksums in the packed extent */
     uint32_t packData(Extent::ByteArray &into, 
@@ -275,10 +286,10 @@ public:
     /** Loads an Extent from the external representation.
 
         \arg need_bitflip Indicates whether the endianness of
-            from is the same as the that of the host machine.
+        from is the same as the that of the host machine.
 
         Preconditions:
-          - The type of the data must be the type of this Extent.
+        - The type of the data must be the type of this Extent.
 
         Note you can't unpack the same data twice, it may modify the
         input data */
@@ -293,12 +304,12 @@ public:
         using @param from will need.  (This will be the result of size() after
         unpacking.)
 
-	\param from The byte array to use as input
-	\param need_bitflip Do we need to flip the byte order when unpacking?
-	\param type What type does the raw data represent?
+        \param from The byte array to use as input
+        \param need_bitflip Do we need to flip the byte order when unpacking?
+        \param type What type does the raw data represent?
         
         Preconditions:
-          - from must be in the external representation of Extents. 
+        - from must be in the external representation of Extents. 
     */
     static uint32_t unpackedSize(Extent::ByteArray &from, bool need_bitflip,
                                  const ExtentType::Ptr type);
@@ -308,18 +319,23 @@ public:
     }
     
     /** Returns the name of the type of the Extent stored in @param from
-	
+        
         \param from What byte array should we get the type for?
         
         Preconditions:
-          - from must be in the external representation of Extents. */
+        - from must be in the external representation of Extents. */
     static const std::string getPackedExtentType(const Extent::ByteArray &from);
 
+    /** All of the pack and unpack functions should be used only through pointers
+        which are entered into the compression_alg[] array, and called in
+        compressBytes() or uncompressBytes() */
+
     /// \cond INTERNAL_ONLY
-    // the various pack routines return false if packing the data with a 
+    // most pack routines return false if packing the data with a 
     // particular compression algorithm wouldn't gain anything over leaving
-    // the data uncompressed; if into.size > 0, will only code up to that
-    // size for the BZ2 and Zlib packing options (LZO doesn't allow this)
+    // the data uncompressed (compressBytes does an overall check for this
+    // after compression; if into.size > 0, will only code up to that size
+    // for the BZ2 and Zlib packing options (LZO doesn't allow this)
     static bool packBZ2(byte *input, int32 inputsize, 
                         Extent::ByteArray &into, int compression_level);
     static bool packZLib(byte *input, int32 inputsize, 
@@ -328,6 +344,29 @@ public:
                         Extent::ByteArray &into, int compression_level);
     static bool packLZF(byte *input, int32 inputsize,
                         Extent::ByteArray &into, int compression_level);
+    static bool packSnappy(byte *input, int32 inputsize,
+                           Extent::ByteArray &into, int compression_level);
+    static bool packLZ4(byte *input, int32 inputsize,
+                        Extent::ByteArray &into, int compression_level);
+    static bool packLZ4HC(byte *input, int32 inputsize,
+                          Extent::ByteArray &into, int compression_level);
+
+
+    // The unpack functions return true iff uncompression completed successfully
+    // without errors.
+    static bool unpackBZ2( byte* output, byte *input, 
+                           int32 input_size, int32 &output_size );
+    static bool unpackZLib( byte* output, byte *input, 
+                            int32 input_size, int32 &output_size );
+    static bool unpackLZO( byte* output, byte *input, 
+                           int32 input_size, int32 &output_size );
+    static bool unpackLZF( byte* output, byte *input, 
+                           int32 input_size, int32 &output_size );
+    static bool unpackSnappy( byte* output, byte *input, 
+                              int32 input_size, int32 &output_size );
+    static bool unpackLZ4( byte* output, byte *input, 
+                           int32 input_size, int32 &output_size );
+
 
     static inline uint32_t flip4bytes(uint32 v) {
 #if defined(bswap_32)
@@ -336,7 +375,7 @@ public:
         // fastest method on PIII & PA2.0-- see test.C for a bunch of variants
         // that we chose the best will be verified by test.C
         return ((v >> 24) & 0xFF) | ((v>>8) & 0xFF00) |
-            ((v & 0xFF00) << 8) | ((v & 0xFF) << 24);
+                ((v & 0xFF00) << 8) | ((v & 0xFF) << 24);
 #endif
     }
     static inline void flip4bytes(byte *data) {
@@ -363,7 +402,7 @@ public:
     // returns true if it read amount bytes, returns false if it read
     // 0 bytes and eof_ok; aborts otherwise
     static bool checkedPread(int fd, off64_t offset, byte *into, int amount, 
-                            bool eof_ok = false);
+                             bool eof_ok = false);
 
     // The verification checks are the dataseries internal checksums
     // that verify that the files were read correctly.  The
@@ -403,14 +442,16 @@ public:
     // flip4bytes when we compiled DataSeries, it's used by
     // DataSeries/src/test.C
     static void run_flip4bytes(uint32_t *buf, unsigned buflen);
-private:
+
+  private:
     // you are responsible for deleting the return buffer
     static Extent::ByteArray *compressBytes(byte *input, int32 input_size,
                                             int compression_modes,
                                             int compression_level, byte *mode);
+
     static int32 uncompressBytes(byte *into, byte *from,
-                                byte compression_mode, int32 intosize,
-                                int32 fromsize);
+                                 byte compression_mode, int32 intosize,
+                                 int32 fromsize);
 
     void compactNulls(Extent::ByteArray &fixed_coded);
     void uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size);
@@ -419,5 +460,7 @@ private:
     void init();
     /// \endcond
 };
-    
+
+   
+
 #endif

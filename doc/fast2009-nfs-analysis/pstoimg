@@ -244,13 +244,13 @@ use Getopt::Long;
 
 BEGIN {
   # print "scanning for l2hdir\n";
-  if($ENV{LATEX2HTMLDIR}) {
+  if ($ENV{LATEX2HTMLDIR}) {
     $LATEX2HTMLDIR = $ENV{LATEX2HTMLDIR};
   } else {
     $ENV{LATEX2HTMLDIR} = $LATEX2HTMLDIR = '/opt/beta/latex2html/2008';
   }
 
-  if(-d $LATEX2HTMLDIR) {
+  if (-d $LATEX2HTMLDIR) {
     push(@INC,$LATEX2HTMLDIR);
   } else {
     die qq{Fatal: Directory "$LATEX2HTMLDIR" does not exist.\n};
@@ -473,7 +473,7 @@ Specify the color depth of the bitmap. Legal values are 1 (black & white),
 =cut
 
 unless($opt{depth}) {
-  if($opt{color}) {
+  if ($opt{color}) {
     $opt{depth} = $opt{color};
     }
   elsif($ENV{DEPTH}) {
@@ -529,7 +529,7 @@ PostScript).
 my $GEOMETRY = '';
 if($opt{geometry}) {
   $GEOMETRY = $opt{geometry};
-  if($GEOMETRY =~ s/-//o ) {
+  if ($GEOMETRY =~ s/-//o ) {
     $EXTRA_CROP .= 'bl';
     }
   die <<"EOF" unless ($GEOMETRY =~ /^\d+x\d+$/i);
@@ -623,7 +623,7 @@ considered.
 =cut
 
 unless($opt{scale}) {
-  if($ENV{SCALE}) {
+  if ($ENV{SCALE}) {
     $opt{scale} = $ENV{SCALE};
     }
   else {
@@ -666,7 +666,7 @@ B<TEMP>, too.
 my $TMP = '';
 if($opt{tmp}) {
   $opt{tmp} =~ s|\Q$dd\E+$||; # remove trailing directory separator(s)
-  if(-d $opt{tmp} && -r _ && -w _) {
+  if (-d $opt{tmp} && -r _ && -w _) {
     $TMP = $opt{tmp};
   } else {
     print "$prompt: Warning: Cannot use $opt{tmp} as temporary directory.\n";
@@ -674,7 +674,7 @@ if($opt{tmp}) {
 }
 if(!$TMP && ($ENV{TMP} || $ENV{TEMP})) {
   ($opt{tmp} = $ENV{TMP} || $ENV{TEMP}) =~ s|\Q$dd\E+$||;
-  if(-d $opt{tmp} && -r _ && -w _) {
+  if (-d $opt{tmp} && -r _ && -w _) {
     $TMP = $opt{tmp};
   } else {
     print "$prompt: Warning: Cannot use $opt{tmp} as temporary directory.\n";
@@ -683,7 +683,7 @@ if(!$TMP && ($ENV{TMP} || $ENV{TEMP})) {
 if(!$TMP && -d $def_tmp && -r _ && -w _) {
   $TMP = $def_tmp;
 }
-print "$prompt: Temporary directory is $TMP\n" if($opt{debug});
+print "$prompt: Temporary directory is $TMP\n" if ($opt{debug});
 
 =item B<-topjustify> [B<x>]I<num>
 
@@ -740,7 +740,7 @@ else {
 # Support -gif and -png for a transition period
 if($opt{gif}) {
   print qq{$prompt: Warning: The -gif switch is deprecated. Use "-type gif" instead.\n};
-  if(grep($_ eq 'gif',@IMAGE_TYPES)) {
+  if (grep($_ eq 'gif',@IMAGE_TYPES)) {
     $opt{type} = 'gif';
     }
   else {
@@ -751,7 +751,7 @@ EOF
   }
 if($opt{png}) {
   print qq{$prompt: Warning: The -png switch is deprecated. Use "-type png" instead.\n};
-  if(grep($_ eq 'png',@IMAGE_TYPES)) {
+  if (grep($_ eq 'png',@IMAGE_TYPES)) {
     $opt{type} = 'png';
     }
   else {
@@ -773,14 +773,14 @@ converting so that a white background is used.
 # do some consistency checks on the options
 
 
-die <<"EOF" if($RIGHT_JUSTIFY && $CENTER);
+die <<"EOF" if ($RIGHT_JUSTIFY && $CENTER);
 $prompt: Error: Conflicting options -center and -rightjustify.
 EOF
 
 # now setup some parameters
 
 # calculate dpi resolution from density and scale
-$DENSITY = int($opt{scale} * $DENSITY + .5) if($opt{scale} != 1);
+$DENSITY = int($opt{scale} * $DENSITY + .5) if ($opt{scale} != 1);
 
 my $reduce_color = '';
 if($opt{depth} == 1) {
@@ -793,7 +793,7 @@ elsif ($opt{depth} == 8) {
 my $gs_aalias = '';
 if($opt{antialias}) {
   $GSDEVICE = $GSALIASDEVICE;
-  if($opt{depth} == 1) { 
+  if ($opt{depth} == 1) { 
     $gs_aalias = '-dTextAlphaBits=4 ';
     $reduce_color = "$PPMQUANT -floyd 256";
     }
@@ -836,7 +836,7 @@ open(STDERR, ">$NULLFILE") unless($opt{debug});
 
 my $exit = 0;
 
-$opt{out} = '' if(@ARGV > 1); # disable -out if multiple ps files given
+$opt{out} = '' if (@ARGV > 1); # disable -out if multiple ps files given
 
 my $psfile;
 foreach $psfile (@ARGV) {
@@ -877,7 +877,7 @@ sub pstoimg {
   $base =~ s|[.][^.$dd$dd]*$||;
 
   my $outfile;
-  if($opt{out}) {
+  if ($opt{out}) {
     $outfile = $opt{out};
     # append the type unless -outfile has a "." in it
     $outfile .= ".$opt{type}" unless($outfile =~ /[.]/);
@@ -896,7 +896,7 @@ sub pstoimg {
 
   my $ok = 1;
   if (-f $pnmfile) {
-    if(crop_scale_etc($pnmfile, $outfile)) {
+    if (crop_scale_etc($pnmfile, $outfile)) {
       L2hos->Unlink($pnmfile) unless($opt{debug});
       }
     else {
@@ -910,7 +910,7 @@ sub pstoimg {
       }
     my @list = grep(/^\d+_\w*\./,readdir(DIR));
     closedir(DIR);
-    if(@list) {
+    if (@list) {
       my $i;
       foreach $i (@list) {
         my ($n) = $i =~ /^(\d+)_/;
@@ -932,7 +932,7 @@ sub pstoimg {
     not_found:
     print "$prompt: Error: Couldn't find pnm output of $psfile\n";
     }
-  L2hos->Unlink($psfile) if($opt{discard} && !$opt{debug});
+  L2hos->Unlink($psfile) if ($opt{discard} && !$opt{debug});
   $ok;
   }
 
@@ -951,11 +951,11 @@ sub ps2pnm {
     return 0;
     }
   $_ = <PS>; # read one line
-  if( /^%!.*EPSF/ ) {
+  if ( /^%!.*EPSF/ ) {
     # we're in a EPSF file
     $epsf = 1;
     }
-  if($GEOMETRY || $epsf) {
+  if ($GEOMETRY || $epsf) {
     while (defined ($_ = <PS>)) {
       # Look for bounding box comment
       # MRO: add support of precise bounding boxes
@@ -964,10 +964,10 @@ sub ps2pnm {
         /^\%\%BoundingBox:\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)\s+(-?\d+)/)) {
         $bbx = 0 - $1;    $bby = 0 - $2;
         $bbw = $3 + $bbx; $bbh = $4 + $bby;
-        if(($bbw > 0) && ($bbh > 0)) { # we have a valid bounding box
-          print "$prompt: EPSF dimensions are ${bbw}x$bbh\n" if($opt{debug});
+        if (($bbw > 0) && ($bbh > 0)) { # we have a valid bounding box
+          print "$prompt: EPSF dimensions are ${bbw}x$bbh\n" if ($opt{debug});
           # this overrides the -geometry switch
-          if($DENSITY) { # scale the output
+          if ($DENSITY) { # scale the output
             my $scale = $DENSITY / 72.0;
 	    print "XYZZY $scale\n";
             $bbw *= $scale;
@@ -985,7 +985,7 @@ sub ps2pnm {
         $PAGE_WIDTH  = int($1 / 65536 * 72 /72.27 +.5);
         $PAGE_HEIGHT = int($2 / 65536 * 72 /72.27 +.5);
         print "$prompt: Page dimensions are ${PAGE_WIDTH}x$PAGE_HEIGHT\n"
-          if($opt{debug});
+          if ($opt{debug});
         # we don't have to look further for EPSF stuff at this point
         last;
         }
@@ -996,7 +996,7 @@ sub ps2pnm {
       }
     }
   close PS;
-  if($GEOMETRY && !$have_geometry) { # RRM: overrides $PAPERSIZE 
+  if ($GEOMETRY && !$have_geometry) { # RRM: overrides $PAPERSIZE 
     # no geometry info found in the Postscript file
     $bbx = $PAGE_HMARGIN;
     $bby = $PAGE_HEIGHT - $PAGE_VMARGIN;
@@ -1008,7 +1008,7 @@ sub ps2pnm {
     $bbh = $2;
     $bby = int(-$bby + $bbh + 8); # allow small margin for error
     $bbx = int(-$bbx + 5);        # allow small margin for error
-    if($DENSITY) {
+    if ($DENSITY) {
       my $scale = $DENSITY / 72.0;
       print "XYZZY $scale\n";
       $bbw = int($scale * $bbw + .99);
@@ -1019,12 +1019,12 @@ sub ps2pnm {
     $GEOMETRY = "${bbw}x$bbh";
     $have_geometry = 1;
     }
-  if($have_geometry) {
+  if ($have_geometry) {
     $gs_size = "-g$GEOMETRY ";
     }
 
   my $ps_changed = 0;
-  if($have_geometry || $opt{white}) {
+  if ($have_geometry || $opt{white}) {
     # Remove any Postscript commands concerning Papersize if -g switch is used
     # thanks to  Axel Ramge for identifying the problem and for this code
     local($/) = undef;
@@ -1032,26 +1032,26 @@ sub ps2pnm {
     my $ps = <PS>;
     close(PS);
     my $had_papersize;
-    if($have_geometry) {
+    if ($have_geometry) {
       $had_papersize = ($ps =~ s/\n%%BeginPaperSize.*?%%EndPaperSize[^\n]*\n/\n/sg);
       }
     my $had_nonwhite;
-    if($opt{white}) {
+    if ($opt{white}) {
       $had_nonwhite = ($ps =~ s/(\n\d+ \d+ bop gsave) \d*\.\d+ (TeXcolorgray clippath fill grestore)/$1 1 $2/s);
       }
     $ps_changed = $had_papersize || $had_nonwhite;
-    if($ps_changed) {
+    if ($ps_changed) {
       my $tmppsfile = $pnmfile; # was "tmpps$$.ps"
       $tmppsfile =~ s/\.[^.]*$/.ps/;
       unless(open(PS,">$tmppsfile") && (print PS $ps) && (close PS)) {
-        if($had_papersize) {
+        if ($had_papersize) {
           print <<"EOF";
 $prompt: Warning: Could not write "$tmppsfile": $!
     "$psfile" contains %%Papersize comments.
     Any of these should be removed else GS will fail.
 EOF
           }
-        if($had_nonwhite) {
+        if ($had_nonwhite) {
           print <<"EOF";
 $prompt: Warning: Could not write "$tmppsfile": $!
     "$psfile" has a non-white background.
@@ -1061,9 +1061,9 @@ EOF
         }
       $psfile = $tmppsfile;
       print qq{Debug: Papersize comment in "$psfile" deleted.\n}
-        if($had_papersize && $opt{debug});
+        if ($had_papersize && $opt{debug});
       print qq{Debug: Background switched to white in "$psfile".\n}
-        if($had_nonwhite && $opt{debug});
+        if ($had_nonwhite && $opt{debug});
       }
     }
 
@@ -1072,9 +1072,9 @@ EOF
   my $gs_out = "-sOutputFile=$pnmfile";
   my $gsfile = $psfile;
   # Ghostscript understands only '/' as path delimiter!
-  if($opt{debug}) {
+  if ($opt{debug}) {
     print "$prompt: Running $GS $gs_quiet -sDEVICE=$GSDEVICE $gs_size $gs_density $gs_aalias $gs_out $out_redirect\n";
-    print "GS>$bbx $bby translate\n" if($have_geometry);
+    print "GS>$bbx $bby translate\n" if ($have_geometry);
     print "GS>($gsfile) run\n";
     print "GS>showpage\n" if ($epsf);
     print "GS>quit\n";
@@ -1084,11 +1084,11 @@ EOF
   print GS "($gsfile) run\n";
   print GS "showpage\n" if ($epsf);
   print GS "quit\n";
-  print "\n" if($opt{debug});
+  print "\n" if ($opt{debug});
   unless(close(GS)) {
     print "$prompt: Error: Ghostscript returned error status ",$?>>8,"\n";
     }
-  L2hos->Unlink($psfile) if($ps_changed && !$opt{debug});
+  L2hos->Unlink($psfile) if ($ps_changed && !$opt{debug});
   1;
   }
 
@@ -1103,7 +1103,7 @@ sub crop_scale_etc {
   my $tmp = $in;
   $tmp =~ s/(\.[^.]*)?$/.t00/;
   # save the original Ghostscript result
-  if($opt{debug}) {
+  if ($opt{debug}) {
     L2hos->Copy($in,$tmp);
     &increment_name($tmp);
   }
@@ -1120,7 +1120,7 @@ sub crop_scale_etc {
   while ($EXTRA_CROP =~ /([atblrzs])/gi) {
     my $edge = $1;
     my $croparg = '';
-    if($edge =~ /b/i) {
+    if ($edge =~ /b/i) {
       $croparg = "-bot $PNMCROPOPT ";
     } elsif($edge =~ /[tlr]/i) {
       $croparg = "-$edge $PNMCROPOPT ";
@@ -1129,7 +1129,7 @@ sub crop_scale_etc {
 	$croparg = "-black";
     } elsif($edge =~ /s/i) {
       #RRM: shave at most 1-2 rows of white from the bottom
-      if($cmd) {
+      if ($cmd) {
         # Terminate command pipe
 	  print "AAAAA $cmd\n";
         &do_cmd($in,$tmp,$cmd) || return 0; # failure
@@ -1137,12 +1137,12 @@ sub crop_scale_etc {
       }
       my ($type,$width,$height) = get_image_geometry($in);
       next unless($type); # skip if no geometry
-      if(&do_cmd_norename("$PNMCROP $PNMCROPOPT -bot < $in",$tmp)) {
+      if (&do_cmd_norename("$PNMCROP $PNMCROPOPT -bot < $in",$tmp)) {
         my ($type,$width,$height2) = get_image_geometry($tmp);
 	print "XX $type $height $height2\n";
-        if($type && ($height - $height2) < 3 ) {
+        if ($type && ($height - $height2) < 3 ) {
           # command succeeded and shaved less than 3 rows
-          if($opt{debug}&&(-f $tmp)) {
+          if ($opt{debug}&&(-f $tmp)) {
             L2hos->Copy($tmp,$in);
             &increment_name($tmp);
           } elsif (-f $tmp) {
@@ -1154,7 +1154,7 @@ sub crop_scale_etc {
       # MRO: this shouldn't be necessary: L2hos->Unlink($tmp);
       next; # go to next crop argument
     } # end switch on crop codes
-    if($cmd) {
+    if ($cmd) {
       # Continue command pipe
       $cmd .= "| $PNMCROP $croparg";
     } else {
@@ -1165,7 +1165,7 @@ sub crop_scale_etc {
   } # end cropping
   print "YYY $cmd\n";
 
-  if($opt{flip}) {
+  if ($opt{flip}) {
     unless($cmd) {
       $cmd = "$PNMFLIP -$opt{flip} < $in";
     } else {
@@ -1173,8 +1173,8 @@ sub crop_scale_etc {
     }
   }
 
-  if($RIGHT_JUSTIFY || $TOP_JUSTIFY || $CENTER || $SHORE_UP) {
-    if($cmd) {
+  if ($RIGHT_JUSTIFY || $TOP_JUSTIFY || $CENTER || $SHORE_UP) {
+    if ($cmd) {
       # empty command pipe, we need the image's geometry
       &do_cmd($in,$tmp,$cmd);
       $cmd='';
@@ -1186,8 +1186,8 @@ sub crop_scale_etc {
 
     my ($white_left,$white_right,$white_top,$white_bottom) = (0,0,0,0);
 
-    if($RIGHT_JUSTIFY || $CENTER) {
-      if($RIGHT_JUSTIFY) {
+    if ($RIGHT_JUSTIFY || $CENTER) {
+      if ($RIGHT_JUSTIFY) {
         $white_left = int($RIGHT_JUSTIFY-$width);
       } else { # CENTER
         $white_left = int(($CENTER-$width) / 2);
@@ -1197,13 +1197,13 @@ sub crop_scale_etc {
       $width += $white_left;
     }
 
-    if($TOP_JUSTIFY) {
-      if($TOP_JUSTIFY =~ /^x([0-9.]+)/io) {
+    if ($TOP_JUSTIFY) {
+      if ($TOP_JUSTIFY =~ /^x([0-9.]+)/io) {
         $white_bottom = $1 * $height;
       } else {
         $white_bottom = $TOP_JUSTIFY - $height;
       }
-      if($white_bottom > 0) {
+      if ($white_bottom > 0) {
         $white_bottom = int($white_bottom + 0.99); # round up
         $height += $white_bottom;
       } else {
@@ -1211,11 +1211,11 @@ sub crop_scale_etc {
       }
     }
 
-    if($SHORE_UP =~ /(\d+)(d?)/ && $1) {
+    if ($SHORE_UP =~ /(\d+)(d?)/ && $1) {
       # RRM: make height and width an exact multiple of $SHORE_UP
       my ($shoreup,$depth) = ($1,$2);
       my $extra = $height % $shoreup;
-      if($depth) { # image needs depth, place half the extra space underneath
+      if ($depth) { # image needs depth, place half the extra space underneath
         my $bextra = int($extra/2);
         $white_bottom += $bextra;
         $white_top += $extra - $bextra;
@@ -1231,32 +1231,32 @@ sub crop_scale_etc {
     }
 
 
-  if($white_left) {
-    if($cmd) {
+  if ($white_left) {
+    if ($cmd) {
       &do_cmd($in,$tmp,$cmd) || return 0;
     }
     # Start new command pipe
     $cmd = "$PBMMAKE -white $white_left 1 | $PNMCAT -white -lr - $in ";
   }
 
-  if($white_right) {
-    if($cmd) {
+  if ($white_right) {
+    if ($cmd) {
       &do_cmd($in,$tmp,$cmd) || return 0;
     }
     # Start new command pipe
     $cmd = "$PBMMAKE -white $white_right 1 | $PNMCAT -white -lr $in - ";
   }
 
-  if($white_top) {
-    if($cmd) {
+  if ($white_top) {
+    if ($cmd) {
       &do_cmd($in,$tmp,$cmd) || return 0;
     }
     # Start new command pipe
     $cmd = "$PBMMAKE -white 1 $white_top | $PNMCAT -white -tb - $in ";
   }
 
-  if($white_bottom) {
-    if($cmd) {
+  if ($white_bottom) {
+    if ($cmd) {
       &do_cmd($in,$tmp,$cmd) || return 0;
     }
     # Start new command pipe
@@ -1265,21 +1265,21 @@ sub crop_scale_etc {
   } # endif must_align
 
   my $pnmtoimg;
-  if($opt{type} eq 'gif') {
+  if ($opt{type} eq 'gif') {
     $pnmtoimg = $PPMTOGIF;
-    if($INTERLACE) {
+    if ($INTERLACE) {
       $pnmtoimg .= ' -interlace';
       }
-    if($TRANSPARENT) {
+    if ($TRANSPARENT) {
       $pnmtoimg .= ' -trans ' . L2hos->quote($trans_color);
     }
   }
-  if($opt{type} eq 'png') {
+  if ($opt{type} eq 'png') {
     $pnmtoimg = $PNMTOPNG;
-    if($INTERLACE) {
+    if ($INTERLACE) {
       $pnmtoimg .= ' -interlace';
     }
-    if($TRANSPARENT) {
+    if ($TRANSPARENT) {
       $trans_color = $TRANSPARENT_COLOR||'gray85';
       $pnmtoimg .= ' -trans ' . L2hos->quote($trans_color);
     }
@@ -1294,15 +1294,15 @@ sub crop_scale_etc {
     return 0 unless($type);
   }
   # run ppmquant only on color/gray images
-  if($reduce_color && (!$type || $type =~ /(ppm|pgm)/i)) {
-    if($cmd) {
+  if ($reduce_color && (!$type || $type =~ /(ppm|pgm)/i)) {
+    if ($cmd) {
       $cmd .= "| $reduce_color "
     } else {
       $cmd = "$reduce_color < $in ";
     }
   } else { $cmd = '' }
 
-  if($cmd) {
+  if ($cmd) {
     $cmd .= "| $pnmtoimg "
   } else {
     $cmd = "$pnmtoimg < $in ";
@@ -1370,18 +1370,18 @@ sub print_usage {
 sub do_cmd {
   my ($in,$tmp,$cmd) = @_;
   
-  print qq{Running "$cmd > $tmp"\n} if($opt{debug});
+  print qq{Running "$cmd > $tmp"\n} if ($opt{debug});
   my $stat = system("$cmd > $tmp");
-  if($stat) { # error
+  if ($stat) { # error
     print qq{$prompt: Error: "$cmd > $tmp" failed: $!\n};
     return 0; # failure
   }
   elsif(!-s $tmp) { # does not exist or zero size
     print qq{$prompt: Error: "$cmd > $tmp" produced empty file\n};
-    L2hos->Unlink($tmp) if(-e $tmp);
+    L2hos->Unlink($tmp) if (-e $tmp);
     return 0; # failure
   }
-  if($opt{debug}) {
+  if ($opt{debug}) {
     # increase the temporary filename by 1
     # this uses perl's magic autoincrement
     &increment_name($_[1]);
@@ -1396,15 +1396,15 @@ sub do_cmd {
 sub do_cmd_norename {
   my ($cmd,$out) = @_;
   
-  print qq{Running "$cmd > $out"\n} if($opt{debug});
+  print qq{Running "$cmd > $out"\n} if ($opt{debug});
   my $stat = system("$cmd > $out");
-  if($stat) { # error
+  if ($stat) { # error
     print qq{$prompt: Error: "$cmd > $out" failed: $!\n};
     return 0; # failure
   }
   elsif(!-s $out) { # does not exist or zero size
     print qq{$prompt: Error: "$cmd > $out" produced empty file\n};
-    L2hos->Unlink($out) if(-e $out);
+    L2hos->Unlink($out) if (-e $out);
     return 0; # failure
   }
   1;
@@ -1413,9 +1413,9 @@ sub do_cmd_norename {
 sub do_cmd_plain {
   my ($cmd) = @_;
   
-  print qq{Running "$cmd"\n} if($opt{debug});
+  print qq{Running "$cmd"\n} if ($opt{debug});
   my $stat = system($cmd);
-  if($stat) { # error
+  if ($stat) { # error
     print qq{$prompt: Error: "$cmd" failed: $!\n};
     return 0; # failure
   }
@@ -1427,11 +1427,11 @@ sub get_image_geometry {
 
   my ($type,$width,$height);
   my $out = `$PNMFILE $pnmfile`;
-  if($? || $out =~ /(P[BGP]M)[^0-9]*(\d+)\s*by\s*(\d+)/i) {
+  if ($? || $out =~ /(P[BGP]M)[^0-9]*(\d+)\s*by\s*(\d+)/i) {
     $type = $1;
     $width = $2;
     $height = $3;
-    print qq{Image "$pnmfile" is $type, ${width}x$height\n} if($opt{debug});
+    print qq{Image "$pnmfile" is $type, ${width}x$height\n} if ($opt{debug});
   } else {
     print "$prompt: Error: Could not determine image size: $out\n";
     return undef;

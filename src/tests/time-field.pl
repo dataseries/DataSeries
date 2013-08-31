@@ -38,7 +38,7 @@ if (0) {
 }
 
 if (1) {
-    for(my $i=0;$i<100;++$i) {
+    for (my $i=0;$i<100;++$i) {
 	my $frac32 = rand_i64();
 	my $sns = $frac32 * 10**9 / 2**32;
 	print "X $frac32 $sns\n" if 0;

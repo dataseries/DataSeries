@@ -3,9 +3,9 @@
 
 // -*-C++-*-
 /*
-   (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
+  (c) Copyright 2003-2011, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -16,27 +16,26 @@
 #include <Lintel/HashUnique.hpp>
 #include <Lintel/PThread.hpp>
 
-#include <DataSeries/Extent.hpp>
 #include <DataSeries/ExtentField.hpp>
 #include <DataSeries/IExtentSink.hpp>
 
 /** \brief Writes Extents to a DataSeries file.
-  */
+ */
 class DataSeriesSink : public dataseries::IExtentSink {
-public:
+  public:
     // sundry statistics on this sink; expect to get one
     // non-compressed chunk (the fixed record pointers for the extent
     // type information); also, empty variable-sized extents are not
     // counted in the compress_* stats
 
-    /** Create a new DataSeriesSInk (output file), but leave it closed
+    /** Create a new DataSeriesSink (output file), but leave it closed
 
         \arg compression_modes Indicates which compression
-            algorithms should be tried.  See \link Extent_compress Extent::compress \endlink
+        algorithms should be tried.  See \link Extent_compress Extent::compress \endlink
 
         \arg compression_level Should be between 1 to 9 inclusive. The default of
-            9 gives the best compression in general.  See the documentation of the
-            underlying compression libraries for detail. 
+        9 gives the best compression in general.  See the documentation of the
+        underlying compression libraries for detail. 
             
     */
     // TODO: change the int to uint32_t; they're flags or ranged.
@@ -48,11 +47,11 @@ public:
         \arg filename is the name of the file to write to.
 
         \arg compression_modes Indicates which compression
-            algorithms should be tried.  See \link Extent_compress Extent::compress \endlink
+        algorithms should be tried.  See \link Extent_compress Extent::compress \endlink
 
         \arg compression_level Should be between 1 to 9 inclusive. The default of
-            9 gives the best compression in general.  See the documentation of the
-            underlying compression libraries for detail. 
+        9 gives the best compression in general.  See the documentation of the
+        underlying compression libraries for detail. 
             
     */
     explicit DataSeriesSink(const std::string &filename,
@@ -111,40 +110,41 @@ public:
     virtual void removeStatsUpdate(Stats *would_update);
 
     static void verifyTail(ExtentType::byte *data, bool need_bitflip,
-			   const std::string &filename);
+                           const std::string &filename);
     
     /** Sets the number of threads that each @c DataSeriesSink uses to
         compress Extents.
-        compressor_count == -1 ==> use # cpus. 0 ==> no threading;
+        compressor_count == -1 ==> use # cpus or limit set by MAX_THREAD_COUNT (see DataSeriesSink.cpp)
+        compressor_count == 0 ==> no threading;
         Only affects \link DataSeriesSink DataSeriesSinks \endlink
         created after a call. */
     static void setCompressorCount(int compressor_count = -1);
 
     const std::string &getFilename() const {
-	return filename;
+        return filename;
     }
 
     void setMaxBytesInProgress(size_t nbytes) {
         worker_info.setMaxBytesInProgress(mutex, nbytes);
     }
 
-private:
+  private:
     struct ToCompress {
         Extent::Ptr extent;
-	Stats *to_update;
-	bool in_progress;
-	uint32_t checksum;
-	Extent::ByteArray compressed;
-	ToCompress(Extent::Ptr e, Stats *_to_update)
-	    : extent(e), to_update(_to_update), in_progress(false), checksum(0) 
-	{ }
-	void wipeExtent() {
-	    Extent tmp(extent->getTypePtr());
-	    tmp.swap(*extent);
-	}
-	bool readyToWrite() {
-	    return compressed.size() > 0 && !in_progress;
-	}
+        Stats *to_update;
+        bool in_progress;
+        uint32_t checksum;
+        Extent::ByteArray compressed;
+        ToCompress(Extent::Ptr e, Stats *_to_update)
+                : extent(e), to_update(_to_update), in_progress(false), checksum(0) 
+        { }
+        void wipeExtent() {
+            Extent tmp(extent->getTypePtr());
+            tmp.swap(*extent);
+        }
+        bool readyToWrite() {
+            return compressed.size() > 0 && !in_progress;
+        }
     };
 
     // Structure for shared information among all workers.
@@ -158,14 +158,14 @@ private:
         PThread *writer;
         PThreadCond available_queue_cond, available_work_cond, available_write_cond;
         WorkerInfo(size_t max_bytes_in_progress)
-            : keep_going(false), bytes_in_progress(0), max_bytes_in_progress(max_bytes_in_progress),
-              pending_work(), compressors(), writer(), available_queue_cond(),
-              available_work_cond(), available_write_cond()
+        : keep_going(false), bytes_in_progress(0), max_bytes_in_progress(max_bytes_in_progress),
+          pending_work(), compressors(), writer(), available_queue_cond(),
+          available_work_cond(), available_write_cond()
         { }
 
         bool canQueueWork() {
             return bytes_in_progress < max_bytes_in_progress &&
-                pending_work.size() < 2 * compressors.size();
+                    pending_work.size() < 2 * compressors.size();
         }
         void startThreads(PThreadScopedLock &lock, DataSeriesSink *sink);
         void stopThreads(PThreadScopedLock &lock);
@@ -177,7 +177,7 @@ private:
 
         bool isQuiesced() {
             return !keep_going && bytes_in_progress == 0 && pending_work.empty()
-                && compressors.empty() && writer == NULL;
+                    && compressors.empty() && writer == NULL;
         }
     };
 
@@ -193,17 +193,17 @@ private:
         ExtentWriteCallback extent_write_callback;
 
         WriterInfo()
-            : fd(-1), wrote_library(false), in_callback(false), cur_offset(-1), chained_checksum(0),
-              index_series(ExtentType::getDataSeriesIndexTypeV0Ptr()), 
-              field_extentOffset(index_series,"offset"),
-              field_extentType(index_series,"extenttype"), 
-              extent_write_callback()
+                : fd(-1), wrote_library(false), in_callback(false), cur_offset(-1), chained_checksum(0),
+                  index_series(ExtentType::getDataSeriesIndexTypeV0Ptr()), 
+                  field_extentOffset(index_series,"offset"),
+                  field_extentType(index_series,"extenttype"), 
+                  extent_write_callback()
         { }
         void writeOutPending(PThreadScopedLock &lock, WorkerInfo &worker_info);
         void checkedWrite(const void *buf, int bufsize);
         bool isQuiesced() {
             return fd == -1 && wrote_library == false && cur_offset == -1
-                && !index_series.hasExtent() && chained_checksum == 0;
+                    && !index_series.hasExtent() && chained_checksum == 0;
         }
     };
 
@@ -226,7 +226,7 @@ private:
 
     WriterInfo writer_info;
     WorkerInfo worker_info;
-				   
+                                   
     std::string filename;
     friend class DataSeriesSinkPThreadCompressor;
     void compressorThread();

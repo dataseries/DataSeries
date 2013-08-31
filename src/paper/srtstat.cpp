@@ -1,8 +1,8 @@
 // -*-C++-*-
 /*
-   (c) Copyright 2007, Hewlett-Packard Development Company, LP
+  (c) Copyright 2007, Hewlett-Packard Development Company, LP
 
-   See the file named COPYING for license details
+  See the file named COPYING for license details
 */
 
 /** @file
@@ -14,10 +14,10 @@
    Times in user system wall, RHEL4-64bit 2.4GhZ 2x2core Opteron 2216HE
    One run to prefetch data; 89,416,000 rows
 
-% du -k
-1439756 ./lzo-96k
-1467080 ./lzo-64k
-1290668 ./gz-96k
+   % du -k
+   1439756 ./lzo-96k
+   1467080 ./lzo-64k
+   1290668 ./gz-96k
 
    -d 2 gz-96k: 37.34 2.05 10.009 ; 36.93 2.42 10.034 ; 37.21 2.07 9.997
    -d 2 lzo-64k: 24.86 2.43 6.965 ; 24.87 2.33 6.944 ; 24.96 2.38 6.976
@@ -87,7 +87,7 @@
    -i 9 lzo-96k: 33.21 3.82 11.35 ; 32.98 3.68 11.35 ; 32.58 3.82 10.83
 
 
-perl -e 'use Time::HiRes "time"; use BSD::Resource; my $start = time; system(@ARGV); $end = time; $rusage = getrusage(RUSAGE_CHILDREN); printf "%.2f %.2f %.2f\n", $rusage->utime, $rusage->stime, $end - $start;'
+   perl -e 'use Time::HiRes "time"; use BSD::Resource; my $start = time; system(@ARGV); $end = time; $rusage = getrusage(RUSAGE_CHILDREN); printf "%.2f %.2f %.2f\n", $rusage->utime, $rusage->stime, $end - $start;'
 */
 
 #include <string>
@@ -109,21 +109,21 @@ using boost::format;
 
 struct HashMap_hashintfast {
     unsigned operator()(const int _a) const {
-	return _a;
+        return _a;
     }
 };
 
 class LatencyGroupByIntBasic : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByIntBasic(DataSeriesModule &source, const string &_start_field, 
-			   const string &_end_field, const string &_groupby_field)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field)
+                           const string &_end_field, const string &_groupby_field)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field)
     {
     }
 
@@ -132,32 +132,32 @@ public:
     virtual ~LatencyGroupByIntBasic() { }
 
     virtual void prepareForProcessing() {
-	
+        
     }
 
     virtual void processRow() {
-	Stats *stat = mystats[groupby.val()];
-	if (stat == NULL) {
-	    stat = new Stats();
-	    mystats[groupby.val()] = stat;
-	}
-	stat->add(end_time.valRaw() - start_time.valRaw());
+        Stats *stat = mystats[groupby.val()];
+        if (stat == NULL) {
+            stat = new Stats();
+            mystats[groupby.val()] = stat;
+        }
+        stat->add(end_time.valRaw() - start_time.valRaw());
     }
 
     double toSec(double v) {
-	Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
-	return start_time.rawToDoubleSeconds(raw);
+        Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
+        return start_time.rawToDoubleSeconds(raw);
     }
 
     virtual void printResult() {
-	cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # basic field")
-	    % groupby_field % end_field % start_field << endl;
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
-	    cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
-		% i->first % i->second->count() % toSec(i->second->mean()) 
-		% toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
-	}
+        cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # basic field")
+                % groupby_field % end_field % start_field << endl;
+        for (mytableT::iterator i = mystats.begin(); 
+            i != mystats.end(); ++i) {
+            cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
+                    % i->first % i->second->count() % toSec(i->second->mean()) 
+                    % toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
+        }
     }
 
     mytableT mystats;
@@ -167,16 +167,16 @@ public:
 };
 
 class LatencyGroupByIntFixed : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByIntFixed(DataSeriesModule &source, const string &_start_field, 
-			   const string &_end_field, const string &_groupby_field)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field)
+                           const string &_end_field, const string &_groupby_field)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field)
     {
     }
 
@@ -185,33 +185,33 @@ public:
     virtual ~LatencyGroupByIntFixed() { }
 
     virtual void prepareForProcessing() {
-	
+        
     }
 
     virtual void processRow() {
-	Stats *stat = mystats[groupby.val()];
-	if (stat == NULL) {
-	    stat = new Stats();
-	    mystats[groupby.val()] = stat;
-	}
-	stat->add(end_time.val() - start_time.val());
+        Stats *stat = mystats[groupby.val()];
+        if (stat == NULL) {
+            stat = new Stats();
+            mystats[groupby.val()] = stat;
+        }
+        stat->add(end_time.val() - start_time.val());
     }
 
     double toSec(double v) {
-	Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
-	// Ought to check units here
-	return Clock::TfracToDouble(raw);
+        Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
+        // Ought to check units here
+        return Clock::TfracToDouble(raw);
     }
 
     virtual void printResult() {
-	cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
-	    % groupby_field % end_field % start_field << endl;
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
-	    cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
-		% i->first % i->second->count() % toSec(i->second->mean()) 
-		% toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
-	}
+        cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
+                % groupby_field % end_field % start_field << endl;
+        for (mytableT::iterator i = mystats.begin(); 
+            i != mystats.end(); ++i) {
+            cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
+                    % i->first % i->second->count() % toSec(i->second->mean()) 
+                    % toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
+        }
     }
 
     mytableT mystats;
@@ -221,49 +221,49 @@ public:
 };
 
 class LatencyGroupByIntGeneral : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByIntGeneral(DataSeriesModule &source, const string &_start_field,
-			     const string &_end_field, const string &_groupby_field)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field)
+                             const string &_end_field, const string &_groupby_field)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field)
     {
     }
 
     typedef HashMap<ExtentType::int32, Stats *, HashMap_hashintfast> mytableT;
 
     virtual ~LatencyGroupByIntGeneral() { 
-	delete start_time;
-	delete end_time;
-	delete groupby;
+        delete start_time;
+        delete end_time;
+        delete groupby;
     }
 
     virtual void prepareForProcessing() {
-	start_time = GeneralField::create(series, start_field);
-	end_time = GeneralField::create(series, end_field);
-	groupby = GeneralField::create(series, groupby_field);
+        start_time = GeneralField::create(series, start_field);
+        end_time = GeneralField::create(series, end_field);
+        groupby = GeneralField::create(series, groupby_field);
     }
 
     virtual void processRow() {
-	Stats *stat = mystats[static_cast<int32_t>(groupby->valDouble())];
-	if (stat == NULL) {
-	    stat = new Stats();
-	    mystats[static_cast<int32_t>(groupby->valDouble())] = stat;
-	}
-	stat->add(end_time->valDouble() - start_time->valDouble());
+        Stats *stat = mystats[static_cast<int32_t>(groupby->valDouble())];
+        if (stat == NULL) {
+            stat = new Stats();
+            mystats[static_cast<int32_t>(groupby->valDouble())] = stat;
+        }
+        stat->add(end_time->valDouble() - start_time->valDouble());
     }
 
     virtual void printResult() {
-	cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
-	    % groupby_field % end_field % start_field << endl;
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
-	    cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g") 
-		% i->first % i->second->count() % i->second->mean() % i->second->stddev()
-		% i->second->min() % i->second->max() 
-		 << endl;
-	}
+        cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
+                % groupby_field % end_field % start_field << endl;
+        for (mytableT::iterator i = mystats.begin(); 
+            i != mystats.end(); ++i) {
+            cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g") 
+                    % i->first % i->second->count() % i->second->mean() % i->second->stddev()
+                    % i->second->min() % i->second->max() 
+                 << endl;
+        }
     }
 
     mytableT mystats;
@@ -273,16 +273,16 @@ public:
 };
 
 class LatencyGroupByNoop : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByNoop(DataSeriesModule &source, const string &_start_field, 
-		       const string &_end_field, const string &_groupby_field)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field)
+                       const string &_end_field, const string &_groupby_field)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field)
     { }
 
     virtual void processRow() {
@@ -297,32 +297,32 @@ public:
 };
 
 class LatencyGroupByAccessFixed : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByAccessFixed(DataSeriesModule &source, const string &_start_field, 
-			      const string &_end_field, const string &_groupby_field, 
-			      uint32_t _reps)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
+                              const string &_end_field, const string &_groupby_field, 
+                              uint32_t _reps)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
     { }
 
     virtual void processRow() {
-	for(uint32_t i = 0; i < reps; ++i) {
-	    sum += start_time.val();
-	    sum += end_time.val();
-	    sum += groupby.val();
-	    sum += start_time.val();
-	    sum += end_time.val();
-	}
-	++row_count;
+        for (uint32_t i = 0; i < reps; ++i) {
+            sum += start_time.val();
+            sum += end_time.val();
+            sum += groupby.val();
+            sum += start_time.val();
+            sum += end_time.val();
+        }
+        ++row_count;
     }
 
     virtual void printResult() {
-	cout << boost::format("%d rows; sum %d\n") % row_count % sum;
+        cout << boost::format("%d rows; sum %d\n") % row_count % sum;
     }
 
     string start_field, end_field, groupby_field;
@@ -336,74 +336,74 @@ public:
 // Special case to test compiler handling templates.
 
 class NNInt64Field : public FixedField {
-public:
+  public:
     NNInt64Field(ExtentSeries &_dataseries, const std::string &field)
-	: FixedField(_dataseries, field, ExtentType::ft_int64, 0) 
+            : FixedField(_dataseries, field, ExtentType::ft_int64, 0) 
     { 
-	_dataseries.addField(*this);
+        _dataseries.addField(*this);
     }
 
     virtual ~NNInt64Field() { };
 
     int64_t val() const { 
-	return *reinterpret_cast<int64_t *>(rowPos() + offset);
+        return *reinterpret_cast<int64_t *>(rowPos() + offset);
     }
 };
 
 class NNInt32Field : public FixedField {
-public:
+  public:
     NNInt32Field(ExtentSeries &_dataseries, const std::string &field)
-	: FixedField(_dataseries, field, ExtentType::ft_int32, 0) 
+            : FixedField(_dataseries, field, ExtentType::ft_int32, 0) 
     { 
-	_dataseries.addField(*this);
+        _dataseries.addField(*this);
     }
 
     virtual ~NNInt32Field() { };
 
     int32_t val() const { 
-	return *reinterpret_cast<int32_t *>(rowPos() + offset);
+        return *reinterpret_cast<int32_t *>(rowPos() + offset);
     }
 };
 
 class LatencyGroupByIntNN : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByIntNN(DataSeriesModule &source, const string &_start_field, 
-			const string &_end_field, const string &_groupby_field)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field)
+                        const string &_end_field, const string &_groupby_field)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field)
     { }
 
     typedef HashMap<ExtentType::int32, Stats *, HashMap_hashintfast> mytableT;
 
     virtual void processRow() {
-	Stats *stat = mystats[groupby.val()];
-	if (stat == NULL) {
-	    stat = new Stats();
-	    mystats[groupby.val()] = stat;
-	}
-	stat->add(end_time.val() - start_time.val());
+        Stats *stat = mystats[groupby.val()];
+        if (stat == NULL) {
+            stat = new Stats();
+            mystats[groupby.val()] = stat;
+        }
+        stat->add(end_time.val() - start_time.val());
     }
 
     double toSec(double v) {
-	Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
-	// Ought to check units here
-	return Clock::TfracToDouble(raw);
+        Int64TimeField::Raw raw = static_cast<int64_t>(round(v));
+        // Ought to check units here
+        return Clock::TfracToDouble(raw);
     }
 
     virtual void printResult() {
-	cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
-	    % groupby_field % end_field % start_field << endl;
-	for(mytableT::iterator i = mystats.begin(); 
-	    i != mystats.end(); ++i) {
-	    cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
-		% i->first % i->second->count() % toSec(i->second->mean()) 
-		% toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
-	}
+        cout << boost::format("%s, count(*), mean(%s - %s), stddev, min, max # fixed field")
+                % groupby_field % end_field % start_field << endl;
+        for (mytableT::iterator i = mystats.begin(); 
+            i != mystats.end(); ++i) {
+            cout << boost::format("%d, %d, %.6g, %.6g, %.6g, %.6g\n") 
+                    % i->first % i->second->count() % toSec(i->second->mean()) 
+                    % toSec(i->second->stddev()) % toSec(i->second->min()) % toSec(i->second->max());
+        }
     }
 
     mytableT mystats;
@@ -413,32 +413,32 @@ public:
 };
 
 class LatencyGroupByAccessNN : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByAccessNN(DataSeriesModule &source, const string &_start_field, 
-			   const string &_end_field, const string &_groupby_field, 
-			   uint32_t _reps)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
+                           const string &_end_field, const string &_groupby_field, 
+                           uint32_t _reps)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
     { }
 
     virtual void processRow() {
-	for(uint32_t i = 0; i < reps; ++i) {
-	    sum += start_time.val();
-	    sum += end_time.val();
-	    sum += groupby.val();
-	    sum += start_time.val();
-	    sum += end_time.val();
-	}
-	++row_count;
+        for (uint32_t i = 0; i < reps; ++i) {
+            sum += start_time.val();
+            sum += end_time.val();
+            sum += groupby.val();
+            sum += start_time.val();
+            sum += end_time.val();
+        }
+        ++row_count;
     }
 
     virtual void printResult() {
-	cout << boost::format("%d rows; sum %d\n") % row_count % sum;
+        cout << boost::format("%d rows; sum %d\n") % row_count % sum;
     }
 
     string start_field, end_field, groupby_field;
@@ -450,32 +450,32 @@ public:
 };
 
 class LatencyGroupByAccessBasic : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByAccessBasic(DataSeriesModule &source, const string &_start_field, 
-			      const string &_end_field, const string &_groupby_field, 
-			      uint32_t _reps)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  start_time(series, start_field), 
-	  end_time(series, end_field), 
-	  groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
+                              const string &_end_field, const string &_groupby_field, 
+                              uint32_t _reps)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              start_time(series, start_field), 
+              end_time(series, end_field), 
+              groupby(series, groupby_field), reps(_reps), sum(0), row_count(0)
     { }
 
     virtual void processRow() {
-	for(uint32_t i = 0; i < reps; ++i) {
-	    sum += start_time.val();
-	    sum += end_time.val();
-	    sum += groupby.val();
-	    sum += start_time.val();
-	    sum += end_time.val();
-	}
-	++row_count;
+        for (uint32_t i = 0; i < reps; ++i) {
+            sum += start_time.val();
+            sum += end_time.val();
+            sum += groupby.val();
+            sum += start_time.val();
+            sum += end_time.val();
+        }
+        ++row_count;
     }
 
     virtual void printResult() {
-	cout << boost::format("%d rows; sum %d\n") % row_count % sum;
+        cout << boost::format("%d rows; sum %d\n") % row_count % sum;
     }
 
     string start_field, end_field, groupby_field;
@@ -487,42 +487,42 @@ public:
 };
 
 class LatencyGroupByAccessGeneral : public RowAnalysisModule {
-public:
+  public:
     LatencyGroupByAccessGeneral(DataSeriesModule &source, const string &_start_field, 
-				const string &_end_field, const string &_groupby_field, 
-				uint32_t _reps)
-	: RowAnalysisModule(source), 
-	  start_field(_start_field),
-	  end_field(_end_field),
-	  groupby_field(_groupby_field),
-	  reps(_reps), sum(0), row_count(0)
+                                const string &_end_field, const string &_groupby_field, 
+                                uint32_t _reps)
+            : RowAnalysisModule(source), 
+              start_field(_start_field),
+              end_field(_end_field),
+              groupby_field(_groupby_field),
+              reps(_reps), sum(0), row_count(0)
     { }
 
     virtual ~LatencyGroupByAccessGeneral() { 
-	delete start_time;
-	delete end_time;
-	delete groupby;
+        delete start_time;
+        delete end_time;
+        delete groupby;
     }
 
     virtual void prepareForProcessing() {
-	start_time = GeneralField::create(series, start_field);
-	end_time = GeneralField::create(series, end_field);
-	groupby = GeneralField::create(series, groupby_field);
+        start_time = GeneralField::create(series, start_field);
+        end_time = GeneralField::create(series, end_field);
+        groupby = GeneralField::create(series, groupby_field);
     }
 
     virtual void processRow() {
-	for(uint32_t i = 0; i < reps; ++i) {
-	    sum += start_time->valDouble();
-	    sum += end_time->valDouble();
-	    sum += groupby->valDouble();
-	    sum += start_time->valDouble();
-	    sum += end_time->valDouble();
-	}
-	++row_count;
+        for (uint32_t i = 0; i < reps; ++i) {
+            sum += start_time->valDouble();
+            sum += end_time->valDouble();
+            sum += groupby->valDouble();
+            sum += start_time->valDouble();
+            sum += end_time->valDouble();
+        }
+        ++row_count;
     }
 
     virtual void printResult() {
-	cout << boost::format("%d rows\n") % row_count;
+        cout << boost::format("%d rows\n") % row_count;
     }
 
     string start_field, end_field, groupby_field;
@@ -537,92 +537,92 @@ int main(int argc, char *argv[]) {
     TypeIndexModule *source = new TypeIndexModule("Trace::BlockIO::HP-UX");
 
     SequenceModule seq(source);
-    while(1) {
-	int opt = getopt(argc, argv, "a:b:c:d:e:f:g:i:j:");
-	if (opt == -1) break;
-	int variant = stringToInteger<int32_t>(optarg);
-	string start_field, end_field, groupby_field;
-	SINVARIANT(variant >= 1 && variant <= 9);
-	if (variant <= 6) {
-	    start_field = "enter_driver";
-	} else {
-	    start_field = "leave_driver";
-	}
+    while (1) {
+        int opt = getopt(argc, argv, "a:b:c:d:e:f:g:i:j:");
+        if (opt == -1) break;
+        int variant = stringToInteger<int32_t>(optarg);
+        string start_field, end_field, groupby_field;
+        SINVARIANT(variant >= 1 && variant <= 9);
+        if (variant <= 6) {
+            start_field = "enter_driver";
+        } else {
+            start_field = "leave_driver";
+        }
 
-	if (variant <= 3) {
-	    end_field = "leave_driver";
-	} else {
-	    end_field = "return_to_driver";
-	}
+        if (variant <= 3) {
+            end_field = "leave_driver";
+        } else {
+            end_field = "return_to_driver";
+        }
 
-	if ((variant % 3) == 1) {
-	    groupby_field = "pid";
-	} else if ((variant % 3) == 2) {
-	    groupby_field = "logical_volume_number";
-	} else {
-	    groupby_field = "bytes";
-	}
+        if ((variant % 3) == 1) {
+            groupby_field = "pid";
+        } else if ((variant % 3) == 2) {
+            groupby_field = "logical_volume_number";
+        } else {
+            groupby_field = "bytes";
+        }
 
-	switch(opt) 
-	    {
-	    case 'a':
-		seq.addModule(new LatencyGroupByIntBasic(seq.tail(), start_field, 
-							 end_field, groupby_field));
-		break;
-	    case 'b':
-		seq.addModule(new LatencyGroupByIntFixed(seq.tail(), start_field, 
-							 end_field, groupby_field));
-		break;
-	    case 'c':
-		seq.addModule(new LatencyGroupByIntGeneral(seq.tail(), start_field, 
-							   end_field, groupby_field));
-		break;
-	    case 'd':
-		seq.addModule(new LatencyGroupByNoop(seq.tail(), start_field, 
-						     end_field, groupby_field));
-		break;
-	    case 'e': seq.addModule(new LatencyGroupByAccessFixed
-				    (seq.tail(), "enter_driver", "leave_driver",
-				     "logical_volume_number", variant-1));
-		break;
-	    case 'f': seq.addModule(new LatencyGroupByAccessBasic
-				    (seq.tail(), "enter_driver", "leave_driver",
-				     "logical_volume_number", variant-1));
-		break;
-	    case 'g': seq.addModule(new LatencyGroupByAccessGeneral
-				    (seq.tail(), "enter_driver", "leave_driver",
-				     "logical_volume_number", variant-1));
-		break;
-	    case 'i': seq.addModule(new LatencyGroupByAccessNN
-				    (seq.tail(), "enter_driver", "leave_driver",
-				     "logical_volume_number", variant-1));
-		break;
-	    case 'j':
-		seq.addModule(new LatencyGroupByIntNN(seq.tail(), start_field, 
-						      end_field, groupby_field));
-		break;
-	    default:
-		FATAL_ERROR("?");
-	    }
+        switch(opt) 
+        {
+            case 'a':
+                seq.addModule(new LatencyGroupByIntBasic(seq.tail(), start_field, 
+                                                         end_field, groupby_field));
+                break;
+            case 'b':
+                seq.addModule(new LatencyGroupByIntFixed(seq.tail(), start_field, 
+                                                         end_field, groupby_field));
+                break;
+            case 'c':
+                seq.addModule(new LatencyGroupByIntGeneral(seq.tail(), start_field, 
+                                                           end_field, groupby_field));
+                break;
+            case 'd':
+                seq.addModule(new LatencyGroupByNoop(seq.tail(), start_field, 
+                                                     end_field, groupby_field));
+                break;
+            case 'e': seq.addModule(new LatencyGroupByAccessFixed
+                                    (seq.tail(), "enter_driver", "leave_driver",
+                                     "logical_volume_number", variant-1));
+                break;
+            case 'f': seq.addModule(new LatencyGroupByAccessBasic
+                                    (seq.tail(), "enter_driver", "leave_driver",
+                                     "logical_volume_number", variant-1));
+                break;
+            case 'g': seq.addModule(new LatencyGroupByAccessGeneral
+                                    (seq.tail(), "enter_driver", "leave_driver",
+                                     "logical_volume_number", variant-1));
+                break;
+            case 'i': seq.addModule(new LatencyGroupByAccessNN
+                                    (seq.tail(), "enter_driver", "leave_driver",
+                                     "logical_volume_number", variant-1));
+                break;
+            case 'j':
+                seq.addModule(new LatencyGroupByIntNN(seq.tail(), start_field, 
+                                                      end_field, groupby_field));
+                break;
+            default:
+                FATAL_ERROR("?");
+        }
     }
 
-    for(int i=optind; i<argc; ++i) {
-	source->addSource(argv[i]);
+    for (int i=optind; i<argc; ++i) {
+        source->addSource(argv[i]);
     }
     seq.getAndDelete();
     
     RowAnalysisModule::printAllResults(seq,1);
 
     printf("extents: %.2f MB -> %.2f MB\n",
-	   (double)(source->total_compressed_bytes)/(1024.0*1024),
-	   (double)(source->total_uncompressed_bytes)/(1024.0*1024));
+           (double)(source->total_compressed_bytes)/(1024.0*1024),
+           (double)(source->total_uncompressed_bytes)/(1024.0*1024));
     printf("                   common\n");
     printf("MB compressed:   %8.2f\n",
-	   (double)source->total_compressed_bytes/(1024.0*1024));
+           (double)source->total_compressed_bytes/(1024.0*1024));
     printf("MB uncompressed: %8.2f\n",
-	   (double)source->total_uncompressed_bytes/(1024.0*1024));
+           (double)source->total_uncompressed_bytes/(1024.0*1024));
     printf("wait fraction :  %8.2f\n",
-	   source->waitFraction());
+           source->waitFraction());
     
     return 0;
 }
