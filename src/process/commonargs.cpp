@@ -29,7 +29,6 @@ void flag_handler(int* argc, char* argv[], int& cur_arg, int& num_munged_args,
     for (++cur_arg ; cur_arg < *argc ; ++cur_arg) {
         ++num_munged_args;
         arg = argv[cur_arg];
-                
         if (arg[0] == '-' && arg[1] == '-') {
             // Since all these variables are references to the ones in 
             // getPackingArgs, but we just determined that this next argument
@@ -51,6 +50,7 @@ void flag_handler(int* argc, char* argv[], int& cur_arg, int& num_munged_args,
         // appropriately.
         for (int i = 0; i < Extent::num_comp_algs; ++i) {
             if (strcmp(Extent::compression_algs[i].name, arg) == 0) {
+                isAnAlg = true;
                 switch(flagType) {
                     case ENABLE:
                         commonArgs -> compress_modes |= 
@@ -68,8 +68,6 @@ void flag_handler(int* argc, char* argv[], int& cur_arg, int& num_munged_args,
                         // The flag type was not one of the elements of the enum
                         break;
                 }
-                isAnAlg = true;
-                break;
             }
         }
         // Wasn't a compression algorithm ---  make sure that the argument isn't counted as one
@@ -127,12 +125,16 @@ getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs) {
             INVARIANT(commonArgs->extent_size >= 1024,
                       format("extent size %d (%s), < 1024 doesn't make sense")
                       % commonArgs->extent_size % argv[cur_arg]);
+            // Check for arguments in the old format -- provided for backwards
+            // compatability.
+        } else if (oldStyle(argv, cur_arg, num_munged_args, commonArgs)) {
+            continue;
         } else {
             // Ignore unrecognized arguments, but keep looking for more...
             // Caution: if a recognized argument is found following this one
             // the unrecognized argument will be removed instead and not be dealt
             // with later by the outer program. Consequently, the recognized argument
-            // will be handled but not removed from the argument array. 
+            // will be handled but not removed from the argument array.
             --num_munged_args;
             continue; 
         }
@@ -181,4 +183,39 @@ const std::string packingOptions() {
             "enabled, 64*1024 otherwise)\n";
 
     return returnStr;
+}
+
+bool oldStyle(char* argv[], int& cur_arg,  int& num_munged_args, 
+                   commonPackingArgs* commonArgs) {
+    
+    if (strcmp(argv[cur_arg],"--disable-lzo") == 0) {
+        commonArgs->compress_modes &= ~Extent::compression_algs[1].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--disable-gz") == 0) {
+        commonArgs->compress_modes &= ~Extent::compression_algs[2].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--disable-bz2") == 0) {
+        commonArgs->compress_modes &= ~Extent::compression_algs[3].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--disable-lzf") == 0) {
+        commonArgs->compress_modes &= ~Extent::compression_algs[4].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--compress-lzo") == 0) {
+        commonArgs->compress_modes = Extent::compression_algs[1].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--compress-gz") == 0) {
+        commonArgs->compress_modes = Extent::compression_algs[2].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--compress-bz2") == 0) {
+        commonArgs->compress_modes = Extent::compression_algs[3].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--compress-lzf") == 0) {
+        commonArgs->compress_modes = Extent::compression_algs[4].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--compress-none") == 0) {
+        commonArgs->compress_modes = Extent::compression_algs[0].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--enable-lzo") == 0) {
+        commonArgs->compress_modes |= Extent::compression_algs[1].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--enable-gz") == 0) {
+        commonArgs->compress_modes |= Extent::compression_algs[2].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--enable-bz2") == 0) {
+        commonArgs->compress_modes |= Extent::compression_algs[3].compress_flag;
+    } else if (strcmp(argv[cur_arg],"--enable-lzf") == 0) {
+        commonArgs->compress_modes |= Extent::compression_algs[4].compress_flag;
+    } else {
+        return false;
+    }
+    return true;
 }

@@ -10,6 +10,13 @@ Deprecation notes:
     read sharing between modules.  See DataSeriesModule.hpp for the rules during the transition.
 
 ---------------------------------------------------------------
+2013-10-22:
+   * Added support for three new compression algorithms, snappy, LZ4, and LZ4HC. Also made some
+     minor modifications to the processing of the compression libraries in order to simplify
+     the process for future additions.
+   * New common args format introduced for improved flexibility (backwards compatability
+     maintained). The format allows for multiple arguments with one command, for example:
+                  --compress none --enable snappy lzf lz4 
 
 2012-05-11:
    * Release.  Repositories with packages seem to be functional for all OSs we build packages for.

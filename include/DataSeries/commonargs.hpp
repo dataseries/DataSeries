@@ -29,4 +29,9 @@ struct commonPackingArgs {
 void getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs);
 const std::string packingOptions();
 
+// Provided for backwards compatability, checks for arguments passed in the
+// old format (e.g. --compress-lzf instead of -- compress lzf).
+bool oldStyle(char* argv[], int& cur_arg,  int& num_munged_args, 
+                   commonPackingArgs* commonArgs);
+
 #endif
