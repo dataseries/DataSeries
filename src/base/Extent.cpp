@@ -1043,31 +1043,22 @@ bool Extent::unpackLZF(byte* output, byte* input,
 bool Extent::packSnappy(byte* input, int32 inputsize,
                         Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_SNAPPY
-    if (into.size() == 0) {
-        into.resize(inputsize, false);
-    }
-    
+
     size_t output_length = snappy_max_compressed_length((size_t)inputsize);
-    char output[output_length];
+    into.resize(output_length, false);
+
     snappy_status ret = snappy_compress((const char *)input,
                                         (size_t)inputsize,
-                                        output,
+                                        (char *)into.begin(),
                                         &output_length);
-    if (ret != SNAPPY_OK) {
-        return false;
+
+    if ( (ret == SNAPPY_OK) && (output_length < (size_t)inputsize) ) {
+        into.resize(output_length);
+        return true;
     }
 
-    Extent::ByteArray::iterator it = into.begin();
-    char* outIt = output;
-    char* start = output; 
+    return false;
 
-    for (; it != into.end() && outIt != (start + output_length); ++it,++outIt) {
-        *it = *outIt;
-    }
-  
-    into.resize(output_length);
-   
-    return true;
 #else
     return false;
 #endif
@@ -1097,31 +1088,21 @@ bool Extent::unpackSnappy(byte* output, byte* input,
 bool Extent::packLZ4(byte* input, int32 inputsize,
                      Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_LZ4
-    if (into.size() == 0) {
-        into.resize(inputsize, false);
-    }
   
     int output_length = LZ4_compressBound((int)inputsize);
-    char output[output_length];
+    into.resize(output_length, false);
+  
     int32 ret = LZ4_compress((const char *)input,
-                             (char *)&output,
+                             (char *)into.begin(),
                              inputsize);
 
-    if (ret == 0) {
-        return false;
+    if ( (ret > 0) && (ret < inputsize) ) {
+        into.resize(ret);
+        return true;
     }
 
-    Extent::ByteArray::iterator it = into.begin();
-    char* outIt = output;
-    char* start = output;
+    return false;
 
-    for (; it != into.end() && outIt != (start + ret); ++it,++outIt) {
-        *it = *outIt;
-    }
-
-    into.resize(ret);
-
-    return true;
 #else
     return false;
 #endif
@@ -1130,30 +1111,21 @@ bool Extent::packLZ4(byte* input, int32 inputsize,
 bool Extent::packLZ4HC(byte* input, int32 inputsize,
                        Extent::ByteArray &into, int compression_level) {
 #if DATASERIES_ENABLE_LZ4
-    if (into.size() == 0) {
-        into.resize(inputsize, false);
-    }
-  
+
     int output_length = LZ4_compressBound((int)inputsize);
-    char output[output_length];
+    into.resize(output_length, false);
+
     int32 ret = LZ4_compressHC((const char *)input,
-                               (char *)&output,
+                               (char *)into.begin(),
                                inputsize);
-    if (ret == 0) {
-        return false;
+
+    if ( (ret > 0) && (ret < inputsize) ) {
+        into.resize(ret);
+        return true;
     }
 
-    Extent::ByteArray::iterator it = into.begin();
-    char* outIt = output;
-    char* start = output;
+    return false;
 
-    for (; it != into.end() && outIt != (start + ret); ++it,++outIt) {
-        *it = *outIt;
-    }
-
-    into.resize(ret);
-
-    return true;
 #else
     return false;
 #endif
@@ -1224,29 +1196,20 @@ Extent::ByteArray *Extent::compressBytes(byte *input, int32 input_size,
         bool packResult = compression_algs[i].packFunc(input, input_size,
                                                        *next_pack, 
                                                        compression_level);
-        if (packResult) {
-            if (best_packed == NULL || next_pack->size() < best_packed->size()) {
+        
+
+        if ( (packResult && next_pack->size() < (size_t)input_size) &&
+             (best_packed == NULL || next_pack->size() < best_packed->size()) ) { 
+                delete best_packed;
                 best_packed = next_pack;
                 *mode = i;
-            }
-        }
-
-        if (best_packed != next_pack) {
+        } else {
             delete next_pack;
         }
     }
     
-    if (best_packed == NULL) {
+    if (best_packed == NULL) { 
         // must be no coding, or all compression algorithms worked badly
-        best_packed = new Extent::ByteArray;
-        best_packed->resize(input_size, false);
-        memcpy(best_packed->begin(), input, input_size);
-    }
-    // TODO: Check if having a ">=" rather than a ">" here would have any
-    // noticeable effect on the running time (positive or negative)
-    else if (best_packed->size() > (size_t)input_size) {
-        // So, no compression at all would have been better than any
-        // compression algorithm that we attempted.
         delete best_packed;
         best_packed = new Extent::ByteArray;
         best_packed->resize(input_size, false);

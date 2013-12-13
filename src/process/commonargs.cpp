@@ -80,8 +80,7 @@ void flag_handler(int* argc, char* argv[], int& cur_arg, int& num_munged_args,
 // Handles all command-line arguments beginning with --.  Trailing args that
 // don't begin with -- are left untouched, but shifted to the beginning of
 // argv.  Does read all the way through argv, though.
-void
-getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs) {
+void getPackingArgs(int *argc, char *argv[], commonPackingArgs *commonArgs) {
     int cur_arg = 1;
 
     // Keep count of how many elements of argv are munged by this function

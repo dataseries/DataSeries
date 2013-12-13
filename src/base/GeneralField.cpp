@@ -730,6 +730,7 @@ GF_Int32::GF_Int32(xmlNodePtr fieldxml, ExtentSeries &series, const std::string 
     } else {
         divisor = stringToInteger<int32_t>(reinterpret_cast<const char *>(xml_divisor));
     }
+    xmlFree(xml_divisor);
 }
 
 GF_Int32::~GF_Int32() { }
@@ -865,7 +866,8 @@ GF_Int64::GF_Int64(xmlNodePtr fieldxml, ExtentSeries &series,
     } else {
         offset = stringToInteger<int64_t>(reinterpret_cast<char *>(xml_offset));
     }
-
+    xmlFree(xml_divisor);
+    xmlFree(xml_offset);
 }
 
 GF_Int64::~GF_Int64() {
@@ -999,6 +1001,8 @@ GF_Double::GF_Double(xmlNodePtr fieldxml, ExtentSeries &series, const std::strin
     } else {
         multiplier = stringToDouble(reinterpret_cast<char *>(xml_multiplier));
     }
+    xmlFree(xml_multiplier);
+    xmlFree(xml_offset);
 }
 
 GF_Double::~GF_Double() {
@@ -1148,6 +1152,9 @@ GF_Variable32::GF_Variable32(xmlNodePtr fieldxml, ExtentSeries &series, const st
 
     if (false) printf("column %s: %d %d\n",column.c_str(),printhex,printmaybehex);
 
+    xmlFree(xmlprintstyle);
+    xmlFree(xml_printhex);
+    xmlFree(xml_printmaybehex);
 }
 
 GF_Variable32::~GF_Variable32() { }

@@ -516,9 +516,11 @@ int main(int argc, char *argv[]) {
     clock_gettime(CLOCK_REALTIME, end_clock);
     double clock_time = (end_clock->tv_sec - start_clock->tv_sec) +
                         ((end_clock->tv_nsec - start_clock->tv_nsec)/1000000000.0);    
-
-     cout << boost::format("total repacking clock time: %f") % clock_time << endl;
-     cout << boost::format("total repacking cpu time: %f") % ( ((float)cpu_time)/CLOCKS_PER_SEC ) << endl;
+    delete start_clock;
+    delete end_clock;
+    
+    cout << boost::format("total repacking clock time: %f") % clock_time << endl;
+    cout << boost::format("total repacking cpu time: %f") % ( ((float)cpu_time)/CLOCKS_PER_SEC ) << endl;
 #endif
 
      return 0;
