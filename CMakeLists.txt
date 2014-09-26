@@ -45,6 +45,7 @@ SET(CMAKE_MODULE_FILES
 	DataSeriesCMakeUtil.cmake
 	FindDataSeries.cmake
         FindThrift.cmake # TODO-reviewer: should this go into lintel?
+         FindLibRt.cmake
 )
 
 INSTALL(FILES ${CMAKE_MODULE_FILES}
