@@ -12,34 +12,34 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  bacct2ds - convert the LSF bacct accounting logs into dataseries
+bacct2ds - convert the LSF bacct accounting logs into dataseries
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % bacct2ds input-name cluster-name output-ds-name
+% bacct2ds input-name cluster-name output-ds-name
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  bacct2ds converts the LSF bacct accounting logs into dataseries.  It also has some complicated
-  logic for parsing job names and directories and extracting from them information to record in
-  specific columns.  That parsing is currently specific to parsing the names used by a feature
-  animation company. bacct2ds is most commonly used with the bacct2ds batch-parallel module 
-  to convert a large collection of accounting files in single go.
+bacct2ds converts the LSF bacct accounting logs into dataseries.  It also has some complicated
+logic for parsing job names and directories and extracting from them information to record in
+specific columns.  That parsing is currently specific to parsing the names used by a feature
+animation company. bacct2ds is most commonly used with the bacct2ds batch-parallel module
+to convert a large collection of accounting files in single go.
 
-  =head1 EXAMPLES
+=head1 EXAMPLES
 
-  % bacct2ds log.bacct palo-alto log.ds
-  % gunzip -c 2010-01-05.bacct.gz | bacct2ds - lax 2010-01-05.ds
+% bacct2ds log.bacct palo-alto log.ds
+% gunzip -c 2010-01-05.bacct.gz | bacct2ds - lax 2010-01-05.ds
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  batch-parallel(1)
+batch-parallel(1)
 
-  =cut
+=cut
 */
 
 // TODO: fix this up so that it has a portion which parses the

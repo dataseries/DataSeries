@@ -3,85 +3,85 @@
 
    See the file named COPYING for license details
 
-   =pod
+=pod
 
-   =head1 NAME
+=head1 NAME
 
-   nettrace2ds - convert network traces into NFS packet and IP packet information
+nettrace2ds - convert network traces into NFS packet and IP packet information
 
-   =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-   % nettrace2ds --info --{erf|pcap} I<input file>
-   % nettrace2ds [common-args] --convert --{erf|pcap} I<first-record-num> I<expected-record-count> I<output.ds> I<input>...
+% nettrace2ds --info --{erf|pcap} I<input file>
+% nettrace2ds [common-args] --convert --{erf|pcap} I<first-record-num> I<expected-record-count> I<output.ds> I<input>...
 
-   =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-   nettrace2ds converts either standard pcap files, or the special .erf files captured by the Endace
-   network capture cards into dataseries files.  It's primary purpose is to extract the NFS trace
-   information from the packet traces and convert that information into summary information.  nettrace
-   2ds originally started as a variant of nfsdump, but it was entirely rewritten in order to run
-   faster and more scalably.  Normally nettrace2ds would be run under batch-parallel using the
-   nettrace2ds module so that a large collection of trace files could be processed in parallel.
+nettrace2ds converts either standard pcap files, or the special .erf files captured by the Endace
+network capture cards into dataseries files.  It's primary purpose is to extract the NFS trace
+information from the packet traces and convert that information into summary information.  nettrace
+2ds originally started as a variant of nfsdump, but it was entirely rewritten in order to run
+faster and more scalably.  Normally nettrace2ds would be run under batch-parallel using the
+nettrace2ds module so that a large collection of trace files could be processed in parallel.
 
-   nettrace2ds operates in two phases in order to be able to run in parallel.  In the first phase
-   (--info), all of the input file groups are read and converted and a record count is calculated.
-   These separate record counts can be combined to calculate a first record number for each of the
-   separate groups.  In the second phase (--convert) the data is read and converted to the final
-   output.  The two phases allow the conversion to run in parallel on multiple cores, and even on
-   separate machines.
+nettrace2ds operates in two phases in order to be able to run in parallel.  In the first phase
+(--info), all of the input file groups are read and converted and a record count is calculated.
+These separate record counts can be combined to calculate a first record number for each of the
+separate groups.  In the second phase (--convert) the data is read and converted to the final
+output.  The two phases allow the conversion to run in parallel on multiple cores, and even on
+separate machines.
 
-   =head1 EXAMPLES
+=head1 EXAMPLES
 
-   =head2 Bulk conversion with lindump-mmap...
+=head2 Bulk conversion with lindump-mmap...
 
-   ...
+...
 
-   =head2 Continuous conversion with tcpdump...
+=head2 Continuous conversion with tcpdump...
 
-   # TODO: this process doesn't actually generate valid .ds files for analysis.
-   # Likely fix is to change nettrace2ds.pm such that when the we are doing
-   # conversion, we set finished_before to the first number we found, and we set
-   # @nums to 0..last_num_found.  Then it should scan all the info files (and so
-   # properly track the last record number), but not try to do a conversion on any
-   # of the files we've already handled.
+# TODO: this process doesn't actually generate valid .ds files for analysis.
+# Likely fix is to change nettrace2ds.pm such that when the we are doing
+# conversion, we set finished_before to the first number we found, and we set
+# @nums to 0..last_num_found.  Then it should scan all the info files (and so
+# properly track the last record number), but not try to do a conversion on any
+# of the files we've already handled.
 
-   % sudo tcpdump -i eth0 -s 2000 -w /dev/shm/trace.pcap -C 1
-   % CUR_FILES=`echo /dev/shm/trace.pcap*`
-   % batch-parallel nettrace2ds info infodir=/tmp/info groupsize=1 -- ${=CUR_FILES}
-   % batch-parallel nettrace2ds convert infodir=/tmp/info dsdir=/tmp/ds record-start=0 groupsize=1 -- ${=CUR_FILES}
-   % sudo rm -f ${=CUR_FILES}
-   # and repeat from the CUR_FILES line.  I tried it manually and it seemed
-   # to work.
+% sudo tcpdump -i eth0 -s 2000 -w /dev/shm/trace.pcap -C 1
+% CUR_FILES=`echo /dev/shm/trace.pcap*`
+% batch-parallel nettrace2ds info infodir=/tmp/info groupsize=1 -- ${=CUR_FILES}
+% batch-parallel nettrace2ds convert infodir=/tmp/info dsdir=/tmp/ds record-start=0 groupsize=1 -- ${=CUR_FILES}
+% sudo rm -f ${=CUR_FILES}
+# and repeat from the CUR_FILES line.  I tried it manually and it seemed
+# to work.
 
-   =head1 BUGS
+=head1 BUGS
 
-   =over 4
+=over 4
 
-   =item * 
+=item *
 
-   nettrace2ds does not properly convert nfs operations that start partway through a packet unless the
-   start of that packet was an nfs operation boundary.
+nettrace2ds does not properly convert nfs operations that start partway through a packet unless the
+start of that packet was an nfs operation boundary.
 
-   =item *
+=item *
 
-   The revision number of the code should be recorded in the output file
+The revision number of the code should be recorded in the output file
 
-   =item *
+=item *
 
-   The raw RPC size and packet overhead should be included so that the ip and nfs layers can be
-   properly accounted.
+The raw RPC size and packet overhead should be included so that the ip and nfs layers can be
+properly accounted.
 
-   =item *
+=item *
 
-   The documentation is mediocre.
+The documentation is mediocre.
 
-   =back
+=back
 
-   =head1 SEE ALSO
+=head1 SEE ALSO
 
-   dataseries-utils(7), batch-parallel(1)
+dataseries-utils(7), batch-parallel(1)
 
-   =cut
+=cut
 */
 
 // Note: info processing should do all of the parsing and validation
@@ -3293,9 +3293,9 @@ void testBWRolling() {
 
 /*
 
-  =pod
+=pod
 
-  =cut
+=cut
 */
 
 

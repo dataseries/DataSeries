@@ -11,46 +11,46 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  wcweb2ds - convert the 1998 world cup traces to dataseries
+wcweb2ds - convert the 1998 world cup traces to dataseries
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % wcweb2ds [ds-common-args] <input-path or -> <output-ds-path>
+% wcweb2ds [ds-common-args] <input-path or -> <output-ds-path>
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  wcweb2ds converts the 1998 world cup traces to dataseries.  The world
-  cup traces are a very large, publically available set of web traces.
-  They have been published in a special binary record format that was
-  designed to reduce space usage.  This converter converts to a
-  dataseries version of that record format.
+wcweb2ds converts the 1998 world cup traces to dataseries.  The world
+cup traces are a very large, publically available set of web traces.
+They have been published in a special binary record format that was
+designed to reduce space usage.  This converter converts to a
+dataseries version of that record format.
 
-  =head1 EXAMPLES
+=head1 EXAMPLES
 
-  % gunzip -c < wc_day46_3.gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
-  % wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
-  # transform a whole bunch of files using a batch cluster, checking to 
-  # make sure the conversion worked.
-  % batch-parallel -w 100 make printcmd \
-  transform='s,/wc/,/wc/ds/,;s,\.gz$,.ds,;' \
-  command='gunzip -c < $< >$TMP/in' \
-  command='wcweb2ds --compress-gz --extent-size=1000000 $TMP/in $@' \
-  command='ds2wcweb $@ >$TMP/out' command='cmp $TMP/in $TMP/out' \
-  -- wc_day*gz
+% gunzip -c < wc_day46_3.gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
+% wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
+# transform a whole bunch of files using a batch cluster, checking to
+# make sure the conversion worked.
+% batch-parallel -w 100 make printcmd \
+transform='s,/wc/,/wc/ds/,;s,\.gz$,.ds,;' \
+command='gunzip -c < $< >$TMP/in' \
+command='wcweb2ds --compress-gz --extent-size=1000000 $TMP/in $@' \
+command='ds2wcweb $@ >$TMP/out' command='cmp $TMP/in $TMP/out' \
+-- wc_day*gz
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  ds2wcweb(1), DataSeries(5), DSCommonArgs(1), batch-parallel --man
+ds2wcweb(1), DataSeries(5), DSCommonArgs(1), batch-parallel --man
 
-  =head1 AUTHOR/CONTACT
+=head1 AUTHOR/CONTACT
 
-  Eric Anderson <software@cello.hpl.hp.com>
+Eric Anderson <software@cello.hpl.hp.com>
 
-  =cut
+=cut
 */
 
 #include <arpa/inet.h>

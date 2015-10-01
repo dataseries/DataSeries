@@ -10,31 +10,31 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  dsextentindex - calculate a min-max extent index over one or more input files
+dsextentindex - calculate a min-max extent index over one or more input files
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % dsextentindex [common-args] [--new type-prefix field[,field...]] index.ds input-filename..."
+% dsextentindex [common-args] [--new type-prefix field[,field...]] index.ds input-filename..."
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  dsextentindex calculates a min-max index over a set of fields for a given set of inputs.  For each
-  index in a file, it records the minimum and maximum value of each field as well as recording the
-  extent offset and filename.  For that reason, it is generally best to use full pathnames for the
-  input filenames.  If index.ds already exists, then dsextentindex will read in the existing index
-  and update it, only scanning files that have not yet been read.  If index.ds does not exist then
-  the --new option is required to tell dsextentindex what extent to index as well as which fields
-  to index within that extent.
+dsextentindex calculates a min-max index over a set of fields for a given set of inputs.  For each
+index in a file, it records the minimum and maximum value of each field as well as recording the
+extent offset and filename.  For that reason, it is generally best to use full pathnames for the
+input filenames.  If index.ds already exists, then dsextentindex will read in the existing index
+and update it, only scanning files that have not yet been read.  If index.ds does not exist then
+the --new option is required to tell dsextentindex what extent to index as well as which fields
+to index within that extent.
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  dataseries-utils(7)
+dataseries-utils(7)
 
-  =cut
+=cut
 
 */
 

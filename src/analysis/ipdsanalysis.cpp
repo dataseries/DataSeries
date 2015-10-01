@@ -5,51 +5,51 @@
 */
 
 /** 
-    =pod
+=pod
 
-    =head1 NAME
+=head1 NAME
 
-    ipdsanalysis - IP trace data analysis
+ipdsanalysis - IP trace data analysis
 
-    =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-    % ipdsanalysis [module-selection-options] (file...)|(index.ds start-time end-time)
+% ipdsanalysis [module-selection-options] (file...)|(index.ds start-time end-time)
 
-    =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-    ipdsanalysis is a program for running analysis on the IP extents in the nfs traces.
-    It has four different types of modules that are described below.
+ipdsanalysis is a program for running analysis on the IP extents in the nfs traces.
+It has four different types of modules that are described below.
 
-    =head1 OPTIONS
+=head1 OPTIONS
 
-    =over 4
+=over 4
 
-    =item -a I<interval in seconds>
+=item -a I<interval in seconds>
 
-    Calculate package and byte counts for intervals of length I<interval> grouped by (src,dest) pairs,
-    src only, andllow llow llow  dest only.
+Calculate package and byte counts for intervals of length I<interval> grouped by (src,dest) pairs,
+src only, andllow llow llow  dest only.
 
-    =item -b I<interval-seconds,...>[:I<reorder-seconds>[:I<update-check-interval>]]
+=item -b I<interval-seconds,...>[:I<reorder-seconds>[:I<update-check-interval>]]
 
-    Calculate rolling packet statistics simultaneously for the different specified interval-seconds.
-    Calculates quantile distributions on the bandwidth and packets per second that are achieved.  Allow
-    packets to be reorder by a specified number of seconds to deal with glitches in the traces, and
-    TODO: something about update-check-interval.
+Calculate rolling packet statistics simultaneously for the different specified interval-seconds.
+Calculates quantile distributions on the bandwidth and packets per second that are achieved.  Allow
+packets to be reorder by a specified number of seconds to deal with glitches in the traces, and
+TODO: something about update-check-interval.
 
-    =item -c I<interval-width>
+=item -c I<interval-width>
 
-    Calculate a time series of packets per second and bytes per second at the specified interval width.
+Calculate a time series of packets per second and bytes per second at the specified interval width.
 
-    =item -d <min-bytes|fraction>
+=item -d <min-bytes|fraction>
 
-    Calculate a datacube over source, source port, dest, dest port, and packet size.  Specify a minimum
-    number of bytes, and print out all of the cube entries above that minimum number, or specify a
-    fraction of the entries to print, and print out the # bytes required to select that fraction of
-    entries, and then print out the entires.
+Calculate a datacube over source, source port, dest, dest port, and packet size.  Specify a minimum
+number of bytes, and print out all of the cube entries above that minimum number, or specify a
+fraction of the entries to print, and print out the # bytes required to select that fraction of
+entries, and then print out the entires.
 
-    =back
+=back
 
-    =cut
+=cut
 */
 
 // TODO: update this to handle the newer style trace files.

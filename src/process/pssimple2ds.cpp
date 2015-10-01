@@ -3,32 +3,32 @@
 
   See the file named COPYING for license details
 
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  pssimple2ds - convert the output of ps-trace-simplify to dataseries
+pssimple2ds - convert the output of ps-trace-simplify to dataseries
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % pssimple2ds [common-args] I<input.txt> I<output.ds> [I<min-record-time>]
+% pssimple2ds [common-args] I<input.txt> I<output.ds> [I<min-record-time>]
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  pssimple2ds converts the output of ps-trace-simplify into dataseries.  It allows process traces to
-  then be used in other analysis, e.g. lvpvprocessusage.
+pssimple2ds converts the output of ps-trace-simplify into dataseries.  It allows process traces to
+then be used in other analysis, e.g. lvpvprocessusage.
 
-  =head1 BUGS
+=head1 BUGS
 
-  This program can probably be replaced entirely with csv2ds and dsselect for min-record-time.
+This program can probably be replaced entirely with csv2ds and dsselect for min-record-time.
 
-  The documentation is minimal.
+The documentation is minimal.
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  dataseries-utils(7), lvpvprocessusage(1), ps-trace-simplify(1)
+dataseries-utils(7), lvpvprocessusage(1), ps-trace-simplify(1)
 
-  =cut
+=cut
 
 */
 

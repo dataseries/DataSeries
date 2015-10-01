@@ -14,69 +14,69 @@
 #include <boost/format.hpp>
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  network-driverdump - faster packet capture than lindump-mmap and tcpdump on linux
+network-driverdump - faster packet capture than lindump-mmap and tcpdump on linux
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % network-driverdump [-i I<interface> ] [-o I<output-basename> ] [other options]
+% network-driverdump [-i I<interface> ] [-o I<output-basename> ] [other options]
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  When capturing full packet traces, occasionally lindump-mmap is still not sufficiently fast.  In
-  that situation, if the nic driver has been patched to support driverdump, then the
-  network-driverdump program can be used to control the drivers dumping of data directly to a file
-  entirely bypassing the networking stack.  For small packets, driverdump can capture packets faster
-  than the linux network stack can drop them (tcpdump host <no-such-host>) because it can avoid
-  packet allocation code.  However, this requires dedicating an interface to packet capture, and
-  patching the kernel driver.
+When capturing full packet traces, occasionally lindump-mmap is still not sufficiently fast.  In
+that situation, if the nic driver has been patched to support driverdump, then the
+network-driverdump program can be used to control the drivers dumping of data directly to a file
+entirely bypassing the networking stack.  For small packets, driverdump can capture packets faster
+than the linux network stack can drop them (tcpdump host <no-such-host>) because it can avoid
+packet allocation code.  However, this requires dedicating an interface to packet capture, and
+patching the kernel driver.
 
-  =head1 OPTIONS
+=head1 OPTIONS
 
-  =over 4 
+=over 4
 
-  =item -b I<buffer_mb>
+=item -b I<buffer_mb>
 
-  Specify the size of the buffer, and the size of each resulting file.
+Specify the size of the buffer, and the size of each resulting file.
 
-  =item -h 
+=item -h
 
-  Get help
+Get help
 
-  =item -i I<interface-name>
+=item -i I<interface-name>
 
-  Specify the interface for packet capture.
+Specify the interface for packet capture.
 
-  =item -o I<output-basename>
+=item -o I<output-basename>
 
-  Specify the base output name for the files. Usually this would be /dev/shm
+Specify the base output name for the files. Usually this would be /dev/shm
 
-  =item -t I<nthreads>
+=item -t I<nthreads>
 
-  Specify the number of threads that should be used with driverdump.  3 is usually sufficient to keep
-  the kernel from ever failing to have a buffer to use for capture because the threads are doing
-  relatively little work.
+Specify the number of threads that should be used with driverdump.  3 is usually sufficient to keep
+the kernel from ever failing to have a buffer to use for capture because the threads are doing
+relatively little work.
 
-  =item -s
+=item -s
 
-  Get driverdump statistics from the interface and then exit.
+Get driverdump statistics from the interface and then exit.
 
-  =item -q I<quick-stats-interval-secs>
+=item -q I<quick-stats-interval-secs>
 
-  Print interim statistics every I<quick-stats-interval-secs> seconds.  By default statistics are
-  printed when the files are rotated.  This option helps verify that capture is working even when the
-  network is lightly loaded and so is not generating enough traffic to rotate files.
+Print interim statistics every I<quick-stats-interval-secs> seconds.  By default statistics are
+printed when the files are rotated.  This option helps verify that capture is working even when the
+network is lightly loaded and so is not generating enough traffic to rotate files.
 
-  =back
+=back
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  tcpdump(1), /usr/share/doc/DataSeries/fast2009-nfs-analysis.pdf
+tcpdump(1), /usr/share/doc/DataSeries/fast2009-nfs-analysis.pdf
 
-  =cut
+=cut
 */
 
 // TODO: on shutdown with 3 threads in the kernel, sending a signal to

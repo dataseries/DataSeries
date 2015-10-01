@@ -10,68 +10,68 @@
 */
 
 /* 
-   =pod
+=pod
 
-   =head1 NAME
+=head1 NAME
 
-   dsrepack - split or merge DataSeries files and change the compression types
+dsrepack - split or merge DataSeries files and change the compression types
 
-   =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-   dsrepack [common-options] [--verbose] [--target-file-size=MiB] [--no-info] 
-   input-filename... output-filename
+dsrepack [common-options] [--verbose] [--target-file-size=MiB] [--no-info]
+input-filename... output-filename
 
-   =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-   In the simplest case, dsrepack takes the input files, and copies them
-   to the output filename changing the extent size and compression level
-   as specified in the common options.  If max-file-size is set,
-   output-filename is used as a base name, and the actual output names
-   will be output-filename.####.ds, starting from 0.
+In the simplest case, dsrepack takes the input files, and copies them
+to the output filename changing the extent size and compression level
+as specified in the common options.  If max-file-size is set,
+output-filename is used as a base name, and the actual output names
+will be output-filename.####.ds, starting from 0.
 
-   =head1 EXAMPLES
+=head1 EXAMPLES
 
-   dsrepack --extent-size=131072 --compress none --enable lzo lz4 cello97*ds all-cello97.ds
+dsrepack --extent-size=131072 --compress none --enable lzo lz4 cello97*ds all-cello97.ds
 
-   dsrepack --extent-size=67108864 --compress bz2 --target-file-size=100 \
-   nettrace.000000-000499.ds -- nettrace.000000-000499.split
+dsrepack --extent-size=67108864 --compress bz2 --target-file-size=100 \
+nettrace.000000-000499.ds -- nettrace.000000-000499.split
 
 
-   =head1 OPTIONS
-   
-   All of the common options apply, see dataseries(7).
+=head1 OPTIONS
 
-   =over 4
+All of the common options apply, see dataseries(7).
 
-   =item B<--target-file-size=MiB>
+=over 4
 
-   What is the target file size to be generated.  Each of the individual
-   files will be about the target file size, but the vagaries of
-   compression mean that the files will vary around the target file size.
-   The last file may be arbitrarily small.  MiB can be specified as a
-   double, so one could say 0.1 MiB, but it's not clear if that is
-   useful.
+=item B<--target-file-size=MiB>
 
-   =item B<--no-info>
+What is the target file size to be generated.  Each of the individual
+files will be about the target file size, but the vagaries of
+compression mean that the files will vary around the target file size.
+The last file may be arbitrarily small.  MiB can be specified as a
+double, so one could say 0.1 MiB, but it's not clear if that is
+useful.
 
-   Do not generate the Info::DSRepack extent.  This means that the output files
-   will contain exactly the same information as the source files.  Normally the
-   info extent is generated so the compression options for a file are known.
+=item B<--no-info>
 
-   This cannot be used when repacking a trace that already contains the 
-   Info::DSRepack extent, as dsrepack does not support removing trace data.
+Do not generate the Info::DSRepack extent.  This means that the output files
+will contain exactly the same information as the source files.  Normally the
+info extent is generated so the compression options for a file are known.
 
-   =item B<--verbose, -v>
+This cannot be used when repacking a trace that already contains the
+Info::DSRepack extent, as dsrepack does not support removing trace data.
 
-   Outputs progress reports as it processes the extents.
+=item B<--verbose, -v>
 
-   =back
+Outputs progress reports as it processes the extents.
 
-   =head1 SEE ALSO
+=back
 
-   dataseries-utils(7), dsselect(1)
+=head1 SEE ALSO
 
-   =cut
+dataseries-utils(7), dsselect(1)
+
+=cut
 */
 
 // TODO: use GeneralField/ExtentRecordCopy, we aren't changing the type so
