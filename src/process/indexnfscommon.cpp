@@ -5,25 +5,25 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  indexnfscommon - indexer for NFS Common DataSeries files
+indexnfscommon - indexer for NFS Common DataSeries files
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % indexnfscommon <index.ds> <nfs-common-files.ds...>
+% indexnfscommon <index.ds> <nfs-common-files.ds...>
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  A bad version of dsextentindex that is specific to nfs common files.
+A bad version of dsextentindex that is specific to nfs common files.
 
-  =head1 BUGS
+=head1 BUGS
 
-  TODO: obsolete this program, merge it into dsextentindex
+TODO: obsolete this program, merge it into dsextentindex
 
-  =cut
+=cut
 */
 
 

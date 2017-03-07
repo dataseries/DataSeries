@@ -3,28 +3,28 @@
 
   See the file named COPYING for license details
 
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  nfssubset - calculate a consistent subset of the animation nfs traces
+nfssubset - calculate a consistent subset of the animation nfs traces
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % nfssubset nfssubset [common-args] I<min-id> I<max-id> input.ds... output.ds
+% nfssubset nfssubset [common-args] I<min-id> I<max-id> input.ds... output.ds
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  The animation nfs trace schema stores data across multiple files.  Therefore calculating a subset
-  of a file requires selecting out the appropriate records from each of the input files.  This
-  process could be implemented by a script and dsselect, but is easier to implement using a
-  specialized program.  It selects the appropriate ids across all of the different extent types.
+The animation nfs trace schema stores data across multiple files.  Therefore calculating a subset
+of a file requires selecting out the appropriate records from each of the input files.  This
+process could be implemented by a script and dsselect, but is easier to implement using a
+specialized program.  It selects the appropriate ids across all of the different extent types.
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  dataseries-utils(7)
+dataseries-utils(7)
 
-  =cut
+=cut
 
 */
 

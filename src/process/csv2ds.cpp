@@ -23,90 +23,90 @@
 #include <DataSeries/GeneralField.hpp>
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  csv2ds - convert a comma separated value file into dataseries.
+csv2ds - convert a comma separated value file into dataseries.
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % csv2ds [options] --xml-desc-file=<path> <input.csv|-> <output.ds>
+% csv2ds [options] --xml-desc-file=<path> <input.csv|-> <output.ds>
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  Convert a comma separated value (CSV) file into dataseries.  Each line in a CSV
-  file is skipped if it starts with I<comment-prefix>.  Otherwise, it is divided
-  into separate fields using the following rules.  If it starts with
-  I<string-quote-character> then following characters are read, treating two
-  I<string-quote-characters> in a row as a single I<string-quote-character>.  A
-  field stops when we reach a I<field-separator-string> or the end of the
-  line, which can either be a newline or a a carriage return and a newline.
+Convert a comma separated value (CSV) file into dataseries.  Each line in a CSV
+file is skipped if it starts with I<comment-prefix>.  Otherwise, it is divided
+into separate fields using the following rules.  If it starts with
+I<string-quote-character> then following characters are read, treating two
+I<string-quote-characters> in a row as a single I<string-quote-character>.  A
+field stops when we reach a I<field-separator-string> or the end of the
+line, which can either be a newline or a a carriage return and a newline.
 
-  =head1 EXAMPLES
+=head1 EXAMPLES
 
-  With the file test.xml containing:
+With the file test.xml containing:
 
-  <ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
-  <field type="bool" name="bool" />
-  <field type="byte" name="byte" />
-  <field type="int32" name="int32" />
-  <field type="int64" name="int64" />
-  <field type="double" name="double" />
-  <field type="variable32" name="variable32" pack_unique="yes" />
-  </ExtentType>
+<ExtentType name="test-csv2ds" namespace="simpl.hpl.hp.com" version="1.0">
+<field type="bool" name="bool" />
+<field type="byte" name="byte" />
+<field type="int32" name="int32" />
+<field type="int64" name="int64" />
+<field type="double" name="double" />
+<field type="variable32" name="variable32" pack_unique="yes" />
+</ExtentType>
 
-  And the file test.csv containing:
+And the file test.csv containing:
 
-  # bool,byte,int32,int64,double,var32
-  true,33,1000,56,1,"Hello, World"
-  false,88,-15331,1000000000000,3.14159,"I said ""hello there."""
-  true,10,11,5,2.718281828,unquoted
+# bool,byte,int32,int64,double,var32
+true,33,1000,56,1,"Hello, World"
+false,88,-15331,1000000000000,3.14159,"I said ""hello there."""
+true,10,11,5,2.718281828,unquoted
 
-  You can run the command:
+You can run the command:
 
-  % csv2ds --compress-lzf --xml-desc-file=test.xml test.csv test.ds
+% csv2ds --compress-lzf --xml-desc-file=test.xml test.csv test.ds
 
-  To produce a DataSeries file that contains the contents of the csv file.
+To produce a DataSeries file that contains the contents of the csv file.
 
-  =head1 OPTIONS
+=head1 OPTIONS
 
-  =over 4
+=over 4
 
-  =item --xml-desc-file=I<path>
+=item --xml-desc-file=I<path>
 
-  Specifies the path of the file containing the xml description.  At the current time,
-  this option is required since csv2ds does not auto-infer field types.
+Specifies the path of the file containing the xml description.  At the current time,
+this option is required since csv2ds does not auto-infer field types.
 
-  =item --comment-prefix=I<string>
+=item --comment-prefix=I<string>
 
-  Specifies the string that may occur at the beginning of a line to introduce a comment.
-  Comment lines are skipped.
+Specifies the string that may occur at the beginning of a line to introduce a comment.
+Comment lines are skipped.
 
-  =item --field-separator=I<string>
+=item --field-separator=I<string>
 
-  Specifies the string that separates fields.  If the string starts with 0x; then it will be
-  decoded as a hexadecimal string, so you can, for example, use 0x00 to separate fields with
-  nulls.
+Specifies the string that separates fields.  If the string starts with 0x; then it will be
+decoded as a hexadecimal string, so you can, for example, use 0x00 to separate fields with
+nulls.
 
-  =item --hex-encoded-variable32
+=item --hex-encoded-variable32
 
-  Specifies that any variable32 fields (as indicated by the xml description) are hex encoded, and
-  so should be decoded before being added to the dataseries file.
+Specifies that any variable32 fields (as indicated by the xml description) are hex encoded, and
+so should be decoded before being added to the dataseries file.
 
-  =back
+=back
 
-  =head1 TODO
+=head1 TODO
 
-  =over 4
+=over 4
 
-  =item *
+=item *
 
-  Make csv2ds able to auto-infer field types
+Make csv2ds able to auto-infer field types
 
-  =back
+=back
 
-  =cut
+=cut
 
 */
 

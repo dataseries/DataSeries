@@ -6,21 +6,21 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  ellardanalysis - Emulate the Ellard nfsscan per-client analysis
+ellardanalysis - Emulate the Ellard nfsscan per-client analysis
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % ellardanalysis input.ds...
+% ellardanalysis input.ds...
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  The ellardanalysis program emulates the nfsscan program that can be found in the trace distribution.
-  It (roughly) calculates counts for the various operation types.  It selects out a set of interesting
-  operations.
+The ellardanalysis program emulates the nfsscan program that can be found in the trace distribution.
+It (roughly) calculates counts for the various operation types.  It selects out a set of interesting
+operations.
 
 */
 #include <Lintel/HashMap.hpp>
