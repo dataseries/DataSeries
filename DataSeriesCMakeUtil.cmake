@@ -6,11 +6,12 @@
 # Utility macros for DataSeries
 
 INCLUDE(LintelDocs)
+INCLUDE(FindLibRt)
 
 MACRO(DATASERIES_PROGRAM_NOINST program_name)
     ADD_EXECUTABLE(${program_name} ${program_name}.cpp ${ARGN})
     ADD_DEPENDENCIES(${program_name} DataSeries)
-    TARGET_LINK_LIBRARIES(${program_name} DataSeries ${LINTEL_LIBRARIES})
+    TARGET_LINK_LIBRARIES(${program_name} DataSeries ${LIBRT_LIBRARIES} ${LINTEL_LIBRARIES})
 ENDMACRO(DATASERIES_PROGRAM_NOINST)
 
 # Generates a dataseries program, pass in the name of the executable; the assumption is that
@@ -19,7 +20,7 @@ ENDMACRO(DATASERIES_PROGRAM_NOINST)
 MACRO(DATASERIES_PROGRAM program_name)
     ADD_EXECUTABLE(${program_name} ${program_name}.cpp ${ARGN})
     ADD_DEPENDENCIES(${program_name} DataSeries)
-    TARGET_LINK_LIBRARIES(${program_name} DataSeries)
+    TARGET_LINK_LIBRARIES(${program_name} DataSeries ${LIBRT_LIBRARIES})
     INSTALL(TARGETS ${program_name} DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
     IF(DEFINED DATASERIES_POD2MAN_RELEASE)
         LINTEL_POD2MAN(${program_name}.cpp 1 ${DATASERIES_POD2MAN_RELEASE} "-" ${program_name}.1)
