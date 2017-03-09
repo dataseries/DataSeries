@@ -6,29 +6,29 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  dsrecover - Recover any data that was successfully written to the specified DataSeries file.
+dsrecover - Recover any data that was successfully written to the specified DataSeries file.
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % dsrecover [--fail-limit=10] [common-args] input output
+% dsrecover [--fail-limit=10] [common-args] input output
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  DataSeries files include a trailer in order to make reading the files more efficient.  However, it
-  the writer of a file crashed, they may not have written the trailer, and they may have partially
-  written an extent.  dsrecover attempts to read as much of a dataseries file as possible.  If an
-  individual extent is corrupt it will skip that extent and try to tread the next one.  It will keep
-  trying until it either reaches the end of the file or it has up to fail-limit consecutive failures.
+DataSeries files include a trailer in order to make reading the files more efficient.  However, it
+the writer of a file crashed, they may not have written the trailer, and they may have partially
+written an extent.  dsrecover attempts to read as much of a dataseries file as possible.  If an
+individual extent is corrupt it will skip that extent and try to tread the next one.  It will keep
+trying until it either reaches the end of the file or it has up to fail-limit consecutive failures.
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  dataseries-utils(7)
+dataseries-utils(7)
 
-  =cut
+=cut
 */
 
 #include <boost/format.hpp>

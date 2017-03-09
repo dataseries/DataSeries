@@ -6,29 +6,29 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  dsstatgroupby - Calculate some derived value from a dataseries and calculate a statistic over it.
+dsstatgroupby - Calculate some derived value from a dataseries and calculate a statistic over it.
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % dsstatgroupby I<extent-type-match> I<statistic-description>... from file...
+% dsstatgroupby I<extent-type-match> I<statistic-description>... from file...
 
-  =head1 STATISTIC DESCRIPTION
+=head1 STATISTIC DESCRIPTION
 
-  Each statistic is described by a minimum of two arguments -- the statistic type and the expression.
-  Two types of statistic types are currently implemented basic (mean, stddev, min, max), and quantile
-  (percentile/100).  The expression implements the standard + - * / () and constants.  Two optional
-  arguments can be added.  where I<expr> adds in a conditional expression so you could calculate 
-  separate statistics over large and small files.  group by <field> specifies a column that should be
-  used for grouping the statistics.
+Each statistic is described by a minimum of two arguments -- the statistic type and the expression.
+Two types of statistic types are currently implemented basic (mean, stddev, min, max), and quantile
+(percentile/100).  The expression implements the standard + - * / () and constants.  Two optional
+arguments can be added.  where I<expr> adds in a conditional expression so you could calculate
+separate statistics over large and small files.  group by <field> specifies a column that should be
+used for grouping the statistics.
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  dsstatgroupby processes one or more input files calculating multiple statistics in a single pass
-  over that input file.
+dsstatgroupby processes one or more input files calculating multiple statistics in a single pass
+over that input file.
 
 */
 

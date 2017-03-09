@@ -6,50 +6,50 @@ using namespace std;
 using boost::format;
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  wcanalysis - analysis the 1998 World Cup web traces
+wcanalysis - analysis the 1998 World Cup web traces
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % wcanalysis <input-ds-paths...>
+% wcanalysis <input-ds-paths...>
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  wcanalysis performs the same analysis as the checklog program from the
-  tools that shipped along with the 1998 World Cup traces.  It was
-  designed to produce exactly the same output so the same check files
-  can be compared.  It also has a slight inefficiency built in that
-  maintains parity with the calculation done in that program so that the
-  performance comparison is fairer.
+wcanalysis performs the same analysis as the checklog program from the
+tools that shipped along with the 1998 World Cup traces.  It was
+designed to produce exactly the same output so the same check files
+can be compared.  It also has a slight inefficiency built in that
+maintains parity with the calculation done in that program so that the
+performance comparison is fairer.
 
-  The analysis calculated the total number of requests and total bytes
-  transferred and uses that to calculate the mean transfer size.  It
-  also calculates the minimum and maximum over the client ids, object
-  ids, size, and time fields.  It keeps the first time seen and the last
-  one and uses the latter to determine if there are any out of order
-  requests.  Note that you only get one out of order request if you tell
-  it to process two files out of order.  Finally it calculates the
-  number of unique servers that are accessed and the number of
-  operations that go to each of the different servers.  It calculates
-  the number of total requests and unique servers in two ways so that
-  they can be compared.
+The analysis calculated the total number of requests and total bytes
+transferred and uses that to calculate the mean transfer size.  It
+also calculates the minimum and maximum over the client ids, object
+ids, size, and time fields.  It keeps the first time seen and the last
+one and uses the latter to determine if there are any out of order
+requests.  Note that you only get one out of order request if you tell
+it to process two files out of order.  Finally it calculates the
+number of unique servers that are accessed and the number of
+operations that go to each of the different servers.  It calculates
+the number of total requests and unique servers in two ways so that
+they can be compared.
 
-  =head1 EXAMPLES
+=head1 EXAMPLES
 
-  % wcanalysis wc_day?_*.ds
-  % wcanalysis wc_day[123]?_*.ds
+% wcanalysis wc_day?_*.ds
+% wcanalysis wc_day[123]?_*.ds
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  wcweb2ds(1), DataSeries(5)
+wcweb2ds(1), DataSeries(5)
 
-  =head1 AUTHOR/CONTACT
+=head1 AUTHOR/CONTACT
 
-  Eric Anderson <software@cello.hpl.hp.com>
-  =cut
+Eric Anderson <software@cello.hpl.hp.com>
+=cut
 */
 
 class TestByteField : public FixedField {

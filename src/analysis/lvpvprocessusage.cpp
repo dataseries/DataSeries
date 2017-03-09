@@ -5,23 +5,23 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  lvpvprocessusage - calculate the usage of the system by process, logical, and physical volume
+lvpvprocessusage - calculate the usage of the system by process, logical, and physical volume
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % lvpvprocessusage <io-trace|ps-sample.ds> ...
+% lvpvprocessusage <io-trace|ps-sample.ds> ...
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  lvpvprocessusage combinds together the process name to pid mappings present in ps-sample.ds and
-  combines that with the I/O traces in the io-trace.ds files and generates usage information by
-  process, logical volume, and physical volume.
+lvpvprocessusage combinds together the process name to pid mappings present in ps-sample.ds and
+combines that with the I/O traces in the io-trace.ds files and generates usage information by
+process, logical volume, and physical volume.
 
-  =cut
+=cut
 */
 
 #include <Lintel/HashTable.hpp>

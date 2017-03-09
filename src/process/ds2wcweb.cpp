@@ -12,38 +12,38 @@
 */
 
 /*
-  =pod
+=pod
 
-  =head1 NAME
+=head1 NAME
 
-  ds2wcweb - convert from dataseries to the custom 1998 world cup trace format
+ds2wcweb - convert from dataseries to the custom 1998 world cup trace format
 
-  =head1 SYNOPSIS
+=head1 SYNOPSIS
 
-  % ds2wcweb [ds-common-args] <input-ds-paths...> | gzip -9v >trace.out
+% ds2wcweb [ds-common-args] <input-ds-paths...> | gzip -9v >trace.out
 
-  =head1 DESCRIPTION
+=head1 DESCRIPTION
 
-  ds2wcweb converts the Log::Web::WorldCup::Custom dataseries traces
-  back to the 1998 world cup custom traces format.  The world cup traces
-  are a very large, publically available set of web traces.  They have
-  been published in a special binary record format that was designed to
-  reduce space usage.  This converter converts from a dataseries version
-  to that record format.
+ds2wcweb converts the Log::Web::WorldCup::Custom dataseries traces
+back to the 1998 world cup custom traces format.  The world cup traces
+are a very large, publically available set of web traces.  They have
+been published in a special binary record format that was designed to
+reduce space usage.  This converter converts from a dataseries version
+to that record format.
 
-  =head1 EXAMPLES
+=head1 EXAMPLES
 
-  % gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
-  % wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
+% gz | wcweb2ds --compress-bz2 - wc_day46_3.ds
+% wcweb2ds --compress-gz --extent-size=1000000 wc_day80_1 wc_day80_1.ds
 
-  =head1 SEE ALSO
+=head1 SEE ALSO
 
-  wcweb2ds(1), DataSeries(5), DSCommonArgs(1)
+wcweb2ds(1), DataSeries(5), DSCommonArgs(1)
 
-  =head1 AUTHOR/CONTACT
+=head1 AUTHOR/CONTACT
 
-  Eric Anderson <software@cello.hpl.hp.com>
-  =cut
+Eric Anderson <software@cello.hpl.hp.com>
+=cut
 */
 
 #include <arpa/inet.h>
