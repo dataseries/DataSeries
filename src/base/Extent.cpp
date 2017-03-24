@@ -931,6 +931,7 @@ bool Extent::unpackBZ2(byte* output, byte* input,
 
     return true;
 #else
+    FATAL_ERROR("bz2 required to unpack but not configured");
     return false;
 #endif
 }
@@ -1013,6 +1014,7 @@ bool Extent::unpackLZO(byte* output, byte* input,
     output_size = orig_len;
     return true;
 #else
+    FATAL_ERROR("lzo required to unpack but not configured");
     return false;
 #endif
 }
@@ -1081,6 +1083,7 @@ bool Extent::unpackSnappy(byte* output, byte* input,
     return true;
 
 #else
+    FATAL_ERROR("snappy required to unpack but not configured");
     return false;
 #endif
 }
@@ -1144,6 +1147,7 @@ bool Extent::unpackLZ4(byte* output, byte* input,
     output_size = (int32)ret;
     return true;
 #else
+    FATAL_ERROR("lz4 or lz4hc required to unpack but not configured");
     return false;
 #endif
 }
