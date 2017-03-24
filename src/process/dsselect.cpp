@@ -160,7 +160,7 @@ int main(int argc, char *argv[]) {
             otypeinfo.close();
             cout << "Xml info has been written to temp.txt, hit enter to continue when done editing" << endl;
             cin.clear();
-            cin.ignore(1,'/n');
+            cin.ignore(1,'\n');
             ifstream itypeinfo("temp.txt");                                                                                                                                                                                    
             xmloutdesc.assign( (istreambuf_iterator<char>(itypeinfo)) , (istreambuf_iterator<char>()) );                                                                                                                        
             itypeinfo.close();
