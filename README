@@ -1,4 +1,4 @@
-IMPORTANT INFORMATION
+README: Documentation for DataSeries
 
 This package is referred to as DataSeries.  It originates from the Storage
 Systems Department (SSD, or SSP) of Hewlett-Packard Laboratories, Palo
@@ -7,36 +7,48 @@ AGREEMENTS DETAILED IN THE COPYING FILE.  If you do not agree to any of
 these terms, you must delete this software, and any copies you may have 
 made of it.
 
+DOWNLOAD:
+
+1. DataSeries may be found at
+
+   https://github.com/dataseries/DataSeries
+
+   Although it is recommended that the entire class of repositories
+   be downloaded from:
+
+   https://github.com/dataseries
+
 COMPILATION:
 
-1) Installing binary packages
-   # Download the repository signing key
-   wget http://tesla.hpl.hp.com/opensource/repositories/signing-key-latest.gpg
-   # Install the repository signing key
-   apt-key add filename # DEB
-   cp filename /etc/pki/rpm-gpg/tesla-opensource-key # RPM
-   # Pick your repository from http://tesla.hpl.hp.com/opensource/repositories
-   # and add it to /etc/apt/sources.list.d or /etc/yum.repos.d
-   $EDITOR filename
-   # Install the packages
-   apt-get install liblintel-dev # DEB
-   yum install Lintel-devel # RPM
+1. If you do not have Lintel installed, you may install it by visiting
 
-2) Installing from the tar source file releases
-   # Download the build tool
-   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
-   # Download and unpack the sources
-   perl deptool-bootstrap tarinit http://tesla.hpl.hp.com/opensource/sources/latest-release
-   # Build, install (-t = and test) the programs
-   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
+   https://github.com/dataseries/Lintel 
+   
+   and pulling the repository and following the installation 
+   instructions in the Lintel README. 
 
-3) Installing from version control
-   # Download the build tool
-   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
-   # Initialize the source repository (leave off the server option inside HPL)
-   perl deptool-bootstrap init --server=github.com dataseries/Lintel dataseries/DataSeries
-   # Checkout the source code
-   perl deptool-bootstrap checkout DataSeries
-   # Build, install (-t = and test) the programs
-   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
+2. Once Lintel is installed, create a "build" directory in DataSeries
+   using the command:
 
+   mkdir build
+
+   This should create a new empty directory in DataSeries.
+
+3. Navigate to this directory using:
+   
+   cd build
+
+4. Once in the build directory, build using the cmake command:
+
+   cmake ..
+
+5. This should build a DataSeries executable in the DataSeries folder
+
+REQUIREMENTS:
+1. Lintel Utility Library
+
+2. GCC 4.8.5 (Or higher) Compiler
+
+3. Boost 1.54.0 (Or higher)
+
+4. OpenSSL LibCrypto 1.1.0
