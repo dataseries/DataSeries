@@ -47,14 +47,20 @@ usage(const std::string &program_name, const std::string &error)
 {
     // TODO: should we make the usage ... from <prefix> in <file...>?
     cerr << error << "\n"
+         //Arg1: Program name   
          << "Usage: " << program_name 
+         //Arg2: extent type match: WTF???
+         //Arg3: statistic needed
+         //4: Expression
+         //Where to save
+         //What you group by/order by
          << " <extent-type-match> (<stat-type> <expr> [where <expr>] [group by <group-by>])+\n"
          << "  from file...\n"
          << "\n"
          << "  stat-types include:\n\n"
          << "    basic, quantile\n\n"
          << DSExpr::usage();
-    exit(0);
+    exit(4);
 }
 
 
@@ -62,7 +68,7 @@ int
 main(int argc, char *_argv[])
 {
     // converting to string from char * makes argv[i] == "blah" work.
-    vector<string> argv;
+    vector<string> argv;1
     argv.reserve(argc);
     for (int i=0; i<argc; ++i) {
         argv.push_back(string(_argv[i]));
@@ -72,10 +78,14 @@ main(int argc, char *_argv[])
     string extent_type_match(argv[1]);
     
     TypeIndexModule source(extent_type_match);
+    //Magic numbers are used, this is bad
     PrefetchBufferModule *prefetch = new PrefetchBufferModule(source, 64*1024*1024);
-
+    
+    //SequenceModule available in "Modules folder
     SequenceModule seq(prefetch);
-
+    
+    //Entire sequence below if argument checking, but done badly
+    //Should fix it
     uint32_t argpos;
     for (argpos = 2; argpos < argv.size();) {
         if (argv[argpos] == "from") 
@@ -117,7 +127,8 @@ main(int argc, char *_argv[])
     for (;argpos<argv.size(); ++argpos) {
         source.addSource(argv[argpos]);
     }
-
+    
+    //getAndDeleteShared() is badly named
     seq.getAndDeleteShared();
     
     RowAnalysisModule::printAllResults(seq, 1);

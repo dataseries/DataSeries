@@ -34,7 +34,7 @@
 DATASERIES_DIR="`pwd`/${1}"
 
 # Location of Lintel source directory
-Lintel_DIR="${DATASERIES_DIR}/../Lintel"
+Lintel_DIR="$~/projects/Lintel"
 
 # Location of the Lintel installation
 Lintel_INSTALL_DIR="/usr/local/share"
@@ -78,8 +78,8 @@ CMAKE_C_LINK_FLAGS="${CMAKE_CXX_LINK_FLAGS}"
 # DataSeries) showed about 50% speedup with O3 as compared with O2.
 CMAKE_CXX_FLAGS="-g -O3"
 
-#CMAKE_C_COMPILER=""
-#CMAKE_CXX_COMPILER=""
+#CMAKE_C_COMPILER="CC=gcc-4.9.4"
+#CMAKE_CXX_COMPILER="g++-4.9.4"
 
 ###################### For Extra Programs ######################
 #
