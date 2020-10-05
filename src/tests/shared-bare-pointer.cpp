@@ -189,9 +189,9 @@ void testPipelines() {
     cout << "passed.\n";
     
     SequenceModule seq3(new FakeSourceShared(10));
-    vector< shared_ptr<KeeperShared> > keepers;
+    vector< boost::shared_ptr<KeeperShared> > keepers;
     for (uint32_t i = 0; i < 10;++i) {
-        shared_ptr<KeeperShared> k(new KeeperShared(seq3.tail()));
+        boost::shared_ptr<KeeperShared> k(new KeeperShared(seq3.tail()));
         seq3.addModule(k);
         keepers.push_back(k);
         seq3.addModule(new PassThroughShared(seq3.tail()));
@@ -204,8 +204,8 @@ void testPipelines() {
     for (uint32_t i = 0; i < 10; ++i) {
         SINVARIANT(keepers[0]->vec[i]->extent_source_offset == (9 - i));
     }
-    for (vector< shared_ptr<KeeperShared> >::iterator i = keepers.begin(); i != keepers.end(); ++i) {
-        shared_ptr<KeeperShared> p(*i);
+    for (vector< boost::shared_ptr<KeeperShared> >::iterator i = keepers.begin(); i != keepers.end(); ++i) {
+        boost::shared_ptr<KeeperShared> p(*i);
         SINVARIANT(p->vec.size() == 10);
         SINVARIANT(p->vec == keepers[0]->vec);
     }

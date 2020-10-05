@@ -87,8 +87,8 @@ struct Packet {
 };
 
 struct SummaryInfo {
-    static const double q_error = 0.005;
-    static const uint32_t n_bound = 1000 * 1000 * 1000;
+    static constexpr double q_error = 0.005;
+    static constexpr uint32_t n_bound = 1000 * 1000 * 1000;
     const char *first_file, *last_file;
     StatsQuantile correlated_percent, correlated_bytes, uncorrelated_bytes,
         correlated_percent_dport2049, correlated_percent_sport2049;

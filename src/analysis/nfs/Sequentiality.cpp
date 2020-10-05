@@ -86,7 +86,7 @@ class Sequentiality : public RowAnalysisModule {
 
     virtual ~Sequentiality() { }
 
-    static const double eof_reset_fraction = 0.5;
+    static constexpr double eof_reset_fraction = 0.5;
 
     struct Operation {
         // reply_at == min() --> unused entry

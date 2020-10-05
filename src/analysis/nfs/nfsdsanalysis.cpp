@@ -484,7 +484,7 @@ class SequentialWholeAccess : public NFSDSModule {
     virtual ~SequentialWholeAccess() { }
 
     // 2 assumes that the cache discards data on writes; 1 assumes that the cache maintains data on writes
-    static const double write_cache_inefficiency = 2;
+    static constexpr double write_cache_inefficiency = 2;
 
     ExtentType::int64 cacheEfficiencyBytes(ExtentType::int64 read_bytes, ExtentType::int64 write_bytes,
                                            ExtentType::int64 max_file_size) {
