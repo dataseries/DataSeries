@@ -197,9 +197,9 @@ class HostInfo : public RowAnalysisModule {
     typedef HostInfoTuple Tuple;
     typedef StatsCube<Tuple>::MyAny BitsetAnyTuple;
 
-    static const double rate_quantile_maxerror = 0.005;
+    static constexpr double rate_quantile_maxerror = 0.005;
     // about 1/3 of a year with 1 second datapoints
-    static const unsigned rate_quantile_maxgroups = 10*1000*1000;
+    static constexpr unsigned rate_quantile_maxgroups = 10*1000*1000;
     struct Rates {
         StatsQuantile ops_rate;
         StatsQuantile bytes_rate;
