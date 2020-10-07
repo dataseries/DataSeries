@@ -162,6 +162,7 @@ int npslist = sizeof(pslist)/sizeof(const string);
 void
 test_varcompress()
 {
+    typedef ExtentType::int32 int32;
     typedef ExtentType::byte byte;
     Extent::ByteArray packed;
     packed.resize(4);

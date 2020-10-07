@@ -547,6 +547,7 @@ void Extent::uncompactNulls(Extent::ByteArray &fixed_coded, int32_t &size) {
         asm_memcpy(to, from, type->rep.bool_bytes);
         from += type->rep.bool_bytes;
 
+        typedef vector<ExtentType::nullCompactInfo>::const_iterator nciiT;
         // copy the bytes...
         from = uncompactCopy<byte>(type->rep.nonbool_compact_info_size1,
                                    to, from, from_end);
