@@ -33,7 +33,7 @@
 using namespace std;
 using boost::format;
 
-const string pslist[] = 
+const string pslist[] =
 {
     "CMD",
     "init [2] ",
@@ -389,7 +389,7 @@ test_primitives()
         elapsed = (hash_end.ru_utime.tv_sec - hash_start.ru_utime.tv_sec) + (hash_end.ru_utime.tv_usec - hash_start.ru_utime.tv_usec)/1.0e6;
         printf("memcpy of %d * %d bytes in %.6gs, %.4g MB/s\n",
                reps, hash_speed_test,elapsed,reps * hash_speed_test / (1e6 *elapsed));
-    }   
+    }
 }
 
 void
@@ -489,12 +489,12 @@ class DoubleAccessor {
               default_value(_default_value)
     { }
     bool isnull() { return *base_offset & 0x1 ? true : false; }
-    void setnull1(bool null) { 
-        if (null) { 
-            *base_offset = (char)(*base_offset | 0x1); 
-        } else { 
-            *base_offset = (char)(*base_offset & ~0x1); 
-        } 
+    void setnull1(bool null) {
+        if (null) {
+            *base_offset = (char)(*base_offset | 0x1);
+        } else {
+            *base_offset = (char)(*base_offset & ~0x1);
+        }
     }
     void setnull2(bool null) { setnull1(null); if (null) { set1(default_value); } }
     double get1() { return *(double *)(base_offset + 8); }
@@ -508,7 +508,7 @@ class DoubleAccessor {
 };
 
 double elapsed(struct rusage &start, struct rusage &end) {
-    return end.ru_utime.tv_sec - start.ru_utime.tv_sec 
+    return end.ru_utime.tv_sec - start.ru_utime.tv_sec
             + (end.ru_utime.tv_usec - start.ru_utime.tv_usec)/1.0e6;
 }
 
@@ -524,8 +524,8 @@ void test_nullsupport() {
         printf("repetition %d:\n",i);
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             access.set2(MTRandom.randDouble());
         }
@@ -534,8 +534,8 @@ void test_nullsupport() {
 
         double sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             sum += access.get1();
         }
@@ -544,8 +544,8 @@ void test_nullsupport() {
 
         sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             sum += access.get2();
         }
@@ -554,8 +554,8 @@ void test_nullsupport() {
 
         sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             if (access.isnull()) {
                 sum += 1;
@@ -565,8 +565,8 @@ void test_nullsupport() {
         printf("  isnull: %.6g seconds (%.3f)\n",elapsed(start,end),sum);
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             access.set1(1);
         }
@@ -574,8 +574,8 @@ void test_nullsupport() {
         printf("  set1: %.6g seconds\n",elapsed(start,end));
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             access.set2(2);
         }
@@ -583,8 +583,8 @@ void test_nullsupport() {
         printf("  set2: %.6g seconds\n",elapsed(start,end));
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             access.setnull1(true);
         }
@@ -592,8 +592,8 @@ void test_nullsupport() {
         printf("  setnull1: %.6g seconds\n",elapsed(start,end));
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             access.setnull2(true);
         }
@@ -601,8 +601,8 @@ void test_nullsupport() {
         printf("  setnull2: %.6g seconds\n",elapsed(start,end));
 
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             double v = MTRandom.randDouble();
             if (v < 0.5) {
@@ -613,11 +613,11 @@ void test_nullsupport() {
         }
         getrusage(RUSAGE_SELF,&end);
         printf("  randset: %.6g seconds\n",elapsed(start,end));
-        
+
         sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             if (access.isnull()) {
                 sum += 1;
@@ -628,8 +628,8 @@ void test_nullsupport() {
 
         sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             sum += access.get1();
         }
@@ -638,8 +638,8 @@ void test_nullsupport() {
 
         sum = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             sum += access.get2();
         }
@@ -649,8 +649,8 @@ void test_nullsupport() {
         sum = 0;
         access.default_value = 0;
         getrusage(RUSAGE_SELF,&start);
-        for (access.base_offset = array; 
-            access.base_offset != endofarray; 
+        for (access.base_offset = array;
+            access.base_offset != endofarray;
             access.base_offset += 16) {
             sum += access.get2();
         }
@@ -771,7 +771,7 @@ test_makecomplexfile()
             fillVariableData(rand,variabledata,vdsize);
             f_variable32_null.set(variabledata,vdsize);
         }
-    }   
+    }
     outmodule.flushExtent();
     printf("test_makecomplexfile - Done\n");
 }
@@ -790,10 +790,10 @@ test_doublebase_nullable()
     ExtentSeries dbnseries(dbntype);
     DoubleField f_double(dbnseries,"double",
                          Field::flag_nullable | DoubleField::flag_allownonzerobase);
-    
+
     Extent::Ptr cur_extent(new Extent(dbntype));
     dbnseries.setExtent(cur_extent);
-    
+
     dbnseries.newRecord();
     f_double.setNull();
     SINVARIANT(f_double.isNull());
@@ -810,19 +810,19 @@ test_doublebase_nullable()
     SINVARIANT(f_double.isNull());
     SINVARIANT(0 == f_double.val());
     SINVARIANT(1000000 == f_double.absval()); // changed semantics to have offset in absval always
-    
+
     ++dbnseries;
     SINVARIANT(dbnseries.morerecords());
     SINVARIANT(false == f_double.isNull());
     SINVARIANT(1000000 == f_double.val());
     SINVARIANT(2000000 == f_double.absval());
-    
+
     ++dbnseries;
     SINVARIANT(dbnseries.morerecords());
     SINVARIANT(false == f_double.isNull());
     SINVARIANT(0 == f_double.val());
     SINVARIANT(1000000 == f_double.absval());
-}    
+}
 
 void
 test_compactnull()
@@ -842,7 +842,7 @@ test_compactnull()
              "  <field type=\"double\" name=\"double\" opt_nullable=\"yes\" />\n"
              "  <field type=\"variable32\" name=\"variable32\" opt_nullable=\"yes\" pack_unique=\"yes\" />\n"
              "</ExtentType>\n");
-    
+
     ExtentSeries series1(typelib,"Test::CompactNulls");
     series1.newExtent();
 
@@ -863,7 +863,7 @@ test_compactnull()
         variablestuff[i] = (char)(i&0xFF);
     }
     /// Test 1: all null
-    
+
     // Test filling in a value and then nulling.
     for (int i=1;i<=nrecords;i++) {
         f_bool.set(true);
@@ -881,16 +881,16 @@ test_compactnull()
         f_variable32.set(variablestuff.begin()+i,i+1);
         f_variable32.setNull();
         ++series1;
-    }    
+    }
 
     Extent::ByteArray packed;
-    series1.getExtentRef().packData(packed, 
+    series1.getExtentRef().packData(packed,
                                     Extent::compression_algs[Extent::compress_mode_none].compress_flag);
 
     cout << format("all null: %d rows, original bytes %d, packed %d\n")
             % nrecords % series1.getExtentRef().size() % packed.size();
     uint32_t overhead = 48 + (4 - (nrecords % 4)) % 4;
-    INVARIANT(packed.size() == static_cast<size_t>(overhead + nrecords), 
+    INVARIANT(packed.size() == static_cast<size_t>(overhead + nrecords),
               "size check failed");
 
     ExtentSeries series2(typelib, "Test::CompactNulls");
@@ -900,11 +900,11 @@ test_compactnull()
     series1.setExtent(series1.getSharedExtent());
     for (int i=0;i<nrecords;i++) {
         INVARIANT(f_bool.isNull() && f_byte.isNull() && f_int32.isNull()
-                  && f_int32b.isNull() && f_int64.isNull() 
+                  && f_int32b.isNull() && f_int64.isNull()
                   && f_double.isNull() && f_variable32.isNull(), "??");
         ++series1;
     }
-    
+
     /// Test 2: random nulls
 
     cout << "all null uncompact passed\n";
@@ -930,7 +930,7 @@ test_compactnull()
     }
 
     packed.clear();
-    series1.getExtentRef().packData(packed, 
+    series1.getExtentRef().packData(packed,
                                     Extent::compression_algs[Extent::compress_mode_lzf].compress_flag);
     cout << format("random null: %d rows, original bytes %d, packed %d\n")
             % nrecords % series1.getExtentRef().size() % packed.size();
@@ -949,8 +949,8 @@ test_compactnull()
         g_bool.setFieldName("bool"); // slow and inefficient, but for testing
         INVARIANT((f_bool.isNull() && g_bool.isNull())
                   || (!f_bool.isNull() && !g_bool.isNull() &&
-                      f_bool.val() == g_bool.val()), 
-                  format("bad@%d %d %d/%d %d") 
+                      f_bool.val() == g_bool.val()),
+                  format("bad@%d %d %d/%d %d")
                   % i % f_bool.isNull() % g_bool.isNull()
                   % f_bool.val() % g_bool.val());
         SINVARIANT((f_byte.isNull() && g_byte.isNull())
@@ -975,7 +975,7 @@ test_compactnull()
         ++series2;
     }
     cout << "random null passed\n";
-    
+
     cout << "test_compactnull - end\n";
 }
 
@@ -1044,7 +1044,7 @@ test_extentseriescleanup()
     SINVARIANT(caught);
     caught = false;
     try {
-        { 
+        {
             ExtentSeries tmp;
             BoolField *tmp2 = new BoolField(tmp, "buz");
             tmp2 = NULL;
