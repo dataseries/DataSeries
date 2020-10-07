@@ -29,7 +29,7 @@ ENDIF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
 
 
 IF(CMAKE_COMPILER_IS_GNUCXX)
-    ADD_DEFINITIONS(-Wall -Wno-address -Wno-unused-local-typedefs)
+    ADD_DEFINITIONS(-Wall -Wno-address -Wno-unused-local-typedefs -Wno-unused-but-set-variable)
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 IF("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
